@@ -1,0 +1,30 @@
+import type { Diecast } from "@/lib/types";
+import type { CsvColumn } from "@/lib/csv";
+
+export const CAR_CSV_COLUMNS: CsvColumn<Diecast>[] = [
+  { key: "id", label: "Car ID", get: (r) => r.id },
+  { key: "name", label: "Name", get: (r) => r.name },
+  { key: "make", label: "Make", get: (r) => r.make },
+  { key: "model", label: "Model", get: (r) => r.model },
+  { key: "variant", label: "Variant", get: (r) => r.variant },
+  { key: "year", label: "Year", get: (r) => r.year },
+  { key: "brand", label: "Brand", get: (r) => r.brand },
+  { key: "assortment", label: "Assortment", get: (r) => r.assortment },
+  { key: "series", label: "Series", get: (r) => r.series },
+  { key: "subSeries", label: "Sub series", get: (r) => r.subSeries },
+  { key: "carNumber", label: "Car number", get: (r) => r.carNumber },
+  { key: "colour", label: "Colour", get: (r) => r.colour },
+  { key: "type", label: "Type", get: (r) => r.type },
+  { key: "size", label: "Size", get: (r) => r.size },
+  { key: "spent", label: "Spent", get: (r) => r.spent || 0 },
+  { key: "mrp", label: "MRP", get: (r) => r.mrp || 0 },
+  { key: "payment", label: "Payment", get: (r) => r.payment },
+  { key: "paid", label: "Paid", get: (r) => r.paid || 0 },
+  { key: "status", label: "Status", get: (r) => r.status },
+  { key: "seller", label: "Seller", get: (r) => r.seller },
+  { key: "transitInfo", label: "Transit info", get: (r) => r.transitInfo },
+  { key: "orderDate", label: "Order date", get: (r) => r.orderDate },
+  { key: "date", label: "Date", get: (r) => r.date },
+  { key: "chase", label: "Chase", get: (r) => (r.chase ? "TRUE" : "") },
+  { key: "favourite", label: "Favourite", get: (r) => (r.favourite ? "TRUE" : "") },
+];

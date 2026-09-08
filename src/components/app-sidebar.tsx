@@ -1,0 +1,145 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import {
+  LayoutDashboard,
+  Star,
+  Boxes,
+  Truck,
+  Copy,
+  Table,
+  Settings,
+  Eye,
+  EyeOff,
+  CalendarDays,
+  ShoppingBag,
+} from "lucide-react";
+import { filterRows } from "@/lib/search";
+
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { useCars } from "@/lib/cars-store";
+import { inrFull } from "@/lib/format";
+import { useApp } from "@/lib/store";
+import { Button } from "@/components/ui/button";
+
+const NAV = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Favourites", url: "/favourites", icon: Star },
+  { title: "Collection", url: "/collection", icon: Boxes },
+  { title: "My Orders", url: "/orders", icon: Truck },
+  { title: "Pre-orders", url: "/preorders", icon: ShoppingBag },
+  { title: "Habits", url: "/habits", icon: CalendarDays },
+  { title: "Duplicates", url: "/duplicates", icon: Copy },
+  { title: "Inventory", url: "/inventory", icon: Table },
+  { title: "Settings", url: "/settings", icon: Settings },
+] as const;
+
+export function AppSidebar() {
+  const allCars = useCars();
+  const { hideInvestment, setHideInvestment, query } = useApp();
+  const data = useMemo(
+    () => filterRows(allCars, query).filter((r) => (r.status || "").trim().toLowerCase() !== "iso"),
+    [allCars, query],
+  );
+  const { isMobile, setOpenMobile } = useSidebar();
+  const [localReveal, setLocalReveal] = useState(false);
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+
+  const stats = useMemo(() => {
+    const total = data.length;
+    const spent = data.reduce((s, r) => s + (r.spent || 0), 0);
+    return { total, spent };
+  }, [data]);
+
+  const hidden = hideInvestment && !localReveal;
+
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <div className="flex items-center gap-2 px-1 py-2">
+          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground shadow-lg shadow-primary/30">
+            <Boxes className="size-5" />
+          </div>
+          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
+            <div className="text-display text-base font-semibold leading-tight">Tesoro</div>
+            <div className="truncate text-xs text-muted-foreground">Personal collection</div>
+          </div>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Navigate</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {NAV.map((item) => {
+                const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
+                return (
+                  <SidebarMenuItem key={item.url}>
+                    <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+                      <Link
+                        to={item.url}
+                        onClick={() => {
+                          if (isMobile) setOpenMobile(false);
+                        }}
+                      >
+                        <item.icon className="size-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t border-sidebar-border">
+        <div className="space-y-3 px-1 py-2 group-data-[collapsible=icon]:hidden">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Total cars
+            </div>
+            <div className="text-display text-lg font-semibold tabular-nums">
+              {stats.total.toLocaleString()}
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Total investment
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                onClick={() => {
+                  if (hideInvestment) setLocalReveal((v) => !v);
+                  else setHideInvestment(true);
+                }}
+                aria-label={hidden ? "Show investment" : "Hide investment"}
+              >
+                {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+              </Button>
+            </div>
+            <div className="text-display text-lg font-semibold tabular-nums">
+              {hidden ? "••••••" : inrFull(stats.spent)}
+            </div>
+          </div>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}

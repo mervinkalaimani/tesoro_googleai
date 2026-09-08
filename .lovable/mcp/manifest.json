@@ -1,0 +1,169 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "my-diecast-dashboard",
+      "version": "0.1.0",
+      "title": "My Diecast Dashboard"
+    },
+    "tools": [
+      {
+        "name": "search_cars",
+        "title": "Search cars",
+        "description": "Search the diecast collection across every field (name, make, model, brand, series, colour, seller, status). Supports optional brand/status/seller filters.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "description": "Free text; space or comma separated terms must all match.",
+              "type": "string"
+            },
+            "brand": {
+              "description": "Exact brand filter, case-insensitive.",
+              "type": "string"
+            },
+            "status": {
+              "description": "Exact status filter, e.g. Available, Transit, Waiting, Pre Order.",
+              "type": "string"
+            },
+            "seller": {
+              "description": "Exact seller filter, case-insensitive.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Max results to return (default 25, max 200).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_car",
+        "title": "Get car",
+        "description": "Get every recorded field for one car in the collection, by its id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Car id, e.g. DIS/PRM/001."
+            }
+          },
+          "required": ["id"]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "collection_stats",
+        "title": "Collection stats",
+        "description": "Overall collection totals (car count, total spend, status breakdown) plus an optional top-N ranking grouped by a field such as brand, make, series or seller.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "groupBy": {
+              "description": "Field to rank by. Omit for headline totals only.",
+              "type": "string",
+              "enum": [
+                "brand",
+                "make",
+                "model",
+                "series",
+                "assortment",
+                "seller",
+                "status",
+                "type",
+                "colour",
+                "size"
+              ]
+            },
+            "limit": {
+              "description": "How many groups to return (default 10, max 50).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_orders",
+        "title": "List open orders",
+        "description": "List cars that are not yet in hand — in transit, waiting to ship, or pre-ordered — sorted transit first, with seller, transit info, order date and expected date.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filter to one order status. Default: all open orders.",
+              "type": "string",
+              "enum": ["all", "transit", "waiting", "pre order"]
+            },
+            "limit": {
+              "description": "Max results (default 50, max 200).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_duplicates",
+        "title": "List duplicates",
+        "description": "Find repeated cars in the collection. Two cars are duplicates when make, model, variant, year and brand all match.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Max duplicate groups to return (default 25, max 100).",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

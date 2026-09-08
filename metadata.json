@@ -1,0 +1,6 @@
+{
+  "name": "Tesoro — Collection Dashboard",
+  "description": "A personal dashboard for tracking a diecast car collection: brands, types, spend, and inventory status.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

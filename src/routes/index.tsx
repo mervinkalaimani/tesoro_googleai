@@ -1,0 +1,1002 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  Boxes,
+  Truck,
+  Clock3,
+  ShoppingBag,
+  Sparkles,
+  Info,
+  ChevronRight,
+  AlertTriangle,
+  PauseCircle,
+} from "lucide-react";
+
+import { useCars, useCarsRefresh } from "@/lib/cars-store";
+import type { Diecast } from "@/lib/types";
+import { useApp } from "@/lib/store";
+import { filterRows } from "@/lib/search";
+import {
+  inr,
+  inrFull,
+  parseDMY,
+  daysBetween,
+  addDays,
+  formatDMY,
+  relativeDay,
+  monthKey,
+  monthLabel,
+} from "@/lib/format";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SegmentControl } from "@/components/segment-control";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useCarDrawer } from "@/components/car-details-drawer";
+import {
+  Tooltip as UITooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  PeakPurchaseSkeleton,
+  TopListSkeleton,
+  TransitTrackerSkeleton,
+} from "@/components/dashboard-skeletons";
+
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Dashboard | Tesoro" },
+      {
+        name: "description",
+        content:
+          "Track diecast KPIs, transit shipments, recent arrivals, monthly spending, peak purchase periods, and top collection stats.",
+      },
+      { property: "og:title", content: "Dashboard | Tesoro" },
+      {
+        property: "og:description",
+        content:
+          "Track diecast KPIs, transit shipments, recent arrivals, monthly spending, peak purchase periods, and top collection stats.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: DashboardPage,
+});
+
+type Shipment = {
+  key: string;
+  seller: string;
+  count: number;
+  brands: string[];
+  ordered: Date;
+  expected: Date | null;
+  status: string;
+  transitInfo: string;
+};
+
+function DashboardPage() {
+  const { query, transitEtaDays } = useApp();
+  const cars = useCars();
+  const { refreshing } = useCarsRefresh();
+  const loading = refreshing && cars.length === 0;
+  const data = useMemo(() => filterRows(cars, query), [cars, query]);
+  const [metric, setMetric] = useState<"count" | "cost">("count");
+
+  const kpis = useMemo(() => {
+    const norm = (s: string) => (s || "").trim().toLowerCase();
+    const countOf = (match: (s: string) => boolean) =>
+      data.filter((r) => match(norm(r.status))).length;
+    const defs = [
+      {
+        key: "available",
+        label: "Available",
+        tone: "emerald",
+        icon: <Boxes className="size-4" />,
+        value: countOf((s) => s === "available"),
+      },
+      {
+        key: "transit",
+        label: "In transit",
+        tone: "blue",
+        icon: <Truck className="size-4" />,
+        value: countOf((s) => s === "transit" || /out\s*for\s*delivery/.test(s)),
+      },
+      {
+        key: "waiting",
+        label: "Waiting",
+        tone: "orange",
+        icon: <Clock3 className="size-4" />,
+        value: countOf((s) => s === "waiting"),
+      },
+      {
+        key: "preorder",
+        label: "Pre-ordered",
+        tone: "violet",
+        icon: <ShoppingBag className="size-4" />,
+        value: countOf((s) => s === "pre order" || s === "preorder"),
+      },
+      {
+        key: "delayed",
+        label: "Delayed",
+        tone: "rose",
+        icon: <AlertTriangle className="size-4" />,
+        value: countOf((s) => s === "delayed"),
+      },
+      {
+        key: "onhold",
+        label: "On hold",
+        tone: "zinc",
+        icon: <PauseCircle className="size-4" />,
+        value: countOf((s) => s === "on hold" || s === "onhold"),
+      },
+      {
+        key: "iso",
+        label: "ISO",
+        tone: "sky",
+        icon: <Sparkles className="size-4" />,
+        value: countOf((s) => s === "iso"),
+      },
+    ];
+    return defs.filter((d) => d.value > 0);
+  }, [data]);
+
+  return (
+    <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
+      {kpis.length > 0 && (
+        <section className="grid grid-cols-2 gap-3 pb-1 md:flex md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
+          {kpis.map((k) => (
+            <Kpi key={k.key} icon={k.icon} label={k.label} value={k.value} tone={k.tone} />
+          ))}
+        </section>
+      )}
+
+      <DashboardMiddle rows={data} etaDays={transitEtaDays} loading={loading} />
+
+      <section className="grid min-w-0 items-stretch gap-4 lg:h-[min(360px,calc(100svh-7rem))] lg:grid-cols-3 lg:[&>*]:h-full">
+        <MonthlySpending rows={data} />
+        <TopTenGrid rows={data} mode={metric} onModeChange={setMetric} loading={loading} />
+        {loading ? (
+          <PeakPurchaseSkeleton />
+        ) : (
+          <PeakPurchase rows={data} mode={metric} onModeChange={setMetric} />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function Kpi({
+  icon,
+  label,
+  value,
+  tone,
+  hint,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  tone: string;
+  hint?: string;
+}) {
+  const toneMap: Record<string, string> = {
+    emerald: "bg-emerald-500/15 text-emerald-500",
+    amber: "bg-amber-500/15 text-amber-500",
+    violet: "bg-violet-500/15 text-violet-500",
+    sky: "bg-sky-500/15 text-sky-500",
+    blue: "bg-blue-500/15 text-blue-500",
+    orange: "bg-orange-500/15 text-orange-500",
+    rose: "bg-rose-500/15 text-rose-500",
+    zinc: "bg-zinc-500/20 text-zinc-500",
+  };
+  return (
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
+      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+        <span
+          className={`grid size-6 place-items-center rounded-md ${toneMap[tone] ?? "bg-muted"}`}
+        >
+          {icon}
+        </span>
+        {label}
+      </div>
+      <div className="mt-2 text-display text-3xl font-semibold tabular-nums">
+        {value.toLocaleString()}
+      </div>
+      {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
+    </div>
+  );
+}
+
+const isOutForDelivery = (s: string) => /out\s*for\s*delivery|^ofd$/i.test((s || "").trim());
+const isTransit = (s: string) => (s || "").trim().toLowerCase() === "transit";
+const isWaiting = (s: string) => (s || "").trim().toLowerCase() === "waiting";
+
+/** Out for delivery first, then Transit, then Waiting. */
+function statusRank(s: string) {
+  if (isOutForDelivery(s)) return 0;
+  if (isTransit(s)) return 1;
+  if (isWaiting(s)) return 2;
+  return 3;
+}
+
+function TransitTracker({
+  rows,
+  etaDays,
+  wide = true,
+}: {
+  rows: Diecast[];
+  etaDays: number;
+  wide?: boolean;
+}) {
+  const [includeWaiting, setIncludeWaiting] = useState(false);
+  const [clubShipping, setClubShipping] = useState(false);
+  const [sortBy, setSortBy] = useState<"ordered" | "expected">("ordered");
+
+  const shipments = useMemo<Shipment[]>(() => {
+    const src = rows.filter(
+      (r) =>
+        isOutForDelivery(r.status) ||
+        isTransit(r.status) ||
+        (includeWaiting && isWaiting(r.status)),
+    );
+    const groups = new Map<string, Diecast[]>();
+    for (const r of src) {
+      const od = r.orderDate || r.date || "—";
+      const ship = (r.transitInfo || "").trim();
+      const k =
+        clubShipping && ship
+          ? `ship:${ship.toLowerCase()}`
+          : `${r.seller || "Unknown"}|${od}|${r.status}|${ship}`;
+      const arr = groups.get(k) ?? [];
+      arr.push(r);
+      groups.set(k, arr);
+    }
+
+    const out: Shipment[] = [];
+    for (const [k, arr] of groups) {
+      const first = arr[0];
+      const ordered = parseDMY(first.orderDate || first.date);
+      if (!ordered) continue;
+      const expected = parseDMY(first.expectedDate || first.date);
+      const brands = [...new Set(arr.map((r) => r.brand).filter(Boolean))];
+      const sellers = [...new Set(arr.map((r) => r.seller).filter(Boolean))];
+      out.push({
+        key: k,
+        seller:
+          sellers.length > 1 ? `${sellers[0]} +${sellers.length - 1}` : sellers[0] || "Unknown",
+        count: arr.length,
+        brands,
+        ordered,
+        expected,
+        status: first.status,
+        transitInfo: first.transitInfo || "",
+      });
+    }
+    const etaOf = (s: Shipment) => (s.expected ?? addDays(s.ordered, etaDays)).getTime();
+    return out.sort((a, b) => {
+      // Out for delivery always floats to the top; everything else sorts purely by the chosen date
+      const ofd = (isOutForDelivery(a.status) ? 0 : 1) - (isOutForDelivery(b.status) ? 0 : 1);
+      if (ofd !== 0) return ofd;
+      // Order date -> oldest first; Expected -> closest first
+      return sortBy === "expected"
+        ? etaOf(a) - etaOf(b)
+        : a.ordered.getTime() - b.ordered.getTime();
+    });
+  }, [rows, includeWaiting, clubShipping, sortBy, etaDays]);
+
+  const now = new Date();
+
+  return (
+    <div
+      className={`card-elevated flex h-full min-w-0 flex-col overflow-hidden ${wide ? "lg:col-span-2" : "lg:col-span-3"}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+        <div className="min-w-0">
+          <h2 className="text-display truncate text-lg font-semibold">Transit tracker</h2>
+          <p className="text-xs text-muted-foreground">
+            {shipments.length} active shipment{shipments.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <SegmentControl
+            value={sortBy}
+            onChange={setSortBy}
+            options={[
+              { value: "ordered", label: "Order date" },
+              { value: "expected", label: "Expected" },
+            ]}
+          />
+          <label className="flex shrink-0 items-center gap-2 text-xs">
+            <Checkbox
+              checked={includeWaiting}
+              onCheckedChange={(v) => setIncludeWaiting(Boolean(v))}
+            />
+            Include waiting
+          </label>
+          <label className="flex shrink-0 items-center gap-2 text-xs">
+            <Checkbox checked={clubShipping} onCheckedChange={(v) => setClubShipping(Boolean(v))} />
+            Club shipping ID
+          </label>
+        </div>
+      </div>
+
+      {shipments.length > 0 && (
+        <>
+          {/* Mobile: stacked cards */}
+          <div className="max-h-[340px] md:max-h-none overflow-y-auto md:hidden">
+            <ul className="divide-y divide-border/60">
+              {shipments.map((s) => {
+                const eta = s.expected ?? addDays(s.ordered, etaDays);
+                const days = daysBetween(s.ordered, now);
+                const late = eta < now;
+                return (
+                  <li key={s.key} className="min-w-0 p-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">{s.seller}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {s.status} · {s.count} car{s.count === 1 ? "" : "s"}
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">
+                        {days}d
+                      </span>
+                    </div>
+                    {s.brands.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {s.brands.slice(0, 4).map((b) => (
+                          <span key={b} className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
+                            {b}
+                          </span>
+                        ))}
+                        {s.brands.length > 4 && (
+                          <span className="text-[10px] text-muted-foreground">
+                            +{s.brands.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    <div className="mt-1.5 break-words text-xs text-muted-foreground">
+                      {s.transitInfo || "No transit info"}
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs tabular-nums text-muted-foreground">
+                      <span>Ordered {formatDMY(s.ordered)}</span>
+                      <span className={late ? "text-rose-500" : ""}>Expected {formatDMY(eta)}</span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* Desktop: table */}
+          <div className="hidden min-h-0 flex-1 max-h-[340px] overflow-auto md:block">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur text-left text-xs uppercase tracking-wide text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-2.5 font-medium">Seller</th>
+                  <th className="px-4 py-2.5 font-medium">Cars</th>
+                  <th className="px-4 py-2.5 font-medium">Brands</th>
+                  <th className="px-4 py-2.5 font-medium">Transit info</th>
+                  <th className="px-4 py-2.5 font-medium">Ordered</th>
+                  <th className="px-4 py-2.5 font-medium">Expected</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Days since</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shipments.map((s) => {
+                  const eta = s.expected ?? addDays(s.ordered, etaDays);
+                  const days = daysBetween(s.ordered, now);
+                  const late = eta < now;
+                  return (
+                    <tr key={s.key} className="border-t border-border/60 hover:bg-muted/30">
+                      <td className="px-4 py-2.5">
+                        <div className="font-medium">{s.seller}</div>
+                        <div className="text-xs text-muted-foreground">{s.status}</div>
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums">{s.count}</td>
+                      <td className="px-4 py-2.5">
+                        <div className="flex flex-wrap gap-1">
+                          {s.brands.slice(0, 4).map((b) => (
+                            <span
+                              key={b}
+                              className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]"
+                            >
+                              {b}
+                            </span>
+                          ))}
+                          {s.brands.length > 4 && (
+                            <span className="text-[10px] text-muted-foreground">
+                              +{s.brands.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        {s.transitInfo || "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
+                        {formatDMY(s.ordered)}
+                      </td>
+                      <td
+                        className={`px-4 py-2.5 tabular-nums ${late ? "text-rose-500" : "text-muted-foreground"}`}
+                      >
+                        {formatDMY(eta)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">{days}d</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function RecentlyAdded({ rows }: { rows: Diecast[] }) {
+  const { open: openDrawer } = useCarDrawer();
+  const now = new Date();
+  const recent = useMemo(() => {
+    const list = rows
+      .filter((r) => r.status === "Available")
+      .map((r) => ({ r, dt: parseDMY(r.date) }))
+      .filter((x): x is { r: Diecast; dt: Date } => {
+        if (!x.dt) return false;
+        const days = daysBetween(x.dt, now);
+        return days >= 0 && days <= 3;
+      })
+      .sort((a, b) => b.dt.getTime() - a.dt.getTime());
+    return list;
+  }, [rows, now]);
+
+  return (
+    <div className="card-elevated flex h-full min-w-0 flex-col overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border p-4">
+        <div className="min-w-0">
+          <h2 className="text-display text-lg font-semibold">Recently added</h2>
+          <p className="text-xs text-muted-foreground">Last 3 days</p>
+        </div>
+        <Sparkles className="size-4 text-accent" />
+      </div>
+      <div className="min-h-0 flex-1 max-h-[340px] overflow-y-auto p-2">
+        {recent.length === 0 ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            No new cars added before today.
+          </div>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {recent.map(({ r, dt }, i) => (
+              <li
+                key={r.id + i}
+                onClick={() => openDrawer(r)}
+                className="flex cursor-pointer items-start justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted/40"
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-sm">{r.name}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {[r.brand, r.series, r.subSeries].filter(Boolean).join(" · ")}
+                  </div>
+                </div>
+
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                  {relativeDay(dt, now)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type Window = "6m" | "12m" | "all";
+
+function MonthlySpending({ rows }: { rows: Diecast[] }) {
+  const [win, setWin] = useState<Window>("6m");
+  const [showFuture, setShowFuture] = useState(false);
+
+  const series = useMemo(() => {
+    const map = new Map<number, { spent: number; count: number }>();
+    for (const r of rows) {
+      const k = monthKey(r.month);
+      if (k === null) continue;
+      const cur = map.get(k) ?? { spent: 0, count: 0 };
+      cur.spent += r.spent || 0;
+      cur.count += 1;
+      map.set(k, cur);
+    }
+    const now = new Date();
+    const curKey = now.getFullYear() * 12 + now.getMonth();
+    const all = [...map.entries()].sort((a, b) => a[0] - b[0]);
+    let filtered = all;
+    if (win === "6m") filtered = filtered.filter(([k]) => k <= curKey && k > curKey - 6);
+    else if (win === "12m") filtered = filtered.filter(([k]) => k <= curKey && k > curKey - 12);
+    else if (!showFuture) filtered = filtered.filter(([k]) => k <= curKey);
+    return filtered.map(([k, v]) => ({
+      month: monthLabel(k),
+      spent: Math.round(v.spent),
+      count: v.count,
+    }));
+  }, [rows, win, showFuture]);
+
+  return (
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h2 className="text-display text-lg font-semibold">Monthly spending</h2>
+          <p className="text-xs text-muted-foreground">Investment by month</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {win === "all" && (
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showFuture}
+                onChange={(e) => setShowFuture(e.target.checked)}
+                className="size-3.5 accent-primary"
+              />
+              Show future
+            </label>
+          )}
+          <SegmentControl
+            value={win}
+            onChange={setWin}
+            options={[
+              { value: "6m", label: "6M" },
+              { value: "12m", label: "12M" },
+              { value: "all", label: "All" },
+            ]}
+          />
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={series} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+            <CartesianGrid stroke="var(--color-border)" vertical={false} strokeDasharray="3 3" />
+            <XAxis
+              dataKey="month"
+              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+              interval={series.length > 18 ? Math.floor(series.length / 12) : 0}
+              angle={-25}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis
+              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+              tickFormatter={(v) => inr(Number(v))}
+            />
+            <Tooltip
+              content={({ active, payload, label }) => {
+                if (!active || !payload?.length) return null;
+                return (
+                  <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg">
+                    <div className="font-medium">{label}</div>
+                    <div className="text-muted-foreground">{inrFull(Number(payload[0].value))}</div>
+                    <div className="text-muted-foreground">
+                      {payload[0].payload?.count ?? 0} cars
+                    </div>
+                  </div>
+                );
+              }}
+              cursor={{ fill: "oklch(0.6 0 0 / 0.06)" }}
+            />
+            <Bar dataKey="spent" fill="var(--chart-1)" radius={[6, 6, 0, 0]}>
+              <LabelList
+                dataKey="count"
+                position="top"
+                fill="var(--muted-foreground)"
+                fontSize={9}
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function PeakPurchase({
+  rows,
+  mode,
+  onModeChange,
+}: {
+  rows: Diecast[];
+  mode: "count" | "cost";
+  onModeChange: (m: "count" | "cost") => void;
+}) {
+  const setMode = onModeChange;
+
+  const top = useMemo(() => {
+    const map = new Map<number, { count: number; cost: number }>();
+    for (const r of rows) {
+      const k = monthKey(r.month);
+      if (k === null) continue;
+      const v = map.get(k) ?? { count: 0, cost: 0 };
+      v.count += 1;
+      v.cost += r.spent || 0;
+      map.set(k, v);
+    }
+    const arr = [...map.entries()].map(([k, v]) => ({ key: k, label: monthLabel(k), ...v }));
+    arr.sort((a, b) => (mode === "count" ? b.count - a.count : b.cost - a.cost));
+    return arr.slice(0, 5);
+  }, [rows, mode]);
+
+  const max = top.reduce((m, t) => Math.max(m, mode === "count" ? t.count : t.cost), 0) || 1;
+
+  return (
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h2 className="text-display text-lg font-semibold">Peak purchase</h2>
+          <p className="text-xs text-muted-foreground">Best buying period</p>
+        </div>
+        <SegmentControl
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "count", label: "Count" },
+            { value: "cost", label: "Cost" },
+          ]}
+        />
+      </div>
+      {top.length > 0 ? (
+        <ul className="flex min-h-0 flex-1 flex-col justify-between gap-2">
+          {top.map((t, i) => {
+            const v = mode === "count" ? t.count : t.cost;
+            const pct = (v / max) * 100;
+            return (
+              <li key={t.key} className="flex flex-1 flex-col justify-center gap-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <span className={i === 0 ? "font-semibold" : "text-muted-foreground"}>
+                    {t.label}
+                  </span>
+                  <span className={`tabular-nums ${i === 0 ? "font-semibold" : ""}`}>
+                    {mode === "count" ? v : inr(v)}
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={`h-full rounded-full ${i === 0 ? "bg-primary" : "bg-primary/50"}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <div className="text-sm text-muted-foreground">No data.</div>
+      )}
+    </div>
+  );
+}
+
+function DashboardMiddle({
+  rows,
+  etaDays,
+  loading = false,
+}: {
+  rows: Diecast[];
+  etaDays: number;
+  loading?: boolean;
+}) {
+  const now = new Date();
+  const hasTransit = rows.some(
+    (r) => isOutForDelivery(r.status) || isTransit(r.status) || isWaiting(r.status),
+  );
+  const hasRecent = rows.some((r) => {
+    if (r.status !== "Available") return false;
+    const dt = parseDMY(r.date);
+    if (!dt) return false;
+    const days = daysBetween(dt, now);
+    return days >= 0 && days <= 3;
+  });
+
+  if (loading) {
+    return (
+      <section className="grid min-w-0 items-stretch gap-4 lg:grid-cols-3">
+        <TransitTrackerSkeleton wide={false} />
+      </section>
+    );
+  }
+
+  if (!hasTransit && !hasRecent) return null;
+
+  return (
+    <section className="grid min-w-0 items-stretch gap-4 lg:grid-cols-3">
+      {hasTransit && <TransitTracker rows={rows} etaDays={etaDays} wide={hasRecent} />}
+      {hasRecent && (
+        <div className={hasTransit ? "min-w-0 h-full" : "min-w-0 h-full lg:col-span-3"}>
+          <RecentlyAdded rows={rows} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+type TopKey = "make" | "model" | "series" | "manufacturer" | "assortment" | "seller";
+
+const TOP_OPTIONS: { value: TopKey; label: string }[] = [
+  { value: "make", label: "Make" },
+  { value: "model", label: "Model" },
+  { value: "series", label: "Series" },
+  { value: "manufacturer", label: "Manufacturer" },
+  { value: "assortment", label: "Assortment" },
+  { value: "seller", label: "Seller" },
+];
+
+function pickTopValue(r: Diecast, key: TopKey) {
+  switch (key) {
+    case "make":
+      return r.make;
+    case "model":
+      return r.model;
+    case "series":
+      return r.series;
+    case "manufacturer":
+      return r.brand;
+    case "assortment":
+      return [r.brand, r.assortment].filter(Boolean).join(" · ");
+    case "seller":
+      return r.seller;
+  }
+}
+
+function ModeToggle({
+  mode,
+  onModeChange,
+}: {
+  mode: "count" | "cost";
+  onModeChange: (m: "count" | "cost") => void;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <SegmentControl
+        value={mode}
+        onChange={onModeChange}
+        options={[
+          { value: "count", label: "Count" },
+          { value: "cost", label: "Cost" },
+        ]}
+      />
+      <TooltipProvider delayDuration={150}>
+        <UITooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="What do Count and Cost show?"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <Info className="size-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-[240px] text-xs">
+            <p>
+              <span className="font-semibold">Count</span> — number of cars in each group.
+            </p>
+            <p className="mt-1">
+              <span className="font-semibold">Cost</span> — total amount spent on each group.
+            </p>
+          </TooltipContent>
+        </UITooltip>
+      </TooltipProvider>
+    </div>
+  );
+}
+
+function TopTenGrid({
+  rows,
+  mode,
+  onModeChange,
+  loading = false,
+}: {
+  rows: Diecast[];
+  mode: "count" | "cost";
+  onModeChange: (m: "count" | "cost") => void;
+  loading?: boolean;
+}) {
+  const [key, setKey] = useState<TopKey>("make");
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const items = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      const k = pickTopValue(r, key);
+      if (!k) continue;
+      m.set(k, (m.get(k) ?? 0) + (mode === "count" ? 1 : r.spent || 0));
+    }
+    return [...m.entries()]
+      .map(([name, value]) => ({ name, value: Math.round(value) }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+  }, [rows, key, mode]);
+
+  const selectedRows = useMemo(
+    () => (selected ? rows.filter((r) => pickTopValue(r, key) === selected) : []),
+    [rows, key, selected],
+  );
+
+  const label = TOP_OPTIONS.find((o) => o.value === key)!.label;
+
+  return (
+    <section className="flex min-h-0 flex-col">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-display whitespace-nowrap text-lg font-semibold">Top 5</h2>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Select value={key} onValueChange={(v) => setKey(v as TopKey)}>
+            <SelectTrigger className="h-8 w-36 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TOP_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <ModeToggle mode={mode} onModeChange={onModeChange} />
+        </div>
+      </div>
+      {loading ? (
+        <TopListSkeleton />
+      ) : (
+        <TopList title={label} items={items} mode={mode} onSelect={setSelected} />
+      )}
+      <TopDetailDialog
+        open={!!selected}
+        onClose={() => setSelected(null)}
+        title={selected ?? ""}
+        groupLabel={label}
+        rows={selectedRows}
+      />
+    </section>
+  );
+}
+
+function TopList({
+  title,
+  items,
+  mode,
+  onSelect,
+}: {
+  title: string;
+  items: { name: string; value: number }[];
+  mode: "count" | "cost";
+  onSelect: (name: string) => void;
+}) {
+  const max = items[0]?.value || 1;
+  return (
+    <div className="card-elevated min-h-0 flex-1 min-w-0 overflow-hidden p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Top 5</span>
+      </div>
+      <ul className="space-y-2">
+        {items.map((it, i) => {
+          const pct = (it.value / max) * 100;
+          return (
+            <li key={it.name} className="text-xs">
+              <button
+                type="button"
+                onClick={() => onSelect(it.name)}
+                className="group w-full rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/50"
+              >
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center">
+                    <span className="mr-2 text-muted-foreground tabular-nums">{i + 1}.</span>
+                    <span className="truncate">{it.name}</span>
+                    <ChevronRight className="ml-1 size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                  </span>
+                  <span className="shrink-0 text-muted-foreground tabular-nums">
+                    {mode === "count" ? it.value : inr(it.value)}
+                  </span>
+                </div>
+                <div className="h-1 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                </div>
+              </button>
+            </li>
+          );
+        })}
+        {items.length === 0 && <li className="text-xs text-muted-foreground">No data.</li>}
+      </ul>
+    </div>
+  );
+}
+
+function TopDetailDialog({
+  open,
+  onClose,
+  title,
+  groupLabel,
+  rows,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  groupLabel: string;
+  rows: Diecast[];
+}) {
+  const drawer = useCarDrawer();
+  const total = rows.reduce((s, r) => s + (r.spent || 0), 0);
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) onClose();
+      }}
+    >
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-display">{title || "Details"}</DialogTitle>
+          <DialogDescription>
+            {groupLabel} · {rows.length} car{rows.length === 1 ? "" : "s"} · {inrFull(total)} spent
+          </DialogDescription>
+        </DialogHeader>
+        <ul className="max-h-[60vh] divide-y divide-border/60 overflow-y-auto">
+          {rows.map((r) => (
+            <li key={r.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  drawer.open(r);
+                }}
+                className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-1 py-2.5 text-left hover:bg-muted/40"
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{r.name || "Unnamed car"}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {[r.brand, r.series, r.subSeries].filter(Boolean).join(" · ") ||
+                      "Brand detail not recorded"}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right">
+                  <div className="text-sm tabular-nums">{r.spent ? inr(r.spent) : "—"}</div>
+                  <div className="text-xs text-muted-foreground">{r.status || "—"}</div>
+                </div>
+              </button>
+            </li>
+          ))}
+          {rows.length === 0 && (
+            <li className="py-4 text-sm text-muted-foreground">No matching cars.</li>
+          )}
+        </ul>
+      </DialogContent>
+    </Dialog>
+  );
+}
