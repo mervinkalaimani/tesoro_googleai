@@ -9,58 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as PreordersRouteImport } from './routes/preorders'
-import { Route as OrdersRouteImport } from './routes/orders'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as InventoryRouteImport } from './routes/inventory'
-import { Route as HabitsRouteImport } from './routes/habits'
-import { Route as FavouritesRouteImport } from './routes/favourites'
-import { Route as DuplicatesRouteImport } from './routes/duplicates'
-import { Route as CollectionRouteImport } from './routes/collection'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CollectionRouteImport } from './routes/collection'
+import { Route as DuplicatesRouteImport } from './routes/duplicates'
+import { Route as FavouritesRouteImport } from './routes/favourites'
+import { Route as HabitsRouteImport } from './routes/habits'
+import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as OrdersRouteImport } from './routes/orders'
+import { Route as PreordersRouteImport } from './routes/preorders'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PreordersRoute = PreordersRouteImport.update({
-  id: '/preorders',
-  path: '/preorders',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OrdersRoute = OrdersRouteImport.update({
-  id: '/orders',
-  path: '/orders',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InventoryRoute = InventoryRouteImport.update({
-  id: '/inventory',
-  path: '/inventory',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HabitsRoute = HabitsRouteImport.update({
-  id: '/habits',
-  path: '/habits',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FavouritesRoute = FavouritesRouteImport.update({
-  id: '/favourites',
-  path: '/favourites',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DuplicatesRoute = DuplicatesRouteImport.update({
-  id: '/duplicates',
-  path: '/duplicates',
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CollectionRoute = CollectionRouteImport.update({
@@ -68,21 +40,61 @@ const CollectionRoute = CollectionRouteImport.update({
   path: '/collection',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DuplicatesRoute = DuplicatesRouteImport.update({
+  id: '/duplicates',
+  path: '/duplicates',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
+const FavouritesRoute = FavouritesRouteImport.update({
+  id: '/favourites',
+  path: '/favourites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HabitsRoute = HabitsRouteImport.update({
+  id: '/habits',
+  path: '/habits',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreordersRoute = PreordersRouteImport.update({
+  id: '/preorders',
+  path: '/preorders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93ListToolsRoute =
   Char91DotmcpChar93ListToolsRouteImport.update({
     id: '/.mcp/list-tools',
     path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
@@ -94,11 +106,13 @@ const Char91DotmcpChar93InvokeToolToolRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/collection': typeof CollectionRoute
   '/duplicates': typeof DuplicatesRoute
   '/favourites': typeof FavouritesRoute
   '/habits': typeof HabitsRoute
   '/inventory': typeof InventoryRoute
+  '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/orders': typeof OrdersRoute
   '/preorders': typeof PreordersRoute
@@ -109,11 +123,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/collection': typeof CollectionRoute
   '/duplicates': typeof DuplicatesRoute
   '/favourites': typeof FavouritesRoute
   '/habits': typeof HabitsRoute
   '/inventory': typeof InventoryRoute
+  '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/orders': typeof OrdersRoute
   '/preorders': typeof PreordersRoute
@@ -125,11 +141,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/collection': typeof CollectionRoute
   '/duplicates': typeof DuplicatesRoute
   '/favourites': typeof FavouritesRoute
   '/habits': typeof HabitsRoute
   '/inventory': typeof InventoryRoute
+  '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/orders': typeof OrdersRoute
   '/preorders': typeof PreordersRoute
@@ -142,11 +160,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/collection'
     | '/duplicates'
     | '/favourites'
     | '/habits'
     | '/inventory'
+    | '/login'
     | '/mcp'
     | '/orders'
     | '/preorders'
@@ -157,11 +177,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/collection'
     | '/duplicates'
     | '/favourites'
     | '/habits'
     | '/inventory'
+    | '/login'
     | '/mcp'
     | '/orders'
     | '/preorders'
@@ -172,11 +194,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/collection'
     | '/duplicates'
     | '/favourites'
     | '/habits'
     | '/inventory'
+    | '/login'
     | '/mcp'
     | '/orders'
     | '/preorders'
@@ -188,11 +212,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   CollectionRoute: typeof CollectionRoute
   DuplicatesRoute: typeof DuplicatesRoute
   FavouritesRoute: typeof FavouritesRoute
   HabitsRoute: typeof HabitsRoute
   InventoryRoute: typeof InventoryRoute
+  LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   OrdersRoute: typeof OrdersRoute
   PreordersRoute: typeof PreordersRoute
@@ -204,60 +230,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/preorders': {
-      id: '/preorders'
-      path: '/preorders'
-      fullPath: '/preorders'
-      preLoaderRoute: typeof PreordersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/orders': {
-      id: '/orders'
-      path: '/orders'
-      fullPath: '/orders'
-      preLoaderRoute: typeof OrdersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inventory': {
-      id: '/inventory'
-      path: '/inventory'
-      fullPath: '/inventory'
-      preLoaderRoute: typeof InventoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/habits': {
-      id: '/habits'
-      path: '/habits'
-      fullPath: '/habits'
-      preLoaderRoute: typeof HabitsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/favourites': {
-      id: '/favourites'
-      path: '/favourites'
-      fullPath: '/favourites'
-      preLoaderRoute: typeof FavouritesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/duplicates': {
-      id: '/duplicates'
-      path: '/duplicates'
-      fullPath: '/duplicates'
-      preLoaderRoute: typeof DuplicatesRouteImport
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/collection': {
@@ -267,18 +251,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CollectionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/duplicates': {
+      id: '/duplicates'
+      path: '/duplicates'
+      fullPath: '/duplicates'
+      preLoaderRoute: typeof DuplicatesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+    '/favourites': {
+      id: '/favourites'
+      path: '/favourites'
+      fullPath: '/favourites'
+      preLoaderRoute: typeof FavouritesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/habits': {
+      id: '/habits'
+      path: '/habits'
+      fullPath: '/habits'
+      preLoaderRoute: typeof HabitsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preorders': {
+      id: '/preorders'
+      path: '/preorders'
+      fullPath: '/preorders'
+      preLoaderRoute: typeof PreordersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.mcp/list-tools': {
@@ -286,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/.mcp/list-tools'
       fullPath: '/.mcp/list-tools'
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.mcp/invoke-tool/$tool': {
@@ -300,11 +340,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   CollectionRoute: CollectionRoute,
   DuplicatesRoute: DuplicatesRoute,
   FavouritesRoute: FavouritesRoute,
   HabitsRoute: HabitsRoute,
   InventoryRoute: InventoryRoute,
+  LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   OrdersRoute: OrdersRoute,
   PreordersRoute: PreordersRoute,

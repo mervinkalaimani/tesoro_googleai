@@ -5,6 +5,7 @@ import { getSupabaseTableName } from "@/lib/supabase-config";
 import { parseCurrency } from "@/lib/format";
 
 export type TesoroRawRow = {
+  user_id?: string | null;
   "Car ID"?: string | null;
   Name?: string | null;
   Make?: string | null;
@@ -158,12 +159,25 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
 }
 
 /**
- * Fetch all rows from the configured Supabase table.
+ * Resolve the signed-in user from the locally cached session. RLS is the real
+ * boundary; scoping the queries here keeps the client from asking for rows it
+ * will never be allowed to read, and gives the upsert its conflict target.
+ */
+async function getCurrentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user?.id ?? null;
+}
+
+/**
+ * Fetch the signed-in user's rows from the configured Supabase table.
  * Paginates in chunks of 1000 to bypass Supabase's default 1000-row limit.
  * Returns null if the initial query fails, or an array of Diecast items.
  */
 export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) return null;
+
     const tableName = getSupabaseTableName();
     const pageSize = 1000;
     let allRows: TesoroRawRow[] = [];
@@ -176,6 +190,7 @@ export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
         .select("*")
+        .eq("user_id", userId)
         .order("Car ID", { ascending: true })
         .range(from, to);
 
@@ -205,12 +220,15 @@ export async function saveCarToSupabase(
   car: Diecast,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, error: "Not signed in" };
+
     const tableName = getSupabaseTableName();
-    const payload = diecastToTesoroRaw(car);
+    const payload = { ...diecastToTesoroRaw(car), user_id: userId };
     let { error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(tableName as any)
-      .upsert(payload, { onConflict: "Car ID" });
+      .upsert(payload, { onConflict: "user_id,Car ID" });
 
     // If Supabase table does not yet have "Image URL" column in schema cache, retry without it
     if (
@@ -228,7 +246,7 @@ export async function saveCarToSupabase(
       const res = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
-        .upsert(fallbackPayload, { onConflict: "Car ID" });
+        .upsert(fallbackPayload, { onConflict: "user_id,Car ID" });
       error = res.error;
     }
 
@@ -248,11 +266,15 @@ export async function deleteCarFromSupabase(
   carId: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, error: "Not signed in" };
+
     const tableName = getSupabaseTableName();
     const { error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(tableName as any)
       .delete()
+      .eq("user_id", userId)
       .eq("Car ID", carId);
 
     if (error) {
@@ -272,16 +294,19 @@ export async function seedCarsToSupabase(
   onProgress?: (inserted: number, total: number) => void,
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, count: 0, error: "Not signed in" };
+
     const tableName = getSupabaseTableName();
     const chunkSize = 100;
     let count = 0;
     for (let i = 0; i < cars.length; i += chunkSize) {
       const slice = cars.slice(i, i + chunkSize);
-      const rows = slice.map(diecastToTesoroRaw);
+      const rows = slice.map((c) => ({ ...diecastToTesoroRaw(c), user_id: userId }));
       const { error } = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
-        .upsert(rows, { onConflict: "Car ID" });
+        .upsert(rows, { onConflict: "user_id,Car ID" });
 
       if (error) {
         return { success: false, count, error: error.message };

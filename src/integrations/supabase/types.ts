@@ -11,18 +11,60 @@ export type Database = {
       app_settings: {
         Row: {
           accent_color: string;
-          id: string;
+          user_id: string;
           updated_at: string;
         };
         Insert: {
           accent_color?: string;
-          id?: string;
+          user_id: string;
           updated_at?: string;
         };
         Update: {
           accent_color?: string;
-          id?: string;
+          user_id?: string;
           updated_at?: string;
+        };
+        Relationships: [];
+      };
+      tesoro_users: {
+        Row: {
+          sno: number;
+          user_id: string | null;
+          auth_uid: string | null;
+          first_name: string;
+          last_name: string | null;
+          dob: string | null;
+          email_id: string;
+          is_admin: boolean;
+          is_approved: boolean;
+          is_owner: boolean;
+          created_at: string;
+        };
+        Insert: {
+          sno?: number;
+          user_id?: string | null;
+          auth_uid?: string | null;
+          first_name: string;
+          last_name?: string | null;
+          dob?: string | null;
+          email_id: string;
+          is_admin?: boolean;
+          is_approved?: boolean;
+          is_owner?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          sno?: number;
+          user_id?: string | null;
+          auth_uid?: string | null;
+          first_name?: string;
+          last_name?: string | null;
+          dob?: string | null;
+          email_id?: string;
+          is_admin?: boolean;
+          is_approved?: boolean;
+          is_owner?: boolean;
+          created_at?: string;
         };
         Relationships: [];
       };
@@ -31,7 +73,40 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      admin_list_users: {
+        Args: Record<string, never>;
+        Returns: {
+          sno: number;
+          user_id: string | null;
+          auth_uid: string | null;
+          first_name: string;
+          last_name: string | null;
+          email_id: string;
+          dob: string | null;
+          is_admin: boolean;
+          is_approved: boolean;
+          is_owner: boolean;
+          created_at: string;
+          car_count: number;
+          last_sign_in: string | null;
+        }[];
+      };
+      email_for_login: {
+        Args: { _identifier: string };
+        Returns: string | null;
+      };
+      is_tesoro_admin: {
+        Args: { _uid: string };
+        Returns: boolean;
+      };
+      is_tesoro_approved: {
+        Args: { _uid: string };
+        Returns: boolean;
+      };
+      is_tesoro_owner: {
+        Args: { _uid: string };
+        Returns: boolean;
+      };
     };
     Enums: {
       [_ in never]: never;

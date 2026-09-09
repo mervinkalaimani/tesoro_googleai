@@ -7,10 +7,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import seed from "@/data/diecast.json";
 import type { Diecast } from "@/lib/types";
-import { fetchRawSheet } from "@/lib/fetch-raw";
 import { deriveMonth } from "@/lib/date-utils";
+import { useAuth } from "@/lib/auth-store";
 import {
   fetchCarsFromSupabase,
   saveCarToSupabase,
@@ -18,9 +17,11 @@ import {
   seedCarsToSupabase,
 } from "@/lib/supabase-cars";
 
-const LS_KEY = "dg.carsOverlay.v1";
-const CACHE_KEY = "dg.carsCache.v3";
-const TS_KEY = "dg.carsCache.ts.v3";
+// Collections are cached in localStorage, so every key is namespaced by user id:
+// two accounts on the same browser must never see each other's cars.
+const lsKey = (uid: string) => `dg.carsOverlay.v2.${uid}`;
+const cacheKey = (uid: string) => `dg.carsCache.v4.${uid}`;
+const tsKey = (uid: string) => `dg.carsCache.ts.v4.${uid}`;
 
 type Overlay = {
   added: Diecast[];
@@ -30,10 +31,10 @@ type Overlay = {
 
 const EMPTY: Overlay = { added: [], updated: {}, deleted: [] };
 
-function readOverlay(): Overlay {
+function readOverlay(uid: string): Overlay {
   if (typeof window === "undefined") return EMPTY;
   try {
-    const v = window.localStorage.getItem(LS_KEY);
+    const v = window.localStorage.getItem(lsKey(uid));
     if (!v) return EMPTY;
     const parsed = JSON.parse(v);
     return {
@@ -46,19 +47,19 @@ function readOverlay(): Overlay {
   }
 }
 
-function writeOverlay(o: Overlay) {
+function writeOverlay(uid: string, o: Overlay) {
   try {
-    localStorage.setItem(LS_KEY, JSON.stringify(o));
+    localStorage.setItem(lsKey(uid), JSON.stringify(o));
   } catch (_error) {
     // Ignore storage write failures (e.g. storage full or restricted)
   }
 }
 
-function readCache(): { data: Diecast[]; ts: number } | null {
+function readCache(uid: string): { data: Diecast[]; ts: number } | null {
   if (typeof window === "undefined") return null;
   try {
-    const d = window.localStorage.getItem(CACHE_KEY);
-    const t = window.localStorage.getItem(TS_KEY);
+    const d = window.localStorage.getItem(cacheKey(uid));
+    const t = window.localStorage.getItem(tsKey(uid));
     if (!d || !t) return null;
     return { data: JSON.parse(d), ts: Number(t) };
   } catch {
@@ -66,10 +67,10 @@ function readCache(): { data: Diecast[]; ts: number } | null {
   }
 }
 
-function writeCache(data: Diecast[], ts: number) {
+function writeCache(uid: string, data: Diecast[], ts: number) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-    localStorage.setItem(TS_KEY, String(ts));
+    localStorage.setItem(cacheKey(uid), JSON.stringify(data));
+    localStorage.setItem(tsKey(uid), String(ts));
   } catch (_error) {
     // Ignore storage write failures
   }
@@ -99,42 +100,51 @@ type Ctx = {
 const CarsCtx = createContext<Ctx | null>(null);
 
 export function CarsProvider({ children }: { children: ReactNode }) {
-  const [base, setBase] = useState<Diecast[]>(seed as Diecast[]);
+  const { user, status: authStatus } = useAuth();
+  const uid = user?.id ?? "anon";
+  // The provider is mounted for signed-out visitors too, so every read is
+  // gated on an approved session rather than on being rendered.
+  const canLoad = authStatus === "ready" && Boolean(user?.id);
+
+  // Starts empty rather than from the bundled seed: a new account owns nothing
+  // until Supabase says otherwise.
+  const [base, setBase] = useState<Diecast[]>([]);
   const [overlay, setOverlay] = useState<Overlay>(EMPTY);
   const [hydrated, setHydrated] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [source, setSource] = useState<"supabase" | "sheet">("sheet");
+  const [source, setSource] = useState<"supabase" | "sheet">("supabase");
 
   const loadData = useCallback(async () => {
-    // 1. Try Supabase tesoro_raw first
+    if (!canLoad) return;
+
+    // Supabase is the only source now. The previous Google Sheet fallback was
+    // a single shared document, so serving it to a signed-in user would hand
+    // them somebody else's collection.
     const fromSupabase = await fetchCarsFromSupabase();
-    if (fromSupabase && fromSupabase.length > 0) {
-      setBase(fromSupabase);
-      setSource("supabase");
-      const ts = Date.now();
-      setLastUpdated(ts);
-      writeCache(fromSupabase, ts);
+    if (!fromSupabase) return;
+
+    setBase(fromSupabase);
+    setSource("supabase");
+    const ts = Date.now();
+    setLastUpdated(ts);
+    writeCache(uid, fromSupabase, ts);
+  }, [uid, canLoad]);
+
+  useEffect(() => {
+    if (!canLoad) {
+      setBase([]);
+      setOverlay(EMPTY);
+      setLastUpdated(null);
+      setHydrated(false);
       return;
     }
 
-    // 2. If Supabase is empty or unseeded, fall back to sheet
-    const fromSheet = await fetchRawSheet();
-    setBase(fromSheet);
-    setSource("sheet");
-    const ts = Date.now();
-    setLastUpdated(ts);
-    writeCache(fromSheet, ts);
-  }, []);
-
-  useEffect(() => {
     let cancelled = false;
-    setOverlay(readOverlay());
-    const cached = readCache();
-    if (cached) {
-      setBase(cached.data);
-      setLastUpdated(cached.ts);
-    }
+    setOverlay(readOverlay(uid));
+    const cached = readCache(uid);
+    setBase(cached?.data ?? []);
+    setLastUpdated(cached?.ts ?? null);
     setHydrated(true);
     setRefreshing(true);
     loadData()
@@ -145,11 +155,11 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [loadData]);
+  }, [loadData, uid, canLoad]);
 
   // Periodic refresh
   useEffect(() => {
-    if (!hydrated) return;
+    if (!hydrated || !canLoad) return;
     let cancelled = false;
     let inFlight = false;
     const id = setInterval(() => {
@@ -165,7 +175,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [hydrated, loadData]);
+  }, [hydrated, loadData, canLoad]);
 
   // Listen to Supabase configuration changes
   useEffect(() => {
@@ -194,10 +204,13 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     return [...overlay.added, ...merged];
   }, [base, overlay, hydrated]);
 
-  const commit = useCallback((next: Overlay) => {
-    setOverlay(next);
-    writeOverlay(next);
-  }, []);
+  const commit = useCallback(
+    (next: Overlay) => {
+      setOverlay(next);
+      writeOverlay(uid, next);
+    },
+    [uid],
+  );
 
   const addCar = useCallback(
     (car: Diecast) => {

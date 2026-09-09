@@ -12,6 +12,8 @@ import {
   EyeOff,
   CalendarDays,
   ShoppingBag,
+  ShieldCheck,
+  LogOut,
 } from "lucide-react";
 import { filterRows } from "@/lib/search";
 
@@ -31,6 +33,7 @@ import {
 import { useCars } from "@/lib/cars-store";
 import { inrFull } from "@/lib/format";
 import { useApp } from "@/lib/store";
+import { useAuth, fullName } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 
 const NAV = [
@@ -45,9 +48,13 @@ const NAV = [
   { title: "Settings", url: "/settings", icon: Settings },
 ] as const;
 
+const ADMIN_NAV = { title: "Admin", url: "/admin", icon: ShieldCheck } as const;
+
 export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, query } = useApp();
+  const { profile, isAdmin, signOut } = useAuth();
+  const navItems = useMemo(() => (isAdmin ? [...NAV, ADMIN_NAV] : [...NAV]), [isAdmin]);
   const data = useMemo(
     () => filterRows(allCars, query).filter((r) => (r.status || "").trim().toLowerCase() !== "iso"),
     [allCars, query],
@@ -83,7 +90,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigate</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV.map((item) => {
+              {navItems.map((item) => {
                 const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.url}>
@@ -137,6 +144,27 @@ export function AppSidebar() {
             <div className="text-display text-lg font-semibold tabular-nums">
               {hidden ? "••••••" : inrFull(stats.spent)}
             </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 border-t border-sidebar-border pt-3">
+            <div className="min-w-0">
+              <div className="truncate text-xs font-medium">
+                {fullName(profile) || profile?.email_id || "Signed in"}
+              </div>
+              <div className="truncate text-[10px] text-muted-foreground">
+                {profile?.user_id || profile?.email_id}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 shrink-0"
+              onClick={() => void signOut()}
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOut className="size-3.5" />
+            </Button>
           </div>
         </div>
       </SidebarFooter>

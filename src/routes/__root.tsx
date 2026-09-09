@@ -14,7 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppProvider } from "@/lib/store";
 import { CarsProvider } from "@/lib/cars-store";
 import { CarDrawerProvider } from "@/components/car-details-drawer";
-import { AppShell } from "@/components/app-shell";
+import { AuthProvider } from "@/lib/auth-store";
+import { AuthGate } from "@/components/auth-gate";
 
 function NotFoundComponent() {
   return (
@@ -148,15 +149,23 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        <CarsProvider>
-          <CarDrawerProvider>
-            <AppShell>
-              <Outlet />
-            </AppShell>
-          </CarDrawerProvider>
-        </CarsProvider>
-      </AppProvider>
+      <AuthProvider>
+        {/*
+          Providers stay above the outlet at every auth state. Router pathname
+          updates land a render before the matched route swaps, so a gate that
+          mounted providers conditionally would briefly render the outgoing page
+          without its context.
+        */}
+        <AppProvider>
+          <CarsProvider>
+            <CarDrawerProvider>
+              <AuthGate>
+                <Outlet />
+              </AuthGate>
+            </CarDrawerProvider>
+          </CarsProvider>
+        </AppProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

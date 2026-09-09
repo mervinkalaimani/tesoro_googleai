@@ -79,27 +79,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     applyTheme(t);
     applyAccent(isAccentColor(a) ? a : "crimson");
 
-    // Then sync the accent colour from the shared cloud setting (cross-device)
+    // Then sync this user's accent colour from the cloud (cross-device). Settings
+    // are per-account now, so the row is keyed by user id rather than "global".
     let cancelled = false;
-    supabase
-      .from("app_settings")
-      .select("accent_color")
-      .eq("id", "global")
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled || error || !data) return;
-        const remote = data.accent_color;
-        if (isAccentColor(remote)) {
-          setAccentColorState(remote);
-          applyAccent(remote);
-          try {
-            localStorage.setItem("dg.accentColor", JSON.stringify(remote));
-          } catch (_error) {
-            // Ignore storage write failures
+    void supabase.auth.getSession().then(({ data: sessionData }) => {
+      const userId = sessionData.session?.user?.id;
+      if (cancelled || !userId) return;
+      return supabase
+        .from("app_settings")
+        .select("accent_color")
+        .eq("user_id", userId)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (cancelled || error || !data) return;
+          const remote = data.accent_color;
+          if (isAccentColor(remote)) {
+            setAccentColorState(remote);
+            applyAccent(remote);
+            try {
+              localStorage.setItem("dg.accentColor", JSON.stringify(remote));
+            } catch (_error) {
+              // Ignore storage write failures
+            }
           }
-        }
-      })
-      .catch(() => {});
+        });
+    });
     return () => {
       cancelled = true;
     };
@@ -115,11 +119,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAccentColorState(a);
     localStorage.setItem("dg.accentColor", JSON.stringify(a));
     applyAccent(a);
-    void supabase
-      .from("app_settings")
-      .upsert({ id: "global", accent_color: a, updated_at: new Date().toISOString() })
-      .then(() => {})
-      .catch(() => {});
+    void supabase.auth.getSession().then(({ data }) => {
+      const userId = data.session?.user?.id;
+      if (!userId) return;
+      return supabase
+        .from("app_settings")
+        .upsert({ user_id: userId, accent_color: a, updated_at: new Date().toISOString() })
+        .then(() => {});
+    });
   }, []);
 
   const toggleTheme = useCallback(() => {

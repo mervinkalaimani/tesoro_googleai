@@ -20,8 +20,30 @@ if (
 //     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
+import path from "node:path";
+import type { Plugin } from "vite";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
+
+// @lovable.dev/mcp-js asserts its resolved routesDir sits under the project root with a
+// plain `startsWith`, but compares Vite's `config.root` (always POSIX slashes, even on
+// Windows) against `path.resolve()` output (backslashes on Windows) — so the check throws
+// on every Windows path. Hand its configResolved hook a platform-native root instead.
+// No-op on Linux/macOS, where path.resolve returns the identical string.
+function withNativeRoot(plugin: Plugin): Plugin {
+  const hook = plugin.configResolved;
+  if (typeof hook !== "function") return plugin;
+  return {
+    ...plugin,
+    configResolved(config) {
+      const nativeRoot = new Proxy(config, {
+        get: (target, prop, receiver) =>
+          prop === "root" ? path.resolve(target.root) : Reflect.get(target, prop, receiver),
+      });
+      return hook.call(this, nativeRoot);
+    },
+  };
+}
 
 export default defineConfig({
   tanstackStart: {
@@ -30,6 +52,6 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    plugins: [withNativeRoot(mcpPlugin())],
   },
 });
