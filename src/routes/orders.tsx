@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { Pencil, Truck } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -7,6 +8,8 @@ import { filterRows } from "@/lib/search";
 import { SegmentControl } from "@/components/segment-control";
 import { CarsTable, StatusPill } from "@/components/cars-table";
 import { parseDMY, inr } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import {
   Accordion,
   AccordionContent,
@@ -58,6 +61,7 @@ type Shipment = {
   key: string;
   seller: string;
   status: string;
+  shippingId?: string;
   items: Diecast[];
   value: number;
   brands: string[];
@@ -80,6 +84,8 @@ function OrdersPage() {
   const [mode, setMode] = useState<SortMode>("status");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [seller, setSeller] = useState("all");
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [selectedShippingId, setSelectedShippingId] = useState("");
 
   const orderRows = useMemo(
     () => filterRows(cars, query).filter((r) => ORDER_STATUSES.has(r.status)),
@@ -125,6 +131,7 @@ function OrdersPage() {
         key,
         seller: first.seller || "Unknown seller",
         status: first.status,
+        shippingId: first.shippingId || "",
         items,
         value: items.reduce((s, r) => s + (r.spent || 0), 0),
         brands: [...new Set(items.map((r) => r.brand).filter(Boolean))].slice(0, 3),
@@ -164,6 +171,18 @@ function OrdersPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSelectedShippingId("");
+                setBatchOpen(true);
+              }}
+              className="gap-1.5 shrink-0 border-amber-500/40 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 font-medium"
+            >
+              <Truck className="size-3.5" />
+              <span>Update by Shipping ID</span>
+            </Button>
             <SegmentControl value={statusFilter} onChange={setStatusFilter} options={statusOpts} />
             <Select value={seller} onValueChange={setSeller}>
               <SelectTrigger className="w-36">
@@ -198,7 +217,14 @@ function OrdersPage() {
             <AccordionTrigger className="py-3 hover:no-underline">
               <div className="flex w-full items-center justify-between gap-4 pr-3">
                 <div className="min-w-0 text-left">
-                  <div className="truncate font-medium">{g.seller}</div>
+                  <div className="flex items-center gap-2 truncate font-medium">
+                    <span>{g.seller}</span>
+                    {g.shippingId && (
+                      <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-amber-400">
+                        {g.shippingId}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-1 pt-1">
                     <StatusPill status={g.status} />
                     {g.brands.map((b) => (
@@ -211,7 +237,22 @@ function OrdersPage() {
                     ))}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-4 text-xs">
+                <div className="flex shrink-0 items-center gap-3 md:gap-4 text-xs">
+                  {g.shippingId && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedShippingId(g.shippingId || "");
+                        setBatchOpen(true);
+                      }}
+                      className="hidden sm:inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                      title={`Update all cars in ${g.shippingId}`}
+                    >
+                      <Pencil className="size-3" />
+                      <span>Update Batch</span>
+                    </button>
+                  )}
                   <span className="tabular-nums">
                     <b className="text-foreground">{g.items.length}</b>{" "}
                     <span className="text-muted-foreground">cars</span>
@@ -237,6 +278,12 @@ function OrdersPage() {
           </div>
         )}
       </Accordion>
+
+      <ShippingBatchDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        initialShippingId={selectedShippingId}
+      />
     </div>
   );
 }

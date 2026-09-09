@@ -59,19 +59,25 @@ export function PeakPurchaseSkeleton() {
 
 export function TopListSkeleton() {
   return (
-    <div className="card-elevated min-w-0 overflow-hidden p-4" aria-busy="true">
-      <div className="mb-3 flex items-center justify-between">
-        <Skeleton className="h-4 w-20" />
-        <Skeleton className="h-3 w-12" />
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4" aria-busy="true">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="space-y-2">
+          <Skeleton className="h-5 w-24" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-7 w-28 rounded-md" />
+          <Skeleton className="h-7 w-24 rounded-md" />
+        </div>
       </div>
-      <ul className="space-y-2">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <li key={i} className="space-y-1">
+      <ul className="flex min-h-[260px] flex-1 flex-col justify-between gap-2">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <li key={i} className="flex flex-1 flex-col justify-center gap-1.5">
             <div className="flex items-center justify-between">
-              <Skeleton className="h-3 w-1/2" />
-              <Skeleton className="h-3 w-8" />
+              <Skeleton className="h-3 w-28" />
+              <Skeleton className="h-3 w-12" />
             </div>
-            <Skeleton className="h-1 w-full rounded-full" />
+            <Skeleton className="h-2 w-full rounded-full" />
           </li>
         ))}
       </ul>

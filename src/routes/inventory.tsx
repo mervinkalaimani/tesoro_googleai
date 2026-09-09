@@ -19,7 +19,7 @@ import { CarFormDialog, DeleteCarDialog } from "@/components/car-form-dialog";
 import { ExportDialog } from "@/components/export-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { parseDMY } from "@/lib/format";
+import { parseDMY, inr } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -203,7 +203,14 @@ function InventoryPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
           <div className="min-w-0">
             <h1 className="text-display truncate text-xl font-semibold">Inventory</h1>
-            <p className="text-xs text-muted-foreground">{rows.length.toLocaleString()} cars</p>
+            {(() => {
+              const totalCost = rows.reduce((s, r) => s + (r.spent || 0), 0);
+              return (
+                <p className="text-xs text-muted-foreground">
+                  {rows.length.toLocaleString()} cars · Total spend: {inr(totalCost)}
+                </p>
+              );
+            })()}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <SegmentControl

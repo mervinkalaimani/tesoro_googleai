@@ -7,6 +7,7 @@ const TEXT_FIELDS: (keyof Diecast)[] = [
   "variant",
   "series",
   "subSeries",
+  "carNumber",
   "brand",
   "assortment",
   "colour",
@@ -15,6 +16,8 @@ const TEXT_FIELDS: (keyof Diecast)[] = [
   "status",
   "id",
   "size",
+  "shippingId",
+  "transitInfo",
 ];
 
 /** Map user-typed column names to Diecast keys. */
@@ -31,6 +34,21 @@ const FIELD_ALIASES: Record<string, keyof Diecast> = {
   subseries: "subSeries",
   "sub series": "subSeries",
   "sub-series": "subSeries",
+  sub_series: "subSeries",
+  carnumber: "carNumber",
+  "car number": "carNumber",
+  "car-number": "carNumber",
+  car_number: "carNumber",
+  "car #": "carNumber",
+  "car#": "carNumber",
+  "car no": "carNumber",
+  "car no.": "carNumber",
+  carno: "carNumber",
+  car_no: "carNumber",
+  "#": "carNumber",
+  no: "carNumber",
+  number: "carNumber",
+  num: "carNumber",
   assortment: "assortment",
   colour: "colour",
   color: "colour",
@@ -39,8 +57,6 @@ const FIELD_ALIASES: Record<string, keyof Diecast> = {
   status: "status",
   size: "size",
   id: "id",
-  carnumber: "carNumber",
-  "car number": "carNumber",
   year: "year",
   cost: "spent",
   spent: "spent",
@@ -69,6 +85,8 @@ const numOf = (v: unknown) => {
   return Number.isFinite(n) ? n : NaN;
 };
 
+const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
 /** "ferrari+lamborghini" -> ["ferrari", "lamborghini"] (OR values). */
 function splitOr(raw: string): string[] {
   return raw
@@ -85,10 +103,10 @@ export function parseQuery(q: string): QueryGroup[] {
     const token = raw.trim();
     if (!token) continue;
 
-    const m = token.match(/^([A-Za-z][A-Za-z\s_-]*?)\s*(>=|<=|!=|>|<|=|:)\s*(.+)$/);
+    const m = token.match(/^([A-Za-z#][A-Za-z0-9\s_#.-]*?)\s*(>=|<=|!=|>|<|=|:)\s*(.+)$/);
     if (m) {
       const key = m[1].trim().toLowerCase();
-      const field = FIELD_ALIASES[key] ?? FIELD_ALIASES[key.replace(/[\s_-]/g, "")];
+      const field = FIELD_ALIASES[key] ?? FIELD_ALIASES[key.replace(/[\s_#.-]/g, "")];
       if (field) {
         const op = (m[2] === ":" ? "=" : m[2]) as Op;
         const g: QueryGroup = { field, op, values: splitOr(m[3]) };
@@ -125,16 +143,42 @@ export function parseQuery(q: string): QueryGroup[] {
 function matchesGroup(row: Diecast, g: QueryGroup): boolean {
   // Free text token across all fields
   if (!g.field) {
+    const fullText = TEXT_FIELDS.map((f) => String(row[f] ?? ""))
+      .join(" ")
+      .toLowerCase();
+    const fullClean = clean(fullText);
+
     return g.values.some((token) => {
       if (/^\d{4}$/.test(token)) {
         const start = Math.floor(Number(token) / 10) * 10;
         const y = numOf(row.year);
         if (Number.isFinite(y) && y >= start && y <= start + 9) return true;
       }
-      return TEXT_FIELDS.some((f) => {
-        const v = row[f];
-        return typeof v === "string" && v.toLowerCase().includes(token);
-      });
+
+      const tokenClean = clean(token);
+
+      if (fullText.includes(token)) return true;
+      if (tokenClean && fullClean.includes(tokenClean)) return true;
+
+      if (
+        TEXT_FIELDS.some((f) => {
+          const v = String(row[f] ?? "").toLowerCase();
+          return v.includes(token) || (tokenClean && clean(v).includes(tokenClean));
+        })
+      ) {
+        return true;
+      }
+
+      const words = token.split(/\s+/).filter(Boolean);
+      if (words.length > 1) {
+        const allWords = words.every((w) => {
+          const wClean = clean(w);
+          return fullText.includes(w) || (wClean && fullClean.includes(wClean));
+        });
+        if (allWords) return true;
+      }
+
+      return false;
     });
   }
 
@@ -144,11 +188,12 @@ function matchesGroup(row: Diecast, g: QueryGroup): boolean {
     if (NUMERIC_FIELDS.has(g.field)) {
       return g.values.some((v) => numOf(value) === numOf(v));
     }
-    return g.values.some((v) =>
-      String(value ?? "")
-        .toLowerCase()
-        .includes(v),
-    );
+    const valStr = String(value ?? "").toLowerCase();
+    const valClean = clean(valStr);
+    return g.values.some((v) => {
+      const vClean = clean(v);
+      return valStr.includes(v) || (vClean && valClean.includes(vClean));
+    });
   }
 
   const target = numOf(g.values[0]);
@@ -195,6 +240,8 @@ export const SEARCH_FIELDS: { label: string; field: keyof Diecast }[] = [
   { label: "brand", field: "brand" },
   { label: "series", field: "series" },
   { label: "sub series", field: "subSeries" },
+  { label: "car #", field: "carNumber" },
+  { label: "car number", field: "carNumber" },
   { label: "assortment", field: "assortment" },
   { label: "colour", field: "colour" },
   { label: "type", field: "type" },
@@ -214,11 +261,11 @@ export type Suggestion = { kind: "field" | "value"; label: string; insert: strin
 export function suggestFor(fragment: string, rows: Diecast[]): Suggestion[] {
   const frag = fragment.trim().toLowerCase();
   const afterPlus = frag.split("+").pop()!.trim();
-  const eq = frag.match(/^([A-Za-z][A-Za-z\s_-]*?)\s*(?:=|:)\s*(.*)$/);
+  const eq = frag.match(/^([A-Za-z#][A-Za-z0-9\s_#.-]*?)\s*(?:=|:)\s*(.*)$/);
 
   if (eq) {
     const key = eq[1].trim().toLowerCase();
-    const field = FIELD_ALIASES[key] ?? FIELD_ALIASES[key.replace(/[\s_-]/g, "")];
+    const field = FIELD_ALIASES[key] ?? FIELD_ALIASES[key.replace(/[\s_#.-]/g, "")];
     if (!field) return [];
     const typed = eq[2].split("+").pop()!.trim().toLowerCase();
     const seen = new Map<string, number>();
@@ -247,7 +294,16 @@ export function suggestFor(fragment: string, rows: Diecast[]): Suggestion[] {
 
   const seen = new Map<string, number>();
   for (const r of rows) {
-    for (const f of ["name", "brand", "make", "series", "seller", "colour"] as (keyof Diecast)[]) {
+    for (const f of [
+      "name",
+      "brand",
+      "make",
+      "series",
+      "subSeries",
+      "carNumber",
+      "seller",
+      "colour",
+    ] as (keyof Diecast)[]) {
       const v = String(r[f] ?? "").trim();
       if (v && v.toLowerCase().includes(afterPlus)) seen.set(v, (seen.get(v) ?? 0) + 1);
     }

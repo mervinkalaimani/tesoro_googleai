@@ -11,15 +11,49 @@ export function inrFull(n: number): string {
   return "₹" + Math.round(n).toLocaleString("en-IN");
 }
 
-/** Parse DD/MM/YYYY into a Date, or null. */
+/**
+ * Parse any currency string or number (e.g. '₹600.00', '₹1,000.00', ' 499.50 ', 150)
+ * into a valid numeric value, returning 0 if empty or unparseable.
+ */
+export function parseCurrency(val: unknown): number {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === "number") return isNaN(val) ? 0 : val;
+  const str = String(val).trim();
+  if (!str) return 0;
+  const clean = str.replace(/[^0-9.-]/g, "");
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+/** Parse DD/MM/YYYY, YYYY-MM-DD, or ISO strings into a Date, or null. */
 export function parseDMY(s: string | undefined | null): Date | null {
-  if (!s) return null;
-  const parts = s.split("/");
-  if (parts.length !== 3) return null;
-  const [d, m, y] = parts.map((p) => Number(p));
-  if (!d || !m || !y) return null;
-  const dt = new Date(y, m - 1, d);
-  return isNaN(dt.getTime()) ? null : dt;
+  if (!s || typeof s !== "string") return null;
+  const clean = s.trim();
+  if (!clean) return null;
+
+  // 1. Try ISO YYYY-MM-DD or YYYY/MM/DD
+  const isoMatch = clean.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+  if (isoMatch) {
+    const y = Number(isoMatch[1]);
+    const m = Number(isoMatch[2]);
+    const d = Number(isoMatch[3]);
+    const dt = new Date(y, m - 1, d);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  // 2. Try DD/MM/YYYY or DD-MM-YYYY
+  const dmyMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (dmyMatch) {
+    const d = Number(dmyMatch[1]);
+    const m = Number(dmyMatch[2]);
+    const y = Number(dmyMatch[3]);
+    const dt = new Date(y, m - 1, d);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  // 3. Fallback to standard Date constructor
+  const fallback = new Date(clean);
+  return isNaN(fallback.getTime()) ? null : fallback;
 }
 
 export function daysBetween(a: Date, b: Date): number {
@@ -62,14 +96,52 @@ export const MONTH_ORDER = [
   "Dec",
 ] as const;
 
-/** "Apr 2011" -> year*12 + month */
-export function monthKey(m: string): number | null {
-  const parts = m?.split(" ");
-  if (!parts || parts.length !== 2) return null;
-  const mi = MONTH_ORDER.indexOf(parts[0] as (typeof MONTH_ORDER)[number]);
-  const yr = Number(parts[1]);
-  if (mi < 0 || !yr) return null;
-  return yr * 12 + mi;
+/**
+ * Flexible month key converter:
+ * Handles "Apr 2024", "April 2024", "2024-04-15", "15/04/2024", "2024-04" -> year * 12 + month
+ */
+export function monthKey(m: string | null | undefined): number | null {
+  if (!m || typeof m !== "string") return null;
+  const clean = m.trim();
+  if (!clean) return null;
+
+  // Pattern A: "Apr 2024" or "April 2024" or "Apr-2024"
+  const parts = clean.split(/[\s-]+/);
+  if (parts.length === 2) {
+    const monthPrefix = parts[0].slice(0, 3).toLowerCase();
+    const mi = MONTH_ORDER.findIndex((mo) => mo.toLowerCase() === monthPrefix);
+    const yr = Number(parts[1]);
+    if (mi >= 0 && yr >= 1900 && yr <= 2100) return yr * 12 + mi;
+
+    // Or "2024 04" or "2024-04"
+    const yrFirst = Number(parts[0]);
+    const moSecond = Number(parts[1]);
+    if (yrFirst >= 1900 && yrFirst <= 2100 && moSecond >= 1 && moSecond <= 12) {
+      return yrFirst * 12 + (moSecond - 1);
+    }
+  }
+
+  // Pattern B: ISO YYYY-MM-DD
+  const isoMatch = clean.match(/^(\d{4})[/-](\d{1,2})/);
+  if (isoMatch) {
+    const yr = Number(isoMatch[1]);
+    const mo = Number(isoMatch[2]);
+    if (yr >= 1900 && yr <= 2100 && mo >= 1 && mo <= 12) {
+      return yr * 12 + (mo - 1);
+    }
+  }
+
+  // Pattern C: DD/MM/YYYY
+  const dmyMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (dmyMatch) {
+    const yr = Number(dmyMatch[3]);
+    const mo = Number(dmyMatch[2]);
+    if (yr >= 1900 && yr <= 2100 && mo >= 1 && mo <= 12) {
+      return yr * 12 + (mo - 1);
+    }
+  }
+
+  return null;
 }
 
 export function monthLabel(key: number): string {

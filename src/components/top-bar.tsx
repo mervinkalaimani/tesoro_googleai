@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { Sun, Moon, Plus, RefreshCw } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { Sun, Moon, Plus, RefreshCw, Database, Upload } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
 import { SearchBox } from "@/components/search-box";
-import { useCarsRefresh } from "@/lib/cars-store";
+import { useCarsRefresh, useCarsSource } from "@/lib/cars-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { UploadCarsDialog } from "@/components/upload-cars-dialog";
+import { useSupabaseConfig } from "@/lib/supabase-config";
 
 function formatRelative(ts: number | null): string {
   if (!ts) return "never";
@@ -23,6 +26,8 @@ function formatRelative(ts: number | null): string {
 export function TopBar() {
   const { theme, toggleTheme } = useApp();
   const { refresh, lastUpdated, refreshing } = useCarsRefresh();
+  const { source } = useCarsSource();
+  const { config } = useSupabaseConfig();
   const [addOpen, setAddOpen] = useState(false);
   const [, tick] = useState(0);
 
@@ -36,7 +41,20 @@ export function TopBar() {
       <SidebarTrigger />
       <SearchBox />
       <div className="ml-auto flex items-center gap-1">
-        <div className="hidden md:flex items-center gap-2 pr-1 text-xs text-muted-foreground">
+        <Link
+          to="/settings"
+          className="hidden md:flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors mr-1"
+          title="Supabase Database Settings"
+        >
+          <Database className="size-3 text-primary" />
+          <span className="font-mono text-[11px]">{config.tableName}</span>
+          <span
+            className={`inline-block size-1.5 rounded-full ${
+              source === "supabase" ? "bg-emerald-500" : "bg-primary/80"
+            }`}
+          />
+        </Link>
+        <div className="hidden lg:flex items-center gap-2 pr-1 text-xs text-muted-foreground">
           <span>Updated {formatRelative(lastUpdated)}</span>
         </div>
         <Button
@@ -52,6 +70,14 @@ export function TopBar() {
           <RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
           <span className="hidden sm:inline">{refreshing ? "Refreshing" : "Refresh"}</span>
         </Button>
+        <UploadCarsDialog
+          trigger={
+            <Button variant="outline" size="sm" className="gap-1.5" aria-label="Upload cars">
+              <Upload className="size-4" />
+              <span className="hidden sm:inline">Upload</span>
+            </Button>
+          }
+        />
         <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
           <Plus className="size-4" /> <span className="hidden sm:inline">Add car</span>
         </Button>

@@ -16,7 +16,10 @@ function parseGviz(text: string): Gviz {
 }
 
 export async function fetchRawSheet(): Promise<Diecast[]> {
-  const res = await fetch(`${RAW_URL}&_ts=${Date.now()}`, { cache: "no-store" });
+  const res = await fetch(`${RAW_URL}&_ts=${Date.now()}`, {
+    cache: "no-store",
+    credentials: "omit",
+  });
   if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status}`);
   const text = await res.text();
   const data = parseGviz(text);

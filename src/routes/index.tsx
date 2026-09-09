@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import {
   Bar,
   BarChart,
@@ -38,7 +38,9 @@ import {
   monthLabel,
 } from "@/lib/format";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
+import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import {
   Select,
   SelectContent,
@@ -91,7 +93,9 @@ export const Route = createFileRoute("/")({
 type Shipment = {
   key: string;
   seller: string;
+  shippingId: string;
   count: number;
+  spent: number;
   brands: string[];
   ordered: Date;
   expected: Date | null;
@@ -111,13 +115,24 @@ function DashboardPage() {
     const norm = (s: string) => (s || "").trim().toLowerCase();
     const countOf = (match: (s: string) => boolean) =>
       data.filter((r) => match(norm(r.status))).length;
-    const defs = [
+    const spentOf = (match: (s: string) => boolean) =>
+      data.filter((r) => match(norm(r.status))).reduce((sum, r) => sum + (r.spent || 0), 0);
+
+    const defs: {
+      key: string;
+      label: string;
+      tone: string;
+      icon: React.ReactNode;
+      value: number | string;
+      hint?: string;
+    }[] = [
       {
         key: "available",
         label: "Available",
         tone: "emerald",
         icon: <Boxes className="size-4" />,
         value: countOf((s) => s === "available"),
+        hint: inr(spentOf((s) => s === "available")),
       },
       {
         key: "transit",
@@ -125,6 +140,7 @@ function DashboardPage() {
         tone: "blue",
         icon: <Truck className="size-4" />,
         value: countOf((s) => s === "transit" || /out\s*for\s*delivery/.test(s)),
+        hint: inr(spentOf((s) => s === "transit" || /out\s*for\s*delivery/.test(s))),
       },
       {
         key: "waiting",
@@ -132,6 +148,7 @@ function DashboardPage() {
         tone: "orange",
         icon: <Clock3 className="size-4" />,
         value: countOf((s) => s === "waiting"),
+        hint: inr(spentOf((s) => s === "waiting")),
       },
       {
         key: "preorder",
@@ -139,6 +156,7 @@ function DashboardPage() {
         tone: "violet",
         icon: <ShoppingBag className="size-4" />,
         value: countOf((s) => s === "pre order" || s === "preorder"),
+        hint: inr(spentOf((s) => s === "pre order" || s === "preorder")),
       },
       {
         key: "delayed",
@@ -162,7 +180,7 @@ function DashboardPage() {
         value: countOf((s) => s === "iso"),
       },
     ];
-    return defs.filter((d) => d.value > 0);
+    return defs.filter((d) => (typeof d.value === "number" ? d.value > 0 : true));
   }, [data]);
 
   return (
@@ -199,7 +217,7 @@ function Kpi({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: number;
+  value: number | string;
   tone: string;
   hint?: string;
 }) {
@@ -224,7 +242,7 @@ function Kpi({
         {label}
       </div>
       <div className="mt-2 text-display text-3xl font-semibold tabular-nums">
-        {value.toLocaleString()}
+        {typeof value === "number" ? value.toLocaleString() : value}
       </div>
       {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
     </div>
@@ -255,22 +273,44 @@ function TransitTracker({
   const [includeWaiting, setIncludeWaiting] = useState(false);
   const [clubShipping, setClubShipping] = useState(false);
   const [sortBy, setSortBy] = useState<"ordered" | "expected">("ordered");
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [selectedShippingId, setSelectedShippingId] = useState("");
+
+  const src = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          isOutForDelivery(r.status) ||
+          isTransit(r.status) ||
+          (includeWaiting && isWaiting(r.status)),
+      ),
+    [rows, includeWaiting],
+  );
+
+  // Active shipping IDs present strictly in this transit list (excluding Available)
+  const activeShippingIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of src) {
+      const sid = (r.shippingId || "").trim();
+      if (sid && (r.status || "").trim().toLowerCase() !== "available") {
+        set.add(sid);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [src]);
 
   const shipments = useMemo<Shipment[]>(() => {
-    const src = rows.filter(
-      (r) =>
-        isOutForDelivery(r.status) ||
-        isTransit(r.status) ||
-        (includeWaiting && isWaiting(r.status)),
-    );
     const groups = new Map<string, Diecast[]>();
     for (const r of src) {
       const od = r.orderDate || r.date || "—";
       const ship = (r.transitInfo || "").trim();
+      const sid = (r.shippingId || "").trim();
       const k =
-        clubShipping && ship
-          ? `ship:${ship.toLowerCase()}`
-          : `${r.seller || "Unknown"}|${od}|${r.status}|${ship}`;
+        clubShipping && sid
+          ? `shipid:${sid.toLowerCase()}`
+          : clubShipping && ship
+            ? `ship:${ship.toLowerCase()}`
+            : `${r.seller || "Unknown"}|${sid}|${od}|${r.status}|${ship}`;
       const arr = groups.get(k) ?? [];
       arr.push(r);
       groups.set(k, arr);
@@ -284,11 +324,16 @@ function TransitTracker({
       const expected = parseDMY(first.expectedDate || first.date);
       const brands = [...new Set(arr.map((r) => r.brand).filter(Boolean))];
       const sellers = [...new Set(arr.map((r) => r.seller).filter(Boolean))];
+      const shippingIds = [...new Set(arr.map((r) => (r.shippingId || "").trim()).filter(Boolean))];
+      const shippingId = shippingIds.join(", ");
+
       out.push({
         key: k,
         seller:
           sellers.length > 1 ? `${sellers[0]} +${sellers.length - 1}` : sellers[0] || "Unknown",
+        shippingId,
         count: arr.length,
+        spent: arr.reduce((s, r) => s + (r.spent || 0), 0),
         brands,
         ordered,
         expected,
@@ -306,7 +351,7 @@ function TransitTracker({
         ? etaOf(a) - etaOf(b)
         : a.ordered.getTime() - b.ordered.getTime();
     });
-  }, [rows, includeWaiting, clubShipping, sortBy, etaDays]);
+  }, [src, clubShipping, sortBy, etaDays]);
 
   const now = new Date();
 
@@ -321,7 +366,25 @@ function TransitTracker({
             {shipments.length} active shipment{shipments.length === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setSelectedShippingId("");
+              setBatchOpen(true);
+            }}
+            className="gap-1.5 shrink-0 border-amber-500/40 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 font-medium"
+            title="Batch update status, expected date, and transit notes by shipping ID"
+          >
+            <Truck className="size-3.5" />
+            <span>Update Shipping ID</span>
+            {activeShippingIds.length > 0 && (
+              <span className="rounded-full bg-amber-500/20 px-1.5 py-0.2 font-mono text-[10px]">
+                {activeShippingIds.length}
+              </span>
+            )}
+          </Button>
           <SegmentControl
             value={sortBy}
             onChange={setSortBy}
@@ -357,9 +420,25 @@ function TransitTracker({
                   <li key={s.key} className="min-w-0 p-3">
                     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">{s.seller}</div>
+                        <div className="flex items-center gap-1.5 truncate text-sm font-medium">
+                          <span>{s.seller}</span>
+                          {s.shippingId && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedShippingId(s.shippingId);
+                                setBatchOpen(true);
+                              }}
+                              className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-400"
+                            >
+                              <Truck className="size-2.5" />
+                              <span>{s.shippingId}</span>
+                            </button>
+                          )}
+                        </div>
                         <div className="text-xs text-muted-foreground">
                           {s.status} · {s.count} car{s.count === 1 ? "" : "s"}
+                          {s.spent > 0 ? ` · ${inr(s.spent)}` : ""}
                         </div>
                       </div>
                       <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">
@@ -399,7 +478,9 @@ function TransitTracker({
               <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Seller</th>
+                  <th className="px-4 py-2.5 font-medium">Shipping ID</th>
                   <th className="px-4 py-2.5 font-medium">Cars</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Cost</th>
                   <th className="px-4 py-2.5 font-medium">Brands</th>
                   <th className="px-4 py-2.5 font-medium">Transit info</th>
                   <th className="px-4 py-2.5 font-medium">Ordered</th>
@@ -418,7 +499,28 @@ function TransitTracker({
                         <div className="font-medium">{s.seller}</div>
                         <div className="text-xs text-muted-foreground">{s.status}</div>
                       </td>
+                      <td className="px-4 py-2.5">
+                        {s.shippingId ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedShippingId(s.shippingId);
+                              setBatchOpen(true);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-xs font-semibold text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
+                            title={`Click to update batch ${s.shippingId}`}
+                          >
+                            <Truck className="size-3 shrink-0" />
+                            <span>{s.shippingId}</span>
+                          </button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 tabular-nums">{s.count}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">
+                        {s.spent > 0 ? inr(s.spent) : "—"}
+                      </td>
                       <td className="px-4 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {s.brands.slice(0, 4).map((b) => (
@@ -456,6 +558,14 @@ function TransitTracker({
           </div>
         </>
       )}
+
+      <ShippingBatchDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        initialShippingId={selectedShippingId}
+        allowedShippingIds={activeShippingIds}
+        excludeAvailable={true}
+      />
     </div>
   );
 }
@@ -519,14 +629,23 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
 
 type Window = "6m" | "12m" | "all";
 
+function resolveCarMonthKey(r: Diecast): number | null {
+  return monthKey(r.month) ?? monthKey(r.orderMonth) ?? monthKey(r.date) ?? monthKey(r.orderDate);
+}
+
 function MonthlySpending({ rows }: { rows: Diecast[] }) {
   const [win, setWin] = useState<Window>("6m");
   const [showFuture, setShowFuture] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const series = useMemo(() => {
     const map = new Map<number, { spent: number; count: number }>();
     for (const r of rows) {
-      const k = monthKey(r.month);
+      const k = resolveCarMonthKey(r);
       if (k === null) continue;
       const cur = map.get(k) ?? { spent: 0, count: 0 };
       cur.spent += r.spent || 0;
@@ -537,9 +656,22 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
     const curKey = now.getFullYear() * 12 + now.getMonth();
     const all = [...map.entries()].sort((a, b) => a[0] - b[0]);
     let filtered = all;
-    if (win === "6m") filtered = filtered.filter(([k]) => k <= curKey && k > curKey - 6);
-    else if (win === "12m") filtered = filtered.filter(([k]) => k <= curKey && k > curKey - 12);
-    else if (!showFuture) filtered = filtered.filter(([k]) => k <= curKey);
+    if (win === "6m") {
+      filtered = filtered.filter(([k]) => k <= curKey && k > curKey - 6);
+      if (filtered.length === 0 && all.length > 0) {
+        filtered = all.slice(-6);
+      }
+    } else if (win === "12m") {
+      filtered = filtered.filter(([k]) => k <= curKey && k > curKey - 12);
+      if (filtered.length === 0 && all.length > 0) {
+        filtered = all.slice(-12);
+      }
+    } else if (!showFuture) {
+      filtered = filtered.filter(([k]) => k <= curKey);
+      if (filtered.length === 0 && all.length > 0) {
+        filtered = all;
+      }
+    }
     return filtered.map(([k, v]) => ({
       month: monthLabel(k),
       spent: Math.round(v.spent),
@@ -578,47 +710,64 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={series} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
-            <CartesianGrid stroke="var(--color-border)" vertical={false} strokeDasharray="3 3" />
-            <XAxis
-              dataKey="month"
-              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-              interval={series.length > 18 ? Math.floor(series.length / 12) : 0}
-              angle={-25}
-              textAnchor="end"
-              height={60}
-            />
-            <YAxis
-              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-              tickFormatter={(v) => inr(Number(v))}
-            />
-            <Tooltip
-              content={({ active, payload, label }) => {
-                if (!active || !payload?.length) return null;
-                return (
-                  <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg">
-                    <div className="font-medium">{label}</div>
-                    <div className="text-muted-foreground">{inrFull(Number(payload[0].value))}</div>
-                    <div className="text-muted-foreground">
-                      {payload[0].payload?.count ?? 0} cars
-                    </div>
-                  </div>
-                );
-              }}
-              cursor={{ fill: "oklch(0.6 0 0 / 0.06)" }}
-            />
-            <Bar dataKey="spent" fill="var(--chart-1)" radius={[6, 6, 0, 0]}>
-              <LabelList
-                dataKey="count"
-                position="top"
-                fill="var(--muted-foreground)"
-                fontSize={9}
+      <div className="min-h-[260px] h-[280px] w-full flex-1">
+        {!mounted ? (
+          <div className="flex h-full w-full items-center justify-center">
+            <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : series.length === 0 ? (
+          <div className="flex h-full w-full flex-col items-center justify-center rounded-lg border border-dashed border-border/60 p-6 text-center text-muted-foreground">
+            <Clock3 className="mb-2 size-8 stroke-[1.5] text-muted-foreground/50" />
+            <p className="text-sm font-medium text-foreground">No monthly records in this window</p>
+            <p className="mt-1 max-w-[240px] text-xs text-muted-foreground">
+              Try switching to &quot;12M&quot; or &quot;All&quot; to view spending across all
+              recorded months.
+            </p>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%" minHeight={240}>
+            <BarChart data={series} margin={{ top: 12, right: 12, left: -10, bottom: 0 }}>
+              <CartesianGrid stroke="var(--border)" vertical={false} strokeDasharray="3 3" />
+              <XAxis
+                dataKey="month"
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                interval={series.length > 18 ? Math.floor(series.length / 12) : 0}
+                angle={-25}
+                textAnchor="end"
+                height={60}
               />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+              <YAxis
+                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                tickFormatter={(v) => inr(Number(v))}
+              />
+              <Tooltip
+                content={({ active, payload, label }) => {
+                  if (!active || !payload?.length) return null;
+                  return (
+                    <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg">
+                      <div className="font-medium">{label}</div>
+                      <div className="font-semibold text-primary">
+                        {inrFull(Number(payload[0].value))}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {payload[0].payload?.count ?? 0} cars
+                      </div>
+                    </div>
+                  );
+                }}
+                cursor={{ fill: "color-mix(in srgb, var(--primary) 12%, transparent)" }}
+              />
+              <Bar dataKey="spent" fill="var(--primary)" radius={[6, 6, 0, 0]}>
+                <LabelList
+                  dataKey="count"
+                  position="top"
+                  fill="var(--muted-foreground)"
+                  fontSize={9}
+                />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   );
@@ -638,7 +787,7 @@ function PeakPurchase({
   const top = useMemo(() => {
     const map = new Map<number, { count: number; cost: number }>();
     for (const r of rows) {
-      const k = monthKey(r.month);
+      const k = resolveCarMonthKey(r);
       if (k === null) continue;
       const v = map.get(k) ?? { count: 0, cost: 0 };
       v.count += 1;
@@ -771,48 +920,6 @@ function pickTopValue(r: Diecast, key: TopKey) {
   }
 }
 
-function ModeToggle({
-  mode,
-  onModeChange,
-}: {
-  mode: "count" | "cost";
-  onModeChange: (m: "count" | "cost") => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <SegmentControl
-        value={mode}
-        onChange={onModeChange}
-        options={[
-          { value: "count", label: "Count" },
-          { value: "cost", label: "Cost" },
-        ]}
-      />
-      <TooltipProvider delayDuration={150}>
-        <UITooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label="What do Count and Cost show?"
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <Info className="size-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent className="max-w-[240px] text-xs">
-            <p>
-              <span className="font-semibold">Count</span> — number of cars in each group.
-            </p>
-            <p className="mt-1">
-              <span className="font-semibold">Cost</span> — total amount spent on each group.
-            </p>
-          </TooltipContent>
-        </UITooltip>
-      </TooltipProvider>
-    </div>
-  );
-}
-
 function TopTenGrid({
   rows,
   mode,
@@ -846,17 +953,23 @@ function TopTenGrid({
   );
 
   const label = TOP_OPTIONS.find((o) => o.value === key)!.label;
+  const max = items[0]?.value || 1;
+
+  if (loading) {
+    return <TopListSkeleton />;
+  }
 
   return (
-    <section className="flex min-h-0 flex-col">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-display whitespace-nowrap text-lg font-semibold">Top 5</h2>
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-display text-lg font-semibold">Top 5</h2>
+          <p className="text-xs text-muted-foreground">Leading {label.toLowerCase()}</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Select value={key} onValueChange={(v) => setKey(v as TopKey)}>
-            <SelectTrigger className="h-8 w-36 text-xs">
+            <SelectTrigger className="h-7 w-28 text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -867,14 +980,58 @@ function TopTenGrid({
               ))}
             </SelectContent>
           </Select>
-          <ModeToggle mode={mode} onModeChange={onModeChange} />
+          <SegmentControl
+            value={mode}
+            onChange={onModeChange}
+            options={[
+              { value: "count", label: "Count" },
+              { value: "cost", label: "Cost" },
+            ]}
+          />
         </div>
       </div>
-      {loading ? (
-        <TopListSkeleton />
+
+      {items.length > 0 ? (
+        <ul className="flex min-h-0 flex-1 flex-col justify-between gap-2">
+          {items.map((it, i) => {
+            const pct = (it.value / max) * 100;
+            return (
+              <li key={it.name} className="flex flex-1 flex-col justify-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setSelected(it.name)}
+                  className="group flex flex-1 flex-col justify-center gap-1.5 text-left transition-colors"
+                >
+                  <div className="flex items-center justify-between text-sm">
+                    <span
+                      className={`flex min-w-0 items-center ${
+                        i === 0
+                          ? "font-semibold"
+                          : "text-muted-foreground group-hover:text-foreground"
+                      }`}
+                    >
+                      <span className="truncate">{it.name}</span>
+                      <ChevronRight className="ml-1 size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground" />
+                    </span>
+                    <span className={`shrink-0 tabular-nums ${i === 0 ? "font-semibold" : ""}`}>
+                      {mode === "count" ? it.value : inr(it.value)}
+                    </span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={`h-full rounded-full ${i === 0 ? "bg-primary" : "bg-primary/50"}`}
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       ) : (
-        <TopList title={label} items={items} mode={mode} onSelect={setSelected} />
+        <div className="text-sm text-muted-foreground">No data.</div>
       )}
+
       <TopDetailDialog
         open={!!selected}
         onClose={() => setSelected(null)}
@@ -882,57 +1039,6 @@ function TopTenGrid({
         groupLabel={label}
         rows={selectedRows}
       />
-    </section>
-  );
-}
-
-function TopList({
-  title,
-  items,
-  mode,
-  onSelect,
-}: {
-  title: string;
-  items: { name: string; value: number }[];
-  mode: "count" | "cost";
-  onSelect: (name: string) => void;
-}) {
-  const max = items[0]?.value || 1;
-  return (
-    <div className="card-elevated min-h-0 flex-1 min-w-0 overflow-hidden p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">{title}</h3>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Top 5</span>
-      </div>
-      <ul className="space-y-2">
-        {items.map((it, i) => {
-          const pct = (it.value / max) * 100;
-          return (
-            <li key={it.name} className="text-xs">
-              <button
-                type="button"
-                onClick={() => onSelect(it.name)}
-                className="group w-full rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted/50"
-              >
-                <div className="mb-1 flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center">
-                    <span className="mr-2 text-muted-foreground tabular-nums">{i + 1}.</span>
-                    <span className="truncate">{it.name}</span>
-                    <ChevronRight className="ml-1 size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                  </span>
-                  <span className="shrink-0 text-muted-foreground tabular-nums">
-                    {mode === "count" ? it.value : inr(it.value)}
-                  </span>
-                </div>
-                <div className="h-1 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
-                </div>
-              </button>
-            </li>
-          );
-        })}
-        {items.length === 0 && <li className="text-xs text-muted-foreground">No data.</li>}
-      </ul>
     </div>
   );
 }

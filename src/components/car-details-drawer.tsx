@@ -1,29 +1,19 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
-import { AlertCircle, Car, Flame, Loader2, Star } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import { StatusPill } from "@/components/cars-table";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { Car, CheckCircle2, Loader2, Pencil, Star, Trash2, Truck, X } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
-import { inr } from "@/lib/format";
-import { useCars } from "@/lib/cars-store";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useCars, useCarsActions } from "@/lib/cars-store";
 import { findCarImage } from "@/lib/car-image";
+import { deriveMonth } from "@/lib/date-utils";
+import { CarFormDialog } from "@/components/car-form-dialog";
+import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 
-type Ctx = { open: (car: Diecast) => void };
+type Ctx = {
+  open: (car: Diecast) => void;
+  openCar: (car: Diecast) => void;
+  close: () => void;
+};
+
 const CarDrawerCtx = createContext<Ctx | null>(null);
 
 export function useCarDrawer() {
@@ -33,397 +23,473 @@ export function useCarDrawer() {
 }
 
 export function CarDrawerProvider({ children }: { children: ReactNode }) {
-  const cars = useCars();
-  const isMobile = useIsMobile();
-  const [request, setRequest] = useState<{ id: string; fallback: Diecast } | null>(null);
-  const [car, setCar] = useState<Diecast | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [currentCarId, setCurrentCarId] = useState<string | null>(null);
+  const [editCar, setEditCar] = useState<Diecast | null>(null);
+  const [batchShippingId, setBatchShippingId] = useState<string | null>(null);
+  const [batchOpen, setBatchOpen] = useState(false);
 
-  const open = useCallback((next: Diecast) => {
-    setRequest({ id: next.id, fallback: next });
-    setCar(null);
-    setError("");
-    setLoading(true);
+  const cars = useCars();
+  const { updateCar, deleteCar } = useCarsActions();
+
+  // Find latest car state by ID
+  const car = cars.find((c) => c.id === currentCarId) || null;
+
+  const open = useCallback((c: Diecast) => {
+    setCurrentCarId(c.id);
   }, []);
 
-  useEffect(() => {
-    if (!request) return;
-    let cancelled = false;
-    setLoading(true);
-    setError("");
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
-      try {
-        const latest = cars.find((item) => item.id === request.id) ?? request.fallback;
-        if (!latest?.id) throw new Error("Car not found");
-        setCar(latest);
-      } catch {
-        setCar(null);
-        setError("We couldn't load this car's details. Close the drawer and try again.");
-      } finally {
-        setLoading(false);
-      }
-    }, 120);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [cars, request]);
-
-  const close = () => {
-    setRequest(null);
-    setCar(null);
-    setLoading(false);
-    setError("");
-  };
-
-  const side = isMobile ? "bottom" : "right";
-  const sheetClass = isMobile
-    ? "h-[92svh] max-h-[92svh] w-full rounded-t-2xl p-0 flex flex-col"
-    : "w-full sm:max-w-lg overflow-y-auto";
+  const close = useCallback(() => {
+    setCurrentCarId(null);
+  }, []);
 
   return (
-    <CarDrawerCtx.Provider value={{ open }}>
+    <CarDrawerCtx.Provider value={{ open, openCar: open, close }}>
       {children}
-      <Sheet
-        open={!!request}
+
+      {/* Car Details Popup Modal matching the exact screenshot design */}
+      <Dialog
+        open={Boolean(car)}
         onOpenChange={(v) => {
           if (!v) close();
         }}
       >
-        <SheetContent side={side} className={sheetClass}>
-          {isMobile ? (
-            <MobileBody car={car} loading={loading} error={error} onClose={close} />
-          ) : (
-            <DesktopBody car={car} loading={loading} error={error} />
+        <DialogContent className="max-w-2xl sm:max-w-2xl border-zinc-800 bg-[#0e121a] text-zinc-100 shadow-2xl rounded-2xl p-5 sm:p-6 max-h-[92vh] overflow-y-auto [&>button]:hidden">
+          {car && (
+            <CarPopupContent
+              car={car}
+              onClose={close}
+              onEdit={() => setEditCar(car)}
+              onOpenShippingBatch={(sId) => {
+                setBatchShippingId(sId);
+                setBatchOpen(true);
+              }}
+              onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
+              onToggleCondition={() => updateCar({ ...car, open: !car.open })}
+              onMarkDelivered={() => {
+                const today = new Date().toISOString().slice(0, 10);
+                const arrDate = car.expectedDate || car.date || today;
+                updateCar({
+                  ...car,
+                  status: "Available",
+                  date: arrDate,
+                  month: deriveMonth(arrDate) || car.month,
+                });
+              }}
+              onDelete={() => {
+                const carName = car.name || `${car.make} ${car.model}`;
+                if (
+                  window.confirm(
+                    `Are you sure you want to delete "${carName}" from your collection?`,
+                  )
+                ) {
+                  deleteCar(car.id);
+                  close();
+                }
+              }}
+            />
           )}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full edit dialog with frozen saved fields preserved */}
+      {editCar && (
+        <CarFormDialog
+          open={Boolean(editCar)}
+          onOpenChange={(v) => {
+            if (!v) setEditCar(null);
+          }}
+          initialCar={editCar}
+          onSaved={() => setEditCar(null)}
+        />
+      )}
+
+      {/* Shipping batch update dialog triggered from shipping ID */}
+      <ShippingBatchDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        initialShippingId={batchShippingId || ""}
+      />
     </CarDrawerCtx.Provider>
   );
 }
 
-function DesktopBody({
-  car,
-  loading,
-  error,
-}: {
-  car: Diecast | null;
-  loading: boolean;
-  error: string;
-}) {
-  return (
-    <>
-      {car && !loading && !error && (
-        <CarImage car={car} className="mb-4 aspect-square w-full rounded-lg" />
-      )}
-      <SheetHeader className="space-y-2 text-left">
-        {!loading && !error && car ? (
-          <HeaderContent car={car} />
-        ) : (
-          <>
-            <SheetTitle className="text-display text-2xl">
-              {error ? "Details unavailable" : "Loading car details"}
-            </SheetTitle>
-            <SheetDescription>
-              {error
-                ? "The selected car could not be loaded."
-                : "Fetching the latest saved fields."}
-            </SheetDescription>
-          </>
-        )}
-      </SheetHeader>
-      {loading && <DrawerSkeleton />}
-      {!loading && error && <DrawerError message={error} />}
-      {!loading && !error && car && <CarDetails car={car} />}
-    </>
-  );
+interface CarPopupContentProps {
+  car: Diecast;
+  onClose: () => void;
+  onEdit: () => void;
+  onOpenShippingBatch: (shippingId: string) => void;
+  onToggleFavourite: () => void;
+  onToggleCondition: () => void;
+  onMarkDelivered: () => void;
+  onDelete: () => void;
 }
 
-function MobileBody({
+function CarPopupContent({
   car,
-  loading,
-  error,
   onClose,
-}: {
-  car: Diecast | null;
-  loading: boolean;
-  error: string;
-  onClose: () => void;
-}) {
-  const startY = useRef<number | null>(null);
-  const [dragY, setDragY] = useState(0);
-  const [dragging, setDragging] = useState(false);
+  onEdit,
+  onOpenShippingBatch,
+  onToggleFavourite,
+  onToggleCondition,
+  onMarkDelivered,
+  onDelete,
+}: CarPopupContentProps) {
+  const [deliveredAnim, setDeliveredAnim] = useState(false);
 
-  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
-    startY.current = e.clientY;
-    setDragging(true);
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  const spent = Math.round(car.spent ?? 0);
+  const mrp = Math.round(car.mrp ?? 0);
+  const delta = mrp - spent;
+
+  const handleMarkDeliveredClick = () => {
+    onMarkDelivered();
+    setDeliveredAnim(true);
+    setTimeout(() => setDeliveredAnim(false), 2000);
   };
-  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
-    if (startY.current == null) return;
-    const dy = e.clientY - startY.current;
-    setDragY(Math.max(0, dy));
+
+  const getStatusColor = (st: string) => {
+    const s = (st || "").toLowerCase();
+    if (s.includes("transit")) return "text-rose-400";
+    if (s.includes("available")) return "text-emerald-400";
+    if (s.includes("pre order")) return "text-amber-400";
+    if (s.includes("wait")) return "text-cyan-400";
+    if (s.includes("hold")) return "text-purple-400";
+    if (s.includes("iso")) return "text-blue-400";
+    return "text-white";
   };
-  const onPointerUp = () => {
-    if (dragY > 100) {
-      onClose();
-    }
-    startY.current = null;
-    setDragging(false);
-    setDragY(0);
-  };
+
+  const cleanTransitNotes = (car.transitInfo || "").trim();
 
   return (
-    <div
-      className="flex h-full flex-col"
-      style={{
-        transform: dragY ? `translateY(${dragY}px)` : undefined,
-        transition: dragging ? "none" : "transform 200ms ease-out",
-      }}
-    >
-      <div
-        className="flex cursor-grab touch-none justify-center py-2 active:cursor-grabbing"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
-        aria-label="Drag to close"
-      >
-        <div className="h-1.5 w-12 rounded-full bg-muted-foreground/40" />
+    <div className="space-y-4">
+      {/* Hidden Accessible Dialog Title & Description */}
+      <DialogTitle className="sr-only">
+        {car.name || `${car.make} ${car.model}`} Details
+      </DialogTitle>
+      <DialogDescription className="sr-only">
+        Diecast car specifications, status, logistics, and pricing details.
+      </DialogDescription>
+
+      {/* TOP HEADER ROW: ID Badge on left, Star + Edit + Close on right */}
+      <div className="flex items-center justify-between">
+        <div className="rounded-md border border-zinc-700/60 bg-zinc-800/40 px-2.5 py-1 font-mono text-xs font-medium tracking-wider text-zinc-300">
+          {car.id}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          {/* Favorite Star Button */}
+          <button
+            type="button"
+            onClick={onToggleFavourite}
+            title={car.favourite ? "Remove from favourites" : "Add to favourites"}
+            className="flex size-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 transition-colors cursor-pointer"
+          >
+            <Star
+              className={`size-4 ${
+                car.favourite ? "fill-amber-400 text-amber-400" : "text-zinc-400 hover:text-white"
+              }`}
+            />
+          </button>
+
+          {/* Edit Pencil Button */}
+          <button
+            type="button"
+            onClick={onEdit}
+            title="Edit car details"
+            className="flex size-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+          >
+            <Pencil className="size-4" />
+          </button>
+
+          {/* Close X Button */}
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close popup"
+            className="flex size-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
       </div>
-      <div className="flex-1 overflow-y-auto px-6 pb-8">
-        {car && !loading && !error && (
-          <CarImage car={car} className="mb-4 aspect-square w-full rounded-xl" />
-        )}
-        <SheetHeader className="space-y-2 text-left">
-          {!loading && !error && car ? (
-            <HeaderContent car={car} />
+
+      {/* HERO IMAGE: Landscape with Brand and Size badges overlaid at bottom-left */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-zinc-900/80 border border-zinc-800/80 shadow-inner">
+        <HeroCarImage car={car} />
+
+        {/* Brand & Scale Badges at bottom-left */}
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
+          <span className="rounded-md bg-black/85 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-white tracking-tight shadow-md border border-white/10">
+            {car.brand || "Diecast"}
+          </span>
+          <span className="rounded-md bg-black/85 backdrop-blur-md px-2 py-1 text-xs font-mono font-medium text-zinc-300 tracking-tight shadow-md border border-white/10">
+            {car.size || "1:64"}
+          </span>
+        </div>
+      </div>
+
+      {/* CAR TITLE & SUBTITLE */}
+      <div className="pt-1">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
+        </h2>
+        <p className="mt-1 text-sm text-zinc-400 font-normal">
+          {car.make || "Unknown"} • {car.model || "Unknown"}
+          {car.variant ? ` (${car.variant})` : ""}
+        </p>
+      </div>
+
+      {/* 3-COLUMN FINANCIALS CARD: PURCHASE SPENT | RETAIL / MRP | GAIN / DELTA */}
+      <div className="grid grid-cols-3 gap-2 rounded-xl border border-zinc-800/90 bg-zinc-900/50 p-4">
+        <div>
+          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+            PURCHASE SPENT
+          </span>
+          <span className="mt-1 block text-xl sm:text-2xl font-bold text-white">
+            ${spent.toLocaleString()}
+          </span>
+        </div>
+
+        <div>
+          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+            RETAIL / MRP
+          </span>
+          <span className="mt-1 block text-xl sm:text-2xl font-bold text-white">
+            ${mrp.toLocaleString()}
+          </span>
+        </div>
+
+        <div>
+          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+            GAIN / DELTA
+          </span>
+          {delta >= 0 ? (
+            <span className="mt-1 block text-xl sm:text-2xl font-bold text-[#00E599]">
+              +${delta.toLocaleString()}
+            </span>
           ) : (
-            <>
-              <SheetTitle className="text-display text-2xl">
-                {error ? "Details unavailable" : "Loading car details"}
-              </SheetTitle>
-              <SheetDescription>
-                {error
-                  ? "The selected car could not be loaded."
-                  : "Fetching the latest saved fields."}
-              </SheetDescription>
-            </>
+            <span className="mt-1 block text-xl sm:text-2xl font-bold text-rose-400">
+              -${Math.abs(delta).toLocaleString()}
+            </span>
           )}
-        </SheetHeader>
-        {loading && <DrawerSkeleton />}
-        {!loading && error && <DrawerError message={error} />}
-        {!loading && !error && car && <CarDetails car={car} />}
+        </div>
+      </div>
+
+      {/* 3-COLUMN SPECIFICATIONS GRID */}
+      <div className="grid grid-cols-3 gap-x-3 gap-y-4 text-sm pt-1">
+        <div>
+          <span className="text-xs text-zinc-400">Series</span>
+          <span className="mt-0.5 block font-semibold text-white truncate">
+            {car.series || "Showroom"}
+          </span>
+        </div>
+
+        <div>
+          <span className="text-xs text-zinc-400">Assortment</span>
+          <span className="mt-0.5 block font-semibold text-white truncate">
+            {car.assortment || "Premium"}
+          </span>
+        </div>
+
+        <div>
+          <span className="text-xs text-zinc-400">Vehicle Type</span>
+          <span className="mt-0.5 block font-semibold text-white truncate">
+            {car.type || "SUV"}
+          </span>
+        </div>
+
+        <div>
+          <span className="text-xs text-zinc-400">Colour / Livery</span>
+          <span className="mt-0.5 block font-semibold text-white truncate">
+            {car.colour || "—"}
+          </span>
+        </div>
+
+        <div>
+          <span className="text-xs text-zinc-400">Condition</span>
+          <div className="mt-0.5 flex items-center gap-2">
+            <span className="rounded-md border border-blue-500/40 bg-[#162238] px-2 py-0.5 text-xs font-medium text-blue-300">
+              {car.open ? "Loose (Open)" : "Carded (Sealed)"}
+            </span>
+            <button
+              type="button"
+              onClick={onToggleCondition}
+              className="text-xs text-zinc-400 hover:text-white underline cursor-pointer"
+            >
+              Change
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <span className="text-xs text-zinc-400">Current Status</span>
+          <span className={`mt-0.5 block font-semibold truncate ${getStatusColor(car.status)}`}>
+            {car.status || "—"}
+          </span>
+        </div>
+      </div>
+
+      {/* SHIPPING & TRANSIT TRACKING CARD */}
+      <div className="rounded-xl border border-amber-500/35 bg-[#17140e] p-4 space-y-3">
+        {/* Card Header with Truck Icon and Mark Delivered Button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Truck className="size-4 text-amber-400" />
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+              SHIPPING & TRANSIT TRACKING
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleMarkDeliveredClick}
+            disabled={car.status === "Available" && !deliveredAnim}
+            className={`flex items-center gap-1.5 rounded-lg text-xs font-semibold px-3 py-1.5 transition-colors shadow-sm cursor-pointer ${
+              car.status === "Available"
+                ? "bg-emerald-600/80 text-white cursor-default"
+                : "bg-[#00c57d] hover:bg-[#00b070] text-white"
+            }`}
+          >
+            <CheckCircle2 className="size-3.5" />
+            <span>
+              {deliveredAnim
+                ? "Delivered ✓"
+                : car.status === "Available"
+                  ? "Delivered ✓"
+                  : "Mark Delivered"}
+            </span>
+          </button>
+        </div>
+
+        {/* 4-column Details: Seller | Shipping ID | Order Date | Expected Date */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
+          <div>
+            <span className="text-zinc-400">Seller:</span>
+            <span className="mt-0.5 block font-medium text-white truncate">
+              {car.seller || "—"}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-zinc-400">Shipping ID:</span>
+            <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span className="font-mono font-medium text-white">{car.shippingId || "—"}</span>
+              {car.shippingId && (
+                <button
+                  type="button"
+                  onClick={() => onOpenShippingBatch(car.shippingId)}
+                  className="text-[10px] text-amber-400 hover:underline cursor-pointer"
+                  title={`Update all cars in batch ${car.shippingId}`}
+                >
+                  (Batch)
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <span className="text-zinc-400">Order Date:</span>
+            <span className="mt-0.5 block font-medium text-white truncate">
+              {car.orderDate || "—"}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-zinc-400">Expected Date:</span>
+            <span className="mt-0.5 block font-medium text-white truncate">
+              {car.expectedDate || car.date || "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* Tracking Notes Footer */}
+        <div className="border-t border-amber-500/20 pt-2 text-xs text-zinc-300">
+          Tracking Notes:{" "}
+          <span className="text-zinc-400 font-mono">
+            {cleanTransitNotes
+              ? cleanTransitNotes.startsWith("[")
+                ? cleanTransitNotes
+                : `[${cleanTransitNotes}]`
+              : "[No tracking notes recorded]"}
+          </span>
+        </div>
+      </div>
+
+      {/* BOTTOM ACTIONS FOOTER: Delete on left, Close on right */}
+      <div className="flex items-center justify-between border-t border-zinc-800/80 pt-4">
+        <button
+          type="button"
+          onClick={onDelete}
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-rose-500 hover:text-rose-400 transition-colors cursor-pointer"
+        >
+          <Trash2 className="size-4" />
+          <span>Delete from collection</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-5 py-2 text-sm font-medium text-white transition-colors cursor-pointer"
+        >
+          Close
+        </button>
       </div>
     </div>
   );
 }
 
-function HeaderContent({ car }: { car: Diecast }) {
-  return (
-    <>
-      <div className="flex items-center gap-2 flex-wrap">
-        <StatusPill status={car.status || "Unknown"} />
-        {car.chase && (
-          <span className="inline-flex items-center gap-1 rounded-sm bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-rose-500 dark:text-rose-400">
-            <Flame className="size-3" /> CHASE
-          </span>
-        )}
-        {car.favourite && (
-          <span className="inline-flex items-center gap-1 rounded-sm bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500">
-            <Star className="size-3 fill-amber-400 stroke-amber-500" /> Favourite
-          </span>
-        )}
-      </div>
-      <SheetTitle className="text-display text-2xl">{car.name || "Unnamed car"}</SheetTitle>
-      <SheetDescription>
-        {[car.brand, car.series, car.subSeries].filter(Boolean).join(" · ") ||
-          "Brand detail not recorded"}
-      </SheetDescription>
-    </>
-  );
-}
-
-function CarImage({ car, className = "" }: { car: Diecast; className?: string }) {
+function HeroCarImage({ car }: { car: Diecast }) {
   const [src, setSrc] = useState<string | null>(null);
-  const [state, setState] = useState<"loading" | "ok" | "fail">("loading");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    setState("loading");
+    setLoading(true);
     setSrc(null);
+
+    if (car.imageUrl) {
+      setSrc(car.imageUrl);
+      setLoading(false);
+      return;
+    }
+
     findCarImage(car, car.brand || "", car.make || "")
       .then((url) => {
         if (cancelled) return;
         if (url) {
           setSrc(url);
-          setState("ok");
-        } else {
-          setState("fail");
         }
+        setLoading(false);
       })
-      .catch(() => !cancelled && setState("fail"));
+      .catch(() => {
+        if (!cancelled) setLoading(false);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [car.id, car.model, car.variant, car.colour, car.brand, car.make]);
+  }, [car.id, car.imageUrl, car.model, car.variant, car.colour, car.brand, car.make]);
 
   return (
-    <div className={`relative overflow-hidden bg-muted ${className}`}>
-      {state === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+    <div className="relative h-full w-full flex items-center justify-center bg-zinc-950/60">
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/40">
+          <Loader2 className="size-6 animate-spin text-zinc-500" />
         </div>
       )}
-      {state === "ok" && src && (
+
+      {src ? (
         <img
           src={src}
-          alt={`${car.make || car.brand || "Diecast"} ${car.name || ""}`.trim()}
-          className="h-full w-full object-contain"
-          onError={() => setState("fail")}
+          alt={car.name || `${car.make} ${car.model}`}
+          className="h-full w-full object-cover sm:object-contain transition-opacity duration-300"
+          onError={() => setSrc(null)}
         />
-      )}
-      {state === "fail" && (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
-          <Car className="size-8" />
-          <span className="text-xs">No image found</span>
+      ) : !loading ? (
+        <div className="flex flex-col items-center justify-center gap-1 text-zinc-600">
+          <Car className="size-10" />
+          <span className="text-xs">No image available</span>
         </div>
-      )}
-    </div>
-  );
-}
-
-function CarDetails({ car }: { car: Diecast }) {
-  return (
-    <>
-      <Section title="Car">
-        <Field label="Make" value={car.make} placeholder="Make not recorded" />
-        <Field label="Model" value={car.model} placeholder="Model not recorded" />
-        <Field label="Variant" value={car.variant} placeholder="Variant not recorded" />
-        <Field label="Year" value={car.year} placeholder="Year not recorded" />
-        <Field label="Car number" value={car.carNumber} placeholder="Car number not recorded" />
-        <Field label="Colour" value={car.colour} placeholder="Colour not recorded" />
-        <Field label="Type" value={car.type} placeholder="Type not recorded" />
-        <Field label="Size" value={car.size} placeholder="Size not recorded" />
-      </Section>
-
-      <Section title="Brand">
-        <Field label="Brand" value={car.brand} placeholder="Brand not recorded" />
-        <Field label="Assortment" value={car.assortment} placeholder="Assortment not recorded" />
-        <Field label="Series" value={car.series} placeholder="Series not recorded" />
-        <Field label="Sub series" value={car.subSeries} placeholder="Sub series not recorded" />
-        <Field label="Official" value={car.official ? "Yes" : "No"} />
-        <Field label="Open" value={car.open ? "Yes" : "No"} />
-      </Section>
-
-      <Section title="Purchase">
-        <Field label="Seller" value={car.seller} placeholder="Seller not recorded" />
-        <Field
-          label="Spent"
-          value={car.spent ? inr(car.spent) : ""}
-          placeholder="Cost not recorded"
-        />
-        <Field label="Order date" value={car.orderDate} placeholder="Order date not recorded" />
-        <Field label="Order month" value={car.orderMonth} placeholder="Order month not recorded" />
-        <Field
-          label="Expected date"
-          value={car.expectedDate || car.date}
-          placeholder="Expected date not recorded"
-        />
-        <Field label="Date added" value={car.date} placeholder="Date not recorded" />
-        <Field label="Month" value={car.month} placeholder="Month not recorded" />
-      </Section>
-
-      <Section title="Transit">
-        <Field label="Status" value={car.status} placeholder="Status not recorded" />
-        <Field
-          label="Transit info"
-          value={car.transitInfo}
-          placeholder="Transit info not recorded"
-        />
-      </Section>
-
-      <Section title="Meta">
-        <Field label="Car ID" value={car.id} placeholder="ID not recorded" />
-      </Section>
-    </>
-  );
-}
-
-function DrawerSkeleton() {
-  return (
-    <div className="mt-6 space-y-6" aria-live="polite" aria-busy="true">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading car details…
-      </div>
-      <div className="space-y-3">
-        <div className="h-6 w-2/3 animate-pulse rounded bg-muted" />
-        <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-      </div>
-      {[0, 1, 2, 3].map((section) => (
-        <div key={section} className="space-y-2">
-          <div className="h-3 w-20 animate-pulse rounded bg-muted" />
-          <div className="grid grid-cols-2 gap-3">
-            {[0, 1, 2, 3].map((field) => (
-              <div key={field} className="space-y-1.5">
-                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-                <div className="h-4 w-full animate-pulse rounded bg-muted" />
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DrawerError({ message }: { message: string }) {
-  return (
-    <div className="mt-6 space-y-4">
-      <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-        <div className="flex items-start gap-2">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <div>
-            <div className="font-medium">Details unavailable</div>
-            <p className="mt-1 text-destructive/80">{message}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="mt-6">
-      <h3 className="text-display text-xs uppercase tracking-wider text-muted-foreground mb-2">
-        {title}
-      </h3>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">{children}</dl>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  value,
-  placeholder = "Not recorded",
-}: {
-  label: string;
-  value?: string | number | null;
-  placeholder?: string;
-}) {
-  const missing = value == null || value === "";
-  const v = missing ? placeholder : String(value);
-  return (
-    <div className="min-w-0">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className={`truncate font-medium ${missing ? "text-muted-foreground" : ""}`} title={v}>
-        {v}
-      </dd>
+      ) : null}
     </div>
   );
 }

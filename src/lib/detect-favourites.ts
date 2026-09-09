@@ -55,7 +55,10 @@ function isTrueLike(v: unknown): { truthy: boolean; matched?: string } {
 }
 
 export async function detectFavourites(): Promise<FavouriteDetection> {
-  const res = await fetch(`${RAW_URL}&_ts=${Date.now()}`, { cache: "no-store" });
+  const res = await fetch(`${RAW_URL}&_ts=${Date.now()}`, {
+    cache: "no-store",
+    credentials: "omit",
+  });
   if (!res.ok) throw new Error(`Sheet fetch failed: ${res.status}`);
   const data = parseGviz(await res.text());
 

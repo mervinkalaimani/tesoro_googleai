@@ -86,6 +86,7 @@ function CollectionPage() {
   }, [filtered, group]);
 
   const visible = selected === "all" ? groups : groups.filter((g) => g.name === selected);
+  const totalValue = useMemo(() => filtered.reduce((s, r) => s + (r.spent || 0), 0), [filtered]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
@@ -94,7 +95,8 @@ function CollectionPage() {
           <div>
             <h1 className="text-display text-xl font-semibold">Collection</h1>
             <p className="text-xs text-muted-foreground">
-              {groups.length} {group} · {filtered.length.toLocaleString()} cars
+              {groups.length} {group} · {filtered.length.toLocaleString()} cars · Total cost:{" "}
+              {inr(totalValue)}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

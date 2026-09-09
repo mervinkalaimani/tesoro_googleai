@@ -86,8 +86,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .select("accent_color")
       .eq("id", "global")
       .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled || !data) return;
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return;
         const remote = data.accent_color;
         if (isAccentColor(remote)) {
           setAccentColorState(remote);
@@ -98,7 +98,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // Ignore storage write failures
           }
         }
-      });
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -116,7 +117,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     applyAccent(a);
     void supabase
       .from("app_settings")
-      .upsert({ id: "global", accent_color: a, updated_at: new Date().toISOString() });
+      .upsert({ id: "global", accent_color: a, updated_at: new Date().toISOString() })
+      .then(() => {})
+      .catch(() => {});
   }, []);
 
   const toggleTheme = useCallback(() => {

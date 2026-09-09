@@ -15,7 +15,7 @@ function applySuggestion(query: string, insert: string, kind: "field" | "value")
   if (kind === "field") return head + insert;
 
   // Keep any "field = " prefix and previous "+" values in the segment
-  const eq = seg.match(/^(\s*[A-Za-z][A-Za-z\s_-]*?\s*(?:=|:)\s*)(.*)$/);
+  const eq = seg.match(/^(\s*[A-Za-z#][A-Za-z0-9\s_#.-]*?\s*(?:=|:)\s*)(.*)$/);
   const prefix = eq ? eq[1].trimStart() : "";
   const rest = eq ? eq[2] : seg.trimStart();
   const plus = rest.lastIndexOf("+");
@@ -84,7 +84,7 @@ export function SearchBox() {
             setOpen(false);
           }
         }}
-        placeholder="Search — try “mustang+ferrari” (+ = or, comma = new filter)"
+        placeholder="Search cars, series, sub series, car # — try “minigt 1133” or “car # = 1133”"
         className={query ? "pl-9 pr-9" : "pl-9"}
       />
       {query && (

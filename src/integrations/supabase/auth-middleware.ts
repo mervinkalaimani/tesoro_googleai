@@ -31,10 +31,35 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+const TARGET_SUPABASE_URL = "https://matekrbcflojjooswoha.supabase.co";
+const TARGET_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_t8mahOsDrNTnt-YeFGkgTA_ugnPJrpu";
+
+function getServerSupabaseCredentials() {
+  const envUrl = process.env["SUPABASE_URL"] || process.env["VITE_SUPABASE_URL"];
+  const envKey =
+    process.env["SUPABASE_PUBLISHABLE_KEY"] || process.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+
+  if (!envUrl || envUrl.includes("pllpyzsfuhpsmqbxgarw")) {
+    return { url: TARGET_SUPABASE_URL, key: TARGET_SUPABASE_PUBLISHABLE_KEY };
+  }
+
+  if (envUrl.includes("matekrbcflojjooswoha")) {
+    const isInvalidKey = !envKey || envKey.includes("u0YZRo_jk0YerMn96oj2OQ_KaKQCS5O");
+    return {
+      url: TARGET_SUPABASE_URL,
+      key: isInvalidKey ? TARGET_SUPABASE_PUBLISHABLE_KEY : envKey,
+    };
+  }
+
+  return {
+    url: envUrl,
+    key: envKey || TARGET_SUPABASE_PUBLISHABLE_KEY,
+  };
+}
+
 export const requireSupabaseAuth = createMiddleware({ type: "function" }).server(
   async ({ next }) => {
-    const SUPABASE_URL = process.env["SUPABASE_URL"];
-    const SUPABASE_PUBLISHABLE_KEY = process.env["SUPABASE_PUBLISHABLE_KEY"];
+    const { url: SUPABASE_URL, key: SUPABASE_PUBLISHABLE_KEY } = getServerSupabaseCredentials();
 
     if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
       const missing = [

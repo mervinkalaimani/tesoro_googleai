@@ -2,6 +2,7 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { brokeredPreviewStorage } from "./previewAuthStorage";
+import { getSupabaseConfig } from "@/lib/supabase-config";
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
@@ -30,12 +31,43 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+const TARGET_SUPABASE_URL = "https://matekrbcflojjooswoha.supabase.co";
+const TARGET_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_t8mahOsDrNTnt-YeFGkgTA_ugnPJrpu";
+
+function getSupabaseCredentials() {
+  // 1. User custom configured Supabase connection (from UI configuration tab)
+  if (typeof window !== "undefined") {
+    const custom = getSupabaseConfig();
+    if (custom.url && custom.key) {
+      return { url: custom.url, key: custom.key };
+    }
+  }
+
+  const envUrl = import.meta.env["VITE_SUPABASE_URL"];
+  const envKey = import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"];
+
+  // If env points to the auto-generated empty sandbox project 'pllpyzsfuhpsmqbxgarw' or is missing
+  if (!envUrl || envUrl.includes("pllpyzsfuhpsmqbxgarw")) {
+    return { url: TARGET_SUPABASE_URL, key: TARGET_SUPABASE_PUBLISHABLE_KEY };
+  }
+
+  // If pointing to the target matekrbcflojjooswoha project, ensure matching key
+  if (envUrl.includes("matekrbcflojjooswoha")) {
+    const isInvalidKey = !envKey || envKey.includes("u0YZRo_jk0YerMn96oj2OQ_KaKQCS5O");
+    return {
+      url: TARGET_SUPABASE_URL,
+      key: isInvalidKey ? TARGET_SUPABASE_PUBLISHABLE_KEY : envKey,
+    };
+  }
+
+  return {
+    url: envUrl,
+    key: envKey || TARGET_SUPABASE_PUBLISHABLE_KEY,
+  };
+}
+
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env["VITE_SUPABASE_URL"] || process.env["SUPABASE_URL"];
-  const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env["VITE_SUPABASE_PUBLISHABLE_KEY"] || process.env["SUPABASE_PUBLISHABLE_KEY"];
+  const { url: SUPABASE_URL, key: SUPABASE_PUBLISHABLE_KEY } = getSupabaseCredentials();
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     console.warn(
@@ -88,6 +120,10 @@ function createSupabaseClient() {
 }
 
 let _supabase: ReturnType<typeof createSupabaseClient> | undefined;
+
+export function resetSupabaseClient() {
+  _supabase = undefined;
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

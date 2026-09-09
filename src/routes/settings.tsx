@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Database, Sliders, Activity } from "lucide-react";
 import { ACCENT_OPTIONS, useApp, type AccentColor } from "@/lib/store";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FavouriteDetector } from "@/components/favourite-detector";
+import { SupabaseSyncCard } from "@/components/supabase-sync-card";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -20,13 +22,13 @@ export const Route = createFileRoute("/settings")({
       {
         name: "description",
         content:
-          "Configure diecast dashboard theme, accent colour, investment privacy, and transit ETA settings.",
+          "Configure diecast dashboard Supabase database connection, URLs, table names, theme, and settings.",
       },
       { property: "og:title", content: "Settings | Tesoro" },
       {
         property: "og:description",
         content:
-          "Configure diecast dashboard theme, accent colour, investment privacy, and transit ETA settings.",
+          "Configure diecast dashboard Supabase database connection, URLs, table names, theme, and settings.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -51,103 +53,147 @@ function SettingsPage() {
     <div className="mx-auto max-w-2xl space-y-4 p-4 md:p-6">
       <div>
         <h1 className="text-display text-2xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground">Personalize your Tesoro experience.</p>
+        <p className="text-sm text-muted-foreground">
+          Configure your Supabase database, cloud connection, and personal preferences.
+        </p>
       </div>
 
-      <section className="card-elevated p-5">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Appearance
-        </h2>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="font-medium">Theme</div>
-            <div className="text-xs text-muted-foreground">Switch between light and dark mode.</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Sun className="size-4 text-muted-foreground" />
-            <Switch
-              checked={theme === "dark"}
-              onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
-            />
-            <Moon className="size-4 text-muted-foreground" />
-          </div>
-        </div>
-        <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
-          <div>
-            <div className="font-medium">Accent colour</div>
-            <div className="text-xs text-muted-foreground">
-              Applies to buttons, highlights, charts, and active navigation.
+      <Tabs defaultValue="supabase" className="w-full space-y-4">
+        <TabsList className="grid w-full grid-cols-3 h-10">
+          <TabsTrigger
+            value="supabase"
+            id="settings-tab-supabase"
+            className="gap-2 text-xs md:text-sm font-medium"
+          >
+            <Database className="size-4 text-primary shrink-0" />
+            <span>Supabase Config</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="preferences"
+            id="settings-tab-preferences"
+            className="gap-2 text-xs md:text-sm font-medium"
+          >
+            <Sliders className="size-4 shrink-0" />
+            <span>General & Display</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="diagnostics"
+            id="settings-tab-diagnostics"
+            className="gap-2 text-xs md:text-sm font-medium"
+          >
+            <Activity className="size-4 shrink-0" />
+            <span>Diagnostics</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB 1: SUPABASE CONFIGURATION */}
+        <TabsContent value="supabase" className="space-y-4 focus-visible:outline-none">
+          <SupabaseSyncCard />
+        </TabsContent>
+
+        {/* TAB 2: GENERAL & DISPLAY PREFERENCES */}
+        <TabsContent value="preferences" className="space-y-4 focus-visible:outline-none">
+          <section className="card-elevated p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Appearance
+            </h2>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">Theme</div>
+                <div className="text-xs text-muted-foreground">
+                  Switch between light and dark mode.
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Sun className="size-4 text-muted-foreground" />
+                <Switch
+                  checked={theme === "dark"}
+                  onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
+                />
+                <Moon className="size-4 text-muted-foreground" />
+              </div>
             </div>
-          </div>
-          <Select value={accentColor} onValueChange={(v) => setAccentColor(v as AccentColor)}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ACCENT_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </section>
-
-      <section className="card-elevated p-5">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Privacy
-        </h2>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="font-medium">Hide investment value</div>
-            <div className="text-xs text-muted-foreground">
-              Mask the total spend in the sidebar until you tap the eye.
+            <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
+              <div>
+                <div className="font-medium">Accent colour</div>
+                <div className="text-xs text-muted-foreground">
+                  Applies to buttons, highlights, charts, and active navigation.
+                </div>
+              </div>
+              <Select value={accentColor} onValueChange={(v) => setAccentColor(v as AccentColor)}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACCENT_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          <Switch checked={hideInvestment} onCheckedChange={setHideInvestment} />
-        </div>
-      </section>
+          </section>
 
-      <section className="card-elevated p-5">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Orders
-        </h2>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <Label htmlFor="eta" className="font-medium">
-              Transit ETA (days)
-            </Label>
-            <div className="text-xs text-muted-foreground">
-              Used to estimate expected delivery from order date.
+          <section className="card-elevated p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Privacy
+            </h2>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">Hide investment value</div>
+                <div className="text-xs text-muted-foreground">
+                  Mask the total spend in the sidebar until you tap the eye.
+                </div>
+              </div>
+              <Switch checked={hideInvestment} onCheckedChange={setHideInvestment} />
             </div>
-          </div>
-          <Input
-            id="eta"
-            type="number"
-            className="w-24"
-            value={transitEtaDays}
-            min={1}
-            onChange={(e) => setTransitEtaDays(Math.max(1, Number(e.target.value) || 1))}
-          />
-        </div>
-      </section>
+          </section>
 
-      <section className="card-elevated p-5">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Data diagnostics
-        </h2>
-        <FavouriteDetector />
-      </section>
+          <section className="card-elevated p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Orders
+            </h2>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="eta" className="font-medium">
+                  Transit ETA (days)
+                </Label>
+                <div className="text-xs text-muted-foreground">
+                  Used to estimate expected delivery from order date.
+                </div>
+              </div>
+              <Input
+                id="eta"
+                type="number"
+                className="w-24"
+                value={transitEtaDays}
+                min={1}
+                onChange={(e) => setTransitEtaDays(Math.max(1, Number(e.target.value) || 1))}
+              />
+            </div>
+          </section>
 
-      <section className="card-elevated p-5">
-        <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          More coming soon
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Currency, backup / export, and shared collections are on the way.
-        </p>
-      </section>
+          <section className="card-elevated p-5">
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              More coming soon
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Currency, backup / export, and shared collections are on the way.
+            </p>
+          </section>
+        </TabsContent>
+
+        {/* TAB 3: DIAGNOSTICS */}
+        <TabsContent value="diagnostics" className="space-y-4 focus-visible:outline-none">
+          <section className="card-elevated p-5">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+              Data diagnostics
+            </h2>
+            <FavouriteDetector />
+          </section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

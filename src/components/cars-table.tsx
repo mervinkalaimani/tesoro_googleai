@@ -133,6 +133,7 @@ export function CarsTable({
           <col className="hidden w-[8rem] md:table-column" />
           <col className="hidden w-[9rem] md:table-column" />
           <col className="w-[7rem] md:w-[8rem]" />
+          <col className="w-[7rem] md:w-[8rem]" />
           {showBadgeCol && <col className="w-[7.5rem]" />}
         </colgroup>
         <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -141,6 +142,7 @@ export function CarsTable({
             <th className="px-3 py-2.5 font-medium md:px-4">Brand / Assortment</th>
             <th className="hidden px-4 py-2.5 font-medium md:table-cell">Colour</th>
             <th className="hidden px-4 py-2.5 font-medium md:table-cell">Seller</th>
+            <th className="px-3 py-2.5 text-right font-medium md:px-4">Cost</th>
             <th className="px-3 py-2.5 font-medium md:px-4">Status</th>
             {showBadgeCol && <th className="px-3 py-2.5 font-medium md:px-4"></th>}
           </tr>
@@ -169,6 +171,9 @@ export function CarsTable({
                   {r.seller || "—"}
                 </td>
                 <td className="px-3 py-2.5 md:px-4">
+                  <CostCell car={r} />
+                </td>
+                <td className="px-3 py-2.5 md:px-4">
                   <StatusPill status={r.status} />
                   {pay && (
                     <div className="mt-1 truncate text-[11px] text-muted-foreground">{pay}</div>
@@ -184,7 +189,7 @@ export function CarsTable({
           })}
           {rows.length === 0 && (
             <tr>
-              <td colSpan={showBadgeCol ? 6 : 5} className="p-8 text-center text-muted-foreground">
+              <td colSpan={showBadgeCol ? 7 : 6} className="p-8 text-center text-muted-foreground">
                 No cars to show.
               </td>
             </tr>

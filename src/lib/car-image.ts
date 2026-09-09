@@ -111,3 +111,25 @@ export async function findCarImage(
   saveCache(cache);
   return url;
 }
+
+export function setCachedCarImage(
+  car: {
+    brand?: string;
+    make?: string;
+    model?: string;
+    variant?: string;
+    colour?: string;
+    name?: string;
+  },
+  url: string,
+) {
+  const model = (car.model || car.name || "").replace(/\s+/g, " ").trim();
+  const variant = (car.variant || "").trim();
+  const colour = (car.colour || "").trim();
+  const b = (car.brand || "").trim();
+  const mk = (car.make || "").trim();
+  const cache = loadCache();
+  const k = `${b.toLowerCase()}|${mk.toLowerCase()}|${model.toLowerCase()}|${variant.toLowerCase()}|${colour.toLowerCase()}`;
+  cache[k] = url;
+  saveCache(cache);
+}

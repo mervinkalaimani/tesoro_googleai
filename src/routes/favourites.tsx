@@ -6,6 +6,7 @@ import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
 import { SegmentControl } from "@/components/segment-control";
+import { inr } from "@/lib/format";
 
 export const Route = createFileRoute("/favourites")({
   head: () => ({
@@ -39,6 +40,8 @@ function FavouritesPage() {
     return filtered.filter((r) => (mode === "favourite" ? r.favourite : r.chase));
   }, [cars, query, mode]);
 
+  const totalCost = useMemo(() => rows.reduce((s, r) => s + (r.spent || 0), 0), [rows]);
+
   return (
     <div className="flex h-[calc(100svh-3.5rem)] flex-col p-3 md:p-6">
       <div className="card-elevated mx-auto flex w-full max-w-[1600px] min-h-0 flex-1 flex-col overflow-hidden">
@@ -48,7 +51,8 @@ function FavouritesPage() {
               {mode === "favourite" ? "Favourites" : "Chase cars"}
             </h1>
             <p className="text-xs text-muted-foreground">
-              {rows.length.toLocaleString()} car{rows.length === 1 ? "" : "s"}
+              {rows.length.toLocaleString()} car{rows.length === 1 ? "" : "s"} · Total cost:{" "}
+              {inr(totalCost)}
             </p>
           </div>
           <SegmentControl

@@ -15,6 +15,7 @@ export type Diecast = {
   size: string;
   spent: number;
   mrp: number;
+  shippingCost?: number;
   seller: string;
   status: string;
   payment: string;
@@ -31,4 +32,5 @@ export type Diecast = {
   favourite: boolean;
   official: boolean;
   open: boolean;
+  imageUrl?: string;
 };

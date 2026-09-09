@@ -1,3 +1,19 @@
+// Ensure Nitro builds a standalone Node.js server for containerized Cloud Run deployments
+process.env.NITRO_PRESET = process.env.NITRO_PRESET || "node-server";
+
+// Ensure Supabase points to the correct user project (matekrbcflojjooswoha) with matching publishable key
+if (
+  !process.env.VITE_SUPABASE_URL ||
+  process.env.VITE_SUPABASE_URL.includes("pllpyzsfuhpsmqbxgarw")
+) {
+  process.env.VITE_SUPABASE_URL = "https://matekrbcflojjooswoha.supabase.co";
+  process.env.SUPABASE_URL = "https://matekrbcflojjooswoha.supabase.co";
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_t8mahOsDrNTnt-YeFGkgTA_ugnPJrpu";
+  process.env.SUPABASE_PUBLISHABLE_KEY = "sb_publishable_t8mahOsDrNTnt-YeFGkgTA_ugnPJrpu";
+  process.env.VITE_SUPABASE_PROJECT_ID = "matekrbcflojjooswoha";
+  process.env.SUPABASE_PROJECT_ID = "matekrbcflojjooswoha";
+}
+
 // @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
 // or the app will break with duplicate plugins:
 //   - TanStack devtools (dev-only, first), tanstackStart, viteReact, tailwindcss, tsConfigPaths,

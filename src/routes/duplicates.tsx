@@ -8,6 +8,7 @@ import { filterRows } from "@/lib/search";
 import { CarsTable, carSubLine } from "@/components/cars-table";
 import { ExportDialog } from "@/components/export-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
+import { inr } from "@/lib/format";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -85,6 +86,7 @@ function DuplicatesPage() {
   }, [cars, query, active]);
 
   const totalDupes = groups.reduce((s, g) => s + g.length, 0);
+  const totalCost = useMemo(() => groups.flat().reduce((s, r) => s + (r.spent || 0), 0), [groups]);
   const flatRows = useMemo(() => groups.flat(), [groups]);
 
   const AttrGrid = (
@@ -105,7 +107,8 @@ function DuplicatesPage() {
           <div className="min-w-0">
             <h1 className="text-display text-xl font-semibold">Duplicates</h1>
             <p className="text-xs text-muted-foreground">
-              {groups.length} duplicate group{groups.length === 1 ? "" : "s"} · {totalDupes} cars
+              {groups.length} duplicate group{groups.length === 1 ? "" : "s"} · {totalDupes} cars ·
+              Total cost: {inr(totalCost)}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -149,8 +152,13 @@ function DuplicatesPage() {
                       {carSubLine(first)}
                     </div>
                   </div>
-                  <div className="shrink-0 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                    ×{arr.length}
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="text-xs tabular-nums text-muted-foreground">
+                      {inr(arr.reduce((s, r) => s + (r.spent || 0), 0))}
+                    </span>
+                    <div className="shrink-0 rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                      ×{arr.length}
+                    </div>
                   </div>
                 </div>
               </AccordionTrigger>
