@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Truck, PackageCheck, Plus, Pencil, Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useCars, useCarsActions } from "@/lib/cars-store";
+import { Truck, PackageCheck, Plus, Pencil } from "lucide-react";
+import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
@@ -10,6 +9,10 @@ import { SegmentControl } from "@/components/segment-control";
 import { parseDMY, inr, inrFull } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
+import {
+  ReconcileDeliveryDialog,
+  type ReconcileTarget,
+} from "@/components/reconcile-delivery-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 import {
   Select,
@@ -98,12 +101,10 @@ function ShipmentCard({
   s,
   onEdit,
   onReconcile,
-  reconciling,
 }: {
   s: Shipment;
   onEdit: () => void;
   onReconcile: () => void;
-  reconciling: boolean;
 }) {
   return (
     <article className="card-elevated overflow-hidden">
@@ -198,12 +199,8 @@ function ShipmentCard({
             </Button>
           ) : null}
           {!s.delivered && s.shippingId ? (
-            <Button size="sm" onClick={onReconcile} disabled={reconciling} className="gap-1.5">
-              {reconciling ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <PackageCheck className="size-4" />
-              )}
+            <Button size="sm" onClick={onReconcile} className="gap-1.5">
+              <PackageCheck className="size-4" />
               Reconcile delivery
             </Button>
           ) : null}
@@ -216,13 +213,12 @@ function ShipmentCard({
 function OrdersPage() {
   const { query } = useApp();
   const cars = useCars();
-  const { updateCarsByShippingId } = useCarsActions();
   const [mode, setMode] = useState<SortMode>("status");
   const [tab, setTab] = useState<Tab>("all");
   const [seller, setSeller] = useState("all");
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
-  const [reconciling, setReconciling] = useState<string | null>(null);
+  const [reconcileFor, setReconcileFor] = useState<ReconcileTarget | null>(null);
 
   const scoped = useMemo(() => filterRows(cars, query), [cars, query]);
 
@@ -301,23 +297,6 @@ function OrdersPage() {
 
   const totalCars = shipments.reduce((s, g) => s + g.items.length, 0);
 
-  /** Mark every car in a batch as arrived, in one click. */
-  const reconcile = async (s: Shipment) => {
-    setReconciling(s.key);
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      const n = await updateCarsByShippingId(s.shippingId, {
-        status: "Available",
-        expectedDate: today,
-      });
-      toast.success(`Reconciled ${n} car${n === 1 ? "" : "s"}`, { description: s.shippingId });
-    } catch (err) {
-      toast.error("Could not reconcile", { description: (err as Error)?.message });
-    } finally {
-      setReconciling(null);
-    }
-  };
-
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <div className="card-elevated p-4">
@@ -395,12 +374,13 @@ function OrdersPage() {
           <ShipmentCard
             key={s.key}
             s={s}
-            reconciling={reconciling === s.key}
             onEdit={() => {
               setSelectedShippingId(s.shippingId);
               setBatchOpen(true);
             }}
-            onReconcile={() => void reconcile(s)}
+            onReconcile={() =>
+              setReconcileFor({ shippingId: s.shippingId, seller: s.seller, items: s.items })
+            }
           />
         ))}
         {shipments.length === 0 && (
@@ -417,6 +397,8 @@ function OrdersPage() {
         onOpenChange={setBatchOpen}
         initialShippingId={selectedShippingId}
       />
+
+      <ReconcileDeliveryDialog target={reconcileFor} onClose={() => setReconcileFor(null)} />
     </div>
   );
 }

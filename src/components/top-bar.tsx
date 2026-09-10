@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Sun, Moon, MonitorSmartphone, Plus, Download } from "lucide-react";
+import { Sun, Moon, MonitorSmartphone, Plus, Download, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
+import { useCarsUndo } from "@/lib/cars-store";
 import { SearchBox } from "@/components/search-box";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
@@ -18,6 +19,7 @@ const THEME_LABEL = {
 
 export function TopBar() {
   const { theme, themePreference, toggleTheme } = useApp();
+  const { undo, undoLabel } = useCarsUndo();
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -48,6 +50,20 @@ export function TopBar() {
       {/* Bulk add and CSV upload are reached from inside the Add car dialog,
           keeping one entry point for getting cars into the collection. */}
       <div className="ml-auto flex items-center gap-1">
+        {/* Always rendered, disabled when there is nothing to reverse: a button
+            that appears only once you have made a mistake is one nobody knows
+            about until they need it and cannot find it. */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={undo}
+          disabled={!undoLabel}
+          title={undoLabel ? `Undo ${undoLabel}` : "Nothing to undo yet"}
+          aria-label={undoLabel ? `Undo ${undoLabel}` : "Nothing to undo yet"}
+        >
+          <Undo2 className="size-4" /> <span className="hidden sm:inline">Undo</span>
+        </Button>
         {/* Straight to the file: the template is what you need *before* you have
             anything to upload, so it shouldn't be buried behind the CSV dialog. */}
         <Button

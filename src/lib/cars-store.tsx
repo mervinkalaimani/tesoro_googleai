@@ -115,11 +115,37 @@ function writeCache(uid: string, data: Diecast[], ts: number) {
 
 export type ShippingBatchUpdates = {
   status?: string;
+  /** Arrival date. Set directly rather than inferred from the expected date. */
+  date?: string;
   expectedDate?: string;
   transitInfo?: string;
   deliveryPartner?: string;
   trackingId?: string;
+  /**
+   * "settle" records the full cost as paid and zeroes the balance; "clear"
+   * resets the paid amount to nothing. Left alone when absent.
+   */
+  payment?: "settle" | "clear";
 };
+
+/**
+ * One reversible step. `before` is the affected cars exactly as they were, and
+ * `created` lists ids that did not exist beforehand and so have to be removed
+ * rather than restored.
+ *
+ * Held in memory only. Undo is for the mistake you just noticed, and an entry
+ * that outlived a reload would be offering to reverse an edit against a
+ * collection that has since moved on — including on another device.
+ */
+type UndoEntry = {
+  id: number;
+  label: string;
+  before: Diecast[];
+  created: string[];
+};
+
+/** Enough to walk back a bad run of edits; not a version history. */
+const MAX_UNDO = 25;
 
 export type ShippingBatchOptions = {
   /**
@@ -129,6 +155,8 @@ export type ShippingBatchOptions = {
    * quietly rewrite every delivered car sharing the ID.
    */
   excludeAvailable?: boolean;
+  /** What the undo button should offer to reverse. Defaults to the batch ID. */
+  label?: string;
 };
 
 type Ctx = {
@@ -143,6 +171,9 @@ type Ctx = {
     options?: ShippingBatchOptions,
   ) => Promise<number>;
   deleteCar: (id: string) => void;
+  undo: () => void;
+  /** What the next undo would reverse, or null when there is nothing to undo. */
+  undoLabel: string | null;
   resetOverlay: () => void;
   refresh: () => Promise<void>;
   syncAllToSupabase: (
@@ -173,6 +204,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [source, setSource] = useState<"supabase" | "sheet">("supabase");
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
 
   const loadData = useCallback(async () => {
     if (!canLoad) return;
@@ -353,6 +385,62 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     [isGuest],
   );
 
+  /**
+   * Record how to reverse what is about to happen. Called before the mutation,
+   * so `before` is genuinely the previous state.
+   */
+  const pushUndo = useCallback((label: string, before: Diecast[], created: string[] = []) => {
+    if (!before.length && !created.length) return;
+    setUndoStack((prev) =>
+      [...prev, { id: Date.now() + prev.length, label, before, created }].slice(-MAX_UNDO),
+    );
+  }, []);
+
+  /** Undoing is itself a write, so it must never record an entry of its own. */
+  const undo = useCallback(() => {
+    const entry = undoStack[undoStack.length - 1];
+    if (!entry) return;
+    setUndoStack((prev) => prev.slice(0, -1));
+
+    const baseIds = new Set(base.map((c) => c.id));
+    const restoreIds = new Set(entry.before.map((c) => c.id));
+    const dropIds = new Set(entry.created);
+
+    // Rebuild the overlay in one pass rather than three, so the restore and the
+    // removal cannot race each other through separate commits.
+    const added = overlay.added.filter((c) => !dropIds.has(c.id) && !restoreIds.has(c.id));
+    const updated = { ...overlay.updated };
+    for (const id of dropIds) delete updated[id];
+
+    for (const car of entry.before) {
+      // A car the database has since forgotten — one being restored from a
+      // delete after a refresh — has no row in `base` to sit on top of, so it
+      // goes back as an addition instead of an edit.
+      if (baseIds.has(car.id)) updated[car.id] = car;
+      else added.unshift(car);
+    }
+
+    const deleted = overlay.deleted
+      .filter((id) => !restoreIds.has(id))
+      .concat([...dropIds].filter((id) => baseIds.has(id) && !overlay.deleted.includes(id)));
+
+    commit({ added, updated, deleted });
+
+    if (!isGuest) {
+      // Upsert restores the row whether it was edited or deleted outright.
+      if (entry.before.length) void persistCars(entry.before, "undo", true);
+      for (const id of dropIds) {
+        void deleteCarFromSupabase(id).then((res) => {
+          if (res.success) return;
+          console.error("Supabase undo delete failed:", res.error);
+          toast.error("Undo did not reach the database", { description: res.error });
+        });
+      }
+    }
+
+    toast.success(`Undid ${entry.label}`);
+  }, [undoStack, overlay, base, commit, isGuest]);
+
   const addCar = useCallback(
     (car: Diecast) => {
       // Both IDs are derived, never typed: the car ID from brand and
@@ -363,10 +451,11 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         ...identified,
         shippingId: shippingIdFor(identified, [...cars, identified]),
       };
+      pushUndo(`adding “${next.name || next.model || "the car"}”`, [], [next.id]);
       commit({ ...overlay, added: [next, ...overlay.added] });
       void persist([next], "addCar");
     },
-    [overlay, commit, cars, persist],
+    [overlay, commit, cars, persist, pushUndo],
   );
 
   const bulkAddCars = useCallback(
@@ -376,12 +465,17 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // both claim the same number. Rows that arrive with a real ID — a CSV
       // re-import, say — keep the one they came with.
       const identified = assignCarIds(newCars, cars);
+      pushUndo(
+        `adding ${identified.length} car${identified.length === 1 ? "" : "s"}`,
+        [],
+        identified.map((c) => c.id),
+      );
       commit({ ...overlay, added: [...identified, ...overlay.added] });
       // Previously omitted entirely, so a bulk import lived in localStorage and
       // nowhere else.
       void persist(identified, "bulkAddCars");
     },
-    [overlay, commit, persist, cars],
+    [overlay, commit, persist, cars, pushUndo],
   );
 
   const updateCar = useCallback(
@@ -401,6 +495,8 @@ export function CarsProvider({ children }: { children: ReactNode }) {
           }
         : car;
 
+      if (prev) pushUndo(`editing “${prev.name || prev.model || "the car"}”`, [prev]);
+
       if (overlay.added.some((a) => a.id === next.id)) {
         commit({ ...overlay, added: overlay.added.map((a) => (a.id === next.id ? next : a)) });
       } else {
@@ -408,7 +504,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       }
       void persist([next], "updateCar");
     },
-    [overlay, commit, cars, persist],
+    [overlay, commit, cars, persist, pushUndo],
   );
 
   /** Applies rows to the local overlay only. Persistence is the caller's job. */
@@ -433,10 +529,13 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   const bulkUpdateCars = useCallback(
     (updatedCars: Diecast[]) => {
       if (!updatedCars.length) return;
+      const byId = new Map(cars.map((c) => [c.id, c]));
+      const before = updatedCars.map((c) => byId.get(c.id)).filter((c): c is Diecast => Boolean(c));
+      pushUndo(`editing ${before.length} car${before.length === 1 ? "" : "s"}`, before);
       commitCars(updatedCars);
       void persist(updatedCars, "bulkUpdate");
     },
-    [commitCars, persist],
+    [commitCars, persist, cars, pushUndo],
   );
 
   const updateCarsByShippingId = useCallback(
@@ -463,6 +562,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
           next.status = updates.status;
           if (updates.status === "Available") {
             const arrDate =
+              updates.date ||
               updates.expectedDate ||
               next.expectedDate ||
               next.date ||
@@ -471,8 +571,22 @@ export function CarsProvider({ children }: { children: ReactNode }) {
             next.month = deriveMonth(arrDate) || next.month;
           }
         }
+        // An explicit arrival date wins over anything inferred above.
+        if (updates.date) {
+          next.date = updates.date;
+          next.month = deriveMonth(updates.date) || next.month;
+        }
         if (updates.expectedDate !== undefined && updates.expectedDate !== "") {
           next.expectedDate = updates.expectedDate;
+        }
+        if (updates.payment === "settle") {
+          next.paid = next.spent || 0;
+          next.balance = 0;
+          next.payment = "Paid";
+        } else if (updates.payment === "clear") {
+          next.paid = 0;
+          next.balance = Math.max(0, next.spent || 0);
+          next.payment = next.balance > 0 ? "Pending" : next.payment;
         }
         if (updates.transitInfo !== undefined) {
           next.transitInfo = updates.transitInfo.trim();
@@ -486,6 +600,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
+      pushUndo(options.label ?? `updating ${cleanId}`, matched);
       commitCars(updatedCars);
 
       // Awaited rather than fired and forgotten: both callers announce "updated
@@ -501,11 +616,15 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       }
       return updatedCars.length;
     },
-    [cars, commitCars, persist],
+    [cars, commitCars, persist, pushUndo],
   );
 
   const deleteCar = useCallback(
     (id: string) => {
+      const existing = cars.find((c) => c.id === id);
+      if (existing) {
+        pushUndo(`deleting “${existing.name || existing.model || "the car"}”`, [existing]);
+      }
       const { [id]: _drop, ...rest } = overlay.updated;
       commit({
         ...overlay,
@@ -524,10 +643,13 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         toast.error("Car was not deleted from the database", { description: res.error });
       });
     },
-    [overlay, commit, isGuest],
+    [overlay, commit, isGuest, cars, pushUndo],
   );
 
+  const undoLabel = undoStack.length ? undoStack[undoStack.length - 1].label : null;
+
   const resetOverlay = useCallback(() => {
+    setUndoStack([]);
     commit(EMPTY);
   }, [commit]);
 
@@ -563,6 +685,8 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       bulkUpdateCars,
       updateCarsByShippingId,
       deleteCar,
+      undo,
+      undoLabel,
       resetOverlay,
       refresh,
       syncAllToSupabase,
@@ -578,6 +702,8 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       bulkUpdateCars,
       updateCarsByShippingId,
       deleteCar,
+      undo,
+      undoLabel,
       resetOverlay,
       refresh,
       syncAllToSupabase,
@@ -617,6 +743,16 @@ export function useCarsActions() {
     deleteCar,
     resetOverlay,
   };
+}
+
+/**
+ * Kept apart from useCarsActions so the top bar's undo button re-renders on the
+ * label changing without every dialog that writes cars re-rendering with it.
+ */
+export function useCarsUndo() {
+  const v = useContext(CarsCtx);
+  if (!v) throw new Error("useCarsUndo must be used inside <CarsProvider>");
+  return { undo: v.undo, undoLabel: v.undoLabel };
 }
 
 export function useCarsRefresh() {

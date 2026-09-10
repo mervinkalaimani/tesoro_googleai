@@ -187,7 +187,10 @@ function DeleteCarDialog({
           <span className="font-medium text-zinc-200">
             {car.name || `${car.make} ${car.model}`}
           </span>{" "}
-          will be removed from your collection. This cannot be undone.
+          {/* No longer "cannot be undone": the top bar's undo button puts the
+              car back, row and all. That holds until the page is reloaded,
+              which is the honest limit to state here. */}
+          will be removed from your collection. Undo brings it back, until you reload.
         </DialogDescription>
 
         <div className="space-y-2">
