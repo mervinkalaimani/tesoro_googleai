@@ -1,0 +1,35 @@
+# Line endings.
+#
+# Checkouts on Windows were picking up CRLF from the machine's global
+# core.autocrlf=true, while Prettier writes and expects LF. The result was
+# `npm run lint` failing with dozens of "Delete ␍" on files nobody had touched —
+# only ever the ones git had most recently checked out, so it looked random.
+#
+# `eol=lf` settles it for everyone: LF in the repository and LF in the working
+# tree, whatever a given machine's git is configured to do. `text=auto` still
+# leaves git to detect which files are text in the first place.
+* text=auto eol=lf
+
+# Binary formats, listed explicitly rather than left to detection — a false
+# positive here corrupts the file rather than merely annoying the linter.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.webp  binary
+*.avif  binary
+*.pdf   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.mp4   binary
+*.webm  binary
+*.zip   binary
+
+# Generated, and large: keep it out of diffs and out of language statistics.
+src/lib/car-taxonomy.generated.ts linguist-generated=true
+package-lock.json                 linguist-generated=true
+src/routeTree.gen.ts              linguist-generated=true
