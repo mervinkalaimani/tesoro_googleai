@@ -3,9 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  Download,
-  LayoutGrid,
-  List,
   Pencil,
   SlidersHorizontal,
   Sparkles,
@@ -20,8 +17,9 @@ import { StatusPill, CostCell } from "@/components/cars-table";
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog, DeleteCarDialog } from "@/components/car-form-dialog";
-import { ExportDialog } from "@/components/export-dialog";
-import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
+import { CompactCarCard } from "@/components/compact-car-card";
+import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
+import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio } from "@/lib/format";
 import { sortCars, statusRank } from "@/lib/status-order";
 import { Button } from "@/components/ui/button";
@@ -184,36 +182,23 @@ function InventoryCard({
           <CarThumb car={car} className="aspect-[16/10] w-full" />
         </button>
 
-        <div className="pointer-events-none absolute left-2 top-2 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-md border border-white/10 bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
-            {car.id}
+        {/* The car ID, size, assortment and type used to be pinned over the
+            photograph. They are catalogue detail, not identity: four chips
+            covering the car you are trying to look at, to tell you things the
+            text below already says. Only chase and favourite stay — they are
+            what you scan a whole page for. */}
+        {car.chase && (
+          <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
+            <Sparkles className="size-3" />
+            CHASE
           </span>
-          {car.chase && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-              <Sparkles className="size-3" />
-              CHASE
-            </span>
-          )}
-        </div>
+        )}
 
         {car.favourite && (
           <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
             <Star className="size-3.5 fill-amber-400 text-amber-400" />
           </span>
         )}
-
-        {/* Assortment, type and size ride along the bottom of the image, with
-            the status opposite them on the right. */}
-        <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[62%] flex-wrap items-center gap-1.5">
-          {[car.assortment, car.type, car.size].filter(Boolean).map((chip, i) => (
-            <span
-              key={`${chip}-${i}`}
-              className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-sm"
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
 
         {/* The pill's own colours are translucent, so it sits on an opaque
             backdrop rather than directly on the photograph. */}
@@ -238,6 +223,14 @@ function InventoryCard({
             .filter(Boolean)
             .join(" · ") || "—"}
         </p>
+
+        {/* Where the chips taken off the image now live: readable, and not on
+            top of the photograph. */}
+        {[car.assortment, car.type, car.size].some(Boolean) && (
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
+            {[car.assortment, car.type, car.size].filter(Boolean).join(" · ")}
+          </p>
+        )}
 
         <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
           <PriceStrip car={car} />
@@ -275,7 +268,6 @@ function InventoryPage() {
   const [filters, setFilters] = useState<Record<FilterKey, string>>(EMPTY_FILTERS);
   const [draft, setDraft] = useState<Record<FilterKey, string>>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [exportOpen, setExportOpen] = useState(false);
   const search = Route.useSearch();
   // Seeded from ?status= so a KPI click lands on a pre-filtered table; the
   // chips remain free to change it afterwards.
@@ -285,7 +277,7 @@ function InventoryPage() {
     if (search.status) setStatus(search.status);
   }, [search.status]);
   const [sort, setSort] = useState<SortKey>("sno");
-  const [view, setView] = useState<"grid" | "table">("grid");
+  const [view, setView] = useState<ViewMode>("table");
   const [chaseOnly, setChaseOnly] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
 
@@ -361,6 +353,10 @@ function InventoryPage() {
     bodyRef.current?.scrollTo({ top: 0 });
   }, [query, filters, status, sort, chaseOnly, favOnly]);
 
+  // What the top bar's Export button acts on: exactly the filtered, sorted rows
+  // on screen, not the whole collection.
+  useRegisterExportScope("inventory", "Inventory", rows);
+
   const setDraftFilter = (key: FilterKey, v: string) => {
     setDraft((prev) => {
       const next = { ...prev, [key]: v };
@@ -413,15 +409,8 @@ function InventoryPage() {
                   Reset sort
                 </Button>
               )}
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0"
-                onClick={() => setExportOpen(true)}
-              >
-                <Download className="size-4" />
-                Export
-              </Button>
+              {/* Export moved to the top bar, where it sits beside the search
+                  that also scopes it. These rows are published to it below. */}
               <Button
                 size="sm"
                 variant={activeCount ? "default" : "outline"}
@@ -448,40 +437,20 @@ function InventoryPage() {
                   </option>
                 ))}
               </select>
-              <div className="flex shrink-0 items-center rounded-md border border-border p-0.5">
-                <button
-                  type="button"
-                  onClick={() => setView("grid")}
-                  aria-pressed={view === "grid"}
-                  title="Grid view"
-                  className={`grid size-7 place-items-center rounded transition-colors ${
-                    view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  <LayoutGrid className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setView("table")}
-                  aria-pressed={view === "table"}
-                  title="Table view"
-                  className={`grid size-7 place-items-center rounded transition-colors ${
-                    view === "table" ? "bg-muted text-foreground" : "text-muted-foreground"
-                  }`}
-                >
-                  <List className="size-4" />
-                </button>
-              </div>
+              <ViewToggle value={view} onChange={setView} />
             </div>
           </div>
 
-          {/* Its own row: the status list runs to ten or more entries, and an
-              auto-fit grid keeps every cell the same width however many there
-              are, wrapping instead of squeezing. */}
+          {/* Its own row: the status list runs to ten or more entries. On a
+              phone an auto-fit grid keeps every cell the same width and wraps
+              instead of squeezing. On a desktop there is room to spare, and
+              stretching ten segments across 1600px only makes "ISO" a button
+              the width of a paragraph — so from md up they wrap to their text
+              and the control ends where the labels do. */}
           <SegmentControl
             value={status}
             onChange={setStatus}
-            className="grid w-full grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-0.5"
+            className="grid w-full grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-0.5 md:inline-flex md:w-auto md:flex-wrap md:self-start"
             options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
           />
         </div>
@@ -565,22 +534,26 @@ function InventoryPage() {
           </div>
         )}
 
-        {view === "grid" ? (
+        {view !== "table" ? (
           <div
             ref={bodyRef}
             onScroll={loadMoreOnScroll}
             className="min-h-0 flex-1 overflow-auto p-3"
           >
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {shown.map((r, i) => (
-                <InventoryCard
-                  key={(r.id || "") + i}
-                  car={r}
-                  onOpen={() => openDrawer(r)}
-                  onEdit={() => setEditCar(r)}
-                  onDelete={() => setDeleteCar(r)}
-                />
-              ))}
+            <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
+              {shown.map((r, i) =>
+                view === "compact" ? (
+                  <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
+                ) : (
+                  <InventoryCard
+                    key={(r.id || "") + i}
+                    car={r}
+                    onOpen={() => openDrawer(r)}
+                    onEdit={() => setEditCar(r)}
+                    onDelete={() => setDeleteCar(r)}
+                  />
+                ),
+              )}
             </div>
             {shown.length === 0 && (
               <p className="p-8 text-center text-sm text-muted-foreground">No cars match.</p>
@@ -707,15 +680,6 @@ function InventoryPage() {
           )}
         </div>
       </div>
-
-      <ExportDialog
-        open={exportOpen}
-        onOpenChange={setExportOpen}
-        name="inventory"
-        rows={rows}
-        columns={CAR_CSV_COLUMNS}
-        title="Export inventory"
-      />
 
       <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
       <CarFormDialog

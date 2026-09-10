@@ -15,7 +15,12 @@ import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { useCarsActions, useCars, makeBlankCar } from "@/lib/cars-store";
-import { modelOptionsFor, optionsFor, type OptionField } from "@/lib/car-options";
+import {
+  modelOptionsFor,
+  optionsFor,
+  variantOptionsFor,
+  type OptionField,
+} from "@/lib/car-options";
 import { BULK_DRAFT_KEY, clearDraft, readDraft, writeDraft } from "@/lib/form-draft";
 import { buildCarName } from "@/lib/car-name";
 import { deriveMonth } from "@/lib/date-utils";
@@ -32,6 +37,7 @@ type FieldKey =
   | "brand"
   | "series"
   | "subSeries"
+  | "carNumber"
   | "assortment"
   | "size"
   | "seller"
@@ -71,7 +77,8 @@ const FIELDS: FieldDef[] = [
     sharedByDefault: false,
   },
   { key: "model", label: "Model", kind: "combo", placeholder: "Supra", sharedByDefault: false },
-  { key: "variant", label: "Variant", kind: "text", sharedByDefault: false },
+  // No `option`: like model, its list is derived from what sits above it.
+  { key: "variant", label: "Variant", kind: "combo", placeholder: "MK IV", sharedByDefault: false },
   { key: "year", label: "Year", kind: "text", placeholder: "1998", sharedByDefault: false },
   { key: "colour", label: "Colour", kind: "combo", option: "colour", sharedByDefault: false },
   { key: "type", label: "Type", kind: "combo", option: "type", sharedByDefault: false },
@@ -83,8 +90,23 @@ const FIELDS: FieldDef[] = [
     placeholder: "Hotwheels",
     sharedByDefault: true,
   },
-  { key: "series", label: "Series", kind: "text", sharedByDefault: true },
-  { key: "subSeries", label: "Sub series", kind: "text", sharedByDefault: false },
+  { key: "series", label: "Series", kind: "combo", option: "series", sharedByDefault: true },
+  {
+    key: "subSeries",
+    label: "Sub series",
+    kind: "combo",
+    option: "subSeries",
+    sharedByDefault: false,
+  },
+  // A casting's number on the card — "126/250". Per car by nature, and the one
+  // field the bulk table had no column for at all.
+  {
+    key: "carNumber",
+    label: "Car number",
+    kind: "text",
+    placeholder: "126/250",
+    sharedByDefault: false,
+  },
   {
     key: "assortment",
     label: "Assortment",
@@ -292,6 +314,8 @@ export function BulkAddCarsDialog({
       brand: optionsFor("brand", cars),
       assortment: optionsFor("assortment", cars),
       size: optionsFor("size", cars),
+      series: optionsFor("series", cars),
+      subSeries: optionsFor("subSeries", cars),
     }),
     [cars],
   );
@@ -309,12 +333,27 @@ export function BulkAddCarsDialog({
     };
   }, [cars]);
 
+  const variantsForModel = useMemo(() => {
+    const cache = new Map<string, string[]>();
+    return (make: string, model: string) => {
+      const key = `${make.trim().toLowerCase()}|${model.trim().toLowerCase()}`;
+      let list = cache.get(key);
+      if (!list) {
+        list = variantOptionsFor(cars, make, model);
+        cache.set(key, list);
+      }
+      return list;
+    };
+  }, [cars]);
+
   /**
-   * `make` is whichever one governs this cell — the shared value in the header,
-   * the row's own in the table — so the model column narrows per row.
+   * `make` and `model` are whichever ones govern this cell — the shared values
+   * in the header, the row's own in the table — so the model and variant columns
+   * narrow per row.
    */
-  const optionsForCell = (def: FieldDef, make: string) => {
+  const optionsForCell = (def: FieldDef, make: string, model: string) => {
     if (def.key === "model") return modelsForMake(make);
+    if (def.key === "variant") return variantsForModel(make, model);
     return def.option ? flatOptions[def.option] : undefined;
   };
 
@@ -372,6 +411,7 @@ export function BulkAddCarsDialog({
           brand: valueOf(r, "brand").trim(),
           series: valueOf(r, "series").trim(),
           subSeries: valueOf(r, "subSeries").trim(),
+          carNumber: valueOf(r, "carNumber").trim(),
           assortment: valueOf(r, "assortment").trim(),
           size: valueOf(r, "size").trim() || base.size,
           seller: valueOf(r, "seller").trim(),
@@ -472,7 +512,7 @@ export function BulkAddCarsDialog({
                   <FieldInput
                     def={f}
                     value={shared[f.key] ?? ""}
-                    options={optionsForCell(f, shared.make ?? "")}
+                    options={optionsForCell(f, shared.make ?? "", shared.model ?? "")}
                     onChange={(v) => setShared((s) => ({ ...s, [f.key]: v }))}
                   />
                 </div>
@@ -508,7 +548,7 @@ export function BulkAddCarsDialog({
                           def={f}
                           compact
                           value={r[f.key] ?? ""}
-                          options={optionsForCell(f, valueOf(r, "make"))}
+                          options={optionsForCell(f, valueOf(r, "make"), valueOf(r, "model"))}
                           onChange={(v) => setRow(r.key, { [f.key]: v })}
                         />
                       </td>

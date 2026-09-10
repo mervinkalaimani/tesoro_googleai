@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import type { Diecast } from "@/lib/types";
 import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
-import { modelOptionsFor, optionsFor } from "@/lib/car-options";
+import { modelOptionsFor, optionsFor, variantOptionsFor } from "@/lib/car-options";
 import {
   CAR_DRAFT_KEY,
   carEditDraftKey,
@@ -382,11 +382,19 @@ export function CarFormDialog({
   // uses, so every catalogue field learns this person's own vocabulary.
   const makeOptions = useMemo(() => optionsFor("make", cars), [cars]);
   const modelOptions = useMemo(() => modelOptionsFor(cars, form.make), [cars, form.make]);
+  // One level below the model: "R34" only means something once you know it is a
+  // Skyline.
+  const variantOptions = useMemo(
+    () => variantOptionsFor(cars, form.make, form.model),
+    [cars, form.make, form.model],
+  );
   const colourOptions = useMemo(() => optionsFor("colour", cars), [cars]);
   const typeOptions = useMemo(() => optionsFor("type", cars), [cars]);
   const brandOptions = useMemo(() => optionsFor("brand", cars), [cars]);
   const assortmentOptions = useMemo(() => optionsFor("assortment", cars), [cars]);
   const sizeOptions = useMemo(() => optionsFor("size", cars), [cars]);
+  const seriesOptions = useMemo(() => optionsFor("series", cars), [cars]);
+  const subSeriesOptions = useMemo(() => optionsFor("subSeries", cars), [cars]);
 
   const previewName = useMemo(() => {
     return (
@@ -726,16 +734,20 @@ export function CarFormDialog({
                         value={form.model}
                         onChange={(v) => set("model", v)}
                         options={modelOptions}
-                        placeholder="e.g. 911 GT3 RS, Skyline GT-R"
+                        // The base name only. The trim goes in Variant next to
+                        // it, so "Skyline" here and "GT-R R34" there.
+                        placeholder="e.g. Skyline, Supra, 911"
                         searchPlaceholder="Search models, or type a new one…"
                       />
                     </Field>
 
                     <Field label="Variant">
-                      <Input
+                      <Combobox
                         value={form.variant}
-                        onChange={(e) => set("variant", e.target.value)}
+                        onChange={(v) => set("variant", v)}
+                        options={variantOptions}
                         placeholder="e.g. R34, KH, Custom"
+                        searchPlaceholder="Search variants, or type a new one…"
                       />
                     </Field>
 
@@ -789,18 +801,22 @@ export function CarFormDialog({
                     </Field>
 
                     <Field label="Series">
-                      <Input
+                      <Combobox
                         value={form.series}
-                        onChange={(e) => set("series", e.target.value)}
+                        onChange={(v) => set("series", v)}
+                        options={seriesOptions}
                         placeholder="e.g. Circuit Legends, HW Exotics"
+                        searchPlaceholder="Search series, or type a new one…"
                       />
                     </Field>
 
                     <Field label="Sub Series">
-                      <Input
+                      <Combobox
                         value={form.subSeries}
-                        onChange={(e) => set("subSeries", e.target.value)}
+                        onChange={(v) => set("subSeries", v)}
+                        options={subSeriesOptions}
                         placeholder="e.g. Factory Fresh, Then and Now"
+                        searchPlaceholder="Search sub series, or type a new one…"
                       />
                     </Field>
 

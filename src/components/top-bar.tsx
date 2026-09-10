@@ -1,9 +1,14 @@
-import { useEffect, useState } from "react";
-import { Sun, Moon, MonitorSmartphone, Plus, Download, Undo2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Sun, Moon, MonitorSmartphone, Plus, Download, Undo2, FileText } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
-import { useCarsUndo } from "@/lib/cars-store";
+import { useCars, useCarsUndo } from "@/lib/cars-store";
+import { fullName, useAuth } from "@/lib/auth-store";
+import { useExportScope } from "@/lib/export-scope";
+import { filterRows } from "@/lib/search";
+import { ExportDialog } from "@/components/export-dialog";
+import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { SearchBox } from "@/components/search-box";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
@@ -18,8 +23,16 @@ const THEME_LABEL = {
 } as const;
 
 export function TopBar() {
-  const { theme, themePreference, toggleTheme } = useApp();
+  const { theme, themePreference, toggleTheme, query } = useApp();
   const { undo, undoLabel } = useCarsUndo();
+  const cars = useCars();
+  const scope = useExportScope();
+  const { profile } = useAuth();
+  // A page with a list of its own wins; anywhere else it is the collection, cut
+  // down by the search box that sits right beside this button.
+  const allMatching = useMemo(() => filterRows(cars, query), [cars, query]);
+  const exportRows = scope?.rows ?? allMatching;
+  const [exportOpen, setExportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
@@ -75,6 +88,23 @@ export function TopBar() {
         >
           <Download className="size-4" /> <span className="hidden sm:inline">Template</span>
         </Button>
+        {/* Exports whatever the page is showing — filtered, sorted, searched —
+            rather than the whole collection, so the button means the same thing
+            wherever you are. */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-1.5"
+          onClick={() => setExportOpen(true)}
+          disabled={exportRows.length === 0}
+          title={
+            exportRows.length
+              ? `Export ${exportRows.length.toLocaleString()} cars${scope ? ` — ${scope.label}` : ""}`
+              : "Nothing to export yet"
+          }
+        >
+          <FileText className="size-4" /> <span className="hidden sm:inline">Export</span>
+        </Button>
         <Button
           size="sm"
           onClick={() => setAddOpen(true)}
@@ -123,6 +153,16 @@ export function TopBar() {
       />
       <BulkAddCarsDialog open={bulkOpen} onOpenChange={setBulkOpen} />
       <UploadCarsDialog open={uploadOpen} onOpenChange={setUploadOpen} />
+      <ExportDialog
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+        name={scope?.name ?? "collection"}
+        rows={exportRows}
+        columns={CAR_CSV_COLUMNS}
+        title={scope?.label ?? "Collection"}
+        scopeLabel={query.trim() ? `matching “${query.trim()}”` : undefined}
+        owner={fullName(profile) || undefined}
+      />
     </header>
   );
 }

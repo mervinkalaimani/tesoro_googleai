@@ -31,8 +31,10 @@ const POOL: Template[] = [
   // Hot Wheels mainline
   {
     make: "Nissan",
-    model: "Skyline GT-R",
-    variant: "R34",
+    // Base model, trim in the variant — the shape the dropdowns are built
+    // around. "Skyline GT-R" here would have taught the demo the wrong habit.
+    model: "Skyline",
+    variant: "GT-R R34",
     year: "1999",
     brand: "Hot Wheels",
     series: "J-Imports",

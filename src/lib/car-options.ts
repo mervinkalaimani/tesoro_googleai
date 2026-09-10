@@ -1,4 +1,16 @@
 import type { Diecast } from "@/lib/types";
+import {
+  ASSORTMENTS,
+  BRANDS,
+  COLOURS,
+  MAKES,
+  MODELS_BY_MAKE,
+  SERIES,
+  SIZES,
+  SUB_SERIES,
+  TYPES,
+  VARIANTS_BY_MODEL,
+} from "@/lib/car-taxonomy.generated";
 
 /**
  * Suggestions for the catalogue fields on the add-car form.
@@ -8,248 +20,35 @@ import type { Diecast } from "@/lib/types";
  * this person actually buys. Nothing here restricts what can be saved — the
  * combobox accepts anything typed, and next time round it comes back as an
  * option because it is now in the collection.
- */
-
-export const MAKE_SEED = [
-  "Porsche",
-  "Nissan",
-  "Toyota",
-  "Honda",
-  "Ford",
-  "Chevrolet",
-  "Mazda",
-  "Subaru",
-  "Mitsubishi",
-  "BMW",
-  "Mercedes-Benz",
-  "Audi",
-  "Volkswagen",
-  "Ferrari",
-  "Lamborghini",
-  "McLaren",
-  "Aston Martin",
-  "Bugatti",
-  "Koenigsegg",
-  "Jaguar",
-  "Land Rover",
-  "Mini",
-  "Alfa Romeo",
-  "Lancia",
-  "Lotus",
-  "Dodge",
-  "Jeep",
-  "Cadillac",
-  "Pontiac",
-  "Plymouth",
-  "Buick",
-  "Datsun",
-  "Lexus",
-  "Acura",
-  "Infiniti",
-  "Suzuki",
-  "Hyundai",
-  "Kia",
-  "Tata",
-  "Mahindra",
-  "Maruti Suzuki",
-  "Volvo",
-  "Peugeot",
-  "Renault",
-  "Citroën",
-  "Bentley",
-  "Rolls-Royce",
-  "Maserati",
-  "Pagani",
-  "Tesla",
-];
-
-/**
- * Models, keyed by the make that builds them (lowercased for lookup).
  *
- * Kept as a map rather than one flat list because a model only means anything
- * next to its make: offering a Skyline under Porsche is worse than offering
- * nothing. Each entry is deliberately short — a handful of the castings that
- * actually get collected, with the rest arriving from the collection itself.
+ * The seed is generated from a real, established collection rather than written
+ * by hand (see scripts/gen-taxonomy.mjs). A hand-written list drifts towards
+ * whatever the author could think of, and it was doing exactly that: models read
+ * "Skyline GT-R" and "GT-R R35", which restate the make and swallow the trim.
+ * The generated one carries the shape the data is actually kept in — make
+ * "Nissan", model "Skyline", variant "R34" — so the three dropdowns divide the
+ * name up instead of competing to hold all of it.
  */
-export const MODEL_SEED: Record<string, string[]> = {
-  nissan: ["Skyline GT-R", "GT-R R35", "Silvia S15", "180SX", "Fairlady Z", "Datsun 240Z", "Sunny"],
-  datsun: ["240Z", "510", "620 Pickup", "Bluebird"],
-  toyota: ["Supra", "AE86", "Land Cruiser", "Celica", "MR2", "GR Yaris", "Hilux"],
-  honda: ["Civic Type R", "NSX", "S2000", "Integra Type R", "CR-X", "City Turbo"],
-  mazda: ["RX-7", "RX-3", "MX-5 Miata", "787B", "Cosmo Sport"],
-  subaru: ["Impreza WRX STI", "BRZ", "Legacy", "22B STi"],
-  mitsubishi: ["Lancer Evolution", "3000GT", "Pajero", "Starion"],
-  suzuki: ["Jimny", "Swift Sport", "Cappuccino"],
-  porsche: ["911 GT3 RS", "911 Carrera RS", "911 Turbo", "917", "959", "718 Cayman", "Taycan"],
-  ferrari: ["F40", "F50", "LaFerrari", "Enzo", "250 GTO", "488 GTB", "SF90"],
-  lamborghini: ["Countach", "Aventador", "Huracán", "Diablo", "Miura", "Urus"],
-  mclaren: ["P1", "Senna", "720S", "F1", "MP4-12C"],
-  bugatti: ["Chiron", "Veyron", "Divo", "Type 57"],
-  koenigsegg: ["Jesko", "Agera RS", "Regera"],
-  pagani: ["Zonda", "Huayra"],
-  ford: ["Mustang", "GT40", "F-150", "Escort RS", "Bronco", "Sierra RS Cosworth", "Focus RS"],
-  chevrolet: ["Corvette", "Camaro", "Bel Air", "Chevelle SS", "Impala", "Silverado"],
-  dodge: ["Charger", "Challenger", "Viper", "Dart", "Ram 1500"],
-  plymouth: ["Barracuda", "Road Runner", "GTX"],
-  pontiac: ["Firebird Trans Am", "GTO", "Bonneville"],
-  buick: ["Grand National", "Riviera"],
-  cadillac: ["Escalade", "Eldorado", "CTS-V"],
-  jeep: ["Wrangler", "Cherokee", "Gladiator"],
-  bmw: ["M3", "M4", "M1", "2002 Turbo", "i8", "Z4"],
-  "mercedes-benz": ["190E", "AMG GT", "300 SL", "G-Class", "SLS AMG"],
-  audi: ["Quattro", "RS6 Avant", "R8", "TT"],
-  volkswagen: ["Golf GTI", "Beetle", "T1 Bus", "Scirocco"],
-  "aston martin": ["DB5", "Vantage", "Valkyrie", "DBS"],
-  jaguar: ["E-Type", "XJ220", "F-Type", "D-Type"],
-  "land rover": ["Defender", "Range Rover", "Discovery"],
-  mini: ["Cooper S", "Countryman", "Classic Mini"],
-  "alfa romeo": ["Giulia GTA", "4C", "Stelvio"],
-  lancia: ["Delta Integrale", "Stratos", "037"],
-  lotus: ["Esprit", "Elise", "Europa"],
-  maserati: ["MC20", "GranTurismo", "Ghibli"],
-  bentley: ["Continental GT", "Bentayga"],
-  "rolls-royce": ["Phantom", "Wraith"],
-  volvo: ["240 Wagon", "P1800", "850 Estate"],
-  peugeot: ["205 GTI", "405", "908"],
-  renault: ["5 Turbo", "Clio V6", "Alpine A110"],
-  citroën: ["2CV", "DS", "SM"],
-  lexus: ["LFA", "IS300", "RC F"],
-  acura: ["NSX", "Integra Type R", "RSX"],
-  infiniti: ["Q60", "G35"],
-  hyundai: ["Ioniq 5 N", "Veloster N"],
-  kia: ["Stinger", "Seltos"],
-  tata: ["Nexon", "Safari", "Harrier", "Punch"],
-  mahindra: ["Thar", "Scorpio", "XUV700", "Bolero"],
-  "maruti suzuki": ["Swift", "Baleno", "Brezza", "Gypsy"],
-  tesla: ["Model S", "Cybertruck", "Roadster"],
-};
 
-export const COLOUR_SEED = [
-  "Black",
-  "White",
-  "Silver",
-  "Grey",
-  "Red",
-  "Blue",
-  "Green",
-  "Yellow",
-  "Orange",
-  "Purple",
-  "Pink",
-  "Brown",
-  "Gold",
-  "Bronze",
-  "Beige",
-  "Teal",
-  "Turquoise",
-  "Maroon",
-  "Navy Blue",
-  "Sky Blue",
-  "Lime Green",
-  "Matte Black",
-  "Gloss Black",
-  "Pearl White",
-  "Gunmetal",
-  "Chrome",
-  "Zamac",
-  "Spectraflame Red",
-  "Spectraflame Blue",
-  "Shark Blue",
-  "Nardo Grey",
-  "Racing Green",
-  "Multicolour",
-];
+export const MAKE_SEED = MAKES;
+export const COLOUR_SEED = COLOURS;
+export const TYPE_SEED = TYPES;
+export const BRAND_SEED = BRANDS;
+export const ASSORTMENT_SEED = ASSORTMENTS;
+export const SERIES_SEED = SERIES;
+export const SUB_SERIES_SEED = SUB_SERIES;
 
-export const TYPE_SEED = [
-  "Classic Car",
-  "Race Car",
-  "Sports Car",
-  "Supercar",
-  "Hypercar",
-  "Muscle Car",
-  "JDM",
-  "Rally Car",
-  "Drift Car",
-  "Hot Rod",
-  "Sedan",
-  "Hatchback",
-  "Coupe",
-  "Convertible",
-  "SUV",
-  "Pickup Truck",
-  "Truck",
-  "Van",
-  "Bus",
-  "Off Road",
-  "Concept Car",
-  "Movie Car",
-  "Batmobile",
-  "Bike",
-  "Fantasy",
-];
-
-export const BRAND_SEED = [
-  "Hot Wheels",
-  "Matchbox",
-  "Mini GT",
-  "Kaido House",
-  "Inno64",
-  "Pop Race",
-  "Tarmac Works",
-  "Tomica",
-  "Tomica Premium",
-  "Majorette",
-  "Greenlight",
-  "M2 Machines",
-  "Auto World",
-  "Johnny Lightning",
-  "Jada Toys",
-  "Bburago",
-  "Maisto",
-  "Welly",
-  "Schuco",
-  "Norev",
-  "Ixo",
-  "Spark",
-  "AUTOart",
-  "Kyosho",
-  "Solido",
-  "Para64",
-  "Time Micro",
-  "Micro Turbo",
-  "MiniAuto",
-  "Centauria",
-];
-
-export const ASSORTMENT_SEED = [
-  "Mainline",
-  "Premium",
-  "Boulevard",
-  "Car Culture",
-  "Fast & Furious",
-  "Pop Culture",
-  "Team Transport",
-  "Silver Series",
-  "Collector Edition",
-  "Red Line Club",
-  "Super Treasure Hunt",
-  "Treasure Hunt",
-  "Monster Trucks",
-  "Track Stars",
-  "Exclusive",
-  "Limited Edition",
-  "Deluxe",
-  "Vintage",
-  "Box",
-];
-
-export const SIZE_SEED = ["1:64", "1:43", "1:32", "1:24", "1:18", "1:12", "1:87", "1:76"];
+// Scales are a fixed vocabulary rather than an observed one: the handful that
+// exist are known in advance, and 1:64 leads because that is what a mainline is.
+export const SIZE_SEED = ["1:64", "1:43", "1:32", "1:24", "1:18", "1:12", "1:87", "1:76", ...SIZES];
 
 /**
- * Diecast fields the form offers a flat list of suggestions for. Model is absent
- * on purpose — its list depends on the make, so it has its own function.
+ * Diecast fields the form offers a flat list of suggestions for. Model and
+ * variant are absent on purpose — their lists depend on what sits above them, so
+ * they have their own functions.
  */
-export type OptionField = "make" | "colour" | "type" | "brand" | "assortment" | "size";
+export type OptionField =
+  "make" | "colour" | "type" | "brand" | "assortment" | "size" | "series" | "subSeries";
 
 const SEEDS: Record<OptionField, string[]> = {
   make: MAKE_SEED,
@@ -258,6 +57,8 @@ const SEEDS: Record<OptionField, string[]> = {
   brand: BRAND_SEED,
   assortment: ASSORTMENT_SEED,
   size: SIZE_SEED,
+  series: SERIES_SEED,
+  subSeries: SUB_SERIES_SEED,
 };
 
 /**
@@ -308,6 +109,8 @@ export function optionsFor(field: OptionField, cars: Diecast[]): string[] {
   );
 }
 
+const norm = (v: string | undefined | null) => (v ?? "").trim().toLowerCase();
+
 /**
  * Models for one make, and only that make.
  *
@@ -319,18 +122,55 @@ export function optionsFor(field: OptionField, cars: Diecast[]): string[] {
  * With no make chosen there is nothing to narrow by, so everything is offered.
  */
 export function modelOptionsFor(cars: Diecast[], make: string): string[] {
-  const wanted = make.trim().toLowerCase();
+  const wanted = norm(make);
 
   if (!wanted) {
     return rank(
       cars.map((c) => c.model),
-      Object.values(MODEL_SEED).flat(),
+      Object.values(MODELS_BY_MAKE).flat(),
     );
   }
 
-  const sameMake = cars.filter((c) => (c.make ?? "").trim().toLowerCase() === wanted);
+  const sameMake = cars.filter((c) => norm(c.make) === wanted);
   return rank(
     sameMake.map((c) => c.model),
-    MODEL_SEED[wanted] ?? [],
+    MODELS_BY_MAKE[wanted] ?? [],
+  );
+}
+
+/**
+ * Variants for one make and model — "R34", "GT-R (R32)", "Kaido House".
+ *
+ * Narrowed the same way models are, one level further down: a variant only means
+ * anything against the model it belongs to. With no model chosen it falls back
+ * to every variant recorded for the make, which is still better than the whole
+ * catalogue, and to nothing at all when neither is set.
+ */
+export function variantOptionsFor(cars: Diecast[], make: string, model: string): string[] {
+  const wantedMake = norm(make);
+  const wantedModel = norm(model);
+
+  if (!wantedMake && !wantedModel) {
+    return rank(
+      cars.map((c) => c.variant),
+      [],
+    );
+  }
+
+  const matches = cars.filter(
+    (c) =>
+      (!wantedMake || norm(c.make) === wantedMake) &&
+      (!wantedModel || norm(c.model) === wantedModel),
+  );
+
+  const seed = wantedModel
+    ? (VARIANTS_BY_MODEL[`${wantedMake}|${wantedModel}`] ?? [])
+    : Object.entries(VARIANTS_BY_MODEL)
+        .filter(([key]) => key.startsWith(`${wantedMake}|`))
+        .flatMap(([, values]) => values);
+
+  return rank(
+    matches.map((c) => c.variant),
+    seed,
   );
 }

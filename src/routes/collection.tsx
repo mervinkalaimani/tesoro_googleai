@@ -1,14 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, LayoutGrid, List, Pencil, Sparkles, Star } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Sparkles, Star } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
 import { CarThumb } from "@/components/car-thumb";
+import { CompactCarCard } from "@/components/compact-car-card";
+import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { useCarDrawer } from "@/components/car-details-drawer";
+import { useRegisterExportScope } from "@/lib/export-scope";
 import { SegmentControl } from "@/components/segment-control";
 import { Button } from "@/components/ui/button";
 import { inr, mrpRatio } from "@/lib/format";
@@ -99,17 +102,13 @@ function CollectionCard({
           <CarThumb car={car} className="aspect-[16/10] w-full" />
         </button>
 
-        <div className="pointer-events-none absolute left-2 top-2 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-md border border-white/10 bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
-            {car.id}
+        {/* Car ID off the photograph; it belongs in the drawer and the table. */}
+        {car.chase && (
+          <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
+            <Sparkles className="size-3" />
+            CHASE
           </span>
-          {car.chase && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-              <Sparkles className="size-3" />
-              CHASE
-            </span>
-          )}
-        </div>
+        )}
 
         {car.favourite && (
           <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
@@ -117,15 +116,12 @@ function CollectionCard({
           </span>
         )}
 
-        <div className="pointer-events-none absolute bottom-2 left-2 flex flex-wrap items-center gap-1.5">
+        {/* Loose/Carded stays — it is the one thing about a casting you cannot
+            tell from its photograph. Type moved down into the text. */}
+        <div className="pointer-events-none absolute bottom-2 left-2">
           <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 backdrop-blur-sm">
             {car.open ? "Loose" : "Carded"}
           </span>
-          {car.type && (
-            <span className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-sm">
-              {car.type}
-            </span>
-          )}
         </div>
       </div>
 
@@ -148,7 +144,9 @@ function CollectionCard({
         <p className="mt-1 truncate text-xs text-muted-foreground">
           {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
         </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">{car.status || "—"}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {[car.status, car.type].filter(Boolean).join(" · ") || "—"}
+        </p>
 
         <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
           <div>
@@ -195,7 +193,7 @@ function CollectionPage() {
   const [selected, setSelected] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("count");
   const [dir, setDir] = useState<"desc" | "asc">("desc");
-  const [view, setView] = useState<"grid" | "table">("grid");
+  const [view, setView] = useState<ViewMode>("table");
   const [editCar, setEditCar] = useState<Diecast | null>(null);
   const { open } = useCarDrawer();
 
@@ -242,6 +240,10 @@ function CollectionPage() {
 
   const visible = selected === "all" ? groups : groups.filter((g) => g.name === selected);
   const totalValue = useMemo(() => filtered.reduce((s, r) => s + (r.spent || 0), 0), [filtered]);
+
+  // Export follows the group that is on screen, not the whole collection.
+  const visibleCars = useMemo(() => visible.flatMap((g) => g.items), [visible]);
+  useRegisterExportScope("collection", "Collection", visibleCars);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
@@ -305,30 +307,7 @@ function CollectionPage() {
                 ))}
               </SelectContent>
             </Select>
-            <div className="flex shrink-0 items-center rounded-md border border-border p-0.5">
-              <button
-                type="button"
-                onClick={() => setView("grid")}
-                aria-pressed={view === "grid"}
-                title="Grid view"
-                className={`grid size-7 place-items-center rounded transition-colors ${
-                  view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground"
-                }`}
-              >
-                <LayoutGrid className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("table")}
-                aria-pressed={view === "table"}
-                title="Table view"
-                className={`grid size-7 place-items-center rounded transition-colors ${
-                  view === "table" ? "bg-muted text-foreground" : "text-muted-foreground"
-                }`}
-              >
-                <List className="size-4" />
-              </button>
-            </div>
+            <ViewToggle value={view} onChange={setView} />
           </div>
         </div>
       </div>
@@ -366,16 +345,20 @@ function CollectionPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              {view === "grid" ? (
-                <div className="grid gap-3 pb-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {g.items.map((r, i) => (
-                    <CollectionCard
-                      key={(r.id || "") + i}
-                      car={r}
-                      onOpen={() => open(r)}
-                      onEdit={() => setEditCar(r)}
-                    />
-                  ))}
+              {view !== "table" ? (
+                <div className={`pb-3 ${view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}`}>
+                  {g.items.map((r, i) =>
+                    view === "compact" ? (
+                      <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
+                    ) : (
+                      <CollectionCard
+                        key={(r.id || "") + i}
+                        car={r}
+                        onOpen={() => open(r)}
+                        onEdit={() => setEditCar(r)}
+                      />
+                    ),
+                  )}
                 </div>
               ) : (
                 <CarsTable rows={g.items} />

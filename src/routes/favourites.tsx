@@ -5,8 +5,6 @@ import {
   ChevronDown,
   ChevronUp,
   IndianRupee,
-  LayoutGrid,
-  List,
   Sparkles,
   Star,
   TrendingUp,
@@ -17,8 +15,11 @@ import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
 import { CarThumb } from "@/components/car-thumb";
+import { CompactCarCard } from "@/components/compact-car-card";
+import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { SegmentControl } from "@/components/segment-control";
 import { useCarDrawer } from "@/components/car-details-drawer";
+import { useRegisterExportScope } from "@/lib/export-scope";
 import { inrFull, mrpRatio } from "@/lib/format";
 
 export const Route = createFileRoute("/favourites")({
@@ -96,17 +97,14 @@ function GalleryCard({
           <CarThumb car={car} className="aspect-[16/10] w-full" />
         </button>
 
-        <div className="pointer-events-none absolute left-2 top-2 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-md border border-white/10 bg-black/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-white backdrop-blur-sm">
-            {car.id}
+        {/* The car ID is catalogue plumbing, not something to read off a
+            photograph — it sits in the details drawer and the table. */}
+        {car.chase && (
+          <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
+            <Sparkles className="size-3" />
+            CHASE
           </span>
-          {car.chase && (
-            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-              <Sparkles className="size-3" />
-              CHASE
-            </span>
-          )}
-        </div>
+        )}
 
         <button
           type="button"
@@ -176,7 +174,7 @@ function FavouritesPage() {
   const { open } = useCarDrawer();
   const { updateCar } = useCarsActions();
   const [mode, setMode] = useState<"favourite" | "chase">("favourite");
-  const [view, setView] = useState<"grid" | "table">("grid");
+  const [view, setView] = useState<ViewMode>("table");
 
   const rows = useMemo(() => {
     const filtered = filterRows(cars, query);
@@ -189,6 +187,12 @@ function FavouritesPage() {
   const pct = cost > 0 ? (gain / cost) * 100 : 0;
   const avg = rows.length ? Math.round(market / rows.length) : 0;
   const chaseCount = rows.filter((r) => r.chase).length;
+
+  useRegisterExportScope(
+    mode === "favourite" ? "favourites" : "chase",
+    mode === "favourite" ? "Favourites" : "Chase cars",
+    rows,
+  );
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
@@ -248,46 +252,27 @@ function FavouritesPage() {
             { value: "chase", label: "Chase" },
           ]}
         />
-        <div className="flex items-center rounded-md border border-border p-0.5">
-          <button
-            type="button"
-            onClick={() => setView("grid")}
-            aria-pressed={view === "grid"}
-            title="Grid view"
-            className={`grid size-7 place-items-center rounded transition-colors ${
-              view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <LayoutGrid className="size-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => setView("table")}
-            aria-pressed={view === "table"}
-            title="Table view"
-            className={`grid size-7 place-items-center rounded transition-colors ${
-              view === "table" ? "bg-muted text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <List className="size-4" />
-          </button>
-        </div>
+        <ViewToggle value={view} onChange={setView} />
       </div>
 
       {rows.length === 0 ? (
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
           {mode === "favourite" ? "No favourites yet." : "No chase cars yet."}
         </div>
-      ) : view === "grid" ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {rows.map((r, i) => (
-            <GalleryCard
-              key={(r.id || "") + i}
-              car={r}
-              onOpen={() => open(r)}
-              onToggleFavourite={() => updateCar({ ...r, favourite: !r.favourite })}
-            />
-          ))}
+      ) : view !== "table" ? (
+        <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
+          {rows.map((r, i) =>
+            view === "compact" ? (
+              <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
+            ) : (
+              <GalleryCard
+                key={(r.id || "") + i}
+                car={r}
+                onOpen={() => open(r)}
+                onToggleFavourite={() => updateCar({ ...r, favourite: !r.favourite })}
+              />
+            ),
+          )}
         </div>
       ) : (
         <div className="card-elevated overflow-hidden">
