@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Sun, Moon, Database, Sliders, Activity } from "lucide-react";
-import { ACCENT_OPTIONS, useApp, type AccentColor } from "@/lib/store";
+import { Database, Sliders, Activity } from "lucide-react";
+import { ACCENT_OPTIONS, THEME_OPTIONS, useApp, type AccentColor } from "@/lib/store";
+import { SegmentControl } from "@/components/segment-control";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +42,8 @@ export const Route = createFileRoute("/settings")({
 function SettingsPage() {
   const {
     theme,
-    setTheme,
+    themePreference,
+    setThemePreference,
     accentColor,
     setAccentColor,
     hideInvestment,
@@ -105,24 +107,29 @@ function SettingsPage() {
         {/* TAB 2: GENERAL & DISPLAY PREFERENCES */}
         <TabsContent value="preferences" className="space-y-4 focus-visible:outline-none">
           <section className="card-elevated p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Appearance
-            </h2>
-            <div className="flex items-center justify-between">
+            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Appearance
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                Saved to your account — the same on every device you sign in on.
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="font-medium">Theme</div>
                 <div className="text-xs text-muted-foreground">
-                  Switch between light and dark mode.
+                  {themePreference === "system"
+                    ? `Following your device, which is currently ${theme}.`
+                    : "Auto follows your device's light and dark setting."}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <Sun className="size-4 text-muted-foreground" />
-                <Switch
-                  checked={theme === "dark"}
-                  onCheckedChange={(v) => setTheme(v ? "dark" : "light")}
-                />
-                <Moon className="size-4 text-muted-foreground" />
-              </div>
+              <SegmentControl
+                value={themePreference}
+                onChange={setThemePreference}
+                options={THEME_OPTIONS}
+                className="h-9 text-sm"
+              />
             </div>
             <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
               <div>

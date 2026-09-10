@@ -120,10 +120,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+// Runs before first paint, so the stored appearance is on the element by the
+// time anything is drawn. "system" is resolved here too — reading the media
+// query in React instead would show the shell in the wrong theme until hydration.
 const THEME_INIT = `
 try {
   var t = JSON.parse(localStorage.getItem('dg.theme') || '"dark"');
-  if (t === 'dark') document.documentElement.classList.add('dark');
+  if (t === 'system') {
+    t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  document.documentElement.classList.toggle('dark', t === 'dark');
   var a = JSON.parse(localStorage.getItem('dg.accentColor') || '"crimson"');
   if (['crimson','blue','emerald','violet','amber'].indexOf(a) !== -1) document.documentElement.dataset.accent = a;
 } catch (e) { document.documentElement.classList.add('dark'); }

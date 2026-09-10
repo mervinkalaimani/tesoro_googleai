@@ -11,16 +11,20 @@ export type Database = {
       app_settings: {
         Row: {
           accent_color: string;
+          /** null until the account has picked one on some device. */
+          theme: string | null;
           user_id: string;
           updated_at: string;
         };
         Insert: {
           accent_color?: string;
+          theme?: string | null;
           user_id: string;
           updated_at?: string;
         };
         Update: {
           accent_color?: string;
+          theme?: string | null;
           user_id?: string;
           updated_at?: string;
         };
