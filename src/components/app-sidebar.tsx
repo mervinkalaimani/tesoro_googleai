@@ -54,7 +54,7 @@ const ADMIN_NAV = { title: "Admin", url: "/admin", icon: ShieldCheck } as const;
 export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, query } = useApp();
-  const { profile, isAdmin, signOut } = useAuth();
+  const { profile, isAdmin, isOwner, signOut, isGuest } = useAuth();
   const { source } = useCarsSource();
   const navItems = useMemo(() => (isAdmin ? [...NAV, ADMIN_NAV] : [...NAV]), [isAdmin]);
   const data = useMemo(
@@ -117,7 +117,20 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="space-y-3 px-1 py-2 group-data-[collapsible=icon]:hidden">
-          {isAdmin && (
+          {isGuest && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5">
+              <div className="text-[10px] font-medium uppercase tracking-wider text-amber-500">
+                Guest Mode
+              </div>
+              <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+                Sample cars, stored only in this browser. Nothing is saved to the database.
+              </p>
+            </div>
+          )}
+
+          {/* Matches the Settings tab it links to: connection details are the
+              owner's, not every admin's. */}
+          {isOwner && (
             <div className="border-b border-sidebar-border pb-3">
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Database

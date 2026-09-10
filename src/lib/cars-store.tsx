@@ -1,4 +1,4 @@
-import {
+﻿import {
   createContext,
   useCallback,
   useContext,
@@ -12,6 +12,7 @@ import { deriveMonth } from "@/lib/date-utils";
 import { shippingIdFor, shippingInputsChanged } from "@/lib/shipping-id";
 import { sortCars } from "@/lib/status-order";
 import { useAuth } from "@/lib/auth-store";
+import { makeGuestCars } from "@/lib/guest-seed";
 import { toast } from "sonner";
 import {
   fetchCarsFromSupabase,
@@ -135,11 +136,14 @@ type Ctx = {
 const CarsCtx = createContext<Ctx | null>(null);
 
 export function CarsProvider({ children }: { children: ReactNode }) {
-  const { user, status: authStatus } = useAuth();
-  const uid = user?.id ?? "anon";
+  const { user, status: authStatus, isGuest } = useAuth();
+  // Guests get their own namespace, so their edits never mix with a real
+  // account's cache on a shared browser.
+  const uid = isGuest ? "guest" : (user?.id ?? "anon");
   // The provider is mounted for signed-out visitors too, so every read is
-  // gated on an approved session rather than on being rendered.
-  const canLoad = authStatus === "ready" && Boolean(user?.id);
+  // gated on an approved session rather than on being rendered. A guest never
+  // loads: their cars are generated, and Supabase would refuse them anyway.
+  const canLoad = !isGuest && authStatus === "ready" && Boolean(user?.id);
 
   // Starts empty rather than from the bundled seed: a new account owns nothing
   // until Supabase says otherwise.
@@ -189,6 +193,21 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   }, [uid, canLoad]);
 
   useEffect(() => {
+    if (isGuest) {
+      // Generated fresh per visit, then cached so a reload doesn't reshuffle
+      // the demo out from under whoever is looking at it.
+      const cached = readCache(uid);
+      const cars = cached?.data?.length ? cached.data : makeGuestCars();
+      setBase(cars);
+      setOverlay(readOverlay(uid));
+      const ts = cached?.ts ?? Date.now();
+      setLastUpdated(ts);
+      writeCache(uid, cars, ts);
+      setHydrated(true);
+      setRefreshing(false);
+      return;
+    }
+
     if (!canLoad) {
       setBase([]);
       setOverlay(EMPTY);
@@ -212,7 +231,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [loadData, uid, canLoad]);
+  }, [loadData, uid, canLoad, isGuest]);
 
   // Periodic refresh
   useEffect(() => {
@@ -271,12 +290,25 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     [uid],
   );
 
+  /**
+   * The single door to the database. Guest Mode is entirely local, so it stops
+   * here — every edit still lands in the overlay and survives a reload, but
+   * nothing a guest does is ever written to Supabase.
+   */
+  const persist = useCallback(
+    async (toSave: Diecast[], scope: string, report = true): Promise<{ error?: string }[]> => {
+      if (isGuest) return [];
+      return persistCars(toSave, scope, report);
+    },
+    [isGuest],
+  );
+
   const addCar = useCallback(
     (car: Diecast) => {
       // Shipping IDs are derived from seller and dates, never typed.
       const next: Diecast = { ...car, shippingId: shippingIdFor(car, [...cars, car]) };
       commit({ ...overlay, added: [next, ...overlay.added] });
-      void persistCars([next], "addCar");
+      void persist([next], "addCar");
     },
     [overlay, commit, cars],
   );
@@ -287,7 +319,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       commit({ ...overlay, added: [...newCars, ...overlay.added] });
       // Previously omitted entirely, so a bulk import lived in localStorage and
       // nowhere else.
-      void persistCars(newCars, "bulkAddCars");
+      void persist(newCars, "bulkAddCars");
     },
     [overlay, commit],
   );
@@ -314,7 +346,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       } else {
         commit({ ...overlay, updated: { ...overlay.updated, [next.id]: next } });
       }
-      void persistCars([next], "updateCar");
+      void persist([next], "updateCar");
     },
     [overlay, commit, cars],
   );
@@ -342,7 +374,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     (updatedCars: Diecast[]) => {
       if (!updatedCars.length) return;
       commitCars(updatedCars);
-      void persistCars(updatedCars, "bulkUpdate");
+      void persist(updatedCars, "bulkUpdate");
     },
     [commitCars],
   );
@@ -388,7 +420,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // Awaited rather than fired and forgotten: both callers announce "updated
       // N cars" on the resolved value, so that claim has to be backed by the
       // database. Failures surface through their own error UI, not a toast.
-      const failures = await persistCars(updatedCars, "updateCarsByShippingId", false);
+      const failures = await persist(updatedCars, "updateCarsByShippingId", false);
       if (failures.length) {
         throw new Error(
           `${failures.length} of ${updatedCars.length} cars could not be saved: ${
@@ -409,13 +441,14 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         const { [id]: _drop, ...rest } = overlay.updated;
         commit({ ...overlay, updated: rest, deleted: [...overlay.deleted, id] });
       }
+      if (isGuest) return;
       void deleteCarFromSupabase(id).then((res) => {
         if (res.success) return;
         console.error("Supabase deleteCar failed:", res.error);
         toast.error("Car was not deleted from the database", { description: res.error });
       });
     },
-    [overlay, commit],
+    [overlay, commit, isGuest],
   );
 
   const resetOverlay = useCallback(() => {
@@ -433,13 +466,16 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
   const syncAllToSupabase = useCallback(
     async (onProgress?: (inserted: number, total: number) => void) => {
+      if (isGuest) {
+        return { success: false, count: 0, error: "Guest Mode is local only — sign in to sync." };
+      }
       const res = await seedCarsToSupabase(cars, onProgress);
       if (res.success) {
         setSource("supabase");
       }
       return res;
     },
-    [cars],
+    [cars, isGuest],
   );
 
   const value = useMemo<Ctx>(

@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FavouriteDetector } from "@/components/favourite-detector";
 import { SupabaseSyncCard } from "@/components/supabase-sync-card";
+import { useAuth } from "@/lib/auth-store";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -48,26 +49,34 @@ function SettingsPage() {
     transitEtaDays,
     setTransitEtaDays,
   } = useApp();
+  // The connection settings point the whole app at a database. Anyone who can
+  // edit them can redirect every other user's collection, so they belong to the
+  // owner alone — not to admins, who manage people rather than infrastructure.
+  const { isOwner } = useAuth();
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4 md:p-6">
       <div>
         <h1 className="text-display text-2xl font-semibold">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Configure your Supabase database, cloud connection, and personal preferences.
+          {isOwner
+            ? "Configure your Supabase database, cloud connection, and personal preferences."
+            : "Set your theme, display preferences, and diagnostics."}
         </p>
       </div>
 
-      <Tabs defaultValue="supabase" className="w-full space-y-4">
-        <TabsList className="grid w-full grid-cols-3 h-10">
-          <TabsTrigger
-            value="supabase"
-            id="settings-tab-supabase"
-            className="gap-2 text-xs md:text-sm font-medium"
-          >
-            <Database className="size-4 text-primary shrink-0" />
-            <span>Supabase Config</span>
-          </TabsTrigger>
+      <Tabs defaultValue={isOwner ? "supabase" : "preferences"} className="w-full space-y-4">
+        <TabsList className={`grid w-full h-10 ${isOwner ? "grid-cols-3" : "grid-cols-2"}`}>
+          {isOwner ? (
+            <TabsTrigger
+              value="supabase"
+              id="settings-tab-supabase"
+              className="gap-2 text-xs md:text-sm font-medium"
+            >
+              <Database className="size-4 text-primary shrink-0" />
+              <span>Supabase Config</span>
+            </TabsTrigger>
+          ) : null}
           <TabsTrigger
             value="preferences"
             id="settings-tab-preferences"
@@ -86,10 +95,12 @@ function SettingsPage() {
           </TabsTrigger>
         </TabsList>
 
-        {/* TAB 1: SUPABASE CONFIGURATION */}
-        <TabsContent value="supabase" className="space-y-4 focus-visible:outline-none">
-          <SupabaseSyncCard />
-        </TabsContent>
+        {/* TAB 1: SUPABASE CONFIGURATION — owner only */}
+        {isOwner ? (
+          <TabsContent value="supabase" className="space-y-4 focus-visible:outline-none">
+            <SupabaseSyncCard />
+          </TabsContent>
+        ) : null}
 
         {/* TAB 2: GENERAL & DISPLAY PREFERENCES */}
         <TabsContent value="preferences" className="space-y-4 focus-visible:outline-none">

@@ -109,15 +109,17 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const isLoginRoute = pathname === "/login";
+  // Both render bare. The recovery link signs the visitor in on arrival, so
+  // without the exemption the reset page would appear inside the app shell.
+  const isBareRoute = pathname === "/login" || pathname === "/reset-password";
 
   useEffect(() => {
-    if (status === "signed-out" && !isLoginRoute) {
+    if (status === "signed-out" && !isBareRoute) {
       void navigate({ to: "/login" });
     }
-  }, [status, isLoginRoute, navigate]);
+  }, [status, isBareRoute, navigate]);
 
-  if (isLoginRoute) return <>{children}</>;
+  if (isBareRoute) return <>{children}</>;
 
   switch (status) {
     case "loading":

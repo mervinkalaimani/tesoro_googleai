@@ -2,10 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Crown,
+  KeyRound,
   Loader2,
+  Mail,
   RefreshCw,
   ShieldAlert,
   ShieldCheck,
+  Trash2,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -15,6 +18,15 @@ import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -56,12 +68,18 @@ function formatDate(value: string | null): string {
 }
 
 function AdminPage() {
-  const { user, isAdmin, status } = useAuth();
+  const { user, isAdmin, isOwner, status, requestPasswordReset } = useAuth();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+
+  const [editing, setEditing] = useState<AdminUser | null>(null);
+  const [newEmail, setNewEmail] = useState("");
+  const [deleting, setDeleting] = useState<AdminUser | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [dialogBusy, setDialogBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -128,6 +146,77 @@ function AdminPage() {
     },
     [load],
   );
+
+  /**
+   * Changes the address on the profile *and* on the sign-in account, through a
+   * SECURITY DEFINER function — updating tesoro_users alone would leave the
+   * person still signing in with the old one.
+   */
+  const saveEmail = useCallback(async () => {
+    if (!editing) return;
+    const clean = newEmail.trim().toLowerCase();
+    if (clean === editing.email_id.toLowerCase()) {
+      setEditing(null);
+      return;
+    }
+
+    setDialogBusy(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: rpcError } = await (supabase as any).rpc("admin_update_user_email", {
+      _sno: editing.sno,
+      _email: clean,
+    });
+    setDialogBusy(false);
+
+    if (rpcError) {
+      toast.error("Could not change the email address", { description: rpcError.message });
+      return;
+    }
+    toast.success("Email address updated", { description: `${editing.email_id} → ${clean}` });
+    setEditing(null);
+    void load();
+  }, [editing, newEmail, load]);
+
+  const sendReset = useCallback(
+    async (target: AdminUser) => {
+      setBusyId(String(target.sno));
+      const res = await requestPasswordReset(target.email_id);
+      setBusyId(null);
+
+      if (!res.ok) {
+        toast.error("Could not send the reset link", { description: res.error });
+        return;
+      }
+      toast.success("Reset link sent", { description: target.email_id });
+    },
+    [requestPasswordReset],
+  );
+
+  /**
+   * Removes the profile row, which is what revokes access: RLS reads approval
+   * from it, so the account can no longer see anything. The Supabase Auth login
+   * and the person's rows in tesoro_raw both survive — erasing those needs the
+   * service key, which the browser deliberately does not hold.
+   */
+  const deleteUser = useCallback(async () => {
+    if (!deleting) return;
+    setDialogBusy(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: deleteError } = await (supabase as any)
+      .from("tesoro_users")
+      .delete()
+      .eq("sno", deleting.sno);
+    setDialogBusy(false);
+
+    if (deleteError) {
+      toast.error("Could not delete the account", { description: deleteError.message });
+      return;
+    }
+    toast.success("Account removed", { description: deleting.email_id });
+    setDeleting(null);
+    setDeleteConfirm("");
+    void load();
+  }, [deleting, load]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -284,7 +373,7 @@ function AdminPage() {
                       {formatDate(u.last_sign_in)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-end gap-2">
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
                         {u.is_owner ? (
                           <span className="text-xs text-muted-foreground">
                             Owner account — cannot be changed
@@ -319,6 +408,52 @@ function AdminPage() {
                             >
                               {u.is_admin ? "Revoke admin" : "Make admin"}
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              disabled={busy}
+                              onClick={() => {
+                                setEditing(u);
+                                setNewEmail(u.email_id);
+                              }}
+                              aria-label={`Change email for ${u.email_id}`}
+                              title="Change email address"
+                            >
+                              <Mail className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-8"
+                              disabled={busy}
+                              onClick={() => void sendReset(u)}
+                              aria-label={`Send password reset link to ${u.email_id}`}
+                              title="Send password reset link"
+                            >
+                              {busy ? (
+                                <Loader2 className="size-3.5 animate-spin" />
+                              ) : (
+                                <KeyRound className="size-3.5" />
+                              )}
+                            </Button>
+                            {/* Deleting an account is the owner's alone. */}
+                            {isOwner ? (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-8 text-destructive hover:text-destructive"
+                                disabled={busy || isSelf}
+                                onClick={() => {
+                                  setDeleting(u);
+                                  setDeleteConfirm("");
+                                }}
+                                aria-label={`Delete ${u.email_id}`}
+                                title={isSelf ? "You can't delete yourself" : "Delete account"}
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            ) : null}
                           </>
                         )}
                       </div>
@@ -336,6 +471,100 @@ function AdminPage() {
         unreadable immediately, even through the API. Collections are never deleted by these
         actions.
       </p>
+
+      <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change email address</DialogTitle>
+            <DialogDescription>
+              This changes the sign-in address too, so {editing ? displayName(editing) : "they"}{" "}
+              will use the new one from now on. No confirmation email is sent to either address.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="adminNewEmail">Email</Label>
+            <Input
+              id="adminNewEmail"
+              type="email"
+              autoComplete="off"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Currently <span className="text-foreground">{editing?.email_id}</span>
+            </p>
+          </div>
+
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setEditing(null)} disabled={dialogBusy}>
+              Cancel
+            </Button>
+            <Button onClick={() => void saveEmail()} disabled={dialogBusy || !newEmail.trim()}>
+              {dialogBusy ? <Loader2 className="size-4 animate-spin" /> : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleting)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleting(null);
+            setDeleteConfirm("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this account?</DialogTitle>
+            <DialogDescription>
+              {deleting ? displayName(deleting) : "This account"} loses access immediately. Their{" "}
+              {deleting?.car_count.toLocaleString() ?? 0} cars stay in the database and their
+              sign-in still exists — removing those needs the Supabase dashboard.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="deleteConfirm">
+              Type <span className="font-mono text-foreground">{deleting?.email_id}</span> to
+              confirm
+            </Label>
+            <Input
+              id="deleteConfirm"
+              autoComplete="off"
+              value={deleteConfirm}
+              onChange={(e) => setDeleteConfirm(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setDeleting(null);
+                setDeleteConfirm("");
+              }}
+              disabled={dialogBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void deleteUser()}
+              disabled={
+                dialogBusy ||
+                deleteConfirm.trim().toLowerCase() !== (deleting?.email_id ?? "").toLowerCase()
+              }
+            >
+              {dialogBusy ? <Loader2 className="size-4 animate-spin" /> : null}
+              Delete account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
