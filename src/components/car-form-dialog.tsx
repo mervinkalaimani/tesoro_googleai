@@ -251,6 +251,13 @@ export function CarFormDialog({
   const [imgError, setImgError] = useState(false);
   // Per-car: dismissing is "not this one", not "never show me these".
   const [isoDismissed, setIsoDismissed] = useState(false);
+  /**
+   * The ISO row this form was filled from, if any. Saving updates that row in
+   * place rather than adding a second one: finding a car you were searching for
+   * does not mean you now own two of them, and leaving the ISO entry behind
+   * would keep it on a wishlist it no longer belongs on.
+   */
+  const [isoSourceId, setIsoSourceId] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   /** True when this session's form came back from storage rather than blank. */
   const [restored, setRestored] = useState(false);
@@ -277,6 +284,7 @@ export function CarFormDialog({
     setValidationError(null);
     setImgError(false);
     setIsoDismissed(false);
+    setIsoSourceId(null);
 
     // Pick up where the last session left off. On mobile this is the whole
     // point: a locked phone can have the tab evicted and reloaded underneath a
@@ -460,10 +468,17 @@ export function CarFormDialog({
       imageUrl: car.imageUrl || prev.imageUrl,
     }));
     setIsoDismissed(true);
+    setIsoSourceId(car.id);
     toast.success("Filled from your ISO list", {
-      description: car.name || `${car.make} ${car.model}`.trim(),
+      description: "Saving will update that entry rather than adding a second car.",
     });
   };
+
+  /** The ISO row being converted, while it still exists in the collection. */
+  const isoSource = useMemo(
+    () => (isoSourceId ? (cars.find((c) => c.id === isoSourceId) ?? null) : null),
+    [cars, isoSourceId],
+  );
 
   const sendIsoToBulk = (matches: Diecast[]) => {
     clearDraft(draftKey);
@@ -573,11 +588,17 @@ export function CarFormDialog({
       : initial?.date?.trim() || "";
     const month = deriveMonth(date) || orderMonth;
 
+    // An ISO row being converted keeps its identity: same car ID, same SNO, so
+    // it moves status in place instead of appearing twice — once as owned and
+    // once as still wanted.
     const carId =
-      initial?.id || `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+      initial?.id ||
+      isoSource?.id ||
+      `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
     const payload: Diecast = {
       id: carId,
+      sno: initial?.sno ?? isoSource?.sno,
       name,
       make,
       model,
@@ -602,6 +623,9 @@ export function CarFormDialog({
       transitInfo: form.transitInfo.trim(),
       deliveryPartner: form.deliveryPartner.trim() || undefined,
       trackingId: form.trackingId.trim() || undefined,
+      // Blank for a conversion: an ISO row never had a seller or dates to
+      // derive one from, so the store computes it fresh from what was just
+      // entered rather than carrying nothing forward.
       shippingId: initial?.shippingId || "",
       orderDate,
       orderMonth,
@@ -629,15 +653,23 @@ export function CarFormDialog({
       );
     }
 
-    if (mode === "add") {
+    if (mode === "add" && !isoSource) {
       addCar(payload);
     } else {
+      // Converting an ISO row goes through updateCar for the same reason an
+      // edit does: the row already exists, and adding would duplicate it.
       updateCar(payload);
+      if (isoSource) {
+        toast.success("Moved off your ISO list", {
+          description: `${payload.name} is now ${payload.status.toLowerCase()}.`,
+        });
+      }
     }
 
     // The car is saved; the draft has nothing left to protect.
     clearDraft(draftKey);
     setRestored(false);
+    setIsoSourceId(null);
     onOpenChange(false);
   };
 
@@ -800,13 +832,37 @@ export function CarFormDialog({
                   {/* Above the fields rather than below: by the time three of
                       them agree with something on the ISO list, the useful
                       moment is before the rest is typed out by hand. */}
-                  {!isoDismissed && (
-                    <IsoSuggestions
-                      matches={isoMatches}
-                      onUse={useIsoCar}
-                      onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
-                      onDismiss={() => setIsoDismissed(true)}
-                    />
+                  {isoSource ? (
+                    // Says so plainly: the save button is about to change an
+                    // existing row rather than create one, and that is not
+                    // something to discover afterwards.
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-sky-500/40 bg-sky-500/[0.07] px-3 py-2">
+                      <p className="min-w-0 text-xs">
+                        Updating your ISO entry{" "}
+                        <span className="font-medium">
+                          {isoSource.name || `${isoSource.make} ${isoSource.model}`.trim()}
+                        </span>{" "}
+                        in place — it moves off the list rather than being duplicated.
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 shrink-0 text-xs text-muted-foreground"
+                        onClick={() => setIsoSourceId(null)}
+                      >
+                        Add as a new car instead
+                      </Button>
+                    </div>
+                  ) : (
+                    !isoDismissed && (
+                      <IsoSuggestions
+                        matches={isoMatches}
+                        onUse={useIsoCar}
+                        onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
+                        onDismiss={() => setIsoDismissed(true)}
+                      />
+                    )
                   )}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1269,7 +1325,7 @@ export function CarFormDialog({
                     </Button>
                   ) : (
                     <Button type="submit" className="bg-primary text-primary-foreground">
-                      <Check className="size-4 mr-1" /> Add car
+                      <Check className="size-4 mr-1" /> {isoSource ? "Update ISO entry" : "Add car"}
                     </Button>
                   )}
                 </div>

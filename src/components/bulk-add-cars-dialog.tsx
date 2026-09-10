@@ -130,7 +130,15 @@ const FIELDS: FieldDef[] = [
 ];
 
 type Values = Partial<Record<FieldKey, string>>;
-type Row = Values & { key: string };
+type Row = Values & {
+  key: string;
+  /**
+   * Set when the row came from an ISO entry. Saving updates that row rather
+   * than adding a second one, the same as converting a single car does — a
+   * batch of five found castings should not leave five wishlist entries behind.
+   */
+  isoId?: string;
+};
 
 function blankRow(): Row {
   return { key: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}` };
@@ -158,7 +166,9 @@ const defaultShared = (): Values => ({
 
 /** A row nobody has typed into is not worth keeping or restoring. */
 function rowHasContent(row: Row): boolean {
-  return Object.entries(row).some(([k, v]) => k !== "key" && String(v ?? "").trim() !== "");
+  return Object.entries(row).some(
+    ([k, v]) => k !== "key" && k !== "isoId" && String(v ?? "").trim() !== "",
+  );
 }
 
 const num = (v: string | undefined) => {
@@ -232,6 +242,7 @@ function FieldInput({
 function rowFromCar(car: Diecast): Row {
   return {
     ...blankRow(),
+    isoId: car.id,
     make: car.make || "",
     model: car.model || "",
     variant: car.variant || "",
@@ -264,7 +275,7 @@ export function BulkAddCarsDialog({
    */
   seed?: Diecast[];
 }) {
-  const { addCar } = useCarsActions();
+  const { addCar, updateCar } = useCarsActions();
   const cars = useCars();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
@@ -438,8 +449,11 @@ export function BulkAddCarsDialog({
 
     setSaving(true);
     try {
+      let converted = 0;
       for (const r of filled) {
         const base = makeBlankCar();
+        // The ISO row this came from, if it is still there to update.
+        const source = r.isoId ? (cars.find((c) => c.id === r.isoId) ?? null) : null;
         const cost = num(valueOf(r, "cost"));
         const mrp = num(valueOf(r, "mrp"));
         const status = valueOf(r, "status") || "Available";
@@ -448,6 +462,8 @@ export function BulkAddCarsDialog({
 
         const car: Diecast = {
           ...base,
+          // Converting keeps the row's identity so it moves status in place.
+          ...(source ? { id: source.id, sno: source.sno } : {}),
           make: valueOf(r, "make").trim(),
           model: valueOf(r, "model").trim(),
           variant: valueOf(r, "variant").trim(),
@@ -472,11 +488,26 @@ export function BulkAddCarsDialog({
           month: status === "Available" ? month || base.month : "",
         };
         car.name = buildCarName(car);
-        // addCar derives the shipping ID from seller and dates.
-        addCar(car);
+        if (source) {
+          // updateCar re-derives the shipping ID too, since an ISO row had no
+          // seller or dates to build one from.
+          updateCar(car);
+          converted++;
+        } else {
+          // addCar derives the shipping ID from seller and dates.
+          addCar(car);
+        }
       }
 
-      toast.success(`Added ${filled.length} car${filled.length === 1 ? "" : "s"}`);
+      const added = filled.length - converted;
+      toast.success(
+        [
+          added ? `Added ${added} car${added === 1 ? "" : "s"}` : "",
+          converted ? `${converted} moved off your ISO list` : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      );
       discard();
       setOpen(false);
     } finally {
@@ -587,7 +618,17 @@ export function BulkAddCarsDialog({
               </thead>
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={r.key} className="border-t border-border">
+                  <tr
+                    key={r.key}
+                    // Tinted so it is obvious at a glance which rows are being
+                    // converted off the ISO list rather than newly added.
+                    className={`border-t border-border ${r.isoId ? "bg-sky-500/[0.06]" : ""}`}
+                    title={
+                      r.isoId
+                        ? "From your ISO list — this entry is updated, not duplicated"
+                        : undefined
+                    }
+                  >
                     {perCarFields.map((f) => (
                       <td key={f.key} className="p-1">
                         <FieldInput
