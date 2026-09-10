@@ -10,6 +10,7 @@
 import type { Diecast } from "@/lib/types";
 import { deriveMonth } from "@/lib/date-utils";
 import { shippingIdFor, shippingInputsChanged } from "@/lib/shipping-id";
+import { assignCarIds } from "@/lib/car-id";
 import { sortCars } from "@/lib/status-order";
 import { useAuth } from "@/lib/auth-store";
 import { makeGuestCars } from "@/lib/guest-seed";
@@ -185,8 +186,31 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         }
         updated[id] = car;
       }
+
+      // A new car sits in `added` until its insert comes back from Supabase.
+      // Once the row is in `base` the overlay copy is a second rendering of the
+      // same record, so retire it on the same terms as an edit: the database
+      // has to actually agree before the local copy is dropped.
+      const added = prev.added.filter((car) => {
+        const remote = byId.get(car.id);
+        if (remote && savedFieldsMatch(remote, car)) {
+          pruned++;
+          return false;
+        }
+        return true;
+      });
+
+      // A tombstone only has to outlive the row it hides. Once the delete has
+      // landed the id is gone from `base` too, and keeping the entry forever
+      // just grows the overlay.
+      const deleted = prev.deleted.filter((id) => {
+        if (byId.has(id)) return true;
+        pruned++;
+        return false;
+      });
+
       if (!pruned) return prev;
-      const next = { ...prev, updated };
+      const next = { added, updated, deleted };
       writeOverlay(uid, next);
       return next;
     });
@@ -272,9 +296,16 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   const cars = useMemo<Diecast[]>(() => {
     if (!hydrated) return sortCars(base);
     const del = new Set(overlay.deleted);
+    const addedIds = new Set(overlay.added.map((c) => c.id));
     const merged: Diecast[] = [];
     for (const c of base) {
       if (del.has(c.id)) continue;
+      // Belt and braces against the overlay and the database describing the
+      // same car at once — an added row whose insert has landed but whose
+      // overlay entry has not been pruned yet, or one carrying a local edit
+      // that has not saved. Without this the id renders twice, and since both
+      // rows address the same record, deleting either takes both away.
+      if (addedIds.has(c.id)) continue;
       merged.push(overlay.updated[c.id] ?? c);
     }
     // Sorted once here so every view — dashboard, collection, inventory,
@@ -305,23 +336,33 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
   const addCar = useCallback(
     (car: Diecast) => {
-      // Shipping IDs are derived from seller and dates, never typed.
-      const next: Diecast = { ...car, shippingId: shippingIdFor(car, [...cars, car]) };
+      // Both IDs are derived, never typed: the car ID from brand and
+      // assortment, the shipping ID from seller and dates. The car ID is
+      // assigned first so the shipping rank is computed against the final row.
+      const [identified] = assignCarIds([car], cars);
+      const next: Diecast = {
+        ...identified,
+        shippingId: shippingIdFor(identified, [...cars, identified]),
+      };
       commit({ ...overlay, added: [next, ...overlay.added] });
       void persist([next], "addCar");
     },
-    [overlay, commit, cars],
+    [overlay, commit, cars, persist],
   );
 
   const bulkAddCars = useCallback(
     (newCars: Diecast[]) => {
       if (!newCars.length) return;
-      commit({ ...overlay, added: [...newCars, ...overlay.added] });
+      // Numbered as a batch, so two cars sharing a brand and assortment cannot
+      // both claim the same number. Rows that arrive with a real ID — a CSV
+      // re-import, say — keep the one they came with.
+      const identified = assignCarIds(newCars, cars);
+      commit({ ...overlay, added: [...identified, ...overlay.added] });
       // Previously omitted entirely, so a bulk import lived in localStorage and
       // nowhere else.
-      void persist(newCars, "bulkAddCars");
+      void persist(identified, "bulkAddCars");
     },
-    [overlay, commit],
+    [overlay, commit, persist, cars],
   );
 
   const updateCar = useCallback(
@@ -348,7 +389,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       }
       void persist([next], "updateCar");
     },
-    [overlay, commit, cars],
+    [overlay, commit, cars, persist],
   );
 
   /** Applies rows to the local overlay only. Persistence is the caller's job. */
@@ -376,7 +417,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       commitCars(updatedCars);
       void persist(updatedCars, "bulkUpdate");
     },
-    [commitCars],
+    [commitCars, persist],
   );
 
   const updateCarsByShippingId = useCallback(
@@ -430,17 +471,22 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       }
       return updatedCars.length;
     },
-    [cars, commitCars],
+    [cars, commitCars, persist],
   );
 
   const deleteCar = useCallback(
     (id: string) => {
-      if (overlay.added.some((a) => a.id === id)) {
-        commit({ ...overlay, added: overlay.added.filter((a) => a.id !== id) });
-      } else {
-        const { [id]: _drop, ...rest } = overlay.updated;
-        commit({ ...overlay, updated: rest, deleted: [...overlay.deleted, id] });
-      }
+      const { [id]: _drop, ...rest } = overlay.updated;
+      commit({
+        ...overlay,
+        added: overlay.added.filter((a) => a.id !== id),
+        updated: rest,
+        // The tombstone is recorded whichever half the car came from. A freshly
+        // added car whose insert has already landed exists in `base` as well,
+        // so dropping it from `added` alone would let the next refresh hand it
+        // straight back.
+        deleted: overlay.deleted.includes(id) ? overlay.deleted : [...overlay.deleted, id],
+      });
       if (isGuest) return;
       void deleteCarFromSupabase(id).then((res) => {
         if (res.success) return;

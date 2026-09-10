@@ -30,7 +30,10 @@ export function SegmentControl<T extends string>({
             disabled={disabled}
             onClick={() => onChange(o.value)}
             className={cn(
-              "rounded-[6px] px-2.5 py-1 transition-colors",
+              // min-w-0 + truncate keep a long label from stretching its cell:
+              // in a grid the columns are equal, so one wide option would
+              // otherwise widen every other one with it.
+              "min-w-0 truncate rounded-[6px] px-2.5 py-1 text-center transition-colors",
               active
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground",

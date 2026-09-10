@@ -108,26 +108,61 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 
 const LOAD_BATCH = 50;
 
-/** MRP with the paid-vs-MRP multiplier, shared by the card and table views. */
-function MrpValue({ car }: { car: Diecast }) {
-  const cost = car.spent || 0;
-  const market = car.mrp || cost;
-  const ratio = mrpRatio(cost, car.mrp || 0);
+/**
+ * What the car cost against what it lists for. Returns null when either side is
+ * missing, or when the two agree — a delta of zero is noise, not information.
+ */
+function priceDelta(spent: number, mrp: number) {
+  if (!spent || !mrp) return null;
+  const diff = Math.round(spent - mrp);
+  if (diff === 0) return null;
+  const ratio = mrpRatio(spent, mrp);
+  return {
+    text: inr(Math.abs(diff)),
+    over: diff > 0,
+    hint: ratio ? `${ratio.text} ${ratio.over ? "over" : "under"} MRP` : undefined,
+  };
+}
+
+function Metric({ label, value, className }: { label: string; value: string; className?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-0.5 truncate text-sm font-semibold tabular-nums ${className ?? ""}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/** Spend, list price, and the gap between them. */
+function PriceStrip({ car }: { car: Diecast }) {
+  const spent = car.spent || 0;
+  const mrp = car.mrp || 0;
+  const delta = priceDelta(spent, mrp);
 
   return (
-    <span className="inline-flex items-baseline gap-1 text-sm font-semibold tabular-nums">
-      <span>{inr(market)}</span>
-      {ratio && (
-        <span
-          className={`inline-flex items-center text-[11px] font-medium ${
-            ratio.over ? "text-rose-400" : "text-emerald-500"
-          }`}
-        >
-          ({ratio.over ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-          {ratio.text})
-        </span>
+    <div className="flex min-w-0 items-end gap-3">
+      <Metric label="Spent" value={spent ? inr(spent) : "—"} />
+      <Metric label="MRP" value={mrp ? inr(mrp) : "—"} />
+      {delta && (
+        <div className="min-w-0" title={delta.hint}>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Delta</div>
+          <div
+            className={`mt-0.5 inline-flex items-center text-sm font-semibold tabular-nums ${
+              delta.over ? "text-rose-400" : "text-emerald-500"
+            }`}
+          >
+            {delta.over ? (
+              <ChevronUp className="size-3.5 shrink-0" />
+            ) : (
+              <ChevronDown className="size-3.5 shrink-0" />
+            )}
+            {delta.text}
+          </div>
+        </div>
       )}
-    </span>
+    </div>
   );
 }
 
@@ -167,48 +202,45 @@ function InventoryCard({
           </span>
         )}
 
-        <div className="pointer-events-none absolute bottom-2 left-2 flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 backdrop-blur-sm">
-            {car.open ? "Loose" : "Carded"}
-          </span>
-          {car.type && (
-            <span className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-sm">
-              {car.type}
+        {/* Assortment, type and size ride along the bottom of the image, with
+            the status opposite them on the right. */}
+        <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[62%] flex-wrap items-center gap-1.5">
+          {[car.assortment, car.type, car.size].filter(Boolean).map((chip, i) => (
+            <span
+              key={`${chip}-${i}`}
+              className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-sm"
+            >
+              {chip}
             </span>
-          )}
+          ))}
+        </div>
+
+        {/* The pill's own colours are translucent, so it sits on an opaque
+            backdrop rather than directly on the photograph. */}
+        <div className="pointer-events-none absolute bottom-2 right-2">
+          <span className="inline-block rounded-full bg-black/75 backdrop-blur-sm">
+            <StatusPill status={car.status} />
+          </span>
         </div>
       </div>
 
       <div className="flex flex-1 flex-col p-3">
-        <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-          <span className="truncate">{car.brand || "—"}</span>
-          <span className="shrink-0 tabular-nums">
-            {[car.year, car.size].filter(Boolean).join(" · ")}
-          </span>
-        </div>
-
         <button
           type="button"
           onClick={onOpen}
-          className="mt-1 text-left text-sm font-bold leading-snug hover:text-primary"
+          className="text-left text-sm font-bold leading-snug hover:text-primary"
         >
           {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
         </button>
 
-        <p className="mt-1 truncate text-xs text-muted-foreground">
-          {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
+        <p className="mt-1 text-xs leading-snug text-muted-foreground">
+          {[car.brand, car.series, car.subSeries, car.carNumber, car.colour]
+            .filter(Boolean)
+            .join(" · ") || "—"}
         </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">{car.status || "—"}</p>
 
         <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              MRP value
-            </div>
-            <div className="mt-0.5">
-              <MrpValue car={car} />
-            </div>
-          </div>
+          <PriceStrip car={car} />
           <div className="flex shrink-0 items-center">
             <Button
               variant="ghost"
@@ -357,90 +389,101 @@ function InventoryPage() {
   return (
     <div className="flex h-[calc(100svh-3.5rem)] flex-col p-3 md:p-6">
       <div className="card-elevated mx-auto flex w-full max-w-[1600px] min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
-          <div className="min-w-0">
-            <h1 className="text-display truncate text-xl font-semibold">Inventory</h1>
-            {(() => {
-              const totalCost = rows.reduce((s, r) => s + (r.spent || 0), 0);
-              return (
-                <p className="text-xs text-muted-foreground">
-                  {rows.length.toLocaleString()} cars · Total spend: {inr(totalCost)}
-                </p>
-              );
-            })()}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <SegmentControl
-              value={status}
-              onChange={setStatus}
-              className="max-w-full flex-wrap"
-              options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
-            />
-            {sort !== "sno" && (
-              <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setSort("sno")}>
-                Reset sort
+        <div className="flex flex-col gap-3 border-b border-border p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h1 className="text-display truncate text-xl font-semibold">Inventory</h1>
+              {(() => {
+                const totalCost = rows.reduce((s, r) => s + (r.spent || 0), 0);
+                return (
+                  <p className="text-xs text-muted-foreground">
+                    {rows.length.toLocaleString()} cars · Total spend: {inr(totalCost)}
+                  </p>
+                );
+              })()}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {sort !== "sno" && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="shrink-0"
+                  onClick={() => setSort("sno")}
+                >
+                  Reset sort
+                </Button>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => setExportOpen(true)}
+              >
+                <Download className="size-4" />
+                Export
               </Button>
-            )}
-            <Button
-              size="sm"
-              variant="outline"
-              className="shrink-0"
-              onClick={() => setExportOpen(true)}
-            >
-              <Download className="size-4" />
-              Export
-            </Button>
-            <Button
-              size="sm"
-              variant={activeCount ? "default" : "outline"}
-              className="shrink-0"
-              onClick={() => {
-                setDraft(filters);
-                setFilterOpen((v) => !v);
-              }}
-            >
-              <SlidersHorizontal className="size-4" />
-              Filters{activeCount ? ` (${activeCount})` : ""}
-            </Button>
-            {/* Sorting lives here rather than in column headers so it applies
+              <Button
+                size="sm"
+                variant={activeCount ? "default" : "outline"}
+                className="shrink-0"
+                onClick={() => {
+                  setDraft(filters);
+                  setFilterOpen((v) => !v);
+                }}
+              >
+                <SlidersHorizontal className="size-4" />
+                Filters{activeCount ? ` (${activeCount})` : ""}
+              </Button>
+              {/* Sorting lives here rather than in column headers so it applies
                 to the grid view too. */}
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              aria-label="Sort cars"
-              className="h-8 shrink-0 rounded-md border border-input bg-background px-2 text-sm"
-            >
-              {SORT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            <div className="flex shrink-0 items-center rounded-md border border-border p-0.5">
-              <button
-                type="button"
-                onClick={() => setView("grid")}
-                aria-pressed={view === "grid"}
-                title="Grid view"
-                className={`grid size-7 place-items-center rounded transition-colors ${
-                  view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground"
-                }`}
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                aria-label="Sort cars"
+                className="h-8 shrink-0 rounded-md border border-input bg-background px-2 text-sm"
               >
-                <LayoutGrid className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setView("table")}
-                aria-pressed={view === "table"}
-                title="Table view"
-                className={`grid size-7 place-items-center rounded transition-colors ${
-                  view === "table" ? "bg-muted text-foreground" : "text-muted-foreground"
-                }`}
-              >
-                <List className="size-4" />
-              </button>
+                {SORT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <div className="flex shrink-0 items-center rounded-md border border-border p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setView("grid")}
+                  aria-pressed={view === "grid"}
+                  title="Grid view"
+                  className={`grid size-7 place-items-center rounded transition-colors ${
+                    view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  <LayoutGrid className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("table")}
+                  aria-pressed={view === "table"}
+                  title="Table view"
+                  className={`grid size-7 place-items-center rounded transition-colors ${
+                    view === "table" ? "bg-muted text-foreground" : "text-muted-foreground"
+                  }`}
+                >
+                  <List className="size-4" />
+                </button>
+              </div>
             </div>
           </div>
+
+          {/* Its own row: the status list runs to ten or more entries, and an
+              auto-fit grid keeps every cell the same width however many there
+              are, wrapping instead of squeezing. */}
+          <SegmentControl
+            value={status}
+            onChange={setStatus}
+            className="grid w-full grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-0.5"
+            options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
+          />
         </div>
 
         {/* Inline filter row, revealed by the Filters button. It wraps on small

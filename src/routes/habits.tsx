@@ -43,6 +43,14 @@ const dayKey = (d: Date) =>
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/**
+ * One square size for every view. The yearly and mobile matrices used to size
+ * their cells as a fraction of the available width, so four years of data drew
+ * squares several times the size of a daily cell — the same heatmap at a
+ * different scale depending on which button was pressed.
+ */
+const SQUARE = "size-5 shrink-0 rounded-[4px]";
+
 const LEVEL_CLASS = [
   "bg-muted/50",
   "bg-primary/25",
@@ -411,10 +419,10 @@ function HabitsPage() {
           </div>
         ) : view === "yearly" ? (
           <div className="p-4">
-            <div className="grid grid-flow-col auto-cols-fr gap-2">
+            <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
               {buckets.map((b) => (
-                <div key={b.key} className="min-w-0 text-center">
-                  <div className="mb-1 truncate text-[10px] text-muted-foreground">{b.label}</div>
+                <div key={b.key} className="flex flex-col items-center gap-1">
+                  <div className="text-[10px] text-muted-foreground">{b.label}</div>
                   <PeriodSquare
                     bucket={b}
                     level={level(b.count)}
@@ -443,7 +451,7 @@ function HabitsPage() {
               {(matrix?.labels ?? []).map((label, col) => (
                 <div
                   key={col}
-                  className="grid grid-cols-[2rem_repeat(var(--years),minmax(0,1fr))] items-center gap-1"
+                  className="grid grid-cols-[2rem_repeat(var(--years),1.25rem)] items-center gap-1"
                   style={{ "--years": matrix?.rows.length || 1 } as CSSProperties}
                 >
                   <span className="text-[10px] text-muted-foreground">
@@ -460,16 +468,13 @@ function HabitsPage() {
                         onSelect={setSelected}
                       />
                     ) : (
-                      <span
-                        key={row.year}
-                        className="aspect-square w-full rounded-[4px] bg-muted/25"
-                      />
+                      <span key={row.year} className={`${SQUARE} bg-muted/25`} />
                     );
                   })}
                 </div>
               ))}
               <div
-                className="grid grid-cols-[2rem_repeat(var(--years),minmax(0,1fr))] gap-1 text-center text-[10px] text-muted-foreground"
+                className="grid grid-cols-[2rem_repeat(var(--years),1.25rem)] gap-1 text-center text-[10px] text-muted-foreground"
                 style={{ "--years": matrix?.rows.length || 1 } as CSSProperties}
               >
                 <span />
@@ -538,7 +543,7 @@ function PeriodSquare({
       type="button"
       title={`${bucket.label} — ${bucket.count} car${bucket.count === 1 ? "" : "s"}${bucket.spent ? ` · ${inr(bucket.spent)}` : ""}`}
       onClick={() => onSelect(bucket.count ? bucket.key : null)}
-      className={`aspect-square w-full rounded-[4px] ${LEVEL_CLASS[level]} ${
+      className={`${SQUARE} ${LEVEL_CLASS[level]} ${
         selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
       } ${bucket.count ? "cursor-pointer" : "cursor-default"}`}
     />
@@ -575,16 +580,15 @@ function MatrixRow({
       </span>
       {row.cells.map((bucket, i) =>
         bucket ? (
-          <div key={bucket.key} className="size-5 shrink-0">
-            <PeriodSquare
-              bucket={bucket}
-              level={level(bucket.count)}
-              selected={selected === bucket.key}
-              onSelect={onSelect}
-            />
-          </div>
+          <PeriodSquare
+            key={bucket.key}
+            bucket={bucket}
+            level={level(bucket.count)}
+            selected={selected === bucket.key}
+            onSelect={onSelect}
+          />
         ) : (
-          <span key={i} className="size-5 shrink-0 rounded-[4px] bg-muted/25" />
+          <span key={i} className={`${SQUARE} bg-muted/25`} />
         ),
       )}
     </div>
