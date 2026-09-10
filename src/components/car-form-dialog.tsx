@@ -3,6 +3,13 @@ import type { Diecast } from "@/lib/types";
 import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
 import { modelOptionsFor, optionsFor } from "@/lib/car-options";
+import {
+  CAR_DRAFT_KEY,
+  carEditDraftKey,
+  clearDraft,
+  readDraft,
+  writeDraft,
+} from "@/lib/form-draft";
 import { setCachedCarImage } from "@/lib/car-image";
 import { toDateInputValue, deriveMonth } from "@/lib/date-utils";
 import {
@@ -49,6 +56,7 @@ import {
   Layers,
   Upload,
   Info,
+  RotateCcw,
 } from "lucide-react";
 
 const STATUS_OPTIONS = ["Available", "Pre Order", "Transit", "Waiting", "ISO", "On Hold"];
@@ -119,6 +127,53 @@ function getBlankForm(): CarFormData {
   };
 }
 
+/** The saved car as form values — the baseline an edit is measured against. */
+function formFromCar(initial: Diecast): CarFormData {
+  return {
+    make: initial.make || "",
+    model: initial.model || "",
+    variant: initial.variant || "",
+    year: initial.year || "",
+    colour: initial.colour || "",
+    type: initial.type || "",
+    series: initial.series || "",
+    subSeries: initial.subSeries || "",
+    carNumber: initial.carNumber || "",
+    brand: initial.brand || "",
+    assortment: initial.assortment || "",
+    size: initial.size || "1:64",
+    spent: initial.spent !== undefined && initial.spent !== null ? initial.spent : "",
+    mrp: initial.mrp !== undefined && initial.mrp !== null ? initial.mrp : "",
+    shippingCost:
+      initial.shippingCost !== undefined && initial.shippingCost !== null
+        ? initial.shippingCost
+        : "",
+    payment: initial.payment || "Paid",
+    seller: initial.seller || "",
+    status: initial.status || "Available",
+    paid: initial.paid !== undefined && initial.paid !== null ? initial.paid : "",
+    balance: initial.balance !== undefined && initial.balance !== null ? initial.balance : 0,
+    transitInfo: initial.transitInfo || "",
+    orderDate:
+      toDateInputValue(initial.orderDate || initial.date) || new Date().toISOString().slice(0, 10),
+    expectedDate: toDateInputValue(
+      initial.expectedDate || (initial.status === "Available" ? initial.date : ""),
+    ),
+    official: Boolean(initial.official),
+    chase: Boolean(initial.chase),
+    favourite: Boolean(initial.favourite),
+    open: Boolean(initial.open),
+    imageUrl: initial.imageUrl || "",
+  };
+}
+
+/** Both sides always carry the same keys, so one pass over them is enough. */
+function sameForm(a: CarFormData, b: CarFormData): boolean {
+  return (Object.keys(a) as (keyof CarFormData)[]).every((k) => a[k] === b[k]);
+}
+
+type CarDraft = { form: CarFormData; step: number };
+
 const WIZARD_STEPS = [
   { id: 1, label: "Vehicle", title: "Vehicle Information", icon: Car },
   { id: 2, label: "Financials", title: "Financials & Status", icon: IndianRupee },
@@ -149,54 +204,71 @@ export function CarFormDialog({
   const [form, setForm] = useState<CarFormData>(getBlankForm());
   const [imgError, setImgError] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  /** True when this session's form came back from storage rather than blank. */
+  const [restored, setRestored] = useState(false);
+  /** Set once the draft for this open has been read, so the save can begin. */
+  const [draftReady, setDraftReady] = useState(false);
+
+  const draftKey = mode === "add" ? CAR_DRAFT_KEY : carEditDraftKey(initial?.id ?? "");
+
+  // Rebuilt per open rather than held in state: it is what "unchanged" means
+  // for this dialog, and both the restore and the save below compare against it.
+  const baseline = useMemo(
+    () => (initial ? formFromCar(initial) : getBlankForm()),
+    // A blank form stamps today's date, so it must not be rebuilt on every
+    // render — only when the dialog opens or the car being edited changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [initial, open],
+  );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setDraftReady(false);
+      return;
+    }
     setValidationError(null);
     setImgError(false);
-    setCurrentStep(1);
-    if (initial) {
-      setForm({
-        make: initial.make || "",
-        model: initial.model || "",
-        variant: initial.variant || "",
-        year: initial.year || "",
-        colour: initial.colour || "",
-        type: initial.type || "",
-        series: initial.series || "",
-        subSeries: initial.subSeries || "",
-        carNumber: initial.carNumber || "",
-        brand: initial.brand || "",
-        assortment: initial.assortment || "",
-        size: initial.size || "1:64",
-        spent: initial.spent !== undefined && initial.spent !== null ? initial.spent : "",
-        mrp: initial.mrp !== undefined && initial.mrp !== null ? initial.mrp : "",
-        shippingCost:
-          initial.shippingCost !== undefined && initial.shippingCost !== null
-            ? initial.shippingCost
-            : "",
-        payment: initial.payment || "Paid",
-        seller: initial.seller || "",
-        status: initial.status || "Available",
-        paid: initial.paid !== undefined && initial.paid !== null ? initial.paid : "",
-        balance: initial.balance !== undefined && initial.balance !== null ? initial.balance : 0,
-        transitInfo: initial.transitInfo || "",
-        orderDate:
-          toDateInputValue(initial.orderDate || initial.date) ||
-          new Date().toISOString().slice(0, 10),
-        expectedDate: toDateInputValue(
-          initial.expectedDate || (initial.status === "Available" ? initial.date : ""),
-        ),
-        official: Boolean(initial.official),
-        chase: Boolean(initial.chase),
-        favourite: Boolean(initial.favourite),
-        open: Boolean(initial.open),
-        imageUrl: initial.imageUrl || "",
-      });
+
+    // Pick up where the last session left off. On mobile this is the whole
+    // point: a locked phone can have the tab evicted and reloaded underneath a
+    // half-filled form, and the person comes back to an empty one otherwise.
+    const draft = readDraft<CarDraft>(draftKey);
+    if (draft?.form) {
+      // Spread over the baseline so a draft written before a field existed
+      // still restores, rather than arriving with the field undefined.
+      setForm({ ...baseline, ...draft.form });
+      setCurrentStep(mode === "add" ? Math.min(4, Math.max(1, draft.step || 1)) : 1);
+      setRestored(true);
     } else {
-      setForm(getBlankForm());
+      setForm(baseline);
+      setCurrentStep(1);
+      setRestored(false);
     }
-  }, [open, initial]);
+    setDraftReady(true);
+  }, [open, baseline, draftKey, mode]);
+
+  // The save. Every keystroke lands here, and an untouched form clears the key
+  // rather than leaving a draft that says nothing.
+  //
+  // Gated on draftReady because the restore above only schedules its state: on
+  // that same commit this effect would still see the blank form and delete the
+  // draft it had just read.
+  useEffect(() => {
+    if (!open || !draftReady) return;
+    if (sameForm(form, baseline)) {
+      clearDraft(draftKey);
+      return;
+    }
+    writeDraft<CarDraft>(draftKey, { form, step: currentStep });
+  }, [open, draftReady, form, currentStep, baseline, draftKey]);
+
+  const discard = () => {
+    clearDraft(draftKey);
+    setForm(baseline);
+    setCurrentStep(1);
+    setRestored(false);
+    setValidationError(null);
+  };
 
   const set = <K extends keyof CarFormData>(k: K, v: CarFormData[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
@@ -431,6 +503,9 @@ export function CarFormDialog({
       updateCar(payload);
     }
 
+    // The car is saved; the draft has nothing left to protect.
+    clearDraft(draftKey);
+    setRestored(false);
     onOpenChange(false);
   };
 
@@ -490,6 +565,24 @@ export function CarFormDialog({
             </span>
           )}
         </div>
+
+        {restored && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
+            <span className="flex items-center gap-2 text-foreground">
+              <RotateCcw className="size-3.5 shrink-0 text-primary" />
+              Picked up where you left off — nothing you typed was lost.
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={discard}
+            >
+              Start fresh
+            </Button>
+          </div>
+        )}
 
         {validationError && (
           <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
@@ -967,7 +1060,18 @@ export function CarFormDialog({
               {/* Wizard Footer Controls */}
               <DialogFooter className="pt-3 flex items-center justify-between sm:justify-between border-t border-border/50">
                 <div>
-                  <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                  {/* Cancel is the one gesture that means "throw this away", so
+                      it is also the one that drops the draft. Closing by
+                      Escape, the X, or a phone deciding to reload the tab all
+                      leave it in place. */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      clearDraft(draftKey);
+                      onOpenChange(false);
+                    }}
+                  >
                     Cancel
                   </Button>
                 </div>
@@ -1240,7 +1344,14 @@ export function CarFormDialog({
             </div>
 
             <DialogFooter className="pt-2">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  clearDraft(draftKey);
+                  onOpenChange(false);
+                }}
+              >
                 Cancel
               </Button>
               <Button type="submit">Save changes</Button>

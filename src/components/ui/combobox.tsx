@@ -64,9 +64,11 @@ export function Combobox({
 
   return (
     <Popover
-      // Modal: this lives inside the add-car dialog, which traps focus. Without
-      // it the popover's input never receives the keystrokes it is there for.
-      modal
+      // Deliberately NOT modal. A modal popover inside the (modal) add-car
+      // dialog leaves `pointer-events: none` stuck on the body when it closes —
+      // both layers manage that style and the popover restores it to the value
+      // it remembered rather than the one the dialog wants. The result is a
+      // dialog that goes completely dead to clicks after the first selection.
       open={open}
       onOpenChange={(next) => {
         setOpen(next);

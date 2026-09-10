@@ -1,5 +1,5 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Layers, Plus, Trash2, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Layers, Plus, Trash2, Loader2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -16,6 +16,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { useCarsActions, useCars, makeBlankCar } from "@/lib/cars-store";
 import { modelOptionsFor, optionsFor, type OptionField } from "@/lib/car-options";
+import { BULK_DRAFT_KEY, clearDraft, readDraft, writeDraft } from "@/lib/form-draft";
 import { buildCarName } from "@/lib/car-name";
 import { deriveMonth } from "@/lib/date-utils";
 import { inrFull } from "@/lib/format";
@@ -113,6 +114,23 @@ function blankRow(): Row {
   return { key: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}` };
 }
 
+/** Sets do not survive JSON, so the shared keys travel as an array. */
+type BulkDraft = { rows: Row[]; shared: Values; sharedKeys: FieldKey[] };
+
+const DEFAULT_SHARED_KEYS = () =>
+  new Set(FIELDS.filter((f) => f.sharedByDefault).map((f) => f.key));
+
+const defaultShared = (): Values => ({
+  status: "Available",
+  orderDate: new Date().toISOString().slice(0, 10),
+  size: "1:64",
+});
+
+/** A row nobody has typed into is not worth keeping or restoring. */
+function rowHasContent(row: Row): boolean {
+  return Object.entries(row).some(([k, v]) => k !== "key" && String(v ?? "").trim() !== "");
+}
+
 const num = (v: string | undefined) => {
   const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -201,15 +219,51 @@ export function BulkAddCarsDialog({
   };
 
   const [saving, setSaving] = useState(false);
-  const [sharedKeys, setSharedKeys] = useState<Set<FieldKey>>(
-    () => new Set(FIELDS.filter((f) => f.sharedByDefault).map((f) => f.key)),
-  );
-  const [shared, setShared] = useState<Values>({
-    status: "Available",
-    orderDate: new Date().toISOString().slice(0, 10),
-    size: "1:64",
-  });
+  const [sharedKeys, setSharedKeys] = useState<Set<FieldKey>>(DEFAULT_SHARED_KEYS);
+  const [shared, setShared] = useState<Values>(defaultShared);
   const [rows, setRows] = useState<Row[]>([blankRow(), blankRow(), blankRow()]);
+  const [restored, setRestored] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+
+  // Ten half-filled rows are the worst thing in this app to lose, and a phone
+  // going to standby is enough to lose them: a backgrounded tab gets evicted
+  // and reloaded, taking every bit of React state with it.
+  useEffect(() => {
+    if (!open) {
+      setDraftReady(false);
+      return;
+    }
+    const draft = readDraft<BulkDraft>(BULK_DRAFT_KEY);
+    if (draft && Array.isArray(draft.rows) && draft.rows.length) {
+      setRows(draft.rows);
+      if (draft.shared) setShared(draft.shared);
+      if (Array.isArray(draft.sharedKeys)) setSharedKeys(new Set(draft.sharedKeys));
+      setRestored(true);
+    } else {
+      setRestored(false);
+    }
+    setDraftReady(true);
+  }, [open]);
+
+  // Gated on draftReady for the same reason as the single-car form: the restore
+  // above only schedules its state, so on that commit this would still see the
+  // blank table and delete the draft it had just read.
+  useEffect(() => {
+    if (!open || !draftReady) return;
+    const untouchedShared = defaultShared();
+    const sharedTouched = FIELDS.some(
+      (f) => (shared[f.key] ?? "") !== (untouchedShared[f.key] ?? ""),
+    );
+    const defaultKeys = DEFAULT_SHARED_KEYS();
+    const keysTouched =
+      sharedKeys.size !== defaultKeys.size || [...sharedKeys].some((k) => !defaultKeys.has(k));
+
+    if (!rows.some(rowHasContent) && !sharedTouched && !keysTouched) {
+      clearDraft(BULK_DRAFT_KEY);
+      return;
+    }
+    writeDraft<BulkDraft>(BULK_DRAFT_KEY, { rows, shared, sharedKeys: [...sharedKeys] });
+  }, [open, draftReady, rows, shared, sharedKeys]);
 
   const sharedFields = useMemo(() => FIELDS.filter((f) => sharedKeys.has(f.key)), [sharedKeys]);
   const perCarFields = useMemo(() => FIELDS.filter((f) => !sharedKeys.has(f.key)), [sharedKeys]);
@@ -277,14 +331,18 @@ export function BulkAddCarsDialog({
     [filled, shared, sharedKeys],
   );
 
+  /** Clears the table but leaves the draft: closing is not the same as binning. */
   const reset = () => {
     setRows([blankRow(), blankRow(), blankRow()]);
-    setShared({
-      status: "Available",
-      orderDate: new Date().toISOString().slice(0, 10),
-      size: "1:64",
-    });
-    setSharedKeys(new Set(FIELDS.filter((f) => f.sharedByDefault).map((f) => f.key)));
+    setShared(defaultShared());
+    setSharedKeys(DEFAULT_SHARED_KEYS());
+    setRestored(false);
+  };
+
+  /** Cancel, and a batch that has been saved. Both mean the draft is spent. */
+  const discard = () => {
+    clearDraft(BULK_DRAFT_KEY);
+    reset();
   };
 
   const save = async () => {
@@ -333,7 +391,7 @@ export function BulkAddCarsDialog({
       }
 
       toast.success(`Added ${filled.length} car${filled.length === 1 ? "" : "s"}`);
-      reset();
+      discard();
       setOpen(false);
     } finally {
       setSaving(false);
@@ -362,6 +420,24 @@ export function BulkAddCarsDialog({
             fill in per car.
           </DialogDescription>
         </DialogHeader>
+
+        {restored && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
+            <span className="flex items-center gap-2 text-foreground">
+              <RotateCcw className="size-3.5 shrink-0 text-primary" />
+              Picked up where you left off — nothing you typed was lost.
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-xs"
+              onClick={discard}
+            >
+              Start fresh
+            </Button>
+          </div>
+        )}
 
         <section className="space-y-3 rounded-lg border border-border p-3">
           <h3 className="text-xs uppercase tracking-wider text-muted-foreground">
@@ -468,7 +544,14 @@ export function BulkAddCarsDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)} disabled={saving}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              discard();
+              setOpen(false);
+            }}
+            disabled={saving}
+          >
             Cancel
           </Button>
           <Button onClick={() => void save()} disabled={saving || filled.length === 0}>

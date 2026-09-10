@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearAllDrafts } from "@/lib/form-draft";
 
 export type Profile = {
   sno: number;
@@ -439,6 +440,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Storage may be unavailable (private mode); nothing to clean up then.
     }
+    // Same reasoning for half-typed forms: a draft is the previous person's
+    // work and must not greet whoever signs in next.
+    clearAllDrafts();
   }, []);
 
   const reloadProfile = useCallback(async () => {
