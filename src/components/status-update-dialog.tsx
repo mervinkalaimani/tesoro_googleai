@@ -23,24 +23,49 @@ import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
 import { inrFull } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
 
+const STATUS_CHOICES = [
+  "Available",
+  "Out for Delivery",
+  "Transit",
+  "Waiting",
+  "Pre Order",
+  "On Hold",
+  "ISO",
+] as const;
+type NextStatus = (typeof STATUS_CHOICES)[number];
+
 /**
- * Where an ISO entry can go. Staying on the list is not one of them — this
- * dialog only opens because something has happened to the car.
+ * The order a car normally travels in. Used only to preselect the likely next
+ * step — every status stays one click away, because cars go backwards too.
  */
-const STATUS_CHOICES = ["Available", "Transit", "Waiting", "Pre Order", "On Hold"] as const;
-type IsoNextStatus = (typeof STATUS_CHOICES)[number];
+const STATUS_FLOW: NextStatus[] = [
+  "ISO",
+  "Pre Order",
+  "Waiting",
+  "Transit",
+  "Out for Delivery",
+  "Available",
+];
+
+function nextInFlow(current: string): NextStatus {
+  const i = STATUS_FLOW.findIndex((s) => s.toLowerCase() === (current || "").trim().toLowerCase());
+  if (i < 0 || i >= STATUS_FLOW.length - 1) return "Available";
+  return STATUS_FLOW[i + 1];
+}
 
 /** Statuses that mean the car is in hand, and so have a real arrival date. */
-const ARRIVED = new Set<IsoNextStatus>(["Available"]);
+const ARRIVED = new Set<NextStatus>(["Available"]);
 
 /**
  * Every one of these means the car has been bought or committed to, so the
  * purchase has to be recorded: who from, what it cost, when it was ordered and
  * when it is due. "On Hold" is included because a car put on hold is still one
- * somebody is holding *for you*, at a price.
+ * somebody is holding *for you*, at a price. ISO is not — going back on the
+ * wishlist means the purchase is off.
  */
-const NEEDS_PURCHASE = new Set<IsoNextStatus>([
+const NEEDS_PURCHASE = new Set<NextStatus>([
   "Available",
+  "Out for Delivery",
   "Transit",
   "Waiting",
   "Pre Order",
@@ -48,7 +73,7 @@ const NEEDS_PURCHASE = new Set<IsoNextStatus>([
 ]);
 
 /** Only a car actually moving has a courier and a consignment number. */
-const NEEDS_TRANSIT = new Set<IsoNextStatus>(["Transit"]);
+const NEEDS_TRANSIT = new Set<NextStatus>(["Transit", "Out for Delivery"]);
 
 const num = (v: string) => {
   const n = Number(String(v).replace(/[^\d.-]/g, ""));
@@ -68,15 +93,20 @@ function Detail({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * Moves a car off the ISO list and records what happened to it.
+ * Moves a car to a new status and records what that status implies.
  *
- * An ISO row already describes the casting — that is what made it findable in
- * the first place — so none of that is asked for again; it is shown, in full,
- * so there is no doubt which car is being updated. What an ISO row has never
- * had is a purchase: no seller, no price, no dates. Those are what this asks
- * for, and only the ones the chosen status actually implies.
+ * The casting is already described on the row, so none of it is asked for
+ * again; it is shown, in full, so there is no doubt which car is being updated.
+ * What changes with the status is everything around it — a car in transit has a
+ * courier, a delivered one has an arrival date, and neither of those means
+ * anything for a car still on the wishlist. Only the fields the chosen status
+ * actually implies are asked for.
+ *
+ * This replaced a one-click "Mark <next stage>" button that moved the status
+ * and nothing else, so a car could become Available with no seller and no
+ * price, or Transit with no way to track it.
  */
-export function IsoStatusDialog({
+export function StatusUpdateDialog({
   car,
   onClose,
   onDone,
@@ -89,7 +119,7 @@ export function IsoStatusDialog({
   const cars = useCars();
   const sellerOptions = useMemo(() => optionsFor("seller", cars), [cars]);
 
-  const [status, setStatus] = useState<IsoNextStatus>("Available");
+  const [status, setStatus] = useState<NextStatus>("Available");
   const [seller, setSeller] = useState("");
   const [spent, setSpent] = useState("");
   const [mrp, setMrp] = useState("");
@@ -106,12 +136,20 @@ export function IsoStatusDialog({
   useEffect(() => {
     if (!car) return;
     const today = new Date().toISOString().slice(0, 10);
-    setStatus("Available");
+    // Preselect where the car would normally go next, so the common case is one
+    // click — the same move the old button made, just with its consequences
+    // spelled out.
+    setStatus(nextInFlow(car.status));
     setSeller(car.seller || "");
     setSpent(car.spent ? String(car.spent) : "");
     setMrp(car.mrp ? String(car.mrp) : "");
     setOrderDate(toDateInputValue(car.orderDate) || today);
-    setExpectedDate(toDateInputValue(car.expectedDate) || monthEtaToDate(car.transitInfo) || today);
+    setExpectedDate(
+      toDateInputValue(car.expectedDate) ||
+        toDateInputValue(car.date) ||
+        monthEtaToDate(car.transitInfo) ||
+        today,
+    );
     setPartner(car.deliveryPartner || "");
     setTracking(car.trackingId || "");
     setTransitInfo(car.transitInfo || "");
@@ -126,6 +164,8 @@ export function IsoStatusDialog({
   const arrived = ARRIVED.has(status);
   const trackUrl = trackingUrlFor(partner, tracking);
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
+  const wasIso = (car.status || "").trim().toLowerCase() === "iso";
+  const unchanged = status === car.status;
 
   const save = () => {
     if (needsPurchase) {
@@ -173,13 +213,14 @@ export function IsoStatusDialog({
         transitInfo: needsTransit ? transitInfo.trim() : "",
         deliveryPartner: needsTransit ? partner.trim() || undefined : undefined,
         trackingId: needsTransit ? tracking.trim() || undefined : undefined,
-        // Blanked so the store derives it from the seller and dates just
-        // entered; an ISO row never had one.
-        shippingId: "",
+        // Left as it is rather than blanked: updateCar re-derives it by itself
+        // when the seller or the dates move, and keeps it otherwise. Blanking
+        // would renumber a car that is happily part of an existing batch.
+        shippingId: car.shippingId,
       };
 
       updateCar(next);
-      toast.success("Moved off your ISO list", {
+      toast.success(wasIso ? "Moved off your ISO list" : "Status updated", {
         description: `${title} is now ${status.toLowerCase()}.`,
       });
       onDone?.(next);
@@ -205,8 +246,9 @@ export function IsoStatusDialog({
             Update status
           </DialogTitle>
           <DialogDescription>
-            This car is on your ISO list. Say what happened to it and the entry moves with it — no
-            second copy.
+            {wasIso
+              ? "This car is on your ISO list. Say what happened to it and the entry moves with it — no second copy."
+              : "Say where the car is now. What you are asked for depends on where it moves to."}
           </DialogDescription>
         </DialogHeader>
 
@@ -411,7 +453,7 @@ export function IsoStatusDialog({
             ) : (
               <ArrowRight className="size-4" />
             )}
-            Move to {status}
+            {unchanged ? `Save ${status} details` : `Move to ${status}`}
           </Button>
         </DialogFooter>
       </DialogContent>

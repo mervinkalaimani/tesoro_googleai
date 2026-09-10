@@ -15,7 +15,7 @@ import { toDateInputValue, deriveMonth, monthEtaToDate } from "@/lib/date-utils"
 import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
 import { isoMatchesFor } from "@/lib/iso-match";
 import { IsoSuggestions } from "@/components/iso-suggestions";
-import { IsoStatusDialog } from "@/components/iso-status-dialog";
+import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import {
   Dialog,
   DialogContent,
@@ -1558,7 +1558,7 @@ export function CarFormDialog({
 
       {/* Stacked over the wizard rather than replacing it: cancelling out of a
           status change should leave the half-typed car exactly where it was. */}
-      <IsoStatusDialog
+      <StatusUpdateDialog
         car={isoStatusCar}
         onClose={() => setIsoStatusCar(null)}
         onDone={() => {

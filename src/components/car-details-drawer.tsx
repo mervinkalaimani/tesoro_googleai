@@ -15,12 +15,12 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import type { Diecast } from "@/lib/types";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { findCarImage } from "@/lib/car-image";
-import { deriveMonth } from "@/lib/date-utils";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { trackingUrlFor } from "@/lib/tracking";
 import { Input } from "@/components/ui/input";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
+import { StatusUpdateDialog } from "@/components/status-update-dialog";
 
 /**
  * A car moves forward one step at a time rather than jumping straight to
@@ -57,6 +57,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   const [editCar, setEditCar] = useState<Diecast | null>(null);
   const [batchShippingId, setBatchShippingId] = useState<string | null>(null);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [statusCar, setStatusCar] = useState<Diecast | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Diecast | null>(null);
 
   const cars = useCars();
@@ -84,7 +85,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           if (!v) close();
         }}
       >
-        <DialogContent className="max-w-2xl sm:max-w-2xl border-zinc-800 bg-[#0e121a] text-zinc-100 shadow-2xl rounded-2xl p-5 sm:p-6 max-h-[92vh] overflow-y-auto [&>button]:hidden">
+        <DialogContent className="max-w-2xl sm:max-w-2xl border-border bg-background text-foreground shadow-2xl rounded-2xl p-5 sm:p-6 max-h-[92vh] overflow-y-auto [&>button]:hidden">
           {car && (
             <CarPopupContent
               car={car}
@@ -96,22 +97,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
               }}
               onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
               onToggleChase={() => updateCar({ ...car, chase: !car.chase })}
-              onAdvanceStatus={() => {
-                const next = nextStatus(car.status);
-                if (!next) return;
-                if (next !== "Available") {
-                  updateCar({ ...car, status: next });
-                  return;
-                }
-                const today = new Date().toISOString().slice(0, 10);
-                const arrDate = car.expectedDate || car.date || today;
-                updateCar({
-                  ...car,
-                  status: "Available",
-                  date: arrDate,
-                  month: deriveMonth(arrDate) || car.month,
-                });
-              }}
+              onUpdateStatus={() => setStatusCar(car)}
               onDelete={() => setPendingDelete(car)}
             />
           )}
@@ -129,6 +115,11 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           mode="edit"
         />
       )}
+
+      {/* Same dialog the ISO suggestions open: one place that knows what each
+          status needs recording alongside it. The drawer stays open behind it,
+          so the car is still there when it closes — showing its new status. */}
+      <StatusUpdateDialog car={statusCar} onClose={() => setStatusCar(null)} />
 
       {/* Shipping batch update dialog triggered from shipping ID */}
       <ShippingBatchDialog
@@ -181,10 +172,10 @@ function DeleteCarDialog({
         if (!v) onCancel();
       }}
     >
-      <DialogContent className="max-w-md border-zinc-800 bg-[#0e121a] text-zinc-100">
+      <DialogContent className="max-w-md border-border bg-background text-foreground">
         <DialogTitle className="text-lg font-semibold">Delete this car?</DialogTitle>
-        <DialogDescription className="text-sm text-zinc-400">
-          <span className="font-medium text-zinc-200">
+        <DialogDescription className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">
             {car.name || `${car.make} ${car.model}`}
           </span>{" "}
           {/* No longer "cannot be undone": the top bar's undo button puts the
@@ -194,9 +185,9 @@ function DeleteCarDialog({
         </DialogDescription>
 
         <div className="space-y-2">
-          <p className="text-sm text-zinc-400">
-            Type <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-100">{phrase}</code>{" "}
-            to confirm.
+          <p className="text-sm text-muted-foreground">
+            Type <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">{phrase}</code> to
+            confirm.
           </p>
           <Input
             autoFocus
@@ -214,7 +205,7 @@ function DeleteCarDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+            className="rounded-lg bg-muted px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
           >
             Cancel
           </button>
@@ -240,7 +231,7 @@ interface CarPopupContentProps {
   onOpenShippingBatch: (shippingId: string) => void;
   onToggleFavourite: () => void;
   onToggleChase: () => void;
-  onAdvanceStatus: () => void;
+  onUpdateStatus: () => void;
   onDelete: () => void;
 }
 
@@ -251,35 +242,25 @@ function CarPopupContent({
   onOpenShippingBatch,
   onToggleFavourite,
   onToggleChase,
-  onAdvanceStatus,
+  onUpdateStatus,
   onDelete,
 }: CarPopupContentProps) {
-  const [deliveredAnim, setDeliveredAnim] = useState(false);
-
   const spent = Math.round(car.spent ?? 0);
   const mrp = Math.round(car.mrp ?? 0);
   const delta = mrp - spent;
+  // Only for the button's tooltip now — the dialog decides where the car
+  // actually goes, and preselects the same next stage itself.
   const advanceTo = nextStatus(car.status);
-
-  const handleMarkDeliveredClick = () => {
-    if (!advanceTo) return;
-    onAdvanceStatus();
-    // Only flash the delivered confirmation when that is what just happened.
-    if (advanceTo === "Available") {
-      setDeliveredAnim(true);
-      setTimeout(() => setDeliveredAnim(false), 2000);
-    }
-  };
 
   const getStatusColor = (st: string) => {
     const s = (st || "").toLowerCase();
     if (s.includes("transit")) return "text-rose-400";
     if (s.includes("available")) return "text-emerald-400";
-    if (s.includes("pre order")) return "text-amber-400";
+    if (s.includes("pre order")) return "text-amber-600 dark:text-amber-400";
     if (s.includes("wait")) return "text-cyan-400";
     if (s.includes("hold")) return "text-purple-400";
     if (s.includes("iso")) return "text-blue-400";
-    return "text-white";
+    return "text-foreground";
   };
 
   const cleanTransitNotes = (car.transitInfo || "").trim();
@@ -297,7 +278,7 @@ function CarPopupContent({
 
       {/* TOP HEADER ROW: ID Badge on left, Star + Edit + Close on right */}
       <div className="flex items-center justify-between">
-        <div className="rounded-md border border-zinc-700/60 bg-zinc-800/40 px-2.5 py-1 font-mono text-xs font-medium tracking-wider text-zinc-300">
+        <div className="rounded-md border border-border bg-muted/40 px-2.5 py-1 font-mono text-xs font-medium tracking-wider text-foreground">
           {car.id}
         </div>
 
@@ -308,11 +289,13 @@ function CarPopupContent({
             onClick={onToggleChase}
             title={car.chase ? "Unmark as chase" : "Mark as chase"}
             aria-pressed={car.chase}
-            className="flex size-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 transition-colors hover:bg-zinc-800 cursor-pointer"
+            className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/40 transition-colors hover:bg-muted cursor-pointer"
           >
             <Flame
               className={`size-4 ${
-                car.chase ? "fill-orange-400 text-orange-400" : "text-zinc-400 hover:text-white"
+                car.chase
+                  ? "fill-orange-400 text-orange-400"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             />
           </button>
@@ -322,11 +305,13 @@ function CarPopupContent({
             type="button"
             onClick={onToggleFavourite}
             title={car.favourite ? "Remove from favourites" : "Add to favourites"}
-            className="flex size-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors cursor-pointer"
           >
             <Star
               className={`size-4 ${
-                car.favourite ? "fill-amber-400 text-amber-400" : "text-zinc-400 hover:text-white"
+                car.favourite
+                  ? "fill-amber-400 text-amber-400"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             />
           </button>
@@ -336,7 +321,7 @@ function CarPopupContent({
             type="button"
             onClick={onEdit}
             title="Edit car details"
-            className="flex size-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+            className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           >
             <Pencil className="size-4" />
           </button>
@@ -346,7 +331,7 @@ function CarPopupContent({
             type="button"
             onClick={onClose}
             title="Close popup"
-            className="flex size-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 text-zinc-400 hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer"
+            className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           >
             <X className="size-4" />
           </button>
@@ -354,12 +339,12 @@ function CarPopupContent({
       </div>
 
       {/* HERO IMAGE: Landscape with Brand and Size badges overlaid at bottom-left */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-zinc-900/80 border border-zinc-800/80 shadow-inner">
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-muted/60 border border-border shadow-inner">
         <HeroCarImage car={car} />
 
         {/* Scale badge only — brand now reads in the subtitle below. */}
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
-          <span className="rounded-md bg-black/85 backdrop-blur-md px-2 py-1 text-xs font-mono font-medium text-zinc-300 tracking-tight shadow-md border border-white/10">
+          <span className="rounded-md bg-black/85 backdrop-blur-md px-2 py-1 text-xs font-mono font-medium text-foreground tracking-tight shadow-md border border-white/10">
             {car.size || "1:64"}
           </span>
         </div>
@@ -367,42 +352,42 @@ function CarPopupContent({
 
       {/* CAR TITLE & SUBTITLE */}
       <div className="pt-1">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
           {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
         </h2>
         {/* Make and model are already in the title, so the subtitle carries the
             collection context instead. */}
-        <p className="mt-1 text-sm font-normal text-zinc-400">
+        <p className="mt-1 text-sm font-normal text-muted-foreground">
           {[car.brand, car.series, car.subSeries].filter(Boolean).join(" • ") || "—"}
         </p>
       </div>
 
       {/* 3-COLUMN FINANCIALS CARD: PURCHASE SPENT | RETAIL / MRP | GAIN / DELTA */}
-      <div className="grid grid-cols-3 gap-2 rounded-xl border border-zinc-800/90 bg-zinc-900/50 p-4">
+      <div className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-muted/40 p-4">
         <div>
-          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             PURCHASE SPENT
           </span>
-          <span className="mt-1 block text-xl sm:text-2xl font-bold text-white">
+          <span className="mt-1 block text-xl sm:text-2xl font-bold text-foreground">
             {inrFull(spent)}
           </span>
         </div>
 
         <div>
-          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             RETAIL / MRP
           </span>
-          <span className="mt-1 block text-xl sm:text-2xl font-bold text-white">
+          <span className="mt-1 block text-xl sm:text-2xl font-bold text-foreground">
             {inrFull(mrp)}
           </span>
         </div>
 
         <div>
-          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
             GAIN / DELTA
           </span>
           {delta >= 0 ? (
-            <span className="mt-1 block text-xl sm:text-2xl font-bold text-[#00E599]">
+            <span className="mt-1 block text-xl sm:text-2xl font-bold text-emerald-600 dark:text-[#00E599]">
               +{inrFull(delta)}
             </span>
           ) : (
@@ -416,98 +401,94 @@ function CarPopupContent({
       {/* 3-COLUMN SPECIFICATIONS GRID */}
       <div className="grid grid-cols-3 gap-x-3 gap-y-4 text-sm pt-1">
         <div>
-          <span className="text-xs text-zinc-400">Series</span>
-          <span className="mt-0.5 block font-semibold text-white truncate">
+          <span className="text-xs text-muted-foreground">Series</span>
+          <span className="mt-0.5 block font-semibold text-foreground truncate">
             {car.series || "Showroom"}
           </span>
         </div>
 
         <div>
-          <span className="text-xs text-zinc-400">Assortment</span>
-          <span className="mt-0.5 block font-semibold text-white truncate">
+          <span className="text-xs text-muted-foreground">Assortment</span>
+          <span className="mt-0.5 block font-semibold text-foreground truncate">
             {car.assortment || "Premium"}
           </span>
         </div>
 
         <div>
-          <span className="text-xs text-zinc-400">Vehicle Type</span>
-          <span className="mt-0.5 block font-semibold text-white truncate">
+          <span className="text-xs text-muted-foreground">Vehicle Type</span>
+          <span className="mt-0.5 block font-semibold text-foreground truncate">
             {car.type || "SUV"}
           </span>
         </div>
 
         <div>
-          <span className="text-xs text-zinc-400">Colour / Livery</span>
-          <span className="mt-0.5 block font-semibold text-white truncate">
+          <span className="text-xs text-muted-foreground">Colour / Livery</span>
+          <span className="mt-0.5 block font-semibold text-foreground truncate">
             {car.colour || "—"}
           </span>
         </div>
 
         <div>
-          <span className="text-xs text-zinc-400">Current Status</span>
+          <span className="text-xs text-muted-foreground">Current Status</span>
           <span className={`mt-0.5 block font-semibold truncate ${getStatusColor(car.status)}`}>
             {car.status || "—"}
           </span>
         </div>
       </div>
 
-      {/* SHIPPING & TRANSIT TRACKING CARD */}
-      <div className="rounded-xl border border-amber-500/35 bg-[#17140e] p-4 space-y-3">
+      {/* SHIPPING & TRANSIT TRACKING CARD
+          A translucent amber wash rather than the fixed near-black it was:
+          the tint now reads against either background instead of punching a
+          dark hole through a light page. */}
+      <div className="space-y-3 rounded-xl border border-amber-500/35 bg-amber-500/[0.07] p-4">
         {/* Card Header with Truck Icon and Mark Delivered Button */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Truck className="size-4 text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-400">
+            <Truck className="size-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
               SHIPPING & TRANSIT TRACKING
             </span>
           </div>
 
-          {/* Advances one stage at a time: ISO → Pre Order → Waiting → Transit
-              → Out for Delivery → Delivered. */}
+          {/* Was a one-click "Mark <next stage>", which moved the status and
+              nothing else — so a car became Transit with no courier, or
+              Available with no seller or price. It opens the status dialog
+              instead: same one the ISO suggestions use, which asks for what the
+              new status actually implies. The next stage is still what it
+              defaults to. */}
           <button
             type="button"
-            onClick={handleMarkDeliveredClick}
-            disabled={!advanceTo}
+            onClick={onUpdateStatus}
             title={
               advanceTo
-                ? `Move from ${car.status || "unknown"} to ${advanceTo}`
-                : "Already delivered"
+                ? `Update status — ${car.status || "unknown"} to ${advanceTo}`
+                : "Update status"
             }
-            className={`flex items-center gap-1.5 rounded-lg text-xs font-semibold px-3 py-1.5 transition-colors shadow-sm cursor-pointer ${
-              !advanceTo
-                ? "bg-emerald-600/80 text-white cursor-default"
-                : "bg-[#00c57d] hover:bg-[#00b070] text-white"
-            }`}
+            className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#00c57d] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#00b070]"
           >
             <CheckCircle2 className="size-3.5" />
-            <span>
-              {deliveredAnim || !advanceTo
-                ? "Delivered ✓"
-                : advanceTo === "Available"
-                  ? "Mark Delivered"
-                  : `Mark ${advanceTo}`}
-            </span>
+            <span>Update status</span>
           </button>
         </div>
 
         {/* 4-column Details: Seller | Shipping ID | Order Date | Expected Date */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
           <div>
-            <span className="text-zinc-400">Seller:</span>
-            <span className="mt-0.5 block font-medium text-white truncate">
+            <span className="text-muted-foreground">Seller:</span>
+            <span className="mt-0.5 block font-medium text-foreground truncate">
               {car.seller || "—"}
             </span>
           </div>
 
           <div>
-            <span className="text-zinc-400">Shipping ID:</span>
+            <span className="text-muted-foreground">Shipping ID:</span>
             <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono font-medium text-white">{car.shippingId || "—"}</span>
+              <span className="font-mono font-medium text-foreground">{car.shippingId || "—"}</span>
               {car.shippingId && (
                 <button
                   type="button"
                   onClick={() => onOpenShippingBatch(car.shippingId)}
-                  className="text-[10px] text-amber-400 hover:underline cursor-pointer"
+                  className="cursor-pointer text-[10px] text-amber-600 hover:underline dark:text-amber-400"
                   title={`Update all cars in batch ${car.shippingId}`}
                 >
                   (Batch)
@@ -517,29 +498,29 @@ function CarPopupContent({
           </div>
 
           <div>
-            <span className="text-zinc-400">Order Date:</span>
-            <span className="mt-0.5 block font-medium text-white truncate">
+            <span className="text-muted-foreground">Order Date:</span>
+            <span className="mt-0.5 block font-medium text-foreground truncate">
               {car.orderDate || "—"}
             </span>
           </div>
 
           <div>
-            <span className="text-zinc-400">Expected Date:</span>
-            <span className="mt-0.5 block font-medium text-white truncate">
+            <span className="text-muted-foreground">Expected Date:</span>
+            <span className="mt-0.5 block font-medium text-foreground truncate">
               {formatDayMonthYear(car.expectedDate || car.date) || "—"}
             </span>
           </div>
 
           <div>
-            <span className="text-zinc-400">Delivery Partner:</span>
-            <span className="mt-0.5 block font-medium text-white truncate">
+            <span className="text-muted-foreground">Delivery Partner:</span>
+            <span className="mt-0.5 block font-medium text-foreground truncate">
               {car.deliveryPartner || "—"}
             </span>
           </div>
 
           <div>
-            <span className="text-zinc-400">Tracking ID:</span>
-            <span className="mt-0.5 block truncate font-mono font-medium text-white">
+            <span className="text-muted-foreground">Tracking ID:</span>
+            <span className="mt-0.5 block truncate font-mono font-medium text-foreground">
               {car.trackingId || "—"}
             </span>
           </div>
@@ -559,9 +540,9 @@ function CarPopupContent({
         )}
 
         {/* Tracking Notes Footer */}
-        <div className="border-t border-amber-500/20 pt-2 text-xs text-zinc-300">
+        <div className="border-t border-amber-500/20 pt-2 text-xs text-foreground">
           Tracking Notes:{" "}
-          <span className="text-zinc-400 font-mono">
+          <span className="text-muted-foreground font-mono">
             {cleanTransitNotes
               ? cleanTransitNotes.startsWith("[")
                 ? cleanTransitNotes
@@ -572,7 +553,7 @@ function CarPopupContent({
       </div>
 
       {/* BOTTOM ACTIONS FOOTER: Delete on left, Close on right */}
-      <div className="flex items-center justify-between border-t border-zinc-800/80 pt-4">
+      <div className="flex items-center justify-between border-t border-border pt-4">
         <button
           type="button"
           onClick={onDelete}
@@ -585,7 +566,7 @@ function CarPopupContent({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg bg-zinc-800 hover:bg-zinc-700 px-5 py-2 text-sm font-medium text-white transition-colors cursor-pointer"
+          className="cursor-pointer rounded-lg bg-muted px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
         >
           Close
         </button>
@@ -627,10 +608,10 @@ function HeroCarImage({ car }: { car: Diecast }) {
   }, [car.id, car.imageUrl, car.model, car.variant, car.colour, car.brand, car.make]);
 
   return (
-    <div className="relative h-full w-full flex items-center justify-center bg-zinc-950/60">
+    <div className="relative h-full w-full flex items-center justify-center bg-background/60">
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/40">
-          <Loader2 className="size-6 animate-spin text-zinc-500" />
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
+          <Loader2 className="size-6 animate-spin text-muted-foreground" />
         </div>
       )}
 
@@ -642,7 +623,7 @@ function HeroCarImage({ car }: { car: Diecast }) {
           onError={() => setSrc(null)}
         />
       ) : !loading ? (
-        <div className="flex flex-col items-center justify-center gap-1 text-zinc-600">
+        <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
           <Car className="size-10" />
           <span className="text-xs">No image available</span>
         </div>

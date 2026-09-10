@@ -263,17 +263,17 @@ export function ShippingBatchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border-zinc-800 bg-[#0e121a] text-zinc-100 shadow-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg border-border bg-background text-foreground shadow-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="space-y-1 text-left">
           <div className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
               <Truck className="size-4" />
             </div>
-            <DialogTitle className="text-lg font-bold text-white">
+            <DialogTitle className="text-lg font-bold text-foreground">
               Update by Shipping ID
             </DialogTitle>
           </div>
-          <DialogDescription className="text-xs text-zinc-400">
+          <DialogDescription className="text-xs text-muted-foreground">
             Select a Shipping ID to simultaneously update the status, expected date, and transit
             notes across all matching cars.
           </DialogDescription>
@@ -296,7 +296,7 @@ export function ShippingBatchDialog({
             {/* Shipping ID Selector */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-zinc-300">Select Shipping ID</label>
+                <label className="text-xs font-semibold text-foreground">Select Shipping ID</label>
                 {!allowedShippingIds && (
                   <button
                     type="button"
@@ -313,25 +313,27 @@ export function ShippingBatchDialog({
                   placeholder="e.g. FIRY/02, ANIH/PO/09..."
                   value={customShippingId}
                   onChange={(e) => setCustomShippingId(e.target.value)}
-                  className="border-zinc-800 bg-zinc-900 text-xs text-white"
+                  className="border-border bg-background text-xs text-foreground"
                 />
               ) : (
                 <Select value={selectedShippingId} onValueChange={setSelectedShippingId}>
-                  <SelectTrigger className="border-zinc-800 bg-zinc-900 text-xs text-white">
+                  <SelectTrigger className="border-border bg-background text-xs text-foreground">
                     <SelectValue placeholder="Select a shipping ID..." />
                   </SelectTrigger>
-                  <SelectContent className="max-h-64 border-zinc-800 bg-zinc-900 text-zinc-100">
+                  <SelectContent className="max-h-64 border-border bg-background text-foreground">
                     {shippingIdStats.map((item) => (
                       <SelectItem key={item.id} value={item.id} className="text-xs">
                         <span className="font-mono font-bold text-amber-400">{item.id}</span>
-                        <span className="ml-2 text-zinc-400">
+                        <span className="ml-2 text-muted-foreground">
                           ({item.count} car{item.count === 1 ? "" : "s"}
                           {item.sellers ? ` · ${item.sellers}` : ""})
                         </span>
                       </SelectItem>
                     ))}
                     {shippingIdStats.length === 0 && (
-                      <div className="p-2 text-center text-zinc-500">No shipping IDs found</div>
+                      <div className="p-2 text-center text-muted-foreground">
+                        No shipping IDs found
+                      </div>
                     )}
                   </SelectContent>
                 </Select>
@@ -340,12 +342,12 @@ export function ShippingBatchDialog({
               {/* Delivered cars were previously filtered out with no way back,
                   so a batch that had already arrived could not be corrected —
                   its ID was not even in the list. */}
-              <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-[11px] text-zinc-400">
+              <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={!hideDelivered}
                   onChange={(e) => setHideDelivered(!e.target.checked)}
-                  className="rounded border-zinc-700 bg-zinc-900 text-primary"
+                  className="rounded border-input bg-background text-primary"
                 />
                 <span>Include cars already delivered</span>
               </label>
@@ -353,11 +355,11 @@ export function ShippingBatchDialog({
 
             {/* Matched Cars Overview Card */}
             {activeShippingId && (
-              <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 space-y-2">
+              <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <Package className="size-3.5 text-zinc-400" />
-                    <span className="font-semibold text-white">
+                    <Package className="size-3.5 text-muted-foreground" />
+                    <span className="font-semibold text-foreground">
                       {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in{" "}
                       <span className="font-mono text-amber-400">{activeShippingId}</span>
                     </span>
@@ -366,7 +368,7 @@ export function ShippingBatchDialog({
                     <button
                       type="button"
                       onClick={() => setShowCarList(!showCarList)}
-                      className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white"
+                      className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
                     >
                       {showCarList ? "Hide cars" : "View cars"}
                       {showCarList ? (
@@ -380,23 +382,25 @@ export function ShippingBatchDialog({
 
                 {/* Collapsible list of cars */}
                 {showCarList && matchedCars.length > 0 && (
-                  <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1 border-t border-zinc-800/80 pt-2">
+                  <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1 border-t border-border pt-2">
                     {matchedCars.map((car) => (
                       <div
                         key={car.id}
-                        className="flex items-center justify-between rounded bg-zinc-800/50 px-2 py-1 text-[11px]"
+                        className="flex items-center justify-between rounded bg-muted/50 px-2 py-1 text-[11px]"
                       >
                         <div className="min-w-0 truncate pr-2">
-                          <span className="font-medium text-white">
+                          <span className="font-medium text-foreground">
                             {car.name || `${car.make} ${car.model}`}
                           </span>
-                          <span className="ml-1.5 text-zinc-400">({car.brand || car.make})</span>
+                          <span className="ml-1.5 text-muted-foreground">
+                            ({car.brand || car.make})
+                          </span>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
-                          <span className="text-zinc-400">
+                          <span className="text-muted-foreground">
                             {car.expectedDate || car.date || "No ETA"}
                           </span>
-                          <span className="rounded bg-zinc-700/60 px-1.5 py-0.5 text-[10px] text-zinc-300">
+                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
                             {car.status}
                           </span>
                         </div>
@@ -411,14 +415,14 @@ export function ShippingBatchDialog({
             <div className="space-y-3 pt-1">
               {/* New Status */}
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-zinc-300">
+                <label className="text-xs font-semibold text-foreground">
                   Update Status for All Cars
                 </label>
                 <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger className="border-zinc-800 bg-zinc-900 text-xs text-white">
+                  <SelectTrigger className="border-border bg-background text-xs text-foreground">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="border-zinc-800 bg-zinc-900 text-zinc-100">
+                  <SelectContent className="border-border bg-background text-foreground">
                     {STATUS_CHOICES.map((choice) => (
                       <SelectItem key={choice.value} value={choice.value} className="text-xs">
                         {choice.label}
@@ -431,7 +435,7 @@ export function ShippingBatchDialog({
               {/* New Expected Date */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                     <Calendar className="size-3.5 text-amber-400" />
                     <span>Expected / Available Date</span>
                   </label>
@@ -439,7 +443,7 @@ export function ShippingBatchDialog({
                     <button
                       type="button"
                       onClick={() => setNewExpectedDate("")}
-                      className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                      className="text-[10px] text-muted-foreground hover:text-foreground"
                     >
                       Clear
                     </button>
@@ -450,39 +454,39 @@ export function ShippingBatchDialog({
                   type="date"
                   value={newExpectedDate}
                   onChange={(e) => setNewExpectedDate(e.target.value)}
-                  className="border-zinc-800 bg-zinc-900 text-xs text-white"
+                  className="border-border bg-background text-xs text-foreground"
                 />
 
                 {/* Quick Date Presets */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] text-zinc-500 flex items-center gap-0.5">
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
                     <Clock className="size-3" /> Quick:
                   </span>
                   <button
                     type="button"
                     onClick={() => handleQuickDate(0)}
-                    className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                    className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
                   >
                     Today
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDate(7)}
-                    className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                    className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
                   >
                     +7 Days
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDate(14)}
-                    className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                    className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
                   >
                     +14 Days
                   </button>
                   <button
                     type="button"
                     onClick={() => handleQuickDate(30)}
-                    className="rounded border border-zinc-800 bg-zinc-900/80 px-2 py-0.5 text-[10px] text-zinc-300 hover:bg-zinc-800 hover:text-white"
+                    className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
                   >
                     +1 Month
                   </button>
@@ -493,16 +497,16 @@ export function ShippingBatchDialog({
                   they are set together or not at all. */}
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                     <Truck className="size-3.5 text-sky-400" />
                     <span>Delivery partner &amp; tracking ID</span>
                   </label>
-                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-zinc-400">
+                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
                     <input
                       type="checkbox"
                       checked={updateTracking}
                       onChange={(e) => setUpdateTracking(e.target.checked)}
-                      className="rounded border-zinc-700 bg-zinc-900 text-primary"
+                      className="rounded border-input bg-background text-primary"
                     />
                     <span>Update tracking</span>
                   </label>
@@ -516,13 +520,13 @@ export function ShippingBatchDialog({
                       placeholder="Courier"
                       searchPlaceholder="Search or type a courier…"
                       ariaLabel="Delivery partner"
-                      className="h-9 border-zinc-800 bg-zinc-900 text-xs text-white"
+                      className="h-9 border-border bg-background text-xs text-foreground"
                     />
                     <Input
                       placeholder="Consignment / AWB number"
                       value={newTrackingId}
                       onChange={(e) => setNewTrackingId(e.target.value)}
-                      className="border-zinc-800 bg-zinc-900 font-mono text-xs text-white"
+                      className="border-border bg-background font-mono text-xs text-foreground"
                     />
                     {trackingUrlFor(newPartner, newTrackingId) && (
                       <a
@@ -542,16 +546,16 @@ export function ShippingBatchDialog({
               {/* Transit Info / ETA Notes (Optional) */}
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-                    <Truck className="size-3.5 text-zinc-400" />
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Truck className="size-3.5 text-muted-foreground" />
                     <span>Transit Info / Tracking Notes</span>
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-zinc-400">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-muted-foreground">
                     <input
                       type="checkbox"
                       checked={updateTransitInfo}
                       onChange={(e) => setUpdateTransitInfo(e.target.checked)}
-                      className="rounded border-zinc-700 bg-zinc-900 text-primary"
+                      className="rounded border-input bg-background text-primary"
                     />
                     <span>Update notes</span>
                   </label>
@@ -561,7 +565,7 @@ export function ShippingBatchDialog({
                     placeholder="Courier AWB, tracking code, dispatch notes..."
                     value={newTransitInfo}
                     onChange={(e) => setNewTransitInfo(e.target.value)}
-                    className="border-zinc-800 bg-zinc-900 text-xs text-white"
+                    className="border-border bg-background text-xs text-foreground"
                   />
                 )}
               </div>
@@ -569,13 +573,13 @@ export function ShippingBatchDialog({
           </div>
         )}
 
-        <DialogFooter className="flex flex-row items-center justify-between gap-2 border-t border-zinc-800/80 pt-3 sm:justify-between">
+        <DialogFooter className="flex flex-row items-center justify-between gap-2 border-t border-border pt-3 sm:justify-between">
           <Button
             type="button"
             variant="ghost"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-zinc-400 hover:text-white"
+            className="text-muted-foreground hover:text-foreground"
             disabled={isSubmitting}
           >
             Cancel
