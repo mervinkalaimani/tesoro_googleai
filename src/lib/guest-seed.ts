@@ -432,13 +432,17 @@ const SELLERS = [
   "The Diecast Store",
 ];
 
+/** The courier and its consignment number are their own fields now, so these
+ *  are notes rather than "Blue Dart [77164849123]" crammed into one string. */
 const TRANSIT_NOTES = [
-  "Blue Dart [77164849123]",
-  "Delhivery [8842019773]",
-  "DTDC [D91228841]",
-  "India Post [EE4471299IN]",
-  "Ekart [FMPP2299184]",
+  "Dispatched from the seller",
+  "Out of the sorting hub",
+  "Held at customs",
+  "Reattempt scheduled",
+  "Clubbed with an earlier order",
 ];
+
+const GUEST_COURIERS = ["Blue Dart", "Delhivery", "DTDC", "India Post", "Ekart", "XpressBees"];
 
 /**
  * Every status the app recognises, written out rather than derived from
@@ -508,6 +512,7 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
     const arrived = lower === "available" || lower === "wrong item";
     const isPreOrder = lower === "pre order";
     const isIso = lower === "iso";
+    const moving = lower === "transit" || lower === "out for delivery";
 
     const daysAgo = Math.floor(rand() * 240) + 5;
     const orderDate = new Date(today);
@@ -516,6 +521,15 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
     // Delivered a week or so after ordering; anything still moving is dated ahead.
     const eventDate = new Date(orderDate);
     eventDate.setDate(eventDate.getDate() + (arrived ? Math.floor(rand() * 12) + 3 : daysAgo + 6));
+
+    // A pre-order is a release date, not a delivery estimate: it sits months
+    // out. Roughly one in five is placed inside the next ten days so the
+    // dashboard's launch notice is something a guest can actually see.
+    const releaseDate = new Date(today);
+    releaseDate.setDate(
+      releaseDate.getDate() +
+        (rand() < 0.2 ? Math.floor(rand() * 11) : 40 + Math.floor(rand() * 300)),
+    );
 
     // Paid anywhere from a hefty discount to a mild premium over retail.
     const factor = 0.8 + rand() * 1.1;
@@ -559,14 +573,18 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
       status,
       payment: balance > 0 ? "Partial" : isIso ? "" : "Paid",
       paid,
-      date: isIso ? "" : iso(eventDate),
-      month: isIso ? "" : monthLabel(eventDate),
+      // Only a car in hand has an arrival date. Giving one to a pre-order made
+      // it read as delivered everywhere downstream.
+      date: arrived ? iso(eventDate) : "",
+      month: arrived ? monthLabel(eventDate) : monthLabel(orderDate),
       orderDate: isIso ? "" : iso(orderDate),
       orderMonth: isIso ? "" : monthLabel(orderDate),
-      expectedDate: arrived || isIso ? "" : iso(eventDate),
+      expectedDate: arrived || isIso ? "" : iso(isPreOrder ? releaseDate : eventDate),
       transitInfo:
         lower === "transit" || lower === "out for delivery" ? pick(TRANSIT_NOTES, rand) : "",
       shippingId,
+      deliveryPartner: moving ? pick(GUEST_COURIERS, rand) : "",
+      trackingId: moving ? `${Math.floor(rand() * 9e11 + 1e11)}` : "",
       balance,
       chase: rand() < 0.15,
       favourite: rand() < 0.25,

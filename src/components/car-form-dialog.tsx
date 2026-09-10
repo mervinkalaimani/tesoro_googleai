@@ -11,7 +11,8 @@ import {
   writeDraft,
 } from "@/lib/form-draft";
 import { setCachedCarImage } from "@/lib/car-image";
-import { toDateInputValue, deriveMonth } from "@/lib/date-utils";
+import { toDateInputValue, deriveMonth, monthEtaToDate } from "@/lib/date-utils";
+import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
 import {
   Dialog,
   DialogContent,
@@ -57,10 +58,39 @@ import {
   Upload,
   Info,
   RotateCcw,
+  ExternalLink,
 } from "lucide-react";
 
 const STATUS_OPTIONS = ["Available", "Pre Order", "Transit", "Waiting", "ISO", "On Hold"];
 const PAYMENT_OPTIONS = ["Paid", "Partial", "Pending"];
+
+/** Statuses that mean the car is in hand, and so has a real arrival date. */
+const ARRIVED_STATUSES = new Set(["available", "wrong item"]);
+
+/** The tracking page for what has been typed so far, once it resolves to one. */
+function TrackingLink({
+  partner,
+  trackingId,
+  className = "",
+}: {
+  partner: string;
+  trackingId: string;
+  className?: string;
+}) {
+  const url = trackingUrlFor(partner, trackingId);
+  if (!url) return null;
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`flex items-center justify-between gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-500 hover:bg-sky-500/15 ${className}`}
+    >
+      <span className="truncate">Track on {partner.trim()}</span>
+      <ExternalLink className="size-3.5 shrink-0" />
+    </a>
+  );
+}
 
 interface CarFormData {
   make: string;
@@ -84,6 +114,8 @@ interface CarFormData {
   paid: number | "";
   balance: number | "";
   transitInfo: string;
+  deliveryPartner: string;
+  trackingId: string;
   orderDate: string;
   expectedDate: string;
   official: boolean;
@@ -117,6 +149,8 @@ function getBlankForm(): CarFormData {
     paid: "",
     balance: 0,
     transitInfo: "",
+    deliveryPartner: "",
+    trackingId: "",
     orderDate: today,
     expectedDate: "",
     official: false,
@@ -154,10 +188,16 @@ function formFromCar(initial: Diecast): CarFormData {
     paid: initial.paid !== undefined && initial.paid !== null ? initial.paid : "",
     balance: initial.balance !== undefined && initial.balance !== null ? initial.balance : 0,
     transitInfo: initial.transitInfo || "",
+    deliveryPartner: initial.deliveryPartner || "",
+    trackingId: initial.trackingId || "",
     orderDate:
       toDateInputValue(initial.orderDate || initial.date) || new Date().toISOString().slice(0, 10),
+    // The month recorded in the ETA note is a real answer for a pre-order that
+    // has never had anything better ("Mar 2027" -> the 10th of that month).
     expectedDate: toDateInputValue(
-      initial.expectedDate || (initial.status === "Available" ? initial.date : ""),
+      initial.expectedDate ||
+        (initial.status === "Available" ? initial.date : "") ||
+        monthEtaToDate(initial.transitInfo),
     ),
     official: Boolean(initial.official),
     chase: Boolean(initial.chase),
@@ -440,8 +480,15 @@ export function CarFormDialog({
       }) || `${make} ${model}`.trim();
 
     const orderMonth = deriveMonth(orderDate);
-    const date = form.expectedDate.trim() || orderDate;
-    const month = deriveMonth(date);
+    // `date` is the day the car *arrived*, and now that expectedDate has a
+    // column of its own it stops standing in for it. A pre-order given an
+    // arrival date reads as delivered to everything downstream: the shipping ID
+    // stops being numbered /PO/, and the month charts count it as bought.
+    const arrived = ARRIVED_STATUSES.has(status.toLowerCase());
+    const date = arrived
+      ? form.expectedDate.trim() || initial?.date?.trim() || orderDate
+      : initial?.date?.trim() || "";
+    const month = deriveMonth(date) || orderMonth;
 
     const carId =
       initial?.id || `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -470,6 +517,8 @@ export function CarFormDialog({
       paid,
       balance,
       transitInfo: form.transitInfo.trim(),
+      deliveryPartner: form.deliveryPartner.trim() || undefined,
+      trackingId: form.trackingId.trim() || undefined,
       shippingId: initial?.shippingId || "",
       orderDate,
       orderMonth,
@@ -933,13 +982,39 @@ export function CarFormDialog({
                       />
                     </Field>
 
+                    <Field label="Delivery Partner">
+                      <Combobox
+                        value={form.deliveryPartner}
+                        onChange={(v) => set("deliveryPartner", v)}
+                        options={DELIVERY_PARTNER_NAMES}
+                        placeholder="Courier"
+                        searchPlaceholder="Search or type a courier…"
+                        ariaLabel="Delivery partner"
+                      />
+                    </Field>
+
+                    <Field label="Tracking ID">
+                      <Input
+                        className="font-mono"
+                        value={form.trackingId}
+                        onChange={(e) => set("trackingId", e.target.value)}
+                        placeholder="Consignment / AWB number"
+                      />
+                    </Field>
+
                     <Field label="Transit Info / ETA" className="sm:col-span-2">
                       <Input
                         value={form.transitInfo}
                         onChange={(e) => set("transitInfo", e.target.value)}
-                        placeholder="e.g. Tracking number, dispatch notes, courier info"
+                        placeholder="e.g. release month, dispatch notes"
                       />
                     </Field>
+
+                    <TrackingLink
+                      partner={form.deliveryPartner}
+                      trackingId={form.trackingId}
+                      className="sm:col-span-2"
+                    />
                   </div>
                 </div>
               )}
@@ -1143,14 +1218,41 @@ export function CarFormDialog({
                   />
                 </Field>
 
+                <Field label="Delivery Partner">
+                  <Combobox
+                    value={form.deliveryPartner}
+                    onChange={(v) => set("deliveryPartner", v)}
+                    options={DELIVERY_PARTNER_NAMES}
+                    placeholder="Courier"
+                    searchPlaceholder="Search or type a courier…"
+                    ariaLabel="Delivery partner"
+                    className="bg-background"
+                  />
+                </Field>
+
+                <Field label="Tracking ID">
+                  <Input
+                    className="bg-background font-mono"
+                    value={form.trackingId}
+                    onChange={(e) => set("trackingId", e.target.value)}
+                    placeholder="Consignment / AWB number"
+                  />
+                </Field>
+
                 <Field label="Transit Info / ETA" className="sm:col-span-2">
                   <Input
                     className="bg-background"
                     value={form.transitInfo}
                     onChange={(e) => set("transitInfo", e.target.value)}
-                    placeholder="Tracking number, courier updates, dispatch ETA..."
+                    placeholder="Release month, courier updates, dispatch notes..."
                   />
                 </Field>
+
+                <TrackingLink
+                  partner={form.deliveryPartner}
+                  trackingId={form.trackingId}
+                  className="sm:col-span-2"
+                />
               </div>
             </div>
 

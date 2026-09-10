@@ -3,6 +3,7 @@ import type { Diecast } from "@/lib/types";
 import { buildCarName } from "@/lib/car-name";
 import { getSupabaseTableName } from "@/lib/supabase-config";
 import { parseCurrency } from "@/lib/format";
+import { monthEtaToDate, toDateInputValue } from "@/lib/date-utils";
 
 export type TesoroRawRow = {
   SNO?: number | null;
@@ -33,6 +34,9 @@ export type TesoroRawRow = {
   O_Date?: string | null;
   O_Month?: string | null;
   "Transit Info / ETA"?: string | null;
+  "Expected Date"?: string | null;
+  "Delivery Partner"?: string | null;
+  "Tracking ID"?: string | null;
   "Shipping ID"?: string | null;
   Balance?: number | null;
   Chase?: boolean | null;
@@ -84,6 +88,12 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
     O_Date: nullIfBlank(car.orderDate),
     O_Month: car.orderMonth || "",
     "Transit Info / ETA": car.transitInfo || "",
+    // Stored ISO so the string sorts, whatever shape the form or the sheet
+    // handed over. Text column, so a value that will not parse survives as-is
+    // rather than failing the whole upsert.
+    "Expected Date": toDateInputValue(car.expectedDate) || car.expectedDate || "",
+    "Delivery Partner": car.deliveryPartner || "",
+    "Tracking ID": car.trackingId || "",
     "Shipping ID": car.shippingId || "",
     Balance: Number(car.balance) || 0,
     Chase: Boolean(car.chase),
@@ -183,9 +193,16 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
     month: String(row.Month || "").trim(),
     orderDate: String(row.O_Date || "").trim(),
     orderMonth: String(row.O_Month || "").trim(),
-    expectedDate: String(row.Date || "").trim(),
+    // Its own column now. The month-ETA fallback covers rows the backfill has
+    // not reached — a collection loaded before the migration ran still shows
+    // "Mar 2027" as a real date rather than nothing at all.
+    expectedDate:
+      String(row["Expected Date"] || "").trim() ||
+      monthEtaToDate(String(row["Transit Info / ETA"] || "")),
     transitInfo: String(row["Transit Info / ETA"] || "").trim(),
     shippingId: String(row["Shipping ID"] || "").trim(),
+    deliveryPartner: String(row["Delivery Partner"] || "").trim() || undefined,
+    trackingId: String(row["Tracking ID"] || "").trim() || undefined,
     balance,
     chase: Boolean(row.Chase),
     favourite: Boolean(row.Favourite),
@@ -193,6 +210,26 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
     open: Boolean(row.Open),
     imageUrl,
   };
+}
+
+/**
+ * Columns added by a later migration than the one the deployed schema may have
+ * reached. Dropped and retried rather than allowed to fail a save.
+ */
+const OPTIONAL_COLUMNS = [
+  "Image URL",
+  "Expected Date",
+  "Delivery Partner",
+  "Tracking ID",
+] as const satisfies readonly (keyof TesoroRawRow)[];
+
+function isMissingColumnError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("schema cache") ||
+    m.includes("column") ||
+    OPTIONAL_COLUMNS.some((c) => message.includes(c))
+  );
 }
 
 /**
@@ -271,19 +308,16 @@ export async function saveCarToSupabase(
       .from(tableName as any)
       .upsert(payload, { onConflict: "user_id,Car ID" });
 
-    // If Supabase table does not yet have "Image URL" column in schema cache, retry without it
-    if (
-      error &&
-      payload["Image URL"] &&
-      (error.message.includes("Image URL") ||
-        error.message.includes("schema cache") ||
-        error.message.includes("column"))
-    ) {
+    // A column the migrations have not added yet must not take the whole save
+    // down with it. Deployments and migrations do not land at the same instant,
+    // so drop the newest fields and retry rather than losing the edit outright.
+    if (error && isMissingColumnError(error.message)) {
       console.warn(
-        "Supabase upsert with Image URL failed, retrying without Image URL:",
+        `Supabase upsert failed on an optional column, retrying without ${OPTIONAL_COLUMNS.join(", ")}:`,
         error.message,
       );
-      const { "Image URL": _img, ...fallbackPayload } = payload;
+      const fallbackPayload = { ...payload };
+      for (const key of OPTIONAL_COLUMNS) delete fallbackPayload[key];
       const res = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
@@ -344,10 +378,25 @@ export async function seedCarsToSupabase(
     for (let i = 0; i < cars.length; i += chunkSize) {
       const slice = cars.slice(i, i + chunkSize);
       const rows = slice.map((c) => ({ ...diecastToTesoroRaw(c), user_id: userId }));
-      const { error } = await supabase
+      let { error } = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
         .upsert(rows, { onConflict: "user_id,Car ID" });
+
+      // Same reasoning as saveCarToSupabase: a column the schema has not caught
+      // up to should cost those fields, not the entire sync.
+      if (error && isMissingColumnError(error.message)) {
+        const fallbackRows = rows.map((row) => {
+          const copy = { ...row };
+          for (const key of OPTIONAL_COLUMNS) delete copy[key];
+          return copy;
+        });
+        const res = await supabase
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from(tableName as any)
+          .upsert(fallbackRows, { onConflict: "user_id,Car ID" });
+        error = res.error;
+      }
 
       if (error) {
         return { success: false, count, error: error.message };

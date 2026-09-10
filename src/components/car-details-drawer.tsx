@@ -1,11 +1,23 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { Car, CheckCircle2, Flame, Loader2, Pencil, Star, Trash2, Truck, X } from "lucide-react";
+import {
+  Car,
+  CheckCircle2,
+  ExternalLink,
+  Flame,
+  Loader2,
+  Pencil,
+  Star,
+  Trash2,
+  Truck,
+  X,
+} from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { findCarImage } from "@/lib/car-image";
 import { deriveMonth } from "@/lib/date-utils";
-import { inrFull } from "@/lib/format";
+import { formatDayMonthYear, inrFull } from "@/lib/format";
+import { trackingUrlFor } from "@/lib/tracking";
 import { Input } from "@/components/ui/input";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
@@ -268,6 +280,7 @@ function CarPopupContent({
   };
 
   const cleanTransitNotes = (car.transitInfo || "").trim();
+  const trackUrl = trackingUrlFor(car.deliveryPartner, car.trackingId);
 
   return (
     <div className="space-y-4">
@@ -510,10 +523,37 @@ function CarPopupContent({
           <div>
             <span className="text-zinc-400">Expected Date:</span>
             <span className="mt-0.5 block font-medium text-white truncate">
-              {car.expectedDate || car.date || "—"}
+              {formatDayMonthYear(car.expectedDate || car.date) || "—"}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-zinc-400">Delivery Partner:</span>
+            <span className="mt-0.5 block font-medium text-white truncate">
+              {car.deliveryPartner || "—"}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-zinc-400">Tracking ID:</span>
+            <span className="mt-0.5 block truncate font-mono font-medium text-white">
+              {car.trackingId || "—"}
             </span>
           </div>
         </div>
+
+        {/* The consignment number is only useful if it goes somewhere. */}
+        {trackUrl && (
+          <a
+            href={trackUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-400 hover:bg-sky-500/15"
+          >
+            <span className="truncate">Track on {(car.deliveryPartner || "").trim()}</span>
+            <ExternalLink className="size-3.5 shrink-0" />
+          </a>
+        )}
 
         {/* Tracking Notes Footer */}
         <div className="border-t border-amber-500/20 pt-2 text-xs text-zinc-300">

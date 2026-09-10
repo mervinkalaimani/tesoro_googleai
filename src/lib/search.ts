@@ -18,6 +18,8 @@ const TEXT_FIELDS: (keyof Diecast)[] = [
   "size",
   "shippingId",
   "transitInfo",
+  "deliveryPartner",
+  "trackingId",
 ];
 
 /** Map user-typed column names to Diecast keys. */
@@ -68,6 +70,15 @@ const FIELD_ALIASES: Record<string, keyof Diecast> = {
   "order date": "orderDate",
   transit: "transitInfo",
   "transit info": "transitInfo",
+  "expected date": "expectedDate",
+  expected: "expectedDate",
+  courier: "deliveryPartner",
+  carrier: "deliveryPartner",
+  partner: "deliveryPartner",
+  "delivery partner": "deliveryPartner",
+  tracking: "trackingId",
+  "tracking id": "trackingId",
+  awb: "trackingId",
 };
 
 const NUMERIC_FIELDS = new Set<keyof Diecast>(["spent", "mrp", "paid", "year"]);

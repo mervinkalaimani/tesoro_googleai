@@ -22,7 +22,9 @@ import {
   AlertTriangle,
   PauseCircle,
   Plus,
+  ExternalLink,
 } from "lucide-react";
+import { trackingUrlFor } from "@/lib/tracking";
 
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
@@ -45,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
+import { PreOrderLaunchAlert } from "@/components/preorder-launch-alert";
 import {
   Select,
   SelectContent,
@@ -132,7 +135,31 @@ type Shipment = {
   expected: Date | null;
   status: string;
   transitInfo: string;
+  deliveryPartner: string;
+  trackingId: string;
 };
+
+/** The courier link for a shipment, or its note when there is nothing to link. */
+function TransitCell({ s }: { s: Shipment }) {
+  const url = trackingUrlFor(s.deliveryPartner, s.trackingId);
+  if (url) {
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex max-w-full items-center gap-1 text-xs text-sky-500 hover:underline"
+      >
+        <span className="truncate">
+          {s.deliveryPartner} · {s.trackingId}
+        </span>
+        <ExternalLink className="size-3 shrink-0" />
+      </a>
+    );
+  }
+  const parts = [s.deliveryPartner, s.trackingId].filter(Boolean).join(" · ");
+  return <span className="text-xs text-muted-foreground">{parts || s.transitInfo || "—"}</span>;
+}
 
 function DashboardPage() {
   const { query, transitEtaDays } = useApp();
@@ -225,6 +252,10 @@ function DashboardPage() {
 
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
+      {/* Above the KPIs: a release landing this week is the one thing on this
+          page that expires, and it needs acting on rather than reading. */}
+      <PreOrderLaunchAlert rows={data} />
+
       {kpis.length > 0 && (
         <section className="grid grid-cols-2 gap-3 pb-1 md:flex md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
           {kpis.map((k) => (
@@ -401,6 +432,8 @@ function TransitTracker({
         expected,
         status: first.status,
         transitInfo: first.transitInfo || "",
+        deliveryPartner: arr.find((r) => r.deliveryPartner)?.deliveryPartner || "",
+        trackingId: arr.find((r) => r.trackingId)?.trackingId || "",
       });
     }
     const etaOf = (s: Shipment) => (s.expected ?? addDays(s.ordered, etaDays)).getTime();
@@ -522,7 +555,7 @@ function TransitTracker({
                       </div>
                     )}
                     <div className="mt-1.5 break-words text-xs text-muted-foreground">
-                      {s.transitInfo || "No transit info"}
+                      <TransitCell s={s} />
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-3 text-xs tabular-nums text-muted-foreground">
                       <span>Ordered {formatDMY(s.ordered)}</span>
@@ -600,8 +633,8 @@ function TransitTracker({
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                        {s.transitInfo || "—"}
+                      <td className="max-w-[14rem] px-4 py-2.5">
+                        <TransitCell s={s} />
                       </td>
                       <td className="px-4 py-2.5 text-muted-foreground tabular-nums">
                         {formatDMY(s.ordered)}

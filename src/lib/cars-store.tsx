@@ -113,6 +113,24 @@ function writeCache(uid: string, data: Diecast[], ts: number) {
   }
 }
 
+export type ShippingBatchUpdates = {
+  status?: string;
+  expectedDate?: string;
+  transitInfo?: string;
+  deliveryPartner?: string;
+  trackingId?: string;
+};
+
+export type ShippingBatchOptions = {
+  /**
+   * Leave cars already marked Available untouched. The caller decides, because
+   * the caller is what the person is looking at: a batch dialog that says
+   * "3 cars" has to update those three and no others. It used to say three and
+   * quietly rewrite every delivered car sharing the ID.
+   */
+  excludeAvailable?: boolean;
+};
+
 type Ctx = {
   cars: Diecast[];
   addCar: (car: Diecast) => void;
@@ -121,7 +139,8 @@ type Ctx = {
   bulkUpdateCars: (cars: Diecast[]) => void;
   updateCarsByShippingId: (
     shippingId: string,
-    updates: { status?: string; expectedDate?: string; transitInfo?: string },
+    updates: ShippingBatchUpdates,
+    options?: ShippingBatchOptions,
   ) => Promise<number>;
   deleteCar: (id: string) => void;
   resetOverlay: () => void;
@@ -423,14 +442,19 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   const updateCarsByShippingId = useCallback(
     async (
       shippingId: string,
-      updates: { status?: string; expectedDate?: string; transitInfo?: string },
+      updates: ShippingBatchUpdates,
+      options: ShippingBatchOptions = {},
     ): Promise<number> => {
       const cleanId = (shippingId || "").trim();
       if (!cleanId) return 0;
 
-      const matched = cars.filter(
-        (c) => (c.shippingId || "").trim().toLowerCase() === cleanId.toLowerCase(),
-      );
+      const matched = cars.filter((c) => {
+        if ((c.shippingId || "").trim().toLowerCase() !== cleanId.toLowerCase()) return false;
+        if (options.excludeAvailable && (c.status || "").trim().toLowerCase() === "available") {
+          return false;
+        }
+        return true;
+      });
       if (matched.length === 0) return 0;
 
       const updatedCars: Diecast[] = matched.map((car) => {
@@ -452,6 +476,12 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         }
         if (updates.transitInfo !== undefined) {
           next.transitInfo = updates.transitInfo.trim();
+        }
+        if (updates.deliveryPartner !== undefined) {
+          next.deliveryPartner = updates.deliveryPartner.trim() || undefined;
+        }
+        if (updates.trackingId !== undefined) {
+          next.trackingId = updates.trackingId.trim() || undefined;
         }
         return next;
       });
@@ -635,6 +665,8 @@ export function makeBlankCar(): Diecast {
     expectedDate: "",
     transitInfo: "",
     shippingId: "",
+    deliveryPartner: "",
+    trackingId: "",
     balance: 0,
     chase: false,
     favourite: false,

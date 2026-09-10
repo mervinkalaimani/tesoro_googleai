@@ -24,6 +24,8 @@ export function summarize(car: Diecast) {
     spent: car.spent,
     status: car.status,
     transitInfo: car.transitInfo,
+    deliveryPartner: car.deliveryPartner,
+    trackingId: car.trackingId,
     orderDate: car.orderDate,
     expectedDate: car.expectedDate,
     chase: car.chase,

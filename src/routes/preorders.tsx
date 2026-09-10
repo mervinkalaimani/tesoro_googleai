@@ -1,18 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { CircleCheck, Clock, IndianRupee, Plus, Truck, Wallet } from "lucide-react";
-import { toast } from "sonner";
 
-import { useCars, useCarsActions } from "@/lib/cars-store";
+import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { useCarDrawer } from "@/components/car-details-drawer";
-import { inrFull, parseDMY } from "@/lib/format";
-import { deriveMonth } from "@/lib/date-utils";
+import { formatDayMonthYear, inrFull, parseDMY } from "@/lib/format";
+import { isPreOrder } from "@/lib/status-order";
 import { Button } from "@/components/ui/button";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { PayBalanceDialog } from "@/components/pay-balance-dialog";
+import { MarkShippedDialog } from "@/components/mark-shipped-dialog";
 import {
   Select,
   SelectContent,
@@ -42,9 +42,6 @@ export const Route = createFileRoute("/preorders")({
   }),
   component: PreOrdersPage,
 });
-
-export const isPreOrder = (s: string) =>
-  (s || "").trim().toLowerCase().replace(/\s+/g, " ").replace("-", " ") === "pre order";
 
 /** Remaining balance for a pre-order row: car cost minus amount paid. */
 const balanceOf = (r: Diecast) => Math.max((r.spent || 0) - (r.paid || 0), 0);
@@ -155,19 +152,17 @@ function PreOrderCard({
         ) : null}
       </p>
 
-      {(car.transitInfo || "").trim() ? (
-        <p className="mx-4 mb-3 rounded-md border border-border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
-          “{car.transitInfo.trim()}”
-        </p>
-      ) : null}
+      {/* The ETA note used to be quoted here. It held the release month — "Mar
+          2027" — which is now parsed into the expected date below, so showing
+          the raw string as well said the same thing twice, less clearly. */}
 
       <div className="mt-auto grid grid-cols-3 gap-2 border-t border-border px-4 py-3">
         <div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Target release
           </div>
-          <div className="mt-0.5 font-mono text-sm font-semibold text-primary">
-            {car.expectedDate || "—"}
+          <div className="mt-0.5 text-sm font-semibold text-primary">
+            {formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || "—"}
           </div>
         </div>
         <div>
@@ -220,10 +215,10 @@ function PreOrdersPage() {
   const { query } = useApp();
   const cars = useCars();
   const { open } = useCarDrawer();
-  const { updateCar } = useCarsActions();
   const [seller, setSeller] = useState("all");
   const [sort, setSort] = useState<SortMode>("balance");
   const [payFor, setPayFor] = useState<Diecast | null>(null);
+  const [shipFor, setShipFor] = useState<Diecast | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
   const base = useMemo(
@@ -253,17 +248,6 @@ function PreOrdersPage() {
   const totalPaid = rows.reduce((s, r) => s + (r.paid || 0), 0);
   const totalDue = rows.reduce((s, r) => s + balanceOf(r), 0);
   const uniqueModels = new Set(rows.map((r) => `${r.make}|${r.model}`)).size;
-
-  const markShipped = (car: Diecast) => {
-    const today = new Date().toISOString().slice(0, 10);
-    updateCar({
-      ...car,
-      status: "Transit",
-      orderDate: car.orderDate || today,
-      orderMonth: car.orderMonth || deriveMonth(today) || "",
-    });
-    toast.success("Moved to transit", { description: car.name || car.model });
-  };
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
@@ -341,13 +325,14 @@ function PreOrdersPage() {
               car={r}
               onOpen={() => open(r)}
               onPay={() => setPayFor(r)}
-              onShip={() => markShipped(r)}
+              onShip={() => setShipFor(r)}
             />
           ))}
         </div>
       )}
 
       <PayBalanceDialog car={payFor} onClose={() => setPayFor(null)} />
+      <MarkShippedDialog car={shipFor} onClose={() => setShipFor(null)} />
       <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
     </div>
   );

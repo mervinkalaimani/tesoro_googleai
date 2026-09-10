@@ -34,6 +34,16 @@ export function statusRank(status: string | undefined | null): number {
   return STATUS_ORDER.length;
 }
 
+/** True for "Pre Order", "Pre-Order", "preorder" — however it was typed. */
+export function isPreOrder(status: string | undefined | null): boolean {
+  return (
+    (status || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, " ") === "pre order"
+  );
+}
+
 /** SNO is absent until a locally-added car round-trips through Supabase. */
 function snoOf(car: Diecast): number {
   return typeof car.sno === "number" ? car.sno : Number.MAX_SAFE_INTEGER;

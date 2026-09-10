@@ -1,5 +1,6 @@
 import type { Diecast } from "@/lib/types";
 import { buildCarName } from "@/lib/car-name";
+import { monthEtaToDate } from "@/lib/date-utils";
 
 const SHEET_ID = "1p0k2lDD3sdyQ-G2wLpJxDsDIrq-Qa3LH8-lruOCustI";
 const RAW_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=Raw`;
@@ -119,9 +120,14 @@ export async function fetchRawSheet(): Promise<Diecast[]> {
       month: str(r, "Month"),
       orderDate: fmt(r, "O_Date"),
       orderMonth: str(r, "O_Month"),
-      expectedDate: dateF,
+      expectedDate:
+        fmt(r, "Expected Date") ||
+        monthEtaToDate(str(r, ["Transit Info / ETA", "Transit Info", "ETA"])) ||
+        dateF,
       transitInfo: str(r, ["Transit Info / ETA", "Transit Info", "ETA"]),
       shippingId: str(r, "Shipping ID"),
+      deliveryPartner: str(r, ["Delivery Partner", "Courier"]) || undefined,
+      trackingId: str(r, ["Tracking ID", "AWB"]) || undefined,
       balance: num(r, "Balance"),
       chase: bool(r, "Chase"),
       favourite: bool(r, ["Favourite", "Favourites", "Favorite", "Favorites"]),

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Truck,
   Calendar,
@@ -9,6 +9,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
 } from "lucide-react";
 import {
   Dialog,
@@ -27,8 +28,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useCars, useCarsActions } from "@/lib/cars-store";
+import { Combobox } from "@/components/ui/combobox";
+import { useCars, useCarsActions, type ShippingBatchUpdates } from "@/lib/cars-store";
 import { toDateInputValue } from "@/lib/date-utils";
+import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
 import type { Diecast } from "@/lib/types";
 
 const STATUS_CHOICES = [
@@ -46,6 +49,12 @@ export interface ShippingBatchDialogProps {
   onOpenChange: (open: boolean) => void;
   initialShippingId?: string;
   allowedShippingIds?: string[];
+  /**
+   * Where the dialog starts, not where it is stuck. A caller scoped to a list of
+   * in-transit shipments opens with delivered cars hidden; the checkbox inside
+   * lets the person reach them anyway. It used to be a hard exclusion, which is
+   * why a batch that had already arrived could not be corrected at all.
+   */
   excludeAvailable?: boolean;
   onUpdated?: (count: number, shippingId: string) => void;
 }
@@ -55,7 +64,7 @@ export function ShippingBatchDialog({
   onOpenChange,
   initialShippingId = "",
   allowedShippingIds,
-  excludeAvailable = true,
+  excludeAvailable = false,
   onUpdated,
 }: ShippingBatchDialogProps) {
   const cars = useCars();
@@ -64,30 +73,38 @@ export function ShippingBatchDialog({
   const [selectedShippingId, setSelectedShippingId] = useState(initialShippingId);
   const [customShippingId, setCustomShippingId] = useState("");
   const [useCustom, setUseCustom] = useState(false);
+  const [hideDelivered, setHideDelivered] = useState(excludeAvailable);
 
   const [newStatus, setNewStatus] = useState("keep");
   const [newExpectedDate, setNewExpectedDate] = useState("");
   const [newTransitInfo, setNewTransitInfo] = useState("");
   const [updateTransitInfo, setUpdateTransitInfo] = useState(false);
+  const [newPartner, setNewPartner] = useState("");
+  const [newTrackingId, setNewTrackingId] = useState("");
+  const [updateTracking, setUpdateTracking] = useState(false);
 
   const [showCarList, setShowCarList] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  // Showing delivered cars also lifts the caller's shipping-ID restriction:
+  // that list was drawn from the same in-transit rows, so leaving it in place
+  // would tick the box and still show nothing.
+  const scopedIds = hideDelivered ? allowedShippingIds : undefined;
+
   // Gather unique shipping IDs with car counts and metadata
-  // Automatically excludes cars with status "Available" if excludeAvailable is true
   const shippingIdStats = useMemo(() => {
     const map = new Map<string, { count: number; sellers: Set<string>; statuses: Set<string> }>();
     for (const car of cars) {
-      if (excludeAvailable && (car.status || "").trim().toLowerCase() === "available") {
+      if (hideDelivered && (car.status || "").trim().toLowerCase() === "available") {
         continue;
       }
       const id = (car.shippingId || "").trim();
       if (!id) continue;
       if (
-        allowedShippingIds &&
-        !allowedShippingIds.some((allowed) => allowed.trim().toLowerCase() === id.toLowerCase())
+        scopedIds &&
+        !scopedIds.some((allowed) => allowed.trim().toLowerCase() === id.toLowerCase())
       ) {
         continue;
       }
@@ -109,7 +126,13 @@ export function ShippingBatchDialog({
         statuses: Array.from(stats.statuses),
       }))
       .sort((a, b) => a.id.localeCompare(b.id));
-  }, [cars, allowedShippingIds, excludeAvailable]);
+  }, [cars, scopedIds, hideDelivered]);
+
+  // Reopening starts from the caller's scope again, whatever the last visit
+  // left the checkbox on.
+  useEffect(() => {
+    if (open) setHideDelivered(excludeAvailable);
+  }, [open, excludeAvailable]);
 
   // Synchronize when initialShippingId changes or dialog opens
   useEffect(() => {
@@ -123,7 +146,7 @@ export function ShippingBatchDialog({
         if (found) {
           setSelectedShippingId(initialShippingId.trim());
           setUseCustom(false);
-        } else if (!allowedShippingIds) {
+        } else if (!scopedIds) {
           setCustomShippingId(initialShippingId.trim());
           setUseCustom(true);
         } else if (shippingIdStats.length > 0) {
@@ -140,41 +163,38 @@ export function ShippingBatchDialog({
         setSelectedShippingId("");
       }
     }
-  }, [open, initialShippingId, shippingIdStats, selectedShippingId, allowedShippingIds]);
+  }, [open, initialShippingId, shippingIdStats, selectedShippingId, scopedIds]);
 
   const activeShippingId = useCustom ? customShippingId.trim() : selectedShippingId.trim();
 
-  // Find matching cars for the active shipping ID (excluding Available cars if excludeAvailable is true)
+  // The cars this dialog is about — and, because the same rule is handed to the
+  // store on apply, exactly the cars that will be written.
   const matchedCars = useMemo(() => {
     if (!activeShippingId) return [];
     return cars.filter((c) => {
-      if (excludeAvailable && (c.status || "").trim().toLowerCase() === "available") {
+      if (hideDelivered && (c.status || "").trim().toLowerCase() === "available") {
         return false;
       }
       return (c.shippingId || "").trim().toLowerCase() === activeShippingId.toLowerCase();
     });
-  }, [cars, activeShippingId, excludeAvailable]);
+  }, [cars, activeShippingId, hideDelivered]);
 
-  // When active shipping ID changes, pre-fill common current values
+  // Pre-fill from whatever the batch already carries, but only when the batch
+  // itself changes. Keyed on matchedCars it re-ran on every background refresh —
+  // a new array identity every 15 seconds — and wiped what was half typed.
+  const matchedRef = useRef(matchedCars);
+  matchedRef.current = matchedCars;
   useEffect(() => {
-    if (matchedCars.length > 0) {
-      // Find most common expected date
-      const dates = matchedCars.map((c) => c.expectedDate).filter(Boolean);
-      if (dates.length > 0) {
-        setNewExpectedDate(toDateInputValue(dates[0]));
-      } else {
-        setNewExpectedDate("");
-      }
+    const batch = matchedRef.current;
+    if (batch.length === 0) return;
+    const first = <K extends keyof Diecast>(key: K) =>
+      batch.map((c) => c[key]).find((v) => Boolean(v));
 
-      // Find common transit info
-      const infos = matchedCars.map((c) => c.transitInfo).filter(Boolean);
-      if (infos.length > 0) {
-        setNewTransitInfo(infos[0]);
-      } else {
-        setNewTransitInfo("");
-      }
-    }
-  }, [matchedCars]);
+    setNewExpectedDate(toDateInputValue(String(first("expectedDate") ?? "")));
+    setNewTransitInfo(String(first("transitInfo") ?? ""));
+    setNewPartner(String(first("deliveryPartner") ?? ""));
+    setNewTrackingId(String(first("trackingId") ?? ""));
+  }, [activeShippingId, hideDelivered, open]);
 
   const handleQuickDate = (offsetDays: number) => {
     const d = new Date();
@@ -191,9 +211,9 @@ export function ShippingBatchDialog({
       setErrorMessage(`No cars found matching Shipping ID "${activeShippingId}".`);
       return;
     }
-    if (newStatus === "keep" && !newExpectedDate && !updateTransitInfo) {
+    if (newStatus === "keep" && !newExpectedDate && !updateTransitInfo && !updateTracking) {
       setErrorMessage(
-        "Please choose at least one field to update (Status, Expected Date, or Transit Info).",
+        "Please choose at least one field to update (Status, Expected Date, Tracking, or Transit Info).",
       );
       return;
     }
@@ -202,7 +222,7 @@ export function ShippingBatchDialog({
     setErrorMessage("");
 
     try {
-      const updates: { status?: string; expectedDate?: string; transitInfo?: string } = {};
+      const updates: ShippingBatchUpdates = {};
       if (newStatus !== "keep") {
         updates.status = newStatus;
       }
@@ -212,11 +232,20 @@ export function ShippingBatchDialog({
       if (updateTransitInfo) {
         updates.transitInfo = newTransitInfo;
       }
+      if (updateTracking) {
+        updates.deliveryPartner = newPartner;
+        updates.trackingId = newTrackingId;
+      }
 
       // bulkUpdateCars takes whole Diecast rows, not (ids, patch): calling it
       // that way passed an array of id strings as the cars and dropped the
       // updates entirely, which is why saved changes never reached the table.
-      const count = await updateCarsByShippingId(activeShippingId, updates);
+      //
+      // The scope goes with it so the store writes the same set this dialog
+      // counted, rather than every car sharing the ID.
+      const count = await updateCarsByShippingId(activeShippingId, updates, {
+        excludeAvailable: hideDelivered,
+      });
       setSuccessMessage(
         `Successfully updated ${count} car${count === 1 ? "" : "s"} in shipping ID "${activeShippingId}".`,
       );
@@ -307,6 +336,19 @@ export function ShippingBatchDialog({
                   </SelectContent>
                 </Select>
               )}
+
+              {/* Delivered cars were previously filtered out with no way back,
+                  so a batch that had already arrived could not be corrected —
+                  its ID was not even in the list. */}
+              <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-[11px] text-zinc-400">
+                <input
+                  type="checkbox"
+                  checked={!hideDelivered}
+                  onChange={(e) => setHideDelivered(!e.target.checked)}
+                  className="rounded border-zinc-700 bg-zinc-900 text-primary"
+                />
+                <span>Include cars already delivered</span>
+              </label>
             </div>
 
             {/* Matched Cars Overview Card */}
@@ -445,6 +487,56 @@ export function ShippingBatchDialog({
                     +1 Month
                   </button>
                 </div>
+              </div>
+
+              {/* Delivery partner + tracking ID. Together they are a link, so
+                  they are set together or not at all. */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-300">
+                    <Truck className="size-3.5 text-sky-400" />
+                    <span>Delivery partner &amp; tracking ID</span>
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-zinc-400">
+                    <input
+                      type="checkbox"
+                      checked={updateTracking}
+                      onChange={(e) => setUpdateTracking(e.target.checked)}
+                      className="rounded border-zinc-700 bg-zinc-900 text-primary"
+                    />
+                    <span>Update tracking</span>
+                  </label>
+                </div>
+                {updateTracking && (
+                  <div className="space-y-1.5">
+                    <Combobox
+                      value={newPartner}
+                      onChange={setNewPartner}
+                      options={DELIVERY_PARTNER_NAMES}
+                      placeholder="Courier"
+                      searchPlaceholder="Search or type a courier…"
+                      ariaLabel="Delivery partner"
+                      className="h-9 border-zinc-800 bg-zinc-900 text-xs text-white"
+                    />
+                    <Input
+                      placeholder="Consignment / AWB number"
+                      value={newTrackingId}
+                      onChange={(e) => setNewTrackingId(e.target.value)}
+                      className="border-zinc-800 bg-zinc-900 font-mono text-xs text-white"
+                    />
+                    {trackingUrlFor(newPartner, newTrackingId) && (
+                      <a
+                        href={trackingUrlFor(newPartner, newTrackingId) ?? "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-2.5 py-1.5 text-[11px] text-sky-400 hover:bg-sky-500/15"
+                      >
+                        <span className="truncate">Track on {newPartner.trim()}</span>
+                        <ExternalLink className="size-3 shrink-0" />
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Transit Info / ETA Notes (Optional) */}

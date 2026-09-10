@@ -75,6 +75,17 @@ export function formatDMY(dt: Date): string {
   return dt.toLocaleDateString("en-GB");
 }
 
+/**
+ * "2027-03-10" -> "10 Mar 2027". Used where a date is read rather than scanned
+ * in a column of others, so the month is a word and cannot be misread as the
+ * day. Returns "" when there is nothing to parse.
+ */
+export function formatDayMonthYear(value: string | Date | null | undefined): string {
+  const dt = value instanceof Date ? value : parseDMY(value);
+  if (!dt) return "";
+  return dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
 export function addDays(dt: Date, days: number): Date {
   const d = new Date(dt);
   d.setDate(d.getDate() + days);

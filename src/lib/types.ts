@@ -30,6 +30,11 @@ export type Diecast = {
   expectedDate: string;
   transitInfo: string;
   shippingId: string;
+  /** Courier carrying the shipment, e.g. "Delhivery". Optional: most cars in
+   *  the collection arrived long before anyone recorded one. */
+  deliveryPartner?: string;
+  /** Consignment / AWB number, paired with deliveryPartner to build a link. */
+  trackingId?: string;
   balance: number;
   chase: boolean;
   favourite: boolean;

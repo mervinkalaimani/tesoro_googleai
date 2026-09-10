@@ -34,6 +34,7 @@ export function exportCsv<T>(name: string, rows: T[], columns: CsvColumn<T>[]) {
 }
 
 import type { Diecast } from "@/lib/types";
+import { monthEtaToDate } from "@/lib/date-utils";
 
 /**
  * Robust RFC 4180 CSV parser supporting quotes, commas, and newlines inside fields.
@@ -129,6 +130,14 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
   const yearCol = findCol("year");
   const brandCol = findCol("brand", "manufacturer", "mfg");
   const seriesCol = findCol("series");
+  // These four had no lookup at all, so every import dropped them silently —
+  // the Diecast being built was missing them outright, which is what TypeScript
+  // had been complaining about here.
+  const subSeriesCol = findCol("subseries");
+  const carNumberCol = findCol("carnumber", "carno", "cardnumber", "no", "number");
+  const colourCol = findCol("colour", "color");
+  const typeCol = findCol("type");
+  const shippingCostCol = findCol("shippingcost", "shipping", "delivery");
   const asstCol = findCol("assortment", "asst");
   const sizeCol = findCol("size", "scale");
   const spentCol = findCol("spent", "cost", "total", "price", "amount");
@@ -141,8 +150,14 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
   const monthCol = findCol("month");
   const oDateCol = findCol("odate", "orderdate");
   const oMonthCol = findCol("omonth", "ordermonth");
+  const expectedCol = findCol("expecteddate", "expected", "targetrelease");
   const transitCol = findCol("transitinfoeta", "transitinfo", "eta");
-  const shippingCol = findCol("shippingid", "trackingid", "tracking");
+  // These used to be one lookup, so a "Tracking ID" column landed in the
+  // shipping ID — which is a batch reference this app derives itself, not a
+  // consignment number.
+  const shippingCol = findCol("shippingid");
+  const partnerCol = findCol("deliverypartner", "courier", "carrier");
+  const trackingCol = findCol("trackingid", "tracking", "awb", "awbno", "consignment");
   const balanceCol = findCol("balance");
   const chaseCol = findCol("chase");
   const favCol = findCol("favourite", "favorite", "fav");
@@ -192,10 +207,15 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
       year,
       brand,
       series: val(row, seriesCol),
+      subSeries: val(row, subSeriesCol),
+      carNumber: val(row, carNumberCol),
+      colour: val(row, colourCol),
+      type: val(row, typeCol),
       assortment: val(row, asstCol),
       size: val(row, sizeCol) || "1/64",
       spent,
       mrp: parseNum(val(row, mrpCol)),
+      shippingCost: parseNum(val(row, shippingCostCol)),
       seller: val(row, sellerCol),
       status: val(row, statusCol) || "Available",
       payment: val(row, paymentCol) || "Paid",
@@ -204,9 +224,12 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
       month: val(row, monthCol),
       orderDate: val(row, oDateCol),
       orderMonth: val(row, oMonthCol),
-      expectedDate: val(row, dateCol),
+      expectedDate:
+        val(row, expectedCol) || monthEtaToDate(val(row, transitCol)) || val(row, dateCol),
       transitInfo: val(row, transitCol),
       shippingId: val(row, shippingCol),
+      deliveryPartner: val(row, partnerCol) || undefined,
+      trackingId: val(row, trackingCol) || undefined,
       balance,
       chase: parseBool(val(row, chaseCol)),
       favourite: parseBool(val(row, favCol)),
@@ -220,11 +243,11 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
 
 export function generateDiecastCsvTemplate(): string {
   return [
-    "Car ID,Name,Make,Model,Variant,Year,Brand,Series,Assortment,Size,Spent,MRP,Seller,Status,Payment,Paid,Date,Month,Order Date,Transit Info / ETA,Favourite,Chase",
-    "CAR-001,1971 Datsun 240Z,Nissan,Datsun 240Z,Custom,1971,Hot Wheels,Car Culture,Premium,1/64,499,549,Amazon,Available,Paid,499,15/06/2026,Jun 2026,10/06/2026,Delivered,true,false",
-    // Every row carries all 22 columns. The second one used to omit Assortment,
+    "Car ID,Name,Make,Model,Variant,Year,Brand,Series,Assortment,Size,Spent,MRP,Seller,Status,Payment,Paid,Date,Month,Order Date,Expected Date,Delivery Partner,Tracking ID,Transit Info / ETA,Favourite,Chase",
+    "CAR-001,1971 Datsun 240Z,Nissan,Datsun 240Z,Custom,1971,Hot Wheels,Car Culture,Premium,1/64,499,549,Amazon,Available,Paid,499,15/06/2026,Jun 2026,10/06/2026,15/06/2026,Delhivery,1234567890,Delivered,true,false",
+    // Every row carries all 25 columns. The second one used to omit Assortment,
     // which slid Size and everything after it one column to the left — so a
     // template meant to show the format demonstrated the wrong one.
-    "CAR-002,Porsche 911 GT3 RS,Porsche,911 GT3 RS,Shark Blue,2023,Mini GT,Exclusive,Premium,1/64,1299,1499,KarzandDolls,Available,Paid,1299,20/06/2026,Jun 2026,12/06/2026,Delivered,true,true",
+    "CAR-002,Porsche 911 GT3 RS,Porsche,911 GT3 RS,Shark Blue,2023,Mini GT,Exclusive,Premium,1/64,1299,1499,KarzandDolls,Pre Order,Partial,500,,,12/06/2026,10/03/2027,,,Mar 2027,true,true",
   ].join("\n");
 }
