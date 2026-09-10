@@ -5,6 +5,7 @@ import { getSupabaseTableName } from "@/lib/supabase-config";
 import { parseCurrency } from "@/lib/format";
 
 export type TesoroRawRow = {
+  SNO?: number | null;
   user_id?: string | null;
   "Car ID"?: string | null;
   Name?: string | null;
@@ -44,6 +45,17 @@ export type TesoroRawRow = {
   [key: string]: unknown;
 };
 
+/**
+ * Blank becomes NULL rather than "". `Year` is a numeric column and
+ * `Date`/`O_Date` hold dates, so an empty string is not an empty value to
+ * Postgres — it is a parse error (22P02) that rejects the whole upsert. Any car
+ * with no year recorded silently failed to save because of this.
+ */
+function nullIfBlank(value: string | undefined): string | null {
+  const v = (value ?? "").trim();
+  return v === "" ? null : v;
+}
+
 export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
   const row: TesoroRawRow = {
     "Car ID": car.id,
@@ -51,7 +63,7 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
     Make: car.make,
     Model: car.model,
     Variant: car.variant || "",
-    Year: car.year || "",
+    Year: nullIfBlank(car.year),
     Type: car.type || "",
     Series: car.series || "",
     "Sub Series": car.subSeries || "",
@@ -68,8 +80,8 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
     Payment: car.payment || "",
     Paid: Number(car.paid) || 0,
     Month: car.month || "",
-    Date: car.date || "",
-    O_Date: car.orderDate || "",
+    Date: nullIfBlank(car.date),
+    O_Date: nullIfBlank(car.orderDate),
     O_Month: car.orderMonth || "",
     "Transit Info / ETA": car.transitInfo || "",
     "Shipping ID": car.shippingId || "",
@@ -82,7 +94,28 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
   if (car.imageUrl) {
     row["Image URL"] = car.imageUrl;
   }
+  // "SNO" is NOT NULL. PostgREST upserts are INSERT ... ON CONFLICT, so the
+  // proposed row is checked against every NOT NULL constraint *before* the
+  // conflict resolves into an UPDATE. Omitting it made even a plain status edit
+  // fail with 23502, so send the value back for rows we already know. New cars
+  // have no SNO yet and rely on the column's identity default.
+  if (typeof car.sno === "number" && Number.isFinite(car.sno)) {
+    row.SNO = car.sno;
+  }
   return row;
+}
+
+/**
+ * True when two cars would write an identical row. Used to retire a local
+ * overlay entry once Supabase has caught up with it — SNO is excluded because a
+ * freshly added car carries none until the database assigns one.
+ */
+export function savedFieldsMatch(a: Diecast, b: Diecast): boolean {
+  const norm = (car: Diecast) => {
+    const { SNO: _sno, ...rest } = diecastToTesoroRaw(car);
+    return JSON.stringify(Object.entries(rest).sort(([x], [y]) => x.localeCompare(y)));
+  };
+  return norm(a) === norm(b);
 }
 
 export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
@@ -120,8 +153,12 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
         "",
     ).trim() || undefined;
 
+  const snoRaw = Number(row.SNO);
+
   return {
     id,
+    // Identity column, carried through so views can order by insertion.
+    sno: Number.isFinite(snoRaw) ? snoRaw : undefined,
     name,
     make,
     model,
@@ -191,7 +228,11 @@ export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
         .from(tableName as any)
         .select("*")
         .eq("user_id", userId)
-        .order("Car ID", { ascending: true })
+        // SNO is the identity column, so ascending SNO is the order rows were
+        // actually added — what the unsorted ("raw") views should show. It is
+        // also unique and monotonic, which makes range() paging stable in a way
+        // ordering by "Car ID" was not.
+        .order("SNO", { ascending: true })
         .range(from, to);
 
       if (error) {

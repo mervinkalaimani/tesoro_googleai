@@ -1,5 +1,8 @@
 export type Diecast = {
   id: string;
+  /** tesoro_raw identity column: the order the row was added. Absent on cars
+   *  created locally that have not been round-tripped through Supabase yet. */
+  sno?: number;
   name: string;
   make: string;
   model: string;

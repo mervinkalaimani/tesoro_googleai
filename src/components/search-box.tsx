@@ -2,9 +2,59 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
 import { suggestFor } from "@/lib/search";
+
+/**
+ * Cycled through the empty search box one at a time. Every entry is a query the
+ * parser actually accepts, so anything shown here can be typed verbatim.
+ */
+const PLACEHOLDER_EXAMPLES = [
+  "mustang",
+  "make = toyota",
+  "model = supra",
+  "brand = hot wheels",
+  "manufacturer = mini gt",
+  "car # = 1133",
+  "colour = red",
+  "seller = first cry",
+  "colour = red + yellow",
+  "cost > 500",
+  "year < 2000",
+];
+
+const HOLD_MS = 2200;
+const FADE_MS = 350;
+
+/** Rotates the example, fading out before the swap and back in after it. */
+function useRotatingExample(enabled: boolean) {
+  const [index, setIndex] = useState(0);
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    if (!enabled) return;
+    // Someone who asked the OS for less motion gets a single steady example.
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+
+    let swap = 0;
+    const cycle = window.setInterval(() => {
+      setVisible(false);
+      swap = window.setTimeout(() => {
+        setIndex((n) => (n + 1) % PLACEHOLDER_EXAMPLES.length);
+        setVisible(true);
+      }, FADE_MS);
+    }, HOLD_MS + FADE_MS);
+
+    return () => {
+      window.clearInterval(cycle);
+      window.clearTimeout(swap);
+    };
+  }, [enabled]);
+
+  return { example: PLACEHOLDER_EXAMPLES[index], visible };
+}
 
 /** Replace the segment after the last comma with `insert`. */
 function applySuggestion(query: string, insert: string, kind: "field" | "value") {
@@ -30,6 +80,10 @@ export function SearchBox() {
   const [active, setActive] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
+  // Too little room on a phone for a rotating example to read as anything but
+  // noise, so the hint stays a plain "Search" there.
+  const { example, visible } = useRotatingExample(!query && !isMobile);
 
   const fragment = useMemo(() => {
     const idx = query.lastIndexOf(",");
@@ -84,9 +138,28 @@ export function SearchBox() {
             setOpen(false);
           }
         }}
-        placeholder="Search cars, series, sub series, car # — try “minigt 1133” or “car # = 1133”"
+        // The visible hint is the animated overlay below; a real placeholder
+        // would sit on top of it.
+        placeholder=""
+        aria-label="Search cars"
         className={query ? "pl-9 pr-9" : "pl-9"}
       />
+      {!query && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-9 flex items-center gap-1.5 overflow-hidden pr-9 text-sm text-muted-foreground"
+        >
+          <span className="shrink-0">Search</span>
+          {!isMobile && (
+            <span
+              className="truncate transition-opacity duration-300 ease-in-out"
+              style={{ opacity: visible ? 1 : 0 }}
+            >
+              {example}
+            </span>
+          )}
+        </div>
+      )}
       {query && (
         <button
           type="button"

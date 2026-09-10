@@ -42,6 +42,11 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* One typeface across the app: `font-mono` is still used to mark IDs, dates
+     and figures, but it renders in Inter rather than a second family.
+     `tabular-nums` continues to do the column-aligning work. */
+  --font-mono: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Light theme (default) */

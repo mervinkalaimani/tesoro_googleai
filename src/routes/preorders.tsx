@@ -1,13 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { CircleCheck, Clock, IndianRupee, Plus, Truck, Wallet } from "lucide-react";
+import { toast } from "sonner";
 
-import { useCars } from "@/lib/cars-store";
+import { useCars, useCarsActions } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
-import { carSubLine } from "@/components/cars-table";
 import { useCarDrawer } from "@/components/car-details-drawer";
-import { inr, parseDMY } from "@/lib/format";
+import { inrFull, parseDMY } from "@/lib/format";
+import { deriveMonth } from "@/lib/date-utils";
+import { Button } from "@/components/ui/button";
+import { CarFormDialog } from "@/components/car-form-dialog";
+import { PayBalanceDialog } from "@/components/pay-balance-dialog";
 import {
   Select,
   SelectContent,
@@ -55,12 +60,171 @@ function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
   return [...s].sort((a, b) => a.localeCompare(b));
 }
 
+function SummaryCard({
+  label,
+  value,
+  sub,
+  icon,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  icon: React.ReactNode;
+  tone?: "default" | "emerald" | "amber";
+}) {
+  const valueTone =
+    tone === "emerald"
+      ? "text-emerald-500"
+      : tone === "amber"
+        ? "text-amber-500"
+        : "text-foreground";
+  const subTone =
+    tone === "emerald"
+      ? "text-emerald-500/80"
+      : tone === "amber"
+        ? "text-amber-500/80"
+        : "text-muted-foreground";
+
+  return (
+    <div className="card-elevated p-4">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="text-muted-foreground">{icon}</span>
+      </div>
+      <div className={`text-display mt-1 text-2xl font-bold tabular-nums ${valueTone}`}>
+        {value}
+      </div>
+      <div className={`mt-1 font-mono text-xs ${subTone}`}>{sub}</div>
+    </div>
+  );
+}
+
+function PreOrderCard({
+  car,
+  onOpen,
+  onPay,
+  onShip,
+}: {
+  car: Diecast;
+  onOpen: () => void;
+  onPay: () => void;
+  onShip: () => void;
+}) {
+  const due = balanceOf(car);
+  const settled = due === 0;
+
+  return (
+    <article className="card-elevated flex flex-col overflow-hidden">
+      <div className="flex items-start justify-between gap-3 p-4 pb-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 rounded border border-border bg-muted/50 px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">
+            {car.id}
+          </span>
+          <span className="truncate text-sm text-muted-foreground">{car.brand || "—"}</span>
+        </div>
+        <span
+          className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+            settled
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+              : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+          }`}
+        >
+          {settled ? "Balance Paid" : "Pre-booked"}
+        </span>
+      </div>
+
+      <button
+        type="button"
+        onClick={onOpen}
+        className="px-4 pb-1 text-left text-base font-bold tracking-tight hover:text-primary"
+      >
+        {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+      </button>
+
+      <p className="flex flex-wrap items-center gap-x-2 px-4 pb-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1">
+          <Wallet className="size-3" />
+          {car.seller || "—"}
+        </span>
+        {car.orderDate ? (
+          <>
+            <span>·</span>
+            <span className="font-mono">Pre-booked: {car.orderDate}</span>
+          </>
+        ) : null}
+      </p>
+
+      {(car.transitInfo || "").trim() ? (
+        <p className="mx-4 mb-3 rounded-md border border-border bg-muted/25 px-3 py-2 text-xs text-muted-foreground">
+          “{car.transitInfo.trim()}”
+        </p>
+      ) : null}
+
+      <div className="mt-auto grid grid-cols-3 gap-2 border-t border-border px-4 py-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Target release
+          </div>
+          <div className="mt-0.5 font-mono text-sm font-semibold text-primary">
+            {car.expectedDate || "—"}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Deposit paid
+          </div>
+          <div className="mt-0.5 text-sm font-semibold tabular-nums">{inrFull(car.paid || 0)}</div>
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Balance due
+          </div>
+          <div
+            className={`mt-0.5 text-sm font-semibold tabular-nums ${
+              settled ? "text-emerald-500" : "text-amber-500"
+            }`}
+          >
+            {inrFull(due)}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+        {!settled && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onPay}
+            className="gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+          >
+            <IndianRupee className="size-3.5" />
+            Pay balance
+          </Button>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onShip}
+          className="gap-1.5 border-sky-500/40 text-sky-400 hover:bg-sky-500/10"
+        >
+          <Truck className="size-3.5" />
+          Mark shipped
+        </Button>
+      </div>
+    </article>
+  );
+}
+
 function PreOrdersPage() {
   const { query } = useApp();
   const cars = useCars();
   const { open } = useCarDrawer();
+  const { updateCar } = useCarsActions();
   const [seller, setSeller] = useState("all");
   const [sort, setSort] = useState<SortMode>("balance");
+  const [payFor, setPayFor] = useState<Diecast | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   const base = useMemo(
     () => filterRows(cars, query).filter((r) => isPreOrder(r.status)),
@@ -88,122 +252,103 @@ function PreOrdersPage() {
   const totalValue = rows.reduce((s, r) => s + (r.spent || 0), 0);
   const totalPaid = rows.reduce((s, r) => s + (r.paid || 0), 0);
   const totalDue = rows.reduce((s, r) => s + balanceOf(r), 0);
+  const uniqueModels = new Set(rows.map((r) => `${r.make}|${r.model}`)).size;
+
+  const markShipped = (car: Diecast) => {
+    const today = new Date().toISOString().slice(0, 10);
+    updateCar({
+      ...car,
+      status: "Transit",
+      orderDate: car.orderDate || today,
+      orderMonth: car.orderMonth || deriveMonth(today) || "",
+    });
+    toast.success("Moved to transit", { description: car.name || car.model });
+  };
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
-          <div className="min-w-0">
-            <h1 className="text-display text-xl font-semibold">Pre-orders</h1>
-            <p className="text-xs text-muted-foreground">
-              {rows.length} pre-order{rows.length === 1 ? "" : "s"} · {inr(totalValue)} committed
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex flex-wrap gap-4 pr-2 text-xs tabular-nums">
-              <span className="text-muted-foreground">
-                Paid <b className="text-emerald-600 dark:text-emerald-400">{inr(totalPaid)}</b>
-              </span>
-              <span className="text-muted-foreground">
-                Balance <b className="text-amber-600 dark:text-amber-400">{inr(totalDue)}</b>
-              </span>
-            </div>
-            <Select value={seller} onValueChange={setSeller}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Seller" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">All sellers</SelectItem>
-                {sellerOpts.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="balance">Sort: Balance</SelectItem>
-                <SelectItem value="orderDate">Sort: Order date</SelectItem>
-                <SelectItem value="seller">Sort: Seller</SelectItem>
-                <SelectItem value="cost">Sort: Cost</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryCard
+          label="Committed value"
+          value={inrFull(totalValue)}
+          sub={`${rows.length} pre-booked casting${rows.length === 1 ? "" : "s"}`}
+          icon={<IndianRupee className="size-4" />}
+        />
+        <SummaryCard
+          label="Deposits paid"
+          value={inrFull(totalPaid)}
+          sub={`${uniqueModels} secured allocation${uniqueModels === 1 ? "" : "s"}`}
+          icon={<CircleCheck className="size-4" />}
+          tone="emerald"
+        />
+        <SummaryCard
+          label="Balance due"
+          value={inrFull(totalDue)}
+          sub="Outstanding upon arrival"
+          icon={<Clock className="size-4" />}
+          tone="amber"
+        />
+      </div>
 
-        <div className="max-h-[calc(100svh-11rem)] overflow-auto">
-          <table className="w-full min-w-[56rem] table-fixed text-sm">
-            <colgroup>
-              <col />
-              <col className="w-[10rem]" />
-              <col className="w-[7rem]" />
-              <col className="w-[10rem]" />
-              <col className="w-[8rem]" />
-              <col className="w-[7rem]" />
-              <col className="w-[7rem]" />
-              <col className="w-[7rem]" />
-            </colgroup>
-            <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2.5 font-medium md:px-4">Model</th>
-                <th className="px-3 py-2.5 font-medium md:px-4">Seller</th>
-                <th className="px-3 py-2.5 font-medium md:px-4">Order date</th>
-                <th className="px-3 py-2.5 font-medium md:px-4">ETA</th>
-                <th className="px-3 py-2.5 font-medium md:px-4">Payment</th>
-                <th className="px-3 py-2.5 text-right font-medium md:px-4">Cost</th>
-                <th className="px-3 py-2.5 text-right font-medium md:px-4">Adv paid</th>
-                <th className="px-3 py-2.5 text-right font-medium md:px-4">Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => {
-                const paid = r.paid || 0;
-                const due = balanceOf(r);
-                return (
-                  <tr
-                    key={(r.id || "") + i}
-                    onClick={() => open(r)}
-                    className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
-                  >
-                    <td className="px-3 py-2.5 md:px-4">
-                      <div className="truncate font-medium">{r.name || "—"}</div>
-                      <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
-                    </td>
-                    <td className="truncate px-3 py-2.5 md:px-4">{r.seller || "—"}</td>
-                    <td className="px-3 py-2.5 tabular-nums md:px-4">{r.orderDate || "—"}</td>
-                    <td className="truncate px-3 py-2.5 md:px-4" title={r.transitInfo || ""}>
-                      {(r.transitInfo || "").trim() || "—"}
-                    </td>
-                    <td className="truncate px-3 py-2.5 md:px-4">{r.payment || "—"}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums md:px-4">
-                      {r.spent ? inr(r.spent) : "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums md:px-4">
-                      {paid ? inr(paid) : "—"}
-                    </td>
-                    <td
-                      className={`px-3 py-2.5 text-right tabular-nums md:px-4 ${due > 0 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}
-                    >
-                      {due > 0 ? inr(due) : "Settled"}
-                    </td>
-                  </tr>
-                );
-              })}
-              {rows.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">
-                    No pre-orders.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-display text-xl font-semibold">Pre-booked allocations</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Track future batches, manufacturing timelines, and remaining balances.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={seller} onValueChange={setSeller}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Seller" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              <SelectItem value="all">All sellers</SelectItem>
+              {sellerOpts.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortMode)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="balance">Sort: Balance</SelectItem>
+              <SelectItem value="orderDate">Sort: Order date</SelectItem>
+              <SelectItem value="seller">Sort: Seller</SelectItem>
+              <SelectItem value="cost">Sort: Cost</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
+            <Plus className="size-4" />
+            New pre-order
+          </Button>
         </div>
       </div>
+
+      {rows.length === 0 ? (
+        <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
+          No pre-orders.
+        </div>
+      ) : (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {rows.map((r, i) => (
+            <PreOrderCard
+              key={(r.id || "") + i}
+              car={r}
+              onOpen={() => open(r)}
+              onPay={() => setPayFor(r)}
+              onShip={() => markShipped(r)}
+            />
+          ))}
+        </div>
+      )}
+
+      <PayBalanceDialog car={payFor} onClose={() => setPayFor(null)} />
+      <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
     </div>
   );
 }

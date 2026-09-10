@@ -1,12 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, LayoutGrid, List, Pencil, Sparkles, Star } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
+import { CarThumb } from "@/components/car-thumb";
+import { CarFormDialog } from "@/components/car-form-dialog";
+import { useCarDrawer } from "@/components/car-details-drawer";
 import { SegmentControl } from "@/components/segment-control";
-import { inr } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { inr, mrpRatio } from "@/lib/format";
 import {
   Accordion,
   AccordionContent,
@@ -45,6 +50,14 @@ export const Route = createFileRoute("/collection")({
 
 type GroupBy = "series" | "set" | "brand" | "assortment" | "maker" | "seller" | "size";
 
+type SortField = "name" | "count" | "value";
+
+const SORT_LABELS: Record<SortField, string> = {
+  name: "Name",
+  count: "No. of cars",
+  value: "Value",
+};
+
 const GROUP_KEY: Record<GroupBy, (r: Diecast) => string> = {
   series: (r) => r.series || "—",
   set: (r) => [r.brand, r.series, r.subSeries].filter(Boolean).join(" · ") || "—",
@@ -55,10 +68,136 @@ const GROUP_KEY: Record<GroupBy, (r: Diecast) => string> = {
   size: (r) => r.size || "—",
 };
 
+/**
+ * Display titles, where they differ from the grouping key. Brand stays in the
+ * key so two brands sharing a series name remain separate groups, but it is
+ * dropped from the heading because it already appears as a chip underneath.
+ */
+const GROUP_LABEL: Partial<Record<GroupBy, (r: Diecast) => string>> = {
+  set: (r) => [r.series, r.subSeries].filter(Boolean).join(" · ") || "—",
+  assortment: (r) => r.assortment || "—",
+};
+
+/** Mirrors the inventory card so both pages read the same way. */
+function CollectionCard({
+  car,
+  onOpen,
+  onEdit,
+}: {
+  car: Diecast;
+  onOpen: () => void;
+  onEdit: () => void;
+}) {
+  const cost = car.spent || 0;
+  const market = car.mrp || cost;
+  const ratio = mrpRatio(cost, car.mrp || 0);
+
+  return (
+    <article className="card-elevated flex flex-col overflow-hidden">
+      <div className="relative">
+        <button type="button" onClick={onOpen} className="block w-full">
+          <CarThumb car={car} className="aspect-[16/10] w-full" />
+        </button>
+
+        <div className="pointer-events-none absolute left-2 top-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-md border border-white/10 bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+            {car.id}
+          </span>
+          {car.chase && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
+              <Sparkles className="size-3" />
+              CHASE
+            </span>
+          )}
+        </div>
+
+        {car.favourite && (
+          <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
+            <Star className="size-3.5 fill-amber-400 text-amber-400" />
+          </span>
+        )}
+
+        <div className="pointer-events-none absolute bottom-2 left-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 backdrop-blur-sm">
+            {car.open ? "Loose" : "Carded"}
+          </span>
+          {car.type && (
+            <span className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-sm">
+              {car.type}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col p-3">
+        <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+          <span className="truncate">{car.brand || "—"}</span>
+          <span className="shrink-0 tabular-nums">
+            {[car.year, car.size].filter(Boolean).join(" · ")}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpen}
+          className="mt-1 text-left text-sm font-bold leading-snug hover:text-primary"
+        >
+          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+        </button>
+
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">{car.status || "—"}</p>
+
+        <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              MRP value
+            </div>
+            <span className="mt-0.5 inline-flex items-baseline gap-1 text-sm font-semibold tabular-nums">
+              <span>{inr(market)}</span>
+              {ratio && (
+                <span
+                  className={`inline-flex items-center text-[11px] font-medium ${
+                    ratio.over ? "text-rose-400" : "text-emerald-500"
+                  }`}
+                >
+                  (
+                  {ratio.over ? (
+                    <ChevronUp className="size-3" />
+                  ) : (
+                    <ChevronDown className="size-3" />
+                  )}
+                  {ratio.text})
+                </span>
+              )}
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0"
+            aria-label="Edit"
+            onClick={onEdit}
+          >
+            <Pencil className="size-3.5" />
+          </Button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function CollectionPage() {
   const { query } = useApp();
   const [group, setGroup] = useState<GroupBy>("series");
   const [selected, setSelected] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField>("count");
+  const [dir, setDir] = useState<"desc" | "asc">("desc");
+  const [view, setView] = useState<"grid" | "table">("grid");
+  const [editCar, setEditCar] = useState<Diecast | null>(null);
+  const { open } = useCarDrawer();
 
   const cars = useCars();
   const filtered = useMemo(() => filterRows(cars, query), [cars, query]);
@@ -66,24 +205,40 @@ function CollectionPage() {
   const groups = useMemo(() => {
     const map = new Map<string, Diecast[]>();
     for (const r of filtered) {
-      if (group === "set" && !(r.series || "").trim()) continue;
+      // Series and Set both describe a named run of cars, so a car that belongs
+      // to neither has nothing meaningful to sit under.
+      if ((group === "set" || group === "series") && !(r.series || "").trim()) continue;
       const k = GROUP_KEY[group](r);
       const arr = map.get(k) ?? [];
       arr.push(r);
       map.set(k, arr);
     }
 
-    return [...map.entries()]
+    const built = [...map.entries()]
       .map(([name, items]) => {
         const value = items.reduce((s, r) => s + (r.spent || 0), 0);
         const statusCount = new Map<string, number>();
         for (const it of items) statusCount.set(it.status, (statusCount.get(it.status) ?? 0) + 1);
         const dominant = [...statusCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
         const brands = [...new Set(items.map((r) => r.brand).filter(Boolean))].slice(0, 3);
-        return { name, items, value, dominant, brands };
+        const label = GROUP_LABEL[group]?.(items[0]) ?? name;
+        return { name, label, items, value, dominant, brands };
       })
-      .sort((a, b) => b.items.length - a.items.length);
-  }, [filtered, group]);
+      // Ties fall back to the name so the order stays stable between renders
+      // instead of shuffling.
+      .sort((a, b) => {
+        let cmp: number;
+        if (sortField === "name") cmp = a.label.localeCompare(b.label);
+        else if (sortField === "value") cmp = a.value - b.value;
+        else cmp = a.items.length - b.items.length;
+
+        if (cmp !== 0) return dir === "asc" ? cmp : -cmp;
+        return a.label.localeCompare(b.label);
+      });
+
+    // A "set" of one is just a car; it only reads as a set once it has company.
+    return group === "set" ? built.filter((g) => g.items.length > 1) : built;
+  }, [filtered, group, sortField, dir]);
 
   const visible = selected === "all" ? groups : groups.filter((g) => g.name === selected);
   const totalValue = useMemo(() => filtered.reduce((s, r) => s + (r.spent || 0), 0), [filtered]);
@@ -116,6 +271,27 @@ function CollectionPage() {
                 { value: "size", label: "Size" },
               ]}
             />
+            <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                {(Object.keys(SORT_LABELS) as SortField[]).map((f) => (
+                  <SelectItem key={f} value={f}>
+                    Sort: {SORT_LABELS[f]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={dir} onValueChange={(v) => setDir(v as "desc" | "asc")}>
+              <SelectTrigger className="w-36">
+                <SelectValue placeholder="Order" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="desc">Descending</SelectItem>
+                <SelectItem value="asc">Ascending</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={selected} onValueChange={setSelected}>
               <SelectTrigger className="w-56">
                 <SelectValue placeholder="All" />
@@ -124,11 +300,35 @@ function CollectionPage() {
                 <SelectItem value="all">All {group}s</SelectItem>
                 {groups.map((g) => (
                   <SelectItem key={g.name} value={g.name}>
-                    {g.name} ({g.items.length})
+                    {g.label} ({g.items.length})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            <div className="flex shrink-0 items-center rounded-md border border-border p-0.5">
+              <button
+                type="button"
+                onClick={() => setView("grid")}
+                aria-pressed={view === "grid"}
+                title="Grid view"
+                className={`grid size-7 place-items-center rounded transition-colors ${
+                  view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                <LayoutGrid className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("table")}
+                aria-pressed={view === "table"}
+                title="Table view"
+                className={`grid size-7 place-items-center rounded transition-colors ${
+                  view === "table" ? "bg-muted text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                <List className="size-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -143,7 +343,7 @@ function CollectionPage() {
             <AccordionTrigger className="py-3 hover:no-underline">
               <div className="flex w-full items-center justify-between gap-4 pr-3">
                 <div className="min-w-0 text-left">
-                  <div className="truncate font-medium">{g.name}</div>
+                  <div className="truncate font-medium">{g.label}</div>
                   <div className="flex flex-wrap gap-1 pt-1">
                     {g.brands.map((b) => (
                       <span
@@ -166,7 +366,20 @@ function CollectionPage() {
               </div>
             </AccordionTrigger>
             <AccordionContent>
-              <CarsTable rows={g.items} />
+              {view === "grid" ? (
+                <div className="grid gap-3 pb-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {g.items.map((r, i) => (
+                    <CollectionCard
+                      key={(r.id || "") + i}
+                      car={r}
+                      onOpen={() => open(r)}
+                      onEdit={() => setEditCar(r)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <CarsTable rows={g.items} />
+              )}
             </AccordionContent>
           </AccordionItem>
         ))}
@@ -176,6 +389,17 @@ function CollectionPage() {
           </div>
         )}
       </Accordion>
+
+      {editCar && (
+        <CarFormDialog
+          open={Boolean(editCar)}
+          onOpenChange={(v) => {
+            if (!v) setEditCar(null);
+          }}
+          initial={editCar}
+          mode="edit"
+        />
+      )}
     </div>
   );
 }

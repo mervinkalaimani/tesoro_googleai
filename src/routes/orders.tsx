@@ -1,21 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Pencil, Truck } from "lucide-react";
-import { useCars } from "@/lib/cars-store";
+import { Truck, PackageCheck, Plus, Pencil, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useCars, useCarsActions } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { SegmentControl } from "@/components/segment-control";
-import { CarsTable, StatusPill } from "@/components/cars-table";
-import { parseDMY, inr } from "@/lib/format";
+import { parseDMY, inr, inrFull } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 import {
   Select,
   SelectContent,
@@ -46,27 +41,32 @@ export const Route = createFileRoute("/orders")({
   component: OrdersPage,
 });
 
-const ORDER_STATUSES = new Set(["Transit", "Waiting", "Out for Delivery", "Delayed"]);
+const OPEN_STATUSES = new Set(["Transit", "Waiting", "Out for Delivery", "Delayed", "Pre Order"]);
 const STATUS_RANK: Record<string, number> = {
   "Out for Delivery": 0,
   Transit: 1,
   Delayed: 2,
   Waiting: 3,
+  "Pre Order": 4,
 };
 
+/** Delivered batches are unbounded, so only recent ones are worth listing. */
+const DELIVERED_WINDOW_DAYS = 90;
+
 type SortMode = "status" | "seller" | "orderDate";
-type StatusFilter = "all" | "Out for Delivery" | "Transit" | "Waiting" | "Delayed";
+type Tab = "all" | "transit" | "delivered";
 
 type Shipment = {
   key: string;
   seller: string;
   status: string;
-  shippingId?: string;
+  shippingId: string;
   items: Diecast[];
   value: number;
-  brands: string[];
   orderDate: string;
   eta: string;
+  reference: string;
+  delivered: boolean;
 };
 
 function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
@@ -78,45 +78,184 @@ function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
   return [...s].sort((a, b) => a.localeCompare(b));
 }
 
+/** Colour the status pill by what the shipment is actually doing. */
+function statusTone(status: string, delivered: boolean): string {
+  if (delivered) return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
+  const s = status.toLowerCase();
+  if (s === "transit" || s === "out for delivery")
+    return "border-cyan-500/40 bg-cyan-500/10 text-cyan-400";
+  if (s === "delayed") return "border-destructive/40 bg-destructive/10 text-destructive";
+  return "border-amber-500/40 bg-amber-500/10 text-amber-400";
+}
+
+function statusLabel(status: string, delivered: boolean): string {
+  if (delivered) return "Delivered";
+  if (status === "Transit") return "Shipped / In Transit";
+  return status;
+}
+
+function ShipmentCard({
+  s,
+  onEdit,
+  onReconcile,
+  reconciling,
+}: {
+  s: Shipment;
+  onEdit: () => void;
+  onReconcile: () => void;
+  reconciling: boolean;
+}) {
+  return (
+    <article className="card-elevated overflow-hidden">
+      <header className="flex flex-wrap items-start justify-between gap-3 p-4">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="font-mono text-base font-bold tracking-tight">
+              {s.shippingId || "Unassigned"}
+            </h2>
+            <span
+              className={`rounded-full border px-2 py-0.5 font-mono text-[11px] ${statusTone(
+                s.status,
+                s.delivered,
+              )}`}
+            >
+              {statusLabel(s.status, s.delivered)}
+            </span>
+          </div>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
+            <span className="font-semibold">{s.seller}</span>
+            {s.reference ? (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className="font-mono text-xs text-muted-foreground">Ref: {s.reference}</span>
+              </>
+            ) : null}
+            {s.orderDate ? (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className="text-xs text-muted-foreground">Ordered {s.orderDate}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-start gap-6 text-right">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              {s.delivered ? "Delivered on" : "Expected arrival"}
+            </div>
+            <div className="font-mono text-sm font-semibold text-amber-400">{s.eta || "—"}</div>
+          </div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Total cost
+            </div>
+            <div className="text-sm font-bold tabular-nums">{inrFull(s.value)}</div>
+          </div>
+        </div>
+      </header>
+
+      <div className="border-t border-border px-4 py-3">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          Shipment contents ({s.items.length} casting{s.items.length === 1 ? "" : "s"})
+        </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          {s.items.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-start justify-between gap-3 rounded-md border border-border bg-muted/20 px-3 py-2"
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 truncate font-mono text-[11px] text-muted-foreground">
+                  <span>{c.carNumber || c.id}</span>
+                  {c.series ? (
+                    <>
+                      <span>·</span>
+                      <span className="truncate">{c.series}</span>
+                    </>
+                  ) : null}
+                </div>
+                <div className="truncate text-sm font-semibold">{c.name}</div>
+              </div>
+              <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
+                {inr(c.spent || 0)}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
+        <p className="min-w-0 text-xs text-muted-foreground">
+          {s.eta && !s.delivered ? `Expected ${s.eta}. ` : ""}
+          {s.items.length} car{s.items.length === 1 ? "" : "s"} from {s.seller}.
+        </p>
+        <div className="flex shrink-0 items-center gap-2">
+          {s.shippingId ? (
+            <Button variant="outline" size="sm" onClick={onEdit} className="gap-1.5">
+              <Pencil className="size-3.5" />
+              Update batch
+            </Button>
+          ) : null}
+          {!s.delivered && s.shippingId ? (
+            <Button size="sm" onClick={onReconcile} disabled={reconciling} className="gap-1.5">
+              {reconciling ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <PackageCheck className="size-4" />
+              )}
+              Reconcile delivery
+            </Button>
+          ) : null}
+        </div>
+      </footer>
+    </article>
+  );
+}
+
 function OrdersPage() {
   const { query } = useApp();
   const cars = useCars();
+  const { updateCarsByShippingId } = useCarsActions();
   const [mode, setMode] = useState<SortMode>("status");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [tab, setTab] = useState<Tab>("all");
   const [seller, setSeller] = useState("all");
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
+  const [reconciling, setReconciling] = useState<string | null>(null);
 
-  const orderRows = useMemo(
-    () => filterRows(cars, query).filter((r) => ORDER_STATUSES.has(r.status)),
-    [cars, query],
-  );
+  const scoped = useMemo(() => filterRows(cars, query), [cars, query]);
+
+  const orderRows = useMemo(() => {
+    const cutoff = Date.now() - DELIVERED_WINDOW_DAYS * 86_400_000;
+    return scoped.filter((r) => {
+      if (OPEN_STATUSES.has(r.status)) return true;
+      // Recently delivered batches stay visible so they can be reviewed.
+      if (r.status === "Available" && (r.shippingId || "").trim()) {
+        const d = parseDMY(r.date);
+        return d ? d.getTime() >= cutoff : false;
+      }
+      return false;
+    });
+  }, [scoped]);
 
   const sellerOpts = useMemo(() => uniqueSorted(orderRows, (r) => r.seller), [orderRows]);
-
-  const statusOpts = useMemo<{ value: StatusFilter; label: string }[]>(() => {
-    const present = new Set(orderRows.map((r) => r.status));
-    const order: StatusFilter[] = ["Out for Delivery", "Transit", "Delayed", "Waiting"];
-    return [
-      { value: "all" as StatusFilter, label: "All" },
-      ...order.filter((s) => present.has(s)).map((s) => ({ value: s, label: s })),
-    ];
-  }, [orderRows]);
 
   const filtered = useMemo(
     () =>
       orderRows.filter((r) => {
         if (seller !== "all" && r.seller !== seller) return false;
-        if (statusFilter !== "all" && r.status !== statusFilter) return false;
+        const delivered = r.status === "Available";
+        if (tab === "transit" && delivered) return false;
+        if (tab === "delivered" && !delivered) return false;
         return true;
       }),
-    [orderRows, seller, statusFilter],
+    [orderRows, seller, tab],
   );
 
   const shipments = useMemo<Shipment[]>(() => {
     const map = new Map<string, Diecast[]>();
     for (const r of filtered) {
-      // Group by shipping ID when present, otherwise by seller + order date + status
       const shipId = (r.shippingId || "").trim();
       const key = shipId || `${r.seller || "Unknown"}|${r.orderDate || "—"}|${r.status}`;
       const arr = map.get(key) ?? [];
@@ -127,21 +266,24 @@ function OrdersPage() {
     const out: Shipment[] = [];
     for (const [key, items] of map) {
       const first = items[0];
+      const delivered = first.status === "Available";
       out.push({
         key,
         seller: first.seller || "Unknown seller",
         status: first.status,
-        shippingId: first.shippingId || "",
+        shippingId: (first.shippingId || "").trim(),
         items,
         value: items.reduce((s, r) => s + (r.spent || 0), 0),
-        brands: [...new Set(items.map((r) => r.brand).filter(Boolean))].slice(0, 3),
         orderDate: first.orderDate || "",
-        // ETA comes from the Transit info / ETA column, falling back to the expected date
-        eta: (first.transitInfo || "").trim() || first.expectedDate || first.date || "",
+        eta: delivered
+          ? first.date || ""
+          : first.expectedDate || first.date || (first.transitInfo || "").trim(),
+        reference: (first.transitInfo || "").trim(),
+        delivered,
       });
     }
 
-    const rank = (s: Shipment) => STATUS_RANK[s.status] ?? 99;
+    const rank = (s: Shipment) => (s.delivered ? 90 : (STATUS_RANK[s.status] ?? 89));
     const t = (v: string) => parseDMY(v)?.getTime() ?? 0;
     return out.sort((a, b) => {
       if (mode === "seller") {
@@ -159,31 +301,48 @@ function OrdersPage() {
 
   const totalCars = shipments.reduce((s, g) => s + g.items.length, 0);
 
+  /** Mark every car in a batch as arrived, in one click. */
+  const reconcile = async (s: Shipment) => {
+    setReconciling(s.key);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      const n = await updateCarsByShippingId(s.shippingId, {
+        status: "Available",
+        expectedDate: today,
+      });
+      toast.success(`Reconciled ${n} car${n === 1 ? "" : "s"}`, { description: s.shippingId });
+    } catch (err) {
+      toast.error("Could not reconcile", { description: (err as Error)?.message });
+    } finally {
+      setReconciling(null);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <div className="card-elevated p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-display text-xl font-semibold">My orders</h1>
-            <p className="text-xs text-muted-foreground">
-              {shipments.length} shipment{shipments.length === 1 ? "" : "s"} · {totalCars} car
-              {totalCars === 1 ? "" : "s"} in flight
+            <h1 className="text-display flex items-center gap-2 text-xl font-semibold">
+              <Truck className="size-5 text-primary" />
+              Shipments &amp; order batches
+            </h1>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Track carrier references, delivery timelines, and reconcile incoming castings directly
+              into your collection. {shipments.length} shipment
+              {shipments.length === 1 ? "" : "s"} · {totalCars} car{totalCars === 1 ? "" : "s"}.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setSelectedShippingId("");
-                setBatchOpen(true);
-              }}
-              className="gap-1.5 shrink-0 border-amber-500/40 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 font-medium"
-            >
-              <Truck className="size-3.5" />
-              <span>Update by Shipping ID</span>
-            </Button>
-            <SegmentControl value={statusFilter} onChange={setStatusFilter} options={statusOpts} />
+            <SegmentControl
+              value={tab}
+              onChange={setTab}
+              options={[
+                { value: "all", label: "All" },
+                { value: "transit", label: "In transit" },
+                { value: "delivered", label: "Delivered" },
+              ]}
+            />
             <Select value={seller} onValueChange={setSeller}>
               <SelectTrigger className="w-36">
                 <SelectValue placeholder="Seller" />
@@ -207,77 +366,51 @@ function OrdersPage() {
                 <SelectItem value="orderDate">Sort: Order date</SelectItem>
               </SelectContent>
             </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSelectedShippingId("");
+                setBatchOpen(true);
+              }}
+              className="gap-1.5"
+            >
+              <Pencil className="size-3.5" />
+              Update by ID
+            </Button>
+            <BulkAddCarsDialog
+              trigger={
+                <Button size="sm" className="gap-1.5">
+                  <Plus className="size-4" />
+                  New shipment
+                </Button>
+              }
+            />
           </div>
         </div>
       </div>
 
-      <Accordion type="multiple" className="space-y-2">
-        {shipments.map((g) => (
-          <AccordionItem key={g.key} value={g.key} className="card-elevated border-0 px-3 md:px-4">
-            <AccordionTrigger className="py-3 hover:no-underline">
-              <div className="flex w-full items-center justify-between gap-4 pr-3">
-                <div className="min-w-0 text-left">
-                  <div className="flex items-center gap-2 truncate font-medium">
-                    <span>{g.seller}</span>
-                    {g.shippingId && (
-                      <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[11px] font-bold text-amber-400">
-                        {g.shippingId}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1 pt-1">
-                    <StatusPill status={g.status} />
-                    {g.brands.map((b) => (
-                      <span
-                        key={b}
-                        className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                      >
-                        {b}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-3 md:gap-4 text-xs">
-                  {g.shippingId && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedShippingId(g.shippingId || "");
-                        setBatchOpen(true);
-                      }}
-                      className="hidden sm:inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
-                      title={`Update all cars in ${g.shippingId}`}
-                    >
-                      <Pencil className="size-3" />
-                      <span>Update Batch</span>
-                    </button>
-                  )}
-                  <span className="tabular-nums">
-                    <b className="text-foreground">{g.items.length}</b>{" "}
-                    <span className="text-muted-foreground">cars</span>
-                  </span>
-                  <span className="tabular-nums text-muted-foreground">{inr(g.value)}</span>
-                  <span className="hidden tabular-nums text-muted-foreground sm:inline">
-                    {g.orderDate ? `Ordered ${g.orderDate}` : "—"}
-                  </span>
-                  <span className="hidden max-w-[14rem] truncate text-muted-foreground md:inline">
-                    {g.eta ? `ETA ${g.eta}` : ""}
-                  </span>
-                </div>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <CarsTable rows={g.items} />
-            </AccordionContent>
-          </AccordionItem>
+      <div className="space-y-3">
+        {shipments.map((s) => (
+          <ShipmentCard
+            key={s.key}
+            s={s}
+            reconciling={reconciling === s.key}
+            onEdit={() => {
+              setSelectedShippingId(s.shippingId);
+              setBatchOpen(true);
+            }}
+            onReconcile={() => void reconcile(s)}
+          />
         ))}
         {shipments.length === 0 && (
           <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
-            No open orders.
+            {tab === "delivered"
+              ? `No deliveries in the last ${DELIVERED_WINDOW_DAYS} days.`
+              : "No open orders."}
           </div>
         )}
-      </Accordion>
+      </div>
 
       <ShippingBatchDialog
         open={batchOpen}

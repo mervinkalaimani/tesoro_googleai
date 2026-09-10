@@ -44,6 +44,8 @@ import {
   ChevronLeft,
   Check,
   Lock,
+  Layers,
+  Upload,
   Info,
 } from "lucide-react";
 
@@ -127,11 +129,17 @@ export function CarFormDialog({
   onOpenChange,
   initial,
   mode,
+  onSwitchToBulk,
+  onSwitchToUpload,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   initial?: Diecast | null;
   mode: "add" | "edit";
+  /** Add mode only: hands off to the bulk dialog. */
+  onSwitchToBulk?: () => void;
+  /** Add mode only: hands off to the CSV upload dialog. */
+  onSwitchToUpload?: () => void;
 }) {
   const { addCar, updateCar } = useCarsActions();
   const [currentStep, setCurrentStep] = useState(1);
@@ -417,10 +425,40 @@ export function CarFormDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{mode === "add" ? "Add a car" : "Edit car"}</DialogTitle>
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <DialogTitle>{mode === "add" ? "Add a car" : "Edit car"}</DialogTitle>
+            {mode === "add" && (onSwitchToBulk || onSwitchToUpload) && (
+              <div className="flex shrink-0 items-center gap-2">
+                {onSwitchToBulk && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={onSwitchToBulk}
+                  >
+                    <Layers className="size-4" />
+                    Add in bulk
+                  </Button>
+                )}
+                {onSwitchToUpload && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={onSwitchToUpload}
+                  >
+                    <Upload className="size-4" />
+                    Upload CSV
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
           <DialogDescription>
             {mode === "add"
-              ? "Follow the wizard steps below to catalog a new diecast into your collection."
+              ? "Follow the wizard steps below to catalog a new diecast into your collection. Adding several at once? Use bulk or a CSV upload."
               : "Update ongoing logistics, status, payment progress, flags, and image. Saved vehicle cataloging fields are frozen to preserve integrity."}
           </DialogDescription>
         </DialogHeader>
@@ -884,17 +922,19 @@ export function CarFormDialog({
                     </Field>
 
                     {form.imageUrl.trim() && (
-                      <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-muted/30 p-2.5">
-                        <div className="relative size-14 shrink-0 overflow-hidden rounded border border-border bg-background">
+                      <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-2.5">
+                        <div className="relative flex h-44 w-full items-center justify-center overflow-hidden rounded border border-border bg-background">
                           {!imgError ? (
                             <img
                               src={form.imageUrl}
                               alt="Preview"
-                              className="size-full object-contain"
+                              // Fills the frame in both directions, cropping the
+                              // overflow, so a square source still fills a wide frame.
+                              className="block size-full object-cover"
                               onError={() => setImgError(true)}
                             />
                           ) : (
-                            <div className="flex size-full items-center justify-center text-muted-foreground">
+                            <div className="flex h-24 w-full items-center justify-center text-muted-foreground">
                               <ImageIcon className="size-5" />
                             </div>
                           )}
@@ -1156,17 +1196,19 @@ export function CarFormDialog({
               </Field>
 
               {form.imageUrl.trim() && (
-                <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-background p-2.5">
-                  <div className="relative size-14 shrink-0 overflow-hidden rounded border border-border bg-muted/20">
+                <div className="space-y-2 rounded-lg border border-border/60 bg-background p-2.5">
+                  <div className="relative flex h-44 w-full items-center justify-center overflow-hidden rounded border border-border bg-muted/20">
                     {!imgError ? (
                       <img
                         src={form.imageUrl}
                         alt="Preview"
-                        className="size-full object-contain"
+                        // Fills the frame in both directions, cropping the
+                        // overflow, so a square source still fills a wide frame.
+                        className="block size-full object-cover"
                         onError={() => setImgError(true)}
                       />
                     ) : (
-                      <div className="flex size-full items-center justify-center text-muted-foreground">
+                      <div className="flex h-24 w-full items-center justify-center text-muted-foreground">
                         <ImageIcon className="size-5" />
                       </div>
                     )}

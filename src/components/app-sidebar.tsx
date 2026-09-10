@@ -14,6 +14,7 @@ import {
   ShoppingBag,
   ShieldCheck,
   LogOut,
+  Database,
 } from "lucide-react";
 import { filterRows } from "@/lib/search";
 
@@ -30,7 +31,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useCars } from "@/lib/cars-store";
+import { useCars, useCarsSource } from "@/lib/cars-store";
 import { inrFull } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { useAuth, fullName } from "@/lib/auth-store";
@@ -54,6 +55,7 @@ export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, query } = useApp();
   const { profile, isAdmin, signOut } = useAuth();
+  const { source } = useCarsSource();
   const navItems = useMemo(() => (isAdmin ? [...NAV, ADMIN_NAV] : [...NAV]), [isAdmin]);
   const data = useMemo(
     () => filterRows(allCars, query).filter((r) => (r.status || "").trim().toLowerCase() !== "iso"),
@@ -115,6 +117,27 @@ export function AppSidebar() {
 
       <SidebarFooter className="border-t border-sidebar-border">
         <div className="space-y-3 px-1 py-2 group-data-[collapsible=icon]:hidden">
+          {isAdmin && (
+            <div className="border-b border-sidebar-border pb-3">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Database
+              </div>
+              <Link
+                to="/settings"
+                className="mt-1 flex items-center gap-1.5 text-sm text-foreground transition-colors hover:text-primary"
+                title="Supabase database settings"
+              >
+                <Database className="size-3.5 shrink-0 text-primary" />
+                <span className="truncate text-xs">Supabase synced</span>
+                <span
+                  className={`ml-auto inline-block size-1.5 shrink-0 rounded-full ${
+                    source === "supabase" ? "bg-emerald-500" : "bg-primary/80"
+                  }`}
+                />
+              </Link>
+            </div>
+          )}
+
           <div>
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
               Total cars

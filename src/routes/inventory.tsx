@@ -1,12 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
   Download,
+  LayoutGrid,
+  List,
   Pencil,
   SlidersHorizontal,
+  Sparkles,
+  Star,
   Trash2,
 } from "lucide-react";
 import type { Diecast } from "@/lib/types";
@@ -14,22 +17,15 @@ import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
 import { filterRows } from "@/lib/search";
 import { StatusPill, CostCell } from "@/components/cars-table";
+import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog, DeleteCarDialog } from "@/components/car-form-dialog";
 import { ExportDialog } from "@/components/export-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { parseDMY, inr } from "@/lib/format";
+import { inr, mrpRatio } from "@/lib/format";
+import { sortCars, statusRank } from "@/lib/status-order";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export const Route = createFileRoute("/inventory")({
   head: () => ({
@@ -50,6 +46,11 @@ export const Route = createFileRoute("/inventory")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // Lets the dashboard KPIs deep-link straight into a filtered inventory.
+  validateSearch: (search: Record<string, unknown>): { status?: string } => {
+    const status = search.status;
+    return typeof status === "string" && status.trim() ? { status } : {};
+  },
   component: InventoryPage,
 });
 
@@ -91,11 +92,148 @@ const EMPTY_FILTERS: Record<FilterKey, string> = {
   seller: "all",
 };
 
-const STATUS_ORDER = ["Available", "Transit", "Waiting", "Delayed", "Pre Order", "ISO"];
+type SortKey =
+  "sno" | "newest" | "oldest" | "valueDesc" | "valueAsc" | "costDesc" | "model" | "brand";
 
-type SortKey = "raw" | "orderDate" | "date";
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "sno", label: "Serial no" },
+  { value: "newest", label: "Newest added" },
+  { value: "oldest", label: "Oldest added" },
+  { value: "valueDesc", label: "Highest value" },
+  { value: "valueAsc", label: "Lowest value" },
+  { value: "costDesc", label: "Highest cost" },
+  { value: "model", label: "Model" },
+  { value: "brand", label: "Brand" },
+];
 
 const LOAD_BATCH = 50;
+
+/** MRP with the paid-vs-MRP multiplier, shared by the card and table views. */
+function MrpValue({ car }: { car: Diecast }) {
+  const cost = car.spent || 0;
+  const market = car.mrp || cost;
+  const ratio = mrpRatio(cost, car.mrp || 0);
+
+  return (
+    <span className="inline-flex items-baseline gap-1 text-sm font-semibold tabular-nums">
+      <span>{inr(market)}</span>
+      {ratio && (
+        <span
+          className={`inline-flex items-center text-[11px] font-medium ${
+            ratio.over ? "text-rose-400" : "text-emerald-500"
+          }`}
+        >
+          ({ratio.over ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+          {ratio.text})
+        </span>
+      )}
+    </span>
+  );
+}
+
+function InventoryCard({
+  car,
+  onOpen,
+  onEdit,
+  onDelete,
+}: {
+  car: Diecast;
+  onOpen: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <article className="card-elevated flex flex-col overflow-hidden">
+      <div className="relative">
+        <button type="button" onClick={onOpen} className="block w-full">
+          <CarThumb car={car} className="aspect-[16/10] w-full" />
+        </button>
+
+        <div className="pointer-events-none absolute left-2 top-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-md border border-white/10 bg-black/80 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+            {car.id}
+          </span>
+          {car.chase && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
+              <Sparkles className="size-3" />
+              CHASE
+            </span>
+          )}
+        </div>
+
+        {car.favourite && (
+          <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
+            <Star className="size-3.5 fill-amber-400 text-amber-400" />
+          </span>
+        )}
+
+        <div className="pointer-events-none absolute bottom-2 left-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 backdrop-blur-sm">
+            {car.open ? "Loose" : "Carded"}
+          </span>
+          {car.type && (
+            <span className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-sm">
+              {car.type}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col p-3">
+        <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+          <span className="truncate">{car.brand || "—"}</span>
+          <span className="shrink-0 tabular-nums">
+            {[car.year, car.size].filter(Boolean).join(" · ")}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={onOpen}
+          className="mt-1 text-left text-sm font-bold leading-snug hover:text-primary"
+        >
+          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+        </button>
+
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
+        </p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">{car.status || "—"}</p>
+
+        <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              MRP value
+            </div>
+            <div className="mt-0.5">
+              <MrpValue car={car} />
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="Edit"
+              onClick={onEdit}
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7 text-destructive"
+              aria-label="Delete"
+              onClick={onDelete}
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 function InventoryPage() {
   const { query } = useApp();
@@ -106,10 +244,18 @@ function InventoryPage() {
   const [draft, setDraft] = useState<Record<FilterKey, string>>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const isMobile = useIsMobile();
-  const [status, setStatus] = useState("all");
-  const [sort, setSort] = useState<SortKey>("raw");
-  const [dir, setDir] = useState<"asc" | "desc">("desc");
+  const search = Route.useSearch();
+  // Seeded from ?status= so a KPI click lands on a pre-filtered table; the
+  // chips remain free to change it afterwards.
+  const [status, setStatus] = useState(search.status ?? "all");
+
+  useEffect(() => {
+    if (search.status) setStatus(search.status);
+  }, [search.status]);
+  const [sort, setSort] = useState<SortKey>("sno");
+  const [view, setView] = useState<"grid" | "table">("grid");
+  const [chaseOnly, setChaseOnly] = useState(false);
+  const [favOnly, setFavOnly] = useState(false);
 
   const [visibleCount, setVisibleCount] = useState(LOAD_BATCH);
 
@@ -136,30 +282,52 @@ function InventoryPage() {
   }, [searched, draft]);
 
   const statusOptions = useMemo(() => {
-    const present = new Set(searched.map((r) => r.status).filter(Boolean));
-    const ordered = STATUS_ORDER.filter((s) => present.has(s));
-    const extra = [...present].filter((s) => !STATUS_ORDER.includes(s)).sort();
-    return ["all", ...ordered, ...extra];
+    // Filter chips follow the same canonical status order as the rows.
+    const present = [...new Set(searched.map((r) => r.status).filter(Boolean))];
+    present.sort((a, b) => statusRank(a) - statusRank(b) || a.localeCompare(b));
+    return ["all", ...present];
   }, [searched]);
 
   const rows = useMemo(() => {
     let out = applyFilters(searched, filters);
     if (status !== "all") out = out.filter((r) => r.status === status);
-    if (sort !== "raw") {
-      const t = (v: string) => parseDMY(v)?.getTime() ?? 0;
-      out = [...out].sort((a, b) => {
-        const va = sort === "orderDate" ? t(a.orderDate) : t(a.date);
-        const vb = sort === "orderDate" ? t(b.orderDate) : t(b.date);
-        return dir === "desc" ? vb - va : va - vb;
-      });
+    if (chaseOnly) out = out.filter((r) => r.chase);
+    if (favOnly) out = out.filter((r) => r.favourite);
+    // Default order is status group, then SNO within the group — the same order
+    // every other view uses.
+    const sno = (r: Diecast) => (typeof r.sno === "number" ? r.sno : Number.MAX_SAFE_INTEGER);
+    // "Value" is what the card labels MRP value, falling back to cost.
+    const value = (r: Diecast) => r.mrp || r.spent || 0;
+    const title = (r: Diecast) => (r.name || `${r.make} ${r.model}`).trim();
+
+    switch (sort) {
+      case "newest":
+        return [...out].sort((a, b) => sno(b) - sno(a));
+      case "oldest":
+        return [...out].sort((a, b) => sno(a) - sno(b));
+      case "valueDesc":
+        return [...out].sort((a, b) => value(b) - value(a));
+      case "valueAsc":
+        return [...out].sort((a, b) => value(a) - value(b));
+      case "costDesc":
+        return [...out].sort((a, b) => (b.spent || 0) - (a.spent || 0));
+      case "model":
+        return [...out].sort((a, b) => title(a).localeCompare(title(b)));
+      case "brand":
+        return [...out].sort(
+          (a, b) =>
+            (a.brand || "").localeCompare(b.brand || "") || title(a).localeCompare(title(b)),
+        );
+      default:
+        // Serial no: status group first, then SNO — the app-wide default order.
+        return sortCars(out);
     }
-    return out;
-  }, [searched, filters, status, sort, dir]);
+  }, [searched, filters, status, sort, chaseOnly, favOnly]);
 
   useEffect(() => {
     setVisibleCount(LOAD_BATCH);
     bodyRef.current?.scrollTo({ top: 0 });
-  }, [query, filters, status, sort, dir]);
+  }, [query, filters, status, sort, chaseOnly, favOnly]);
 
   const setDraftFilter = (key: FilterKey, v: string) => {
     setDraft((prev) => {
@@ -173,17 +341,6 @@ function InventoryPage() {
       }
       return next;
     });
-  };
-
-  const toggleSort = (key: Exclude<SortKey, "raw">) => {
-    if (sort !== key) {
-      setSort(key);
-      setDir("desc");
-    } else if (dir === "desc") setDir("asc");
-    else {
-      setSort("raw");
-      setDir("desc");
-    }
   };
 
   const activeCount = Object.values(filters).filter((v) => v !== "all").length;
@@ -219,16 +376,8 @@ function InventoryPage() {
               className="max-w-full flex-wrap"
               options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
             />
-            {sort !== "raw" && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="shrink-0"
-                onClick={() => {
-                  setSort("raw");
-                  setDir("desc");
-                }}
-              >
+            {sort !== "sno" && (
+              <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setSort("sno")}>
                 Reset sort
               </Button>
             )}
@@ -247,138 +396,264 @@ function InventoryPage() {
               className="shrink-0"
               onClick={() => {
                 setDraft(filters);
-                setFilterOpen(true);
+                setFilterOpen((v) => !v);
               }}
             >
               <SlidersHorizontal className="size-4" />
               Filters{activeCount ? ` (${activeCount})` : ""}
             </Button>
+            {/* Sorting lives here rather than in column headers so it applies
+                to the grid view too. */}
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as SortKey)}
+              aria-label="Sort cars"
+              className="h-8 shrink-0 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              {SORT_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <div className="flex shrink-0 items-center rounded-md border border-border p-0.5">
+              <button
+                type="button"
+                onClick={() => setView("grid")}
+                aria-pressed={view === "grid"}
+                title="Grid view"
+                className={`grid size-7 place-items-center rounded transition-colors ${
+                  view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                <LayoutGrid className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("table")}
+                aria-pressed={view === "table"}
+                title="Table view"
+                className={`grid size-7 place-items-center rounded transition-colors ${
+                  view === "table" ? "bg-muted text-foreground" : "text-muted-foreground"
+                }`}
+              >
+                <List className="size-4" />
+              </button>
+            </div>
           </div>
         </div>
 
-        <div ref={bodyRef} onScroll={loadMoreOnScroll} className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full min-w-[1080px] table-fixed text-sm">
-            <colgroup>
-              <col className="w-[18rem]" />
-              <col className="w-[7rem]" />
-              <col className="w-[7rem]" />
-              <col className="w-[9rem]" />
-              <col className="w-[9rem]" />
-              <col className="w-[8rem]" />
-              <col className="w-[7rem]" />
-              <col className="w-[7rem]" />
-              <col className="w-[5rem]" />
-            </colgroup>
-            <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2.5 font-medium">Model</th>
-                <th className="px-3 py-2.5 font-medium">Colour</th>
-                <th className="px-3 py-2.5 font-medium">Type</th>
-                <th className="px-3 py-2.5 text-right font-medium">Cost</th>
-                <th className="px-3 py-2.5 font-medium">Status</th>
-                <th className="px-3 py-2.5 font-medium">Seller</th>
-                <th className="px-3 py-2.5 font-medium">
-                  <SortHeader
-                    label="Order date"
-                    active={sort === "orderDate"}
-                    dir={dir}
-                    onClick={() => toggleSort("orderDate")}
-                  />
-                </th>
-                <th className="px-3 py-2.5 font-medium">
-                  <SortHeader
-                    label="Date"
-                    active={sort === "date"}
-                    dir={dir}
-                    onClick={() => toggleSort("date")}
-                  />
-                </th>
-                <th className="px-3 py-2.5 text-right font-medium">Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {shown.map((r, i) => (
-                <tr
-                  key={r.id + i}
-                  onClick={() => openDrawer(r)}
-                  className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
-                >
-                  <td className="px-4 py-2.5 align-top">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className="truncate font-medium">{r.name || "—"}</span>
-                      {r.chase && (
-                        <span className="shrink-0 rounded-sm bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
-                          CHASE
-                        </span>
-                      )}
-                      {r.favourite && (
-                        <span className="shrink-0 rounded-sm bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent">
-                          ★
-                        </span>
-                      )}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      {[r.brand, r.assortment, r.series, r.subSeries, r.carNumber]
-                        .filter(Boolean)
-                        .join(" · ") || "—"}
-                    </div>
-                  </td>
-                  <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                    {r.colour || "—"}
-                  </td>
-                  <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                    {r.type || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 align-top">
-                    <CostCell car={r} />
-                  </td>
-                  <td className="px-3 py-2.5 align-top">
-                    <StatusPill status={r.status} />
-                  </td>
-                  <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                    {r.seller || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 align-top text-muted-foreground tabular-nums">
-                    {r.orderDate || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 align-top text-muted-foreground tabular-nums">
-                    {r.date || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 align-top" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7"
-                        onClick={() => setEditCar(r)}
-                        aria-label="Edit"
-                      >
-                        <Pencil className="size-3.5" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteCar(r)}
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
+        {/* Inline filter row, revealed by the Filters button. It wraps on small
+            screens, so there is no separate sliding panel. */}
+        {filterOpen && (
+          <div className="space-y-3 border-b border-border bg-muted/20 p-4">
+            <div className="flex flex-wrap items-end gap-3">
+              {FILTERS.map((d) => (
+                <div key={d.key} className="min-w-[9rem] flex-1">
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {d.label}
+                  </label>
+                  <select
+                    value={draft[d.key]}
+                    onChange={(e) => setDraftFilter(d.key, e.target.value)}
+                    className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  >
+                    <option value="all">All</option>
+                    {options[d.key].map((o) => (
+                      <option key={o.name} value={o.name}>
+                        {o.name} ({o.value})
+                      </option>
+                    ))}
+                  </select>
+                </div>
               ))}
-              {shown.length === 0 && (
+
+              <button
+                type="button"
+                onClick={() => setChaseOnly((v) => !v)}
+                aria-pressed={chaseOnly}
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${
+                  chaseOnly
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                    : "border-border text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                <Sparkles className="size-4" />
+                Chase only
+              </button>
+              <button
+                type="button"
+                onClick={() => setFavOnly((v) => !v)}
+                aria-pressed={favOnly}
+                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${
+                  favOnly
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                <Star className={`size-4 ${favOnly ? "fill-primary" : ""}`} />
+                Favourites only
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">
+                Showing <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
+                {searched.length.toLocaleString()} diecast models
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setDraft(EMPTY_FILTERS);
+                    setFilters(EMPTY_FILTERS);
+                    setChaseOnly(false);
+                    setFavOnly(false);
+                  }}
+                >
+                  Clear
+                </Button>
+                <Button size="sm" onClick={() => setFilters(draft)}>
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === "grid" ? (
+          <div
+            ref={bodyRef}
+            onScroll={loadMoreOnScroll}
+            className="min-h-0 flex-1 overflow-auto p-3"
+          >
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {shown.map((r, i) => (
+                <InventoryCard
+                  key={(r.id || "") + i}
+                  car={r}
+                  onOpen={() => openDrawer(r)}
+                  onEdit={() => setEditCar(r)}
+                  onDelete={() => setDeleteCar(r)}
+                />
+              ))}
+            </div>
+            {shown.length === 0 && (
+              <p className="p-8 text-center text-sm text-muted-foreground">No cars match.</p>
+            )}
+          </div>
+        ) : (
+          <div ref={bodyRef} onScroll={loadMoreOnScroll} className="min-h-0 flex-1 overflow-auto">
+            {/* The detailed view: every field, no thumbnail. Sorting lives in
+                the header dropdown so it works in grid view too. */}
+            <table className="w-full min-w-[1080px] table-fixed text-sm">
+              <colgroup>
+                <col className="w-[18rem]" />
+                <col className="w-[7rem]" />
+                <col className="w-[7rem]" />
+                <col className="w-[9rem]" />
+                <col className="w-[9rem]" />
+                <col className="w-[8rem]" />
+                <col className="w-[7rem]" />
+                <col className="w-[7rem]" />
+                <col className="w-[5rem]" />
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <td colSpan={9} className="p-10 text-center text-muted-foreground">
-                    No cars match those filters.
-                  </td>
+                  <th className="px-4 py-2.5 font-medium">Model</th>
+                  <th className="px-3 py-2.5 font-medium">Colour</th>
+                  <th className="px-3 py-2.5 font-medium">Type</th>
+                  <th className="px-3 py-2.5 text-right font-medium">Cost</th>
+                  <th className="px-3 py-2.5 font-medium">Status</th>
+                  <th className="px-3 py-2.5 font-medium">Seller</th>
+                  <th className="px-3 py-2.5 font-medium">Order date</th>
+                  <th className="px-3 py-2.5 font-medium">Date</th>
+                  <th className="px-3 py-2.5 text-right font-medium">Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+
+              <tbody>
+                {shown.map((r, i) => (
+                  <tr
+                    key={r.id + i}
+                    onClick={() => openDrawer(r)}
+                    className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
+                  >
+                    <td className="px-4 py-2.5 align-top">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-medium">{r.name || "—"}</span>
+                        {r.chase && (
+                          <span className="shrink-0 rounded-sm bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
+                            CHASE
+                          </span>
+                        )}
+                        {r.favourite && (
+                          <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" />
+                        )}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {[r.brand, r.assortment, r.series, r.subSeries, r.carNumber]
+                          .filter(Boolean)
+                          .join(" · ") || "—"}
+                      </div>
+                    </td>
+                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                      {r.colour || "—"}
+                    </td>
+                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                      {r.type || "—"}
+                    </td>
+                    <td className="px-3 py-2.5 align-top">
+                      <CostCell car={r} />
+                    </td>
+                    <td className="px-3 py-2.5 align-top">
+                      <StatusPill status={r.status} />
+                    </td>
+                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                      {r.seller || "—"}
+                    </td>
+                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
+                      {r.orderDate || "—"}
+                    </td>
+                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
+                      {r.date || "—"}
+                    </td>
+                    <td className="px-3 py-2.5 align-top" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-7"
+                          onClick={() => setEditCar(r)}
+                          aria-label="Edit"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="size-7 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteCar(r)}
+                          aria-label="Delete"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {shown.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="p-10 text-center text-muted-foreground">
+                      No cars match those filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
           <span className="text-xs text-muted-foreground">
@@ -389,46 +664,6 @@ function InventoryPage() {
           )}
         </div>
       </div>
-
-      <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
-        <SheetContent
-          side={isMobile ? "bottom" : "right"}
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-sm data-[side=bottom]:max-h-[85svh] data-[side=bottom]:rounded-t-2xl"
-        >
-          <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-muted-foreground/30 md:hidden" />
-          <SheetHeader className="border-b border-border p-4">
-            <SheetTitle>Filters</SheetTitle>
-          </SheetHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-auto p-4">
-            {FILTERS.map((d) => (
-              <div key={d.key} className="space-y-1.5">
-                <div className="text-xs font-medium text-muted-foreground">{d.label}</div>
-                <FilterSelect
-                  value={draft[d.key]}
-                  onChange={(v) => setDraftFilter(d.key, v)}
-                  placeholder={d.label}
-                  options={options[d.key]}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2 border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <Button variant="outline" className="flex-1" onClick={() => setDraft(EMPTY_FILTERS)}>
-              Clear
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={() => {
-                setFilters(draft);
-                setVisibleCount(LOAD_BATCH);
-                setFilterOpen(false);
-              }}
-            >
-              Apply
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
 
       <ExportDialog
         open={exportOpen}
@@ -456,64 +691,5 @@ function InventoryPage() {
         }}
       />
     </div>
-  );
-}
-
-function FilterSelect({
-  value,
-  onChange,
-  placeholder,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  options: { name: string; value: number }[];
-}) {
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger className="w-full">
-        <SelectValue placeholder={placeholder} />
-      </SelectTrigger>
-      <SelectContent className="max-h-72">
-        <SelectItem value="all">All {placeholder.toLowerCase()}</SelectItem>
-        {options.map((o) => (
-          <SelectItem key={o.name} value={o.name}>
-            {o.name} ({o.value})
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function SortHeader({
-  label,
-  active,
-  dir,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  dir: "asc" | "desc";
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex items-center gap-1 uppercase tracking-wide transition-colors hover:text-foreground ${active ? "text-foreground" : ""}`}
-    >
-      {label}
-      {active ? (
-        dir === "desc" ? (
-          <ArrowDown className="size-3" />
-        ) : (
-          <ArrowUp className="size-3" />
-        )
-      ) : (
-        <ArrowUpDown className="size-3 opacity-40" />
-      )}
-    </button>
   );
 }

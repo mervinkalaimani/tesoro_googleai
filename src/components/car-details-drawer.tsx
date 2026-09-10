@@ -1,12 +1,30 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { Car, CheckCircle2, Loader2, Pencil, Star, Trash2, Truck, X } from "lucide-react";
+import { Car, CheckCircle2, Flame, Loader2, Pencil, Star, Trash2, Truck, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { findCarImage } from "@/lib/car-image";
 import { deriveMonth } from "@/lib/date-utils";
+import { inrFull } from "@/lib/format";
+import { Input } from "@/components/ui/input";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
+
+/**
+ * A car moves forward one step at a time rather than jumping straight to
+ * delivered, so the button always advances to the next real stage.
+ */
+const STATUS_FLOW = ["ISO", "Pre Order", "Waiting", "Transit", "Out for Delivery", "Available"];
+
+function nextStatus(current: string): string | null {
+  const now = (current || "").trim().toLowerCase();
+  const i = STATUS_FLOW.findIndex((s) => s.toLowerCase() === now);
+  // An unrecognised status has no place in the chain; treat delivery as the
+  // only sensible next move.
+  if (i < 0) return "Available";
+  if (i >= STATUS_FLOW.length - 1) return null;
+  return STATUS_FLOW[i + 1];
+}
 
 type Ctx = {
   open: (car: Diecast) => void;
@@ -27,6 +45,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   const [editCar, setEditCar] = useState<Diecast | null>(null);
   const [batchShippingId, setBatchShippingId] = useState<string | null>(null);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Diecast | null>(null);
 
   const cars = useCars();
   const { updateCar, deleteCar } = useCarsActions();
@@ -64,8 +83,14 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
                 setBatchOpen(true);
               }}
               onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
-              onToggleCondition={() => updateCar({ ...car, open: !car.open })}
-              onMarkDelivered={() => {
+              onToggleChase={() => updateCar({ ...car, chase: !car.chase })}
+              onAdvanceStatus={() => {
+                const next = nextStatus(car.status);
+                if (!next) return;
+                if (next !== "Available") {
+                  updateCar({ ...car, status: next });
+                  return;
+                }
                 const today = new Date().toISOString().slice(0, 10);
                 const arrDate = car.expectedDate || car.date || today;
                 updateCar({
@@ -75,17 +100,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
                   month: deriveMonth(arrDate) || car.month,
                 });
               }}
-              onDelete={() => {
-                const carName = car.name || `${car.make} ${car.model}`;
-                if (
-                  window.confirm(
-                    `Are you sure you want to delete "${carName}" from your collection?`,
-                  )
-                ) {
-                  deleteCar(car.id);
-                  close();
-                }
-              }}
+              onDelete={() => setPendingDelete(car)}
             />
           )}
         </DialogContent>
@@ -98,8 +113,8 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           onOpenChange={(v) => {
             if (!v) setEditCar(null);
           }}
-          initialCar={editCar}
-          onSaved={() => setEditCar(null)}
+          initial={editCar}
+          mode="edit"
         />
       )}
 
@@ -109,7 +124,97 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
         onOpenChange={setBatchOpen}
         initialShippingId={batchShippingId || ""}
       />
+
+      <DeleteCarDialog
+        car={pendingDelete}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) deleteCar(pendingDelete.id);
+          setPendingDelete(null);
+          close();
+        }}
+      />
     </CarDrawerCtx.Provider>
+  );
+}
+
+/**
+ * Deleting a car is not undoable, so it takes a deliberate typed phrase rather
+ * than a single click on a native confirm.
+ */
+function DeleteCarDialog({
+  car,
+  onCancel,
+  onConfirm,
+}: {
+  car: Diecast | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const [typed, setTyped] = useState("");
+
+  useEffect(() => {
+    setTyped("");
+  }, [car?.id]);
+
+  if (!car) return null;
+
+  const phrase = `delete ${(car.make || car.name || "car").trim()}`.toLowerCase();
+  const matches = typed.trim().toLowerCase() === phrase;
+
+  return (
+    <Dialog
+      open={Boolean(car)}
+      onOpenChange={(v) => {
+        if (!v) onCancel();
+      }}
+    >
+      <DialogContent className="max-w-md border-zinc-800 bg-[#0e121a] text-zinc-100">
+        <DialogTitle className="text-lg font-semibold">Delete this car?</DialogTitle>
+        <DialogDescription className="text-sm text-zinc-400">
+          <span className="font-medium text-zinc-200">
+            {car.name || `${car.make} ${car.model}`}
+          </span>{" "}
+          will be removed from your collection. This cannot be undone.
+        </DialogDescription>
+
+        <div className="space-y-2">
+          <p className="text-sm text-zinc-400">
+            Type <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-zinc-100">{phrase}</code>{" "}
+            to confirm.
+          </p>
+          <Input
+            autoFocus
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && matches) onConfirm();
+            }}
+            placeholder={phrase}
+            aria-label="Type the confirmation phrase"
+          />
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!matches}
+            onClick={onConfirm}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Trash2 className="size-4" />
+            Delete
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -119,8 +224,8 @@ interface CarPopupContentProps {
   onEdit: () => void;
   onOpenShippingBatch: (shippingId: string) => void;
   onToggleFavourite: () => void;
-  onToggleCondition: () => void;
-  onMarkDelivered: () => void;
+  onToggleChase: () => void;
+  onAdvanceStatus: () => void;
   onDelete: () => void;
 }
 
@@ -130,8 +235,8 @@ function CarPopupContent({
   onEdit,
   onOpenShippingBatch,
   onToggleFavourite,
-  onToggleCondition,
-  onMarkDelivered,
+  onToggleChase,
+  onAdvanceStatus,
   onDelete,
 }: CarPopupContentProps) {
   const [deliveredAnim, setDeliveredAnim] = useState(false);
@@ -139,11 +244,16 @@ function CarPopupContent({
   const spent = Math.round(car.spent ?? 0);
   const mrp = Math.round(car.mrp ?? 0);
   const delta = mrp - spent;
+  const advanceTo = nextStatus(car.status);
 
   const handleMarkDeliveredClick = () => {
-    onMarkDelivered();
-    setDeliveredAnim(true);
-    setTimeout(() => setDeliveredAnim(false), 2000);
+    if (!advanceTo) return;
+    onAdvanceStatus();
+    // Only flash the delivered confirmation when that is what just happened.
+    if (advanceTo === "Available") {
+      setDeliveredAnim(true);
+      setTimeout(() => setDeliveredAnim(false), 2000);
+    }
   };
 
   const getStatusColor = (st: string) => {
@@ -176,6 +286,21 @@ function CarPopupContent({
         </div>
 
         <div className="flex items-center gap-1.5">
+          {/* Chase toggle, sits left of the favourite star */}
+          <button
+            type="button"
+            onClick={onToggleChase}
+            title={car.chase ? "Unmark as chase" : "Mark as chase"}
+            aria-pressed={car.chase}
+            className="flex size-8 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/60 transition-colors hover:bg-zinc-800 cursor-pointer"
+          >
+            <Flame
+              className={`size-4 ${
+                car.chase ? "fill-orange-400 text-orange-400" : "text-zinc-400 hover:text-white"
+              }`}
+            />
+          </button>
+
           {/* Favorite Star Button */}
           <button
             type="button"
@@ -216,11 +341,8 @@ function CarPopupContent({
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-zinc-900/80 border border-zinc-800/80 shadow-inner">
         <HeroCarImage car={car} />
 
-        {/* Brand & Scale Badges at bottom-left */}
+        {/* Scale badge only — brand now reads in the subtitle below. */}
         <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
-          <span className="rounded-md bg-black/85 backdrop-blur-md px-2.5 py-1 text-xs font-semibold text-white tracking-tight shadow-md border border-white/10">
-            {car.brand || "Diecast"}
-          </span>
           <span className="rounded-md bg-black/85 backdrop-blur-md px-2 py-1 text-xs font-mono font-medium text-zinc-300 tracking-tight shadow-md border border-white/10">
             {car.size || "1:64"}
           </span>
@@ -232,9 +354,10 @@ function CarPopupContent({
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
           {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
         </h2>
-        <p className="mt-1 text-sm text-zinc-400 font-normal">
-          {car.make || "Unknown"} • {car.model || "Unknown"}
-          {car.variant ? ` (${car.variant})` : ""}
+        {/* Make and model are already in the title, so the subtitle carries the
+            collection context instead. */}
+        <p className="mt-1 text-sm font-normal text-zinc-400">
+          {[car.brand, car.series, car.subSeries].filter(Boolean).join(" • ") || "—"}
         </p>
       </div>
 
@@ -245,7 +368,7 @@ function CarPopupContent({
             PURCHASE SPENT
           </span>
           <span className="mt-1 block text-xl sm:text-2xl font-bold text-white">
-            ${spent.toLocaleString()}
+            {inrFull(spent)}
           </span>
         </div>
 
@@ -254,7 +377,7 @@ function CarPopupContent({
             RETAIL / MRP
           </span>
           <span className="mt-1 block text-xl sm:text-2xl font-bold text-white">
-            ${mrp.toLocaleString()}
+            {inrFull(mrp)}
           </span>
         </div>
 
@@ -264,11 +387,11 @@ function CarPopupContent({
           </span>
           {delta >= 0 ? (
             <span className="mt-1 block text-xl sm:text-2xl font-bold text-[#00E599]">
-              +${delta.toLocaleString()}
+              +{inrFull(delta)}
             </span>
           ) : (
             <span className="mt-1 block text-xl sm:text-2xl font-bold text-rose-400">
-              -${Math.abs(delta).toLocaleString()}
+              -{inrFull(Math.abs(delta))}
             </span>
           )}
         </div>
@@ -305,22 +428,6 @@ function CarPopupContent({
         </div>
 
         <div>
-          <span className="text-xs text-zinc-400">Condition</span>
-          <div className="mt-0.5 flex items-center gap-2">
-            <span className="rounded-md border border-blue-500/40 bg-[#162238] px-2 py-0.5 text-xs font-medium text-blue-300">
-              {car.open ? "Loose (Open)" : "Carded (Sealed)"}
-            </span>
-            <button
-              type="button"
-              onClick={onToggleCondition}
-              className="text-xs text-zinc-400 hover:text-white underline cursor-pointer"
-            >
-              Change
-            </button>
-          </div>
-        </div>
-
-        <div>
           <span className="text-xs text-zinc-400">Current Status</span>
           <span className={`mt-0.5 block font-semibold truncate ${getStatusColor(car.status)}`}>
             {car.status || "—"}
@@ -339,23 +446,30 @@ function CarPopupContent({
             </span>
           </div>
 
+          {/* Advances one stage at a time: ISO → Pre Order → Waiting → Transit
+              → Out for Delivery → Delivered. */}
           <button
             type="button"
             onClick={handleMarkDeliveredClick}
-            disabled={car.status === "Available" && !deliveredAnim}
+            disabled={!advanceTo}
+            title={
+              advanceTo
+                ? `Move from ${car.status || "unknown"} to ${advanceTo}`
+                : "Already delivered"
+            }
             className={`flex items-center gap-1.5 rounded-lg text-xs font-semibold px-3 py-1.5 transition-colors shadow-sm cursor-pointer ${
-              car.status === "Available"
+              !advanceTo
                 ? "bg-emerald-600/80 text-white cursor-default"
                 : "bg-[#00c57d] hover:bg-[#00b070] text-white"
             }`}
           >
             <CheckCircle2 className="size-3.5" />
             <span>
-              {deliveredAnim
+              {deliveredAnim || !advanceTo
                 ? "Delivered ✓"
-                : car.status === "Available"
-                  ? "Delivered ✓"
-                  : "Mark Delivered"}
+                : advanceTo === "Available"
+                  ? "Mark Delivered"
+                  : `Mark ${advanceTo}`}
             </span>
           </button>
         </div>

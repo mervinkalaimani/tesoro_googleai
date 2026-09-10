@@ -149,3 +149,28 @@ export function monthLabel(key: number): string {
   const mi = key % 12;
   return `${MONTH_ORDER[mi]} ${yr}`;
 }
+
+/**
+ * How the price paid compares with MRP, as a multiplier shown inline beside the
+ * value — e.g. ₹330 paid against ₹150 MRP reads "^2.2x". Above MRP is a loss on
+ * paper (red); below it is a win (green). Returns null when there is nothing
+ * meaningful to compare.
+ */
+export function mrpRatio(spent: number, mrp: number): { text: string; over: boolean } | null {
+  if (!mrp || !spent) return null;
+  const ratio = spent / mrp;
+  if (!Number.isFinite(ratio) || ratio <= 0) return null;
+
+  const rounded = Number(ratio.toFixed(1));
+  // A multiplier of 1.0x is effectively at MRP: show the price on its own.
+  if (rounded === 1) return null;
+
+  return { text: `${rounded.toFixed(1)}x`, over: rounded > 1 };
+}
+
+/** "Apr 2025" -> "Apr 25", for axis ticks where the full year does not fit. */
+export function shortMonthLabel(label: string): string {
+  const [mon, yr] = label.split(" ");
+  if (!mon || !yr) return label;
+  return `${mon} ${yr.slice(-2)}`;
+}

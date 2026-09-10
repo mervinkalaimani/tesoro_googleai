@@ -9,13 +9,48 @@ import {
 } from "react";
 import type { Diecast } from "@/lib/types";
 import { deriveMonth } from "@/lib/date-utils";
+import { shippingIdFor, shippingInputsChanged } from "@/lib/shipping-id";
+import { sortCars } from "@/lib/status-order";
 import { useAuth } from "@/lib/auth-store";
+import { toast } from "sonner";
 import {
   fetchCarsFromSupabase,
   saveCarToSupabase,
   deleteCarFromSupabase,
   seedCarsToSupabase,
+  savedFieldsMatch,
 } from "@/lib/supabase-cars";
+
+/**
+ * The Supabase helpers resolve with `{ success: false, error }` rather than
+ * rejecting, so the `.catch()` handlers these calls used to carry were dead
+ * code: a rejected write left no trace anywhere. Combined with the overlay
+ * masking `base`, that let the app show an edit as applied for as long as
+ * localStorage survived while the row never actually moved.
+ */
+function reportSaveFailure(scope: string, failures: { error?: string }[], total: number) {
+  if (!failures.length) return;
+  const first = failures[0]?.error ?? "unknown error";
+  console.error(`Supabase ${scope} failed (${failures.length}/${total}):`, first);
+  toast.error(
+    failures.length === total
+      ? "Change was not saved to the database"
+      : `${failures.length} of ${total} changes were not saved`,
+    { description: first },
+  );
+}
+
+async function persistCars(
+  cars: Diecast[],
+  scope: string,
+  report = true,
+): Promise<{ error?: string }[]> {
+  const results = await Promise.all(cars.map((c) => saveCarToSupabase(c)));
+  const failures = results.filter((r) => !r.success);
+  if (report) reportSaveFailure(scope, failures, cars.length);
+  else if (failures.length) console.error(`Supabase ${scope} failed:`, failures[0]?.error);
+  return failures;
+}
 
 // Collections are cached in localStorage, so every key is namespaced by user id:
 // two accounts on the same browser must never see each other's cars.
@@ -129,6 +164,28 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     const ts = Date.now();
     setLastUpdated(ts);
     writeCache(uid, fromSupabase, ts);
+
+    // Retire overlay entries the database has caught up with. The overlay
+    // unconditionally wins over `base`, so without this an edit stays "applied"
+    // in this browser forever — including one whose write failed, which is how a
+    // whole shipment could read as Available here and Transit everywhere else.
+    setOverlay((prev) => {
+      const byId = new Map(fromSupabase.map((c) => [c.id, c]));
+      const updated: Record<string, Diecast> = {};
+      let pruned = 0;
+      for (const [id, car] of Object.entries(prev.updated)) {
+        const remote = byId.get(id);
+        if (remote && savedFieldsMatch(remote, car)) {
+          pruned++;
+          continue;
+        }
+        updated[id] = car;
+      }
+      if (!pruned) return prev;
+      const next = { ...prev, updated };
+      writeOverlay(uid, next);
+      return next;
+    });
   }, [uid, canLoad]);
 
   useEffect(() => {
@@ -194,14 +251,16 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   }, [loadData]);
 
   const cars = useMemo<Diecast[]>(() => {
-    if (!hydrated) return base;
+    if (!hydrated) return sortCars(base);
     const del = new Set(overlay.deleted);
     const merged: Diecast[] = [];
     for (const c of base) {
       if (del.has(c.id)) continue;
       merged.push(overlay.updated[c.id] ?? c);
     }
-    return [...overlay.added, ...merged];
+    // Sorted once here so every view — dashboard, collection, inventory,
+    // orders — sees the same status-then-insertion order.
+    return sortCars([...overlay.added, ...merged]);
   }, [base, overlay, hydrated]);
 
   const commit = useCallback(
@@ -214,39 +273,55 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
   const addCar = useCallback(
     (car: Diecast) => {
-      commit({ ...overlay, added: [car, ...overlay.added] });
-      saveCarToSupabase(car).catch((err) => {
-        console.warn("Supabase saveCar error:", err);
-      });
+      // Shipping IDs are derived from seller and dates, never typed.
+      const next: Diecast = { ...car, shippingId: shippingIdFor(car, [...cars, car]) };
+      commit({ ...overlay, added: [next, ...overlay.added] });
+      void persistCars([next], "addCar");
     },
-    [overlay, commit],
+    [overlay, commit, cars],
   );
 
   const bulkAddCars = useCallback(
     (newCars: Diecast[]) => {
       if (!newCars.length) return;
       commit({ ...overlay, added: [...newCars, ...overlay.added] });
+      // Previously omitted entirely, so a bulk import lived in localStorage and
+      // nowhere else.
+      void persistCars(newCars, "bulkAddCars");
     },
     [overlay, commit],
   );
 
   const updateCar = useCallback(
     (car: Diecast) => {
-      if (overlay.added.some((a) => a.id === car.id)) {
-        commit({ ...overlay, added: overlay.added.map((a) => (a.id === car.id ? car : a)) });
+      // Only re-derive when the inputs actually moved: recomputing on every
+      // edit could silently renumber an existing shipment, since the rank
+      // depends on the rest of the collection.
+      const prev = cars.find((c) => c.id === car.id);
+      const needsId = !car.shippingId?.trim() || (prev && shippingInputsChanged(prev, car));
+      const next: Diecast = needsId
+        ? {
+            ...car,
+            shippingId: shippingIdFor(
+              car,
+              cars.map((c) => (c.id === car.id ? car : c)),
+            ),
+          }
+        : car;
+
+      if (overlay.added.some((a) => a.id === next.id)) {
+        commit({ ...overlay, added: overlay.added.map((a) => (a.id === next.id ? next : a)) });
       } else {
-        commit({ ...overlay, updated: { ...overlay.updated, [car.id]: car } });
+        commit({ ...overlay, updated: { ...overlay.updated, [next.id]: next } });
       }
-      saveCarToSupabase(car).catch((err) => {
-        console.warn("Supabase saveCar error:", err);
-      });
+      void persistCars([next], "updateCar");
     },
-    [overlay, commit],
+    [overlay, commit, cars],
   );
 
-  const bulkUpdateCars = useCallback(
+  /** Applies rows to the local overlay only. Persistence is the caller's job. */
+  const commitCars = useCallback(
     (updatedCars: Diecast[]) => {
-      if (!updatedCars.length) return;
       const updatedMap = { ...overlay.updated };
       let addedList = [...overlay.added];
       const addedIds = new Set(addedList.map((a) => a.id));
@@ -257,13 +332,19 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         } else {
           updatedMap[car.id] = car;
         }
-        saveCarToSupabase(car).catch((err) => {
-          console.warn("Supabase saveCar error in bulkUpdate:", err);
-        });
       }
       commit({ ...overlay, added: addedList, updated: updatedMap });
     },
     [overlay, commit],
+  );
+
+  const bulkUpdateCars = useCallback(
+    (updatedCars: Diecast[]) => {
+      if (!updatedCars.length) return;
+      commitCars(updatedCars);
+      void persistCars(updatedCars, "bulkUpdate");
+    },
+    [commitCars],
   );
 
   const updateCarsByShippingId = useCallback(
@@ -302,10 +383,22 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
-      bulkUpdateCars(updatedCars);
+      commitCars(updatedCars);
+
+      // Awaited rather than fired and forgotten: both callers announce "updated
+      // N cars" on the resolved value, so that claim has to be backed by the
+      // database. Failures surface through their own error UI, not a toast.
+      const failures = await persistCars(updatedCars, "updateCarsByShippingId", false);
+      if (failures.length) {
+        throw new Error(
+          `${failures.length} of ${updatedCars.length} cars could not be saved: ${
+            failures[0]?.error ?? "unknown error"
+          }`,
+        );
+      }
       return updatedCars.length;
     },
-    [cars, bulkUpdateCars],
+    [cars, commitCars],
   );
 
   const deleteCar = useCallback(
@@ -316,8 +409,10 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         const { [id]: _drop, ...rest } = overlay.updated;
         commit({ ...overlay, updated: rest, deleted: [...overlay.deleted, id] });
       }
-      deleteCarFromSupabase(id).catch((err) => {
-        console.warn("Supabase deleteCar error:", err);
+      void deleteCarFromSupabase(id).then((res) => {
+        if (res.success) return;
+        console.error("Supabase deleteCar failed:", res.error);
+        toast.error("Car was not deleted from the database", { description: res.error });
       });
     },
     [overlay, commit],

@@ -1,83 +1,29 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { Sun, Moon, Plus, RefreshCw, Database, Upload } from "lucide-react";
+import { Sun, Moon, Plus } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
 import { SearchBox } from "@/components/search-box";
-import { useCarsRefresh, useCarsSource } from "@/lib/cars-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
-import { useSupabaseConfig } from "@/lib/supabase-config";
-
-function formatRelative(ts: number | null): string {
-  if (!ts) return "never";
-  const diff = Date.now() - ts;
-  const s = Math.floor(diff / 1000);
-  if (s < 30) return "just now";
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return new Date(ts).toLocaleString();
-}
+import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 
 export function TopBar() {
   const { theme, toggleTheme } = useApp();
-  const { refresh, lastUpdated, refreshing } = useCarsRefresh();
-  const { source } = useCarsSource();
-  const { config } = useSupabaseConfig();
   const [addOpen, setAddOpen] = useState(false);
-  const [, tick] = useState(0);
-
-  // Re-render every 30s to keep "Last updated" fresh
-  if (typeof window !== "undefined") {
-    // noop — timer registered below via effect-free interval alternative
-  }
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
       <SidebarTrigger />
       <SearchBox />
+      {/* No Refresh button or "Updated …" stamp: CarsProvider re-reads Supabase
+          every 15s on its own, and local edits are applied optimistically, so
+          there was never anything for a manual refresh to reveal. */}
+      {/* Bulk add and CSV upload are reached from inside the Add car dialog,
+          keeping one entry point for getting cars into the collection. */}
       <div className="ml-auto flex items-center gap-1">
-        <Link
-          to="/settings"
-          className="hidden md:flex items-center gap-1.5 rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors mr-1"
-          title="Supabase Database Settings"
-        >
-          <Database className="size-3 text-primary" />
-          <span className="font-mono text-[11px]">{config.tableName}</span>
-          <span
-            className={`inline-block size-1.5 rounded-full ${
-              source === "supabase" ? "bg-emerald-500" : "bg-primary/80"
-            }`}
-          />
-        </Link>
-        <div className="hidden lg:flex items-center gap-2 pr-1 text-xs text-muted-foreground">
-          <span>Updated {formatRelative(lastUpdated)}</span>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            refresh().finally(() => tick((n) => n + 1));
-          }}
-          disabled={refreshing}
-          className="gap-1.5"
-          aria-label="Refresh data"
-        >
-          <RefreshCw className={`size-4 ${refreshing ? "animate-spin" : ""}`} />
-          <span className="hidden sm:inline">{refreshing ? "Refreshing" : "Refresh"}</span>
-        </Button>
-        <UploadCarsDialog
-          trigger={
-            <Button variant="outline" size="sm" className="gap-1.5" aria-label="Upload cars">
-              <Upload className="size-4" />
-              <span className="hidden sm:inline">Upload</span>
-            </Button>
-          }
-        />
         <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
           <Plus className="size-4" /> <span className="hidden sm:inline">Add car</span>
         </Button>
@@ -85,7 +31,22 @@ export function TopBar() {
           {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
       </div>
-      <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
+      <CarFormDialog
+        open={addOpen}
+        onOpenChange={setAddOpen}
+        mode="add"
+        // Hand off rather than stack dialogs: close the wizard, open bulk.
+        onSwitchToBulk={() => {
+          setAddOpen(false);
+          setBulkOpen(true);
+        }}
+        onSwitchToUpload={() => {
+          setAddOpen(false);
+          setUploadOpen(true);
+        }}
+      />
+      <BulkAddCarsDialog open={bulkOpen} onOpenChange={setBulkOpen} />
+      <UploadCarsDialog open={uploadOpen} onOpenChange={setUploadOpen} />
     </header>
   );
 }

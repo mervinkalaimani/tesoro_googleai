@@ -59,7 +59,7 @@ export function ShippingBatchDialog({
   onUpdated,
 }: ShippingBatchDialogProps) {
   const cars = useCars();
-  const { updateCarsByShippingId, bulkUpdateCars } = useCarsActions();
+  const { updateCarsByShippingId } = useCarsActions();
 
   const [selectedShippingId, setSelectedShippingId] = useState(initialShippingId);
   const [customShippingId, setCustomShippingId] = useState("");
@@ -213,8 +213,10 @@ export function ShippingBatchDialog({
         updates.transitInfo = newTransitInfo;
       }
 
-      const targetIds = matchedCars.map((c) => c.id);
-      const count = await bulkUpdateCars(targetIds, updates);
+      // bulkUpdateCars takes whole Diecast rows, not (ids, patch): calling it
+      // that way passed an array of id strings as the cars and dropped the
+      // updates entirely, which is why saved changes never reached the table.
+      const count = await updateCarsByShippingId(activeShippingId, updates);
       setSuccessMessage(
         `Successfully updated ${count} car${count === 1 ? "" : "s"} in shipping ID "${activeShippingId}".`,
       );

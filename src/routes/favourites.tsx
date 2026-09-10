@@ -1,12 +1,25 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { useCars } from "@/lib/cars-store";
+import {
+  Award,
+  ChevronDown,
+  ChevronUp,
+  IndianRupee,
+  LayoutGrid,
+  List,
+  Sparkles,
+  Star,
+  TrendingUp,
+} from "lucide-react";
+import { useCars, useCarsActions } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
+import { CarThumb } from "@/components/car-thumb";
 import { SegmentControl } from "@/components/segment-control";
-import { inr } from "@/lib/format";
+import { useCarDrawer } from "@/components/car-details-drawer";
+import { inrFull, mrpRatio } from "@/lib/format";
 
 export const Route = createFileRoute("/favourites")({
   head: () => ({
@@ -30,44 +43,257 @@ export const Route = createFileRoute("/favourites")({
   component: FavouritesPage,
 });
 
+function StatCard({
+  label,
+  value,
+  sub,
+  icon,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  icon: React.ReactNode;
+  tone?: "default" | "emerald" | "amber";
+}) {
+  const valueTone =
+    tone === "emerald"
+      ? "text-emerald-500"
+      : tone === "amber"
+        ? "text-amber-500"
+        : "text-foreground";
+  return (
+    <div className="card-elevated p-4">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="text-muted-foreground">{icon}</span>
+      </div>
+      <div className={`text-display mt-1 text-2xl font-bold tabular-nums ${valueTone}`}>
+        {value}
+      </div>
+      <div className="mt-1 font-mono text-xs text-muted-foreground">{sub}</div>
+    </div>
+  );
+}
+
+function GalleryCard({
+  car,
+  onOpen,
+  onToggleFavourite,
+}: {
+  car: Diecast;
+  onOpen: () => void;
+  onToggleFavourite: () => void;
+}) {
+  const cost = car.spent || 0;
+  const market = car.mrp || cost;
+  const ratio = mrpRatio(cost, car.mrp || 0);
+
+  return (
+    <article className="card-elevated flex flex-col overflow-hidden">
+      <div className="relative">
+        <button type="button" onClick={onOpen} className="block w-full">
+          <CarThumb car={car} className="aspect-[16/10] w-full" />
+        </button>
+
+        <div className="pointer-events-none absolute left-2 top-2 flex flex-wrap items-center gap-1.5">
+          <span className="rounded-md border border-white/10 bg-black/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-white backdrop-blur-sm">
+            {car.id}
+          </span>
+          {car.chase && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
+              <Sparkles className="size-3" />
+              CHASE
+            </span>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onToggleFavourite}
+          aria-pressed={car.favourite}
+          title={car.favourite ? "Remove from favourites" : "Add to favourites"}
+          className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm transition-colors hover:bg-black/90"
+        >
+          <Star
+            className={`size-3.5 ${
+              car.favourite ? "fill-amber-400 text-amber-400" : "text-white/70"
+            }`}
+          />
+        </button>
+
+        <div className="pointer-events-none absolute bottom-2 left-2 flex flex-wrap items-center gap-1.5">
+          {car.brand && (
+            <span className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+              {car.brand}
+            </span>
+          )}
+          <span className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-sm">
+            {car.open ? "Loose" : "Carded"}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-1 flex-col p-4">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-left text-base font-bold tracking-tight hover:text-primary"
+        >
+          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+        </button>
+        <p className="mt-1 truncate text-xs text-muted-foreground">
+          {[car.series, car.subSeries, car.assortment].filter(Boolean).join(" · ") || "—"}
+        </p>
+
+        <div className="mt-auto border-t border-border pt-3">
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Market valuation
+          </div>
+          <div className="mt-0.5 flex items-baseline gap-1.5 text-sm font-semibold tabular-nums">
+            <span>{inrFull(market)}</span>
+            {ratio && (
+              <span
+                className={`inline-flex items-center text-xs font-medium ${
+                  ratio.over ? "text-rose-400" : "text-emerald-500"
+                }`}
+              >
+                (
+                {ratio.over ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                {ratio.text})
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function FavouritesPage() {
   const { query } = useApp();
   const cars = useCars();
+  const { open } = useCarDrawer();
+  const { updateCar } = useCarsActions();
   const [mode, setMode] = useState<"favourite" | "chase">("favourite");
+  const [view, setView] = useState<"grid" | "table">("grid");
 
   const rows = useMemo(() => {
     const filtered = filterRows(cars, query);
     return filtered.filter((r) => (mode === "favourite" ? r.favourite : r.chase));
   }, [cars, query, mode]);
 
-  const totalCost = useMemo(() => rows.reduce((s, r) => s + (r.spent || 0), 0), [rows]);
+  const cost = rows.reduce((s, r) => s + (r.spent || 0), 0);
+  const market = rows.reduce((s, r) => s + (r.mrp || r.spent || 0), 0);
+  const gain = market - cost;
+  const pct = cost > 0 ? (gain / cost) * 100 : 0;
+  const avg = rows.length ? Math.round(market / rows.length) : 0;
+  const chaseCount = rows.filter((r) => r.chase).length;
 
   return (
-    <div className="flex h-[calc(100svh-3.5rem)] flex-col p-3 md:p-6">
-      <div className="card-elevated mx-auto flex w-full max-w-[1600px] min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <div>
-            <h1 className="text-display text-xl font-semibold">
-              {mode === "favourite" ? "Favourites" : "Chase cars"}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {rows.length.toLocaleString()} car{rows.length === 1 ? "" : "s"} · Total cost:{" "}
-              {inr(totalCost)}
+    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
+      <div className="card-elevated flex flex-wrap items-start justify-between gap-3 bg-gradient-to-r from-amber-500/10 to-transparent p-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-500 text-black">
+            <Star className="size-5 fill-black" />
+          </span>
+          <div className="min-w-0">
+            <h1 className="text-display text-xl font-semibold">Crown jewel gallery</h1>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Hand-picked pinnacle castings, chase variations, and the highest appreciating grails
+              in your collection.
             </p>
           </div>
-          <SegmentControl
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: "favourite", label: "Favourites" },
-              { value: "chase", label: "Chase" },
-            ]}
-          />
         </div>
-        <div className="min-h-0 flex-1">
-          <CarsTable rows={rows} badgePrimary={mode} />
+        <span className="shrink-0 rounded-full border border-border bg-muted/40 px-3 py-1 font-mono text-xs">
+          {rows.length} standout model{rows.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StatCard
+          label="Portfolio value"
+          value={inrFull(market)}
+          sub={`Cost: ${inrFull(cost)}`}
+          icon={<IndianRupee className="size-4" />}
+        />
+        <StatCard
+          label="Unrealised gain"
+          value={`${gain >= 0 ? "+" : "-"}${inrFull(Math.abs(gain))}`}
+          sub={`${gain >= 0 ? "+" : ""}${pct.toFixed(1)}% return`}
+          icon={<TrendingUp className="size-4" />}
+          tone={gain >= 0 ? "emerald" : "default"}
+        />
+        <StatCard
+          label="Average / piece"
+          value={inrFull(avg)}
+          sub="Standout castings"
+          icon={<Award className="size-4" />}
+        />
+        <StatCard
+          label="Chase editions"
+          value={`${chaseCount}`}
+          sub="Rare pulls"
+          icon={<Sparkles className="size-4" />}
+          tone="amber"
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <SegmentControl
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "favourite", label: "Favourites" },
+            { value: "chase", label: "Chase" },
+          ]}
+        />
+        <div className="flex items-center rounded-md border border-border p-0.5">
+          <button
+            type="button"
+            onClick={() => setView("grid")}
+            aria-pressed={view === "grid"}
+            title="Grid view"
+            className={`grid size-7 place-items-center rounded transition-colors ${
+              view === "grid" ? "bg-muted text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("table")}
+            aria-pressed={view === "table"}
+            title="Table view"
+            className={`grid size-7 place-items-center rounded transition-colors ${
+              view === "table" ? "bg-muted text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            <List className="size-4" />
+          </button>
         </div>
       </div>
+
+      {rows.length === 0 ? (
+        <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
+          {mode === "favourite" ? "No favourites yet." : "No chase cars yet."}
+        </div>
+      ) : view === "grid" ? (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {rows.map((r, i) => (
+            <GalleryCard
+              key={(r.id || "") + i}
+              car={r}
+              onOpen={() => open(r)}
+              onToggleFavourite={() => updateCar({ ...r, favourite: !r.favourite })}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="card-elevated overflow-hidden">
+          <CarsTable rows={rows} badgePrimary={mode} />
+        </div>
+      )}
     </div>
   );
 }

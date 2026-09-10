@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import {
   Bar,
   BarChart,
   CartesianGrid,
   LabelList,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -20,6 +21,7 @@ import {
   ChevronRight,
   AlertTriangle,
   PauseCircle,
+  Plus,
 } from "lucide-react";
 
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
@@ -36,10 +38,12 @@ import {
   relativeDay,
   monthKey,
   monthLabel,
+  shortMonthLabel,
 } from "@/lib/format";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
+import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import {
   Select,
@@ -90,6 +94,33 @@ export const Route = createFileRoute("/")({
   component: DashboardPage,
 });
 
+/** Shown to an account whose collection is still empty. */
+function EmptyDashboard() {
+  const [addOpen, setAddOpen] = useState(false);
+
+  return (
+    <div className="flex min-h-[70vh] items-center justify-center p-6">
+      <div className="max-w-sm text-center">
+        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+          <Boxes className="size-7" />
+        </div>
+        <h1 className="text-display mt-5 text-2xl font-semibold tracking-tight">
+          Your collection is empty
+        </h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Add your first car and the dashboard fills in — spending, brands, transit and buying
+          habits all follow from what you log here.
+        </p>
+        <Button size="lg" className="mt-6 gap-2" onClick={() => setAddOpen(true)}>
+          <Plus className="size-4" />
+          Add a car
+        </Button>
+      </div>
+      <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
+    </div>
+  );
+}
+
 type Shipment = {
   key: string;
   seller: string;
@@ -115,16 +146,16 @@ function DashboardPage() {
     const norm = (s: string) => (s || "").trim().toLowerCase();
     const countOf = (match: (s: string) => boolean) =>
       data.filter((r) => match(norm(r.status))).length;
-    const spentOf = (match: (s: string) => boolean) =>
-      data.filter((r) => match(norm(r.status))).reduce((sum, r) => sum + (r.spent || 0), 0);
 
+    // `status` is the exact tesoro_raw value the inventory filter expects, so a
+    // tile can deep-link to its own rows.
     const defs: {
       key: string;
       label: string;
       tone: string;
       icon: React.ReactNode;
       value: number | string;
-      hint?: string;
+      status?: string;
     }[] = [
       {
         key: "available",
@@ -132,7 +163,7 @@ function DashboardPage() {
         tone: "emerald",
         icon: <Boxes className="size-4" />,
         value: countOf((s) => s === "available"),
-        hint: inr(spentOf((s) => s === "available")),
+        status: "Available",
       },
       {
         key: "transit",
@@ -140,7 +171,7 @@ function DashboardPage() {
         tone: "blue",
         icon: <Truck className="size-4" />,
         value: countOf((s) => s === "transit" || /out\s*for\s*delivery/.test(s)),
-        hint: inr(spentOf((s) => s === "transit" || /out\s*for\s*delivery/.test(s))),
+        status: "Transit",
       },
       {
         key: "waiting",
@@ -148,7 +179,7 @@ function DashboardPage() {
         tone: "orange",
         icon: <Clock3 className="size-4" />,
         value: countOf((s) => s === "waiting"),
-        hint: inr(spentOf((s) => s === "waiting")),
+        status: "Waiting",
       },
       {
         key: "preorder",
@@ -156,7 +187,7 @@ function DashboardPage() {
         tone: "violet",
         icon: <ShoppingBag className="size-4" />,
         value: countOf((s) => s === "pre order" || s === "preorder"),
-        hint: inr(spentOf((s) => s === "pre order" || s === "preorder")),
+        status: "Pre Order",
       },
       {
         key: "delayed",
@@ -164,6 +195,7 @@ function DashboardPage() {
         tone: "rose",
         icon: <AlertTriangle className="size-4" />,
         value: countOf((s) => s === "delayed"),
+        status: "Delayed",
       },
       {
         key: "onhold",
@@ -171,6 +203,7 @@ function DashboardPage() {
         tone: "zinc",
         icon: <PauseCircle className="size-4" />,
         value: countOf((s) => s === "on hold" || s === "onhold"),
+        status: "On Hold",
       },
       {
         key: "iso",
@@ -178,17 +211,31 @@ function DashboardPage() {
         tone: "sky",
         icon: <Sparkles className="size-4" />,
         value: countOf((s) => s === "iso"),
+        status: "ISO",
       },
     ];
     return defs.filter((d) => (typeof d.value === "number" ? d.value > 0 : true));
   }, [data]);
+
+  // A brand-new account has nothing to chart. Guarded on the unfiltered list and
+  // on loading, so a search that matches nothing still shows the real dashboard.
+  if (!loading && !refreshing && cars.length === 0) {
+    return <EmptyDashboard />;
+  }
 
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
       {kpis.length > 0 && (
         <section className="grid grid-cols-2 gap-3 pb-1 md:flex md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
           {kpis.map((k) => (
-            <Kpi key={k.key} icon={k.icon} label={k.label} value={k.value} tone={k.tone} />
+            <Kpi
+              key={k.key}
+              icon={k.icon}
+              label={k.label}
+              value={k.value}
+              tone={k.tone}
+              status={k.status}
+            />
           ))}
         </section>
       )}
@@ -213,13 +260,14 @@ function Kpi({
   label,
   value,
   tone,
-  hint,
+  status,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number | string;
   tone: string;
-  hint?: string;
+  /** Status this tile represents; clicking opens inventory filtered to it. */
+  status?: string;
 }) {
   const toneMap: Record<string, string> = {
     emerald: "bg-emerald-500/15 text-emerald-500",
@@ -231,8 +279,8 @@ function Kpi({
     rose: "bg-rose-500/15 text-rose-500",
     zinc: "bg-zinc-500/20 text-zinc-500",
   };
-  return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
+  const body = (
+    <>
       <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
         <span
           className={`grid size-6 place-items-center rounded-md ${toneMap[tone] ?? "bg-muted"}`}
@@ -244,8 +292,22 @@ function Kpi({
       <div className="mt-2 text-display text-3xl font-semibold tabular-nums">
         {typeof value === "number" ? value.toLocaleString() : value}
       </div>
-      {hint && <div className="mt-0.5 text-xs text-muted-foreground">{hint}</div>}
-    </div>
+    </>
+  );
+
+  const shell = "card-elevated flex min-w-0 flex-col overflow-hidden p-4 text-left";
+
+  if (!status) return <div className={shell}>{body}</div>;
+
+  return (
+    <Link
+      to="/inventory"
+      search={{ status }}
+      className={`${shell} transition-colors hover:border-primary/40 hover:bg-muted/40`}
+      title={`Show ${label.toLowerCase()} cars in inventory`}
+    >
+      {body}
+    </Link>
   );
 }
 
@@ -635,7 +697,6 @@ function resolveCarMonthKey(r: Diecast): number | null {
 
 function MonthlySpending({ rows }: { rows: Diecast[] }) {
   const [win, setWin] = useState<Window>("6m");
-  const [showFuture, setShowFuture] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -666,18 +727,20 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
       if (filtered.length === 0 && all.length > 0) {
         filtered = all.slice(-12);
       }
-    } else if (!showFuture) {
-      filtered = filtered.filter(([k]) => k <= curKey);
-      if (filtered.length === 0 && all.length > 0) {
-        filtered = all;
-      }
     }
+    // "All" means all of it, future months included — that is why there is no
+    // longer a separate toggle for them.
     return filtered.map(([k, v]) => ({
       month: monthLabel(k),
       spent: Math.round(v.spent),
       count: v.count,
     }));
-  }, [rows, win, showFuture]);
+  }, [rows, win]);
+
+  const average = useMemo(() => {
+    if (series.length === 0) return 0;
+    return Math.round(series.reduce((s, d) => s + d.spent, 0) / series.length);
+  }, [series]);
 
   return (
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
@@ -687,17 +750,6 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
           <p className="text-xs text-muted-foreground">Investment by month</p>
         </div>
         <div className="flex items-center gap-3">
-          {win === "all" && (
-            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showFuture}
-                onChange={(e) => setShowFuture(e.target.checked)}
-                className="size-3.5 accent-primary"
-              />
-              Show future
-            </label>
-          )}
           <SegmentControl
             value={win}
             onChange={setWin}
@@ -710,7 +762,9 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
         </div>
       </div>
 
-      <div className="min-h-[260px] h-[280px] w-full flex-1">
+      {/* No fixed height: flex-1 lets the plot grow to the bottom of the card
+          instead of leaving dead space under the axis. */}
+      <div className="min-h-[260px] w-full flex-1">
         {!mounted ? (
           <div className="flex h-full w-full items-center justify-center">
             <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -730,11 +784,13 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
               <CartesianGrid stroke="var(--border)" vertical={false} strokeDasharray="3 3" />
               <XAxis
                 dataKey="month"
+                // Ticks read "Apr 25"; the tooltip still shows the full "Apr 2025".
+                tickFormatter={shortMonthLabel}
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                 interval={series.length > 18 ? Math.floor(series.length / 12) : 0}
                 angle={-25}
                 textAnchor="end"
-                height={60}
+                height={44}
               />
               <YAxis
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
@@ -757,6 +813,20 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
                 }}
                 cursor={{ fill: "color-mix(in srgb, var(--primary) 12%, transparent)" }}
               />
+              {average > 0 && (
+                <ReferenceLine
+                  y={average}
+                  stroke="var(--muted-foreground)"
+                  strokeDasharray="4 4"
+                  strokeWidth={1.5}
+                  label={{
+                    value: `Avg ${inr(average)}`,
+                    position: "insideTopRight",
+                    fill: "var(--muted-foreground)",
+                    fontSize: 10,
+                  }}
+                />
+              )}
               <Bar dataKey="spent" fill="var(--primary)" radius={[6, 6, 0, 0]}>
                 <LabelList
                   dataKey="count"
