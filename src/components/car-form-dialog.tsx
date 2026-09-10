@@ -1,7 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import type { Diecast } from "@/lib/types";
-import { useCarsActions } from "@/lib/cars-store";
+import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
+import { modelOptionsFor, optionsFor } from "@/lib/car-options";
 import { setCachedCarImage } from "@/lib/car-image";
 import { toDateInputValue, deriveMonth } from "@/lib/date-utils";
 import {
@@ -23,6 +24,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
+import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -142,6 +144,7 @@ export function CarFormDialog({
   onSwitchToUpload?: () => void;
 }) {
   const { addCar, updateCar } = useCarsActions();
+  const cars = useCars();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
   const [imgError, setImgError] = useState(false);
@@ -262,6 +265,16 @@ export function CarFormDialog({
       return next;
     });
   };
+
+  // Suggestions are the seed list merged with whatever the collection already
+  // uses, so every catalogue field learns this person's own vocabulary.
+  const makeOptions = useMemo(() => optionsFor("make", cars), [cars]);
+  const modelOptions = useMemo(() => modelOptionsFor(cars, form.make), [cars, form.make]);
+  const colourOptions = useMemo(() => optionsFor("colour", cars), [cars]);
+  const typeOptions = useMemo(() => optionsFor("type", cars), [cars]);
+  const brandOptions = useMemo(() => optionsFor("brand", cars), [cars]);
+  const assortmentOptions = useMemo(() => optionsFor("assortment", cars), [cars]);
+  const sizeOptions = useMemo(() => optionsFor("size", cars), [cars]);
 
   const previewName = useMemo(() => {
     return (
@@ -557,21 +570,22 @@ export function CarFormDialog({
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field label="Make *">
-                      <Input
+                      <Combobox
                         value={form.make}
-                        onChange={(e) => set("make", e.target.value)}
+                        onChange={(v) => set("make", v)}
+                        options={makeOptions}
                         placeholder="e.g. Porsche, Nissan, Ford"
-                        required
-                        autoFocus
+                        searchPlaceholder="Search makes, or type a new one…"
                       />
                     </Field>
 
                     <Field label="Model *">
-                      <Input
+                      <Combobox
                         value={form.model}
-                        onChange={(e) => set("model", e.target.value)}
+                        onChange={(v) => set("model", v)}
+                        options={modelOptions}
                         placeholder="e.g. 911 GT3 RS, Skyline GT-R"
-                        required
+                        searchPlaceholder="Search models, or type a new one…"
                       />
                     </Field>
 
@@ -593,78 +607,43 @@ export function CarFormDialog({
                     </Field>
 
                     <Field label="Colour *">
-                      <Input
+                      <Combobox
                         value={form.colour}
-                        onChange={(e) => set("colour", e.target.value)}
+                        onChange={(v) => set("colour", v)}
+                        options={colourOptions}
                         placeholder="e.g. Spectraflame Red, Blue, White"
-                        required
+                        searchPlaceholder="Search colours, or type a new one…"
                       />
                     </Field>
 
                     <Field label="Type *">
-                      <Input
+                      <Combobox
                         value={form.type}
-                        onChange={(e) => set("type", e.target.value)}
+                        onChange={(v) => set("type", v)}
+                        options={typeOptions}
                         placeholder="e.g. Race Car, Classic Car, Supercar"
-                        list="wizard-car-type-options"
-                        required
+                        searchPlaceholder="Search types, or type a new one…"
                       />
-                      <datalist id="wizard-car-type-options">
-                        <option value="Classic Car" />
-                        <option value="Race Car" />
-                        <option value="Sports Car" />
-                        <option value="Supercar" />
-                        <option value="Hypercar" />
-                        <option value="Muscle Car" />
-                        <option value="Sedan" />
-                        <option value="SUV" />
-                        <option value="Truck" />
-                        <option value="Van" />
-                        <option value="Batmobile" />
-                      </datalist>
                     </Field>
 
                     <Field label="Brand *">
-                      <Input
+                      <Combobox
                         value={form.brand}
-                        onChange={(e) => set("brand", e.target.value)}
+                        onChange={(v) => set("brand", v)}
+                        options={brandOptions}
                         placeholder="e.g. Hot Wheels, Mini GT, Matchbox"
-                        list="wizard-car-brand-options"
-                        required
+                        searchPlaceholder="Search brands, or type a new one…"
                       />
-                      <datalist id="wizard-car-brand-options">
-                        <option value="Hot Wheels" />
-                        <option value="Matchbox" />
-                        <option value="Mini GT" />
-                        <option value="Kaido House" />
-                        <option value="Inno64" />
-                        <option value="Pop Race" />
-                        <option value="Tarmac Works" />
-                        <option value="Tomica" />
-                        <option value="Majorette" />
-                        <option value="Greenlight" />
-                      </datalist>
                     </Field>
 
                     <Field label="Assortment *">
-                      <Input
+                      <Combobox
                         value={form.assortment}
-                        onChange={(e) => set("assortment", e.target.value)}
+                        onChange={(v) => set("assortment", v)}
+                        options={assortmentOptions}
                         placeholder="e.g. Mainline, Premium, Boulevard"
-                        list="wizard-car-assortment-options"
-                        required
+                        searchPlaceholder="Search assortments, or type a new one…"
                       />
-                      <datalist id="wizard-car-assortment-options">
-                        <option value="Mainline" />
-                        <option value="Premium" />
-                        <option value="Boulevard" />
-                        <option value="Car Culture" />
-                        <option value="Fast & Furious" />
-                        <option value="Pop Culture" />
-                        <option value="Team Transport" />
-                        <option value="Silver Series" />
-                        <option value="Collector Edition" />
-                      </datalist>
                     </Field>
 
                     <Field label="Series">
@@ -692,10 +671,12 @@ export function CarFormDialog({
                     </Field>
 
                     <Field label="Size (default 1:64)">
-                      <Input
+                      <Combobox
                         value={form.size}
-                        onChange={(e) => set("size", e.target.value)}
+                        onChange={(v) => set("size", v)}
+                        options={sizeOptions}
                         placeholder="1:64"
+                        searchPlaceholder="Search scales, or type a new one…"
                       />
                     </Field>
                   </div>
