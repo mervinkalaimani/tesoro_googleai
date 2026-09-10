@@ -142,6 +142,14 @@ type BulkDraft = { rows: Row[]; shared: Values; sharedKeys: FieldKey[] };
 const DEFAULT_SHARED_KEYS = () =>
   new Set(FIELDS.filter((f) => f.sharedByDefault).map((f) => f.key));
 
+/**
+ * Shared keys for a seeded table. Everything that describes the casting comes
+ * from the cars themselves and so has to stay per-row; only the purchase — who
+ * sold it, when, for how much — is still common to the batch.
+ */
+const SEEDED_SHARED: FieldKey[] = ["seller", "status", "orderDate", "cost", "mrp"];
+const DEFAULT_SHARED_KEYS_SEEDED = () => new Set(SEEDED_SHARED);
+
 const defaultShared = (): Values => ({
   status: "Available",
   orderDate: new Date().toISOString().slice(0, 10),
@@ -220,15 +228,41 @@ function FieldInput({
   );
 }
 
+/** One table row's worth of values, taken off an existing car. */
+function rowFromCar(car: Diecast): Row {
+  return {
+    ...blankRow(),
+    make: car.make || "",
+    model: car.model || "",
+    variant: car.variant || "",
+    year: car.year || "",
+    colour: car.colour || "",
+    type: car.type || "",
+    brand: car.brand || "",
+    series: car.series || "",
+    subSeries: car.subSeries || "",
+    carNumber: car.carNumber || "",
+    assortment: car.assortment || "",
+    size: car.size || "",
+  };
+}
+
 export function BulkAddCarsDialog({
   trigger,
   open: controlledOpen,
   onOpenChange,
+  seed,
 }: {
   trigger?: ReactNode;
   /** Omit both to let the dialog own its state via `trigger`. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  /**
+   * Cars to open prefilled with — the ISO matches handed over from the single
+   * add form. Takes precedence over a saved draft: arriving here by choosing
+   * "add all five" is a clear statement of what the table should contain.
+   */
+  seed?: Diecast[];
 }) {
   const { addCar } = useCarsActions();
   const cars = useCars();
@@ -255,6 +289,18 @@ export function BulkAddCarsDialog({
       setDraftReady(false);
       return;
     }
+    if (seed?.length) {
+      // The catalogue fields vary per car here, so none of them are shared —
+      // otherwise five different castings would collapse into one row's worth
+      // of values.
+      setSharedKeys(new Set(DEFAULT_SHARED_KEYS_SEEDED()));
+      setShared(defaultShared());
+      setRows(seed.map(rowFromCar));
+      setRestored(false);
+      setDraftReady(true);
+      return;
+    }
+
     const draft = readDraft<BulkDraft>(BULK_DRAFT_KEY);
     if (draft && Array.isArray(draft.rows) && draft.rows.length) {
       setRows(draft.rows);
@@ -265,7 +311,7 @@ export function BulkAddCarsDialog({
       setRestored(false);
     }
     setDraftReady(true);
-  }, [open]);
+  }, [open, seed]);
 
   // Gated on draftReady for the same reason as the single-car form: the restore
   // above only schedules its state, so on that commit this would still see the

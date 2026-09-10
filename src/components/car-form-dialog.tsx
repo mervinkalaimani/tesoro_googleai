@@ -13,6 +13,9 @@ import {
 import { setCachedCarImage } from "@/lib/car-image";
 import { toDateInputValue, deriveMonth, monthEtaToDate } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
+import { isoMatchesFor } from "@/lib/iso-match";
+import { IsoSuggestions } from "@/components/iso-suggestions";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -233,8 +236,11 @@ export function CarFormDialog({
   onOpenChange: (v: boolean) => void;
   initial?: Diecast | null;
   mode: "add" | "edit";
-  /** Add mode only: hands off to the bulk dialog. */
-  onSwitchToBulk?: () => void;
+  /**
+   * Add mode only: hands off to the bulk dialog, optionally carrying cars to
+   * prefill it with — the ISO matches, when several turn up at once.
+   */
+  onSwitchToBulk?: (seed?: Diecast[]) => void;
   /** Add mode only: hands off to the CSV upload dialog. */
   onSwitchToUpload?: () => void;
 }) {
@@ -243,6 +249,8 @@ export function CarFormDialog({
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
   const [imgError, setImgError] = useState(false);
+  // Per-car: dismissing is "not this one", not "never show me these".
+  const [isoDismissed, setIsoDismissed] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   /** True when this session's form came back from storage rather than blank. */
   const [restored, setRestored] = useState(false);
@@ -268,6 +276,7 @@ export function CarFormDialog({
     }
     setValidationError(null);
     setImgError(false);
+    setIsoDismissed(false);
 
     // Pick up where the last session left off. On mobile this is the whole
     // point: a locked phone can have the tab evicted and reloaded underneath a
@@ -395,6 +404,72 @@ export function CarFormDialog({
   const sizeOptions = useMemo(() => optionsFor("size", cars), [cars]);
   const seriesOptions = useMemo(() => optionsFor("series", cars), [cars]);
   const subSeriesOptions = useMemo(() => optionsFor("subSeries", cars), [cars]);
+
+  /**
+   * ISO entries this car might be. Recomputed as the catalogue fields change,
+   * which is cheap: it is one pass over the collection comparing seven strings,
+   * and it stops early once fewer than three fields have anything in them.
+   */
+  const isoMatches = useMemo(
+    () =>
+      isoMatchesFor(
+        cars,
+        {
+          make: form.make,
+          model: form.model,
+          variant: form.variant,
+          series: form.series,
+          subSeries: form.subSeries,
+          brand: form.brand,
+          assortment: form.assortment,
+        },
+        // Editing an ISO car must not suggest the car being edited.
+        { excludeId: initial?.id },
+      ),
+    [
+      cars,
+      initial?.id,
+      form.make,
+      form.model,
+      form.variant,
+      form.series,
+      form.subSeries,
+      form.brand,
+      form.assortment,
+    ],
+  );
+
+  /** Copy an ISO entry's catalogue fields into the form, leaving the rest. */
+  const useIsoCar = (car: Diecast) => {
+    setForm((prev) => ({
+      ...prev,
+      make: car.make || prev.make,
+      model: car.model || prev.model,
+      variant: car.variant || prev.variant,
+      year: car.year || prev.year,
+      colour: car.colour || prev.colour,
+      type: car.type || prev.type,
+      series: car.series || prev.series,
+      subSeries: car.subSeries || prev.subSeries,
+      carNumber: car.carNumber || prev.carNumber,
+      brand: car.brand || prev.brand,
+      assortment: car.assortment || prev.assortment,
+      size: car.size || prev.size,
+      // Price and status are deliberately not copied: an ISO row records what
+      // was wanted, not what was eventually paid or where it is now.
+      imageUrl: car.imageUrl || prev.imageUrl,
+    }));
+    setIsoDismissed(true);
+    toast.success("Filled from your ISO list", {
+      description: car.name || `${car.make} ${car.model}`.trim(),
+    });
+  };
+
+  const sendIsoToBulk = (matches: Diecast[]) => {
+    clearDraft(draftKey);
+    setIsoDismissed(true);
+    onSwitchToBulk?.(matches);
+  };
 
   const previewName = useMemo(() => {
     return (
@@ -580,7 +655,10 @@ export function CarFormDialog({
                     variant="outline"
                     size="sm"
                     className="gap-1.5"
-                    onClick={onSwitchToBulk}
+                    // Wrapped, not passed directly: onSwitchToBulk now takes
+                    // seed cars, and a bare handler would hand it the click
+                    // event as the batch to prefill.
+                    onClick={() => onSwitchToBulk()}
                   >
                     <Layers className="size-4" />
                     Add in bulk
@@ -718,6 +796,19 @@ export function CarFormDialog({
                       Specify the make, model, colour, and manufacturing classification.
                     </p>
                   </div>
+
+                  {/* Above the fields rather than below: by the time three of
+                      them agree with something on the ISO list, the useful
+                      moment is before the rest is typed out by hand. */}
+                  {!isoDismissed && (
+                    <IsoSuggestions
+                      matches={isoMatches}
+                      onUse={useIsoCar}
+                      onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
+                      onDismiss={() => setIsoDismissed(true)}
+                    />
+                  )}
+
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field label="Make *">
                       <Combobox

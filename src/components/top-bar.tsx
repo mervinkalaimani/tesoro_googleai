@@ -4,6 +4,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
 import { useCars, useCarsUndo } from "@/lib/cars-store";
+import type { Diecast } from "@/lib/types";
 import { fullName, useAuth } from "@/lib/auth-store";
 import { useExportScope } from "@/lib/export-scope";
 import { filterRows } from "@/lib/search";
@@ -35,6 +36,7 @@ export function TopBar() {
   const [exportOpen, setExportOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkSeed, setBulkSeed] = useState<Diecast[] | undefined>(undefined);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pendingDraft, setPendingDraft] = useState(false);
 
@@ -141,8 +143,10 @@ export function TopBar() {
         open={addOpen}
         onOpenChange={setAddOpen}
         mode="add"
-        // Hand off rather than stack dialogs: close the wizard, open bulk.
-        onSwitchToBulk={() => {
+        // Hand off rather than stack dialogs: close the wizard, open bulk —
+        // carrying the ISO matches across when that is what sent us here.
+        onSwitchToBulk={(seed) => {
+          setBulkSeed(seed);
           setAddOpen(false);
           setBulkOpen(true);
         }}
@@ -151,7 +155,16 @@ export function TopBar() {
           setUploadOpen(true);
         }}
       />
-      <BulkAddCarsDialog open={bulkOpen} onOpenChange={setBulkOpen} />
+      <BulkAddCarsDialog
+        open={bulkOpen}
+        onOpenChange={(v) => {
+          setBulkOpen(v);
+          // The seed belongs to one visit; reopening bulk on its own should
+          // find the table as it was left, not those cars again.
+          if (!v) setBulkSeed(undefined);
+        }}
+        seed={bulkSeed}
+      />
       <UploadCarsDialog open={uploadOpen} onOpenChange={setUploadOpen} />
       <ExportDialog
         open={exportOpen}
