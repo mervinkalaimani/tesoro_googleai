@@ -222,6 +222,9 @@ export function generateDiecastCsvTemplate(): string {
   return [
     "Car ID,Name,Make,Model,Variant,Year,Brand,Series,Assortment,Size,Spent,MRP,Seller,Status,Payment,Paid,Date,Month,Order Date,Transit Info / ETA,Favourite,Chase",
     "CAR-001,1971 Datsun 240Z,Nissan,Datsun 240Z,Custom,1971,Hot Wheels,Car Culture,Premium,1/64,499,549,Amazon,Available,Paid,499,15/06/2026,Jun 2026,10/06/2026,Delivered,true,false",
-    "CAR-002,Porsche 911 GT3 RS,Porsche,911 GT3 RS,Shark Blue,2023,Mini GT,Exclusive,1/64,1299,1499,KarzandDolls,Available,Paid,1299,20/06/2026,Jun 2026,12/06/2026,Delivered,true,true",
+    // Every row carries all 22 columns. The second one used to omit Assortment,
+    // which slid Size and everything after it one column to the left — so a
+    // template meant to show the format demonstrated the wrong one.
+    "CAR-002,Porsche 911 GT3 RS,Porsche,911 GT3 RS,Shark Blue,2023,Mini GT,Exclusive,Premium,1/64,1299,1499,KarzandDolls,Available,Paid,1299,20/06/2026,Jun 2026,12/06/2026,Delivered,true,true",
   ].join("\n");
 }

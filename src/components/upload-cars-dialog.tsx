@@ -5,7 +5,6 @@ import {
   FileCode,
   CheckCircle2,
   AlertCircle,
-  Download,
   Loader2,
   Database,
   ArrowRight,
@@ -22,7 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { parseCsvToDiecast, generateDiecastCsvTemplate, downloadCsv } from "@/lib/csv";
+import { parseCsvToDiecast } from "@/lib/csv";
 import { useCarsActions, useCarsRefresh, useCarsSource } from "@/lib/cars-store";
 import { tesoroRawToDiecast } from "@/lib/supabase-cars";
 import type { Diecast } from "@/lib/types";
@@ -244,10 +243,6 @@ export function UploadCarsDialog({
     }
   };
 
-  const downloadTemplate = () => {
-    downloadCsv("tesoro-cars-template.csv", generateDiecastCsvTemplate());
-  };
-
   return (
     <Dialog
       open={open}
@@ -317,6 +312,8 @@ export function UploadCarsDialog({
               Supports CSV from Google Sheets / Excel, or JSON export
             </p>
 
+            {/* The Template download now lives in the top bar, next to Add car,
+                where it can be reached without opening this dialog first. */}
             <div className="mt-3 flex items-center gap-2">
               <Badge variant="outline" className="text-[11px] font-normal">
                 .CSV format
@@ -324,19 +321,6 @@ export function UploadCarsDialog({
               <Badge variant="outline" className="text-[11px] font-normal">
                 .JSON format
               </Badge>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-6 gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  downloadTemplate();
-                }}
-              >
-                <Download className="size-3" />
-                Template
-              </Button>
             </div>
           </div>
 
