@@ -1,5 +1,14 @@
-// Ensure Nitro builds a standalone Node.js server for containerized Cloud Run deployments
-process.env.NITRO_PRESET = process.env.NITRO_PRESET || "node-server";
+// Nitro's preset decides the shape of the build. "node-server" writes
+// .output/server/index.mjs — a standalone Node server, which is what a
+// containerized Cloud Run deployment needs and what `npm start` runs.
+//
+// Vercel needs .vercel/output instead, so forcing node-server there produced a
+// build that succeeded and left Vercel with nothing it could serve. Name the
+// preset explicitly rather than relying on auto-detection: the nitro plugin
+// inside @lovable.dev/vite-tanstack-config defaults to cloudflare, not to the
+// host it happens to be running on.
+process.env.NITRO_PRESET =
+  process.env.NITRO_PRESET || (process.env.VERCEL ? "vercel" : "node-server");
 
 // Ensure Supabase points to the correct user project (matekrbcflojjooswoha) with matching publishable key
 if (
