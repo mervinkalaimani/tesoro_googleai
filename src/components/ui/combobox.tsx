@@ -32,6 +32,7 @@ export function Combobox({
   disabled,
   className,
   id,
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -43,6 +44,8 @@ export function Combobox({
   disabled?: boolean;
   className?: string;
   id?: string;
+  /** For places with no visible <Label>, such as a bulk-entry table column. */
+  ariaLabel?: string;
 }) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
@@ -76,6 +79,7 @@ export function Combobox({
           type="button"
           role="combobox"
           aria-expanded={open}
+          aria-label={ariaLabel}
           disabled={disabled}
           className={cn(
             // Matches <Input> so a row of mixed fields still lines up.

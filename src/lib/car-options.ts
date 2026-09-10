@@ -64,48 +64,65 @@ export const MAKE_SEED = [
 ];
 
 /**
- * Castings that turn up across most brands. Short on purpose: model is the field
- * that varies most, so it is meant to fill out from the collection rather than
- * from a list nobody maintains.
+ * Models, keyed by the make that builds them (lowercased for lookup).
+ *
+ * Kept as a map rather than one flat list because a model only means anything
+ * next to its make: offering a Skyline under Porsche is worse than offering
+ * nothing. Each entry is deliberately short — a handful of the castings that
+ * actually get collected, with the rest arriving from the collection itself.
  */
-export const MODEL_SEED = [
-  "Skyline GT-R",
-  "Silvia S15",
-  "180SX",
-  "GT-R R35",
-  "911 GT3 RS",
-  "911 Carrera RS",
-  "917",
-  "Supra",
-  "AE86",
-  "Civic Type R",
-  "NSX",
-  "RX-7",
-  "Miata MX-5",
-  "WRX STI",
-  "Lancer Evolution",
-  "Mustang",
-  "F-150",
-  "GT40",
-  "Camaro",
-  "Corvette",
-  "Bel Air",
-  "Charger",
-  "Challenger",
-  "M3",
-  "M4",
-  "F40",
-  "F50",
-  "LaFerrari",
-  "Countach",
-  "Aventador",
-  "Huracán",
-  "P1",
-  "Senna",
-  "Chiron",
-  "Defender",
-  "Land Cruiser",
-];
+export const MODEL_SEED: Record<string, string[]> = {
+  nissan: ["Skyline GT-R", "GT-R R35", "Silvia S15", "180SX", "Fairlady Z", "Datsun 240Z", "Sunny"],
+  datsun: ["240Z", "510", "620 Pickup", "Bluebird"],
+  toyota: ["Supra", "AE86", "Land Cruiser", "Celica", "MR2", "GR Yaris", "Hilux"],
+  honda: ["Civic Type R", "NSX", "S2000", "Integra Type R", "CR-X", "City Turbo"],
+  mazda: ["RX-7", "RX-3", "MX-5 Miata", "787B", "Cosmo Sport"],
+  subaru: ["Impreza WRX STI", "BRZ", "Legacy", "22B STi"],
+  mitsubishi: ["Lancer Evolution", "3000GT", "Pajero", "Starion"],
+  suzuki: ["Jimny", "Swift Sport", "Cappuccino"],
+  porsche: ["911 GT3 RS", "911 Carrera RS", "911 Turbo", "917", "959", "718 Cayman", "Taycan"],
+  ferrari: ["F40", "F50", "LaFerrari", "Enzo", "250 GTO", "488 GTB", "SF90"],
+  lamborghini: ["Countach", "Aventador", "Huracán", "Diablo", "Miura", "Urus"],
+  mclaren: ["P1", "Senna", "720S", "F1", "MP4-12C"],
+  bugatti: ["Chiron", "Veyron", "Divo", "Type 57"],
+  koenigsegg: ["Jesko", "Agera RS", "Regera"],
+  pagani: ["Zonda", "Huayra"],
+  ford: ["Mustang", "GT40", "F-150", "Escort RS", "Bronco", "Sierra RS Cosworth", "Focus RS"],
+  chevrolet: ["Corvette", "Camaro", "Bel Air", "Chevelle SS", "Impala", "Silverado"],
+  dodge: ["Charger", "Challenger", "Viper", "Dart", "Ram 1500"],
+  plymouth: ["Barracuda", "Road Runner", "GTX"],
+  pontiac: ["Firebird Trans Am", "GTO", "Bonneville"],
+  buick: ["Grand National", "Riviera"],
+  cadillac: ["Escalade", "Eldorado", "CTS-V"],
+  jeep: ["Wrangler", "Cherokee", "Gladiator"],
+  bmw: ["M3", "M4", "M1", "2002 Turbo", "i8", "Z4"],
+  "mercedes-benz": ["190E", "AMG GT", "300 SL", "G-Class", "SLS AMG"],
+  audi: ["Quattro", "RS6 Avant", "R8", "TT"],
+  volkswagen: ["Golf GTI", "Beetle", "T1 Bus", "Scirocco"],
+  "aston martin": ["DB5", "Vantage", "Valkyrie", "DBS"],
+  jaguar: ["E-Type", "XJ220", "F-Type", "D-Type"],
+  "land rover": ["Defender", "Range Rover", "Discovery"],
+  mini: ["Cooper S", "Countryman", "Classic Mini"],
+  "alfa romeo": ["Giulia GTA", "4C", "Stelvio"],
+  lancia: ["Delta Integrale", "Stratos", "037"],
+  lotus: ["Esprit", "Elise", "Europa"],
+  maserati: ["MC20", "GranTurismo", "Ghibli"],
+  bentley: ["Continental GT", "Bentayga"],
+  "rolls-royce": ["Phantom", "Wraith"],
+  volvo: ["240 Wagon", "P1800", "850 Estate"],
+  peugeot: ["205 GTI", "405", "908"],
+  renault: ["5 Turbo", "Clio V6", "Alpine A110"],
+  citroën: ["2CV", "DS", "SM"],
+  lexus: ["LFA", "IS300", "RC F"],
+  acura: ["NSX", "Integra Type R", "RSX"],
+  infiniti: ["Q60", "G35"],
+  hyundai: ["Ioniq 5 N", "Veloster N"],
+  kia: ["Stinger", "Seltos"],
+  tata: ["Nexon", "Safari", "Harrier", "Punch"],
+  mahindra: ["Thar", "Scorpio", "XUV700", "Bolero"],
+  "maruti suzuki": ["Swift", "Baleno", "Brezza", "Gypsy"],
+  tesla: ["Model S", "Cybertruck", "Roadster"],
+};
 
 export const COLOUR_SEED = [
   "Black",
@@ -228,12 +245,14 @@ export const ASSORTMENT_SEED = [
 
 export const SIZE_SEED = ["1:64", "1:43", "1:32", "1:24", "1:18", "1:12", "1:87", "1:76"];
 
-/** Diecast fields the form offers suggestions for. */
-export type OptionField = "make" | "model" | "colour" | "type" | "brand" | "assortment" | "size";
+/**
+ * Diecast fields the form offers a flat list of suggestions for. Model is absent
+ * on purpose — its list depends on the make, so it has its own function.
+ */
+export type OptionField = "make" | "colour" | "type" | "brand" | "assortment" | "size";
 
 const SEEDS: Record<OptionField, string[]> = {
   make: MAKE_SEED,
-  model: MODEL_SEED,
   colour: COLOUR_SEED,
   type: TYPE_SEED,
   brand: BRAND_SEED,
@@ -242,20 +261,21 @@ const SEEDS: Record<OptionField, string[]> = {
 };
 
 /**
- * Seed values plus everything the collection already uses, most-used first.
+ * Collected values (duplicates included — they are the ranking) merged with a
+ * seed list, most-used first.
  *
  * Ordering by the person's own counts puts the four brands they actually buy
  * above the twenty-six they don't, which is what "popular" means for a list this
  * personal. Case-insensitive de-duplication keeps "Hot Wheels" and "hot wheels"
- * from both appearing; the collection's spelling wins, since that is the one
+ * from both appearing; the collected spelling wins, since that is the one
  * already written to every row.
  */
-export function optionsFor(field: OptionField, cars: Diecast[]): string[] {
+function rank(collected: string[], seed: string[]): string[] {
   const counts = new Map<string, number>();
   const labels = new Map<string, string>();
 
-  for (const car of cars) {
-    const raw = (car[field] ?? "").trim();
+  for (const value of collected) {
+    const raw = (value ?? "").trim();
     if (!raw) continue;
     const key = raw.toLowerCase();
     counts.set(key, (counts.get(key) ?? 0) + 1);
@@ -263,9 +283,9 @@ export function optionsFor(field: OptionField, cars: Diecast[]): string[] {
   }
 
   const seedRank = new Map<string, number>();
-  SEEDS[field].forEach((value, index) => {
+  seed.forEach((value, index) => {
     const key = value.toLowerCase();
-    seedRank.set(key, index);
+    if (!seedRank.has(key)) seedRank.set(key, index);
     if (!labels.has(key)) labels.set(key, value);
   });
 
@@ -281,22 +301,36 @@ export function optionsFor(field: OptionField, cars: Diecast[]): string[] {
     .map((key) => labels.get(key) as string);
 }
 
+export function optionsFor(field: OptionField, cars: Diecast[]): string[] {
+  return rank(
+    cars.map((c) => c[field]),
+    SEEDS[field],
+  );
+}
+
 /**
- * Models narrowed to the chosen make. A Skyline under "Porsche" helps nobody, so
- * the collection's own pairings do the filtering — but only when they turn up
- * something, otherwise the field would go blank for the first car of a new make.
+ * Models for one make, and only that make.
+ *
+ * Both sources are narrowed: the collection is filtered to cars of that make,
+ * and the seed is looked up by it. A make nobody has bought yet and that isn't
+ * in the seed offers nothing, which is correct — an empty list says "type it"
+ * far more clearly than a list of another manufacturer's cars.
+ *
+ * With no make chosen there is nothing to narrow by, so everything is offered.
  */
 export function modelOptionsFor(cars: Diecast[], make: string): string[] {
   const wanted = make.trim().toLowerCase();
-  if (wanted) {
-    const sameMake = cars.filter((c) => (c.make ?? "").trim().toLowerCase() === wanted);
-    if (sameMake.length) {
-      const scoped = optionsFor("model", sameMake);
-      // optionsFor folds the seed in; drop anything this make has never worn.
-      const owned = new Set(sameMake.map((c) => (c.model ?? "").trim().toLowerCase()));
-      const filtered = scoped.filter((m) => owned.has(m.toLowerCase()));
-      if (filtered.length) return filtered;
-    }
+
+  if (!wanted) {
+    return rank(
+      cars.map((c) => c.model),
+      Object.values(MODEL_SEED).flat(),
+    );
   }
-  return optionsFor("model", cars);
+
+  const sameMake = cars.filter((c) => (c.make ?? "").trim().toLowerCase() === wanted);
+  return rank(
+    sameMake.map((c) => c.model),
+    MODEL_SEED[wanted] ?? [],
+  );
 }
