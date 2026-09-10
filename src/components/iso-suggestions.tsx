@@ -29,7 +29,7 @@ export function IsoSuggestions({
   onDismiss,
 }: {
   matches: IsoMatch[];
-  /** Fill the current form from this ISO entry. */
+  /** Open the status dialog for this ISO entry. */
   onUse: (car: Diecast) => void;
   /** Hand every match to the bulk dialog, prefilled. */
   onBulk?: (cars: Diecast[]) => void;
@@ -98,7 +98,7 @@ export function IsoSuggestions({
               className="h-7 shrink-0 text-sky-500 hover:bg-sky-500/10 hover:text-sky-400"
               onClick={() => onUse(car)}
             >
-              Use these details
+              Update status
             </Button>
           </li>
         ))}

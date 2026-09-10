@@ -48,7 +48,15 @@ export const SIZE_SEED = ["1:64", "1:43", "1:32", "1:24", "1:18", "1:12", "1:87"
  * they have their own functions.
  */
 export type OptionField =
-  "make" | "colour" | "type" | "brand" | "assortment" | "size" | "series" | "subSeries";
+  "make" | "colour" | "type" | "brand" | "assortment" | "size" | "series" | "subSeries" | "seller";
+
+/**
+ * Sellers are the one field with no seed and never will have one. They are
+ * individual people as often as they are shops, this repository is public, and
+ * a suggestion list of somebody else's contacts would be worse than useless —
+ * so the list is only ever who *this* collection has already bought from.
+ */
+export const SELLER_SEED: string[] = [];
 
 const SEEDS: Record<OptionField, string[]> = {
   make: MAKE_SEED,
@@ -59,6 +67,7 @@ const SEEDS: Record<OptionField, string[]> = {
   size: SIZE_SEED,
   series: SERIES_SEED,
   subSeries: SUB_SERIES_SEED,
+  seller: SELLER_SEED,
 };
 
 /**

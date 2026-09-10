@@ -122,7 +122,14 @@ const FIELDS: FieldDef[] = [
     placeholder: "1:64",
     sharedByDefault: true,
   },
-  { key: "seller", label: "Seller", kind: "text", placeholder: "First Cry", sharedByDefault: true },
+  {
+    key: "seller",
+    label: "Seller",
+    kind: "combo",
+    option: "seller",
+    placeholder: "First Cry",
+    sharedByDefault: true,
+  },
   { key: "status", label: "Status", kind: "status", sharedByDefault: true },
   { key: "orderDate", label: "Order date", kind: "date", sharedByDefault: true },
   { key: "cost", label: "Cost", kind: "number", placeholder: "199", sharedByDefault: true },
@@ -373,6 +380,7 @@ export function BulkAddCarsDialog({
       size: optionsFor("size", cars),
       series: optionsFor("series", cars),
       subSeries: optionsFor("subSeries", cars),
+      seller: optionsFor("seller", cars),
     }),
     [cars],
   );
