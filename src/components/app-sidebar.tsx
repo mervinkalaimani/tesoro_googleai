@@ -82,15 +82,12 @@ export function AppSidebar() {
           sized by its own contents lined up with nothing. */}
       <SidebarHeader className="h-14 justify-center border-b border-sidebar-border">
         <div className="flex items-center gap-2 px-1">
-          {/* The selected-item tint behind the mark — the same fill a navigation
-              row takes when you are on it, so the logo reads as part of the rail
-              rather than as a button that does something. */}
-          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-sidebar-accent">
-            {/* The mark is drawn white-on-nothing, for the dark rail it was made
-                for. The selected tint in light mode is nearly white, so it is
-                inverted there — black diamond, mid-grey wings — rather than
-                disappearing into its own background. */}
-            <img src="/tesoro_in_app_icon.svg" alt="" className="size-7 invert dark:invert-0" />
+          {/* The accent colour, behind a mark drawn white for exactly this.
+              --sidebar-primary is the token Settings → Appearance rewrites when
+              you pick a colour, so the logo changes with everything else that
+              carries the accent instead of staying whatever it was built as. */}
+          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-sidebar-primary shadow-lg shadow-sidebar-primary/30">
+            <img src="/tesoro_in_app_icon.svg" alt="" className="size-7" />
           </div>
           {/* "Personal collection" said nothing the rest of the screen does not
               — a subtitle under a one-word name. */}
