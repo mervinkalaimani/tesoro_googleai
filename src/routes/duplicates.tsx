@@ -4,10 +4,8 @@ import {
   Copy,
   Download,
   IndianRupee,
-  Pencil,
   SlidersHorizontal,
   TrendingUp,
-  Trash2,
   ArrowLeftRight,
 } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
@@ -15,7 +13,6 @@ import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { ExportDialog } from "@/components/export-dialog";
-import { CarFormDialog } from "@/components/car-form-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { inrFull } from "@/lib/format";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -91,15 +88,7 @@ function StatCard({
   );
 }
 
-function DuplicateGroup({
-  rows,
-  onOpen,
-  onEdit,
-}: {
-  rows: Diecast[];
-  onOpen: (car: Diecast) => void;
-  onEdit: (car: Diecast) => void;
-}) {
+function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Diecast) => void }) {
   const first = rows[0];
   const valuation = rows.reduce((s, r) => s + (r.mrp || r.spent || 0), 0);
   const surplus = rows.length - 1;
@@ -179,15 +168,9 @@ function DuplicateGroup({
               >
                 <Copy className="size-3.5" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                aria-label="Edit car"
-                onClick={() => onEdit(r)}
-              >
-                <Pencil className="size-3.5" />
-              </Button>
+              {/* Editing is on the car now, behind the button beside this
+                  one — a pencil in a list of near-identical rows is the
+                  easiest place in the app to edit the wrong copy. */}
             </div>
           </div>
         ))}
@@ -204,7 +187,6 @@ function DuplicatesPage() {
   const [active, setActive] = useState<AttrKey[]>(DEFAULT_ATTRS);
   const [modifyOpen, setModifyOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
-  const [editCar, setEditCar] = useState<Diecast | null>(null);
 
   const toggle = (key: AttrKey) =>
     setActive((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
@@ -310,7 +292,7 @@ function DuplicatesPage() {
 
       <div className="space-y-3">
         {groups.map((arr, i) => (
-          <DuplicateGroup key={i} rows={arr} onOpen={open} onEdit={setEditCar} />
+          <DuplicateGroup key={i} rows={arr} onOpen={open} />
         ))}
         {groups.length === 0 && (
           <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
@@ -333,17 +315,6 @@ function DuplicatesPage() {
           </div>
         </SheetContent>
       </Sheet>
-
-      {editCar && (
-        <CarFormDialog
-          open={Boolean(editCar)}
-          onOpenChange={(v) => {
-            if (!v) setEditCar(null);
-          }}
-          initial={editCar}
-          mode="edit"
-        />
-      )}
 
       <ExportDialog
         open={exportOpen}

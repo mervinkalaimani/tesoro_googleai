@@ -18,17 +18,24 @@ export function UpdateStatusButton({
   label = "Update status",
   className,
   disabled,
+  size = "sm",
 }: {
   onClick: () => void;
   title?: string;
   label?: string;
   className?: string;
   disabled?: boolean;
+  /**
+   * Matches whatever it is standing next to. It is `sm` in the dense rows it
+   * was written for, but beside a full-size Edit button a short one reads as a
+   * different kind of control rather than the other half of a pair.
+   */
+  size?: "sm" | "default";
 }) {
   return (
     <Button
       type="button"
-      size="sm"
+      size={size}
       onClick={onClick}
       disabled={disabled}
       title={title ?? "Update status"}
@@ -41,7 +48,7 @@ export function UpdateStatusButton({
         className,
       )}
     >
-      <CheckCircle2 className="size-3.5" />
+      <CheckCircle2 className={size === "sm" ? "size-3.5" : "size-4"} />
       {label}
     </Button>
   );

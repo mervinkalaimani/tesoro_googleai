@@ -28,7 +28,9 @@ export function ViewToggle({
   onChange: (v: ViewMode) => void;
 }) {
   return (
-    <div className="flex shrink-0 items-center rounded-md border border-border p-0.5">
+    // h-8, so it lines up with the small buttons and the sort dropdown it sits
+    // beside rather than standing 2px proud of them.
+    <div className="flex h-8 shrink-0 items-center rounded-md border border-border p-0.5">
       {MODES.map((m) => {
         const Icon = m.icon;
         const active = value === m.value;

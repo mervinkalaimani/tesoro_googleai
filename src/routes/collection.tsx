@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Pencil, Sparkles, Star } from "lucide-react";
+import { ChevronDown, ChevronUp, Sparkles, Star } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -13,7 +13,6 @@ import { CarFormDialog } from "@/components/car-form-dialog";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { SegmentControl } from "@/components/segment-control";
-import { Button } from "@/components/ui/button";
 import { inr, mrpRatio } from "@/lib/format";
 import {
   Accordion,
@@ -82,15 +81,7 @@ const GROUP_LABEL: Partial<Record<GroupBy, (r: Diecast) => string>> = {
 };
 
 /** Mirrors the inventory card so both pages read the same way. */
-function CollectionCard({
-  car,
-  onOpen,
-  onEdit,
-}: {
-  car: Diecast;
-  onOpen: () => void;
-  onEdit: () => void;
-}) {
+function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
   const cost = car.spent || 0;
   const market = car.mrp || cost;
   const ratio = mrpRatio(cost, car.mrp || 0);
@@ -172,15 +163,8 @@ function CollectionCard({
               )}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7 shrink-0"
-            aria-label="Edit"
-            onClick={onEdit}
-          >
-            <Pencil className="size-3.5" />
-          </Button>
+          {/* The pencil that was here has gone with every other one: a car is
+              edited from the car, which is one tap away through the card. */}
         </div>
       </div>
     </article>
@@ -194,7 +178,6 @@ function CollectionPage() {
   const [sortField, setSortField] = useState<SortField>("count");
   const [dir, setDir] = useState<"desc" | "asc">("desc");
   const [view, setView] = useState<ViewMode>("table");
-  const [editCar, setEditCar] = useState<Diecast | null>(null);
   const { open } = useCarDrawer();
 
   const cars = useCars();
@@ -354,12 +337,7 @@ function CollectionPage() {
                     view === "compact" ? (
                       <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
                     ) : (
-                      <CollectionCard
-                        key={(r.id || "") + i}
-                        car={r}
-                        onOpen={() => open(r)}
-                        onEdit={() => setEditCar(r)}
-                      />
+                      <CollectionCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
                     ),
                   )}
                 </div>
@@ -375,17 +353,6 @@ function CollectionPage() {
           </div>
         )}
       </Accordion>
-
-      {editCar && (
-        <CarFormDialog
-          open={Boolean(editCar)}
-          onOpenChange={(v) => {
-            if (!v) setEditCar(null);
-          }}
-          initial={editCar}
-          mode="edit"
-        />
-      )}
     </div>
   );
 }

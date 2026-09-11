@@ -311,7 +311,11 @@ function CarPopupContent({
           <Pencil className="size-4" />
           Edit
         </Button>
+        {/* Same size as Edit beside it. It was `sm` — two buttons in one row,
+            one 32px tall and one 36px, which reads as a mistake rather than a
+            hierarchy. */}
         <UpdateStatusButton
+          size="default"
           onClick={onUpdateStatus}
           title={
             advanceTo
