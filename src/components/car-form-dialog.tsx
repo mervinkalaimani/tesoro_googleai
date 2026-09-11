@@ -17,6 +17,7 @@ import { TrackingLink } from "@/components/tracking-link";
 import { isoMatchesFor } from "@/lib/iso-match";
 import { IsoSuggestions } from "@/components/iso-suggestions";
 import { CarPhotoField } from "@/components/car-photo-field";
+import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { DataActions } from "@/components/data-actions";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import {
@@ -51,6 +52,7 @@ import {
   Layers,
   Upload,
   RotateCcw,
+  ScanLine,
   Trash2,
 } from "lucide-react";
 
@@ -231,6 +233,8 @@ export function CarFormDialog({
   const [draftReady, setDraftReady] = useState(false);
   /** Edit mode only: the delete confirmation raised from the footer. */
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** The card scanner, raised from the catalogue fields it fills in. */
+  const [scanOpen, setScanOpen] = useState(false);
 
   const draftKey = mode === "add" ? CAR_DRAFT_KEY : carEditDraftKey(initial?.id ?? "");
 
@@ -296,6 +300,18 @@ export function CarFormDialog({
 
   const set = <K extends keyof CarFormData>(k: K, v: CarFormData[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
+  };
+
+  /**
+   * What the card scanner read, over the top of what is in the form.
+   *
+   * Only the rows the person left ticked arrive here, and only ones with a
+   * value, so this can be a flat merge: a field the scan did not fill in keeps
+   * whatever was typed, and a field it did fill in is one they chose to take.
+   */
+  const applyScan = (fields: ScanResult) => {
+    setForm((f) => ({ ...f, ...fields }));
+    setValidationError(null);
   };
 
   /**
@@ -771,13 +787,30 @@ export function CarFormDialog({
               {/* STEP 1: VEHICLE INFORMATION */}
               {currentStep === 1 && (
                 <div className="space-y-3">
-                  <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">
-                      Step 1: Vehicle Information
-                    </h4>
-                    <p className="text-xs text-muted-foreground">
-                      Specify the make, model, colour, and manufacturing classification.
-                    </p>
+                  <div className="flex flex-wrap items-end justify-between gap-2 border-b border-border/50 pb-1">
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-semibold text-foreground">
+                        Step 1: Vehicle Information
+                      </h4>
+                      <p className="text-xs text-muted-foreground">
+                        Specify the make, model, colour, and manufacturing classification.
+                      </p>
+                    </div>
+                    {/* Twelve fields of small print, most of it printed on the
+                        card in your other hand. Photograph it instead. It sits
+                        on this step because this step is the part that is
+                        printed — what it cost and who sold it are not on any
+                        card. */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5"
+                      onClick={() => setScanOpen(true)}
+                    >
+                      <ScanLine className="size-4" />
+                      Scan the card
+                    </Button>
                   </div>
 
                   {/* Above the fields rather than below: by the time three of
@@ -1451,6 +1484,19 @@ export function CarFormDialog({
                     <Car className="size-3.5" />
                     <span>Vehicle &amp; purchase</span>
                   </h3>
+                  {/* The same scanner as the wizard. A car catalogued in a hurry
+                      and corrected later is the common case for these fields,
+                      and re-photographing the card beats retyping it. */}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 shrink-0 gap-1.5 px-2 text-[11px]"
+                    onClick={() => setScanOpen(true)}
+                  >
+                    <ScanLine className="size-3.5" />
+                    Scan
+                  </Button>
                 </div>
                 {/* Label beside the field rather than above it: fifteen stacked
                     label-and-input pairs is twice the height of the column next
@@ -1667,6 +1713,10 @@ export function CarFormDialog({
           }}
         />
       )}
+
+      {/* Stacked over the form, in both modes. Cancelling out of it leaves
+          everything typed so far untouched. */}
+      <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={applyScan} />
 
       {/* Stacked over the wizard rather than replacing it: cancelling out of a
           status change should leave the half-typed car exactly where it was. */}

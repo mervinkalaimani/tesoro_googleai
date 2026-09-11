@@ -120,6 +120,31 @@ async function uploadTo(
   return { url: data.publicUrl, path };
 }
 
+/**
+ * A file, downscaled, as raw base64 and its type — for sending somewhere that
+ * wants bytes rather than a URL.
+ *
+ * The scanner reads printed text off a card, so it is downscaled less
+ * aggressively than a thumbnail would be: 1280 keeps a collector number
+ * legible, and past that the extra pixels only cost upload time.
+ */
+export async function imageToBase64(
+  file: File,
+  maxEdge = 1280,
+): Promise<{ mimeType: string; data: string }> {
+  const blob = await normalise(file, maxEdge);
+  const buf = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  // In chunks: String.fromCharCode with a few million arguments overflows the
+  // call stack, and a phone photograph is a few million bytes.
+  let binary = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return { mimeType: blob.type || "image/jpeg", data: btoa(binary) };
+}
+
 export function uploadCarPhoto(file: File): Promise<PhotoResult | PhotoError> {
   return uploadTo(CAR_PHOTOS_BUCKET, file, MAX_EDGE);
 }
