@@ -1,6 +1,6 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Boxes, Clock, Database, Loader2, LogOut, RefreshCw } from "lucide-react";
+import { Clock, Database, Loader2, LogOut, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-store";
@@ -13,11 +13,23 @@ function Centered({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * What is on screen between opening the app and knowing who you are.
+ *
+ * The app icon, drawn the way it is drawn everywhere else you meet it — on the
+ * dark ground the installed icon carries, which is also the manifest's
+ * background_color, so tapping the icon on a home screen leads to the same mark
+ * on the same colour rather than to a different logo on a white page.
+ *
+ * The ground is a literal rather than a token on purpose. This is the icon, not
+ * a themed surface: it stays put when the accent changes and in either theme,
+ * because the thing it has to match is a file, not a variable.
+ */
 function Splash() {
   return (
     <Centered>
-      <div className="mx-auto grid size-12 place-items-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-        <Boxes className="size-6" />
+      <div className="mx-auto grid size-16 place-items-center rounded-2xl bg-[#1b1b1b] shadow-lg shadow-black/25">
+        <img src="/tesoro_app_icon.svg" alt="" className="w-9" />
       </div>
       <Loader2 className="mx-auto mt-6 size-5 animate-spin text-muted-foreground" />
     </Centered>
