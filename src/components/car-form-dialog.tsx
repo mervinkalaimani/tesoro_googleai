@@ -17,6 +17,7 @@ import { TrackingLink } from "@/components/tracking-link";
 import { isoMatchesFor } from "@/lib/iso-match";
 import { IsoSuggestions } from "@/components/iso-suggestions";
 import { CarPhotoField } from "@/components/car-photo-field";
+import { DataActions } from "@/components/data-actions";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import {
   Dialog,
@@ -481,6 +482,11 @@ export function CarFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Nothing submits a half-walked wizard. The footer's last button is the only
+    // way to catalogue a car, and it only exists on step 4 — so a submit arriving
+    // from anywhere else (a stray Enter, a browser autofill) is not an intent to
+    // save, it is an accident to swallow.
+    if (mode === "add" && currentStep < 4) return;
     setValidationError(null);
 
     // Validate all steps if submitting
@@ -619,8 +625,12 @@ export function CarFormDialog({
         <DialogHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <DialogTitle>{mode === "add" ? "Add a car" : "Edit car"}</DialogTitle>
-            {mode === "add" && (onSwitchToBulk || onSwitchToUpload) && (
-              <div className="flex shrink-0 items-center gap-2">
+            {mode === "add" && (
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Export and the CSV template, from the sidebar's Data section.
+                    Every other way cars come in or go out is already on this
+                    row. */}
+                <DataActions />
                 {onSwitchToBulk && (
                   <Button
                     type="button"
@@ -1200,12 +1210,24 @@ export function CarFormDialog({
                       <ChevronLeft className="size-4 mr-1" /> Back
                     </Button>
                   )}
+                  {/* The keys matter, and this is why.
+
+                      Without them React sees one <button> in this slot across
+                      both branches and keeps the same DOM node, swapping only
+                      its `type` attribute. Clicking Next on step 3 then ran
+                      handleNext, React flushed the state update before the
+                      browser got round to the click's default action, and the
+                      browser read type="submit" off the element it had just
+                      changed — saving the car and closing the dialog on the way
+                      to a step nobody ever saw. Distinct keys mean distinct
+                      nodes, so the button that was clicked is still the button
+                      whose default action runs. */}
                   {currentStep < 4 ? (
-                    <Button type="button" onClick={handleNext}>
+                    <Button key="next" type="button" onClick={handleNext}>
                       Next <ChevronRight className="size-4 ml-1" />
                     </Button>
                   ) : (
-                    <Button type="submit" className="bg-primary text-primary-foreground">
+                    <Button key="save" type="submit" className="bg-primary text-primary-foreground">
                       <Check className="size-4 mr-1" /> Add car
                     </Button>
                   )}

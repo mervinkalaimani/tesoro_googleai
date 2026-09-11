@@ -16,6 +16,7 @@ import { CarsProvider } from "@/lib/cars-store";
 import { CarDrawerProvider } from "@/components/car-details-drawer";
 import { AuthProvider } from "@/lib/auth-store";
 import { AuthGate } from "@/components/auth-gate";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -176,6 +177,12 @@ function RootComponent() {
               <AuthGate>
                 <Outlet />
               </AuthGate>
+              {/* Nothing was mounting this, so every toast in the app was
+                  written to a surface that did not exist — including the one
+                  explaining that a photo upload had failed because the storage
+                  bucket was missing. The upload looked like it silently did
+                  nothing, which is exactly what it looked like. */}
+              <Toaster position="bottom-right" richColors closeButton />
             </CarDrawerProvider>
           </CarsProvider>
         </AppProvider>
