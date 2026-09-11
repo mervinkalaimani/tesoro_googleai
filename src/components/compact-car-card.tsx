@@ -14,7 +14,20 @@ import { inr } from "@/lib/format";
  * what tells one casting from another at a glance — the picture, the name, the
  * brand, the price — plus the two flags worth spotting across a whole page.
  */
-export function CompactCarCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
+export function CompactCarCard({
+  car,
+  onOpen,
+  caption,
+}: {
+  car: Diecast;
+  onOpen: () => void;
+  /**
+   * One extra line under the price — "Today", "2 days ago". Optional, and
+   * either every card in a given list passes one or none of them do: a caption
+   * on some cards and not others is what makes a row of them ragged.
+   */
+  caption?: string;
+}) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
 
   return (
@@ -22,7 +35,10 @@ export function CompactCarCard({ car, onOpen }: { car: Diecast; onOpen: () => vo
       type="button"
       onClick={onOpen}
       title={title}
-      className="card-elevated group flex flex-col overflow-hidden text-left transition-colors hover:border-primary/40"
+      // h-full so a card fills whatever cell it is given. In a row of them the
+      // tallest used to set the height and the rest floated at the top, which
+      // read as a list of different-sized things rather than one shelf.
+      className="card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40"
     >
       <div className="relative">
         <CarThumb car={car} className="aspect-[16/10] w-full" />
@@ -43,7 +59,7 @@ export function CompactCarCard({ car, onOpen }: { car: Diecast; onOpen: () => vo
         )}
       </div>
 
-      <div className="min-w-0 p-2">
+      <div className="flex min-w-0 flex-1 flex-col p-2">
         <div className="truncate text-xs font-semibold leading-tight group-hover:text-primary">
           {title}
         </div>
@@ -53,6 +69,9 @@ export function CompactCarCard({ car, onOpen }: { car: Diecast; onOpen: () => vo
             {car.spent ? inr(car.spent) : "—"}
           </span>
         </div>
+        {caption && (
+          <div className="mt-1 truncate text-[10px] text-muted-foreground/80">{caption}</div>
+        )}
       </div>
     </button>
   );

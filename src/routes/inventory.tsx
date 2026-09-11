@@ -1,23 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  Pencil,
-  SlidersHorizontal,
-  Sparkles,
-  Star,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, SlidersHorizontal, Sparkles, Star } from "lucide-react";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
 import { filterRows } from "@/lib/search";
 import { StatusPill, CostCell, CarListCard } from "@/components/cars-table";
-import { RecordAction } from "@/components/mobile-record-card";
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
-import { CarFormDialog, DeleteCarDialog } from "@/components/car-form-dialog";
+import { CarFormDialog } from "@/components/car-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { useRegisterExportScope } from "@/lib/export-scope";
@@ -33,13 +24,13 @@ export const Route = createFileRoute("/inventory")({
       {
         name: "description",
         content:
-          "Browse and manage the full diecast inventory with filters, car details, status, seller, spend, edit, and delete actions.",
+          "Browse the full diecast inventory with filters, car details, status, seller and spend.",
       },
       { property: "og:title", content: "Inventory | Tesoro" },
       {
         property: "og:description",
         content:
-          "Browse and manage the full diecast inventory with filters, car details, status, seller, spend, edit, and delete actions.",
+          "Browse the full diecast inventory with filters, car details, status, seller and spend.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -165,17 +156,7 @@ function PriceStrip({ car }: { car: Diecast }) {
   );
 }
 
-function InventoryCard({
-  car,
-  onOpen,
-  onEdit,
-  onDelete,
-}: {
-  car: Diecast;
-  onOpen: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
+function InventoryCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
       <div className="relative">
@@ -233,28 +214,13 @@ function InventoryCard({
           </p>
         )}
 
-        <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
+        {/* Edit and Delete used to sit here. Editing a car is something you do
+            after looking at it, so it lives on the car itself; deleting one is
+            behind that, inside the edit form. A pencil and a bin on every tile
+            of a page of forty put a destructive action one mis-tap from
+            scrolling. */}
+        <div className="mt-auto border-t border-border pt-2.5">
           <PriceStrip car={car} />
-          <div className="flex shrink-0 items-center">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="Edit"
-              onClick={onEdit}
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7 text-destructive"
-              aria-label="Delete"
-              onClick={onDelete}
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-          </div>
         </div>
       </div>
     </article>
@@ -284,9 +250,11 @@ function InventoryPage() {
 
   const [visibleCount, setVisibleCount] = useState(LOAD_BATCH);
 
+  // Editing and deleting are no longer reachable from this page — a car is
+  // edited from the car, and deleted from inside that edit — so the dialogs
+  // that used to be hosted down here have gone with the buttons that raised
+  // them.
   const [addOpen, setAddOpen] = useState(false);
-  const [editCar, setEditCar] = useState<Diecast | null>(null);
-  const [deleteCar, setDeleteCar] = useState<Diecast | null>(null);
 
   const bodyRef = useRef<HTMLDivElement | null>(null);
 
@@ -388,12 +356,31 @@ function InventoryPage() {
       <div className="card-elevated mx-auto flex w-full max-w-[1600px] min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-border p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="text-display truncate text-xl font-semibold">Inventory</h1>
-              {/* The running total came off: what the whole collection cost is
-                  one number, and it belongs in the sidebar where it can be
-                  hidden — not restated on top of every list. */}
-              <p className="text-xs text-muted-foreground">{rows.length.toLocaleString()} cars</p>
+            <div className="flex min-w-0 flex-1 items-center gap-2 md:flex-none">
+              <div className="min-w-0">
+                <h1 className="text-display truncate text-xl font-semibold">Inventory</h1>
+                {/* The running total came off: what the whole collection cost is
+                    one number, and it belongs in the sidebar where it can be
+                    hidden — not restated on top of every list. */}
+                <p className="text-xs text-muted-foreground">{rows.length.toLocaleString()} cars</p>
+              </div>
+              {/* Phones get the status as one dropdown, here beside the title.
+                  The chip row below is eleven segments; on a 375px screen it
+                  wraps to four lines and takes more of the page than the cars
+                  do. A dropdown is one line, and it is the filter you reach for
+                  most, so it sits with the heading rather than below it. */}
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                aria-label="Filter by status"
+                className="ml-auto h-8 max-w-[9rem] shrink-0 rounded-md border border-input bg-background px-2 text-sm md:hidden"
+              >
+                {statusOptions.map((s) => (
+                  <option key={s} value={s}>
+                    {s === "all" ? "All statuses" : s}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {sort !== "sno" && (
@@ -438,16 +425,14 @@ function InventoryPage() {
             </div>
           </div>
 
-          {/* Its own row: the status list runs to ten or more entries. On a
-              phone an auto-fit grid keeps every cell the same width and wraps
-              instead of squeezing. On a desktop there is room to spare, and
-              stretching ten segments across 1600px only makes "ISO" a button
-              the width of a paragraph — so from md up they wrap to their text
-              and the control ends where the labels do. */}
+          {/* Desktop only — the phone has the dropdown beside the title. There
+              is room to spare here, and stretching ten segments across 1600px
+              only makes "ISO" a button the width of a paragraph, so they wrap
+              to their text and the control ends where the labels do. */}
           <SegmentControl
             value={status}
             onChange={setStatus}
-            className="grid w-full grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-0.5 md:inline-flex md:w-auto md:flex-wrap md:self-start"
+            className="hidden gap-0.5 md:inline-flex md:w-auto md:flex-wrap md:self-start"
             options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
           />
         </div>
@@ -542,13 +527,7 @@ function InventoryPage() {
                 view === "compact" ? (
                   <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
                 ) : (
-                  <InventoryCard
-                    key={(r.id || "") + i}
-                    car={r}
-                    onOpen={() => openDrawer(r)}
-                    onEdit={() => setEditCar(r)}
-                    onDelete={() => setDeleteCar(r)}
-                  />
+                  <InventoryCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
                 ),
               )}
             </div>
@@ -562,25 +541,7 @@ function InventoryPage() {
                 is a table you read by dragging it sideways. */}
             <div className="space-y-2 p-2 md:hidden">
               {shown.map((r, i) => (
-                <CarListCard
-                  key={(r.id || "") + i}
-                  car={r}
-                  onOpen={() => openDrawer(r)}
-                  actions={
-                    <>
-                      <RecordAction label="Edit car" onClick={() => setEditCar(r)}>
-                        <Pencil className="size-4" />
-                      </RecordAction>
-                      <RecordAction
-                        label="Delete car"
-                        tone="destructive"
-                        onClick={() => setDeleteCar(r)}
-                      >
-                        <Trash2 className="size-4" />
-                      </RecordAction>
-                    </>
-                  }
-                />
+                <CarListCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
               ))}
               {shown.length === 0 && (
                 <p className="p-8 text-center text-sm text-muted-foreground">
@@ -591,7 +552,12 @@ function InventoryPage() {
 
             {/* The detailed view: every field, no thumbnail. Sorting lives in
                 the header dropdown so it works in grid view too. */}
-            <table className="hidden w-full min-w-[1080px] table-fixed text-sm md:table">
+            {/* No Actions column. Editing a car is something you do after
+                looking at one, so it is on the car; deleting is behind that,
+                inside the edit form. A bin at the end of every row of a
+                1,500-row table is a destructive action you can reach by
+                accident. The table is 80px narrower for it. */}
+            <table className="hidden w-full min-w-[1000px] table-fixed text-sm md:table">
               <colgroup>
                 <col className="w-[18rem]" />
                 <col className="w-[7rem]" />
@@ -601,7 +567,6 @@ function InventoryPage() {
                 <col className="w-[8rem]" />
                 <col className="w-[7rem]" />
                 <col className="w-[7rem]" />
-                <col className="w-[5rem]" />
               </colgroup>
               <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
@@ -613,7 +578,6 @@ function InventoryPage() {
                   <th className="px-3 py-2.5 font-medium">Seller</th>
                   <th className="px-3 py-2.5 font-medium">Order date</th>
                   <th className="px-3 py-2.5 font-medium">Received date</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Actions</th>
                 </tr>
               </thead>
 
@@ -663,33 +627,11 @@ function InventoryPage() {
                     <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
                       {r.date || "—"}
                     </td>
-                    <td className="px-3 py-2.5 align-top" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-7"
-                          onClick={() => setEditCar(r)}
-                          aria-label="Edit"
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="size-7 text-destructive hover:text-destructive"
-                          onClick={() => setDeleteCar(r)}
-                          aria-label="Delete"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="p-10 text-center text-muted-foreground">
+                    <td colSpan={8} className="p-10 text-center text-muted-foreground">
                       No cars match those filters.
                     </td>
                   </tr>
@@ -710,21 +652,6 @@ function InventoryPage() {
       </div>
 
       <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
-      <CarFormDialog
-        open={!!editCar}
-        onOpenChange={(v) => {
-          if (!v) setEditCar(null);
-        }}
-        mode="edit"
-        initial={editCar}
-      />
-      <DeleteCarDialog
-        car={deleteCar}
-        open={!!deleteCar}
-        onOpenChange={(v) => {
-          if (!v) setDeleteCar(null);
-        }}
-      />
     </div>
   );
 }

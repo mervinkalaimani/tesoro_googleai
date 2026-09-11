@@ -40,6 +40,7 @@ import {
   formatDMY,
   monthKey,
   monthLabel,
+  relativeDay,
   shortMonthLabel,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -611,10 +612,14 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
           A single row is a fixed height whatever arrives, and the cars that ran
           off the end are the older ones, which is the right thing to have to
           reach for. */}
-      <div className="flex snap-x gap-2 overflow-x-auto p-2">
-        {recent.map(({ r }, i) => (
+      {/* items-stretch, and every cell the same fixed width: one shelf of
+          identical cards rather than a row of differently sized ones. The
+          caption is what each card is doing in here — it landed today, or it
+          landed two days ago — which is the only thing separating them. */}
+      <div className="flex snap-x items-stretch gap-2 overflow-x-auto p-2">
+        {recent.map(({ r, dt }, i) => (
           <div key={r.id + i} className="w-36 shrink-0 snap-start sm:w-40">
-            <CompactCarCard car={r} onOpen={() => openDrawer(r)} />
+            <CompactCarCard car={r} onOpen={() => openDrawer(r)} caption={relativeDay(dt, now)} />
           </div>
         ))}
       </div>

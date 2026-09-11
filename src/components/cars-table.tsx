@@ -98,12 +98,13 @@ export function CarBadges({
 }
 
 /**
- * One car, for a phone: the name, what it is, where it is, what it cost.
+ * One car, for a phone: the name, what it is, who sold it, what it cost.
  *
  * Label-and-value rows were tried and dropped — nine of them per car turned a
- * list you scan into a list you read. This is the row the table always had,
- * stacked instead of columned; tapping it opens the car, which is where the
- * rest of the fields live.
+ * list you scan into a list you read. Three lines instead, in the order you
+ * would say them out loud: which car it is and where it is, what kind of car it
+ * is, and who it came from for how much. Tapping it opens the car, which is
+ * where the rest of the fields live.
  */
 export function CarListCard({
   car,
@@ -113,31 +114,61 @@ export function CarListCard({
 }: {
   car: Diecast;
   onOpen: () => void;
-  /** Icon buttons for this car — edit and delete, where they apply. */
+  /** Icon buttons for this car, at the foot of the card. */
   actions?: ReactNode;
   badgePrimary?: "favourite" | "chase";
 }) {
-  const pay = paymentStatusText(car);
+  const pay = paymentStatusText(car) ?? advanceText(car);
+  const spent = car.spent || 0;
+  const mrp = car.mrp || 0;
+  // The MRP line only when it says something. "MRP ₹600" against a ₹600 car is
+  // a row of type to tell you nothing happened.
+  const mrpNote =
+    mrp > 0 && spent > 0 && Math.round(mrp) !== Math.round(spent) ? `MRP ${inr(mrp)}` : null;
 
   return (
     <article className="card-elevated overflow-hidden">
-      <div className="flex items-start gap-2 p-3">
-        <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
-          <div className="flex min-w-0 items-center gap-1.5">
+      <button type="button" onClick={onOpen} className="block w-full p-3 text-left">
+        {/* NAME AND PRICE. Two things you can read at arm's length, one at each
+            end of the line — what it is, and what it cost. */}
+        <div className="flex items-start justify-between gap-3">
+          <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
             <CarBadges car={car} primary={badgePrimary} />
-          </div>
-          <div className="mt-0.5 truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
-          <div className="mt-2 flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <StatusPill status={car.status} />
-              {pay && <div className="mt-1 truncate text-[11px] text-muted-foreground">{pay}</div>}
-            </div>
-            <CostCell car={car} />
-          </div>
-        </button>
-        {actions && <div className="flex shrink-0 flex-col items-center gap-0.5">{actions}</div>}
-      </div>
+          </span>
+          <span className="shrink-0 text-sm font-semibold tabular-nums">
+            {spent ? inr(spent) : "—"}
+          </span>
+        </div>
+
+        {/* WHAT KIND OF CAR */}
+        <div className="mt-0.5 truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
+
+        {/* WHO IT CAME FROM, AND WHERE IT IS.
+            The seller was not on this card at all, which made a phone the one
+            place you could not answer "where did I get this". */}
+        <div className="mt-2 flex items-end justify-between gap-3">
+          <span className="min-w-0">
+            <span className="block truncate text-xs text-muted-foreground">
+              {car.seller || "—"}
+            </span>
+            {(pay || mrpNote) && (
+              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+                {[pay, mrpNote].filter(Boolean).join(" · ")}
+              </span>
+            )}
+          </span>
+          <span className="shrink-0">
+            <StatusPill status={car.status} />
+          </span>
+        </div>
+      </button>
+
+      {actions && (
+        <div className="flex items-center justify-end gap-0.5 border-t border-border/60 px-3 py-2">
+          {actions}
+        </div>
+      )}
     </article>
   );
 }
