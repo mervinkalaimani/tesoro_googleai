@@ -5,7 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth, handleError, type OAuthProvider } from "@/lib/auth-store";
+import { useOAuthProviders } from "@/lib/deployment-settings";
+import { rememberSession, setRememberSession } from "@/integrations/supabase/session-storage";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -66,8 +69,16 @@ function LoginPage() {
     enterGuest,
   } = useAuth();
   const navigate = useNavigate();
+  const { providers } = useOAuthProviders();
+  const enabledProviders = PROVIDERS.filter((p) => providers[p.id]);
 
   const [view, setView] = useState<View>("signin");
+  // Reflects what the last sign-in on this device chose, so the box shows the
+  // state it is actually in rather than a default it may not match.
+  const [remember, setRemember] = useState(true);
+  useEffect(() => {
+    setRemember(rememberSession());
+  }, []);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -127,6 +138,9 @@ function LoginPage() {
     setError(null);
     setNotice(null);
     setOauthBusy(provider);
+    // The provider round-trip comes back as a fresh page load, so the choice
+    // has to be on disk before the browser leaves.
+    setRememberSession(remember);
     const res = await signInWithProvider(provider);
     // On success the browser is already navigating away; only a refusal lands here.
     if (!res.ok) {
@@ -160,6 +174,11 @@ function LoginPage() {
     }
 
     setBusy(true);
+    // Recorded before the call, not after: signing in writes the session
+    // immediately, and the storage adapter reads this flag to decide where it
+    // goes. Setting it afterwards would put the session in the wrong place and
+    // only take effect at the next sign-in.
+    setRememberSession(remember);
     const res = await signIn(email, password);
     setBusy(false);
     if (!res.ok) setError(res.error ?? "Something went wrong. Try again.");
@@ -395,31 +414,48 @@ function LoginPage() {
               </TabsList>
             </Tabs>
 
-            {/* One pair of buttons for both tabs: with a provider, signing in
-                and signing up are the same action. */}
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              {PROVIDERS.map(({ id, label, mark: Mark }) => (
-                <Button
-                  key={id}
-                  type="button"
-                  variant="outline"
-                  className="w-full gap-2"
-                  disabled={oauthBusy !== null || busy}
-                  onClick={() => void onProvider(id)}
-                >
-                  {oauthBusy === id ? <Loader2 className="size-4 animate-spin" /> : <Mark />}
-                  {label}
-                </Button>
-              ))}
-            </div>
+            {/* Only the providers this deployment actually has configured.
+                A Google button on an install where Google was never set up in
+                the Supabase dashboard does not fail politely — it hands the
+                person a Supabase error page and no way back. Both default to
+                off, and the owner turns them on in Settings once they work.
 
-            <div className="my-5 flex items-center gap-3">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                or use a password
-              </span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
+                Nothing renders until the answer is in, so the buttons never
+                appear and then vanish. */}
+            {enabledProviders.length > 0 && (
+              <>
+                {/* One pair of buttons for both tabs: with a provider, signing
+                    in and signing up are the same action. */}
+                <div
+                  className={`mt-6 grid gap-3 ${
+                    enabledProviders.length > 1 ? "grid-cols-2" : "grid-cols-1"
+                  }`}
+                >
+                  {enabledProviders.map(({ id, label, mark: Mark }) => (
+                    <Button
+                      key={id}
+                      type="button"
+                      variant="outline"
+                      className="w-full gap-2"
+                      disabled={oauthBusy !== null || busy}
+                      onClick={() => void onProvider(id)}
+                    >
+                      {oauthBusy === id ? <Loader2 className="size-4 animate-spin" /> : <Mark />}
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="my-5 flex items-center gap-3">
+                  <span className="h-px flex-1 bg-border" />
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    or use a password
+                  </span>
+                  <span className="h-px flex-1 bg-border" />
+                </div>
+              </>
+            )}
+            {enabledProviders.length === 0 && <div className="mt-6" />}
 
             <form onSubmit={onCredentials} className="space-y-4">
               <div className="space-y-2">
@@ -467,6 +503,27 @@ function LoginPage() {
                   <p className="text-xs text-muted-foreground">At least 8 characters.</p>
                 ) : null}
               </div>
+
+              {/* Sign-in only. Creating an account signs you in as part of the
+                  same act, and asking someone to decide how long it should last
+                  before they have one is a question about nothing yet.
+
+                  Unticked, the session is kept in sessionStorage instead of
+                  localStorage, so closing the browser ends it. Ticked — the
+                  default — it survives, which is what it has always done. */}
+              {view === "signin" ? (
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <Checkbox
+                    checked={remember}
+                    onCheckedChange={(v) => setRemember(Boolean(v))}
+                    aria-label="Stay signed in on this device"
+                  />
+                  <span>Remember me</span>
+                  <span className="text-xs text-muted-foreground">
+                    — stay signed in on this device
+                  </span>
+                </label>
+              ) : null}
 
               {errorBox}
               {noticeBox}
