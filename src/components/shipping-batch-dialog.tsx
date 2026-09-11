@@ -10,6 +10,10 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  Plus,
+  Search,
+  Sparkles,
+  X,
 } from "lucide-react";
 import {
   Dialog,
@@ -29,8 +33,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
-import { useCars, useCarsActions, type ShippingBatchUpdates } from "@/lib/cars-store";
-import { toDateInputValue } from "@/lib/date-utils";
+import { CarFormDialog } from "@/components/car-form-dialog";
+import { makeBlankCar, useCars, useCarsActions, type ShippingBatchUpdates } from "@/lib/cars-store";
+import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
 import type { Diecast } from "@/lib/types";
 
@@ -68,7 +73,7 @@ export function ShippingBatchDialog({
   onUpdated,
 }: ShippingBatchDialogProps) {
   const cars = useCars();
-  const { updateCarsByShippingId } = useCarsActions();
+  const { updateCarsByShippingId, bulkUpdateCars } = useCarsActions();
 
   const [selectedShippingId, setSelectedShippingId] = useState(initialShippingId);
   const [customShippingId, setCustomShippingId] = useState("");
@@ -84,6 +89,14 @@ export function ShippingBatchDialog({
   const [updateTracking, setUpdateTracking] = useState(false);
 
   const [showCarList, setShowCarList] = useState(false);
+  // Cars queued to join this order — ISO rows picked below, held until Apply so
+  // they take the same expected date and courier as everything else in it.
+  const [pendingCars, setPendingCars] = useState<Diecast[]>([]);
+  const [isoPickerOpen, setIsoPickerOpen] = useState(false);
+  const [isoQuery, setIsoQuery] = useState("");
+  // The seed is built once, when the wizard opens, and held: rebuilding it per
+  // render would hand the form a new blank car — and a new id — every keystroke.
+  const [newCarSeed, setNewCarSeed] = useState<Diecast | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -196,6 +209,80 @@ export function ShippingBatchDialog({
     setNewTrackingId(String(first("trackingId") ?? ""));
   }, [activeShippingId, hideDelivered, open]);
 
+  // A queue belongs to one order and one visit: switching batches, or reopening
+  // the dialog, must not quietly carry cars into somewhere they were never
+  // meant to go.
+  useEffect(() => {
+    setPendingCars([]);
+    setIsoPickerOpen(false);
+    setIsoQuery("");
+    setNewCarSeed(null);
+  }, [activeShippingId, open]);
+
+  /** The row the order's own details are read from when filling gaps. */
+  const template = matchedCars[0] as Diecast | undefined;
+
+  const isoCandidates = useMemo(() => {
+    const q = isoQuery.trim().toLowerCase();
+    const queued = new Set(pendingCars.map((c) => c.id));
+    return cars
+      .filter((c) => (c.status || "").trim().toLowerCase() === "iso" && !queued.has(c.id))
+      .filter((c) => {
+        if (!q) return true;
+        return [c.name, c.make, c.model, c.variant, c.brand, c.series, c.carNumber]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      })
+      .slice(0, 50);
+  }, [cars, isoQuery, pendingCars]);
+
+  /**
+   * What a car joining this order inherits: the batch ID, the status the order
+   * is moving to, and the dates and courier being set alongside it. Anything the
+   * car already knows — its own seller, its own order date — is kept.
+   */
+  const joinOrder = (car: Diecast): Diecast => {
+    const status = newStatus !== "keep" ? newStatus : template?.status || car.status;
+    const expected = newExpectedDate || template?.expectedDate || car.expectedDate || "";
+    const partner = updateTracking
+      ? newPartner.trim()
+      : template?.deliveryPartner || car.deliveryPartner || "";
+    const trackingId = updateTracking
+      ? newTrackingId.trim()
+      : template?.trackingId || car.trackingId || "";
+    const note = updateTransitInfo
+      ? newTransitInfo.trim()
+      : template?.transitInfo || car.transitInfo || "";
+    const orderDate = car.orderDate || template?.orderDate || new Date().toISOString().slice(0, 10);
+    // Only a delivered car has an arrival date; everything else carries the
+    // estimate in expectedDate alone.
+    const arrivedOn = status === "Available" ? expected || car.date || orderDate : "";
+
+    return {
+      ...car,
+      status,
+      shippingId: activeShippingId,
+      seller: car.seller || template?.seller || "",
+      orderDate,
+      orderMonth: deriveMonth(orderDate) || car.orderMonth,
+      expectedDate: expected,
+      deliveryPartner: partner || undefined,
+      trackingId: trackingId || undefined,
+      transitInfo: note,
+      date: arrivedOn,
+      month: arrivedOn ? deriveMonth(arrivedOn) || car.month : "",
+    };
+  };
+
+  /** Seeds the add-a-car wizard with everything the order already knows. */
+  const seedNewCar = (): Diecast =>
+    joinOrder({ ...makeBlankCar(), status: template?.status || "Transit" });
+
+  /** Everything this Apply would write: the batch, plus anything joining it. */
+  const affected = matchedCars.length + pendingCars.length;
+
   const handleQuickDate = (offsetDays: number) => {
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
@@ -207,13 +294,15 @@ export function ShippingBatchDialog({
       setErrorMessage("Please select or enter a Shipping ID.");
       return;
     }
-    if (matchedCars.length === 0) {
+    if (matchedCars.length === 0 && pendingCars.length === 0) {
       setErrorMessage(`No cars found matching Shipping ID "${activeShippingId}".`);
       return;
     }
-    if (newStatus === "keep" && !newExpectedDate && !updateTransitInfo && !updateTracking) {
+    const changesFields =
+      newStatus !== "keep" || Boolean(newExpectedDate) || updateTransitInfo || updateTracking;
+    if (!changesFields && pendingCars.length === 0) {
       setErrorMessage(
-        "Please choose at least one field to update (Status, Expected Date, Tracking, or Transit Info).",
+        "Please choose at least one field to update (Status, Expected Date, Tracking, or Transit Info), or add a car to this order.",
       );
       return;
     }
@@ -237,19 +326,33 @@ export function ShippingBatchDialog({
         updates.trackingId = newTrackingId;
       }
 
+      // Joiners are written first, and written whole: they need the order's ID
+      // before a batch update could ever find them, and the fields the form is
+      // setting are applied to them here rather than in a second pass.
+      const joined = pendingCars.map(joinOrder);
+      if (joined.length) bulkUpdateCars(joined);
+
       // bulkUpdateCars takes whole Diecast rows, not (ids, patch): calling it
       // that way passed an array of id strings as the cars and dropped the
       // updates entirely, which is why saved changes never reached the table.
       //
       // The scope goes with it so the store writes the same set this dialog
       // counted, rather than every car sharing the ID.
-      const count = await updateCarsByShippingId(activeShippingId, updates, {
-        excludeAvailable: hideDelivered,
-      });
+      const count = changesFields
+        ? await updateCarsByShippingId(activeShippingId, updates, {
+            excludeAvailable: hideDelivered,
+          })
+        : 0;
+      const total = count + joined.length;
       setSuccessMessage(
-        `Successfully updated ${count} car${count === 1 ? "" : "s"} in shipping ID "${activeShippingId}".`,
+        joined.length
+          ? `Added ${joined.length} car${joined.length === 1 ? "" : "s"} to "${activeShippingId}"${
+              count ? ` and updated ${count} more` : ""
+            }.`
+          : `Successfully updated ${count} car${count === 1 ? "" : "s"} in shipping ID "${activeShippingId}".`,
       );
-      onUpdated?.(count, activeShippingId);
+      setPendingCars([]);
+      onUpdated?.(total, activeShippingId);
 
       setTimeout(() => {
         onOpenChange(false);
@@ -269,13 +372,11 @@ export function ShippingBatchDialog({
             <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
               <Truck className="size-4" />
             </div>
-            <DialogTitle className="text-lg font-bold text-foreground">
-              Update by Shipping ID
-            </DialogTitle>
+            <DialogTitle className="text-lg font-bold text-foreground">Update Order</DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Select a Shipping ID to simultaneously update the status, expected date, and transit
-            notes across all matching cars.
+            Pick a Shipping ID to set the status, expected date and transit notes across every car
+            in it — or add cars to the order.
           </DialogDescription>
         </DialogHeader>
 
@@ -404,6 +505,105 @@ export function ShippingBatchDialog({
                             {car.status}
                           </span>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* An order grows. A car you forgot, or one you had been hunting
+                    for and have now actually bought, had no way in short of
+                    editing it and retyping the batch ID by hand. */}
+                <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
+                  <span className="mr-auto text-[11px] text-muted-foreground">
+                    Add cars to this order
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1 px-2 text-[11px]"
+                    onClick={() => setIsoPickerOpen((v) => !v)}
+                  >
+                    <Sparkles className="size-3" />
+                    From ISO
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1 px-2 text-[11px]"
+                    onClick={() => setNewCarSeed(seedNewCar())}
+                  >
+                    <Plus className="size-3" />
+                    New car
+                  </Button>
+                </div>
+
+                {isoPickerOpen && (
+                  <div className="space-y-1.5 rounded-lg border border-border bg-background p-2">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        value={isoQuery}
+                        onChange={(e) => setIsoQuery(e.target.value)}
+                        placeholder="Search your ISO list…"
+                        className="h-8 pl-7 text-xs"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                      {isoCandidates.map((car) => (
+                        <button
+                          key={car.id}
+                          type="button"
+                          onClick={() => setPendingCars((prev) => [...prev, car])}
+                          className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1 text-left text-[11px] hover:bg-muted"
+                        >
+                          <span className="min-w-0 truncate">
+                            <span className="font-medium text-foreground">
+                              {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+                            </span>
+                            <span className="ml-1.5 text-muted-foreground">
+                              {[car.brand, car.series].filter(Boolean).join(" · ")}
+                            </span>
+                          </span>
+                          <Plus className="size-3 shrink-0 text-muted-foreground" />
+                        </button>
+                      ))}
+                      {isoCandidates.length === 0 && (
+                        <p className="px-1 py-2 text-center text-[11px] text-muted-foreground">
+                          {isoQuery.trim()
+                            ? "Nothing on your ISO list matches that."
+                            : "Your ISO list is empty."}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {pendingCars.length > 0 && (
+                  <div className="space-y-1 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.07] p-2">
+                    <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      Joining on save — takes this order&apos;s status, dates and courier
+                    </p>
+                    {pendingCars.map((car) => (
+                      <div
+                        key={car.id}
+                        className="flex items-center justify-between gap-2 rounded bg-background/60 px-2 py-1 text-[11px]"
+                      >
+                        <span className="min-w-0 truncate font-medium text-foreground">
+                          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPendingCars((prev) => prev.filter((c) => c.id !== car.id))
+                          }
+                          aria-label={`Remove ${car.name || "car"} from this order`}
+                          className="grid size-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <X className="size-3" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -589,22 +789,36 @@ export function ShippingBatchDialog({
             type="button"
             size="sm"
             onClick={handleApply}
-            disabled={isSubmitting || matchedCars.length === 0}
+            disabled={isSubmitting || affected === 0}
             className="gap-1.5 bg-amber-500 text-zinc-950 font-semibold hover:bg-amber-400"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="size-3.5 animate-spin" /> Updating {matchedCars.length} cars...
+                <Loader2 className="size-3.5 animate-spin" /> Updating {affected} cars...
               </>
             ) : (
               <>
                 <CheckCircle2 className="size-3.5" />
-                Update {matchedCars.length} Car{matchedCars.length === 1 ? "" : "s"}
+                Update {affected} Car{affected === 1 ? "" : "s"}
               </>
             )}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Stacked over this dialog: a car added to an order still deserves the
+          full wizard, and cancelling out of it leaves the order untouched. The
+          batch it belongs to is filled in already. */}
+      {newCarSeed && (
+        <CarFormDialog
+          open
+          onOpenChange={(v) => {
+            if (!v) setNewCarSeed(null);
+          }}
+          mode="add"
+          initial={newCarSeed}
+        />
+      )}
     </Dialog>
   );
 }

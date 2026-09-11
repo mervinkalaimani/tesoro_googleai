@@ -296,11 +296,8 @@ function HabitsPage() {
           label="Current streak"
           value={`${stats.streak} ${unit}${stats.streak === 1 ? "" : "s"}`}
         />
-        <Stat
-          icon={<Wallet className="size-4" />}
-          label="Total spent"
-          value={inr(stats.totalSpent)}
-        />
+        {/* The spend tile came off: the same figure sits under the tracker
+            squares, next to the activity it is describing. */}
       </section>
 
       <section className="card-elevated min-w-0 overflow-hidden">

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { CircleCheck, Clock, IndianRupee, Plus, Truck, Wallet } from "lucide-react";
+import { CircleCheck, Clock, IndianRupee, Plus, Wallet } from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
@@ -12,7 +12,9 @@ import { isPreOrder } from "@/lib/status-order";
 import { Button } from "@/components/ui/button";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { PayBalanceDialog } from "@/components/pay-balance-dialog";
-import { MarkShippedDialog } from "@/components/mark-shipped-dialog";
+import { StatusUpdateDialog } from "@/components/status-update-dialog";
+import { SummaryCard } from "@/components/summary-card";
+import { UpdateStatusButton } from "@/components/update-status-button";
 import {
   Select,
   SelectContent,
@@ -57,56 +59,16 @@ function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
   return [...s].sort((a, b) => a.localeCompare(b));
 }
 
-function SummaryCard({
-  label,
-  value,
-  sub,
-  icon,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  icon: React.ReactNode;
-  tone?: "default" | "emerald" | "amber";
-}) {
-  const valueTone =
-    tone === "emerald"
-      ? "text-emerald-500"
-      : tone === "amber"
-        ? "text-amber-500"
-        : "text-foreground";
-  const subTone =
-    tone === "emerald"
-      ? "text-emerald-500/80"
-      : tone === "amber"
-        ? "text-amber-500/80"
-        : "text-muted-foreground";
-
-  return (
-    <div className="card-elevated p-4">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <span className="text-muted-foreground">{icon}</span>
-      </div>
-      <div className={`text-display mt-1 text-2xl font-bold tabular-nums ${valueTone}`}>
-        {value}
-      </div>
-      <div className={`mt-1 font-mono text-xs ${subTone}`}>{sub}</div>
-    </div>
-  );
-}
-
 function PreOrderCard({
   car,
   onOpen,
   onPay,
-  onShip,
+  onUpdateStatus,
 }: {
   car: Diecast;
   onOpen: () => void;
   onPay: () => void;
-  onShip: () => void;
+  onUpdateStatus: () => void;
 }) {
   const due = balanceOf(car);
   const settled = due === 0;
@@ -197,15 +159,10 @@ function PreOrderCard({
             Pay balance
           </Button>
         )}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onShip}
-          className="gap-1.5 border-sky-500/40 text-sky-400 hover:bg-sky-500/10"
-        >
-          <Truck className="size-3.5" />
-          Mark shipped
-        </Button>
+        {/* Was "Mark shipped", which could only ever mean one move. The same
+            button and the same dialog as everywhere else now: a pre-order that
+            slipped, or arrived early, is one choice rather than none. */}
+        <UpdateStatusButton onClick={onUpdateStatus} />
       </div>
     </article>
   );
@@ -218,7 +175,7 @@ function PreOrdersPage() {
   const [seller, setSeller] = useState("all");
   const [sort, setSort] = useState<SortMode>("balance");
   const [payFor, setPayFor] = useState<Diecast | null>(null);
-  const [shipFor, setShipFor] = useState<Diecast | null>(null);
+  const [statusFor, setStatusFor] = useState<Diecast | null>(null);
   const [addOpen, setAddOpen] = useState(false);
 
   const base = useMemo(
@@ -325,14 +282,14 @@ function PreOrdersPage() {
               car={r}
               onOpen={() => open(r)}
               onPay={() => setPayFor(r)}
-              onShip={() => setShipFor(r)}
+              onUpdateStatus={() => setStatusFor(r)}
             />
           ))}
         </div>
       )}
 
       <PayBalanceDialog car={payFor} onClose={() => setPayFor(null)} />
-      <MarkShippedDialog car={shipFor} onClose={() => setShipFor(null)} />
+      <StatusUpdateDialog car={statusFor} onClose={() => setStatusFor(null)} />
       <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
     </div>
   );

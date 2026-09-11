@@ -130,11 +130,11 @@ export function ReconcileDeliveryDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PackageCheck className="size-4 text-emerald-500" />
-            Reconcile delivery
+            Update status
           </DialogTitle>
           <DialogDescription>
-            <span className="font-mono">{target.shippingId}</span> · {items.length} car
-            {items.length === 1 ? "" : "s"} from {target.seller}
+            Marks the batch delivered. <span className="font-mono">{target.shippingId}</span> ·{" "}
+            {items.length} car{items.length === 1 ? "" : "s"} from {target.seller}
           </DialogDescription>
         </DialogHeader>
 

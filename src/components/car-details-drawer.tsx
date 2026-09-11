@@ -1,16 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import {
-  Car,
-  CheckCircle2,
-  ExternalLink,
-  Flame,
-  Loader2,
-  Pencil,
-  Star,
-  Trash2,
-  Truck,
-  X,
-} from "lucide-react";
+import { Car, ExternalLink, Flame, Loader2, Pencil, Star, Trash2, Truck, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
 import { useCars, useCarsActions } from "@/lib/cars-store";
@@ -21,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
+import { UpdateStatusButton } from "@/components/update-status-button";
 
 /**
  * A car moves forward one step at a time rather than jumping straight to
@@ -456,19 +446,15 @@ function CarPopupContent({
               instead: same one the ISO suggestions use, which asks for what the
               new status actually implies. The next stage is still what it
               defaults to. */}
-          <button
-            type="button"
+          <UpdateStatusButton
             onClick={onUpdateStatus}
             title={
               advanceTo
                 ? `Update status — ${car.status || "unknown"} to ${advanceTo}`
                 : "Update status"
             }
-            className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-[#00c57d] px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#00b070]"
-          >
-            <CheckCircle2 className="size-3.5" />
-            <span>Update status</span>
-          </button>
+            className="h-8 px-3 text-xs"
+          />
         </div>
 
         {/* 4-column Details: Seller | Shipping ID | Order Date | Expected Date */}

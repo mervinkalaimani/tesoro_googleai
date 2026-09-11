@@ -27,7 +27,9 @@ export const CAR_CSV_COLUMNS: CsvColumn<Diecast>[] = [
   { key: "trackingId", label: "Tracking ID", get: (r) => r.trackingId ?? "" },
   { key: "orderDate", label: "Order date", get: (r) => r.orderDate },
   { key: "expectedDate", label: "Expected date", get: (r) => r.expectedDate },
-  { key: "date", label: "Date", get: (r) => r.date },
+  // "Date" on its own said nothing next to Order date and Expected date. This
+  // one is the day the car actually turned up.
+  { key: "date", label: "Received date", get: (r) => r.date },
   { key: "chase", label: "Chase", get: (r) => (r.chase ? "TRUE" : "") },
   { key: "favourite", label: "Favourite", get: (r) => (r.favourite ? "TRUE" : "") },
 ];

@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Truck, PackageCheck, Plus, Pencil } from "lucide-react";
+import { Truck, Clock, IndianRupee, Plus, Pencil } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { SegmentControl } from "@/components/segment-control";
-import { parseDMY, inr, inrFull } from "@/lib/format";
+import { parseDMY, inrFull } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import {
@@ -14,6 +14,10 @@ import {
   type ReconcileTarget,
 } from "@/components/reconcile-delivery-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
+import { SummaryCard } from "@/components/summary-card";
+import { ShipmentItem } from "@/components/shipment-item";
+import { UpdateStatusButton } from "@/components/update-status-button";
+import { useCarDrawer } from "@/components/car-details-drawer";
 import {
   Select,
   SelectContent,
@@ -57,7 +61,15 @@ const STATUS_RANK: Record<string, number> = {
 const DELIVERED_WINDOW_DAYS = 90;
 
 type SortMode = "status" | "seller" | "orderDate";
-type Tab = "all" | "transit" | "delivered";
+type Tab = "all" | "transit" | "waiting" | "delivered";
+
+/**
+ * Nothing has left the seller yet. Pre-orders belong here rather than with the
+ * shipments: an allocation waiting on a factory and a parcel waiting on a
+ * courier are the same thing to anyone reading this page — not yet moving.
+ */
+const WAITING_STATUSES = new Set(["Waiting", "Pre Order"]);
+const isWaitingSide = (status: string) => WAITING_STATUSES.has((status || "").trim());
 
 type Shipment = {
   key: string;
@@ -100,11 +112,13 @@ function statusLabel(status: string, delivered: boolean): string {
 function ShipmentCard({
   s,
   onEdit,
-  onReconcile,
+  onUpdateStatus,
+  onOpenCar,
 }: {
   s: Shipment;
   onEdit: () => void;
-  onReconcile: () => void;
+  onUpdateStatus: () => void;
+  onOpenCar: (car: Diecast) => void;
 }) {
   return (
     <article className="card-elevated overflow-hidden">
@@ -162,26 +176,7 @@ function ShipmentCard({
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {s.items.map((c) => (
-            <div
-              key={c.id}
-              className="flex items-start justify-between gap-3 rounded-md border border-border bg-muted/20 px-3 py-2"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 truncate font-mono text-[11px] text-muted-foreground">
-                  <span>{c.carNumber || c.id}</span>
-                  {c.series ? (
-                    <>
-                      <span>·</span>
-                      <span className="truncate">{c.series}</span>
-                    </>
-                  ) : null}
-                </div>
-                <div className="truncate text-sm font-semibold">{c.name}</div>
-              </div>
-              <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-                {inr(c.spent || 0)}
-              </span>
-            </div>
+            <ShipmentItem key={c.id} car={c} onOpen={() => onOpenCar(c)} />
           ))}
         </div>
       </div>
@@ -195,14 +190,16 @@ function ShipmentCard({
           {s.shippingId ? (
             <Button variant="outline" size="sm" onClick={onEdit} className="gap-1.5">
               <Pencil className="size-3.5" />
-              Update batch
+              Update Order
             </Button>
           ) : null}
           {!s.delivered && s.shippingId ? (
-            <Button size="sm" onClick={onReconcile} className="gap-1.5">
-              <PackageCheck className="size-4" />
-              Reconcile delivery
-            </Button>
+            <UpdateStatusButton
+              onClick={onUpdateStatus}
+              title={`Update status for the ${s.items.length} car${
+                s.items.length === 1 ? "" : "s"
+              } in ${s.shippingId}`}
+            />
           ) : null}
         </div>
       </footer>
@@ -213,6 +210,7 @@ function ShipmentCard({
 function OrdersPage() {
   const { query } = useApp();
   const cars = useCars();
+  const drawer = useCarDrawer();
   const [mode, setMode] = useState<SortMode>("status");
   const [tab, setTab] = useState<Tab>("all");
   const [seller, setSeller] = useState("all");
@@ -237,16 +235,45 @@ function OrdersPage() {
 
   const sellerOpts = useMemo(() => uniqueSorted(orderRows, (r) => r.seller), [orderRows]);
 
+  // Seller alone, so the tiles keep reporting on waiting orders while the
+  // in-transit tab is open — a KPI that empties when you filter past it is
+  // measuring the tab, not the orders.
+  const bySeller = useMemo(
+    () => orderRows.filter((r) => seller === "all" || r.seller === seller),
+    [orderRows, seller],
+  );
+
+  const totals = useMemo(() => {
+    let transitCount = 0;
+    let transitValue = 0;
+    let waitingCount = 0;
+    let waitingValue = 0;
+    let due = 0;
+    for (const r of bySeller) {
+      if (r.status === "Available") continue;
+      due += Math.max((r.spent || 0) - (r.paid || 0), 0);
+      if (isWaitingSide(r.status)) {
+        waitingCount += 1;
+        waitingValue += r.spent || 0;
+      } else {
+        transitCount += 1;
+        transitValue += r.spent || 0;
+      }
+    }
+    return { transitCount, transitValue, waitingCount, waitingValue, due };
+  }, [bySeller]);
+
   const filtered = useMemo(
     () =>
-      orderRows.filter((r) => {
-        if (seller !== "all" && r.seller !== seller) return false;
+      bySeller.filter((r) => {
         const delivered = r.status === "Available";
-        if (tab === "transit" && delivered) return false;
-        if (tab === "delivered" && !delivered) return false;
+        if (tab === "delivered") return delivered;
+        if (delivered) return false;
+        if (tab === "waiting") return isWaitingSide(r.status);
+        if (tab === "transit") return !isWaitingSide(r.status);
         return true;
       }),
-    [orderRows, seller, tab],
+    [bySeller, tab],
   );
 
   const shipments = useMemo<Shipment[]>(() => {
@@ -299,73 +326,95 @@ function OrdersPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      <div className="card-elevated p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-display flex items-center gap-2 text-xl font-semibold">
-              <Truck className="size-5 text-primary" />
-              Shipments &amp; order batches
-            </h1>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Track carrier references, delivery timelines, and reconcile incoming castings directly
-              into your collection. {shipments.length} shipment
-              {shipments.length === 1 ? "" : "s"} · {totalCars} car{totalCars === 1 ? "" : "s"}.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <SegmentControl
-              value={tab}
-              onChange={setTab}
-              options={[
-                { value: "all", label: "All" },
-                { value: "transit", label: "In transit" },
-                { value: "delivered", label: "Delivered" },
-              ]}
-            />
-            <Select value={seller} onValueChange={setSeller}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Seller" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">All sellers</SelectItem>
-                {sellerOpts.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={mode} onValueChange={(v) => setMode(v as SortMode)}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="status">Sort: Status</SelectItem>
-                <SelectItem value="seller">Sort: Seller</SelectItem>
-                <SelectItem value="orderDate">Sort: Order date</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setSelectedShippingId("");
-                setBatchOpen(true);
-              }}
-              className="gap-1.5"
-            >
-              <Pencil className="size-3.5" />
-              Update by ID
-            </Button>
-            <BulkAddCarsDialog
-              trigger={
-                <Button size="sm" className="gap-1.5">
-                  <Plus className="size-4" />
-                  New shipment
-                </Button>
-              }
-            />
-          </div>
+      {/* The same three-card band the pre-orders page opens with: two pages
+          about money you have committed should be read the same way. */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <SummaryCard
+          label="In transit"
+          value={inrFull(totals.transitValue)}
+          sub={`${totals.transitCount} casting${totals.transitCount === 1 ? "" : "s"} on the move`}
+          icon={<Truck className="size-4" />}
+          tone="sky"
+        />
+        <SummaryCard
+          label="Waiting"
+          value={inrFull(totals.waitingValue)}
+          sub={`${totals.waitingCount} not dispatched yet`}
+          icon={<Clock className="size-4" />}
+          tone="amber"
+        />
+        <SummaryCard
+          label="Balance due"
+          value={inrFull(totals.due)}
+          sub="Outstanding across open orders"
+          icon={<IndianRupee className="size-4" />}
+          tone="emerald"
+        />
+      </div>
+
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-display text-xl font-semibold">Shipments &amp; order batches</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Carrier references, delivery timelines, and incoming castings — {shipments.length}{" "}
+            shipment
+            {shipments.length === 1 ? "" : "s"} · {totalCars} car{totalCars === 1 ? "" : "s"}.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <SegmentControl
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: "all", label: "All" },
+              { value: "transit", label: "In transit" },
+              { value: "waiting", label: "Waiting" },
+              { value: "delivered", label: "Delivered" },
+            ]}
+          />
+          <Select value={seller} onValueChange={setSeller}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Seller" />
+            </SelectTrigger>
+            <SelectContent className="max-h-72">
+              <SelectItem value="all">All sellers</SelectItem>
+              {sellerOpts.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={mode} onValueChange={(v) => setMode(v as SortMode)}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="status">Sort: Status</SelectItem>
+              <SelectItem value="seller">Sort: Seller</SelectItem>
+              <SelectItem value="orderDate">Sort: Order date</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setSelectedShippingId("");
+              setBatchOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <Pencil className="size-3.5" />
+            Update by ID
+          </Button>
+          <BulkAddCarsDialog
+            trigger={
+              <Button size="sm" className="gap-1.5">
+                <Plus className="size-4" />
+                New shipment
+              </Button>
+            }
+          />
         </div>
       </div>
 
@@ -374,11 +423,12 @@ function OrdersPage() {
           <ShipmentCard
             key={s.key}
             s={s}
+            onOpenCar={(car) => drawer.open(car)}
             onEdit={() => {
               setSelectedShippingId(s.shippingId);
               setBatchOpen(true);
             }}
-            onReconcile={() =>
+            onUpdateStatus={() =>
               setReconcileFor({ shippingId: s.shippingId, seller: s.seller, items: s.items })
             }
           />

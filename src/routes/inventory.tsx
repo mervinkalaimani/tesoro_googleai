@@ -389,14 +389,10 @@ function InventoryPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
               <h1 className="text-display truncate text-xl font-semibold">Inventory</h1>
-              {(() => {
-                const totalCost = rows.reduce((s, r) => s + (r.spent || 0), 0);
-                return (
-                  <p className="text-xs text-muted-foreground">
-                    {rows.length.toLocaleString()} cars · Total spend: {inr(totalCost)}
-                  </p>
-                );
-              })()}
+              {/* The running total came off: what the whole collection cost is
+                  one number, and it belongs in the sidebar where it can be
+                  hidden — not restated on top of every list. */}
+              <p className="text-xs text-muted-foreground">{rows.length.toLocaleString()} cars</p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {sort !== "sno" && (
@@ -584,7 +580,7 @@ function InventoryPage() {
                   <th className="px-3 py-2.5 font-medium">Status</th>
                   <th className="px-3 py-2.5 font-medium">Seller</th>
                   <th className="px-3 py-2.5 font-medium">Order date</th>
-                  <th className="px-3 py-2.5 font-medium">Date</th>
+                  <th className="px-3 py-2.5 font-medium">Received date</th>
                   <th className="px-3 py-2.5 text-right font-medium">Actions</th>
                 </tr>
               </thead>

@@ -4,6 +4,7 @@
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -200,6 +201,15 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   // until Supabase says otherwise.
   const [base, setBase] = useState<Diecast[]>([]);
   const [overlay, setOverlay] = useState<Overlay>(EMPTY);
+  /**
+   * The overlay as it stands *now*, including writes made earlier in this same
+   * tick. Every mutator builds its next overlay from here rather than from the
+   * `overlay` its render closed over: two writes in one turn — adding cars to an
+   * order and updating the rest of it, say — each started from the same stale
+   * snapshot, so the second silently threw away the first.
+   */
+  const overlayRef = useRef(overlay);
+  overlayRef.current = overlay;
   const [hydrated, setHydrated] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -262,6 +272,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
       if (!pruned) return prev;
       const next = { added, updated, deleted };
+      overlayRef.current = next;
       writeOverlay(uid, next);
       return next;
     });
@@ -366,6 +377,8 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
   const commit = useCallback(
     (next: Overlay) => {
+      // The ref moves first so a second write in the same tick sees this one.
+      overlayRef.current = next;
       setOverlay(next);
       writeOverlay(uid, next);
     },
@@ -408,8 +421,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
     // Rebuild the overlay in one pass rather than three, so the restore and the
     // removal cannot race each other through separate commits.
-    const added = overlay.added.filter((c) => !dropIds.has(c.id) && !restoreIds.has(c.id));
-    const updated = { ...overlay.updated };
+    const prev = overlayRef.current;
+    const added = prev.added.filter((c) => !dropIds.has(c.id) && !restoreIds.has(c.id));
+    const updated = { ...prev.updated };
     for (const id of dropIds) delete updated[id];
 
     for (const car of entry.before) {
@@ -420,9 +434,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       else added.unshift(car);
     }
 
-    const deleted = overlay.deleted
+    const deleted = prev.deleted
       .filter((id) => !restoreIds.has(id))
-      .concat([...dropIds].filter((id) => baseIds.has(id) && !overlay.deleted.includes(id)));
+      .concat([...dropIds].filter((id) => baseIds.has(id) && !prev.deleted.includes(id)));
 
     commit({ added, updated, deleted });
 
@@ -439,7 +453,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     }
 
     toast.success(`Undid ${entry.label}`);
-  }, [undoStack, overlay, base, commit, isGuest]);
+  }, [undoStack, base, commit, isGuest]);
 
   const addCar = useCallback(
     (car: Diecast) => {
@@ -449,13 +463,19 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       const [identified] = assignCarIds([car], cars);
       const next: Diecast = {
         ...identified,
-        shippingId: shippingIdFor(identified, [...cars, identified]),
+        // A car that arrives already assigned to a batch — added from inside an
+        // order — keeps that ID. Deriving one regardless would have numbered it
+        // into a batch of its own and dropped it out of the order it was added
+        // to. Everything else is numbered from the seller and the dates.
+        shippingId:
+          identified.shippingId?.trim() || shippingIdFor(identified, [...cars, identified]),
       };
       pushUndo(`adding “${next.name || next.model || "the car"}”`, [], [next.id]);
-      commit({ ...overlay, added: [next, ...overlay.added] });
+      const prev = overlayRef.current;
+      commit({ ...prev, added: [next, ...prev.added] });
       void persist([next], "addCar");
     },
-    [overlay, commit, cars, persist, pushUndo],
+    [commit, cars, persist, pushUndo],
   );
 
   const bulkAddCars = useCallback(
@@ -470,12 +490,13 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         [],
         identified.map((c) => c.id),
       );
-      commit({ ...overlay, added: [...identified, ...overlay.added] });
+      const prev = overlayRef.current;
+      commit({ ...prev, added: [...identified, ...prev.added] });
       // Previously omitted entirely, so a bulk import lived in localStorage and
       // nowhere else.
       void persist(identified, "bulkAddCars");
     },
-    [overlay, commit, persist, cars, pushUndo],
+    [commit, persist, cars, pushUndo],
   );
 
   const updateCar = useCallback(
@@ -497,21 +518,26 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
       if (prev) pushUndo(`editing “${prev.name || prev.model || "the car"}”`, [prev]);
 
-      if (overlay.added.some((a) => a.id === next.id)) {
-        commit({ ...overlay, added: overlay.added.map((a) => (a.id === next.id ? next : a)) });
+      const prevOverlay = overlayRef.current;
+      if (prevOverlay.added.some((a) => a.id === next.id)) {
+        commit({
+          ...prevOverlay,
+          added: prevOverlay.added.map((a) => (a.id === next.id ? next : a)),
+        });
       } else {
-        commit({ ...overlay, updated: { ...overlay.updated, [next.id]: next } });
+        commit({ ...prevOverlay, updated: { ...prevOverlay.updated, [next.id]: next } });
       }
       void persist([next], "updateCar");
     },
-    [overlay, commit, cars, persist, pushUndo],
+    [commit, cars, persist, pushUndo],
   );
 
   /** Applies rows to the local overlay only. Persistence is the caller's job. */
   const commitCars = useCallback(
     (updatedCars: Diecast[]) => {
-      const updatedMap = { ...overlay.updated };
-      let addedList = [...overlay.added];
+      const prev = overlayRef.current;
+      const updatedMap = { ...prev.updated };
+      let addedList = [...prev.added];
       const addedIds = new Set(addedList.map((a) => a.id));
 
       for (const car of updatedCars) {
@@ -521,9 +547,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
           updatedMap[car.id] = car;
         }
       }
-      commit({ ...overlay, added: addedList, updated: updatedMap });
+      commit({ ...prev, added: addedList, updated: updatedMap });
     },
-    [overlay, commit],
+    [commit],
   );
 
   const bulkUpdateCars = useCallback(
@@ -625,16 +651,17 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       if (existing) {
         pushUndo(`deleting “${existing.name || existing.model || "the car"}”`, [existing]);
       }
-      const { [id]: _drop, ...rest } = overlay.updated;
+      const prev = overlayRef.current;
+      const { [id]: _drop, ...rest } = prev.updated;
       commit({
-        ...overlay,
-        added: overlay.added.filter((a) => a.id !== id),
+        ...prev,
+        added: prev.added.filter((a) => a.id !== id),
         updated: rest,
         // The tombstone is recorded whichever half the car came from. A freshly
         // added car whose insert has already landed exists in `base` as well,
         // so dropping it from `added` alone would let the next refresh hand it
         // straight back.
-        deleted: overlay.deleted.includes(id) ? overlay.deleted : [...overlay.deleted, id],
+        deleted: prev.deleted.includes(id) ? prev.deleted : [...prev.deleted, id],
       });
       if (isGuest) return;
       void deleteCarFromSupabase(id).then((res) => {
@@ -643,7 +670,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         toast.error("Car was not deleted from the database", { description: res.error });
       });
     },
-    [overlay, commit, isGuest, cars, pushUndo],
+    [commit, isGuest, cars, pushUndo],
   );
 
   const undoLabel = undoStack.length ? undoStack[undoStack.length - 1].label : null;

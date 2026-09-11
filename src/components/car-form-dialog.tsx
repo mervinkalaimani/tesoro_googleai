@@ -70,6 +70,13 @@ const PAYMENT_OPTIONS = ["Paid", "Partial", "Pending"];
 /** Statuses that mean the car is in hand, and so has a real arrival date. */
 const ARRIVED_STATUSES = new Set(["available", "wrong item"]);
 
+/**
+ * Statuses that mean it is definitely still coming. Any received date one of
+ * these is carrying describes a delivery that has not happened, so it is
+ * dropped rather than kept — the estimate lives in the expected date now.
+ */
+const NOT_RECEIVED_STATUSES = new Set(["waiting", "pre order", "preorder", "delayed"]);
+
 /** The tracking page for what has been typed so far, once it resolves to one. */
 function TrackingLink({
   partner,
@@ -553,7 +560,9 @@ export function CarFormDialog({
     const arrived = ARRIVED_STATUSES.has(status.toLowerCase());
     const date = arrived
       ? form.expectedDate.trim() || initial?.date?.trim() || orderDate
-      : initial?.date?.trim() || "";
+      : NOT_RECEIVED_STATUSES.has(status.toLowerCase())
+        ? ""
+        : initial?.date?.trim() || "";
     const month = deriveMonth(date) || orderMonth;
 
     const carId =

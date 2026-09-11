@@ -239,7 +239,6 @@ function CollectionPage() {
   }, [filtered, group, sortField, dir]);
 
   const visible = selected === "all" ? groups : groups.filter((g) => g.name === selected);
-  const totalValue = useMemo(() => filtered.reduce((s, r) => s + (r.spent || 0), 0), [filtered]);
 
   // Export follows the group that is on screen, not the whole collection.
   const visibleCars = useMemo(() => visible.flatMap((g) => g.items), [visible]);
@@ -251,9 +250,10 @@ function CollectionPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-display text-xl font-semibold">Collection</h1>
+            {/* No collection-wide total here: it is the sidebar's figure, where
+                it can be hidden, and per-group values are still on each row. */}
             <p className="text-xs text-muted-foreground">
-              {groups.length} {group} · {filtered.length.toLocaleString()} cars · Total cost:{" "}
-              {inr(totalValue)}
+              {groups.length} {group} · {filtered.length.toLocaleString()} cars
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

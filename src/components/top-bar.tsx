@@ -11,6 +11,7 @@ import { filterRows } from "@/lib/search";
 import { ExportDialog } from "@/components/export-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { SearchBox } from "@/components/search-box";
+import { NotificationCenter } from "@/components/notification-center";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
@@ -123,6 +124,10 @@ export function TopBar() {
             />
           )}
         </Button>
+        {/* Anything the app needs to tell you lives behind the bell — the
+            pre-order launch banner used to sit on the dashboard, where it was
+            only seen by someone already looking at the dashboard. */}
+        <NotificationCenter />
         <Button
           variant="ghost"
           size="icon"

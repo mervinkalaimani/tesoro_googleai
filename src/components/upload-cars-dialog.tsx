@@ -389,7 +389,7 @@ export function UploadCarsDialog({
                       <th className="px-2.5 py-1.5">Brand</th>
                       <th className="px-2.5 py-1.5">Cost</th>
                       <th className="px-2.5 py-1.5">Status</th>
-                      <th className="px-2.5 py-1.5">Date</th>
+                      <th className="px-2.5 py-1.5">Received date</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">

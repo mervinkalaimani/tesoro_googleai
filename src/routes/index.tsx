@@ -47,7 +47,6 @@ import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
-import { PreOrderLaunchAlert } from "@/components/preorder-launch-alert";
 import {
   Select,
   SelectContent,
@@ -252,10 +251,9 @@ function DashboardPage() {
 
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
-      {/* Above the KPIs: a release landing this week is the one thing on this
-          page that expires, and it needs acting on rather than reading. */}
-      <PreOrderLaunchAlert rows={data} />
-
+      {/* A release landing this week now lives behind the bell in the top bar,
+          with the rest of what expires — it followed you off the dashboard
+          rather than waiting there to be noticed. */}
       {kpis.length > 0 && (
         <section className="grid grid-cols-2 gap-3 pb-1 md:flex md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
           {kpis.map((k) => (

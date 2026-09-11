@@ -146,7 +146,9 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
   const statusCol = findCol("status");
   const paymentCol = findCol("payment", "paymentstatus");
   const paidCol = findCol("paid", "advpaid", "advancepaid");
-  const dateCol = findCol("date", "arrivaldate");
+  // "Received date" is what exports and the template call it now; "Date" still
+  // reads, so a file saved before the rename imports unchanged.
+  const dateCol = findCol("receiveddate", "date", "arrivaldate");
   const monthCol = findCol("month");
   const oDateCol = findCol("odate", "orderdate");
   const oMonthCol = findCol("omonth", "ordermonth");
@@ -243,7 +245,7 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
 
 export function generateDiecastCsvTemplate(): string {
   return [
-    "Car ID,Name,Make,Model,Variant,Year,Brand,Series,Assortment,Size,Spent,MRP,Seller,Status,Payment,Paid,Date,Month,Order Date,Expected Date,Delivery Partner,Tracking ID,Transit Info / ETA,Favourite,Chase",
+    "Car ID,Name,Make,Model,Variant,Year,Brand,Series,Assortment,Size,Spent,MRP,Seller,Status,Payment,Paid,Received Date,Month,Order Date,Expected Date,Delivery Partner,Tracking ID,Transit Info / ETA,Favourite,Chase",
     "CAR-001,1971 Datsun 240Z,Nissan,Datsun 240Z,Custom,1971,Hot Wheels,Car Culture,Premium,1/64,499,549,Amazon,Available,Paid,499,15/06/2026,Jun 2026,10/06/2026,15/06/2026,Delhivery,1234567890,Delivered,true,false",
     // Every row carries all 25 columns. The second one used to omit Assortment,
     // which slid Size and everything after it one column to the left — so a

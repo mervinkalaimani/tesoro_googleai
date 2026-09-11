@@ -436,22 +436,13 @@ function LoginPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  {view === "signin" ? (
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                      onClick={() => {
-                        setResetEmail(email.includes("@") ? email : "");
-                        go("reset");
-                      }}
-                    >
-                      Forgot password?
-                    </button>
-                  ) : null}
-                </div>
+              {/* "Forgot password?" sits beside the label but comes after the
+                  field in the DOM, so tabbing runs email → password → forgot
+                  rather than stopping at the link on the way in. Positioned
+                  rather than reordered: a positive tabindex would fix this one
+                  form and break the order of the page around it. */}
+              <div className="relative space-y-2">
+                <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
@@ -460,6 +451,18 @@ function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                {view === "signin" ? (
+                  <button
+                    type="button"
+                    className="absolute right-0 top-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                    onClick={() => {
+                      setResetEmail(email.includes("@") ? email : "");
+                      go("reset");
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                ) : null}
                 {view === "signup" ? (
                   <p className="text-xs text-muted-foreground">At least 8 characters.</p>
                 ) : null}
