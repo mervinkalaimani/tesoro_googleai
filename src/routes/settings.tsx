@@ -67,18 +67,10 @@ function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue={isOwner ? "supabase" : "preferences"} className="w-full space-y-4">
+      {/* General first: it is what most visits are for. The database connection
+          is owner-only plumbing you touch once, so it goes last. */}
+      <Tabs defaultValue="preferences" className="w-full space-y-4">
         <TabsList className={`grid w-full h-10 ${isOwner ? "grid-cols-3" : "grid-cols-2"}`}>
-          {isOwner ? (
-            <TabsTrigger
-              value="supabase"
-              id="settings-tab-supabase"
-              className="gap-2 text-xs md:text-sm font-medium"
-            >
-              <Database className="size-4 text-primary shrink-0" />
-              <span>Supabase Config</span>
-            </TabsTrigger>
-          ) : null}
           <TabsTrigger
             value="preferences"
             id="settings-tab-preferences"
@@ -95,16 +87,19 @@ function SettingsPage() {
             <Activity className="size-4 shrink-0" />
             <span>Diagnostics</span>
           </TabsTrigger>
+          {isOwner ? (
+            <TabsTrigger
+              value="supabase"
+              id="settings-tab-supabase"
+              className="gap-2 text-xs md:text-sm font-medium"
+            >
+              <Database className="size-4 text-primary shrink-0" />
+              <span>DB Connection</span>
+            </TabsTrigger>
+          ) : null}
         </TabsList>
 
-        {/* TAB 1: SUPABASE CONFIGURATION — owner only */}
-        {isOwner ? (
-          <TabsContent value="supabase" className="space-y-4 focus-visible:outline-none">
-            <SupabaseSyncCard />
-          </TabsContent>
-        ) : null}
-
-        {/* TAB 2: GENERAL & DISPLAY PREFERENCES */}
+        {/* TAB 1: GENERAL & DISPLAY PREFERENCES */}
         <TabsContent value="preferences" className="space-y-4 focus-visible:outline-none">
           <section className="card-elevated p-5">
             <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
@@ -202,7 +197,7 @@ function SettingsPage() {
           </section>
         </TabsContent>
 
-        {/* TAB 3: DIAGNOSTICS */}
+        {/* TAB 2: DIAGNOSTICS */}
         <TabsContent value="diagnostics" className="space-y-4 focus-visible:outline-none">
           <section className="card-elevated p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
@@ -211,6 +206,13 @@ function SettingsPage() {
             <FavouriteDetector />
           </section>
         </TabsContent>
+
+        {/* TAB 3: DATABASE CONNECTION — owner only */}
+        {isOwner ? (
+          <TabsContent value="supabase" className="space-y-4 focus-visible:outline-none">
+            <SupabaseSyncCard />
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   );

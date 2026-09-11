@@ -253,6 +253,7 @@ function CarPopupContent({
     return "text-foreground";
   };
 
+  const hasArrived = (car.status || "").trim().toLowerCase() === "available";
   const cleanTransitNotes = (car.transitInfo || "").trim();
   const trackUrl = trackingUrlFor(car.deliveryPartner, car.trackingId);
 
@@ -475,9 +476,9 @@ function CarPopupContent({
                   type="button"
                   onClick={() => onOpenShippingBatch(car.shippingId)}
                   className="cursor-pointer text-[10px] text-amber-600 hover:underline dark:text-amber-400"
-                  title={`Update all cars in batch ${car.shippingId}`}
+                  title={`Update every car in order ${car.shippingId}`}
                 >
-                  (Batch)
+                  (View Order)
                 </button>
               )}
             </div>
@@ -490,10 +491,16 @@ function CarPopupContent({
             </span>
           </div>
 
+          {/* A car in hand has an arrival date; one still coming has an
+              estimate. Showing "Expected" against a car that turned up last
+              month was the wrong word for the only date that mattered. */}
           <div>
-            <span className="text-muted-foreground">Expected Date:</span>
+            <span className="text-muted-foreground">
+              {hasArrived ? "Received Date:" : "Expected Date:"}
+            </span>
             <span className="mt-0.5 block font-medium text-foreground truncate">
-              {formatDayMonthYear(car.expectedDate || car.date) || "—"}
+              {formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate) ||
+                "—"}
             </span>
           </div>
 
@@ -538,23 +545,20 @@ function CarPopupContent({
         </div>
       </div>
 
-      {/* BOTTOM ACTIONS FOOTER: Delete on left, Close on right */}
-      <div className="flex items-center justify-between border-t border-border pt-4">
+      {/* BOTTOM ACTIONS FOOTER
+          Only one action left down here. The Close button that sat beside it
+          was the third way out of this dialog — there is an X in the header,
+          and on a phone the whole sheet can be pushed down — while Delete had
+          the far corner to itself, which is not where a destructive action
+          belongs. Delete takes the corner the button vacated. */}
+      <div className="flex items-center justify-end border-t border-border pt-4">
         <button
           type="button"
           onClick={onDelete}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-rose-500 hover:text-rose-400 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10 hover:text-rose-400 cursor-pointer sm:text-sm"
         >
           <Trash2 className="size-4" />
           <span>Delete from collection</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="cursor-pointer rounded-lg bg-muted px-5 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
-        >
-          Close
         </button>
       </div>
     </div>

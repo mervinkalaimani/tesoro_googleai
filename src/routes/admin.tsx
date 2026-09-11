@@ -35,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { MobileRecordCard, RecordAction } from "@/components/mobile-record-card";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -285,7 +286,151 @@ function AdminPage() {
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-lg border border-border">
+      {/* Phones get the same accounts as cards — every one of them, rather than
+          an eight-column table clipped to whatever fits. */}
+      <div className="space-y-2 md:hidden">
+        {loading ? (
+          <Loader2 className="mx-auto my-10 size-5 animate-spin text-muted-foreground" />
+        ) : filtered.length === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">No accounts match.</p>
+        ) : (
+          filtered.map((u) => {
+            const isSelf = Boolean(u.auth_uid) && u.auth_uid === user?.id;
+            const busy = busyId === String(u.sno);
+            return (
+              <MobileRecordCard
+                key={u.sno}
+                id={
+                  <span className="truncate">
+                    {u.user_id || displayName(u)}
+                    {isSelf ? <span className="ml-1.5 text-muted-foreground">(you)</span> : null}
+                  </span>
+                }
+                fields={[
+                  { label: "Name", value: displayName(u) },
+                  {
+                    label: "Access",
+                    value:
+                      u.is_owner || u.is_approved ? (
+                        <Badge variant="outline" className="border-emerald-500/40 text-emerald-500">
+                          {u.is_owner ? "Always on" : "Approved"}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="border-amber-500/40 text-amber-500">
+                          Pending
+                        </Badge>
+                      ),
+                  },
+                  {
+                    label: "Role",
+                    value: u.is_owner ? (
+                      <Badge className="gap-1">
+                        <Crown className="size-3" />
+                        Owner
+                      </Badge>
+                    ) : u.is_admin ? (
+                      <Badge className="gap-1">
+                        <ShieldCheck className="size-3" />
+                        Admin
+                      </Badge>
+                    ) : (
+                      "User"
+                    ),
+                  },
+                  { label: "Email", value: u.email_id },
+                  { label: "Cars", value: u.car_count.toLocaleString() },
+                  { label: "Joined", value: formatDate(u.created_at) },
+                  { label: "Last seen", value: formatDate(u.last_sign_in) },
+                  {
+                    label: "Sign-in",
+                    value: u.auth_uid ? "Linked" : "Not linked yet",
+                  },
+                ]}
+                actions={
+                  u.is_owner ? null : (
+                    <>
+                      <RecordAction
+                        label="Change email address"
+                        disabled={busy}
+                        onClick={() => {
+                          setEditing(u);
+                          setNewEmail(u.email_id);
+                        }}
+                      >
+                        <Mail className="size-4" />
+                      </RecordAction>
+                      <RecordAction
+                        label="Send password reset link"
+                        disabled={busy}
+                        onClick={() => void sendReset(u)}
+                      >
+                        {busy ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <KeyRound className="size-4" />
+                        )}
+                      </RecordAction>
+                      {isOwner ? (
+                        <RecordAction
+                          label="Delete account"
+                          tone="destructive"
+                          disabled={busy || isSelf}
+                          onClick={() => {
+                            setDeleting(u);
+                            setDeleteConfirm("");
+                          }}
+                        >
+                          <Trash2 className="size-4" />
+                        </RecordAction>
+                      ) : null}
+                    </>
+                  )
+                }
+                footer={
+                  u.is_owner ? (
+                    <p className="text-xs text-muted-foreground">
+                      Owner account — cannot be changed
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        disabled={busy || isSelf}
+                        onClick={() => void setApproval(u, !u.is_approved)}
+                      >
+                        {u.is_approved ? (
+                          <>
+                            <UserX className="size-3.5" />
+                            Suspend
+                          </>
+                        ) : (
+                          <>
+                            <UserCheck className="size-3.5" />
+                            Approve
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="flex-1"
+                        disabled={busy || isSelf}
+                        onClick={() => void setAdminRole(u, !u.is_admin)}
+                      >
+                        {u.is_admin ? "Revoke admin" : "Make admin"}
+                      </Button>
+                    </div>
+                  )
+                }
+              />
+            );
+          })
+        )}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-lg border border-border md:block">
         <Table>
           <TableHeader>
             <TableRow>

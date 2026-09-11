@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
+  Eye,
   Pencil,
   SlidersHorizontal,
   Sparkles,
@@ -13,7 +14,8 @@ import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
 import { filterRows } from "@/lib/search";
-import { StatusPill, CostCell } from "@/components/cars-table";
+import { StatusPill, CostCell, CarBadges, carRecordFields } from "@/components/cars-table";
+import { MobileRecordCard, RecordAction } from "@/components/mobile-record-card";
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog, DeleteCarDialog } from "@/components/car-form-dialog";
@@ -557,9 +559,49 @@ function InventoryPage() {
           </div>
         ) : (
           <div ref={bodyRef} onScroll={loadMoreOnScroll} className="min-h-0 flex-1 overflow-auto">
+            {/* Phones get the same rows as cards: nine columns on a 375px screen
+                is a table you read by dragging it sideways. */}
+            <div className="space-y-2 p-2 md:hidden">
+              {shown.map((r, i) => (
+                <MobileRecordCard
+                  key={(r.id || "") + i}
+                  id={
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate">{r.carNumber || r.id}</span>
+                      <CarBadges car={r} />
+                    </span>
+                  }
+                  onOpen={() => openDrawer(r)}
+                  fields={carRecordFields(r)}
+                  actions={
+                    <>
+                      <RecordAction label="View car" onClick={() => openDrawer(r)}>
+                        <Eye className="size-4" />
+                      </RecordAction>
+                      <RecordAction label="Edit car" onClick={() => setEditCar(r)}>
+                        <Pencil className="size-4" />
+                      </RecordAction>
+                      <RecordAction
+                        label="Delete car"
+                        tone="destructive"
+                        onClick={() => setDeleteCar(r)}
+                      >
+                        <Trash2 className="size-4" />
+                      </RecordAction>
+                    </>
+                  }
+                />
+              ))}
+              {shown.length === 0 && (
+                <p className="p-8 text-center text-sm text-muted-foreground">
+                  No cars match those filters.
+                </p>
+              )}
+            </div>
+
             {/* The detailed view: every field, no thumbnail. Sorting lives in
                 the header dropdown so it works in grid view too. */}
-            <table className="w-full min-w-[1080px] table-fixed text-sm">
+            <table className="hidden w-full min-w-[1080px] table-fixed text-sm md:table">
               <colgroup>
                 <col className="w-[18rem]" />
                 <col className="w-[7rem]" />

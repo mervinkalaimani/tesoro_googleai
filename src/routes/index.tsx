@@ -25,6 +25,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { trackingUrlFor } from "@/lib/tracking";
+import { cn } from "@/lib/utils";
 
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
@@ -250,13 +251,16 @@ function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
+    <div className="mx-auto min-w-0 max-w-[1600px] space-y-2.5 overflow-x-hidden p-2.5 md:space-y-4 md:p-6">
       {/* A release landing this week now lives behind the bell in the top bar,
           with the rest of what expires — it followed you off the dashboard
           rather than waiting there to be noticed. */}
       {kpis.length > 0 && (
-        <section className="grid grid-cols-2 gap-3 pb-1 md:flex md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
-          {kpis.map((k) => (
+        // Six columns on a phone so three tiles fit a row, and the leftovers can
+        // stretch to fill the last one — a row of two half-width tiles, or one
+        // across the whole width, rather than a hole where the grid ran out.
+        <section className="grid grid-cols-6 gap-1.5 pb-1 md:flex md:gap-3 md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
+          {kpis.map((k, i) => (
             <Kpi
               key={k.key}
               icon={k.icon}
@@ -264,6 +268,7 @@ function DashboardPage() {
               value={k.value}
               tone={k.tone}
               status={k.status}
+              className={bentoSpan(i, kpis.length)}
             />
           ))}
         </section>
@@ -284,12 +289,27 @@ function DashboardPage() {
   );
 }
 
+/**
+ * Where tile `i` of `total` sits on the phone's six-column grid.
+ *
+ * Three to a row while there is a full row left; the one or two that remain
+ * share the last row between them. Seven statuses used to leave a gap the width
+ * of a tile at the bottom of the band.
+ */
+function bentoSpan(i: number, total: number): string {
+  const fullRows = Math.floor(total / 3) * 3;
+  if (i < fullRows) return "col-span-2";
+  const rest = total - fullRows;
+  return rest === 1 ? "col-span-6" : "col-span-3";
+}
+
 function Kpi({
   icon,
   label,
   value,
   tone,
   status,
+  className,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -297,6 +317,7 @@ function Kpi({
   tone: string;
   /** Status this tile represents; clicking opens inventory filtered to it. */
   status?: string;
+  className?: string;
 }) {
   const toneMap: Record<string, string> = {
     emerald: "bg-emerald-500/15 text-emerald-500",
@@ -310,21 +331,28 @@ function Kpi({
   };
   const body = (
     <>
-      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground md:gap-2 md:text-xs">
         <span
-          className={`grid size-6 place-items-center rounded-md ${toneMap[tone] ?? "bg-muted"}`}
+          className={`grid size-5 shrink-0 place-items-center rounded md:size-6 md:rounded-md ${
+            toneMap[tone] ?? "bg-muted"
+          }`}
         >
           {icon}
         </span>
-        {label}
+        <span className="truncate">{label}</span>
       </div>
-      <div className="mt-2 text-display text-3xl font-semibold tabular-nums">
+      <div className="text-display mt-0.5 text-lg font-semibold leading-tight tabular-nums md:mt-2 md:text-3xl">
         {typeof value === "number" ? value.toLocaleString() : value}
       </div>
     </>
   );
 
-  const shell = "card-elevated flex min-w-0 flex-col overflow-hidden p-4 text-left";
+  // Tighter on a phone: the band is a glance, not the page. Three short tiles a
+  // row at this size take about a fifth of the screen instead of half of it.
+  const shell = cn(
+    "card-elevated flex min-w-0 flex-col overflow-hidden p-2 text-left md:p-4",
+    className,
+  );
 
   if (!status) return <div className={shell}>{body}</div>;
 
@@ -332,7 +360,7 @@ function Kpi({
     <Link
       to="/inventory"
       search={{ status }}
-      className={`${shell} transition-colors hover:border-primary/40 hover:bg-muted/40`}
+      className={cn(shell, "transition-colors hover:border-primary/40 hover:bg-muted/40")}
       title={`Show ${label.toLowerCase()} cars in inventory`}
     >
       {body}
@@ -468,10 +496,10 @@ function TransitTracker({
               setBatchOpen(true);
             }}
             className="gap-1.5 shrink-0 border-amber-500/40 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 font-medium"
-            title="Batch update status, expected date, and transit notes by shipping ID"
+            title="Update an order — status, expected date and transit notes across every car in it"
           >
             <Truck className="size-3.5" />
-            <span>Update Shipping ID</span>
+            <span>Update Order</span>
             {activeShippingIds.length > 0 && (
               <span className="rounded-full bg-amber-500/20 px-1.5 py-0.2 font-mono text-[10px]">
                 {activeShippingIds.length}
@@ -601,7 +629,7 @@ function TransitTracker({
                               setBatchOpen(true);
                             }}
                             className="inline-flex items-center gap-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 font-mono text-xs font-semibold text-amber-400 hover:bg-amber-500/20 hover:text-amber-300 transition-colors"
-                            title={`Click to update batch ${s.shippingId}`}
+                            title={`View order ${s.shippingId}`}
                           >
                             <Truck className="size-3 shrink-0" />
                             <span>{s.shippingId}</span>

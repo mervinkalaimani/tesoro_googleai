@@ -196,24 +196,9 @@ function FavouritesPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      <div className="card-elevated flex flex-wrap items-start justify-between gap-3 bg-gradient-to-r from-amber-500/10 to-transparent p-4">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-amber-500 text-black">
-            <Star className="size-5 fill-black" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-display text-xl font-semibold">Crown jewel gallery</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Hand-picked pinnacle castings, chase variations, and the highest appreciating grails
-              in your collection.
-            </p>
-          </div>
-        </div>
-        <span className="shrink-0 rounded-full border border-border bg-muted/40 px-3 py-1 font-mono text-xs">
-          {rows.length} standout model{rows.length === 1 ? "" : "s"}
-        </span>
-      </div>
-
+      {/* The gallery banner is gone: a page of favourites does not need a card
+          at the top telling you it is a page of favourites. The counts it
+          carried are in the stats below and beside the segment control. */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Portfolio value"
@@ -244,14 +229,19 @@ function FavouritesPage() {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <SegmentControl
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: "favourite", label: "Favourites" },
-            { value: "chase", label: "Chase" },
-          ]}
-        />
+        <div className="flex min-w-0 items-center gap-2">
+          <SegmentControl
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "favourite", label: "Favourites" },
+              { value: "chase", label: "Chase" },
+            ]}
+          />
+          <span className="shrink-0 text-xs text-muted-foreground">
+            {rows.length} model{rows.length === 1 ? "" : "s"}
+          </span>
+        </div>
         <ViewToggle value={view} onChange={setView} />
       </div>
 

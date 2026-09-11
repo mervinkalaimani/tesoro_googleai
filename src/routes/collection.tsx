@@ -247,8 +247,8 @@ function CollectionPage() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <div className="card-elevated p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-display text-xl font-semibold">Collection</h1>
             {/* No collection-wide total here: it is the sidebar's figure, where
                 it can be hidden, and per-group values are still on each row. */}
@@ -256,8 +256,11 @@ function CollectionPage() {
               {groups.length} {group} · {filtered.length.toLocaleString()} cars
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {/* min-w-0 so the seven-option control below can scroll instead of
+              stretching this row past the edge of the card. */}
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
             <SegmentControl
+              className="w-full md:w-auto"
               value={group}
               onChange={(v) => {
                 setGroup(v);

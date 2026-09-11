@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
@@ -73,13 +74,25 @@ function applySuggestion(query: string, insert: string, kind: "field" | "value")
   return head + prefix + kept + insert;
 }
 
-export function SearchBox() {
+export function SearchBox({
+  autoFocus = false,
+  className,
+}: {
+  autoFocus?: boolean;
+  className?: string;
+}) {
   const { query, setQuery } = useApp();
   const cars = useCars();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  /**
+   * Set when focus is being restored by something that is not a request to
+   * search — clearing the box. Without it the caret lands back in the input,
+   * onFocus fires, and the suggestion list the X just dismissed reopens.
+   */
+  const skipFocusOpen = useRef(false);
   const isMobile = useIsMobile();
   // Too little room on a phone for a rotating example to read as anything but
   // noise, so the hint stays a plain "Search" there.
@@ -113,12 +126,19 @@ export function SearchBox() {
   };
 
   return (
-    <div ref={wrapRef} className="relative ml-2 flex-1 max-w-2xl">
+    <div ref={wrapRef} className={cn("relative ml-2 max-w-2xl flex-1", className)}>
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         ref={inputRef}
+        autoFocus={autoFocus}
         value={query}
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          if (skipFocusOpen.current) {
+            skipFocusOpen.current = false;
+            return;
+          }
+          setOpen(true);
+        }}
         onChange={(e) => {
           setQuery(e.target.value);
           setOpen(true);
@@ -167,6 +187,8 @@ export function SearchBox() {
           onClick={() => {
             setQuery("");
             setOpen(false);
+            // The caret goes back in the box, the suggestions stay shut.
+            skipFocusOpen.current = true;
             inputRef.current?.focus();
           }}
           className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

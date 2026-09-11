@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Sun, Moon, MonitorSmartphone, Plus, Download, Undo2, FileText } from "lucide-react";
+import { Plus, Download, Undo2, FileText, Search, X } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useApp } from "@/lib/store";
@@ -12,24 +12,20 @@ import { ExportDialog } from "@/components/export-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { SearchBox } from "@/components/search-box";
 import { NotificationCenter } from "@/components/notification-center";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 import { downloadCsv, generateDiecastCsvTemplate } from "@/lib/csv";
 import { BULK_DRAFT_KEY, CAR_DRAFT_KEY, hasDraft } from "@/lib/form-draft";
 
-const THEME_LABEL = {
-  light: "Theme: light. Switch to dark.",
-  dark: "Theme: dark. Switch to auto.",
-  system: "Theme: auto. Switch to light.",
-} as const;
-
 export function TopBar() {
-  const { theme, themePreference, toggleTheme, query } = useApp();
+  const { query } = useApp();
   const { undo, undoLabel } = useCarsUndo();
   const cars = useCars();
   const scope = useExportScope();
   const { profile } = useAuth();
+  const isMobile = useIsMobile();
   // A page with a list of its own wins; anywhere else it is the collection, cut
   // down by the search box that sits right beside this button.
   const allMatching = useMemo(() => filterRows(cars, query), [cars, query]);
@@ -40,6 +36,7 @@ export function TopBar() {
   const [bulkSeed, setBulkSeed] = useState<Diecast[] | undefined>(undefined);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [pendingDraft, setPendingDraft] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // A tab that was evicted mid-form comes back to the inventory, not to the
   // dialog, so the rescued draft needs saying so — otherwise it is safe but
@@ -56,16 +53,46 @@ export function TopBar() {
     };
   }, [addOpen, bulkOpen]);
 
+  // On a phone the bar cannot hold a search field and the actions at once, so
+  // search is an icon until it is wanted — then it takes the whole bar and the
+  // actions step aside. Everything is on screen at all times from sm: up.
+  if (searchOpen && isMobile) {
+    return (
+      <header className="sticky top-0 z-20 flex h-14 items-center gap-1 border-b border-border bg-background/80 px-3 backdrop-blur">
+        <SearchBox autoFocus className="ml-0" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={() => setSearchOpen(false)}
+          aria-label="Close search"
+        >
+          <X className="size-4" />
+        </Button>
+      </header>
+    );
+  }
+
   return (
     <header className="sticky top-0 z-20 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
       <SidebarTrigger />
-      <SearchBox />
+      <SearchBox className="hidden md:block" />
       {/* No Refresh button or "Updated …" stamp: CarsProvider re-reads Supabase
           every 15s on its own, and local edits are applied optimistically, so
           there was never anything for a manual refresh to reveal. */}
       {/* Bulk add and CSV upload are reached from inside the Add car dialog,
           keeping one entry point for getting cars into the collection. */}
       <div className="ml-auto flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="md:hidden"
+          onClick={() => setSearchOpen(true)}
+          aria-label="Search cars"
+          title="Search cars"
+        >
+          <Search className="size-4" />
+        </Button>
         {/* Always rendered, disabled when there is nothing to reverse: a button
             that appears only once you have made a mistake is one nobody knows
             about until they need it and cannot find it. */}
@@ -128,21 +155,9 @@ export function TopBar() {
             pre-order launch banner used to sit on the dashboard, where it was
             only seen by someone already looking at the dashboard. */}
         <NotificationCenter />
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          aria-label={THEME_LABEL[themePreference]}
-          title={THEME_LABEL[themePreference]}
-        >
-          {themePreference === "system" ? (
-            <MonitorSmartphone className="size-4" />
-          ) : theme === "dark" ? (
-            <Sun className="size-4" />
-          ) : (
-            <Moon className="size-4" />
-          )}
-        </Button>
+        {/* The theme toggle lived here too, competing for a bar that had no
+            room for a search field. It is a preference, and preferences are in
+            Settings → General & Display. */}
       </div>
       <CarFormDialog
         open={addOpen}

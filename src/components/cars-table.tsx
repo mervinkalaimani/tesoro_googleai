@@ -1,8 +1,9 @@
 import type { Diecast } from "@/lib/types";
 import { inr } from "@/lib/format";
-import { Flame, Star } from "lucide-react";
+import { Eye, Flame, Star } from "lucide-react";
 
 import { useCarDrawer } from "@/components/car-details-drawer";
+import { MobileRecordCard, RecordAction, type RecordField } from "@/components/mobile-record-card";
 
 const STATUS_STYLES: Record<string, string> = {
   available: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
@@ -113,6 +114,20 @@ export function CarBadges({
   return <div className="flex items-center gap-1.5">{items}</div>;
 }
 
+/** The same car as a stack of fields, for phones. */
+export function carRecordFields(r: Diecast): RecordField[] {
+  return [
+    { label: "Name", value: r.name || "—" },
+    { label: "Status", value: <StatusPill status={r.status} /> },
+    { label: "Cost", value: <CostCell car={r} /> },
+    { label: "Brand", value: r.brand || "—" },
+    { label: "Assortment", value: r.assortment || "—" },
+    { label: "Series", value: [r.series, r.subSeries].filter(Boolean).join(" · ") || "—" },
+    { label: "Colour", value: r.colour || "—" },
+    { label: "Seller", value: r.seller || "—" },
+  ];
+}
+
 /** Shared table used by Favourites / Collection expansion / Duplicates expansion. */
 export function CarsTable({
   rows,
@@ -125,77 +140,109 @@ export function CarsTable({
 }) {
   const { open } = useCarDrawer();
   return (
-    <div className="h-full w-full overflow-auto">
-      <table className="w-full table-fixed text-sm">
-        <colgroup>
-          <col />
-          <col className="w-[9rem] md:w-[11rem]" />
-          <col className="hidden w-[8rem] md:table-column" />
-          <col className="hidden w-[9rem] md:table-column" />
-          <col className="w-[7rem] md:w-[8rem]" />
-          <col className="w-[7rem] md:w-[8rem]" />
-          {showBadgeCol && <col className="w-[7.5rem]" />}
-        </colgroup>
-        <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2.5 font-medium md:px-4">Model</th>
-            <th className="px-3 py-2.5 font-medium md:px-4">Brand / Assortment</th>
-            <th className="hidden px-4 py-2.5 font-medium md:table-cell">Colour</th>
-            <th className="hidden px-4 py-2.5 font-medium md:table-cell">Seller</th>
-            <th className="px-3 py-2.5 text-right font-medium md:px-4">Cost</th>
-            <th className="px-3 py-2.5 font-medium md:px-4">Status</th>
-            {showBadgeCol && <th className="px-3 py-2.5 font-medium md:px-4"></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => {
-            const pay = paymentStatusText(r);
-            return (
-              <tr
-                key={(r.id || "") + i}
-                onClick={() => open(r)}
-                className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
-              >
-                <td className="px-3 py-2.5 md:px-4">
-                  <div className="truncate font-medium">{r.name || "—"}</div>
-                  <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
-                </td>
-                <td className="px-3 py-2.5 md:px-4">
-                  <div className="truncate">{r.brand || "—"}</div>
-                  <div className="truncate text-xs text-muted-foreground">{r.assortment || ""}</div>
-                </td>
-                <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
-                  {r.colour || "—"}
-                </td>
-                <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
-                  {r.seller || "—"}
-                </td>
-                <td className="px-3 py-2.5 md:px-4">
-                  <CostCell car={r} />
-                </td>
-                <td className="px-3 py-2.5 md:px-4">
-                  <StatusPill status={r.status} />
-                  {pay && (
-                    <div className="mt-1 truncate text-[11px] text-muted-foreground">{pay}</div>
-                  )}
-                </td>
-                {showBadgeCol && (
-                  <td className="px-3 py-2.5 md:px-4">
-                    <CarBadges car={r} primary={badgePrimary} />
-                  </td>
-                )}
-              </tr>
-            );
-          })}
-          {rows.length === 0 && (
+    <>
+      {/* Phones get cards rather than a table that has to be dragged sideways. */}
+      <div className="space-y-2 p-2 md:hidden">
+        {rows.map((r, i) => (
+          <MobileRecordCard
+            key={(r.id || "") + i}
+            id={
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate">{r.carNumber || r.id}</span>
+                <CarBadges car={r} primary={badgePrimary} />
+              </span>
+            }
+            onOpen={() => open(r)}
+            fields={carRecordFields(r)}
+            actions={
+              <RecordAction label="View car" onClick={() => open(r)}>
+                <Eye className="size-4" />
+              </RecordAction>
+            }
+          />
+        ))}
+        {rows.length === 0 && (
+          <p className="p-8 text-center text-sm text-muted-foreground">No cars to show.</p>
+        )}
+      </div>
+
+      <div className="hidden h-full w-full overflow-auto md:block">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col />
+            <col className="w-[9rem] md:w-[11rem]" />
+            <col className="hidden w-[8rem] md:table-column" />
+            <col className="hidden w-[9rem] md:table-column" />
+            <col className="w-[7rem] md:w-[8rem]" />
+            <col className="w-[7rem] md:w-[8rem]" />
+            {showBadgeCol && <col className="w-[7.5rem]" />}
+          </colgroup>
+          <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <td colSpan={showBadgeCol ? 7 : 6} className="p-8 text-center text-muted-foreground">
-                No cars to show.
-              </td>
+              <th className="px-3 py-2.5 font-medium md:px-4">Model</th>
+              <th className="px-3 py-2.5 font-medium md:px-4">Brand / Assortment</th>
+              <th className="hidden px-4 py-2.5 font-medium md:table-cell">Colour</th>
+              <th className="hidden px-4 py-2.5 font-medium md:table-cell">Seller</th>
+              <th className="px-3 py-2.5 text-right font-medium md:px-4">Cost</th>
+              <th className="px-3 py-2.5 font-medium md:px-4">Status</th>
+              {showBadgeCol && <th className="px-3 py-2.5 font-medium md:px-4"></th>}
             </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => {
+              const pay = paymentStatusText(r);
+              return (
+                <tr
+                  key={(r.id || "") + i}
+                  onClick={() => open(r)}
+                  className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
+                >
+                  <td className="px-3 py-2.5 md:px-4">
+                    <div className="truncate font-medium">{r.name || "—"}</div>
+                    <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
+                  </td>
+                  <td className="px-3 py-2.5 md:px-4">
+                    <div className="truncate">{r.brand || "—"}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {r.assortment || ""}
+                    </div>
+                  </td>
+                  <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
+                    {r.colour || "—"}
+                  </td>
+                  <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
+                    {r.seller || "—"}
+                  </td>
+                  <td className="px-3 py-2.5 md:px-4">
+                    <CostCell car={r} />
+                  </td>
+                  <td className="px-3 py-2.5 md:px-4">
+                    <StatusPill status={r.status} />
+                    {pay && (
+                      <div className="mt-1 truncate text-[11px] text-muted-foreground">{pay}</div>
+                    )}
+                  </td>
+                  {showBadgeCol && (
+                    <td className="px-3 py-2.5 md:px-4">
+                      <CarBadges car={r} primary={badgePrimary} />
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+            {rows.length === 0 && (
+              <tr>
+                <td
+                  colSpan={showBadgeCol ? 7 : 6}
+                  className="p-8 text-center text-muted-foreground"
+                >
+                  No cars to show.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }

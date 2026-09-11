@@ -81,12 +81,19 @@ export function IsoSuggestions({
         {matches.map(({ car, matched }) => (
           <li
             key={car.id}
-            className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/60 bg-background/60 px-2.5 py-1.5"
+            className="flex flex-col gap-1.5 rounded-md border border-border/60 bg-background/60 px-2.5 py-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
           >
+            {/* Everything about the car stacks under its name. Beside it, on a
+                phone, the name had about half a line to itself. */}
             <div className="min-w-0">
               <div className="truncate text-sm font-medium">
                 {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
               </div>
+              {[car.brand, car.series].filter(Boolean).length > 0 && (
+                <div className="truncate text-[11px] text-muted-foreground">
+                  {[car.brand, car.series].filter(Boolean).join(" · ")}
+                </div>
+              )}
               <div className="truncate text-[11px] text-muted-foreground">
                 Matches on {matched.map((f) => FIELD_LABEL[f]).join(", ")}
               </div>
@@ -95,7 +102,7 @@ export function IsoSuggestions({
               type="button"
               size="sm"
               variant="ghost"
-              className="h-7 shrink-0 text-sky-500 hover:bg-sky-500/10 hover:text-sky-400"
+              className="h-7 shrink-0 self-end text-sky-500 hover:bg-sky-500/10 hover:text-sky-400 sm:self-auto"
               onClick={() => onUse(car)}
             >
               Update status

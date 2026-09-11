@@ -557,15 +557,20 @@ export function ShippingBatchDialog({
                           key={car.id}
                           type="button"
                           onClick={() => setPendingCars((prev) => [...prev, car])}
-                          className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1 text-left text-[11px] hover:bg-muted"
+                          className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-[11px] hover:bg-muted"
                         >
-                          <span className="min-w-0 truncate">
-                            <span className="font-medium text-foreground">
+                          {/* Name on its own line, brand and series under it:
+                              side by side this row was wider than a phone and
+                              the name was the half that got truncated. */}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium text-foreground">
                               {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
                             </span>
-                            <span className="ml-1.5 text-muted-foreground">
-                              {[car.brand, car.series].filter(Boolean).join(" · ")}
-                            </span>
+                            {[car.brand, car.series].filter(Boolean).length > 0 && (
+                              <span className="block truncate text-[10px] text-muted-foreground">
+                                {[car.brand, car.series].filter(Boolean).join(" · ")}
+                              </span>
+                            )}
                           </span>
                           <Plus className="size-3 shrink-0 text-muted-foreground" />
                         </button>

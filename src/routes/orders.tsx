@@ -354,7 +354,7 @@ function OrdersPage() {
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-display text-xl font-semibold">Shipments &amp; order batches</h1>
+          <h1 className="text-display text-xl font-semibold">Shipments &amp; orders</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Carrier references, delivery timelines, and incoming castings — {shipments.length}{" "}
             shipment
