@@ -7,12 +7,10 @@ import {
   Truck,
   Copy,
   Table,
-  Settings,
   Eye,
   EyeOff,
   CalendarDays,
   ShoppingBag,
-  ShieldCheck,
   Database,
 } from "lucide-react";
 import { filterRows } from "@/lib/search";
@@ -23,7 +21,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -36,6 +33,15 @@ import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 
+/**
+ * Where the collection is looked at, and nothing else.
+ *
+ * Settings and Admin used to end this list. They are not places you browse to —
+ * they are the account, and the account is behind the avatar in the top bar
+ * now, where every other application on the machine keeps it. Keeping a second
+ * copy here meant two doors to the same room and no way to tell which was
+ * canonical.
+ */
 const NAV = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Favourites", url: "/favourites", icon: Star },
@@ -45,17 +51,13 @@ const NAV = [
   { title: "Habits", url: "/habits", icon: CalendarDays },
   { title: "Duplicates", url: "/duplicates", icon: Copy },
   { title: "Inventory", url: "/inventory", icon: Table },
-  { title: "Settings", url: "/settings", icon: Settings },
 ] as const;
-
-const ADMIN_NAV = { title: "Admin", url: "/admin", icon: ShieldCheck } as const;
 
 export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, query } = useApp();
-  const { isAdmin, isOwner, isGuest } = useAuth();
+  const { isOwner, isGuest } = useAuth();
   const { source } = useCarsSource();
-  const navItems = useMemo(() => (isAdmin ? [...NAV, ADMIN_NAV] : [...NAV]), [isAdmin]);
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
   const data = useMemo(
     () => allMatching.filter((r) => (r.status || "").trim().toLowerCase() !== "iso"),
@@ -75,24 +77,36 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-1 py-2">
-          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-            <Boxes className="size-5" />
+      {/* h-14 exactly, matching the top bar: the two rules either side of the
+          sidebar's edge are one line across the whole application, and a header
+          sized by its own contents lined up with nothing. */}
+      <SidebarHeader className="h-14 justify-center border-b border-sidebar-border">
+        <div className="flex items-center gap-2 px-1">
+          {/* The selected-item tint behind the mark — the same fill a navigation
+              row takes when you are on it, so the logo reads as part of the rail
+              rather than as a button that does something. */}
+          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-sidebar-accent">
+            {/* The mark is drawn white-on-nothing, for the dark rail it was made
+                for. The selected tint in light mode is nearly white, so it is
+                inverted there — black diamond, mid-grey wings — rather than
+                disappearing into its own background. */}
+            <img src="/tesoro_in_app_icon.svg" alt="" className="size-7 invert dark:invert-0" />
           </div>
-          <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-            <div className="text-display text-base font-semibold leading-tight">Tesoro</div>
-            <div className="truncate text-xs text-muted-foreground">Personal collection</div>
+          {/* "Personal collection" said nothing the rest of the screen does not
+              — a subtitle under a one-word name. */}
+          <div className="text-display min-w-0 truncate text-base font-semibold leading-tight group-data-[collapsible=icon]:hidden">
+            Tesoro
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent>
+        {/* No "Navigate" label. One group, and every item in it is a page —
+            a heading over the only list on screen names nothing. */}
         <SidebarGroup>
-          <SidebarGroupLabel>Navigate</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => {
+              {NAV.map((item) => {
                 const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.url}>

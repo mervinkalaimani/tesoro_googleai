@@ -112,14 +112,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
       },
-      // The gold diamond, in the order browsers should prefer it: the SVG
-      // scales to any tab or bookmark bar, the .ico stays for the ones that
-      // still want one, and the PNG is what iOS uses for a home-screen
-      // bookmark — it will not take an SVG, and without it Safari saves a
-      // screenshot of the page instead.
-      { rel: "icon", href: "/icon.svg", type: "image/svg+xml" },
-      { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+      // Two marks, because a tab and a home screen are not the same surface.
+      // The browser icon is the bare diamond on nothing: a tab strip and a
+      // bookmark bar supply their own background, and a tile of our own colour
+      // sitting in one reads as a sticker. The app icon carries its own dark
+      // ground, because an installed icon is placed on a wallpaper nobody here
+      // chooses and has to hold together against any of them.
+      //
+      // SVG first for anything that will take one, then the PNG for the rest.
+      // apple-touch-icon has to be a PNG — Safari will not take an SVG, and
+      // without one it saves a screenshot of the page instead.
+      { rel: "icon", href: "/tesoro_browser_icon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/tesoro_browser_icon.png", type: "image/png", sizes: "220x220" },
+      { rel: "apple-touch-icon", href: "/tesoro_app_icon.png", sizes: "250x250" },
       { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
