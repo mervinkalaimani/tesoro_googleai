@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent, type ReactElement } from "react";
-import { ArrowLeft, Boxes, Check, Loader2, X } from "lucide-react";
+import { ArrowLeft, Check, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -255,8 +255,12 @@ function LoginPage() {
     <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <div className="grid size-12 place-items-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30">
-            <Boxes className="size-6" />
+          {/* The same mark, at the same size, on the same ground as the loading
+              screen this page arrives from — a signed-out visit renders the
+              splash and then redirects here, so anything different would read
+              as two applications handing off to each other. */}
+          <div className="grid size-16 place-items-center rounded-2xl bg-[#1b1b1b] shadow-lg shadow-black/25">
+            <img src="/tesoro_app_icon.svg" alt="" className="w-9" />
           </div>
           <h1 className="text-display mt-4 text-2xl font-semibold tracking-tight">Tesoro</h1>
           <p className="mt-1 text-sm text-muted-foreground">
