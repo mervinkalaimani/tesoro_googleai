@@ -14,7 +14,15 @@ import { createFileRoute } from "@tanstack/react-router";
  */
 
 const ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/models";
-const DEFAULT_MODEL = "gemini-2.5-flash";
+
+/**
+ * Google retires these out from under you: 2.5-flash stopped accepting new keys
+ * and said so in the response, which is the whole reason the provider's own
+ * error text is passed through to the dialog rather than replaced with
+ * something friendlier. When it happens again, GEMINI_MODEL overrides this
+ * without touching code — the message names its own replacement.
+ */
+const DEFAULT_MODEL = "gemini-3.6-flash";
 
 /** Roughly 6MB of base64, which is about 4.5MB of JPEG. */
 const MAX_BASE64 = 6_000_000;
@@ -166,8 +174,11 @@ async function handler({ request }: { request: Request }) {
 
   if (!res.ok) {
     // The provider's own message, which is usually the useful one — a bad key,
-    // a quota, a model name that has moved on.
-    return json({ error: payload?.error?.message || `Scanning failed (${res.status}).` }, 502);
+    // a quota, a model name that has moved on. Tagged with the model actually
+    // used, because "this model is no longer available" is only actionable if
+    // you know which one was asked for and whether GEMINI_MODEL set it.
+    const detail = payload?.error?.message || `Scanning failed (${res.status}).`;
+    return json({ error: `${detail} (model: ${model})` }, 502);
   }
 
   const text = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
