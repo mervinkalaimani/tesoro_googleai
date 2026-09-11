@@ -367,7 +367,7 @@ export function ShippingBatchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border-border bg-background text-foreground shadow-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-background text-foreground shadow-2xl sm:max-w-2xl sm:rounded-2xl">
         <DialogHeader className="space-y-1 text-left">
           <div className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">

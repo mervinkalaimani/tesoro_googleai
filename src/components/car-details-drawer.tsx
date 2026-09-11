@@ -1,12 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { Car, Flame, Loader2, Pencil, Star, Trash2 } from "lucide-react";
+import { Car, Flame, Loader2, Pencil, Star } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { findCarImage } from "@/lib/car-image";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { TrackingLink } from "@/components/tracking-link";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { StatusPill } from "@/components/status-pill";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
@@ -48,10 +49,9 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   const [batchShippingId, setBatchShippingId] = useState<string | null>(null);
   const [batchOpen, setBatchOpen] = useState(false);
   const [statusCar, setStatusCar] = useState<Diecast | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<Diecast | null>(null);
 
   const cars = useCars();
-  const { updateCar, deleteCar } = useCarsActions();
+  const { updateCar } = useCarsActions();
 
   // Find latest car state by ID
   const car = cars.find((c) => c.id === currentCarId) || null;
@@ -75,11 +75,12 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           if (!v) close();
         }}
       >
-        <DialogContent className="max-w-2xl sm:max-w-2xl border-border bg-background text-foreground shadow-2xl rounded-2xl p-5 sm:p-6 max-h-[92vh] overflow-y-auto [&>button]:hidden">
+        {/* The close button is the dialog's own now, and it shows on a desktop
+            only — a phone still pushes the sheet down. */}
+        <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl border-border bg-background p-5 text-foreground shadow-2xl sm:max-w-2xl sm:p-6">
           {car && (
             <CarPopupContent
               car={car}
-              onClose={close}
               onEdit={() => setEditCar(car)}
               onOpenShippingBatch={(sId) => {
                 setBatchShippingId(sId);
@@ -88,7 +89,6 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
               onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
               onToggleChase={() => updateCar({ ...car, chase: !car.chase })}
               onUpdateStatus={() => setStatusCar(car)}
-              onDelete={() => setPendingDelete(car)}
             />
           )}
         </DialogContent>
@@ -117,123 +117,26 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
         onOpenChange={setBatchOpen}
         initialShippingId={batchShippingId || ""}
       />
-
-      <DeleteCarDialog
-        car={pendingDelete}
-        onCancel={() => setPendingDelete(null)}
-        onConfirm={() => {
-          if (pendingDelete) deleteCar(pendingDelete.id);
-          setPendingDelete(null);
-          close();
-        }}
-      />
     </CarDrawerCtx.Provider>
-  );
-}
-
-/**
- * Deleting a car is not undoable, so it takes a deliberate typed phrase rather
- * than a single click on a native confirm.
- */
-function DeleteCarDialog({
-  car,
-  onCancel,
-  onConfirm,
-}: {
-  car: Diecast | null;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const [typed, setTyped] = useState("");
-
-  useEffect(() => {
-    setTyped("");
-  }, [car?.id]);
-
-  if (!car) return null;
-
-  const phrase = `delete ${(car.make || car.name || "car").trim()}`.toLowerCase();
-  const matches = typed.trim().toLowerCase() === phrase;
-
-  return (
-    <Dialog
-      open={Boolean(car)}
-      onOpenChange={(v) => {
-        if (!v) onCancel();
-      }}
-    >
-      <DialogContent className="max-w-md border-border bg-background text-foreground">
-        <DialogTitle className="text-lg font-semibold">Delete this car?</DialogTitle>
-        <DialogDescription className="text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">
-            {car.name || `${car.make} ${car.model}`}
-          </span>{" "}
-          {/* No longer "cannot be undone": the top bar's undo button puts the
-              car back, row and all. That holds until the page is reloaded,
-              which is the honest limit to state here. */}
-          will be removed from your collection. Undo brings it back, until you reload.
-        </DialogDescription>
-
-        <div className="space-y-2">
-          <p className="text-sm text-muted-foreground">
-            Type <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">{phrase}</code> to
-            confirm.
-          </p>
-          <Input
-            autoFocus
-            value={typed}
-            onChange={(e) => setTyped(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && matches) onConfirm();
-            }}
-            placeholder={phrase}
-            aria-label="Type the confirmation phrase"
-          />
-        </div>
-
-        <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-lg bg-muted px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted/70"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!matches}
-            onClick={onConfirm}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Trash2 className="size-4" />
-            Delete
-          </button>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 
 interface CarPopupContentProps {
   car: Diecast;
-  onClose: () => void;
   onEdit: () => void;
   onOpenShippingBatch: (shippingId: string) => void;
   onToggleFavourite: () => void;
   onToggleChase: () => void;
   onUpdateStatus: () => void;
-  onDelete: () => void;
 }
 
 function CarPopupContent({
   car,
-  onClose,
   onEdit,
   onOpenShippingBatch,
   onToggleFavourite,
   onToggleChase,
   onUpdateStatus,
-  onDelete,
 }: CarPopupContentProps) {
   const spent = Math.round(car.spent ?? 0);
   const mrp = Math.round(car.mrp ?? 0);
@@ -241,17 +144,6 @@ function CarPopupContent({
   // Only for the button's tooltip now — the dialog decides where the car
   // actually goes, and preselects the same next stage itself.
   const advanceTo = nextStatus(car.status);
-
-  const getStatusColor = (st: string) => {
-    const s = (st || "").toLowerCase();
-    if (s.includes("transit")) return "text-rose-400";
-    if (s.includes("available")) return "text-emerald-400";
-    if (s.includes("pre order")) return "text-amber-600 dark:text-amber-400";
-    if (s.includes("wait")) return "text-cyan-400";
-    if (s.includes("hold")) return "text-purple-400";
-    if (s.includes("iso")) return "text-blue-400";
-    return "text-foreground";
-  };
 
   const hasArrived = (car.status || "").trim().toLowerCase() === "available";
   const cleanTransitNotes = (car.transitInfo || "").trim();
@@ -266,78 +158,59 @@ function CarPopupContent({
         Diecast car specifications, status, logistics, and pricing details.
       </DialogDescription>
 
-      {/* TOP HEADER ROW
-          The car ID used to sit on the left of this row and the Close button on
-          the right. The ID is a catalogue number — it reads with the rest of the
-          detail below rather than as the headline — and closing is the X in the
-          dialog's own corner, or a push down on a phone. What is left is the
-          three things you do to a car from here. */}
-      <div className="flex items-center justify-end">
-        <div className="flex items-center gap-1.5">
-          {/* Chase toggle, sits left of the favourite star */}
-          <button
-            type="button"
-            onClick={onToggleChase}
-            title={car.chase ? "Unmark as chase" : "Mark as chase"}
-            aria-pressed={car.chase}
-            className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/40 transition-colors hover:bg-muted cursor-pointer"
-          >
-            <Flame
-              className={`size-4 ${
-                car.chase
-                  ? "fill-orange-400 text-orange-400"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            />
-          </button>
+      {/* TITLE, AT THE TOP
+          It used to sit under the photograph, which meant the first thing on
+          screen was a row of three icon buttons and the name of the car arrived
+          about 200px in. The status moves up here with it: it is the fact that
+          decides what you do next, and it reads as part of the headline rather
+          than as the sixth entry in a specification grid.
 
-          {/* Favorite Star Button */}
-          <button
-            type="button"
-            onClick={onToggleFavourite}
-            title={car.favourite ? "Remove from favourites" : "Add to favourites"}
-            className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/40 hover:bg-muted transition-colors cursor-pointer"
-          >
-            <Star
-              className={`size-4 ${
-                car.favourite
-                  ? "fill-amber-400 text-amber-400"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            />
-          </button>
-
-          {/* Edit Pencil Button */}
-          <button
-            type="button"
-            onClick={onEdit}
-            title="Edit car details"
-            className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-          >
-            <Pencil className="size-4" />
-          </button>
+          The right padding leaves the dialog's own close button its corner —
+          desktop only, since a phone pushes the sheet down instead. */}
+      <div className="flex items-start justify-between gap-3 sm:pr-8">
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
+          </h2>
+          {/* Make and model are already in the title, so the subtitle carries the
+              collection context instead. */}
+          <p className="mt-1 text-sm font-normal text-muted-foreground">
+            {[car.brand, car.series, car.subSeries].filter(Boolean).join(" • ") || "—"}
+          </p>
+        </div>
+        <div className="shrink-0 pt-1">
+          <StatusPill status={car.status} />
         </div>
       </div>
 
       {/* HERO IMAGE
-          Nothing is overlaid on it now. The scale badge sat in the corner of
-          every photograph to say "1:64", which is what almost every car in the
-          collection is; it reads beside the colour below, where a scale that is
-          not 1:64 is worth noticing. */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-muted/60 border border-border shadow-inner">
+          The scale badge that used to be overlaid here is gone — it said "1:64"
+          on almost every car in the collection, and it reads beside the colour
+          below where a scale that is *not* 1:64 is worth noticing. What is
+          overlaid now are the two flags, which are about this car as an object
+          and belong on the picture of it. */}
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-border bg-muted/60 shadow-inner">
         <HeroCarImage car={car} />
-      </div>
-
-      {/* CAR TITLE & SUBTITLE */}
-      <div className="pt-1">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-          {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
-        </h2>
-        {/* Make and model are already in the title, so the subtitle carries the
-            collection context instead. */}
-        <p className="mt-1 text-sm font-normal text-muted-foreground">
-          {[car.brand, car.series, car.subSeries].filter(Boolean).join(" • ") || "—"}
-        </p>
+        <div className="absolute right-2 top-2 flex items-center gap-1.5">
+          <FlagButton
+            onClick={onToggleChase}
+            pressed={Boolean(car.chase)}
+            title={car.chase ? "Unmark as chase" : "Mark as chase"}
+          >
+            <Flame
+              className={`size-4 ${car.chase ? "fill-orange-400 text-orange-400" : "text-white"}`}
+            />
+          </FlagButton>
+          <FlagButton
+            onClick={onToggleFavourite}
+            pressed={Boolean(car.favourite)}
+            title={car.favourite ? "Remove from favourites" : "Add to favourites"}
+          >
+            <Star
+              className={`size-4 ${car.favourite ? "fill-amber-400 text-amber-400" : "text-white"}`}
+            />
+          </FlagButton>
+        </div>
       </div>
 
       {/* PURCHASE
@@ -370,8 +243,8 @@ function CarPopupContent({
           <Spec label="Assortment" value={car.assortment} />
           <Spec label="Vehicle Type" value={car.type} />
           <Spec label="Car Number" value={car.carNumber} />
+          {/* Status is the pill beside the title now, so it is not repeated. */}
           <Spec label="Car ID" value={car.id} className="font-mono" />
-          <Spec label="Status" value={car.status} className={getStatusColor(car.status)} />
         </div>
       </Section>
 
@@ -379,26 +252,7 @@ function CarPopupContent({
           The courier, the number and the note appear only when the car actually
           has them. Six fields of "—" told you nothing except that this car was
           not shipped by anyone. */}
-      <Section
-        title="Shipping"
-        action={
-          // Was a one-click "Mark <next stage>", which moved the status and
-          // nothing else — so a car became Transit with no courier, or
-          // Available with no seller or price. It opens the status dialog
-          // instead: same one the ISO suggestions use, which asks for what the
-          // new status actually implies. The next stage is still what it
-          // defaults to.
-          <UpdateStatusButton
-            onClick={onUpdateStatus}
-            title={
-              advanceTo
-                ? `Update status — ${car.status || "unknown"} to ${advanceTo}`
-                : "Update status"
-            }
-            className="h-8 px-3 text-xs"
-          />
-        }
-      >
+      <Section title="Shipping">
         <div className="grid grid-cols-3 gap-x-3 gap-y-4 text-sm">
           <Spec label="Seller" value={car.seller} />
           <div className="min-w-0">
@@ -443,21 +297,56 @@ function CarPopupContent({
         <TrackingLink partner={car.deliveryPartner} trackingId={car.trackingId} className="mt-3" />
       </Section>
 
-      {/* BOTTOM ACTION
-          The Close button that sat beside this was the third way out of the
-          dialog — there is an X in the corner, and on a phone the whole sheet
-          can be pushed down. Delete takes the width instead of hiding in a
-          corner: it is the one thing down here, and a destructive action you
-          have to hunt for is a destructive action you hit by accident. */}
-      <button
-        type="button"
-        onClick={onDelete}
-        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-500 transition-colors hover:bg-rose-500/15 hover:text-rose-400"
-      >
-        <Trash2 className="size-4" />
-        <span>Delete from collection</span>
-      </button>
+      {/* BOTTOM ACTIONS
+          The two things you do to a car after reading about it, at the end of
+          the reading rather than scattered through it: the status button was
+          tucked into the Shipping heading and Edit was a pencil in a row of
+          icons at the very top.
+
+          Delete is not here any more. It was a full-width red button one tap
+          from simply looking at a car; it lives behind Edit now, where changing
+          the record is what you already came to do. */}
+      <div className="flex items-center gap-2 border-t border-border pt-3">
+        <Button variant="outline" onClick={onEdit} className="flex-1 gap-1.5">
+          <Pencil className="size-4" />
+          Edit
+        </Button>
+        <UpdateStatusButton
+          onClick={onUpdateStatus}
+          title={
+            advanceTo
+              ? `Update status — ${car.status || "unknown"} to ${advanceTo}`
+              : "Update status"
+          }
+          className="flex-1"
+        />
+      </div>
     </div>
+  );
+}
+
+/** A flag toggle sitting on top of the photograph, legible over either. */
+function FlagButton({
+  onClick,
+  pressed,
+  title,
+  children,
+}: {
+  onClick: () => void;
+  pressed: boolean;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-pressed={pressed}
+      className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-white/20 bg-black/40 backdrop-blur-sm transition-colors hover:bg-black/60"
+    >
+      {children}
+    </button>
   );
 }
 

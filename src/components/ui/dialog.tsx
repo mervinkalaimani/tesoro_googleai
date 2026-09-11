@@ -122,6 +122,13 @@ const DialogContent = React.forwardRef<
           "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
           "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
           // Tablet and up: the centred dialog it has always been.
+          //
+          // The default width is `sm:`-scoped because the centred layout is. A
+          // caller that wants a wider dialog has to say `sm:max-w-4xl` and not
+          // `max-w-4xl`: tailwind-merge only drops a class when the one
+          // replacing it carries the same modifier, so an unprefixed width
+          // survives the merge and then loses to this one inside the media
+          // query. Several dialogs asked for 5xl that way and rendered at 32rem.
           "sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:p-6",
           "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-2 sm:data-[state=open]:slide-in-from-bottom-2",
           className,
@@ -135,9 +142,14 @@ const DialogContent = React.forwardRef<
           className="mx-auto -mt-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 sm:hidden"
         />
         {children}
+        {/* Desktop only. On a phone the sheet is pushed down or the page behind
+            it tapped, and an X in the corner of a full-width sheet was a third
+            way out sitting where a thumb rests. It is still in the tree when
+            hidden — the swipe dismisses by clicking it, which works on a
+            display:none button and keeps every close on one path. */}
         <DialogPrimitive.Close
           ref={sheet.closeRef}
-          className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+          className="absolute right-4 top-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground max-sm:hidden"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>

@@ -532,7 +532,10 @@ export function BulkAddCarsDialog({
       }}
     >
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
+      {/* Near the full width of the screen on a desktop: this is a spreadsheet,
+          and every field moved out of "same for all" is another column. It had
+          been asking for 5xl and getting 32rem. */}
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[min(96rem,95vw)]">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary">

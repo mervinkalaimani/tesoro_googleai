@@ -16,6 +16,7 @@ import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { isoMatchesFor } from "@/lib/iso-match";
 import { IsoSuggestions } from "@/components/iso-suggestions";
+import { CarPhotoField } from "@/components/car-photo-field";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import {
   Dialog,
@@ -25,16 +26,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
@@ -48,7 +39,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ImageIcon,
   AlertCircle,
   Car,
   IndianRupee,
@@ -57,12 +47,10 @@ import {
   ChevronRight,
   ChevronLeft,
   Check,
-  Lock,
   Layers,
   Upload,
-  Info,
   RotateCcw,
-  ExternalLink,
+  Trash2,
 } from "lucide-react";
 
 const STATUS_OPTIONS = ["Available", "Pre Order", "Transit", "Waiting", "ISO", "On Hold"];
@@ -231,7 +219,8 @@ export function CarFormDialog({
   const cars = useCars();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
-  const [imgError, setImgError] = useState(false);
+  // A broken image is the photo field's business now — it shows the failure in
+  // the frame where the picture would have been.
   // Per-car: dismissing is "not this one", not "never show me these".
   const [isoDismissed, setIsoDismissed] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -239,6 +228,8 @@ export function CarFormDialog({
   const [restored, setRestored] = useState(false);
   /** Set once the draft for this open has been read, so the save can begin. */
   const [draftReady, setDraftReady] = useState(false);
+  /** Edit mode only: the delete confirmation raised from the footer. */
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const draftKey = mode === "add" ? CAR_DRAFT_KEY : carEditDraftKey(initial?.id ?? "");
 
@@ -258,7 +249,6 @@ export function CarFormDialog({
       return;
     }
     setValidationError(null);
-    setImgError(false);
     setIsoDismissed(false);
     setIsoStatusCar(null);
 
@@ -388,6 +378,9 @@ export function CarFormDialog({
   const sizeOptions = useMemo(() => optionsFor("size", cars), [cars]);
   const seriesOptions = useMemo(() => optionsFor("series", cars), [cars]);
   const subSeriesOptions = useMemo(() => optionsFor("subSeries", cars), [cars]);
+  // Sellers are never seeded — the list is only ever the ones this collection
+  // has actually bought from.
+  const sellerOptions = useMemo(() => optionsFor("seller", cars), [cars]);
 
   /**
    * ISO entries this car might be. Recomputed as the catalogue fields change,
@@ -615,7 +608,14 @@ export function CarFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      {/* Widths carry the `sm:` modifier deliberately — see DialogContent. Edit
+          is the wider of the two: it puts the read-only rail beside the fields
+          rather than under them, which is the whole point of the layout. */}
+      <DialogContent
+        className={`max-h-[90vh] overflow-y-auto sm:max-w-3xl ${
+          mode === "add" ? "lg:max-w-5xl" : "lg:max-w-6xl"
+        }`}
+      >
         <DialogHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
             <DialogTitle>{mode === "add" ? "Add a car" : "Edit car"}</DialogTitle>
@@ -654,24 +654,25 @@ export function CarFormDialog({
           <DialogDescription>
             {mode === "add"
               ? "Follow the wizard steps below to catalog a new diecast into your collection. Adding several at once? Use bulk or a CSV upload."
-              : "Update ongoing logistics, status, payment progress, flags, and image. Saved vehicle cataloging fields are frozen to preserve integrity."}
+              : "Status, logistics, payment and flags. What the car is stays as catalogued."}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Live auto-generated car title preview banner */}
-        <div className="rounded-lg border border-border/70 bg-muted/40 px-3.5 py-2 text-xs flex items-center justify-between gap-2">
-          <div className="min-w-0">
-            <span className="font-medium text-muted-foreground">Vehicle: </span>
-            <span className="font-semibold text-foreground truncate">
-              {previewName || "Enter make and model"}
-            </span>
+        {/* Live auto-generated car title preview banner.
+            Add only: the name is assembled from fields as they are typed, so
+            there is something to preview. In edit mode none of those fields can
+            change, which made this a banner restating a name that was already
+            the dialog's subject — and a row of height the form could not spare. */}
+        {mode === "add" && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/40 px-3.5 py-2 text-xs">
+            <div className="min-w-0">
+              <span className="font-medium text-muted-foreground">Vehicle: </span>
+              <span className="truncate font-semibold text-foreground">
+                {previewName || "Enter make and model"}
+              </span>
+            </div>
           </div>
-          {mode === "edit" && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 shrink-0">
-              <Lock className="size-3" /> Identity Frozen
-            </span>
-          )}
-        </div>
+        )}
 
         {restored && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
@@ -781,14 +782,14 @@ export function CarFormDialog({
                     />
                   )}
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <Field label="Make *">
                       <Combobox
                         value={form.make}
                         onChange={(v) => set("make", v)}
                         options={makeOptions}
                         placeholder="e.g. Porsche, Nissan, Ford"
-                        searchPlaceholder="Search makes, or type a new one…"
+                        searchPlaceholder="Search makes, or type a new one⬦"
                       />
                     </Field>
 
@@ -800,7 +801,7 @@ export function CarFormDialog({
                         // The base name only. The trim goes in Variant next to
                         // it, so "Skyline" here and "GT-R R34" there.
                         placeholder="e.g. Skyline, Supra, 911"
-                        searchPlaceholder="Search models, or type a new one…"
+                        searchPlaceholder="Search models, or type a new one⬦"
                       />
                     </Field>
 
@@ -810,7 +811,7 @@ export function CarFormDialog({
                         onChange={(v) => set("variant", v)}
                         options={variantOptions}
                         placeholder="e.g. R34, KH, Custom"
-                        searchPlaceholder="Search variants, or type a new one…"
+                        searchPlaceholder="Search variants, or type a new one⬦"
                       />
                     </Field>
 
@@ -829,7 +830,7 @@ export function CarFormDialog({
                         onChange={(v) => set("colour", v)}
                         options={colourOptions}
                         placeholder="e.g. Spectraflame Red, Blue, White"
-                        searchPlaceholder="Search colours, or type a new one…"
+                        searchPlaceholder="Search colours, or type a new one⬦"
                       />
                     </Field>
 
@@ -839,7 +840,7 @@ export function CarFormDialog({
                         onChange={(v) => set("type", v)}
                         options={typeOptions}
                         placeholder="e.g. Race Car, Classic Car, Supercar"
-                        searchPlaceholder="Search types, or type a new one…"
+                        searchPlaceholder="Search types, or type a new one⬦"
                       />
                     </Field>
 
@@ -849,7 +850,7 @@ export function CarFormDialog({
                         onChange={(v) => set("brand", v)}
                         options={brandOptions}
                         placeholder="e.g. Hot Wheels, Mini GT, Matchbox"
-                        searchPlaceholder="Search brands, or type a new one…"
+                        searchPlaceholder="Search brands, or type a new one⬦"
                       />
                     </Field>
 
@@ -859,7 +860,7 @@ export function CarFormDialog({
                         onChange={(v) => set("assortment", v)}
                         options={assortmentOptions}
                         placeholder="e.g. Mainline, Premium, Boulevard"
-                        searchPlaceholder="Search assortments, or type a new one…"
+                        searchPlaceholder="Search assortments, or type a new one⬦"
                       />
                     </Field>
 
@@ -869,7 +870,7 @@ export function CarFormDialog({
                         onChange={(v) => set("series", v)}
                         options={seriesOptions}
                         placeholder="e.g. Circuit Legends, HW Exotics"
-                        searchPlaceholder="Search series, or type a new one…"
+                        searchPlaceholder="Search series, or type a new one⬦"
                       />
                     </Field>
 
@@ -879,7 +880,7 @@ export function CarFormDialog({
                         onChange={(v) => set("subSeries", v)}
                         options={subSeriesOptions}
                         placeholder="e.g. Factory Fresh, Then and Now"
-                        searchPlaceholder="Search sub series, or type a new one…"
+                        searchPlaceholder="Search sub series, or type a new one⬦"
                       />
                     </Field>
 
@@ -897,7 +898,7 @@ export function CarFormDialog({
                         onChange={(v) => set("size", v)}
                         options={sizeOptions}
                         placeholder="1:64"
-                        searchPlaceholder="Search scales, or type a new one…"
+                        searchPlaceholder="Search scales, or type a new one⬦"
                       />
                     </Field>
                   </div>
@@ -915,7 +916,7 @@ export function CarFormDialog({
                       Enter cost details. Balance is automated based on amount paid.
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <Field label="Spent * (INR)">
                       <Input
                         type="number"
@@ -1042,7 +1043,7 @@ export function CarFormDialog({
                       Keep track of order milestones and shipping transit info.
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <Field label="Order Date *">
                       <Input
                         type="date"
@@ -1067,7 +1068,7 @@ export function CarFormDialog({
                         onChange={(v) => set("deliveryPartner", v)}
                         options={DELIVERY_PARTNER_NAMES}
                         placeholder="Courier"
-                        searchPlaceholder="Search or type a courier…"
+                        searchPlaceholder="Search or type a courier⬦"
                         ariaLabel="Delivery partner"
                       />
                     </Field>
@@ -1081,7 +1082,7 @@ export function CarFormDialog({
                       />
                     </Field>
 
-                    <Field label="Transit Info / ETA" className="sm:col-span-2">
+                    <Field label="Transit Info / ETA" className="sm:col-span-2 lg:col-span-3">
                       <Input
                         value={form.transitInfo}
                         onChange={(e) => set("transitInfo", e.target.value)}
@@ -1092,7 +1093,7 @@ export function CarFormDialog({
                     <TrackingLink
                       partner={form.deliveryPartner}
                       trackingId={form.trackingId}
-                      className="sm:col-span-2"
+                      className="sm:col-span-2 lg:col-span-3"
                     />
                   </div>
                 </div>
@@ -1137,49 +1138,13 @@ export function CarFormDialog({
                   </div>
 
                   <div className="space-y-2">
-                    <Field label="Image URL">
-                      <Input
-                        type="url"
+                    <Label className="text-xs text-muted-foreground">Photo</Label>
+                    <div className="max-w-md">
+                      <CarPhotoField
                         value={form.imageUrl}
-                        onChange={(e) => {
-                          set("imageUrl", e.target.value);
-                          setImgError(false);
-                        }}
-                        placeholder="https://... (Direct image link)"
+                        onChange={(url) => set("imageUrl", url)}
                       />
-                    </Field>
-
-                    {form.imageUrl.trim() && (
-                      <div className="space-y-2 rounded-lg border border-border/60 bg-muted/30 p-2.5">
-                        <div className="relative flex h-44 w-full items-center justify-center overflow-hidden rounded border border-border bg-background">
-                          {!imgError ? (
-                            <img
-                              src={form.imageUrl}
-                              alt="Preview"
-                              // Fills the frame in both directions, cropping the
-                              // overflow, so a square source still fills a wide frame.
-                              className="block size-full object-cover"
-                              onError={() => setImgError(true)}
-                            />
-                          ) : (
-                            <div className="flex h-24 w-full items-center justify-center text-muted-foreground">
-                              <ImageIcon className="size-5" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {!imgError ? (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                              ✓ Image preview loaded successfully
-                            </span>
-                          ) : (
-                            <span className="text-destructive font-medium">
-                              ⚠ Could not load image from this URL.
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                    </div>
                   </div>
 
                   {/* Summary preview box */}
@@ -1251,295 +1216,435 @@ export function CarFormDialog({
         ) : (
           /* ===================== MODE: EDIT (FROZEN SAVED FIELDS, ENABLED NECESSARY FIELDS) ===================== */
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Frozen fields informational callout */}
-            <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
-              <Lock className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
-              <div>
-                <p className="font-semibold text-amber-800 dark:text-amber-300">
-                  Editing Mode: Saved specifications are frozen
-                </p>
-                <p className="text-amber-700/90 dark:text-amber-300/80 mt-0.5">
-                  Core vehicle identity (Make, Model, Brand, Year, Type, Order Date, MRP, Seller) is
-                  locked to preserve catalog history. You can update ongoing logistics, status,
-                  payment progress (with automated balance), flags, and image.
-                </p>
+            {/* Three columns on a desktop: what you came here to change takes
+                two of them, the saved record sits in the third.
+
+                The amber "Editing Mode: saved specifications are frozen" banner
+                that used to head this form is gone. It explained the read-only
+                fields from the opposite end of a dialog you had to scroll to
+                reach them in — and now that they sit in their own labelled rail,
+                being locked is something you can see rather than be warned
+                about. */}
+            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="space-y-3 lg:col-span-2">
+                {/* SECTION 1: ACTIVE / EDITABLE LOGISTICS & STATUS */}
+                <section className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
+                    Status & Logistics
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
+                    <Field label="Status *">
+                      <Select value={form.status} onValueChange={(v) => set("status", v)}>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    <Field label="Expected / available Date">
+                      <Input
+                        type="date"
+                        className="bg-background"
+                        value={form.expectedDate}
+                        onChange={(e) => set("expectedDate", e.target.value)}
+                      />
+                    </Field>
+
+                    <Field label="Delivery Partner">
+                      <Combobox
+                        value={form.deliveryPartner}
+                        onChange={(v) => set("deliveryPartner", v)}
+                        options={DELIVERY_PARTNER_NAMES}
+                        placeholder="Courier"
+                        searchPlaceholder="Search or type a courier⬦"
+                        ariaLabel="Delivery partner"
+                        className="bg-background"
+                      />
+                    </Field>
+
+                    <Field label="Tracking ID">
+                      <Input
+                        className="bg-background font-mono"
+                        value={form.trackingId}
+                        onChange={(e) => set("trackingId", e.target.value)}
+                        placeholder="Consignment / AWB number"
+                      />
+                    </Field>
+
+                    <Field label="Transit Info / ETA" className="sm:col-span-2">
+                      <Input
+                        className="bg-background"
+                        value={form.transitInfo}
+                        onChange={(e) => set("transitInfo", e.target.value)}
+                        placeholder="Release month, courier updates, dispatch notes..."
+                      />
+                    </Field>
+
+                    <TrackingLink
+                      partner={form.deliveryPartner}
+                      trackingId={form.trackingId}
+                      className="sm:col-span-2"
+                    />
+                  </div>
+                </section>
+
+                {/* SECTION 2: ACTIVE / EDITABLE FINANCIALS & PAYMENT PROGRESS */}
+                <section className="space-y-2 rounded-lg border border-border/80 bg-muted/30 p-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Payment & Expenditure
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-3">
+                    <Field label="Spent (INR)">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className="bg-background"
+                        value={form.spent}
+                        onChange={(e) =>
+                          handleSpentChange(e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                        placeholder="e.g. 549"
+                      />
+                    </Field>
+
+                    <Field label="Shipping Cost (INR)">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className="bg-background"
+                        value={form.shippingCost}
+                        onChange={(e) =>
+                          set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                        placeholder="e.g. 50"
+                      />
+                    </Field>
+
+                    <Field label="Payment Status *">
+                      <Select value={form.payment} onValueChange={handlePaymentChange}>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue placeholder="Select payment status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PAYMENT_OPTIONS.map((p) => (
+                            <SelectItem key={p} value={p}>
+                              {p}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    <Field label="Paid Amount (INR)">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className="bg-background"
+                        value={form.paid}
+                        onChange={(e) =>
+                          handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                        placeholder="0"
+                      />
+                    </Field>
+
+                    {/* The sentence spelling out "Spent − Paid = Balance" that
+                        used to sit under this is what the chip in the field
+                        already says, in a row of its own. */}
+                    <Field label="Balance (INR)" className="sm:col-span-2">
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          readOnly
+                          value={form.balance}
+                          className="cursor-not-allowed bg-muted/70 font-semibold text-foreground"
+                        />
+                        <span className="absolute right-2.5 top-2.5 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                          Automated: Spent − Paid
+                        </span>
+                      </div>
+                    </Field>
+                  </div>
+                </section>
+
+                {/* SECTION 3: ACTIVE / EDITABLE FLAGS & IMAGE */}
+                <section className="space-y-3 rounded-lg border border-border/80 bg-muted/30 p-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Flags & Image
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 pt-1 sm:grid-cols-4">
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                      <Checkbox
+                        checked={form.official}
+                        onCheckedChange={(v) => set("official", !!v)}
+                      />
+                      Official?
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                      <Checkbox checked={form.chase} onCheckedChange={(v) => set("chase", !!v)} />
+                      Chase?
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                      <Checkbox
+                        checked={form.favourite}
+                        onCheckedChange={(v) => set("favourite", !!v)}
+                      />
+                      Favourite?
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                      <Checkbox checked={form.open} onCheckedChange={(v) => set("open", !!v)} />
+                      Open?
+                    </label>
+                  </div>
+
+                  <CarPhotoField value={form.imageUrl} onChange={(url) => set("imageUrl", url)} />
+                </section>
               </div>
-            </div>
 
-            {/* SECTION 1: ACTIVE / EDITABLE LOGISTICS & STATUS */}
-            <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3.5">
-              <div className="text-xs font-bold uppercase tracking-wider text-primary flex items-center justify-between">
-                <span>Active Status & Logistics (Editable)</span>
-                <span className="text-[10px] font-normal text-muted-foreground">Enabled</span>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
-                <Field label="Status *">
-                  <Select value={form.status} onValueChange={(v) => set("status", v)}>
-                    <SelectTrigger className="bg-background">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STATUS_OPTIONS.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
+              {/* SECTION 4: WHAT THE CAR IS
+                  A rail rather than a fourth band across the bottom — these are
+                  the values you check against while editing, so they belong
+                  beside the fields rather than below them.
 
-                <Field label="Expected / available Date">
-                  <Input
-                    type="date"
-                    className="bg-background"
-                    value={form.expectedDate}
-                    onChange={(e) => set("expectedDate", e.target.value)}
-                  />
-                </Field>
-
-                <Field label="Delivery Partner">
-                  <Combobox
-                    value={form.deliveryPartner}
-                    onChange={(v) => set("deliveryPartner", v)}
-                    options={DELIVERY_PARTNER_NAMES}
-                    placeholder="Courier"
-                    searchPlaceholder="Search or type a courier…"
-                    ariaLabel="Delivery partner"
-                    className="bg-background"
-                  />
-                </Field>
-
-                <Field label="Tracking ID">
-                  <Input
-                    className="bg-background font-mono"
-                    value={form.trackingId}
-                    onChange={(e) => set("trackingId", e.target.value)}
-                    placeholder="Consignment / AWB number"
-                  />
-                </Field>
-
-                <Field label="Transit Info / ETA" className="sm:col-span-2">
-                  <Input
-                    className="bg-background"
-                    value={form.transitInfo}
-                    onChange={(e) => set("transitInfo", e.target.value)}
-                    placeholder="Release month, courier updates, dispatch notes..."
-                  />
-                </Field>
-
-                <TrackingLink
-                  partner={form.deliveryPartner}
-                  trackingId={form.trackingId}
-                  className="sm:col-span-2"
-                />
-              </div>
-            </div>
-
-            {/* SECTION 2: ACTIVE / EDITABLE FINANCIALS & PAYMENT PROGRESS */}
-            <div className="space-y-2 rounded-lg border border-border/80 bg-muted/30 p-3.5">
-              <div className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center justify-between">
-                <span>Payment & Expenditure (Editable)</span>
-                <span className="text-[10px] font-normal text-muted-foreground">
-                  Automated Balance
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
-                <Field label="Spent (INR)">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="any"
-                    className="bg-background"
-                    value={form.spent}
-                    onChange={(e) =>
-                      handleSpentChange(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="e.g. 549"
-                  />
-                </Field>
-
-                <Field label="Shipping Cost (INR)">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="any"
-                    className="bg-background"
-                    value={form.shippingCost}
-                    onChange={(e) =>
-                      set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="e.g. 50"
-                  />
-                </Field>
-
-                <Field label="Payment Status *">
-                  <Select value={form.payment} onValueChange={handlePaymentChange}>
-                    <SelectTrigger className="bg-background">
-                      <SelectValue placeholder="Select payment status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PAYMENT_OPTIONS.map((p) => (
-                        <SelectItem key={p} value={p}>
-                          {p}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
-
-                <Field label="Paid Amount (INR)">
-                  <Input
-                    type="number"
-                    min="0"
-                    step="any"
-                    className="bg-background"
-                    value={form.paid}
-                    onChange={(e) =>
-                      handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="0"
-                  />
-                </Field>
-
-                <Field label="Balance (INR) [Automated]" className="sm:col-span-2">
-                  <div className="relative">
+                  They used to be locked, on the theory that catalogue history
+                  should not move. In practice a mis-typed make or a missing
+                  series could only be corrected by deleting the car and adding
+                  it again, which loses far more history than the typo ever
+                  did. They are ordinary fields now; the name is rebuilt from
+                  them on save, and changing the seller or the order date
+                  renumbers the shipping ID the same as it would anywhere else. */}
+              <aside className="space-y-2 self-start rounded-lg border border-border/60 bg-muted/20 p-3">
+                <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5">
+                  <h3 className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                    <Car className="size-3.5" />
+                    <span>Vehicle &amp; purchase</span>
+                  </h3>
+                </div>
+                {/* Label beside the field rather than above it: fifteen stacked
+                    label-and-input pairs is twice the height of the column next
+                    to it, and this is a rail. */}
+                <div className="grid grid-cols-1 gap-1.5 pt-1 sm:grid-cols-2 lg:grid-cols-1">
+                  <RailField label="Make">
+                    <Combobox
+                      value={form.make}
+                      onChange={(v) => set("make", v)}
+                      options={makeOptions}
+                      placeholder="Make"
+                      searchPlaceholder="Search makes…"
+                      ariaLabel="Make"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Model">
+                    <Combobox
+                      value={form.model}
+                      onChange={(v) => set("model", v)}
+                      options={modelOptions}
+                      placeholder="Model"
+                      searchPlaceholder="Search models…"
+                      ariaLabel="Model"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Variant">
+                    <Combobox
+                      value={form.variant}
+                      onChange={(v) => set("variant", v)}
+                      options={variantOptions}
+                      placeholder="Variant"
+                      searchPlaceholder="Search variants…"
+                      ariaLabel="Variant"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Year">
+                    <Input
+                      className="h-8 bg-background"
+                      value={form.year}
+                      onChange={(e) => set("year", e.target.value)}
+                      inputMode="numeric"
+                      aria-label="Year"
+                    />
+                  </RailField>
+                  <RailField label="Colour">
+                    <Combobox
+                      value={form.colour}
+                      onChange={(v) => set("colour", v)}
+                      options={colourOptions}
+                      placeholder="Colour"
+                      searchPlaceholder="Search colours…"
+                      ariaLabel="Colour"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Type">
+                    <Combobox
+                      value={form.type}
+                      onChange={(v) => set("type", v)}
+                      options={typeOptions}
+                      placeholder="Type"
+                      searchPlaceholder="Search types…"
+                      ariaLabel="Vehicle type"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Brand">
+                    <Combobox
+                      value={form.brand}
+                      onChange={(v) => set("brand", v)}
+                      options={brandOptions}
+                      placeholder="Brand"
+                      searchPlaceholder="Search brands…"
+                      ariaLabel="Brand"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Assortment">
+                    <Combobox
+                      value={form.assortment}
+                      onChange={(v) => set("assortment", v)}
+                      options={assortmentOptions}
+                      placeholder="Assortment"
+                      searchPlaceholder="Search assortments…"
+                      ariaLabel="Assortment"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Series">
+                    <Combobox
+                      value={form.series}
+                      onChange={(v) => set("series", v)}
+                      options={seriesOptions}
+                      placeholder="Series"
+                      searchPlaceholder="Search series…"
+                      ariaLabel="Series"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Sub series">
+                    <Combobox
+                      value={form.subSeries}
+                      onChange={(v) => set("subSeries", v)}
+                      options={subSeriesOptions}
+                      placeholder="Sub series"
+                      searchPlaceholder="Search sub series…"
+                      ariaLabel="Sub series"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Car number">
+                    <Input
+                      className="h-8 bg-background"
+                      value={form.carNumber}
+                      onChange={(e) => set("carNumber", e.target.value)}
+                      placeholder="126/250"
+                      aria-label="Car number"
+                    />
+                  </RailField>
+                  <RailField label="Scale">
+                    <Combobox
+                      value={form.size}
+                      onChange={(v) => set("size", v)}
+                      options={sizeOptions}
+                      placeholder="1:64"
+                      searchPlaceholder="Search scales…"
+                      ariaLabel="Scale"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
+                  <RailField label="Order date">
+                    <Input
+                      type="date"
+                      className="h-8 bg-background"
+                      value={form.orderDate}
+                      onChange={(e) => set("orderDate", e.target.value)}
+                      aria-label="Order date"
+                    />
+                  </RailField>
+                  <RailField label="MRP">
                     <Input
                       type="number"
-                      readOnly
-                      value={form.balance}
-                      className="bg-muted/70 font-semibold text-foreground cursor-not-allowed"
+                      min="0"
+                      step="any"
+                      className="h-8 bg-background"
+                      value={form.mrp}
+                      onChange={(e) =>
+                        set("mrp", e.target.value === "" ? "" : Number(e.target.value))
+                      }
+                      aria-label="Retail price"
                     />
-                    <span className="absolute right-2.5 top-2.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                      Automated: Spent − Paid
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mt-1">
-                    Spent (₹{Number(form.spent) || 0}) − Paid (₹{Number(form.paid) || 0}) = Balance
-                    (₹{Number(form.balance) || 0})
-                  </p>
-                </Field>
-              </div>
-            </div>
-
-            {/* SECTION 3: ACTIVE / EDITABLE FLAGS & IMAGE */}
-            <div className="space-y-3 rounded-lg border border-border/80 bg-muted/30 p-3.5">
-              <div className="text-xs font-bold uppercase tracking-wider text-foreground">
-                Flags & Image (Editable)
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 pt-1">
-                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                  <Checkbox checked={form.official} onCheckedChange={(v) => set("official", !!v)} />
-                  Official?
-                </label>
-                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                  <Checkbox checked={form.chase} onCheckedChange={(v) => set("chase", !!v)} />
-                  Chase?
-                </label>
-                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                  <Checkbox
-                    checked={form.favourite}
-                    onCheckedChange={(v) => set("favourite", !!v)}
-                  />
-                  Favourite?
-                </label>
-                <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
-                  <Checkbox checked={form.open} onCheckedChange={(v) => set("open", !!v)} />
-                  Open?
-                </label>
-              </div>
-
-              <Field label="Image URL">
-                <Input
-                  type="url"
-                  className="bg-background"
-                  value={form.imageUrl}
-                  onChange={(e) => {
-                    set("imageUrl", e.target.value);
-                    setImgError(false);
-                  }}
-                  placeholder="https://... (Direct image link)"
-                />
-              </Field>
-
-              {form.imageUrl.trim() && (
-                <div className="space-y-2 rounded-lg border border-border/60 bg-background p-2.5">
-                  <div className="relative flex h-44 w-full items-center justify-center overflow-hidden rounded border border-border bg-muted/20">
-                    {!imgError ? (
-                      <img
-                        src={form.imageUrl}
-                        alt="Preview"
-                        // Fills the frame in both directions, cropping the
-                        // overflow, so a square source still fills a wide frame.
-                        className="block size-full object-cover"
-                        onError={() => setImgError(true)}
-                      />
-                    ) : (
-                      <div className="flex h-24 w-full items-center justify-center text-muted-foreground">
-                        <ImageIcon className="size-5" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {!imgError ? (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-                        ✓ Image preview loaded
-                      </span>
-                    ) : (
-                      <span className="text-destructive font-medium">
-                        ⚠ Could not load image from this URL.
-                      </span>
-                    )}
-                  </div>
+                  </RailField>
+                  <RailField label="Seller">
+                    <Combobox
+                      value={form.seller}
+                      onChange={(v) => set("seller", v)}
+                      options={sellerOptions}
+                      placeholder="Seller"
+                      searchPlaceholder="Search sellers…"
+                      ariaLabel="Seller"
+                      className="h-8 bg-background"
+                    />
+                  </RailField>
                 </div>
-              )}
+              </aside>
             </div>
 
-            {/* SECTION 4: FROZEN / SAVED VEHICLE INFORMATION */}
-            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-3.5 opacity-85">
-              <div className="flex items-center justify-between border-b border-border/50 pb-1.5">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                  <Lock className="size-3.5" />
-                  <span>Frozen Saved Details (Read-only)</span>
-                </div>
-                <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                  Locked
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 pt-1 text-xs">
-                <FrozenItem label="Make" value={form.make} />
-                <FrozenItem label="Model" value={form.model} />
-                <FrozenItem label="Variant" value={form.variant} />
-                <FrozenItem label="Year" value={form.year} />
-                <FrozenItem label="Colour" value={form.colour} />
-                <FrozenItem label="Type" value={form.type} />
-                <FrozenItem label="Brand" value={form.brand} />
-                <FrozenItem label="Assortment" value={form.assortment} />
-                <FrozenItem label="Series" value={form.series} />
-                <FrozenItem label="Sub Series" value={form.subSeries} />
-                <FrozenItem label="Car Number" value={form.carNumber} />
-                <FrozenItem label="Scale / Size" value={form.size} />
-                <FrozenItem label="Order Date" value={form.orderDate} />
-                <FrozenItem label="MRP" value={form.mrp ? `₹${form.mrp}` : ""} />
-                <FrozenItem label="Seller" value={form.seller} />
-              </div>
-            </div>
-
-            <DialogFooter className="pt-2">
+            {/* Delete lives here now, at the far end of the footer from Save.
+                It was a full-width button on the car's detail view, one tap from
+                simply reading about a car; behind Edit it takes a deliberate
+                trip, and it is still the only red thing on screen. */}
+            <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border/60 pt-3 sm:justify-between">
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => {
-                  clearDraft(draftKey);
-                  onOpenChange(false);
-                }}
+                onClick={() => setConfirmDelete(true)}
+                className="gap-1.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400"
               >
-                Cancel
+                <Trash2 className="size-4" />
+                Delete
               </Button>
-              <Button type="submit">Save changes</Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    clearDraft(draftKey);
+                    onOpenChange(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit">Save changes</Button>
+              </div>
             </DialogFooter>
           </form>
         )}
       </DialogContent>
+
+      {/* Deleting closes this dialog; anything showing the car behind it — the
+          details drawer, a table row — drops it on the same commit, because the
+          car is gone from the store rather than merely hidden. */}
+      {mode === "edit" && initial && (
+        <DeleteCarDialog
+          car={initial}
+          open={confirmDelete}
+          onOpenChange={setConfirmDelete}
+          onDeleted={() => {
+            clearDraft(draftKey);
+            onOpenChange(false);
+          }}
+        />
+      )}
 
       {/* Stacked over the wizard rather than replacing it: cancelling out of a
           status change should leave the half-typed car exactly where it was. */}
@@ -1575,51 +1680,103 @@ function Field({
   );
 }
 
-function FrozenItem({ label, value }: { label: string; value?: string | number }) {
+/**
+ * One field in the right-hand rail: label on the left, control on the right.
+ *
+ * Stacked label-above-input would make this column twice the height of the one
+ * beside it for the same fifteen values, and a rail that is twice as tall as the
+ * form is not a rail.
+ */
+function RailField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="rounded border border-border/40 bg-muted/40 p-2">
-      <div className="text-[10px] text-muted-foreground flex items-center justify-between">
-        <span>{label}</span>
-        <Lock className="size-2.5 opacity-50" />
-      </div>
-      <div className="font-medium text-foreground truncate mt-0.5">{value || "—"}</div>
-    </div>
+    <label className="flex items-center gap-2">
+      <span className="w-[5.5rem] shrink-0 text-[11px] text-muted-foreground">{label}</span>
+      <span className="min-w-0 flex-1">{children}</span>
+    </label>
   );
 }
 
+/**
+ * Deleting a car is not undoable past a reload, so it takes a typed phrase
+ * rather than one click on a confirm.
+ *
+ * This used to be two components: a soft AlertDialog here and a typed-phrase one
+ * inside the details drawer, so how hard it was to delete a car depended on
+ * which screen you did it from. The stricter one won.
+ */
 export function DeleteCarDialog({
   car,
   open,
   onOpenChange,
+  onDeleted,
 }: {
   car: Diecast | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  /** Called after the car is gone — for a parent that should close with it. */
+  onDeleted?: () => void;
 }) {
   const { deleteCar } = useCarsActions();
+  const [typed, setTyped] = useState("");
+
+  useEffect(() => {
+    setTyped("");
+  }, [car?.id, open]);
+
+  if (!car) return null;
+
+  const phrase = `delete ${(car.make || car.name || "car").trim()}`.toLowerCase();
+  const matches = typed.trim().toLowerCase() === phrase;
+  const confirm = () => {
+    if (!matches) return;
+    deleteCar(car.id);
+    onOpenChange(false);
+    onDeleted?.();
+  };
+
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete this car?</AlertDialogTitle>
-          <AlertDialogDescription>
-            {car ? `“${car.name}” will be removed from your collection.` : ""} This affects your
-            view and your Supabase database.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            onClick={() => {
-              if (car) deleteCar(car.id);
-              onOpenChange(false);
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogTitle className="text-lg font-semibold">Delete this car?</DialogTitle>
+        <DialogDescription className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">
+            {car.name || `${car.make} ${car.model}`}
+          </span>{" "}
+          will be removed from your collection. Undo brings it back, until you reload.
+        </DialogDescription>
+
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Type <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">{phrase}</code> to
+            confirm.
+          </p>
+          <Input
+            autoFocus
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") confirm();
             }}
+            placeholder={phrase}
+            aria-label="Type the confirmation phrase"
+          />
+        </div>
+
+        <DialogFooter className="pt-2">
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            disabled={!matches}
+            onClick={confirm}
+            className="gap-1.5 bg-rose-600 text-white hover:bg-rose-500"
           >
+            <Trash2 className="size-4" />
             Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

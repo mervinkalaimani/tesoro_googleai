@@ -126,7 +126,7 @@ export function ReconcileDeliveryDialog({
         if (!v && !saving) onClose();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PackageCheck className="size-4 text-emerald-500" />

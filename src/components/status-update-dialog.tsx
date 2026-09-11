@@ -237,7 +237,7 @@ export function StatusUpdateDialog({
         if (!v && !saving) onClose();
       }}
     >
-      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="grid size-6 shrink-0 place-items-center rounded-md bg-sky-500/15 text-sky-500">

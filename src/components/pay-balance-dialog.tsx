@@ -75,7 +75,7 @@ export function PayBalanceDialog({ car, onClose }: { car: Diecast | null; onClos
         if (!v) onClose();
       }}
     >
-      <DialogContent className="max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Pay balance</DialogTitle>
           <DialogDescription className="truncate">

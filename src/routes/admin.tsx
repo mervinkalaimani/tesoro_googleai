@@ -618,7 +618,7 @@ function AdminPage() {
       </p>
 
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Change email address</DialogTitle>
             <DialogDescription>
@@ -662,7 +662,7 @@ function AdminPage() {
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delete this account?</DialogTitle>
             <DialogDescription>
