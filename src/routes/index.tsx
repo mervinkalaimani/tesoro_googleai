@@ -38,7 +38,6 @@ import {
   daysBetween,
   addDays,
   formatDMY,
-  relativeDay,
   monthKey,
   monthLabel,
   shortMonthLabel,
@@ -46,7 +45,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
-import { CarListCard } from "@/components/cars-table";
+import { CompactCarCard } from "@/components/compact-car-card";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import {
   Select,
@@ -295,17 +294,7 @@ function DashboardPage() {
   );
 }
 
-const isOutForDelivery = (s: string) => /out\s*for\s*delivery|^ofd$/i.test((s || "").trim());
 const isTransit = (s: string) => (s || "").trim().toLowerCase() === "transit";
-const isWaiting = (s: string) => (s || "").trim().toLowerCase() === "waiting";
-
-/** Out for delivery first, then Transit, then Waiting. */
-function statusRank(s: string) {
-  if (isOutForDelivery(s)) return 0;
-  if (isTransit(s)) return 1;
-  if (isWaiting(s)) return 2;
-  return 3;
-}
 
 function TransitTracker({
   rows,
@@ -319,15 +308,14 @@ function TransitTracker({
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
 
-  // Every order that has not arrived. "Include waiting" used to be a checkbox
-  // defaulting to off, which hid orders a seller had taken money for and not
-  // yet shipped — the ones most worth chasing. These are the same three
-  // statuses the shipping ID treats as in flight.
-  const src = useMemo(
-    () =>
-      rows.filter((r) => isOutForDelivery(r.status) || isTransit(r.status) || isWaiting(r.status)),
-    [rows],
-  );
+  // Transit, and only Transit: parcels that are actually moving.
+  //
+  // Waiting and Out for delivery used to be in here too. Waiting is a seller
+  // sitting on an order — a thing to chase, but not a thing to track, and it
+  // made up most of the rows. Out for delivery is a parcel arriving today, which
+  // needs no tracking either. What is left is the list this panel is for: things
+  // in the post, with a courier and a date.
+  const src = useMemo(() => rows.filter((r) => isTransit(r.status)), [rows]);
 
   // Active shipping IDs present strictly in this transit list (excluding Available)
   const activeShippingIds = useMemo(() => {
@@ -389,15 +377,10 @@ function TransitTracker({
         trackingId: arr.find((r) => r.trackingId)?.trackingId || "",
       });
     }
-    return out.sort((a, b) => {
-      // Out for delivery always floats to the top; the rest is oldest order
-      // first, which is the one that has been waited on longest. The segment
-      // control that used to switch this to "Expected" is gone: two orderings
-      // of the same nine rows is a setting to fiddle with, not information.
-      const ofd = (isOutForDelivery(a.status) ? 0 : 1) - (isOutForDelivery(b.status) ? 0 : 1);
-      if (ofd !== 0) return ofd;
-      return a.ordered.getTime() - b.ordered.getTime();
-    });
+    // Oldest order first: the one that has been waited on longest. The segment
+    // control that used to switch this to "Expected" is gone — two orderings of
+    // the same nine rows is a setting to fiddle with, not information.
+    return out.sort((a, b) => a.ordered.getTime() - b.ordered.getTime());
   }, [src]);
 
   const now = new Date();
@@ -620,23 +603,19 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
         </div>
         <Sparkles className="size-4 text-accent" />
       </div>
-      {/* The inventory card, in a grid that fills left to right. It was a single
-          narrow column of name-and-date, which told you less about a car than
-          the list you had just come from and looked like nothing else in the
-          app. Same card here means the same thing means the same thing
-          everywhere. */}
-      <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-        {recent.map(({ r, dt }, i) => (
-          <CarListCard
-            key={r.id + i}
-            car={r}
-            onOpen={() => openDrawer(r)}
-            actions={
-              <span className="whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                {relativeDay(dt, now)}
-              </span>
-            }
-          />
+      {/* One row, running left to right, in the inventory's compact card — the
+          small one that leads with the photograph.
+
+          A wrapping grid grew the panel a row at a time as cars landed, until
+          the last three days of a good week filled the bottom of the dashboard.
+          A single row is a fixed height whatever arrives, and the cars that ran
+          off the end are the older ones, which is the right thing to have to
+          reach for. */}
+      <div className="flex snap-x gap-2 overflow-x-auto p-2">
+        {recent.map(({ r }, i) => (
+          <div key={r.id + i} className="w-36 shrink-0 snap-start sm:w-40">
+            <CompactCarCard car={r} onOpen={() => openDrawer(r)} />
+          </div>
         ))}
       </div>
     </div>
@@ -920,9 +899,7 @@ function DashboardMiddle({
   loading?: boolean;
 }) {
   const now = new Date();
-  const hasTransit = rows.some(
-    (r) => isOutForDelivery(r.status) || isTransit(r.status) || isWaiting(r.status),
-  );
+  const hasTransit = rows.some((r) => isTransit(r.status));
   const hasRecent = rows.some((r) => {
     if (r.status !== "Available") return false;
     const dt = parseDMY(r.date);
