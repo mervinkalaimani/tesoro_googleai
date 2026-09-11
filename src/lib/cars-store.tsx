@@ -10,7 +10,7 @@
 } from "react";
 import type { Diecast } from "@/lib/types";
 import { deriveMonth } from "@/lib/date-utils";
-import { shippingIdFor, shippingInputsChanged } from "@/lib/shipping-id";
+import { allShippingIdFixes, resyncShippingIds, shippingInputsChanged } from "@/lib/shipping-id";
 import { assignCarIds } from "@/lib/car-id";
 import { sortCars } from "@/lib/status-order";
 import { useAuth } from "@/lib/auth-store";
@@ -162,6 +162,66 @@ export type ShippingBatchOptions = {
   label?: string;
 };
 
+/**
+ * The rows a change has to write: the ones the caller changed, with their
+ * shipping IDs re-derived, followed by any *other* car whose number moved
+ * because of them.
+ *
+ * The second half is the part that is easy to forget. A shipping ID is a rank
+ * within a seller's run of shipping days, so a car given a date between two
+ * existing orders inserts a day into the middle of that run and pushes every
+ * later order of theirs up by one. Deriving only the edited car left the rest
+ * of the sheet disagreeing with the formula it came from.
+ *
+ * `before` is those same cars as they were. A car that changes seller or date
+ * leaves one run and joins another; both have to be recounted.
+ */
+function withRenumbering(changed: Diecast[], all: Diecast[], before: Diecast[] = []): Diecast[] {
+  if (!changed.length) return changed;
+
+  const changedById = new Map(changed.map((c) => [c.id, c]));
+  const known = new Set(all.map((c) => c.id));
+  const after = all.map((c) => changedById.get(c.id) ?? c);
+  // Rows being added are not in the collection yet.
+  for (const c of changed) if (!known.has(c.id)) after.push(c);
+
+  const fixes = resyncShippingIds(after, [...before, ...changed]);
+  const fixById = new Map(fixes.map((f) => [f.id, f]));
+
+  const out = changed.map((c) => fixById.get(c.id) ?? c);
+  const written = new Set(out.map((c) => c.id));
+  for (const f of fixes) if (!written.has(f.id)) out.push(f);
+  return out;
+}
+
+/** `base`, with every row in `extra` replacing its match or appended. */
+function mergeById(base: Diecast[], extra: Diecast[]): Diecast[] {
+  if (!extra.length) return base;
+  const extraById = new Map(extra.map((c) => [c.id, c]));
+  const out = base.map((c) => extraById.get(c.id) ?? c);
+  const seen = new Set(base.map((c) => c.id));
+  for (const c of extra) if (!seen.has(c.id)) out.push(c);
+  return out;
+}
+
+/**
+ * Folds rows into an overlay, each one landing in the half it already lives in:
+ * a car added this session is edited in place in `added`, anything else is
+ * recorded in `updated`. Putting a row in both halves would leave the merge to
+ * decide which version wins.
+ */
+function applyRows(prev: Overlay, rows: Diecast[]): Overlay {
+  if (!rows.length) return prev;
+  const updated = { ...prev.updated };
+  let added = [...prev.added];
+  const addedIds = new Set(added.map((a) => a.id));
+  for (const row of rows) {
+    if (addedIds.has(row.id)) added = added.map((a) => (a.id === row.id ? row : a));
+    else updated[row.id] = row;
+  }
+  return { ...prev, added, updated };
+}
+
 type Ctx = {
   cars: Diecast[];
   addCar: (car: Diecast) => void;
@@ -174,6 +234,13 @@ type Ctx = {
     options?: ShippingBatchOptions,
   ) => Promise<number>;
   deleteCar: (id: string) => void;
+  /**
+   * Recomputes every shipping ID from the formula and writes the ones that
+   * changed. Returns how many rows moved.
+   */
+  renumberShippingIds: () => Promise<number>;
+  /** How many rows `renumberShippingIds` would rewrite, without writing them. */
+  shippingIdDrift: () => Diecast[];
   undo: () => void;
   /** What the next undo would reverse, or null when there is nothing to undo. */
   undoLabel: string | null;
@@ -466,19 +533,29 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // assortment, the shipping ID from seller and dates. The car ID is
       // assigned first so the shipping rank is computed against the final row.
       const [identified] = assignCarIds([car], cars);
-      const next: Diecast = {
-        ...identified,
-        // A car that arrives already assigned to a batch — added from inside an
-        // order — keeps that ID. Deriving one regardless would have numbered it
-        // into a batch of its own and dropped it out of the order it was added
-        // to. Everything else is numbered from the seller and the dates.
-        shippingId:
-          identified.shippingId?.trim() || shippingIdFor(identified, [...cars, identified]),
-      };
-      pushUndo(`adding “${next.name || next.model || "the car"}”`, [], [next.id]);
+
+      // A car that arrives already assigned to a batch — added from inside an
+      // order — keeps that ID. Deriving one regardless would have numbered it
+      // into a batch of its own and dropped it out of the order it was added
+      // to. It also cannot disturb anyone else's number: it joins a shipping
+      // day that sequence already has. Everything else is numbered from the
+      // seller and the dates, and takes its neighbours with it.
+      const written = identified.shippingId?.trim()
+        ? [identified]
+        : withRenumbering([identified], cars);
+      const next = written[0];
+
+      // Undo restores the neighbours as they were, and removes the new car.
+      const byId = new Map(cars.map((c) => [c.id, c]));
+      const movedBefore = written
+        .slice(1)
+        .map((w) => byId.get(w.id))
+        .filter((c): c is Diecast => Boolean(c));
+      pushUndo(`adding “${next.name || next.model || "the car"}”`, movedBefore, [next.id]);
+
       const prev = overlayRef.current;
-      commit({ ...prev, added: [next, ...prev.added] });
-      void persist([next], "addCar");
+      commit(applyRows({ ...prev, added: [next, ...prev.added] }, written.slice(1)));
+      void persist(written, "addCar");
     },
     [commit, cars, persist, pushUndo],
   );
@@ -490,49 +567,56 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // both claim the same number. Rows that arrive with a real ID — a CSV
       // re-import, say — keep the one they came with.
       const identified = assignCarIds(newCars, cars);
+      // Same rule as a single add: rows that came with an ID keep it, the rest
+      // are numbered from the seller and dates — and numbering them can move
+      // existing orders, so the writes are whatever that returns.
+      const needIds = identified.filter((c) => !c.shippingId?.trim());
+      const written = needIds.length
+        ? mergeById(identified, withRenumbering(needIds, cars))
+        : identified;
+      const addedIdSet = new Set(identified.map((c) => c.id));
+      const fresh = written.filter((c) => addedIdSet.has(c.id));
+      const moved = written.filter((c) => !addedIdSet.has(c.id));
+
+      const byId = new Map(cars.map((c) => [c.id, c]));
       pushUndo(
-        `adding ${identified.length} car${identified.length === 1 ? "" : "s"}`,
-        [],
-        identified.map((c) => c.id),
+        `adding ${fresh.length} car${fresh.length === 1 ? "" : "s"}`,
+        moved.map((m) => byId.get(m.id)).filter((c): c is Diecast => Boolean(c)),
+        fresh.map((c) => c.id),
       );
       const prev = overlayRef.current;
-      commit({ ...prev, added: [...identified, ...prev.added] });
+      commit(applyRows({ ...prev, added: [...fresh, ...prev.added] }, moved));
       // Previously omitted entirely, so a bulk import lived in localStorage and
       // nowhere else.
-      void persist(identified, "bulkAddCars");
+      void persist(written, "bulkAddCars");
     },
     [commit, persist, cars, pushUndo],
   );
 
   const updateCar = useCallback(
     (car: Diecast) => {
-      // Only re-derive when the inputs actually moved: recomputing on every
-      // edit could silently renumber an existing shipment, since the rank
-      // depends on the rest of the collection.
+      // Only re-derive when the inputs actually moved. Renaming a car or
+      // ticking favourite has nothing to do with which order it came in, and
+      // recomputing regardless would make every edit a candidate for rewriting
+      // its neighbours.
       const prev = cars.find((c) => c.id === car.id);
       const needsId = !car.shippingId?.trim() || (prev && shippingInputsChanged(prev, car));
-      const next: Diecast = needsId
-        ? {
-            ...car,
-            shippingId: shippingIdFor(
-              car,
-              cars.map((c) => (c.id === car.id ? car : c)),
-            ),
-          }
-        : car;
 
-      if (prev) pushUndo(`editing “${prev.name || prev.model || "the car"}”`, [prev]);
+      const written = needsId ? withRenumbering([car], cars, prev ? [prev] : []) : [car];
 
-      const prevOverlay = overlayRef.current;
-      if (prevOverlay.added.some((a) => a.id === next.id)) {
-        commit({
-          ...prevOverlay,
-          added: prevOverlay.added.map((a) => (a.id === next.id ? next : a)),
-        });
-      } else {
-        commit({ ...prevOverlay, updated: { ...prevOverlay.updated, [next.id]: next } });
+      if (prev) {
+        // Anything else the renumbering moved is part of this edit as far as
+        // undo is concerned: reversing it has to put those numbers back too.
+        const byId = new Map(cars.map((c) => [c.id, c]));
+        const alsoMoved = written
+          .filter((w) => w.id !== car.id)
+          .map((w) => byId.get(w.id))
+          .filter((c): c is Diecast => Boolean(c));
+        pushUndo(`editing “${prev.name || prev.model || "the car"}”`, [prev, ...alsoMoved]);
       }
-      void persist([next], "updateCar");
+
+      commit(applyRows(overlayRef.current, written));
+      void persist(written, "updateCar");
     },
     [commit, cars, persist, pushUndo],
   );
@@ -540,19 +624,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   /** Applies rows to the local overlay only. Persistence is the caller's job. */
   const commitCars = useCallback(
     (updatedCars: Diecast[]) => {
-      const prev = overlayRef.current;
-      const updatedMap = { ...prev.updated };
-      let addedList = [...prev.added];
-      const addedIds = new Set(addedList.map((a) => a.id));
-
-      for (const car of updatedCars) {
-        if (addedIds.has(car.id)) {
-          addedList = addedList.map((a) => (a.id === car.id ? car : a));
-        } else {
-          updatedMap[car.id] = car;
-        }
-      }
-      commit({ ...prev, added: addedList, updated: updatedMap });
+      commit(applyRows(overlayRef.current, updatedCars));
     },
     [commit],
   );
@@ -562,9 +634,15 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       if (!updatedCars.length) return;
       const byId = new Map(cars.map((c) => [c.id, c]));
       const before = updatedCars.map((c) => byId.get(c.id)).filter((c): c is Diecast => Boolean(c));
-      pushUndo(`editing ${before.length} car${before.length === 1 ? "" : "s"}`, before);
-      commitCars(updatedCars);
-      void persist(updatedCars, "bulkUpdate");
+
+      const written = withRenumbering(updatedCars, cars, before);
+      const renumbered = written.filter((w) => !updatedCars.some((u) => u.id === w.id));
+      pushUndo(`editing ${before.length} car${before.length === 1 ? "" : "s"}`, [
+        ...before,
+        ...renumbered.map((r) => byId.get(r.id)).filter((c): c is Diecast => Boolean(c)),
+      ]);
+      commitCars(written);
+      void persist(written, "bulkUpdate");
     },
     [commitCars, persist, cars, pushUndo],
   );
@@ -631,20 +709,34 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         return next;
       });
 
-      pushUndo(options.label ?? `updating ${cleanId}`, matched);
-      commitCars(updatedCars);
+      // Marking an order delivered is exactly the change that moves its ID:
+      // once the cars carry an arrival date they stop being pre-orders, which
+      // takes them out of the seller's /PO/ run and into the plain one. The
+      // sheet always worked this way; the app used to leave the old number in
+      // place, so a delivered order kept advertising itself as pending.
+      const written = withRenumbering(updatedCars, cars, matched);
+      const byId = new Map(cars.map((c) => [c.id, c]));
+      const alsoMoved = written
+        .filter((w) => !updatedCars.some((u) => u.id === w.id))
+        .map((w) => byId.get(w.id))
+        .filter((c): c is Diecast => Boolean(c));
+
+      pushUndo(options.label ?? `updating ${cleanId}`, [...matched, ...alsoMoved]);
+      commitCars(written);
 
       // Awaited rather than fired and forgotten: both callers announce "updated
       // N cars" on the resolved value, so that claim has to be backed by the
       // database. Failures surface through their own error UI, not a toast.
-      const failures = await persist(updatedCars, "updateCarsByShippingId", false);
+      const failures = await persist(written, "updateCarsByShippingId", false);
       if (failures.length) {
         throw new Error(
-          `${failures.length} of ${updatedCars.length} cars could not be saved: ${
+          `${failures.length} of ${written.length} cars could not be saved: ${
             failures[0]?.error ?? "unknown error"
           }`,
         );
       }
+      // The count the caller announces is the cars it asked about, not the
+      // neighbours whose numbers shifted alongside them.
       return updatedCars.length;
     },
     [cars, commitCars, persist, pushUndo],
@@ -653,30 +745,79 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   const deleteCar = useCallback(
     (id: string) => {
       const existing = cars.find((c) => c.id === id);
+
+      // Removing the last car of a shipping day closes that gap in the seller's
+      // run, so everything ordered after it counts one lower.
+      const remaining = cars.filter((c) => c.id !== id);
+      const moved = existing ? resyncShippingIds(remaining, [existing]) : [];
+
       if (existing) {
-        pushUndo(`deleting “${existing.name || existing.model || "the car"}”`, [existing]);
+        const byId = new Map(cars.map((c) => [c.id, c]));
+        pushUndo(`deleting “${existing.name || existing.model || "the car"}”`, [
+          existing,
+          ...moved.map((m) => byId.get(m.id)).filter((c): c is Diecast => Boolean(c)),
+        ]);
       }
+
       const prev = overlayRef.current;
       const { [id]: _drop, ...rest } = prev.updated;
-      commit({
-        ...prev,
-        added: prev.added.filter((a) => a.id !== id),
-        updated: rest,
-        // The tombstone is recorded whichever half the car came from. A freshly
-        // added car whose insert has already landed exists in `base` as well,
-        // so dropping it from `added` alone would let the next refresh hand it
-        // straight back.
-        deleted: prev.deleted.includes(id) ? prev.deleted : [...prev.deleted, id],
-      });
+      commit(
+        applyRows(
+          {
+            ...prev,
+            added: prev.added.filter((a) => a.id !== id),
+            updated: rest,
+            // The tombstone is recorded whichever half the car came from. A
+            // freshly added car whose insert has already landed exists in
+            // `base` as well, so dropping it from `added` alone would let the
+            // next refresh hand it straight back.
+            deleted: prev.deleted.includes(id) ? prev.deleted : [...prev.deleted, id],
+          },
+          moved,
+        ),
+      );
       if (isGuest) return;
+      if (moved.length) void persist(moved, "deleteCar renumber");
       void deleteCarFromSupabase(id).then((res) => {
         if (res.success) return;
         console.error("Supabase deleteCar failed:", res.error);
         toast.error("Car was not deleted from the database", { description: res.error });
       });
     },
-    [commit, isGuest, cars, pushUndo],
+    [commit, isGuest, cars, persist, pushUndo],
   );
+
+  /**
+   * Rebuilds every shipping ID from the formula and writes the ones that moved.
+   *
+   * The per-edit renumbering above only touches the sequences an edit disturbs,
+   * which is right for an edit and leaves nothing to correct rows that drifted
+   * before the app derived these at all — imported from the sheet, or written
+   * by a version that numbered only the car in front of it. This is the pass
+   * that squares the whole collection with the formula.
+   */
+  const shippingIdDrift = useCallback(() => allShippingIdFixes(cars), [cars]);
+
+  const renumberShippingIds = useCallback(async () => {
+    const fixes = allShippingIdFixes(cars);
+    if (!fixes.length) return 0;
+
+    pushUndo(
+      `renumbering ${fixes.length} shipping ID${fixes.length === 1 ? "" : "s"}`,
+      fixes.map((f) => cars.find((c) => c.id === f.id)).filter((c): c is Diecast => Boolean(c)),
+    );
+    commitCars(fixes);
+
+    const failures = await persist(fixes, "renumberShippingIds", false);
+    if (failures.length) {
+      throw new Error(
+        `${failures.length} of ${fixes.length} rows could not be saved: ${
+          failures[0]?.error ?? "unknown error"
+        }`,
+      );
+    }
+    return fixes.length;
+  }, [cars, commitCars, persist, pushUndo]);
 
   const top = undoStack.length ? undoStack[undoStack.length - 1] : null;
   const undoLabel = top?.label ?? null;
@@ -719,6 +860,8 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       bulkUpdateCars,
       updateCarsByShippingId,
       deleteCar,
+      renumberShippingIds,
+      shippingIdDrift,
       undo,
       undoLabel,
       undoAt,
@@ -737,6 +880,8 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       bulkUpdateCars,
       updateCarsByShippingId,
       deleteCar,
+      renumberShippingIds,
+      shippingIdDrift,
       undo,
       undoLabel,
       undoAt,
@@ -768,6 +913,8 @@ export function useCarsActions() {
     bulkUpdateCars,
     updateCarsByShippingId,
     deleteCar,
+    renumberShippingIds,
+    shippingIdDrift,
     resetOverlay,
   } = v;
   return {
@@ -777,6 +924,8 @@ export function useCarsActions() {
     bulkUpdateCars,
     updateCarsByShippingId,
     deleteCar,
+    renumberShippingIds,
+    shippingIdDrift,
     resetOverlay,
   };
 }
