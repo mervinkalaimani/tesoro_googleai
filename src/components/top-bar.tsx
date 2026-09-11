@@ -6,6 +6,7 @@ import { useCarsUndo } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { SearchBox } from "@/components/search-box";
 import { NotificationCenter } from "@/components/notification-center";
+import { UserMenu } from "@/components/user-menu";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
@@ -85,13 +86,14 @@ export function TopBar() {
             <Undo2 className="size-4" /> <span className="hidden sm:inline">Undo</span>
           </Button>
         )}
-        {/* Anything the app needs to tell you lives behind the bell — the
-            pre-order launch banner used to sit on the dashboard, where it was
-            only seen by someone already looking at the dashboard. It renders
-            nothing at all when there is nothing to say, so Add car keeps the
-            corner: the last button in the bar is the one worth putting under a
-            thumb, and it is the one you press every day. */}
-        <NotificationCenter />
+        {/* Reading right to left from the corner: who you are, what the app has
+            to tell you, and the thing you came to do.
+
+            The avatar takes the corner because that is where every application
+            on the machine keeps the account — it is a destination you look for
+            rather than a button you aim at. Add car sits inboard of the bell,
+            which renders nothing at all when there is nothing to say, so on a
+            quiet day the two of them sit side by side. */}
         <Button
           size="sm"
           onClick={() => setAddOpen(true)}
@@ -108,6 +110,8 @@ export function TopBar() {
             />
           )}
         </Button>
+        <NotificationCenter />
+        <UserMenu />
         {/* The theme toggle lived here too, competing for a bar that had no
             room for a search field. It is a preference, and preferences are in
             Settings → General & Display. */}

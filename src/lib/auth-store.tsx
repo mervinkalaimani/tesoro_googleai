@@ -21,6 +21,8 @@ export type Profile = {
   email_id: string;
   phone: string | null;
   dob: string | null;
+  /** Public URL of the profile picture, or null when none has been set. */
+  avatar_url: string | null;
   is_admin: boolean;
   is_approved: boolean;
   is_owner: boolean;
@@ -185,6 +187,7 @@ const GUEST_PROFILE: Profile = {
   email_id: "Demo session",
   phone: null,
   dob: null,
+  avatar_url: null,
   is_admin: false,
   is_approved: true,
   is_owner: false,

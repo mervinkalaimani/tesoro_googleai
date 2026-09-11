@@ -12,6 +12,13 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const CAR_PHOTOS_BUCKET = "car-photos";
 
+/**
+ * Profile pictures. A second bucket rather than a folder in the first: what a
+ * picture is for decides how long it lives and who may replace it, and mixing
+ * a person's face in with the shelf makes both harder to reason about.
+ */
+export const AVATARS_BUCKET = "avatars";
+
 /** What the file picker will accept, and what the bucket allows. */
 export const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const ACCEPT_ATTR = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp";
@@ -25,6 +32,9 @@ export const ACCEPT_ATTR = ".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/web
  */
 const MAX_EDGE = 1600;
 const JPEG_QUALITY = 0.85;
+
+/** An avatar is never shown larger than a menu, so it is downscaled harder. */
+const AVATAR_EDGE = 512;
 
 export type PhotoError = { error: string };
 export type PhotoResult = { url: string; path: string };
@@ -40,7 +50,7 @@ function isImage(file: File): boolean {
  * having: phone photographs carry the GPS coordinates of wherever they were
  * taken, and "on my shelf" means someone's home address.
  */
-async function normalise(file: File): Promise<Blob> {
+async function normalise(file: File, maxEdge = MAX_EDGE): Promise<Blob> {
   // A browser too old for createImageBitmap uploads the original rather than
   // failing; the bucket's size limit is the backstop.
   if (typeof createImageBitmap !== "function" || typeof document === "undefined") return file;
@@ -54,7 +64,7 @@ async function normalise(file: File): Promise<Blob> {
     return file;
   }
 
-  const scale = Math.min(1, MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale);
   const h = Math.round(bitmap.height * scale);
 
@@ -75,8 +85,12 @@ async function normalise(file: File): Promise<Blob> {
   return blob.size < file.size ? blob : file;
 }
 
-/** Uploads one photo and returns its public URL. */
-export async function uploadCarPhoto(file: File): Promise<PhotoResult | PhotoError> {
+/** Uploads one image to a bucket and returns its public URL. */
+async function uploadTo(
+  bucket: string,
+  file: File,
+  maxEdge: number,
+): Promise<PhotoResult | PhotoError> {
   if (!isImage(file)) {
     return { error: "That file is not a JPG, PNG or WebP." };
   }
@@ -85,30 +99,38 @@ export async function uploadCarPhoto(file: File): Promise<PhotoResult | PhotoErr
   const uid = auth?.user?.id;
   if (!uid) return { error: "Sign in to upload a photo." };
 
-  const body = await normalise(file);
+  const body = await normalise(file, maxEdge);
   const ext = body.type === "image/png" ? "png" : body.type === "image/webp" ? "webp" : "jpg";
   const path = `${uid}/${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 9)}.${ext}`;
 
   const { error } = await supabase.storage
-    .from(CAR_PHOTOS_BUCKET)
+    .from(bucket)
     .upload(path, body, { contentType: body.type || "image/jpeg", upsert: false });
 
   if (error) {
     // The bucket not existing is the one failure worth naming precisely: it
     // means the migration has not been run, which is a thing the person can fix.
     const msg = /bucket/i.test(error.message)
-      ? "The car-photos bucket does not exist yet — run the storage migration."
+      ? `The ${bucket} bucket does not exist yet — run the storage migration.`
       : error.message;
     return { error: msg };
   }
 
-  const { data } = supabase.storage.from(CAR_PHOTOS_BUCKET).getPublicUrl(path);
+  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return { url: data.publicUrl, path };
 }
 
+export function uploadCarPhoto(file: File): Promise<PhotoResult | PhotoError> {
+  return uploadTo(CAR_PHOTOS_BUCKET, file, MAX_EDGE);
+}
+
+export function uploadAvatar(file: File): Promise<PhotoResult | PhotoError> {
+  return uploadTo(AVATARS_BUCKET, file, AVATAR_EDGE);
+}
+
 /** The storage path inside a public URL, or null if it is someone else's link. */
-export function pathFromPublicUrl(url: string): string | null {
-  const marker = `/storage/v1/object/public/${CAR_PHOTOS_BUCKET}/`;
+export function pathFromPublicUrl(url: string, bucket = CAR_PHOTOS_BUCKET): string | null {
+  const marker = `/storage/v1/object/public/${bucket}/`;
   const i = (url || "").indexOf(marker);
   return i === -1 ? null : url.slice(i + marker.length);
 }
@@ -121,4 +143,10 @@ export async function deleteCarPhoto(url: string): Promise<void> {
   const path = pathFromPublicUrl(url);
   if (!path) return;
   await supabase.storage.from(CAR_PHOTOS_BUCKET).remove([path]);
+}
+
+export async function deleteAvatar(url: string): Promise<void> {
+  const path = pathFromPublicUrl(url, AVATARS_BUCKET);
+  if (!path) return;
+  await supabase.storage.from(AVATARS_BUCKET).remove([path]);
 }

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Database, Sliders, Activity } from "lucide-react";
+import { Database, Sliders, Activity, UserRound } from "lucide-react";
 import { ACCENT_OPTIONS, THEME_OPTIONS, useApp, type AccentColor } from "@/lib/store";
 import { SegmentControl } from "@/components/segment-control";
 import { Switch } from "@/components/ui/switch";
@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AccountCard } from "@/components/account-card";
 import { FavouriteDetector } from "@/components/favourite-detector";
 import { ShippingIdRebuild } from "@/components/shipping-id-rebuild";
 import { OAuthProvidersCard } from "@/components/oauth-providers-card";
@@ -72,7 +73,7 @@ function SettingsPage() {
       {/* General first: it is what most visits are for. The database connection
           is owner-only plumbing you touch once, so it goes last. */}
       <Tabs defaultValue="preferences" className="w-full space-y-4">
-        <TabsList className={`grid w-full h-10 ${isOwner ? "grid-cols-3" : "grid-cols-2"}`}>
+        <TabsList className={`grid w-full h-10 ${isOwner ? "grid-cols-4" : "grid-cols-3"}`}>
           <TabsTrigger
             value="preferences"
             id="settings-tab-preferences"
@@ -80,6 +81,14 @@ function SettingsPage() {
           >
             <Sliders className="size-4 shrink-0" />
             <span>General & Display</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="account"
+            id="settings-tab-account"
+            className="gap-2 text-xs md:text-sm font-medium"
+          >
+            <UserRound className="size-4 shrink-0" />
+            <span>Account</span>
           </TabsTrigger>
           <TabsTrigger
             value="diagnostics"
@@ -199,7 +208,12 @@ function SettingsPage() {
           </section>
         </TabsContent>
 
-        {/* TAB 2: DIAGNOSTICS */}
+        {/* TAB 2: ACCOUNT — everything signup asked for, afterwards */}
+        <TabsContent value="account" className="space-y-4 focus-visible:outline-none">
+          <AccountCard />
+        </TabsContent>
+
+        {/* TAB 3: DIAGNOSTICS */}
         <TabsContent value="diagnostics" className="space-y-4 focus-visible:outline-none">
           <section className="card-elevated p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
