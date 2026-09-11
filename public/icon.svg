@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tesoro">
+  <title>Tesoro</title>
+  <!--
+    The Treasure diamond, in gold. Facets are drawn as filled polygons rather
+    than left as gaps: a notch cut out of the shape would show the page through
+    it, which is white on one background and invisible on another. The hairlines
+    between them are a dark bronze so the gem reads on either.
+
+    Two tones only — the bright table and the darker side facets — because at
+    16px anything subtler is one gold blob.
+  -->
+  <g stroke="#6b4a10" stroke-width="1.1" stroke-linejoin="round">
+    <!-- Crown: outer facets darker, table bright -->
+    <path fill="#c8901f" d="M14 16 H24 L18 28 H6 Z" />
+    <path fill="#ffd84a" d="M24 16 H40 L46 28 H18 Z" />
+    <path fill="#c8901f" d="M40 16 H50 L58 28 H46 Z" />
+    <!-- The V under the table, cut into the bright face -->
+    <path fill="#8a5f13" stroke="none" d="M27.5 16 H36.5 L32 27 Z" />
+    <!-- Pavilion, converging on the culet -->
+    <path fill="#c8901f" d="M6 28 H18 L32 54 Z" />
+    <path fill="#ffd84a" d="M18 28 H46 L32 54 Z" />
+    <path fill="#c8901f" d="M46 28 H58 L32 54 Z" />
+  </g>
+</svg>

@@ -36,7 +36,8 @@ import { Combobox } from "@/components/ui/combobox";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { makeBlankCar, useCars, useCarsActions, type ShippingBatchUpdates } from "@/lib/cars-store";
 import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
-import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
+import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
+import { TrackingLink } from "@/components/tracking-link";
 import type { Diecast } from "@/lib/types";
 
 const STATUS_CHOICES = [
@@ -733,17 +734,7 @@ export function ShippingBatchDialog({
                       onChange={(e) => setNewTrackingId(e.target.value)}
                       className="border-border bg-background font-mono text-xs text-foreground"
                     />
-                    {trackingUrlFor(newPartner, newTrackingId) && (
-                      <a
-                        href={trackingUrlFor(newPartner, newTrackingId) ?? "#"}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-2.5 py-1.5 text-[11px] text-sky-400 hover:bg-sky-500/15"
-                      >
-                        <span className="truncate">Track on {newPartner.trim()}</span>
-                        <ExternalLink className="size-3 shrink-0" />
-                      </a>
-                    )}
+                    <TrackingLink partner={newPartner} trackingId={newTrackingId} />
                   </div>
                 )}
               </div>

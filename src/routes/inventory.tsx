@@ -3,7 +3,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronUp,
-  Eye,
   Pencil,
   SlidersHorizontal,
   Sparkles,
@@ -14,8 +13,8 @@ import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
 import { filterRows } from "@/lib/search";
-import { StatusPill, CostCell, CarBadges, carRecordFields } from "@/components/cars-table";
-import { MobileRecordCard, RecordAction } from "@/components/mobile-record-card";
+import { StatusPill, CostCell, CarListCard } from "@/components/cars-table";
+import { RecordAction } from "@/components/mobile-record-card";
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog, DeleteCarDialog } from "@/components/car-form-dialog";
@@ -563,21 +562,12 @@ function InventoryPage() {
                 is a table you read by dragging it sideways. */}
             <div className="space-y-2 p-2 md:hidden">
               {shown.map((r, i) => (
-                <MobileRecordCard
+                <CarListCard
                   key={(r.id || "") + i}
-                  id={
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate">{r.carNumber || r.id}</span>
-                      <CarBadges car={r} />
-                    </span>
-                  }
+                  car={r}
                   onOpen={() => openDrawer(r)}
-                  fields={carRecordFields(r)}
                   actions={
                     <>
-                      <RecordAction label="View car" onClick={() => openDrawer(r)}>
-                        <Eye className="size-4" />
-                      </RecordAction>
                       <RecordAction label="Edit car" onClick={() => setEditCar(r)}>
                         <Pencil className="size-4" />
                       </RecordAction>

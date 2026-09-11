@@ -2,120 +2,72 @@
  * Delivery partners and the tracking pages they expose.
  *
  * A consignment number on its own is a dead end — it has to be carried to the
- * right courier's site by hand. Pairing it with the partner turns both fields
- * into one link, which is the only reason the partner is a separate column
- * rather than more free text.
+ * right courier's site by hand. Pairing it with the partner is what turns both
+ * fields into one action, which is the only reason the partner is a separate
+ * column rather than more free text.
  *
- * `url` takes the tracking number and returns the page that shows it. A partner
- * with no template still earns its place in the list: it labels the shipment and
- * keeps the spelling consistent between cars, so the number is at least
- * copyable. Everything here is a public tracking page — no account, no key.
+ * `page` is the courier's own tracking form, not a deep link to one
+ * consignment. Deep links are the first thing these sites change: half of them
+ * bounce a stale URL to a home page, and the ones that don't need a session the
+ * link cannot carry. Opening the form and putting the number on the clipboard
+ * works on every one of them and keeps working. A partner with no page still
+ * earns its place in the list: it labels the shipment and keeps the spelling
+ * consistent between cars.
  */
 export type DeliveryPartner = {
   /** Canonical spelling, stored on the car and shown in the UI. */
   name: string;
   /** Extra spellings that should resolve to this partner when matching. */
   aliases?: string[];
-  /** Public tracking page for a consignment, or undefined if there isn't one. */
-  url?: (trackingId: string) => string;
+  /** The courier's public tracking form, or undefined if there isn't one. */
+  page?: string;
 };
 
-const enc = encodeURIComponent;
-
 export const DELIVERY_PARTNERS: DeliveryPartner[] = [
-  {
-    name: "Delhivery",
-    url: (t) => `https://www.delhivery.com/track/package/${enc(t)}`,
-  },
-  {
-    name: "Blue Dart",
-    aliases: ["bluedart"],
-    url: (t) => `https://www.bluedart.com/tracking?trackFor=0&trackNo=${enc(t)}`,
-  },
-  {
-    name: "DTDC",
-    url: (t) => `https://www.dtdc.in/tracking/shipment-tracking.asp?strCnno=${enc(t)}`,
-  },
+  { name: "Delhivery", page: "https://www.delhivery.com/tracking" },
+  { name: "Blue Dart", aliases: ["bluedart"], page: "https://www.bluedart.com/tracking" },
+  { name: "DTDC", page: "https://www.dtdc.in/tracking" },
   {
     name: "India Post",
     aliases: ["speed post", "speedpost", "indiapost", "post"],
-    url: () => "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
+    page: "https://www.indiapost.gov.in/_layouts/15/dop.portal.tracking/trackconsignment.aspx",
   },
   {
     name: "Ekart",
     aliases: ["ekart logistics", "flipkart"],
-    url: (t) => `https://ekartlogistics.com/shipmenttrack/${enc(t)}`,
+    page: "https://ekartlogistics.com/track",
   },
-  {
-    name: "XpressBees",
-    aliases: ["xpress bees"],
-    url: (t) => `https://www.xpressbees.com/shipment/tracking?awbNo=${enc(t)}`,
-  },
-  {
-    name: "Ecom Express",
-    aliases: ["ecom"],
-    url: (t) => `https://ecomexpress.in/tracking/?awb_field=${enc(t)}`,
-  },
-  {
-    name: "Shadowfax",
-    url: (t) => `https://tracker.shadowfax.in/#/tracking/${enc(t)}`,
-  },
+  { name: "XpressBees", aliases: ["xpress bees"], page: "https://www.xpressbees.com/track" },
+  { name: "Ecom Express", aliases: ["ecom"], page: "https://ecomexpress.in/tracking/" },
+  { name: "Shadowfax", page: "https://tracker.shadowfax.in/" },
   {
     name: "Amazon Shipping",
     aliases: ["amazon", "amazon transportation", "ats"],
-    url: (t) => `https://track.amazon.in/tracking/${enc(t)}`,
+    page: "https://track.amazon.in/",
   },
-  {
-    name: "Shiprocket",
-    url: (t) => `https://www.shiprocket.in/shipment-tracking/${enc(t)}`,
-  },
+  { name: "Shiprocket", page: "https://www.shiprocket.in/shipment-tracking/" },
   {
     name: "Professional Couriers",
     aliases: ["tpc", "the professional couriers"],
-    url: () => "https://www.tpcindia.com/",
+    page: "https://www.tpcindia.com/",
   },
-  {
-    name: "Trackon",
-    url: (t) => `https://trackon.in/Tracking/track_consignment/${enc(t)}`,
-  },
-  {
-    name: "Gati",
-    url: (t) => `https://www.gati.com/tracking/?docketNo=${enc(t)}`,
-  },
-  {
-    name: "Safexpress",
-    url: () => "https://www.safexpress.com/track-shipment.aspx",
-  },
-  {
-    name: "FedEx",
-    url: (t) => `https://www.fedex.com/fedextrack/?trknbr=${enc(t)}`,
-  },
-  {
-    name: "DHL",
-    url: (t) => `https://www.dhl.com/in-en/home/tracking.html?tracking-id=${enc(t)}`,
-  },
-  {
-    name: "UPS",
-    url: (t) => `https://www.ups.com/track?tracknum=${enc(t)}`,
-  },
-  {
-    name: "Aramex",
-    url: (t) => `https://www.aramex.com/us/en/track/results?ShipmentNumber=${enc(t)}`,
-  },
+  { name: "Trackon", page: "https://trackon.in/" },
+  { name: "Gati", page: "https://www.gati.com/tracking/" },
+  { name: "Safexpress", page: "https://www.safexpress.com/track-shipment.aspx" },
+  { name: "FedEx", page: "https://www.fedex.com/fedextrack/" },
+  { name: "DHL", page: "https://www.dhl.com/in-en/home/tracking.html" },
+  { name: "UPS", page: "https://www.ups.com/track" },
+  { name: "Aramex", page: "https://www.aramex.com/us/en/track/track-results-multiple" },
   {
     name: "EMS",
     aliases: ["ems international"],
-    url: () => "https://www.ems.post/en/global-network/tracking",
+    page: "https://www.ems.post/en/global-network/tracking",
   },
   {
     name: "Japan Post",
-    url: () =>
-      "https://trackings.post.japanpost.jp/services/srv/search/input?searchKind=S002&locale=en",
+    page: "https://trackings.post.japanpost.jp/services/srv/search/input?searchKind=S002&locale=en",
   },
-  {
-    name: "USPS",
-    url: (t) => `https://tools.usps.com/go/TrackConfirmAction?tLabels=${enc(t)}`,
-  },
+  { name: "USPS", page: "https://tools.usps.com/go/TrackConfirmAction_input" },
   { name: "Hand delivery", aliases: ["in person", "pickup", "self pickup", "collected"] },
   { name: "Other" },
 ];
@@ -143,15 +95,16 @@ export function findDeliveryPartner(name?: string | null): DeliveryPartner | nul
 }
 
 /**
- * The page that would show this consignment, or null when it cannot be built —
- * an unrecognised courier, one with no public tracker, or a missing number.
+ * The courier's tracking form for this shipment, or null when there is nothing
+ * to open — an unrecognised courier, one with no public tracker, or no number
+ * to look up once you get there.
  */
-export function trackingUrlFor(partner?: string | null, trackingId?: string | null): string | null {
-  const id = (trackingId || "").trim();
-  if (!id) return null;
-  const match = findDeliveryPartner(partner);
-  if (!match?.url) return null;
-  return match.url(id);
+export function trackingPageFor(
+  partner?: string | null,
+  trackingId?: string | null,
+): string | null {
+  if (!(trackingId || "").trim()) return null;
+  return findDeliveryPartner(partner)?.page ?? null;
 }
 
 /** Partner names for a dropdown, canonical spelling only. */

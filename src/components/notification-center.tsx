@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "@tanstack/react-router";
-import { Bell, ChevronDown, ChevronUp, IndianRupee, PartyPopper, Wallet } from "lucide-react";
+import { Bell, ChevronDown, ChevronUp, IndianRupee, PartyPopper, Wallet, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -26,13 +27,14 @@ const OVERDUE_DAYS = 30;
 
 const LAUNCH_SECTION = "preorder-launch";
 
-/** Collapsed sections are per account, so two people sharing a browser differ. */
+/** Both lists are per account, so two people sharing a browser differ. */
 const collapseKey = (uid: string) => `dg.notifyCollapsed.${uid}`;
+const dismissKey = (uid: string) => `dg.notifyDismissed.${uid}`;
 
-function readCollapsed(uid: string): string[] {
+function readList(key: string): string[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(collapseKey(uid));
+    const raw = window.localStorage.getItem(key);
     const parsed = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
   } catch {
@@ -40,7 +42,22 @@ function readCollapsed(uid: string): string[] {
   }
 }
 
+function writeList(key: string, value: string[]) {
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // A browser refusing storage just means the notice returns next visit.
+  }
+}
+
 type Launch = { car: Diecast; due: Date; days: number };
+
+/**
+ * Dismissals are keyed by car *and* date: moving a pre-order's date makes it a
+ * different piece of news, and one that was cleared as "yes, I know" should say
+ * so again when the promise changes.
+ */
+const keyOf = (l: Launch) => `${l.car.id}@${l.due.toISOString().slice(0, 10)}`;
 
 /** "in 3 days" / "tomorrow" / "8 days late" — the reason it is on screen. */
 function whenLabel(days: number): { text: string; overdue: boolean } {
@@ -67,13 +84,15 @@ export function NotificationCenter() {
 
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState<string[]>([]);
+  const [dismissed, setDismissed] = useState<string[]>([]);
   const [payFor, setPayFor] = useState<Diecast | null>(null);
   const [statusFor, setStatusFor] = useState<Diecast | null>(null);
 
   // Read after mount rather than in initial state: this renders on the server
   // too, and a first client render that already knew would not match.
   useEffect(() => {
-    setCollapsed(readCollapsed(uid));
+    setCollapsed(readList(collapseKey(uid)));
+    setDismissed(readList(dismissKey(uid)));
   }, [uid]);
 
   const launches = useMemo<Launch[]>(() => {
@@ -90,17 +109,30 @@ export function NotificationCenter() {
     return out.sort((a, b) => a.due.getTime() - b.due.getTime());
   }, [cars]);
 
+  const visible = useMemo(
+    () => launches.filter((l) => !dismissed.includes(keyOf(l))),
+    [launches, dismissed],
+  );
+
   const launchesCollapsed = collapsed.includes(LAUNCH_SECTION);
-  const count = launches.length;
+  const count = visible.length;
 
   const toggleSection = (id: string) => {
     const next = collapsed.includes(id) ? collapsed.filter((s) => s !== id) : [...collapsed, id];
     setCollapsed(next);
-    try {
-      window.localStorage.setItem(collapseKey(uid), JSON.stringify(next));
-    } catch {
-      // A browser refusing storage just means it unfolds again next visit.
-    }
+    writeList(collapseKey(uid), next);
+  };
+
+  /**
+   * Cleared notices are remembered, but only while the thing they were about is
+   * still live — the stored list is trimmed to the current set on every write,
+   * so it cannot grow without bound as pre-orders come and go.
+   */
+  const clear = (keys: string[]) => {
+    const live = new Set(launches.map(keyOf));
+    const next = [...new Set([...dismissed, ...keys])].filter((k) => live.has(k));
+    setDismissed(next);
+    writeList(dismissKey(uid), next);
   };
 
   /** Every action opens something of its own, so the panel gets out of the way. */
@@ -111,6 +143,23 @@ export function NotificationCenter() {
 
   return (
     <>
+      {/* The page dims behind the panel. A popover floating over a busy page at
+          full brightness reads as part of it; this says the panel is the thing
+          you are looking at, and tapping the dimmed page closes it.
+
+          Portalled to the body on purpose: the top bar sets a backdrop-filter,
+          which makes it the containing block for anything fixed inside it — the
+          overlay would cover the header and nothing else. */}
+      {open &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            aria-hidden
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 bg-black/50 animate-in fade-in"
+          />,
+          document.body,
+        )}
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -137,15 +186,27 @@ export function NotificationCenter() {
         >
           <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
             <h2 className="text-sm font-semibold">Notifications</h2>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close notifications"
-              title="Close notifications"
-              className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <ChevronUp className="size-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              {count > 0 && (
+                <button
+                  type="button"
+                  onClick={() => clear(visible.map(keyOf))}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  title="Clear every notification"
+                >
+                  Clear all
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close notifications"
+                title="Close notifications"
+                className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <ChevronUp className="size-4" />
+              </button>
+            </div>
           </div>
 
           {count === 0 ? (
@@ -196,12 +257,12 @@ export function NotificationCenter() {
 
               {!launchesCollapsed && (
                 <div className="space-y-2 p-3">
-                  {launches.map((l) => {
+                  {visible.map((l) => {
                     const balance = Math.max((l.car.spent || 0) - (l.car.paid || 0), 0);
                     const when = whenLabel(l.days);
                     return (
                       <ShipmentItem
-                        key={`${l.car.id}@${l.due.toISOString().slice(0, 10)}`}
+                        key={keyOf(l)}
                         car={l.car}
                         thumb
                         onOpen={() => act(() => drawer.open(l.car))}
@@ -244,6 +305,20 @@ export function NotificationCenter() {
                               </Button>
                             )}
                             <UpdateStatusButton onClick={() => act(() => setStatusFor(l.car))} />
+                            {/* Clearing one notice is not the same as dealing
+                                with the car — it stays a pre-order, it just
+                                stops asking. It stays cleared until its date
+                                moves. */}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => clear([keyOf(l)])}
+                              aria-label={`Clear the notice for ${l.car.name || l.car.model}`}
+                              title="Clear this notification"
+                              className="size-8 text-muted-foreground"
+                            >
+                              <X className="size-4" />
+                            </Button>
                           </>
                         }
                       />

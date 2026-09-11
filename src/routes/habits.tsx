@@ -8,6 +8,7 @@ import { filterRows } from "@/lib/search";
 import type { Diecast } from "@/lib/types";
 import { inr, inrFull, parseDMY, formatDMY } from "@/lib/format";
 import { SegmentControl } from "@/components/segment-control";
+import { KpiBand, KpiTile } from "@/components/kpi";
 import { StatusPill, carSubLine } from "@/components/cars-table";
 import { useCarDrawer } from "@/components/car-details-drawer";
 
@@ -266,14 +267,14 @@ function HabitsPage() {
 
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
-      <section className="grid grid-cols-2 gap-3 pb-1 md:flex md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
-        <Stat
+      <KpiBand>
+        <KpiTile
           icon={<CalendarDays className="size-4" />}
           label={`Active ${unit}s`}
           value={stats.active.toLocaleString()}
-          hint={`of ${buckets.length}`}
+          sub={`of ${buckets.length}`}
         />
-        <Stat
+        <KpiTile
           icon={
             mode === "ordered" ? (
               <ShoppingCart className="size-4" />
@@ -283,22 +284,25 @@ function HabitsPage() {
           }
           label={mode === "ordered" ? "Cars ordered" : "Cars delivered"}
           value={stats.totalCars.toLocaleString()}
-          hint={`${stats.avg.toFixed(1)} per active ${unit}`}
+          sub={`${stats.avg.toFixed(1)} per active ${unit}`}
+          tone="sky"
         />
-        <Stat
+        <KpiTile
           icon={<CalendarDays className="size-4" />}
           label={`Busiest ${unit}`}
           value={stats.best ? String(stats.best.count) : "—"}
-          hint={stats.best?.label}
+          sub={stats.best?.label}
+          tone="amber"
         />
-        <Stat
+        <KpiTile
           icon={<CalendarDays className="size-4" />}
           label="Current streak"
           value={`${stats.streak} ${unit}${stats.streak === 1 ? "" : "s"}`}
+          tone="emerald"
         />
         {/* The spend tile came off: the same figure sits under the tracker
             squares, next to the activity it is describing. */}
-      </section>
+      </KpiBand>
 
       <section className="card-elevated min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
@@ -642,31 +646,6 @@ function InsightCard({
         ))}
         {rows.length === 0 && <li className="py-3 text-sm text-muted-foreground">No data yet.</li>}
       </ul>
-    </div>
-  );
-}
-
-function Stat({
-  icon,
-  label,
-  value,
-  hint,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  hint?: string;
-}) {
-  return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-        <span className="grid size-6 shrink-0 place-items-center rounded-md bg-primary/15 text-primary">
-          {icon}
-        </span>
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="mt-2 text-display text-3xl font-semibold tabular-nums">{value}</div>
-      <div className="mt-auto pt-0.5 text-xs text-muted-foreground truncate">{hint ?? ""}</div>
     </div>
   );
 }

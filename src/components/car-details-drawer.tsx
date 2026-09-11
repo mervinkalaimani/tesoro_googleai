@@ -1,11 +1,11 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { Car, ExternalLink, Flame, Loader2, Pencil, Star, Trash2, Truck, X } from "lucide-react";
+import { Car, Flame, Loader2, Pencil, Star, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { findCarImage } from "@/lib/car-image";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
-import { trackingUrlFor } from "@/lib/tracking";
+import { TrackingLink } from "@/components/tracking-link";
 import { Input } from "@/components/ui/input";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
@@ -255,7 +255,6 @@ function CarPopupContent({
 
   const hasArrived = (car.status || "").trim().toLowerCase() === "available";
   const cleanTransitNotes = (car.transitInfo || "").trim();
-  const trackUrl = trackingUrlFor(car.deliveryPartner, car.trackingId);
 
   return (
     <div className="space-y-4">
@@ -267,12 +266,13 @@ function CarPopupContent({
         Diecast car specifications, status, logistics, and pricing details.
       </DialogDescription>
 
-      {/* TOP HEADER ROW: ID Badge on left, Star + Edit + Close on right */}
-      <div className="flex items-center justify-between">
-        <div className="rounded-md border border-border bg-muted/40 px-2.5 py-1 font-mono text-xs font-medium tracking-wider text-foreground">
-          {car.id}
-        </div>
-
+      {/* TOP HEADER ROW
+          The car ID used to sit on the left of this row and the Close button on
+          the right. The ID is a catalogue number — it reads with the rest of the
+          detail below rather than as the headline — and closing is the X in the
+          dialog's own corner, or a push down on a phone. What is left is the
+          three things you do to a car from here. */}
+      <div className="flex items-center justify-end">
         <div className="flex items-center gap-1.5">
           {/* Chase toggle, sits left of the favourite star */}
           <button
@@ -316,29 +316,16 @@ function CarPopupContent({
           >
             <Pencil className="size-4" />
           </button>
-
-          {/* Close X Button */}
-          <button
-            type="button"
-            onClick={onClose}
-            title="Close popup"
-            className="flex size-8 items-center justify-center rounded-lg border border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
-          >
-            <X className="size-4" />
-          </button>
         </div>
       </div>
 
-      {/* HERO IMAGE: Landscape with Brand and Size badges overlaid at bottom-left */}
+      {/* HERO IMAGE
+          Nothing is overlaid on it now. The scale badge sat in the corner of
+          every photograph to say "1:64", which is what almost every car in the
+          collection is; it reads beside the colour below, where a scale that is
+          not 1:64 is worth noticing. */}
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl bg-muted/60 border border-border shadow-inner">
         <HeroCarImage car={car} />
-
-        {/* Scale badge only — brand now reads in the subtitle below. */}
-        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2">
-          <span className="rounded-md bg-black/85 backdrop-blur-md px-2 py-1 text-xs font-mono font-medium text-foreground tracking-tight shadow-md border border-white/10">
-            {car.size || "1:64"}
-          </span>
-        </div>
       </div>
 
       {/* CAR TITLE & SUBTITLE */}
@@ -353,100 +340,54 @@ function CarPopupContent({
         </p>
       </div>
 
-      {/* 3-COLUMN FINANCIALS CARD: PURCHASE SPENT | RETAIL / MRP | GAIN / DELTA */}
-      <div className="grid grid-cols-3 gap-2 rounded-xl border border-border bg-muted/40 p-4">
-        <div>
-          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            PURCHASE SPENT
-          </span>
-          <span className="mt-1 block text-xl sm:text-2xl font-bold text-foreground">
-            {inrFull(spent)}
-          </span>
+      {/* PURCHASE
+          Was a filled card of its own. Three sections each in their own
+          container stacked into three boxes on a phone with nothing to say which
+          one you were in; a rule and a heading does the same job in less. */}
+      <Section title="Purchase">
+        <div className="grid grid-cols-3 gap-2">
+          <Spec label="Spent" value={inrFull(spent)} size="lg" />
+          <Spec label="Retail / MRP" value={inrFull(mrp)} size="lg" />
+          <Spec
+            label="Gain / Delta"
+            size="lg"
+            className={delta >= 0 ? "text-emerald-600 dark:text-[#00E599]" : "text-rose-400"}
+            value={delta >= 0 ? `+${inrFull(delta)}` : `-${inrFull(Math.abs(delta))}`}
+          />
         </div>
+      </Section>
 
-        <div>
-          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            RETAIL / MRP
-          </span>
-          <span className="mt-1 block text-xl sm:text-2xl font-bold text-foreground">
-            {inrFull(mrp)}
-          </span>
+      {/* DETAILS
+          Read in the order you would describe the car: what it looks like, what
+          set it belongs to, what it is, and only then the numbers that identify
+          it in the catalogue. */}
+      <Section title="Details">
+        <div className="grid grid-cols-3 gap-x-3 gap-y-4 text-sm">
+          <Spec
+            label="Colour / Livery"
+            value={[car.colour || "—", car.size].filter(Boolean).join(" · ")}
+          />
+          <Spec label="Assortment" value={car.assortment} />
+          <Spec label="Vehicle Type" value={car.type} />
+          <Spec label="Car Number" value={car.carNumber} />
+          <Spec label="Car ID" value={car.id} className="font-mono" />
+          <Spec label="Status" value={car.status} className={getStatusColor(car.status)} />
         </div>
+      </Section>
 
-        <div>
-          <span className="text-[10px] sm:text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
-            GAIN / DELTA
-          </span>
-          {delta >= 0 ? (
-            <span className="mt-1 block text-xl sm:text-2xl font-bold text-emerald-600 dark:text-[#00E599]">
-              +{inrFull(delta)}
-            </span>
-          ) : (
-            <span className="mt-1 block text-xl sm:text-2xl font-bold text-rose-400">
-              -{inrFull(Math.abs(delta))}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* 3-COLUMN SPECIFICATIONS GRID */}
-      <div className="grid grid-cols-3 gap-x-3 gap-y-4 text-sm pt-1">
-        <div>
-          <span className="text-xs text-muted-foreground">Series</span>
-          <span className="mt-0.5 block font-semibold text-foreground truncate">
-            {car.series || "Showroom"}
-          </span>
-        </div>
-
-        <div>
-          <span className="text-xs text-muted-foreground">Assortment</span>
-          <span className="mt-0.5 block font-semibold text-foreground truncate">
-            {car.assortment || "Premium"}
-          </span>
-        </div>
-
-        <div>
-          <span className="text-xs text-muted-foreground">Vehicle Type</span>
-          <span className="mt-0.5 block font-semibold text-foreground truncate">
-            {car.type || "SUV"}
-          </span>
-        </div>
-
-        <div>
-          <span className="text-xs text-muted-foreground">Colour / Livery</span>
-          <span className="mt-0.5 block font-semibold text-foreground truncate">
-            {car.colour || "—"}
-          </span>
-        </div>
-
-        <div>
-          <span className="text-xs text-muted-foreground">Current Status</span>
-          <span className={`mt-0.5 block font-semibold truncate ${getStatusColor(car.status)}`}>
-            {car.status || "—"}
-          </span>
-        </div>
-      </div>
-
-      {/* SHIPPING & TRANSIT TRACKING CARD
-          A translucent amber wash rather than the fixed near-black it was:
-          the tint now reads against either background instead of punching a
-          dark hole through a light page. */}
-      <div className="space-y-3 rounded-xl border border-amber-500/35 bg-amber-500/[0.07] p-4">
-        {/* Card Header with Truck Icon and Mark Delivered Button */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Truck className="size-4 text-amber-600 dark:text-amber-400" />
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
-              SHIPPING & TRANSIT TRACKING
-            </span>
-          </div>
-
-          {/* Was a one-click "Mark <next stage>", which moved the status and
-              nothing else — so a car became Transit with no courier, or
-              Available with no seller or price. It opens the status dialog
-              instead: same one the ISO suggestions use, which asks for what the
-              new status actually implies. The next stage is still what it
-              defaults to. */}
+      {/* SHIPPING
+          The courier, the number and the note appear only when the car actually
+          has them. Six fields of "—" told you nothing except that this car was
+          not shipped by anyone. */}
+      <Section
+        title="Shipping"
+        action={
+          // Was a one-click "Mark <next stage>", which moved the status and
+          // nothing else — so a car became Transit with no courier, or
+          // Available with no seller or price. It opens the status dialog
+          // instead: same one the ISO suggestions use, which asks for what the
+          // new status actually implies. The next stage is still what it
+          // defaults to.
           <UpdateStatusButton
             onClick={onUpdateStatus}
             title={
@@ -456,26 +397,21 @@ function CarPopupContent({
             }
             className="h-8 px-3 text-xs"
           />
-        </div>
-
-        {/* 4-column Details: Seller | Shipping ID | Order Date | Expected Date */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-1">
-          <div>
-            <span className="text-muted-foreground">Seller:</span>
-            <span className="mt-0.5 block font-medium text-foreground truncate">
-              {car.seller || "—"}
-            </span>
-          </div>
-
-          <div>
-            <span className="text-muted-foreground">Shipping ID:</span>
-            <div className="mt-0.5 flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono font-medium text-foreground">{car.shippingId || "—"}</span>
+        }
+      >
+        <div className="grid grid-cols-3 gap-x-3 gap-y-4 text-sm">
+          <Spec label="Seller" value={car.seller} />
+          <div className="min-w-0">
+            <span className="text-xs text-muted-foreground">Shipping ID</span>
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <span className="truncate font-mono font-semibold text-foreground">
+                {car.shippingId || "—"}
+              </span>
               {car.shippingId && (
                 <button
                   type="button"
                   onClick={() => onOpenShippingBatch(car.shippingId)}
-                  className="cursor-pointer text-[10px] text-amber-600 hover:underline dark:text-amber-400"
+                  className="cursor-pointer text-[10px] text-primary hover:underline"
                   title={`Update every car in order ${car.shippingId}`}
                 >
                   (View Order)
@@ -483,84 +419,101 @@ function CarPopupContent({
               )}
             </div>
           </div>
-
-          <div>
-            <span className="text-muted-foreground">Order Date:</span>
-            <span className="mt-0.5 block font-medium text-foreground truncate">
-              {car.orderDate || "—"}
-            </span>
-          </div>
+          <Spec label="Order Date" value={car.orderDate} />
 
           {/* A car in hand has an arrival date; one still coming has an
               estimate. Showing "Expected" against a car that turned up last
               month was the wrong word for the only date that mattered. */}
-          <div>
-            <span className="text-muted-foreground">
-              {hasArrived ? "Received Date:" : "Expected Date:"}
-            </span>
-            <span className="mt-0.5 block font-medium text-foreground truncate">
-              {formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate) ||
-                "—"}
-            </span>
-          </div>
-
-          <div>
-            <span className="text-muted-foreground">Delivery Partner:</span>
-            <span className="mt-0.5 block font-medium text-foreground truncate">
-              {car.deliveryPartner || "—"}
-            </span>
-          </div>
-
-          <div>
-            <span className="text-muted-foreground">Tracking ID:</span>
-            <span className="mt-0.5 block truncate font-mono font-medium text-foreground">
-              {car.trackingId || "—"}
-            </span>
-          </div>
+          <Spec
+            label={hasArrived ? "Received Date" : "Expected Date"}
+            value={formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate)}
+          />
+          {car.deliveryPartner ? (
+            <Spec label="Delivery Partner" value={car.deliveryPartner} />
+          ) : null}
+          {car.trackingId ? (
+            <Spec label="Tracking ID" value={car.trackingId} className="font-mono" />
+          ) : null}
+          {cleanTransitNotes ? (
+            <Spec label="Notes" value={cleanTransitNotes} className="col-span-3" />
+          ) : null}
         </div>
 
         {/* The consignment number is only useful if it goes somewhere. */}
-        {trackUrl && (
-          <a
-            href={trackUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center justify-between gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs font-medium text-sky-400 hover:bg-sky-500/15"
-          >
-            <span className="truncate">Track on {(car.deliveryPartner || "").trim()}</span>
-            <ExternalLink className="size-3.5 shrink-0" />
-          </a>
-        )}
+        <TrackingLink partner={car.deliveryPartner} trackingId={car.trackingId} className="mt-3" />
+      </Section>
 
-        {/* Tracking Notes Footer */}
-        <div className="border-t border-amber-500/20 pt-2 text-xs text-foreground">
-          Tracking Notes:{" "}
-          <span className="text-muted-foreground font-mono">
-            {cleanTransitNotes
-              ? cleanTransitNotes.startsWith("[")
-                ? cleanTransitNotes
-                : `[${cleanTransitNotes}]`
-              : "[No tracking notes recorded]"}
-          </span>
-        </div>
-      </div>
+      {/* BOTTOM ACTION
+          The Close button that sat beside this was the third way out of the
+          dialog — there is an X in the corner, and on a phone the whole sheet
+          can be pushed down. Delete takes the width instead of hiding in a
+          corner: it is the one thing down here, and a destructive action you
+          have to hunt for is a destructive action you hit by accident. */}
+      <button
+        type="button"
+        onClick={onDelete}
+        className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-500 transition-colors hover:bg-rose-500/15 hover:text-rose-400"
+      >
+        <Trash2 className="size-4" />
+        <span>Delete from collection</span>
+      </button>
+    </div>
+  );
+}
 
-      {/* BOTTOM ACTIONS FOOTER
-          Only one action left down here. The Close button that sat beside it
-          was the third way out of this dialog — there is an X in the header,
-          and on a phone the whole sheet can be pushed down — while Delete had
-          the far corner to itself, which is not where a destructive action
-          belongs. Delete takes the corner the button vacated. */}
-      <div className="flex items-center justify-end border-t border-border pt-4">
-        <button
-          type="button"
-          onClick={onDelete}
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-rose-500 transition-colors hover:bg-rose-500/10 hover:text-rose-400 cursor-pointer sm:text-sm"
-        >
-          <Trash2 className="size-4" />
-          <span>Delete from collection</span>
-        </button>
+/**
+ * A band of related facts under a rule and a heading.
+ *
+ * Purchase and shipping were each a filled card with its own border and tint,
+ * which on a phone stacked into a column of boxes — three containers deep in
+ * places, and no clearer for it. A hairline and a small capitalised heading
+ * separate them just as well and leave the values room to breathe.
+ */
+function Section({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="border-t border-border pt-3">
+      <div className="mb-2.5 flex items-center justify-between gap-2">
+        <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          {title}
+        </h3>
+        {action}
       </div>
+      {children}
+    </section>
+  );
+}
+
+/** One labelled value inside a section. */
+function Spec({
+  label,
+  value,
+  className,
+  size = "sm",
+}: {
+  label: string;
+  value?: string | null;
+  className?: string;
+  size?: "sm" | "lg";
+}) {
+  return (
+    <div className="min-w-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span
+        className={`mt-0.5 block truncate font-semibold text-foreground ${
+          size === "lg" ? "text-xl sm:text-2xl font-bold" : ""
+        } ${className ?? ""}`}
+        title={value || undefined}
+      >
+        {value || "—"}
+      </span>
     </div>
   );
 }

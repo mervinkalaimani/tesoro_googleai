@@ -14,7 +14,7 @@ import {
   type ReconcileTarget,
 } from "@/components/reconcile-delivery-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
-import { SummaryCard } from "@/components/summary-card";
+import { KpiBand, KpiTile } from "@/components/kpi";
 import { ShipmentItem } from "@/components/shipment-item";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { useCarDrawer } from "@/components/car-details-drawer";
@@ -326,31 +326,33 @@ function OrdersPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* The same three-card band the pre-orders page opens with: two pages
-          about money you have committed should be read the same way. */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard
+      {/* The same band every page opens with — the dashboard's tiles, at the
+          dashboard's size. */}
+      <KpiBand>
+        <KpiTile
           label="In transit"
           value={inrFull(totals.transitValue)}
           sub={`${totals.transitCount} casting${totals.transitCount === 1 ? "" : "s"} on the move`}
           icon={<Truck className="size-4" />}
           tone="sky"
         />
-        <SummaryCard
+        <KpiTile
           label="Waiting"
           value={inrFull(totals.waitingValue)}
           sub={`${totals.waitingCount} not dispatched yet`}
           icon={<Clock className="size-4" />}
           tone="amber"
+          valueTone="amber"
         />
-        <SummaryCard
+        <KpiTile
           label="Balance due"
           value={inrFull(totals.due)}
           sub="Outstanding across open orders"
           icon={<IndianRupee className="size-4" />}
           tone="emerald"
+          valueTone="emerald"
         />
-      </div>
+      </KpiBand>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">

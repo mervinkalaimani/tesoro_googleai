@@ -18,6 +18,7 @@ import { CarThumb } from "@/components/car-thumb";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { SegmentControl } from "@/components/segment-control";
+import { KpiBand, KpiTile } from "@/components/kpi";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { inrFull, mrpRatio } from "@/lib/format";
@@ -43,39 +44,6 @@ export const Route = createFileRoute("/favourites")({
   }),
   component: FavouritesPage,
 });
-
-function StatCard({
-  label,
-  value,
-  sub,
-  icon,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  icon: React.ReactNode;
-  tone?: "default" | "emerald" | "amber";
-}) {
-  const valueTone =
-    tone === "emerald"
-      ? "text-emerald-500"
-      : tone === "amber"
-        ? "text-amber-500"
-        : "text-foreground";
-  return (
-    <div className="card-elevated p-4">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <span className="text-muted-foreground">{icon}</span>
-      </div>
-      <div className={`text-display mt-1 text-2xl font-bold tabular-nums ${valueTone}`}>
-        {value}
-      </div>
-      <div className="mt-1 font-mono text-xs text-muted-foreground">{sub}</div>
-    </div>
-  );
-}
 
 function GalleryCard({
   car,
@@ -199,34 +167,37 @@ function FavouritesPage() {
       {/* The gallery banner is gone: a page of favourites does not need a card
           at the top telling you it is a page of favourites. The counts it
           carried are in the stats below and beside the segment control. */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
+      <KpiBand>
+        <KpiTile
           label="Portfolio value"
           value={inrFull(market)}
           sub={`Cost: ${inrFull(cost)}`}
           icon={<IndianRupee className="size-4" />}
         />
-        <StatCard
+        <KpiTile
           label="Unrealised gain"
           value={`${gain >= 0 ? "+" : "-"}${inrFull(Math.abs(gain))}`}
           sub={`${gain >= 0 ? "+" : ""}${pct.toFixed(1)}% return`}
           icon={<TrendingUp className="size-4" />}
-          tone={gain >= 0 ? "emerald" : "default"}
+          tone={gain >= 0 ? "emerald" : "rose"}
+          valueTone={gain >= 0 ? "emerald" : "rose"}
         />
-        <StatCard
+        <KpiTile
           label="Average / piece"
           value={inrFull(avg)}
           sub="Standout castings"
           icon={<Award className="size-4" />}
+          tone="sky"
         />
-        <StatCard
+        <KpiTile
           label="Chase editions"
           value={`${chaseCount}`}
           sub="Rare pulls"
           icon={<Sparkles className="size-4" />}
           tone="amber"
+          valueTone="amber"
         />
-      </div>
+      </KpiBand>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">

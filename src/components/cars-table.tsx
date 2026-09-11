@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
+
 import type { Diecast } from "@/lib/types";
 import { inr } from "@/lib/format";
-import { Eye, Flame, Star } from "lucide-react";
+import { Flame, Star } from "lucide-react";
 
 import { useCarDrawer } from "@/components/car-details-drawer";
-import { MobileRecordCard, RecordAction, type RecordField } from "@/components/mobile-record-card";
 
 const STATUS_STYLES: Record<string, string> = {
   available: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
@@ -114,18 +115,49 @@ export function CarBadges({
   return <div className="flex items-center gap-1.5">{items}</div>;
 }
 
-/** The same car as a stack of fields, for phones. */
-export function carRecordFields(r: Diecast): RecordField[] {
-  return [
-    { label: "Name", value: r.name || "—" },
-    { label: "Status", value: <StatusPill status={r.status} /> },
-    { label: "Cost", value: <CostCell car={r} /> },
-    { label: "Brand", value: r.brand || "—" },
-    { label: "Assortment", value: r.assortment || "—" },
-    { label: "Series", value: [r.series, r.subSeries].filter(Boolean).join(" · ") || "—" },
-    { label: "Colour", value: r.colour || "—" },
-    { label: "Seller", value: r.seller || "—" },
-  ];
+/**
+ * One car, for a phone: the name, what it is, where it is, what it cost.
+ *
+ * Label-and-value rows were tried and dropped — nine of them per car turned a
+ * list you scan into a list you read. This is the row the table always had,
+ * stacked instead of columned; tapping it opens the car, which is where the
+ * rest of the fields live.
+ */
+export function CarListCard({
+  car,
+  onOpen,
+  actions,
+  badgePrimary = "favourite",
+}: {
+  car: Diecast;
+  onOpen: () => void;
+  /** Icon buttons for this car — edit and delete, where they apply. */
+  actions?: ReactNode;
+  badgePrimary?: "favourite" | "chase";
+}) {
+  const pay = paymentStatusText(car);
+
+  return (
+    <article className="card-elevated overflow-hidden">
+      <div className="flex items-start gap-2 p-3">
+        <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
+            <CarBadges car={car} primary={badgePrimary} />
+          </div>
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
+          <div className="mt-2 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <StatusPill status={car.status} />
+              {pay && <div className="mt-1 truncate text-[11px] text-muted-foreground">{pay}</div>}
+            </div>
+            <CostCell car={car} />
+          </div>
+        </button>
+        {actions && <div className="flex shrink-0 flex-col items-center gap-0.5">{actions}</div>}
+      </div>
+    </article>
+  );
 }
 
 /** Shared table used by Favourites / Collection expansion / Duplicates expansion. */
@@ -144,21 +176,11 @@ export function CarsTable({
       {/* Phones get cards rather than a table that has to be dragged sideways. */}
       <div className="space-y-2 p-2 md:hidden">
         {rows.map((r, i) => (
-          <MobileRecordCard
+          <CarListCard
             key={(r.id || "") + i}
-            id={
-              <span className="flex min-w-0 items-center gap-1.5">
-                <span className="truncate">{r.carNumber || r.id}</span>
-                <CarBadges car={r} primary={badgePrimary} />
-              </span>
-            }
+            car={r}
             onOpen={() => open(r)}
-            fields={carRecordFields(r)}
-            actions={
-              <RecordAction label="View car" onClick={() => open(r)}>
-                <Eye className="size-4" />
-              </RecordAction>
-            }
+            badgePrimary={badgePrimary}
           />
         ))}
         {rows.length === 0 && (

@@ -111,7 +111,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      // The gold diamond, in the order browsers should prefer it: the SVG
+      // scales to any tab or bookmark bar, the .ico stays for the ones that
+      // still want one, and the PNG is what iOS uses for a home-screen
+      // bookmark — it will not take an SVG, and without it Safari saves a
+      // screenshot of the page instead.
+      { rel: "icon", href: "/icon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon.ico", sizes: "32x32" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "180x180" },
+      { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
   shellComponent: RootShell,

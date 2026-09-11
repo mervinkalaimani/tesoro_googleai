@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { PayBalanceDialog } from "@/components/pay-balance-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
-import { SummaryCard } from "@/components/summary-card";
+import { KpiBand, KpiTile } from "@/components/kpi";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import {
   Select,
@@ -208,28 +208,31 @@ function PreOrdersPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      <div className="grid gap-3 sm:grid-cols-3">
-        <SummaryCard
+      <KpiBand>
+        <KpiTile
           label="Committed value"
           value={inrFull(totalValue)}
           sub={`${rows.length} pre-booked casting${rows.length === 1 ? "" : "s"}`}
           icon={<IndianRupee className="size-4" />}
+          tone="violet"
         />
-        <SummaryCard
+        <KpiTile
           label="Deposits paid"
           value={inrFull(totalPaid)}
           sub={`${uniqueModels} secured allocation${uniqueModels === 1 ? "" : "s"}`}
           icon={<CircleCheck className="size-4" />}
           tone="emerald"
+          valueTone="emerald"
         />
-        <SummaryCard
+        <KpiTile
           label="Balance due"
           value={inrFull(totalDue)}
           sub="Outstanding upon arrival"
           icon={<Clock className="size-4" />}
           tone="amber"
+          valueTone="amber"
         />
-      </div>
+      </KpiBand>
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">

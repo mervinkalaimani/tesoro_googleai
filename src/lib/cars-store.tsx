@@ -140,6 +140,8 @@ export type ShippingBatchUpdates = {
  */
 type UndoEntry = {
   id: number;
+  /** When the edit happened, so the button can retire on its own. */
+  at: number;
   label: string;
   before: Diecast[];
   created: string[];
@@ -175,6 +177,8 @@ type Ctx = {
   undo: () => void;
   /** What the next undo would reverse, or null when there is nothing to undo. */
   undoLabel: string | null;
+  /** When that edit was made, so the offer can expire rather than linger. */
+  undoAt: number | null;
   resetOverlay: () => void;
   refresh: () => Promise<void>;
   syncAllToSupabase: (
@@ -404,8 +408,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
    */
   const pushUndo = useCallback((label: string, before: Diecast[], created: string[] = []) => {
     if (!before.length && !created.length) return;
+    const at = Date.now();
     setUndoStack((prev) =>
-      [...prev, { id: Date.now() + prev.length, label, before, created }].slice(-MAX_UNDO),
+      [...prev, { id: at + prev.length, at, label, before, created }].slice(-MAX_UNDO),
     );
   }, []);
 
@@ -673,7 +678,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     [commit, isGuest, cars, pushUndo],
   );
 
-  const undoLabel = undoStack.length ? undoStack[undoStack.length - 1].label : null;
+  const top = undoStack.length ? undoStack[undoStack.length - 1] : null;
+  const undoLabel = top?.label ?? null;
+  const undoAt = top?.at ?? null;
 
   const resetOverlay = useCallback(() => {
     setUndoStack([]);
@@ -714,6 +721,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       deleteCar,
       undo,
       undoLabel,
+      undoAt,
       resetOverlay,
       refresh,
       syncAllToSupabase,
@@ -731,6 +739,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       deleteCar,
       undo,
       undoLabel,
+      undoAt,
       resetOverlay,
       refresh,
       syncAllToSupabase,
@@ -779,7 +788,7 @@ export function useCarsActions() {
 export function useCarsUndo() {
   const v = useContext(CarsCtx);
   if (!v) throw new Error("useCarsUndo must be used inside <CarsProvider>");
-  return { undo: v.undo, undoLabel: v.undoLabel };
+  return { undo: v.undo, undoLabel: v.undoLabel, undoAt: v.undoAt };
 }
 
 export function useCarsRefresh() {

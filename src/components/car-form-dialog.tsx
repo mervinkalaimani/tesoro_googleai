@@ -12,7 +12,8 @@ import {
 } from "@/lib/form-draft";
 import { setCachedCarImage } from "@/lib/car-image";
 import { toDateInputValue, deriveMonth, monthEtaToDate } from "@/lib/date-utils";
-import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
+import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
+import { TrackingLink } from "@/components/tracking-link";
 import { isoMatchesFor } from "@/lib/iso-match";
 import { IsoSuggestions } from "@/components/iso-suggestions";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
@@ -76,31 +77,6 @@ const ARRIVED_STATUSES = new Set(["available", "wrong item"]);
  * dropped rather than kept — the estimate lives in the expected date now.
  */
 const NOT_RECEIVED_STATUSES = new Set(["waiting", "pre order", "preorder", "delayed"]);
-
-/** The tracking page for what has been typed so far, once it resolves to one. */
-function TrackingLink({
-  partner,
-  trackingId,
-  className = "",
-}: {
-  partner: string;
-  trackingId: string;
-  className?: string;
-}) {
-  const url = trackingUrlFor(partner, trackingId);
-  if (!url) return null;
-  return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`flex items-center justify-between gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-500 hover:bg-sky-500/15 ${className}`}
-    >
-      <span className="truncate">Track on {partner.trim()}</span>
-      <ExternalLink className="size-3.5 shrink-0" />
-    </a>
-  );
-}
 
 interface CarFormData {
   make: string;

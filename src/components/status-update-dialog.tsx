@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, ExternalLink, Loader2, Search, Sparkles, Star } from "lucide-react";
+import { ArrowRight, Loader2, Search, Sparkles, Star } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -19,7 +19,8 @@ import { SegmentControl } from "@/components/segment-control";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { optionsFor } from "@/lib/car-options";
 import { deriveMonth, monthEtaToDate, toDateInputValue } from "@/lib/date-utils";
-import { DELIVERY_PARTNER_NAMES, trackingUrlFor } from "@/lib/tracking";
+import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
+import { TrackingLink } from "@/components/tracking-link";
 import { inrFull } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
 
@@ -162,7 +163,6 @@ export function StatusUpdateDialog({
   const needsPurchase = NEEDS_PURCHASE.has(status);
   const needsTransit = NEEDS_TRANSIT.has(status);
   const arrived = ARRIVED.has(status);
-  const trackUrl = trackingUrlFor(partner, tracking);
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   const wasIso = (car.status || "").trim().toLowerCase() === "iso";
   const unchanged = status === car.status;
@@ -429,17 +429,7 @@ export function StatusUpdateDialog({
                 />
               </div>
             </div>
-            {trackUrl && (
-              <a
-                href={trackUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-between gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-xs text-sky-500 hover:bg-sky-500/15"
-              >
-                <span className="truncate">Track on {partner.trim()}</span>
-                <ExternalLink className="size-3.5 shrink-0" />
-              </a>
-            )}
+            <TrackingLink partner={partner} trackingId={tracking} />
           </section>
         )}
 

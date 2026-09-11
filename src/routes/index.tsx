@@ -24,8 +24,9 @@ import {
   Plus,
   ExternalLink,
 } from "lucide-react";
-import { trackingUrlFor } from "@/lib/tracking";
-import { cn } from "@/lib/utils";
+import { KpiBand, KpiTile } from "@/components/kpi";
+import { TrackingLink } from "@/components/tracking-link";
+import { trackingPageFor } from "@/lib/tracking";
 
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
@@ -141,21 +142,8 @@ type Shipment = {
 
 /** The courier link for a shipment, or its note when there is nothing to link. */
 function TransitCell({ s }: { s: Shipment }) {
-  const url = trackingUrlFor(s.deliveryPartner, s.trackingId);
-  if (url) {
-    return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex max-w-full items-center gap-1 text-xs text-sky-500 hover:underline"
-      >
-        <span className="truncate">
-          {s.deliveryPartner} · {s.trackingId}
-        </span>
-        <ExternalLink className="size-3 shrink-0" />
-      </a>
-    );
+  if (trackingPageFor(s.deliveryPartner, s.trackingId)) {
+    return <TrackingLink compact partner={s.deliveryPartner} trackingId={s.trackingId} />;
   }
   const parts = [s.deliveryPartner, s.trackingId].filter(Boolean).join(" · ");
   return <span className="text-xs text-muted-foreground">{parts || s.transitInfo || "—"}</span>;
@@ -256,22 +244,18 @@ function DashboardPage() {
           with the rest of what expires — it followed you off the dashboard
           rather than waiting there to be noticed. */}
       {kpis.length > 0 && (
-        // Six columns on a phone so three tiles fit a row, and the leftovers can
-        // stretch to fill the last one — a row of two half-width tiles, or one
-        // across the whole width, rather than a hole where the grid ran out.
-        <section className="grid grid-cols-6 gap-1.5 pb-1 md:flex md:gap-3 md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
-          {kpis.map((k, i) => (
-            <Kpi
+        <KpiBand>
+          {kpis.map((k) => (
+            <KpiTile
               key={k.key}
               icon={k.icon}
               label={k.label}
-              value={k.value}
+              value={typeof k.value === "number" ? k.value.toLocaleString() : k.value}
               tone={k.tone}
               status={k.status}
-              className={bentoSpan(i, kpis.length)}
             />
           ))}
-        </section>
+        </KpiBand>
       )}
 
       <DashboardMiddle rows={data} etaDays={transitEtaDays} loading={loading} />
@@ -286,85 +270,6 @@ function DashboardPage() {
         )}
       </section>
     </div>
-  );
-}
-
-/**
- * Where tile `i` of `total` sits on the phone's six-column grid.
- *
- * Three to a row while there is a full row left; the one or two that remain
- * share the last row between them. Seven statuses used to leave a gap the width
- * of a tile at the bottom of the band.
- */
-function bentoSpan(i: number, total: number): string {
-  const fullRows = Math.floor(total / 3) * 3;
-  if (i < fullRows) return "col-span-2";
-  const rest = total - fullRows;
-  return rest === 1 ? "col-span-6" : "col-span-3";
-}
-
-function Kpi({
-  icon,
-  label,
-  value,
-  tone,
-  status,
-  className,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: number | string;
-  tone: string;
-  /** Status this tile represents; clicking opens inventory filtered to it. */
-  status?: string;
-  className?: string;
-}) {
-  const toneMap: Record<string, string> = {
-    emerald: "bg-emerald-500/15 text-emerald-500",
-    amber: "bg-amber-500/15 text-amber-500",
-    violet: "bg-violet-500/15 text-violet-500",
-    sky: "bg-sky-500/15 text-sky-500",
-    blue: "bg-blue-500/15 text-blue-500",
-    orange: "bg-orange-500/15 text-orange-500",
-    rose: "bg-rose-500/15 text-rose-500",
-    zinc: "bg-zinc-500/20 text-zinc-500",
-  };
-  const body = (
-    <>
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground md:gap-2 md:text-xs">
-        <span
-          className={`grid size-5 shrink-0 place-items-center rounded md:size-6 md:rounded-md ${
-            toneMap[tone] ?? "bg-muted"
-          }`}
-        >
-          {icon}
-        </span>
-        <span className="truncate">{label}</span>
-      </div>
-      <div className="text-display mt-0.5 text-lg font-semibold leading-tight tabular-nums md:mt-2 md:text-3xl">
-        {typeof value === "number" ? value.toLocaleString() : value}
-      </div>
-    </>
-  );
-
-  // Tighter on a phone: the band is a glance, not the page. Three short tiles a
-  // row at this size take about a fifth of the screen instead of half of it.
-  const shell = cn(
-    "card-elevated flex min-w-0 flex-col overflow-hidden p-2 text-left md:p-4",
-    className,
-  );
-
-  if (!status) return <div className={shell}>{body}</div>;
-
-  return (
-    <Link
-      to="/inventory"
-      search={{ status }}
-      className={cn(shell, "transition-colors hover:border-primary/40 hover:bg-muted/40")}
-      title={`Show ${label.toLowerCase()} cars in inventory`}
-    >
-      {body}
-    </Link>
   );
 }
 

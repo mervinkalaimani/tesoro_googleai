@@ -33,10 +33,11 @@ export function UpdateStatusButton({
       disabled={disabled}
       title={title ?? "Update status"}
       className={cn(
-        // Literal green rather than a token: the primary colour is the app's red,
-        // and this is the affirmative action on pages where something else is
-        // already primary. Darker in light mode so white text stays readable.
-        "gap-1.5 bg-emerald-600 text-white hover:bg-emerald-500 dark:bg-[#00c57d] dark:hover:bg-[#00b070]",
+        // The accent, not a literal green: it is the theme's second fill, it
+        // moves with the accent colour in Settings, and it stays distinct from
+        // the primary buttons it sits beside. The green was a colour from
+        // nowhere — it belonged to no palette and changed with no setting.
+        "gap-1.5 bg-accent text-accent-foreground hover:bg-accent/85",
         className,
       )}
     >
