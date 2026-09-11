@@ -612,15 +612,23 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
           A single row is a fixed height whatever arrives, and the cars that ran
           off the end are the older ones, which is the right thing to have to
           reach for. */}
-      {/* items-stretch, and every cell the same fixed width: one shelf of
-          identical cards rather than a row of differently sized ones. The
-          caption is what each card is doing in here — it landed today, or it
-          landed two days ago — which is the only thing separating them. */}
-      <div className="flex snap-x items-stretch gap-2 overflow-x-auto p-2">
+      {/* The width is on the card itself rather than on a wrapper around it: a
+          sized div holding an auto-width button is two elements arguing about
+          one number, and the first card won that argument.
+
+          One gap value does all the spacing, inside and out, so the distance
+          between two cards is the distance between a card and the frame. The
+          caption is what each card is doing in here — it landed today, or two
+          days ago — which is the only thing separating one from the next. */}
+      <div className="flex snap-x items-stretch gap-2.5 overflow-x-auto px-2.5 pb-1 pt-2.5">
         {recent.map(({ r, dt }, i) => (
-          <div key={r.id + i} className="w-36 shrink-0 snap-start sm:w-40">
-            <CompactCarCard car={r} onOpen={() => openDrawer(r)} caption={relativeDay(dt, now)} />
-          </div>
+          <CompactCarCard
+            key={r.id + i}
+            car={r}
+            onOpen={() => openDrawer(r)}
+            caption={relativeDay(dt, now)}
+            className="w-36 shrink-0 snap-start sm:w-40"
+          />
         ))}
       </div>
     </div>

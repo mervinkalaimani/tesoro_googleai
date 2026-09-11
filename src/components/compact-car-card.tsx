@@ -18,6 +18,7 @@ export function CompactCarCard({
   car,
   onOpen,
   caption,
+  className = "",
 }: {
   car: Diecast;
   onOpen: () => void;
@@ -27,6 +28,13 @@ export function CompactCarCard({
    * on some cards and not others is what makes a row of them ragged.
    */
   caption?: string;
+  /**
+   * Sizing, from whoever is laying these out. A grid sets its own column width
+   * and passes nothing; a single scrolling row passes a fixed width here rather
+   * than wrapping each card in a sized div — one element carrying the width is
+   * one place for it to be wrong.
+   */
+  className?: string;
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
 
@@ -38,9 +46,12 @@ export function CompactCarCard({
       // h-full so a card fills whatever cell it is given. In a row of them the
       // tallest used to set the height and the rest floated at the top, which
       // read as a list of different-sized things rather than one shelf.
-      className="card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40"
+      className={`card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40 ${className}`}
     >
-      <div className="relative">
+      {/* shrink-0, or the picture is the part that gives when a card is asked to
+          be shorter than its contents — and then a row of cards that agree on
+          their height disagrees on where the photograph ends. */}
+      <div className="relative shrink-0">
         <CarThumb car={car} className="aspect-[16/10] w-full" />
 
         {(car.chase || car.favourite) && (
