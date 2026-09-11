@@ -7,9 +7,6 @@ import {
   Package,
   AlertCircle,
   Loader2,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
   Plus,
   Search,
   Sparkles,
@@ -89,7 +86,6 @@ export function ShippingBatchDialog({
   const [newTrackingId, setNewTrackingId] = useState("");
   const [updateTracking, setUpdateTracking] = useState(false);
 
-  const [showCarList, setShowCarList] = useState(false);
   // Cars queued to join this order — ISO rows picked below, held until Apply so
   // they take the same expected date and courier as everything else in it.
   const [pendingCars, setPendingCars] = useState<Diecast[]>([]);
@@ -367,16 +363,21 @@ export function ShippingBatchDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-background text-foreground shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+      {/* Two columns from lg, like the edit-car dialog: what you are changing
+          on the left, the order it will be applied to on the right. They used
+          to be stacked, with the cars folded away behind a "View cars" toggle —
+          so the one thing that told you whether you had the right batch was the
+          one thing not on screen. */}
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-background text-foreground shadow-2xl sm:max-w-2xl lg:max-w-5xl sm:rounded-2xl">
         <DialogHeader className="space-y-1 text-left">
           <div className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
               <Truck className="size-4" />
             </div>
-            <DialogTitle className="text-lg font-bold text-foreground">Update Order</DialogTitle>
+            <DialogTitle className="text-lg font-bold text-foreground">Update order</DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Pick a Shipping ID to set the status, expected date and transit notes across every car
+            Pick a shipping ID to set the status, expected date and transit notes across every car
             in it — or add cars to the order.
           </DialogDescription>
         </DialogHeader>
@@ -395,375 +396,369 @@ export function ShippingBatchDialog({
               </div>
             )}
 
-            {/* Shipping ID Selector */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-foreground">Select Shipping ID</label>
-                {!allowedShippingIds && (
-                  <button
-                    type="button"
-                    onClick={() => setUseCustom(!useCustom)}
-                    className="text-[11px] text-primary hover:underline"
-                  >
-                    {useCustom ? "Choose from list" : "+ Enter custom ID"}
-                  </button>
+            {/* Explicit grid placement rather than reordered markup: the order
+                on a phone is still the order you work in — pick the batch, see
+                what is in it, then say what changes. On a desktop the cars move
+                to a rail on the right and stay visible for both halves. */}
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_1fr]">
+              {/* Shipping ID Selector */}
+              <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-foreground">Shipping ID</label>
+                  {!allowedShippingIds && (
+                    <button
+                      type="button"
+                      onClick={() => setUseCustom(!useCustom)}
+                      className="text-[11px] text-primary hover:underline"
+                    >
+                      {useCustom ? "Choose from list" : "+ Enter custom ID"}
+                    </button>
+                  )}
+                </div>
+
+                {useCustom ? (
+                  <Input
+                    placeholder="e.g. FIRY/02, ANIH/PO/09..."
+                    value={customShippingId}
+                    onChange={(e) => setCustomShippingId(e.target.value)}
+                    className="border-border bg-background text-xs text-foreground"
+                  />
+                ) : (
+                  <Select value={selectedShippingId} onValueChange={setSelectedShippingId}>
+                    <SelectTrigger className="border-border bg-background text-xs text-foreground">
+                      <SelectValue placeholder="Select a shipping ID..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64 border-border bg-background text-foreground">
+                      {shippingIdStats.map((item) => (
+                        <SelectItem key={item.id} value={item.id} className="text-xs">
+                          <span className="font-mono font-bold text-amber-400">{item.id}</span>
+                          <span className="ml-2 text-muted-foreground">
+                            ({item.count} car{item.count === 1 ? "" : "s"}
+                            {item.sellers ? ` · ${item.sellers}` : ""})
+                          </span>
+                        </SelectItem>
+                      ))}
+                      {shippingIdStats.length === 0 && (
+                        <div className="p-2 text-center text-muted-foreground">
+                          No shipping IDs found
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
                 )}
-              </div>
 
-              {useCustom ? (
-                <Input
-                  placeholder="e.g. FIRY/02, ANIH/PO/09..."
-                  value={customShippingId}
-                  onChange={(e) => setCustomShippingId(e.target.value)}
-                  className="border-border bg-background text-xs text-foreground"
-                />
-              ) : (
-                <Select value={selectedShippingId} onValueChange={setSelectedShippingId}>
-                  <SelectTrigger className="border-border bg-background text-xs text-foreground">
-                    <SelectValue placeholder="Select a shipping ID..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-64 border-border bg-background text-foreground">
-                    {shippingIdStats.map((item) => (
-                      <SelectItem key={item.id} value={item.id} className="text-xs">
-                        <span className="font-mono font-bold text-amber-400">{item.id}</span>
-                        <span className="ml-2 text-muted-foreground">
-                          ({item.count} car{item.count === 1 ? "" : "s"}
-                          {item.sellers ? ` · ${item.sellers}` : ""})
-                        </span>
-                      </SelectItem>
-                    ))}
-                    {shippingIdStats.length === 0 && (
-                      <div className="p-2 text-center text-muted-foreground">
-                        No shipping IDs found
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
-              )}
-
-              {/* Delivered cars were previously filtered out with no way back,
+                {/* Delivered cars were previously filtered out with no way back,
                   so a batch that had already arrived could not be corrected —
                   its ID was not even in the list. */}
-              <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground">
-                <input
-                  type="checkbox"
-                  checked={!hideDelivered}
-                  onChange={(e) => setHideDelivered(!e.target.checked)}
-                  className="rounded border-input bg-background text-primary"
-                />
-                <span>Include cars already delivered</span>
-              </label>
-            </div>
+                <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    checked={!hideDelivered}
+                    onChange={(e) => setHideDelivered(!e.target.checked)}
+                    className="rounded border-input bg-background text-primary"
+                  />
+                  <span>Include cars already delivered</span>
+                </label>
+              </div>
 
-            {/* Matched Cars Overview Card */}
-            {activeShippingId && (
-              <div className="rounded-xl border border-border bg-muted/40 p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5">
-                    <Package className="size-3.5 text-muted-foreground" />
-                    <span className="font-semibold text-foreground">
+              {/* THE ORDER ITSELF — what is in it, and how to put more in.
+                A rail on the right from lg, the way the edit-car dialog keeps
+                the record beside the fields. */}
+              {activeShippingId && (
+                <aside className="space-y-2 self-start rounded-xl border border-border bg-muted/40 p-3 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                  <div className="flex items-center gap-1.5 border-b border-border pb-2">
+                    <Package className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 truncate font-semibold text-foreground">
                       {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in{" "}
                       <span className="font-mono text-amber-400">{activeShippingId}</span>
                     </span>
                   </div>
-                  {matchedCars.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowCarList(!showCarList)}
-                      className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
-                    >
-                      {showCarList ? "Hide cars" : "View cars"}
-                      {showCarList ? (
-                        <ChevronUp className="size-3" />
-                      ) : (
-                        <ChevronDown className="size-3" />
-                      )}
-                    </button>
-                  )}
-                </div>
 
-                {/* Collapsible list of cars */}
-                {showCarList && matchedCars.length > 0 && (
-                  <div className="mt-2 max-h-36 overflow-y-auto space-y-1.5 pr-1 border-t border-border pt-2">
-                    {matchedCars.map((car) => (
-                      <div
-                        key={car.id}
-                        className="flex items-center justify-between rounded bg-muted/50 px-2 py-1 text-[11px]"
-                      >
-                        <div className="min-w-0 truncate pr-2">
-                          <span className="font-medium text-foreground">
-                            {car.name || `${car.make} ${car.model}`}
+                  {/* Adding to the order comes first, above the list. It is the
+                    thing you came here to do that the list cannot do for you,
+                    and at the bottom of a panel of fourteen cars it was below
+                    the fold on every screen.
+
+                    An order grows: a car you forgot, or one you had been hunting
+                    for and have now actually bought, had no way in short of
+                    editing it and retyping the batch ID by hand. */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-auto text-[11px] text-muted-foreground">Add a car</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 px-2 text-[11px]"
+                      onClick={() => setIsoPickerOpen((v) => !v)}
+                    >
+                      <Sparkles className="size-3" />
+                      From ISO
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 px-2 text-[11px]"
+                      onClick={() => setNewCarSeed(seedNewCar())}
+                    >
+                      <Plus className="size-3" />
+                      New car
+                    </Button>
+                  </div>
+
+                  {isoPickerOpen && (
+                    <div className="space-y-1.5 rounded-lg border border-border bg-background p-2">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={isoQuery}
+                          onChange={(e) => setIsoQuery(e.target.value)}
+                          placeholder="Search your ISO list…"
+                          className="h-8 pl-7 text-xs"
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                        {isoCandidates.map((car) => (
+                          <button
+                            key={car.id}
+                            type="button"
+                            onClick={() => setPendingCars((prev) => [...prev, car])}
+                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-[11px] hover:bg-muted"
+                          >
+                            {/* Name on its own line, brand and series under it:
+                              side by side this row was wider than a phone and
+                              the name was the half that got truncated. */}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium text-foreground">
+                                {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+                              </span>
+                              {[car.brand, car.series].filter(Boolean).length > 0 && (
+                                <span className="block truncate text-[10px] text-muted-foreground">
+                                  {[car.brand, car.series].filter(Boolean).join(" · ")}
+                                </span>
+                              )}
+                            </span>
+                            <Plus className="size-3 shrink-0 text-muted-foreground" />
+                          </button>
+                        ))}
+                        {isoCandidates.length === 0 && (
+                          <p className="px-1 py-2 text-center text-[11px] text-muted-foreground">
+                            {isoQuery.trim()
+                              ? "Nothing on your ISO list matches that."
+                              : "Your ISO list is empty."}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {pendingCars.length > 0 && (
+                    <div className="space-y-1 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.07] p-2">
+                      <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                        Joining on save — takes this order&apos;s status, dates and courier
+                      </p>
+                      {pendingCars.map((car) => (
+                        <div
+                          key={car.id}
+                          className="flex items-center justify-between gap-2 rounded bg-background/60 px-2 py-1 text-[11px]"
+                        >
+                          <span className="min-w-0 truncate font-medium text-foreground">
+                            {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
                           </span>
-                          <span className="ml-1.5 text-muted-foreground">
-                            ({car.brand || car.make})
-                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingCars((prev) => prev.filter((c) => c.id !== car.id))
+                            }
+                            aria-label={`Remove ${car.name || "car"} from this order`}
+                            className="grid size-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <X className="size-3" />
+                          </button>
                         </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <span className="text-muted-foreground">
-                            {car.expectedDate || car.date || "No ETA"}
+                      ))}
+                    </div>
+                  )}
+
+                  {/* THE CARS. Listed, not folded away behind a "View cars"
+                    toggle — the whole reason to check a batch before writing to
+                    it is to see what is in it, and it defaulted to hidden. */}
+                  <ul className="max-h-[22rem] space-y-1.5 overflow-y-auto border-t border-border pt-2">
+                    {matchedCars.map((car) => (
+                      <li key={car.id} className="rounded bg-background/60 px-2 py-1.5 text-[11px]">
+                        <div className="truncate font-medium text-foreground">
+                          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+                        </div>
+                        <div className="mt-0.5 flex items-center justify-between gap-2">
+                          <span className="min-w-0 truncate text-[10px] text-muted-foreground">
+                            {[car.brand || car.make, car.expectedDate || car.date || "No ETA"]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </span>
-                          <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
                             {car.status}
                           </span>
                         </div>
-                      </div>
+                      </li>
                     ))}
-                  </div>
-                )}
+                    {matchedCars.length === 0 && (
+                      <li className="px-1 py-3 text-center text-[11px] text-muted-foreground">
+                        Nothing carries this shipping ID yet.
+                      </li>
+                    )}
+                  </ul>
+                </aside>
+              )}
 
-                {/* An order grows. A car you forgot, or one you had been hunting
-                    for and have now actually bought, had no way in short of
-                    editing it and retyping the batch ID by hand. */}
-                <div className="flex flex-wrap items-center gap-1.5 border-t border-border pt-2">
-                  <span className="mr-auto text-[11px] text-muted-foreground">
-                    Add cars to this order
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1 px-2 text-[11px]"
-                    onClick={() => setIsoPickerOpen((v) => !v)}
-                  >
-                    <Sparkles className="size-3" />
-                    From ISO
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1 px-2 text-[11px]"
-                    onClick={() => setNewCarSeed(seedNewCar())}
-                  >
-                    <Plus className="size-3" />
-                    New car
-                  </Button>
+              {/* Form Updates */}
+              <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-2">
+                {/* New Status */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">
+                    Update Status for All Cars
+                  </label>
+                  <Select value={newStatus} onValueChange={setNewStatus}>
+                    <SelectTrigger className="border-border bg-background text-xs text-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="border-border bg-background text-foreground">
+                      {STATUS_CHOICES.map((choice) => (
+                        <SelectItem key={choice.value} value={choice.value} className="text-xs">
+                          {choice.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {isoPickerOpen && (
-                  <div className="space-y-1.5 rounded-lg border border-border bg-background p-2">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={isoQuery}
-                        onChange={(e) => setIsoQuery(e.target.value)}
-                        placeholder="Search your ISO list…"
-                        className="h-8 pl-7 text-xs"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
-                      {isoCandidates.map((car) => (
-                        <button
-                          key={car.id}
-                          type="button"
-                          onClick={() => setPendingCars((prev) => [...prev, car])}
-                          className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-[11px] hover:bg-muted"
-                        >
-                          {/* Name on its own line, brand and series under it:
-                              side by side this row was wider than a phone and
-                              the name was the half that got truncated. */}
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium text-foreground">
-                              {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-                            </span>
-                            {[car.brand, car.series].filter(Boolean).length > 0 && (
-                              <span className="block truncate text-[10px] text-muted-foreground">
-                                {[car.brand, car.series].filter(Boolean).join(" · ")}
-                              </span>
-                            )}
-                          </span>
-                          <Plus className="size-3 shrink-0 text-muted-foreground" />
-                        </button>
-                      ))}
-                      {isoCandidates.length === 0 && (
-                        <p className="px-1 py-2 text-center text-[11px] text-muted-foreground">
-                          {isoQuery.trim()
-                            ? "Nothing on your ISO list matches that."
-                            : "Your ISO list is empty."}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {pendingCars.length > 0 && (
-                  <div className="space-y-1 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.07] p-2">
-                    <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
-                      Joining on save — takes this order&apos;s status, dates and courier
-                    </p>
-                    {pendingCars.map((car) => (
-                      <div
-                        key={car.id}
-                        className="flex items-center justify-between gap-2 rounded bg-background/60 px-2 py-1 text-[11px]"
+                {/* New Expected Date */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Calendar className="size-3.5 text-amber-400" />
+                      <span>Expected / Available Date</span>
+                    </label>
+                    {newExpectedDate && (
+                      <button
+                        type="button"
+                        onClick={() => setNewExpectedDate("")}
+                        className="text-[10px] text-muted-foreground hover:text-foreground"
                       >
-                        <span className="min-w-0 truncate font-medium text-foreground">
-                          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPendingCars((prev) => prev.filter((c) => c.id !== car.id))
-                          }
-                          aria-label={`Remove ${car.name || "car"} from this order`}
-                          className="grid size-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </div>
-                    ))}
+                        Clear
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
 
-            {/* Form Updates */}
-            <div className="space-y-3 pt-1">
-              {/* New Status */}
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">
-                  Update Status for All Cars
-                </label>
-                <Select value={newStatus} onValueChange={setNewStatus}>
-                  <SelectTrigger className="border-border bg-background text-xs text-foreground">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="border-border bg-background text-foreground">
-                    {STATUS_CHOICES.map((choice) => (
-                      <SelectItem key={choice.value} value={choice.value} className="text-xs">
-                        {choice.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                  <Input
+                    type="date"
+                    value={newExpectedDate}
+                    onChange={(e) => setNewExpectedDate(e.target.value)}
+                    className="border-border bg-background text-xs text-foreground"
+                  />
 
-              {/* New Expected Date */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Calendar className="size-3.5 text-amber-400" />
-                    <span>Expected / Available Date</span>
-                  </label>
-                  {newExpectedDate && (
+                  {/* Quick Date Presets */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                      <Clock className="size-3" /> Quick:
+                    </span>
                     <button
                       type="button"
-                      onClick={() => setNewExpectedDate("")}
-                      className="text-[10px] text-muted-foreground hover:text-foreground"
+                      onClick={() => handleQuickDate(0)}
+                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
                     >
-                      Clear
+                      Today
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDate(7)}
+                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      +7 Days
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDate(14)}
+                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      +14 Days
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickDate(30)}
+                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      +1 Month
+                    </button>
+                  </div>
+                </div>
+
+                {/* Delivery partner + tracking ID. Together they are a link, so
+                  they are set together or not at all. */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <Truck className="size-3.5 text-sky-400" />
+                      <span>Delivery partner &amp; tracking ID</span>
+                    </label>
+                    <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={updateTracking}
+                        onChange={(e) => setUpdateTracking(e.target.checked)}
+                        className="rounded border-input bg-background text-primary"
+                      />
+                      <span>Update tracking</span>
+                    </label>
+                  </div>
+                  {updateTracking && (
+                    <div className="space-y-1.5">
+                      <Combobox
+                        value={newPartner}
+                        onChange={setNewPartner}
+                        options={DELIVERY_PARTNER_NAMES}
+                        placeholder="Courier"
+                        searchPlaceholder="Search or type a courier…"
+                        ariaLabel="Delivery partner"
+                        className="h-9 border-border bg-background text-xs text-foreground"
+                      />
+                      <Input
+                        placeholder="Consignment / AWB number"
+                        value={newTrackingId}
+                        onChange={(e) => setNewTrackingId(e.target.value)}
+                        className="border-border bg-background font-mono text-xs text-foreground"
+                      />
+                      <TrackingLink partner={newPartner} trackingId={newTrackingId} />
+                    </div>
                   )}
                 </div>
 
-                <Input
-                  type="date"
-                  value={newExpectedDate}
-                  onChange={(e) => setNewExpectedDate(e.target.value)}
-                  className="border-border bg-background text-xs text-foreground"
-                />
-
-                {/* Quick Date Presets */}
-                <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                    <Clock className="size-3" /> Quick:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDate(0)}
-                    className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    Today
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDate(7)}
-                    className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    +7 Days
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDate(14)}
-                    className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    +14 Days
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleQuickDate(30)}
-                    className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    +1 Month
-                  </button>
-                </div>
-              </div>
-
-              {/* Delivery partner + tracking ID. Together they are a link, so
-                  they are set together or not at all. */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                    <Truck className="size-3.5 text-sky-400" />
-                    <span>Delivery partner &amp; tracking ID</span>
-                  </label>
-                  <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={updateTracking}
-                      onChange={(e) => setUpdateTracking(e.target.checked)}
-                      className="rounded border-input bg-background text-primary"
-                    />
-                    <span>Update tracking</span>
-                  </label>
-                </div>
-                {updateTracking && (
-                  <div className="space-y-1.5">
-                    <Combobox
-                      value={newPartner}
-                      onChange={setNewPartner}
-                      options={DELIVERY_PARTNER_NAMES}
-                      placeholder="Courier"
-                      searchPlaceholder="Search or type a courier…"
-                      ariaLabel="Delivery partner"
-                      className="h-9 border-border bg-background text-xs text-foreground"
-                    />
-                    <Input
-                      placeholder="Consignment / AWB number"
-                      value={newTrackingId}
-                      onChange={(e) => setNewTrackingId(e.target.value)}
-                      className="border-border bg-background font-mono text-xs text-foreground"
-                    />
-                    <TrackingLink partner={newPartner} trackingId={newTrackingId} />
+                {/* Transit Info / ETA Notes (Optional) */}
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Truck className="size-3.5 text-muted-foreground" />
+                      <span>Transit Info / Tracking Notes</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={updateTransitInfo}
+                        onChange={(e) => setUpdateTransitInfo(e.target.checked)}
+                        className="rounded border-input bg-background text-primary"
+                      />
+                      <span>Update notes</span>
+                    </label>
                   </div>
-                )}
-              </div>
-
-              {/* Transit Info / ETA Notes (Optional) */}
-              <div className="space-y-1.5 pt-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <Truck className="size-3.5 text-muted-foreground" />
-                    <span>Transit Info / Tracking Notes</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-muted-foreground">
-                    <input
-                      type="checkbox"
-                      checked={updateTransitInfo}
-                      onChange={(e) => setUpdateTransitInfo(e.target.checked)}
-                      className="rounded border-input bg-background text-primary"
+                  {updateTransitInfo && (
+                    <Input
+                      placeholder="Courier AWB, tracking code, dispatch notes..."
+                      value={newTransitInfo}
+                      onChange={(e) => setNewTransitInfo(e.target.value)}
+                      className="border-border bg-background text-xs text-foreground"
                     />
-                    <span>Update notes</span>
-                  </label>
+                  )}
                 </div>
-                {updateTransitInfo && (
-                  <Input
-                    placeholder="Courier AWB, tracking code, dispatch notes..."
-                    value={newTransitInfo}
-                    onChange={(e) => setNewTransitInfo(e.target.value)}
-                    className="border-border bg-background text-xs text-foreground"
-                  />
-                )}
               </div>
             </div>
           </div>
