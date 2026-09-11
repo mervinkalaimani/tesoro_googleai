@@ -54,9 +54,10 @@ export function TrackingLink({
           className,
         )}
       >
-        <span className="truncate">
-          {name} · {id}
-        </span>
+        {/* The courier's name alone. The consignment number used to sit beside
+            it, and a twenty-digit string is not something anyone reads off a
+            list — it went to the clipboard either way. */}
+        <span className="truncate">{name}</span>
         <ExternalLink className="size-3 shrink-0" />
       </button>
     );

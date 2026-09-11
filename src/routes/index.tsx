@@ -22,7 +22,6 @@ import {
   AlertTriangle,
   PauseCircle,
   Plus,
-  ExternalLink,
 } from "lucide-react";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { TrackingLink } from "@/components/tracking-link";
@@ -44,10 +43,10 @@ import {
   monthLabel,
   shortMonthLabel,
 } from "@/lib/format";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { CarListCard } from "@/components/cars-table";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import {
   Select,
@@ -140,13 +139,32 @@ type Shipment = {
   trackingId: string;
 };
 
-/** The courier link for a shipment, or its note when there is nothing to link. */
+/**
+ * The earliest parsable date in a list, ignoring blanks. One order's cars can
+ * disagree about their dates; the shipment takes the first of them.
+ */
+function earliestDate(values: (string | undefined | null)[]): Date | null {
+  let best: Date | null = null;
+  for (const v of values) {
+    const d = parseDMY(v ?? "");
+    if (d && (!best || d < best)) best = d;
+  }
+  return best;
+}
+
+/**
+ * The courier for a shipment, linked when there is somewhere to send you.
+ *
+ * The consignment number is not shown. It was printed next to the courier in
+ * every row — twenty characters of nothing anyone reads, crowding out the one
+ * word that says who has the parcel. Clicking still copies it.
+ */
 function TransitCell({ s }: { s: Shipment }) {
   if (trackingPageFor(s.deliveryPartner, s.trackingId)) {
     return <TrackingLink compact partner={s.deliveryPartner} trackingId={s.trackingId} />;
   }
-  const parts = [s.deliveryPartner, s.trackingId].filter(Boolean).join(" · ");
-  return <span className="text-xs text-muted-foreground">{parts || s.transitInfo || "—"}</span>;
+  const partner = (s.deliveryPartner || "").trim();
+  return <span className="text-xs text-muted-foreground">{partner || s.transitInfo || "—"}</span>;
 }
 
 function DashboardPage() {
@@ -261,7 +279,7 @@ function DashboardPage() {
       <DashboardMiddle rows={data} etaDays={transitEtaDays} loading={loading} />
 
       <section className="grid min-w-0 items-stretch gap-4 lg:h-[min(360px,calc(100svh-7rem))] lg:grid-cols-3 lg:[&>*]:h-full">
-        <MonthlySpending rows={data} />
+        <MonthlySpending rows={data} mode={metric} />
         <TopTenGrid rows={data} mode={metric} onModeChange={setMetric} loading={loading} />
         {loading ? (
           <PeakPurchaseSkeleton />
@@ -269,6 +287,10 @@ function DashboardPage() {
           <PeakPurchase rows={data} mode={metric} onModeChange={setMetric} />
         )}
       </section>
+
+      {/* Last on the page: what has already arrived is the one thing here that
+          needs nothing done about it. */}
+      {!loading && <RecentlyAdded rows={data} />}
     </div>
   );
 }
@@ -294,21 +316,17 @@ function TransitTracker({
   etaDays: number;
   wide?: boolean;
 }) {
-  const [includeWaiting, setIncludeWaiting] = useState(false);
-  const [clubShipping, setClubShipping] = useState(false);
-  const [sortBy, setSortBy] = useState<"ordered" | "expected">("ordered");
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
 
+  // Every order that has not arrived. "Include waiting" used to be a checkbox
+  // defaulting to off, which hid orders a seller had taken money for and not
+  // yet shipped — the ones most worth chasing. These are the same three
+  // statuses the shipping ID treats as in flight.
   const src = useMemo(
     () =>
-      rows.filter(
-        (r) =>
-          isOutForDelivery(r.status) ||
-          isTransit(r.status) ||
-          (includeWaiting && isWaiting(r.status)),
-      ),
-    [rows, includeWaiting],
+      rows.filter((r) => isOutForDelivery(r.status) || isTransit(r.status) || isWaiting(r.status)),
+    [rows],
   );
 
   // Active shipping IDs present strictly in this transit list (excluding Available)
@@ -329,12 +347,11 @@ function TransitTracker({
       const od = r.orderDate || r.date || "—";
       const ship = (r.transitInfo || "").trim();
       const sid = (r.shippingId || "").trim();
-      const k =
-        clubShipping && sid
-          ? `shipid:${sid.toLowerCase()}`
-          : clubShipping && ship
-            ? `ship:${ship.toLowerCase()}`
-            : `${r.seller || "Unknown"}|${sid}|${od}|${r.status}|${ship}`;
+      // Always by shipping ID, which is what an order *is* — the checkbox that
+      // used to make this optional offered a view where one parcel appeared as
+      // four rows, and nobody wants to chase a parcel four times. Cars with no
+      // ID still fall back to the seller and date that would have produced one.
+      const k = sid ? `shipid:${sid.toLowerCase()}` : `${r.seller || "Unknown"}|${od}|${ship}`;
       const arr = groups.get(k) ?? [];
       arr.push(r);
       groups.set(k, arr);
@@ -343,9 +360,14 @@ function TransitTracker({
     const out: Shipment[] = [];
     for (const [k, arr] of groups) {
       const first = arr[0];
-      const ordered = parseDMY(first.orderDate || first.date);
+      // The earliest real order date in the group, not whichever car happened to
+      // be first — and never the arrival date standing in for it, which made
+      // "days since" count from a delivery that has not happened.
+      const ordered = earliestDate(arr.map((r) => r.orderDate));
       if (!ordered) continue;
-      const expected = parseDMY(first.expectedDate || first.date);
+      // The soonest thing due in this order: if that date has passed, something
+      // in here is late, which is what the column is for.
+      const expected = earliestDate(arr.map((r) => r.expectedDate));
       const brands = [...new Set(arr.map((r) => r.brand).filter(Boolean))];
       const sellers = [...new Set(arr.map((r) => r.seller).filter(Boolean))];
       const shippingIds = [...new Set(arr.map((r) => (r.shippingId || "").trim()).filter(Boolean))];
@@ -367,24 +389,25 @@ function TransitTracker({
         trackingId: arr.find((r) => r.trackingId)?.trackingId || "",
       });
     }
-    const etaOf = (s: Shipment) => (s.expected ?? addDays(s.ordered, etaDays)).getTime();
     return out.sort((a, b) => {
-      // Out for delivery always floats to the top; everything else sorts purely by the chosen date
+      // Out for delivery always floats to the top; the rest is oldest order
+      // first, which is the one that has been waited on longest. The segment
+      // control that used to switch this to "Expected" is gone: two orderings
+      // of the same nine rows is a setting to fiddle with, not information.
       const ofd = (isOutForDelivery(a.status) ? 0 : 1) - (isOutForDelivery(b.status) ? 0 : 1);
       if (ofd !== 0) return ofd;
-      // Order date -> oldest first; Expected -> closest first
-      return sortBy === "expected"
-        ? etaOf(a) - etaOf(b)
-        : a.ordered.getTime() - b.ordered.getTime();
+      return a.ordered.getTime() - b.ordered.getTime();
     });
-  }, [src, clubShipping, sortBy, etaDays]);
+  }, [src]);
 
   const now = new Date();
 
+  // Nothing on its way, nothing to show. An empty tracker is a heading and a
+  // blank panel taking the top of the dashboard to say so.
+  if (shipments.length === 0) return null;
+
   return (
-    <div
-      className={`card-elevated flex h-full min-w-0 flex-col overflow-hidden ${wide ? "lg:col-span-2" : "lg:col-span-3"}`}
-    >
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display truncate text-lg font-semibold">Transit tracker</h2>
@@ -392,51 +415,19 @@ function TransitTracker({
             {shipments.length} active shipment{shipments.length === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setSelectedShippingId("");
-              setBatchOpen(true);
-            }}
-            className="gap-1.5 shrink-0 border-amber-500/40 text-amber-500 hover:text-amber-400 hover:bg-amber-500/10 font-medium"
-            title="Update an order — status, expected date and transit notes across every car in it"
-          >
-            <Truck className="size-3.5" />
-            <span>Update Order</span>
-            {activeShippingIds.length > 0 && (
-              <span className="rounded-full bg-amber-500/20 px-1.5 py-0.2 font-mono text-[10px]">
-                {activeShippingIds.length}
-              </span>
-            )}
-          </Button>
-          <SegmentControl
-            value={sortBy}
-            onChange={setSortBy}
-            options={[
-              { value: "ordered", label: "Order date" },
-              { value: "expected", label: "Expected" },
-            ]}
-          />
-          <label className="flex shrink-0 items-center gap-2 text-xs">
-            <Checkbox
-              checked={includeWaiting}
-              onCheckedChange={(v) => setIncludeWaiting(Boolean(v))}
-            />
-            Include waiting
-          </label>
-          <label className="flex shrink-0 items-center gap-2 text-xs">
-            <Checkbox checked={clubShipping} onCheckedChange={(v) => setClubShipping(Boolean(v))} />
-            Club shipping ID
-          </label>
-        </div>
+        {/* No controls up here any more. "Include waiting" hid orders worth
+            chasing, and the Update Order button opened a dialog to pick an order
+            from a list of the orders already on screen — every row's own
+            shipping ID is that button, for that order. */}
       </div>
 
-      {shipments.length > 0 && (
+      {/* The panel is as tall as it needs to be, up to three shipments, and
+          scrolls past that. It used to be pinned to a fixed height whether it
+          held one order or nine — a lot of empty card for one parcel. */}
+      <>
         <>
           {/* Mobile: stacked cards */}
-          <div className="max-h-[340px] md:max-h-none overflow-y-auto md:hidden">
+          <div className="max-h-[21rem] overflow-y-auto md:hidden">
             <ul className="divide-y divide-border/60">
               {shipments.map((s) => {
                 const eta = s.expected ?? addDays(s.ordered, etaDays);
@@ -498,12 +489,16 @@ function TransitTracker({
             </ul>
           </div>
 
-          {/* Desktop: table */}
-          <div className="hidden min-h-0 flex-1 max-h-[340px] overflow-auto md:block">
+          {/* Desktop: table. 13rem is a header plus three rows and the top of a
+              fourth, which is what tells you there is more below. */}
+          <div className="hidden max-h-[13rem] min-h-0 overflow-auto md:block">
             <table className="w-full text-sm">
               <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-2.5 font-medium">Seller</th>
+                  {/* Widest column in the table: seller names are people and
+                      shops ("The Diecast Store, Chennai"), and at the old width
+                      most of them wrapped onto three lines. */}
+                  <th className="w-[22%] min-w-[13rem] px-4 py-2.5 font-medium">Seller</th>
                   <th className="px-4 py-2.5 font-medium">Shipping ID</th>
                   <th className="px-4 py-2.5 font-medium">Cars</th>
                   <th className="px-4 py-2.5 font-medium text-right">Cost</th>
@@ -521,7 +516,7 @@ function TransitTracker({
                   const late = eta < now;
                   return (
                     <tr key={s.key} className="border-t border-border/60 hover:bg-muted/30">
-                      <td className="px-4 py-2.5">
+                      <td className="min-w-[13rem] px-4 py-2.5">
                         <div className="font-medium">{s.seller}</div>
                         <div className="text-xs text-muted-foreground">{s.status}</div>
                       </td>
@@ -583,7 +578,7 @@ function TransitTracker({
             </table>
           </div>
         </>
-      )}
+      </>
 
       <ShippingBatchDialog
         open={batchOpen}
@@ -612,42 +607,37 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
     return list;
   }, [rows, now]);
 
+  if (recent.length === 0) return null;
+
   return (
-    <div className="card-elevated flex h-full min-w-0 flex-col overflow-hidden">
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Recently added</h2>
-          <p className="text-xs text-muted-foreground">Last 3 days</p>
+          <p className="text-xs text-muted-foreground">
+            Last 3 days · {recent.length} car{recent.length === 1 ? "" : "s"}
+          </p>
         </div>
         <Sparkles className="size-4 text-accent" />
       </div>
-      <div className="min-h-0 flex-1 max-h-[340px] overflow-y-auto p-2">
-        {recent.length === 0 ? (
-          <div className="p-6 text-center text-sm text-muted-foreground">
-            No new cars added before today.
-          </div>
-        ) : (
-          <ul className="divide-y divide-border/60">
-            {recent.map(({ r, dt }, i) => (
-              <li
-                key={r.id + i}
-                onClick={() => openDrawer(r)}
-                className="flex cursor-pointer items-start justify-between gap-3 rounded-md px-2 py-2.5 hover:bg-muted/40"
-              >
-                <div className="min-w-0">
-                  <div className="truncate font-medium text-sm">{r.name}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {[r.brand, r.series, r.subSeries].filter(Boolean).join(" · ")}
-                  </div>
-                </div>
-
-                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-                  {relativeDay(dt, now)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+      {/* The inventory card, in a grid that fills left to right. It was a single
+          narrow column of name-and-date, which told you less about a car than
+          the list you had just come from and looked like nothing else in the
+          app. Same card here means the same thing means the same thing
+          everywhere. */}
+      <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+        {recent.map(({ r, dt }, i) => (
+          <CarListCard
+            key={r.id + i}
+            car={r}
+            onOpen={() => openDrawer(r)}
+            actions={
+              <span className="whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                {relativeDay(dt, now)}
+              </span>
+            }
+          />
+        ))}
       </div>
     </div>
   );
@@ -659,7 +649,22 @@ function resolveCarMonthKey(r: Diecast): number | null {
   return monthKey(r.month) ?? monthKey(r.orderMonth) ?? monthKey(r.date) ?? monthKey(r.orderDate);
 }
 
-function MonthlySpending({ rows }: { rows: Diecast[] }) {
+/**
+ * The month a car counts in, for spending: the month it was *received*.
+ *
+ * This used to fall back through month -> orderMonth -> date -> orderDate,
+ * which meant a car still on its way was booked to the month it was ordered and
+ * a pre-order due in 2027 put money into a month two years out. Money follows
+ * the car: a shipment counts when it lands, and anything that has not landed
+ * counts nowhere yet. `month` is the sheet's own arrival month, so it is still
+ * tried first — but only backed by the arrival date, never the order date.
+ */
+function receivedMonthKey(r: Diecast): number | null {
+  if (!(r.date || "").trim()) return null;
+  return monthKey(r.month) ?? monthKey(r.date);
+}
+
+function MonthlySpending({ rows, mode }: { rows: Diecast[]; mode: "count" | "cost" }) {
   const [win, setWin] = useState<Window>("6m");
   const [mounted, setMounted] = useState(false);
 
@@ -670,7 +675,7 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
   const series = useMemo(() => {
     const map = new Map<number, { spent: number; count: number }>();
     for (const r of rows) {
-      const k = resolveCarMonthKey(r);
+      const k = receivedMonthKey(r);
       if (k === null) continue;
       const cur = map.get(k) ?? { spent: 0, count: 0 };
       cur.spent += r.spent || 0;
@@ -701,17 +706,27 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
     }));
   }, [rows, win]);
 
+  // Which number the bars are. It follows the Count/Cost control shared with
+  // Top 5 and Peak purchase rather than carrying a third one of its own: three
+  // panels answering the same question should be answering it about the same
+  // thing at the same time.
+  const metricKey = mode === "count" ? "count" : "spent";
+  const fmt = (v: number) => (mode === "count" ? v.toLocaleString() : inr(v));
+
   const average = useMemo(() => {
     if (series.length === 0) return 0;
-    return Math.round(series.reduce((s, d) => s + d.spent, 0) / series.length);
-  }, [series]);
+    const total = series.reduce((s, d) => s + (mode === "count" ? d.count : d.spent), 0);
+    return Math.round(total / series.length);
+  }, [series, mode]);
 
   return (
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-display text-lg font-semibold">Monthly spending</h2>
-          <p className="text-xs text-muted-foreground">Investment by month</p>
+          <p className="text-xs text-muted-foreground">
+            {mode === "count" ? "Cars received by month" : "Spent on cars received, by month"}
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <SegmentControl
@@ -758,19 +773,27 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
               />
               <YAxis
                 tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                tickFormatter={(v) => inr(Number(v))}
+                tickFormatter={(v) => fmt(Number(v))}
+                allowDecimals={false}
               />
               <Tooltip
                 content={({ active, payload, label }) => {
                   if (!active || !payload?.length) return null;
+                  const row = payload[0].payload as { spent?: number; count?: number };
                   return (
                     <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg">
                       <div className="font-medium">{label}</div>
                       <div className="font-semibold text-primary">
-                        {inrFull(Number(payload[0].value))}
+                        {mode === "count"
+                          ? `${row.count ?? 0} car${row.count === 1 ? "" : "s"}`
+                          : inrFull(row.spent ?? 0)}
                       </div>
+                      {/* The other half of the story, whichever half is on the
+                          axis — a month is worth reading both ways. */}
                       <div className="text-muted-foreground">
-                        {payload[0].payload?.count ?? 0} cars
+                        {mode === "count"
+                          ? inrFull(row.spent ?? 0)
+                          : `${row.count ?? 0} car${row.count === 1 ? "" : "s"}`}
                       </div>
                     </div>
                   );
@@ -784,17 +807,21 @@ function MonthlySpending({ rows }: { rows: Diecast[] }) {
                   strokeDasharray="4 4"
                   strokeWidth={1.5}
                   label={{
-                    value: `Avg ${inr(average)}`,
+                    value: `Avg ${fmt(average)}`,
                     position: "insideTopRight",
                     fill: "var(--muted-foreground)",
                     fontSize: 10,
                   }}
                 />
               )}
-              <Bar dataKey="spent" fill="var(--primary)" radius={[6, 6, 0, 0]}>
+              <Bar dataKey={metricKey} fill="var(--primary)" radius={[6, 6, 0, 0]}>
+                {/* The bar's own value, on the bar. It used to carry the car
+                    count above a bar measuring money, so the two numbers on
+                    screen were never the same number. */}
                 <LabelList
-                  dataKey="count"
+                  dataKey={metricKey}
                   position="top"
+                  formatter={(v: number) => fmt(Number(v))}
                   fill="var(--muted-foreground)"
                   fontSize={9}
                 />
@@ -912,16 +939,15 @@ function DashboardMiddle({
     );
   }
 
-  if (!hasTransit && !hasRecent) return null;
+  if (!hasTransit) return null;
 
+  // The tracker takes the full width on its own. It was sharing the row with
+  // Recently added, which squeezed nine columns of shipment into two thirds of
+  // the page; the cars that have already landed are the least urgent thing on
+  // the dashboard and have gone to the bottom of it.
   return (
-    <section className="grid min-w-0 items-stretch gap-4 lg:grid-cols-3">
-      {hasTransit && <TransitTracker rows={rows} etaDays={etaDays} wide={hasRecent} />}
-      {hasRecent && (
-        <div className={hasTransit ? "min-w-0 h-full" : "min-w-0 h-full lg:col-span-3"}>
-          <RecentlyAdded rows={rows} />
-        </div>
-      )}
+    <section className="min-w-0">
+      <TransitTracker rows={rows} etaDays={etaDays} />
     </section>
   );
 }
@@ -1100,7 +1126,7 @@ function TopDetailDialog({
         if (!v) onClose();
       }}
     >
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-display">{title || "Details"}</DialogTitle>
           <DialogDescription>

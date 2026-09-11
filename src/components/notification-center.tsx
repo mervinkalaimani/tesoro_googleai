@@ -141,6 +141,14 @@ export function NotificationCenter() {
     fn();
   };
 
+  // No bell at all when there is nothing behind it. A permanently present icon
+  // that opens onto "nothing needs you right now" is a thing you learn not to
+  // press, and then miss the day it has something — the badge is the signal, so
+  // the button may as well be the badge. It stays while the panel is open (so
+  // clearing the last notice does not yank it out from under the cursor) and
+  // while a dialog it raised is still on screen.
+  if (count === 0 && !open && !payFor && !statusFor) return null;
+
   return (
     <>
       {/* The page dims behind the panel. A popover floating over a busy page at

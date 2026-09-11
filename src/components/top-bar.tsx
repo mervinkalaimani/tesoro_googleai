@@ -85,6 +85,13 @@ export function TopBar() {
             <Undo2 className="size-4" /> <span className="hidden sm:inline">Undo</span>
           </Button>
         )}
+        {/* Anything the app needs to tell you lives behind the bell — the
+            pre-order launch banner used to sit on the dashboard, where it was
+            only seen by someone already looking at the dashboard. It renders
+            nothing at all when there is nothing to say, so Add car keeps the
+            corner: the last button in the bar is the one worth putting under a
+            thumb, and it is the one you press every day. */}
+        <NotificationCenter />
         <Button
           size="sm"
           onClick={() => setAddOpen(true)}
@@ -101,10 +108,6 @@ export function TopBar() {
             />
           )}
         </Button>
-        {/* Anything the app needs to tell you lives behind the bell — the
-            pre-order launch banner used to sit on the dashboard, where it was
-            only seen by someone already looking at the dashboard. */}
-        <NotificationCenter />
         {/* The theme toggle lived here too, competing for a bar that had no
             room for a search field. It is a preference, and preferences are in
             Settings → General & Display. */}

@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { FavouriteDetector } from "@/components/favourite-detector";
+import { ShippingIdRebuild } from "@/components/shipping-id-rebuild";
+import { OAuthProvidersCard } from "@/components/oauth-providers-card";
 import { SupabaseSyncCard } from "@/components/supabase-sync-card";
 import { useAuth } from "@/lib/auth-store";
 
@@ -203,13 +205,25 @@ function SettingsPage() {
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Data diagnostics
             </h2>
-            <FavouriteDetector />
+            <div className="space-y-4">
+              <ShippingIdRebuild />
+              <FavouriteDetector />
+            </div>
           </section>
         </TabsContent>
 
         {/* TAB 3: DATABASE CONNECTION — owner only */}
         {isOwner ? (
           <TabsContent value="supabase" className="space-y-4 focus-visible:outline-none">
+            {/* Above the connection card: this is about what visitors can see,
+                which is a more common thing to change than the database the
+                whole app points at. */}
+            <section className="card-elevated p-5">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Login screen
+              </h2>
+              <OAuthProvidersCard />
+            </section>
             <SupabaseSyncCard />
           </TabsContent>
         ) : null}
