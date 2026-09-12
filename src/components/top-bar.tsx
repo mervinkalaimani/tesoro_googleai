@@ -111,7 +111,12 @@ export function TopBar() {
           )}
         </Button>
         <NotificationCenter />
-        <UserMenu />
+        {/* Desktop only. The bottom bar's Menu carries the same avatar and the
+            same account items on a phone, and two faces in one screen is two
+            places to look for the way out. */}
+        <span className="hidden md:inline-flex">
+          <UserMenu />
+        </span>
         {/* The theme toggle lived here too, competing for a bar that had no
             room for a search field. It is a preference, and preferences are in
             Settings → General & Display. */}
