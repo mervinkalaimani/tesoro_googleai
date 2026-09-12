@@ -590,6 +590,9 @@ export function CarFormDialog({
       // derive one from, so the store computes it fresh from what was just
       // entered rather than carrying nothing forward.
       shippingId: initial?.shippingId || "",
+      // Both IDs are derived on save; an edit carries the existing one
+      // forward so an unrelated change does not look like a renumber.
+      orderId: initial?.orderId || "",
       orderDate,
       orderMonth,
       expectedDate: form.expectedDate.trim(),

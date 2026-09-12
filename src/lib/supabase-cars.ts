@@ -38,6 +38,7 @@ export type TesoroRawRow = {
   "Delivery Partner"?: string | null;
   "Tracking ID"?: string | null;
   "Shipping ID"?: string | null;
+  "Order ID"?: string | null;
   Balance?: number | null;
   Chase?: boolean | null;
   Favourite?: boolean | null;
@@ -95,6 +96,7 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
     "Delivery Partner": car.deliveryPartner || "",
     "Tracking ID": car.trackingId || "",
     "Shipping ID": car.shippingId || "",
+    "Order ID": car.orderId || "",
     Balance: Number(car.balance) || 0,
     Chase: Boolean(car.chase),
     Favourite: Boolean(car.favourite),
@@ -201,6 +203,7 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
       monthEtaToDate(String(row["Transit Info / ETA"] || "")),
     transitInfo: String(row["Transit Info / ETA"] || "").trim(),
     shippingId: String(row["Shipping ID"] || "").trim(),
+    orderId: String(row["Order ID"] || "").trim(),
     deliveryPartner: String(row["Delivery Partner"] || "").trim() || undefined,
     trackingId: String(row["Tracking ID"] || "").trim() || undefined,
     balance,
@@ -221,6 +224,7 @@ const OPTIONAL_COLUMNS = [
   "Expected Date",
   "Delivery Partner",
   "Tracking ID",
+  "Order ID",
 ] as const satisfies readonly (keyof TesoroRawRow)[];
 
 function isMissingColumnError(message: string): boolean {

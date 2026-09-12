@@ -1,4 +1,4 @@
-import type { Diecast } from "@/lib/types";
+﻿import type { Diecast } from "@/lib/types";
 import { buildCarName } from "@/lib/car-name";
 import { monthEtaToDate } from "@/lib/date-utils";
 
@@ -73,9 +73,9 @@ export async function fetchRawSheet(): Promise<Diecast[]> {
         "checked",
         "check",
         "x",
-        "✓",
-        "✔",
-        "★",
+        "âœ“",
+        "âœ”",
+        "â˜…",
         "star",
         "favourite",
         "favorite",
@@ -126,6 +126,7 @@ export async function fetchRawSheet(): Promise<Diecast[]> {
         dateF,
       transitInfo: str(r, ["Transit Info / ETA", "Transit Info", "ETA"]),
       shippingId: str(r, "Shipping ID"),
+      orderId: str(r, "Order ID"),
       deliveryPartner: str(r, ["Delivery Partner", "Courier"]) || undefined,
       trackingId: str(r, ["Tracking ID", "AWB"]) || undefined,
       balance: num(r, "Balance"),

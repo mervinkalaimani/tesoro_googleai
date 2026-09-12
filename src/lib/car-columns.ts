@@ -25,6 +25,8 @@ export const CAR_CSV_COLUMNS: CsvColumn<Diecast>[] = [
   { key: "transitInfo", label: "Transit info", get: (r) => r.transitInfo },
   { key: "deliveryPartner", label: "Delivery partner", get: (r) => r.deliveryPartner ?? "" },
   { key: "trackingId", label: "Tracking ID", get: (r) => r.trackingId ?? "" },
+  { key: "shippingId", label: "Shipping ID", get: (r) => r.shippingId },
+  { key: "orderId", label: "Order ID", get: (r) => r.orderId },
   { key: "orderDate", label: "Order date", get: (r) => r.orderDate },
   { key: "expectedDate", label: "Expected date", get: (r) => r.expectedDate },
   // "Date" on its own said nothing next to Order date and Expected date. This

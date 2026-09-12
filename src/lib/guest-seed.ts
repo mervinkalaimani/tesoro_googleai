@@ -1,4 +1,5 @@
 import type { Diecast } from "@/lib/types";
+import { orderIdTable } from "@/lib/order-id";
 
 /**
  * Demo collection for Guest Mode.
@@ -508,7 +509,7 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
   const today = new Date();
   const shipCounters = new Map<string, number>();
 
-  return templates.map((t, i) => {
+  const cars = templates.map((t, i) => {
     const status = statuses[i] as string;
     const lower = status.toLowerCase();
     const arrived = lower === "available" || lower === "wrong item";
@@ -585,6 +586,10 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
       transitInfo:
         lower === "transit" || lower === "out for delivery" ? pick(TRANSIT_NOTES, rand) : "",
       shippingId,
+      // Filled in below by the real formula rather than by a counter here:
+      // order IDs rank a seller's order days within a month, which is not
+      // something a per-row loop can know.
+      orderId: "",
       deliveryPartner: moving ? pick(GUEST_COURIERS, rand) : "",
       trackingId: moving ? `${Math.floor(rand() * 9e11 + 1e11)}` : "",
       balance,
@@ -595,4 +600,10 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
       imageUrl: "",
     } satisfies Diecast;
   });
+
+  // The demo shows the same order IDs the real formula would produce, which is
+  // the point of a demo — a counter here would drift from what the app does the
+  // moment anyone edited a date.
+  const orderIds = orderIdTable(cars);
+  return cars.map((c) => ({ ...c, orderId: orderIds.get(c.id) ?? "" }));
 }

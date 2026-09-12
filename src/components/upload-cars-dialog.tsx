@@ -151,6 +151,7 @@ export function UploadCarsDialog({
               expectedDate: item.expectedDate || item.date || "",
               transitInfo: item.transitInfo || item.transit_info || "",
               shippingId: item.shippingId || item.shipping_id || "",
+              orderId: item.orderId || item.order_id || "",
               deliveryPartner: item.deliveryPartner || item.delivery_partner || undefined,
               trackingId: item.trackingId || item.tracking_id || undefined,
               balance: Number(item.balance || 0),

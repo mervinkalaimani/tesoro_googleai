@@ -158,6 +158,9 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
   // shipping ID — which is a batch reference this app derives itself, not a
   // consignment number.
   const shippingCol = findCol("shippingid");
+  // Read back so a file this app exported re-imports unchanged. Blank is fine:
+  // the store derives one from the seller and the order date on the way in.
+  const orderIdCol = findCol("orderid");
   const partnerCol = findCol("deliverypartner", "courier", "carrier");
   const trackingCol = findCol("trackingid", "tracking", "awb", "awbno", "consignment");
   const balanceCol = findCol("balance");
@@ -230,6 +233,9 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
         val(row, expectedCol) || monthEtaToDate(val(row, transitCol)) || val(row, dateCol),
       transitInfo: val(row, transitCol),
       shippingId: val(row, shippingCol),
+      // Derived from the seller and the order date once the rows land in the
+      // store, so an import does not have to carry one.
+      orderId: val(row, orderIdCol),
       deliveryPartner: val(row, partnerCol) || undefined,
       trackingId: val(row, trackingCol) || undefined,
       balance,

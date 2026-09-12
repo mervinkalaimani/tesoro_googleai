@@ -11,6 +11,7 @@
 import type { Diecast } from "@/lib/types";
 import { deriveMonth } from "@/lib/date-utils";
 import { allShippingIdFixes, resyncShippingIds, shippingInputsChanged } from "@/lib/shipping-id";
+import { allOrderIdFixes, orderInputsChanged, resyncOrderIds } from "@/lib/order-id";
 import { assignCarIds } from "@/lib/car-id";
 import { sortCars } from "@/lib/status-order";
 import { useAuth } from "@/lib/auth-store";
@@ -163,15 +164,30 @@ export type ShippingBatchOptions = {
 };
 
 /**
- * The rows a change has to write: the ones the caller changed, with their
- * shipping IDs re-derived, followed by any *other* car whose number moved
- * because of them.
+ * Both ID sequences, recomputed for the runs that `touched` disturbs.
  *
- * The second half is the part that is easy to forget. A shipping ID is a rank
- * within a seller's run of shipping days, so a car given a date between two
- * existing orders inserts a day into the middle of that run and pushes every
- * later order of theirs up by one. Deriving only the edited car left the rest
- * of the sheet disagreeing with the formula it came from.
+ * In sequence rather than side by side, because one car can appear in both fix
+ * lists and each list carries a whole row — a shipping fix holds the old order
+ * ID, and an order fix the old shipping ID. Running the second pass over the
+ * output of the first means its rows already carry the new shipping ID, so the
+ * merge cannot drop one correction while applying the other.
+ */
+function resyncIds(all: Diecast[], touched: Diecast[]): Diecast[] {
+  const shipFixes = resyncShippingIds(all, touched);
+  const orderFixes = resyncOrderIds(mergeById(all, shipFixes), touched);
+  return mergeById(shipFixes, orderFixes);
+}
+
+/**
+ * The rows a change has to write: the ones the caller changed, with their
+ * shipping and order IDs re-derived, followed by any *other* car whose number
+ * moved because of them.
+ *
+ * The second half is the part that is easy to forget. Both IDs are a rank
+ * within a run — a seller's shipping days, a seller's order days in one month —
+ * so a car given a date between two existing ones inserts a day into the middle
+ * of that run and pushes every later entry up by one. Deriving only the edited
+ * car left the rest of the sheet disagreeing with the formula it came from.
  *
  * `before` is those same cars as they were. A car that changes seller or date
  * leaves one run and joins another; both have to be recounted.
@@ -185,7 +201,7 @@ function withRenumbering(changed: Diecast[], all: Diecast[], before: Diecast[] =
   // Rows being added are not in the collection yet.
   for (const c of changed) if (!known.has(c.id)) after.push(c);
 
-  const fixes = resyncShippingIds(after, [...before, ...changed]);
+  const fixes = resyncIds(after, [...before, ...changed]);
   const fixById = new Map(fixes.map((f) => [f.id, f]));
 
   const out = changed.map((c) => fixById.get(c.id) ?? c);
@@ -239,6 +255,8 @@ type Ctx = {
    * changed. Returns how many rows moved.
    */
   renumberShippingIds: () => Promise<number>;
+  /** The same pass for order IDs. Returns how many rows moved. */
+  renumberOrderIds: () => Promise<number>;
   /** How many rows `renumberShippingIds` would rewrite, without writing them. */
   shippingIdDrift: () => Diecast[];
   undo: () => void;
@@ -570,7 +588,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // Same rule as a single add: rows that came with an ID keep it, the rest
       // are numbered from the seller and dates — and numbering them can move
       // existing orders, so the writes are whatever that returns.
-      const needIds = identified.filter((c) => !c.shippingId?.trim());
+      const needIds = identified.filter((c) => !c.shippingId?.trim() || !c.orderId?.trim());
       const written = needIds.length
         ? mergeById(identified, withRenumbering(needIds, cars))
         : identified;
@@ -600,7 +618,10 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // recomputing regardless would make every edit a candidate for rewriting
       // its neighbours.
       const prev = cars.find((c) => c.id === car.id);
-      const needsId = !car.shippingId?.trim() || (prev && shippingInputsChanged(prev, car));
+      const needsId =
+        !car.shippingId?.trim() ||
+        !car.orderId?.trim() ||
+        (prev && (shippingInputsChanged(prev, car) || orderInputsChanged(prev, car)));
 
       const written = needsId ? withRenumbering([car], cars, prev ? [prev] : []) : [car];
 
@@ -746,10 +767,10 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     (id: string) => {
       const existing = cars.find((c) => c.id === id);
 
-      // Removing the last car of a shipping day closes that gap in the seller's
-      // run, so everything ordered after it counts one lower.
+      // Removing the last car of a shipping day — or of an order day — closes
+      // that gap in the seller's run, so everything after it counts one lower.
       const remaining = cars.filter((c) => c.id !== id);
-      const moved = existing ? resyncShippingIds(remaining, [existing]) : [];
+      const moved = existing ? resyncIds(remaining, [existing]) : [];
 
       if (existing) {
         const byId = new Map(cars.map((c) => [c.id, c]));
@@ -819,6 +840,29 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     return fixes.length;
   }, [cars, commitCars, persist, pushUndo]);
 
+  /** The same pass, for order IDs. Separate because they are separate runs: a
+   *  collection can have every shipping ID right and no order IDs at all. */
+  const renumberOrderIds = useCallback(async () => {
+    const fixes = allOrderIdFixes(cars);
+    if (!fixes.length) return 0;
+
+    pushUndo(
+      `renumbering ${fixes.length} order ID${fixes.length === 1 ? "" : "s"}`,
+      fixes.map((f) => cars.find((c) => c.id === f.id)).filter((c): c is Diecast => Boolean(c)),
+    );
+    commitCars(fixes);
+
+    const failures = await persist(fixes, "renumberOrderIds", false);
+    if (failures.length) {
+      throw new Error(
+        `${failures.length} of ${fixes.length} rows could not be saved: ${
+          failures[0]?.error ?? "unknown error"
+        }`,
+      );
+    }
+    return fixes.length;
+  }, [cars, commitCars, persist, pushUndo]);
+
   const top = undoStack.length ? undoStack[undoStack.length - 1] : null;
   const undoLabel = top?.label ?? null;
   const undoAt = top?.at ?? null;
@@ -861,6 +905,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       updateCarsByShippingId,
       deleteCar,
       renumberShippingIds,
+      renumberOrderIds,
       shippingIdDrift,
       undo,
       undoLabel,
@@ -881,6 +926,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       updateCarsByShippingId,
       deleteCar,
       renumberShippingIds,
+      renumberOrderIds,
       shippingIdDrift,
       undo,
       undoLabel,
@@ -914,6 +960,7 @@ export function useCarsActions() {
     updateCarsByShippingId,
     deleteCar,
     renumberShippingIds,
+    renumberOrderIds,
     shippingIdDrift,
     resetOverlay,
   } = v;
@@ -925,6 +972,7 @@ export function useCarsActions() {
     updateCarsByShippingId,
     deleteCar,
     renumberShippingIds,
+    renumberOrderIds,
     shippingIdDrift,
     resetOverlay,
   };
@@ -986,6 +1034,7 @@ export function makeBlankCar(): Diecast {
     expectedDate: "",
     transitInfo: "",
     shippingId: "",
+    orderId: "",
     deliveryPartner: "",
     trackingId: "",
     balance: 0,

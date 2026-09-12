@@ -15,7 +15,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AccountCard } from "@/components/account-card";
 import { FavouriteDetector } from "@/components/favourite-detector";
-import { ShippingIdRebuild } from "@/components/shipping-id-rebuild";
+import { IdRebuild } from "@/components/shipping-id-rebuild";
 import { OAuthProvidersCard } from "@/components/oauth-providers-card";
 import { SupabaseSyncCard } from "@/components/supabase-sync-card";
 import { useAuth } from "@/lib/auth-store";
@@ -220,7 +220,8 @@ function SettingsPage() {
               Data diagnostics
             </h2>
             <div className="space-y-4">
-              <ShippingIdRebuild />
+              <IdRebuild kind="shipping" />
+              <IdRebuild kind="order" />
               <FavouriteDetector />
             </div>
           </section>

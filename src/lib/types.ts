@@ -30,6 +30,9 @@ export type Diecast = {
   expectedDate: string;
   transitInfo: string;
   shippingId: string;
+  /** Which order this car was bought in, e.g. "SHLL-2026-06-001". Derived from
+   *  the seller and the order date; blank when either is missing. */
+  orderId: string;
   /** Courier carrying the shipment, e.g. "Delhivery". Optional: most cars in
    *  the collection arrived long before anyone recorded one. */
   deliveryPartner?: string;
