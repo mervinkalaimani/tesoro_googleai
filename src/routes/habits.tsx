@@ -9,6 +9,7 @@ import type { Diecast } from "@/lib/types";
 import { inr, inrFull, parseDMY, formatDMY } from "@/lib/format";
 import { SegmentControl } from "@/components/segment-control";
 import { KpiBand, KpiTile } from "@/components/kpi";
+import { PageHeading } from "@/components/page-header";
 import { StatusPill, carSubLine } from "@/components/cars-table";
 import { useCarDrawer } from "@/components/car-details-drawer";
 
@@ -267,6 +268,11 @@ function HabitsPage() {
 
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
+      <PageHeading
+        title="Buying habits"
+        subtitle="When you order, when cars land, and how often — by day, week, month or year."
+      />
+
       <KpiBand>
         <KpiTile
           icon={<CalendarDays className="size-4" />}

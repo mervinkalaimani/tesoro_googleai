@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Sparkles, Star } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronDown,
+  ChevronUp,
+  Filter,
+  Sparkles,
+  Star,
+} from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -13,6 +22,10 @@ import { CarFormDialog } from "@/components/car-form-dialog";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { SegmentControl } from "@/components/segment-control";
+import { PageHeading, PageToolbar } from "@/components/page-header";
+import { FilterSelect } from "@/components/filter-select";
+import { ExportButton } from "@/components/export-button";
+import { Button } from "@/components/ui/button";
 import { inr, mrpRatio } from "@/lib/format";
 import {
   Accordion,
@@ -20,13 +33,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export const Route = createFileRoute("/collection")({
   head: () => ({
@@ -229,19 +235,18 @@ function CollectionPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      <div className="card-elevated p-4">
-        <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-display text-xl font-semibold">Collection</h1>
-            {/* No collection-wide total here: it is the sidebar's figure, where
-                it can be hidden, and per-group values are still on each row. */}
-            <p className="text-xs text-muted-foreground">
-              {groups.length} {group} · {filtered.length.toLocaleString()} cars
-            </p>
-          </div>
-          {/* min-w-0 so the seven-option control below can scroll instead of
-              stretching this row past the edge of the card. */}
-          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
+      <div className="card-elevated space-y-3 p-4">
+        {/* No collection-wide total here: it is the sidebar's figure, where it
+            can be hidden, and per-group values are still on each row. */}
+        <PageHeading
+          title="Collection"
+          subtitle={`${groups.length} ${group} · ${filtered.length.toLocaleString()} cars`}
+        />
+
+        <PageToolbar
+          left={
+            /* min-w-0 so the seven-option control can scroll instead of
+               stretching this row past the edge of the card. */
             <SegmentControl
               className="w-full md:w-auto"
               value={group}
@@ -259,43 +264,58 @@ function CollectionPage() {
                 { value: "size", label: "Size" },
               ]}
             />
-            <Select value={sortField} onValueChange={(v) => setSortField(v as SortField)}>
-              <SelectTrigger className="w-40">
-                <SelectValue placeholder="Sort by" />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.keys(SORT_LABELS) as SortField[]).map((f) => (
-                  <SelectItem key={f} value={f}>
-                    Sort: {SORT_LABELS[f]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={dir} onValueChange={(v) => setDir(v as "desc" | "asc")}>
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Order" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="desc">Descending</SelectItem>
-                <SelectItem value="asc">Ascending</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={selected} onValueChange={setSelected}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="All" />
-              </SelectTrigger>
-              <SelectContent className="max-h-72">
-                <SelectItem value="all">All {group}s</SelectItem>
-                {groups.map((g) => (
-                  <SelectItem key={g.name} value={g.name}>
-                    {g.label} ({g.items.length})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <ViewToggle value={view} onChange={setView} />
-          </div>
-        </div>
+          }
+          right={
+            <>
+              <FilterSelect
+                value={selected}
+                onChange={setSelected}
+                icon={<Filter className="size-3.5" />}
+                label={`Which ${group}`}
+                options={[
+                  { value: "all", label: `All ${group}s` },
+                  ...groups.map((g) => ({
+                    value: g.name,
+                    label: `${g.label} (${g.items.length})`,
+                  })),
+                ]}
+              />
+              <FilterSelect
+                value={sortField}
+                onChange={(v) => setSortField(v as SortField)}
+                icon={<ArrowUpDown className="size-3.5" />}
+                label="Sort"
+                neutral=""
+                options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
+                  value: f,
+                  label: SORT_LABELS[f],
+                }))}
+              />
+              {/* A two-state control does not need a dropdown, and the arrow is
+                  the value — there is nothing for a label to add. */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2"
+                onClick={() => setDir((d) => (d === "desc" ? "asc" : "desc"))}
+                title={
+                  dir === "desc"
+                    ? "Descending — click for ascending"
+                    : "Ascending — click for descending"
+                }
+                aria-label={dir === "desc" ? "Sorted descending" : "Sorted ascending"}
+              >
+                {dir === "desc" ? (
+                  <ArrowDown className="size-3.5" />
+                ) : (
+                  <ArrowUp className="size-3.5" />
+                )}
+              </Button>
+              <ExportButton rows={visibleCars} name="collection" label="Collection" iconOnly />
+              <ViewToggle value={view} onChange={setView} />
+            </>
+          }
+        />
       </div>
 
       <Accordion type="multiple" className="space-y-2">

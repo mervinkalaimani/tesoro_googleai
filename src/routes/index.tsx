@@ -44,6 +44,8 @@ import {
   shortMonthLabel,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { PageHeading } from "@/components/page-header";
+import { useAuth } from "@/lib/auth-store";
 import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
@@ -78,13 +80,13 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Dashboard | Tesoro" },
+      { title: "Home | Tesoro" },
       {
         name: "description",
         content:
           "Track diecast KPIs, transit shipments, recent arrivals, monthly spending, peak purchase periods, and top collection stats.",
       },
-      { property: "og:title", content: "Dashboard | Tesoro" },
+      { property: "og:title", content: "Home | Tesoro" },
       {
         property: "og:description",
         content:
@@ -170,10 +172,29 @@ function TransitCell({ s }: { s: Shipment }) {
 function DashboardPage() {
   const { query, transitEtaDays } = useApp();
   const cars = useCars();
+  const { profile } = useAuth();
   const { refreshing } = useCarsRefresh();
   const loading = refreshing && cars.length === 0;
   const data = useMemo(() => filterRows(cars, query), [cars, query]);
   const [metric, setMetric] = useState<"count" | "cost">("count");
+
+  // The first name only. "Hello Mervin Kalaimani" is how a bank addresses you;
+  // the app already knows which of the two it is.
+  const first = (profile?.first_name || "").trim().split(/\s+/)[0] || "";
+  const greeting = first ? `Hello ${first}` : "Hello";
+
+  // What the page is actually reporting on, rather than a slogan. The counts
+  // are the same ones the tiles below carry, said as a sentence.
+  const subNote = useMemo(() => {
+    const open = data.filter((r) => {
+      const s = (r.status || "").trim().toLowerCase();
+      return s !== "available" && s !== "iso" && s !== "wrong item";
+    }).length;
+    if (data.length === 0) return "Nothing in the collection yet.";
+    return open === 0
+      ? `${data.length.toLocaleString()} cars, and nothing on its way.`
+      : `${data.length.toLocaleString()} cars · ${open} still on the way.`;
+  }, [data]);
 
   const kpis = useMemo(() => {
     const norm = (s: string) => (s || "").trim().toLowerCase();
@@ -258,6 +279,8 @@ function DashboardPage() {
 
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-2.5 overflow-x-hidden p-2.5 md:space-y-4 md:p-6">
+      <PageHeading title={greeting} subtitle={subNote} />
+
       {/* A release landing this week now lives behind the bell in the top bar,
           with the rest of what expires — it followed you off the dashboard
           rather than waiting there to be noticed. */}

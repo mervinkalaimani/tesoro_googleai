@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
-  LayoutDashboard,
+  Home,
   Star,
   Boxes,
   Truck,
@@ -43,7 +43,7 @@ import { Button } from "@/components/ui/button";
  * canonical.
  */
 const NAV = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Home", url: "/", icon: Home },
   { title: "Favourites", url: "/favourites", icon: Star },
   { title: "Collection", url: "/collection", icon: Boxes },
   { title: "My Orders", url: "/orders", icon: Truck },

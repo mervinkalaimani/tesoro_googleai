@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Truck, Clock, IndianRupee, Plus, Pencil } from "lucide-react";
+import { Truck, Clock, IndianRupee, Plus, Pencil, Store, ArrowUpDown } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -18,13 +18,9 @@ import { KpiBand, KpiTile } from "@/components/kpi";
 import { ShipmentItem } from "@/components/shipment-item";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { useCarDrawer } from "@/components/car-details-drawer";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { PageHeading, PageToolbar } from "@/components/page-header";
+import { FilterSelect } from "@/components/filter-select";
+import { ExportButton } from "@/components/export-button";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({
@@ -61,7 +57,33 @@ const STATUS_RANK: Record<string, number> = {
 const DELIVERED_WINDOW_DAYS = 90;
 
 type SortMode = "status" | "seller" | "orderDate";
-type Tab = "all" | "transit" | "waiting" | "delivered";
+
+/**
+ * One segment per status, which is what was missing: "In transit" used to mean
+ * everything that was not waiting, so a parcel out for delivery and a pre-order
+ * six months out were two clicks apart with no way to see either on its own.
+ *
+ * Delayed rides with Transit rather than taking a seventh segment. A delayed
+ * parcel has shipped and is late — it is in transit, with a problem — and
+ * giving it a tab of its own would mean a segment that is empty most weeks.
+ */
+type Tab = "all" | "outForDelivery" | "transit" | "waiting" | "preOrder" | "delivered";
+
+const TABS: { value: Tab; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "outForDelivery", label: "Out for Delivery" },
+  { value: "transit", label: "Transit" },
+  { value: "waiting", label: "Waiting" },
+  { value: "preOrder", label: "Pre Order" },
+  { value: "delivered", label: "Delivered" },
+];
+
+const TAB_MATCH: Record<Exclude<Tab, "all" | "delivered">, (status: string) => boolean> = {
+  outForDelivery: (s) => s === "out for delivery",
+  transit: (s) => s === "transit" || s === "delayed",
+  waiting: (s) => s === "waiting",
+  preOrder: (s) => s === "pre order" || s === "preorder",
+};
 
 /**
  * Nothing has left the seller yet. Pre-orders belong here rather than with the
@@ -186,7 +208,16 @@ function ShipmentCard({
           {s.eta && !s.delivered ? `Expected ${s.eta}. ` : ""}
           {s.items.length} car{s.items.length === 1 ? "" : "s"} from {s.seller}.
         </p>
-        <div className="flex shrink-0 items-center gap-2">
+        {/* Wraps rather than holding its ground. Three buttons do not fit
+            across 375px, and shrink-0 meant the last one ran off the edge of
+            the card instead of dropping to the next line. */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* This parcel, not the page it is on. */}
+          <ExportButton
+            rows={s.items}
+            name={`order-${s.shippingId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+            label={s.shippingId ? `Order ${s.shippingId}` : `${s.seller} order`}
+          />
           {s.shippingId ? (
             <Button variant="outline" size="sm" onClick={onEdit} className="gap-1.5">
               <Pencil className="size-3.5" />
@@ -268,10 +299,16 @@ function OrdersPage() {
       bySeller.filter((r) => {
         const delivered = r.status === "Available";
         if (tab === "delivered") return delivered;
+        // "All" means all of it, delivered included. It used to quietly exclude
+        // them, which made the count under the heading disagree with the tabs.
+        if (tab === "all") return true;
         if (delivered) return false;
-        if (tab === "waiting") return isWaitingSide(r.status);
-        if (tab === "transit") return !isWaitingSide(r.status);
-        return true;
+        return TAB_MATCH[tab](
+          (r.status || "")
+            .trim()
+            .toLowerCase()
+            .replace(/[\s-]+/g, " "),
+        );
       }),
     [bySeller, tab],
   );
@@ -326,8 +363,18 @@ function OrdersPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* The same band every page opens with — the dashboard's tiles, at the
-          dashboard's size. */}
+      {/* Heading, tiles, controls, body — the order every page follows. */}
+      <PageHeading
+        title="Shipments &amp; orders"
+        subtitle={
+          <>
+            Carrier references, delivery timelines, and incoming castings — {shipments.length}{" "}
+            shipment
+            {shipments.length === 1 ? "" : "s"} · {totalCars} car{totalCars === 1 ? "" : "s"}.
+          </>
+        }
+      />
+
       <KpiBand>
         <KpiTile
           label="In transit"
@@ -354,71 +401,55 @@ function OrdersPage() {
         />
       </KpiBand>
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="text-display text-xl font-semibold">Shipments &amp; orders</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Carrier references, delivery timelines, and incoming castings — {shipments.length}{" "}
-            shipment
-            {shipments.length === 1 ? "" : "s"} · {totalCars} car{totalCars === 1 ? "" : "s"}.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SegmentControl
-            value={tab}
-            onChange={setTab}
-            options={[
-              { value: "all", label: "All" },
-              { value: "transit", label: "In transit" },
-              { value: "waiting", label: "Waiting" },
-              { value: "delivered", label: "Delivered" },
-            ]}
-          />
-          <Select value={seller} onValueChange={setSeller}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Seller" />
-            </SelectTrigger>
-            <SelectContent className="max-h-72">
-              <SelectItem value="all">All sellers</SelectItem>
-              {sellerOpts.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={mode} onValueChange={(v) => setMode(v as SortMode)}>
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="status">Sort: Status</SelectItem>
-              <SelectItem value="seller">Sort: Seller</SelectItem>
-              <SelectItem value="orderDate">Sort: Order date</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setSelectedShippingId("");
-              setBatchOpen(true);
-            }}
-            className="gap-1.5"
-          >
-            <Pencil className="size-3.5" />
-            Update by ID
-          </Button>
-          <BulkAddCarsDialog
-            trigger={
-              <Button size="sm" className="gap-1.5">
-                <Plus className="size-4" />
-                New shipment
-              </Button>
-            }
-          />
-        </div>
-      </div>
+      <PageToolbar
+        left={<SegmentControl value={tab} onChange={setTab} options={TABS} />}
+        right={
+          <>
+            <FilterSelect
+              value={seller}
+              onChange={setSeller}
+              icon={<Store className="size-3.5" />}
+              label="Seller"
+              options={[
+                { value: "all", label: "All sellers" },
+                ...sellerOpts.map((s) => ({ value: s, label: s })),
+              ]}
+            />
+            <FilterSelect
+              value={mode}
+              onChange={(v) => setMode(v as SortMode)}
+              icon={<ArrowUpDown className="size-3.5" />}
+              label="Sort"
+              neutral="status"
+              options={[
+                { value: "status", label: "Status" },
+                { value: "seller", label: "Seller" },
+                { value: "orderDate", label: "Order date" },
+              ]}
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSelectedShippingId("");
+                setBatchOpen(true);
+              }}
+              title="Update an order by its shipping ID"
+              aria-label="Update an order by its shipping ID"
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+            <BulkAddCarsDialog
+              trigger={
+                <Button size="sm" className="gap-1.5">
+                  <Plus className="size-4" />
+                  <span className="hidden sm:inline">New shipment</span>
+                </Button>
+              }
+            />
+          </>
+        }
+      />
 
       <div className="space-y-3">
         {shipments.map((s) => (

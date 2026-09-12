@@ -128,7 +128,11 @@ export function CarListCard({
 
   return (
     <article className="card-elevated overflow-hidden">
-      <button type="button" onClick={onOpen} className="block w-full p-3 text-left">
+      {/* Three lines, evenly spaced. They used to be 0.5 apart and then 2
+          apart, which read as two blocks with the seller exiled below — and
+          made every card taller than its contents needed. One gap value, and
+          the card is as tall as three lines of text plus its padding. */}
+      <button type="button" onClick={onOpen} className="block w-full space-y-1 p-2.5 text-left">
         {/* NAME AND PRICE. Two things you can read at arm's length, one at each
             end of the line — what it is, and what it cost. */}
         <div className="flex items-start justify-between gap-3">
@@ -142,18 +146,18 @@ export function CarListCard({
         </div>
 
         {/* WHAT KIND OF CAR */}
-        <div className="mt-0.5 truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
+        <div className="truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
 
         {/* WHO IT CAME FROM, AND WHERE IT IS.
             The seller was not on this card at all, which made a phone the one
             place you could not answer "where did I get this". */}
-        <div className="mt-2 flex items-end justify-between gap-3">
+        <div className="flex items-end justify-between gap-3">
           <span className="min-w-0">
             <span className="block truncate text-xs text-muted-foreground">
               {car.seller || "—"}
             </span>
             {(pay || mrpNote) && (
-              <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+              <span className="block truncate text-[11px] text-muted-foreground">
                 {[pay, mrpNote].filter(Boolean).join(" · ")}
               </span>
             )}

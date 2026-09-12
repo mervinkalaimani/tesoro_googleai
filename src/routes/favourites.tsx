@@ -18,6 +18,8 @@ import { CarThumb } from "@/components/car-thumb";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { SegmentControl } from "@/components/segment-control";
+import { PageHeading, PageToolbar } from "@/components/page-header";
+import { ExportButton } from "@/components/export-button";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
@@ -167,6 +169,15 @@ function FavouritesPage() {
       {/* The gallery banner is gone: a page of favourites does not need a card
           at the top telling you it is a page of favourites. The counts it
           carried are in the stats below and beside the segment control. */}
+      <PageHeading
+        title={mode === "favourite" ? "Favourites" : "Chase cars"}
+        subtitle={
+          mode === "favourite"
+            ? "The ones worth keeping an eye on, and what they are worth."
+            : "The rare pulls, and what they are worth."
+        }
+      />
+
       <KpiBand>
         <KpiTile
           label="Portfolio value"
@@ -199,22 +210,34 @@ function FavouritesPage() {
         />
       </KpiBand>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <SegmentControl
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: "favourite", label: "Favourites" },
-              { value: "chase", label: "Chase" },
-            ]}
-          />
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {rows.length} model{rows.length === 1 ? "" : "s"}
-          </span>
-        </div>
-        <ViewToggle value={view} onChange={setView} />
-      </div>
+      <PageToolbar
+        left={
+          <>
+            <SegmentControl
+              value={mode}
+              onChange={setMode}
+              options={[
+                { value: "favourite", label: "Favourites" },
+                { value: "chase", label: "Chase" },
+              ]}
+            />
+            <span className="shrink-0 text-xs text-muted-foreground">
+              {rows.length} model{rows.length === 1 ? "" : "s"}
+            </span>
+          </>
+        }
+        right={
+          <>
+            <ExportButton
+              rows={rows}
+              name={mode === "favourite" ? "favourites" : "chase"}
+              label={mode === "favourite" ? "Favourites" : "Chase cars"}
+              iconOnly
+            />
+            <ViewToggle value={view} onChange={setView} />
+          </>
+        }
+      />
 
       {rows.length === 0 ? (
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">

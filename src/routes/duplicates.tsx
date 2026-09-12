@@ -17,6 +17,7 @@ import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { inrFull } from "@/lib/format";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCarDrawer } from "@/components/car-details-drawer";
+import { PageHeading, PageToolbar } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -227,6 +228,11 @@ function DuplicatesPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
+      <PageHeading
+        title="Duplicates"
+        subtitle="Surplus castings, loose display versus sealed doubles, and what they are worth trading."
+      />
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard
           label="Surplus castings"
@@ -257,33 +263,36 @@ function DuplicatesPage() {
       </div>
 
       <div className="card-elevated space-y-3 p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-display text-xl font-semibold">Automated duplicate detection</h1>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Identifies surplus castings, loose display versus sealed doubles, and trade
-              opportunities.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+        <PageToolbar
+          left={
             <span className="font-mono text-xs text-muted-foreground">
               {groups.length} group{groups.length === 1 ? "" : "s"} identified
             </span>
-            <Button size="sm" variant="outline" onClick={() => setExportOpen(true)}>
-              <Download className="size-4" />
-              Export
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="md:hidden"
-              onClick={() => setModifyOpen(true)}
-            >
-              <SlidersHorizontal className="size-4" />
-              Modify
-            </Button>
-          </div>
-        </div>
+          }
+          right={
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setExportOpen(true)}
+                title="Export the duplicates"
+                aria-label="Export the duplicates"
+              >
+                <Download className="size-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="md:hidden"
+                onClick={() => setModifyOpen(true)}
+                title="Change what counts as a duplicate"
+                aria-label="Change what counts as a duplicate"
+              >
+                <SlidersHorizontal className="size-4" />
+              </Button>
+            </>
+          }
+        />
         <div className="hidden md:block">{AttrGrid}</div>
         {active.length === 0 && (
           <p className="text-xs text-destructive">Select at least one attribute to match on.</p>
