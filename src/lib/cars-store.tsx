@@ -191,8 +191,18 @@ function resyncIds(all: Diecast[], touched: Diecast[]): Diecast[] {
  *
  * `before` is those same cars as they were. A car that changes seller or date
  * leaves one run and joins another; both have to be recounted.
+ *
+ * `orderIdsOnly` leaves the shipping IDs exactly as they are and derives the
+ * order IDs regardless. That combination is real: a car added from inside an
+ * order arrives already carrying the batch's shipping ID and must keep it, but
+ * it still belongs to an order and still needs numbering.
  */
-function withRenumbering(changed: Diecast[], all: Diecast[], before: Diecast[] = []): Diecast[] {
+function withRenumbering(
+  changed: Diecast[],
+  all: Diecast[],
+  before: Diecast[] = [],
+  orderIdsOnly = false,
+): Diecast[] {
   if (!changed.length) return changed;
 
   const changedById = new Map(changed.map((c) => [c.id, c]));
@@ -201,7 +211,8 @@ function withRenumbering(changed: Diecast[], all: Diecast[], before: Diecast[] =
   // Rows being added are not in the collection yet.
   for (const c of changed) if (!known.has(c.id)) after.push(c);
 
-  const fixes = resyncIds(after, [...before, ...changed]);
+  const touched = [...before, ...changed];
+  const fixes = orderIdsOnly ? resyncOrderIds(after, touched) : resyncIds(after, touched);
   const fixById = new Map(fixes.map((f) => [f.id, f]));
 
   const out = changed.map((c) => fixById.get(c.id) ?? c);
@@ -558,8 +569,12 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // to. It also cannot disturb anyone else's number: it joins a shipping
       // day that sequence already has. Everything else is numbered from the
       // seller and the dates, and takes its neighbours with it.
+      //
+      // It still needs an order ID either way. Skipping the pass entirely left
+      // every car added from inside an order without one — the shipping ID it
+      // came with said nothing about which order it was bought in.
       const written = identified.shippingId?.trim()
-        ? [identified]
+        ? withRenumbering([identified], cars, [], true)
         : withRenumbering([identified], cars);
       const next = written[0];
 
