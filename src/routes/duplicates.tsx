@@ -17,6 +17,7 @@ import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { inrFull } from "@/lib/format";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCarDrawer } from "@/components/car-details-drawer";
+import { CarMarks } from "@/components/car-marks";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -110,8 +111,11 @@ function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Dieca
                 </span>
               ) : null}
             </h2>
+            {/* No SKU. It was the first car's own ID standing in for the whole
+                group, which is the one thing here that is not shared — every
+                copy below carries its own, and they are all different. */}
             <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-              SKU: {first.id || "—"} · {surplus} surplus unit{surplus === 1 ? "" : "s"}
+              {surplus} surplus unit{surplus === 1 ? "" : "s"}
             </p>
           </div>
         </div>
@@ -123,57 +127,46 @@ function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Dieca
         </div>
       </header>
 
-      <div className="space-y-2 border-t border-border p-3">
+      {/* Three across. These are copies of one casting, so what you are doing
+          here is comparing them — which cost more, which came from where — and
+          that is a great deal easier side by side than stacked one per row down
+          a page.
+
+          Loose / Carded has gone: it was the widest thing on every row and it
+          read as the heading, when the question on this page is which duplicate
+          to keep. The car ID takes its place, because with three near-identical
+          cards in a row it is the only thing that tells them apart. */}
+      <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-2 xl:grid-cols-3">
         {rows.map((r, i) => (
-          <div
+          <button
             key={(r.id || "") + i}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3 py-2.5"
+            type="button"
+            onClick={() => onOpen(r)}
+            className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-muted/20 p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
           >
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="mt-0.5 shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
                 #{i + 1}
               </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                      r.open
-                        ? "border-zinc-500/40 bg-zinc-500/10 text-zinc-300"
-                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                    }`}
-                  >
-                    {r.open ? "Loose / Display" : "Carded / Mint"}
-                  </span>
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {r.status || "—"}
-                    {r.seller ? ` · ${r.seller}` : ""}
-                  </span>
-                </div>
-                <div className="mt-0.5 font-mono text-xs text-muted-foreground">
-                  Cost: {inrFull(r.spent || 0)}
-                  {r.date ? ` · Acquired: ${r.date}` : ""}
-                </div>
-              </div>
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="text-sm font-semibold tabular-nums">
+              <span className="min-w-0 truncate font-mono text-xs text-foreground">
+                {r.id || "—"}
+              </span>
+              <CarMarks car={r} primary="chase" iconClassName="size-3.5" className="ml-auto" />
+              <span className="shrink-0 text-sm font-semibold tabular-nums">
                 {inrFull(r.mrp || r.spent || 0)}
               </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                aria-label="Open details"
-                onClick={() => onOpen(r)}
-              >
-                <Copy className="size-3.5" />
-              </Button>
-              {/* Editing is on the car now, behind the button beside this
-                  one — a pencil in a list of near-identical rows is the
-                  easiest place in the app to edit the wrong copy. */}
             </div>
-          </div>
+
+            <div className="truncate font-mono text-xs text-muted-foreground">
+              {r.status || "—"}
+              {r.seller ? ` · ${r.seller}` : ""}
+            </div>
+
+            <div className="truncate font-mono text-xs text-muted-foreground">
+              Cost: {inrFull(r.spent || 0)}
+              {r.date ? ` · ${r.date}` : ""}
+            </div>
+          </button>
         ))}
       </div>
     </article>
@@ -215,8 +208,10 @@ function DuplicatesPage() {
   const liquidation = flatRows.reduce((s, r) => s + (r.mrp || r.spent || 0), 0);
   const gain = liquidation - tiedUp;
 
+  // Nine attributes across five columns is two tidy rows. At four it was three
+  // rows with three empty cells trailing off the end.
   const AttrGrid = (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2 md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:grid-cols-5">
       {ATTRS.map((a) => (
         <label key={a.key} className="flex cursor-pointer items-center gap-2 text-xs">
           <Checkbox checked={active.includes(a.key)} onCheckedChange={() => toggle(a.key)} />
@@ -230,7 +225,7 @@ function DuplicatesPage() {
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <PageHeading
         title="Duplicates"
-        subtitle="Surplus castings, loose display versus sealed doubles, and what they are worth trading."
+        subtitle="Surplus castings, what they cost, and what they are worth trading."
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -264,11 +259,7 @@ function DuplicatesPage() {
 
       <div className="card-elevated space-y-3 p-4">
         <PageToolbar
-          left={
-            <span className="font-mono text-xs text-muted-foreground">
-              {groups.length} group{groups.length === 1 ? "" : "s"} identified
-            </span>
-          }
+          left={<span className="text-xs text-muted-foreground">Match on</span>}
           right={
             <>
               <Button
@@ -297,6 +288,12 @@ function DuplicatesPage() {
         {active.length === 0 && (
           <p className="text-xs text-destructive">Select at least one attribute to match on.</p>
         )}
+        {/* The count is the result of the checkboxes above, so it reads after
+            them rather than before. At the top it was a number that changed
+            for reasons you had not read yet. */}
+        <p className="border-t border-border pt-2.5 font-mono text-xs text-muted-foreground">
+          {groups.length} group{groups.length === 1 ? "" : "s"} identified
+        </p>
       </div>
 
       <div className="space-y-3">

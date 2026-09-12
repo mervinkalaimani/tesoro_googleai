@@ -1,18 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowUpDown,
-  ChevronDown,
-  ChevronUp,
-  SlidersHorizontal,
-  Sparkles,
-  Star,
-} from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
 import { filterRows } from "@/lib/search";
 import { StatusPill, CostCell, CarListCard } from "@/components/cars-table";
+import { CarMarkOverlay, CarMarks, ChaseMark, FavouriteMark } from "@/components/car-marks";
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -179,18 +173,7 @@ function InventoryCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
             covering the car you are trying to look at, to tell you things the
             text below already says. Only chase and favourite stay — they are
             what you scan a whole page for. */}
-        {car.chase && (
-          <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-            <Sparkles className="size-3" />
-            CHASE
-          </span>
-        )}
-
-        {car.favourite && (
-          <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-            <Star className="size-3.5 fill-amber-400 text-amber-400" />
-          </span>
-        )}
+        <CarMarkOverlay car={car} />
 
         {/* The pill's own colours are translucent, so it sits on an opaque
             backdrop rather than directly on the photograph. */}
@@ -482,17 +465,22 @@ function InventoryPage() {
       {/* Inline filter row, revealed by the Filters button. It wraps on small
           screens, so there is no separate sliding panel. */}
       {filterOpen && (
-        <div className="card-elevated space-y-3 bg-muted/20 p-4">
-          <div className="flex flex-wrap items-end gap-3">
+        /* Two columns on a phone, six across on a wide screen. Stacked at one
+           per row with 36px controls it ran to about 70% of a 812px screen —
+           a filter panel you have to scroll through to reach the Apply button
+           is a page, not a panel. Tighter padding, 32px controls and the
+           labels tucked closer bring it to a third of that. */
+        <div className="card-elevated space-y-2.5 bg-muted/20 p-2.5 md:space-y-3 md:p-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6 md:gap-3">
             {FILTERS.map((d) => (
-              <div key={d.key} className="min-w-[9rem] flex-1">
+              <div key={d.key} className="min-w-0">
                 <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   {d.label}
                 </label>
                 <select
                   value={draft[d.key]}
                   onChange={(e) => setDraftFilter(d.key, e.target.value)}
-                  className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                  className="mt-0.5 h-8 w-full rounded-md border border-input bg-background px-2 text-sm md:h-9"
                 >
                   <option value="all">All</option>
                   {options[d.key].map((o) => (
@@ -503,41 +491,49 @@ function InventoryPage() {
                 </select>
               </div>
             ))}
+          </div>
 
+          {/* A row of their own, each taking half of it. They used to be
+              inline with the dropdowns, so they inherited whatever gap the
+              last one left — sometimes a full width, sometimes a sliver.
+              Colours now match the marks they filter on: red for the flame,
+              gold for the star. Favourites was on the accent colour, so it
+              changed hue with the theme and matched nothing. */}
+          <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setChaseOnly((v) => !v)}
               aria-pressed={chaseOnly}
-              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${
+              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors md:h-9 ${
                 chaseOnly
-                  ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                  ? "border-red-500/50 bg-red-500/10 text-red-500"
                   : "border-border text-muted-foreground hover:bg-muted/50"
               }`}
             >
-              <Sparkles className="size-4" />
+              <ChaseMark className={chaseOnly ? "size-4" : "size-4 fill-none text-current"} />
               Chase only
             </button>
             <button
               type="button"
               onClick={() => setFavOnly((v) => !v)}
               aria-pressed={favOnly}
-              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${
+              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors md:h-9 ${
                 favOnly
-                  ? "border-primary/50 bg-primary/10 text-primary"
+                  ? "border-amber-500/50 bg-amber-500/10 text-amber-500"
                   : "border-border text-muted-foreground hover:bg-muted/50"
               }`}
             >
-              <Star className={`size-4 ${favOnly ? "fill-primary" : ""}`} />
+              <FavouriteMark className={favOnly ? "size-4" : "size-4 fill-none text-current"} />
               Favourites only
             </button>
           </div>
 
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">
-              Showing <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
-              {searched.length.toLocaleString()} diecast models
+            <p className="min-w-0 text-xs text-muted-foreground">
+              <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
+              {searched.length.toLocaleString()}
             </p>
-            <div className="flex gap-2">
+            <div className="flex shrink-0 gap-2">
               <Button
                 size="sm"
                 variant="ghost"
@@ -644,14 +640,7 @@ function InventoryPage() {
                     <td className="px-4 py-2.5 align-top">
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="truncate font-medium">{r.name || "—"}</span>
-                        {r.chase && (
-                          <span className="shrink-0 rounded-sm bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-400">
-                            CHASE
-                          </span>
-                        )}
-                        {r.favourite && (
-                          <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" />
-                        )}
+                        <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
                         {[r.brand, r.assortment, r.series, r.subSeries, r.carNumber]

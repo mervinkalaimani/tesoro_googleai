@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Loader2, Search, Sparkles, Star } from "lucide-react";
+import { ArrowRight, Loader2, Search } from "lucide-react";
+
+import { CarMarks } from "@/components/car-marks";
 import { toast } from "sonner";
 
 import {
@@ -259,13 +261,7 @@ export function StatusUpdateDialog({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <h3 className="truncate text-sm font-semibold">{title}</h3>
-                {car.chase && (
-                  <span className="inline-flex items-center gap-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-                    <Sparkles className="size-3" />
-                    CHASE
-                  </span>
-                )}
-                {car.favourite && <Star className="size-3.5 fill-amber-400 text-amber-400" />}
+                <CarMarks car={car} primary="chase" iconClassName="size-3.5" />
               </div>
               <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{car.id}</p>
               <p className="mt-1 flex items-center gap-1.5 text-xs">

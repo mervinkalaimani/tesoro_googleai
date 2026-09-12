@@ -1,4 +1,4 @@
-import { Sparkles, Star } from "lucide-react";
+import { ChaseMark, FavouriteMark } from "@/components/car-marks";
 
 import type { Diecast } from "@/lib/types";
 import { CarThumb } from "@/components/car-thumb";
@@ -57,13 +57,13 @@ export function CompactCarCard({
         {(car.chase || car.favourite) && (
           <div className="pointer-events-none absolute right-1 top-1 flex items-center gap-1">
             {car.chase && (
-              <span className="grid size-5 place-items-center rounded-full bg-amber-500 text-black">
-                <Sparkles className="size-3" />
+              <span className="grid size-5 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
+                <ChaseMark className="size-3" />
               </span>
             )}
             {car.favourite && (
               <span className="grid size-5 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-                <Star className="size-3 fill-amber-400 text-amber-400" />
+                <FavouriteMark className="size-3" />
               </span>
             )}
           </div>

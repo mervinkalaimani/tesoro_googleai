@@ -2,8 +2,8 @@ import type { ReactNode } from "react";
 
 import type { Diecast } from "@/lib/types";
 import { inr } from "@/lib/format";
-import { Flame, Star } from "lucide-react";
 
+import { CarMarks } from "@/components/car-marks";
 import { useCarDrawer } from "@/components/car-details-drawer";
 // Lives in its own module: the details drawer shows one too, and it imports
 // this file — reading it from here would close a cycle between them.
@@ -75,6 +75,8 @@ export function CostCell({ car: r, align = "right" }: { car: Diecast; align?: "r
   );
 }
 
+/** Kept as the name every page already imports; the marks themselves live in
+ *  car-marks so the flame and the star are one drawing each. */
 export function CarBadges({
   car,
   primary = "favourite",
@@ -82,19 +84,7 @@ export function CarBadges({
   car: Diecast;
   primary?: "favourite" | "chase";
 }) {
-  const chase = car.chase && (
-    <span
-      key="chase"
-      className="inline-flex shrink-0 items-center gap-1 rounded-sm bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-rose-500 dark:text-rose-400"
-    >
-      <Flame className="size-3" /> CHASE
-    </span>
-  );
-  const fav = car.favourite && (
-    <Star key="fav" className="size-4 shrink-0 fill-amber-400 stroke-amber-500" />
-  );
-  const items = primary === "chase" ? [chase, fav] : [fav, chase];
-  return <div className="flex items-center gap-1.5">{items}</div>;
+  return <CarMarks car={car} primary={primary} className="gap-1.5" />;
 }
 
 /**

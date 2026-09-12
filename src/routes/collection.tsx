@@ -22,6 +22,7 @@ import { CarFormDialog } from "@/components/car-form-dialog";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { SegmentControl } from "@/components/segment-control";
+import { CarMarkOverlay } from "@/components/car-marks";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
@@ -100,18 +101,7 @@ function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
         </button>
 
         {/* Car ID off the photograph; it belongs in the drawer and the table. */}
-        {car.chase && (
-          <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-            <Sparkles className="size-3" />
-            CHASE
-          </span>
-        )}
-
-        {car.favourite && (
-          <span className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-            <Star className="size-3.5 fill-amber-400 text-amber-400" />
-          </span>
-        )}
+        <CarMarkOverlay car={car} />
 
         {/* Loose/Carded stays — it is the one thing about a casting you cannot
             tell from its photograph. Type moved down into the text. */}

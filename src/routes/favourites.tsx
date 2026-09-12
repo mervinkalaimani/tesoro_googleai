@@ -1,19 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  Award,
-  ChevronDown,
-  ChevronUp,
-  IndianRupee,
-  Sparkles,
-  Star,
-  TrendingUp,
-} from "lucide-react";
+import { Award, ChevronDown, ChevronUp, Flame, IndianRupee, Star, TrendingUp } from "lucide-react";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
+import { ChaseMark, FAVOURITE_COLOUR } from "@/components/car-marks";
 import { CarThumb } from "@/components/car-thumb";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
@@ -70,9 +63,8 @@ function GalleryCard({
         {/* The car ID is catalogue plumbing, not something to read off a
             photograph — it sits in the details drawer and the table. */}
         {car.chase && (
-          <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-            <Sparkles className="size-3" />
-            CHASE
+          <span className="pointer-events-none absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
+            <ChaseMark className="size-3.5" />
           </span>
         )}
 
@@ -84,9 +76,7 @@ function GalleryCard({
           className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm transition-colors hover:bg-black/90"
         >
           <Star
-            className={`size-3.5 ${
-              car.favourite ? "fill-amber-400 text-amber-400" : "text-white/70"
-            }`}
+            className={`size-3.5 ${car.favourite ? FAVOURITE_COLOUR : "fill-none text-white/70"}`}
           />
         </button>
 
@@ -204,7 +194,7 @@ function FavouritesPage() {
           label="Chase editions"
           value={`${chaseCount}`}
           sub="Rare pulls"
-          icon={<Sparkles className="size-4" />}
+          icon={<Flame className="size-4" />}
           tone="amber"
           valueTone="amber"
         />
