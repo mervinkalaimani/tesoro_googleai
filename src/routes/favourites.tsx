@@ -211,6 +211,7 @@ function FavouritesPage() {
       </KpiBand>
 
       <PageToolbar
+        sticky
         left={
           <>
             <SegmentControl

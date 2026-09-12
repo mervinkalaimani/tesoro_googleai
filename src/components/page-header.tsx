@@ -46,16 +46,27 @@ export function PageHeading({
  * they are shown. Mixing them is how a page ends up with a status filter
  * between the sort dropdown and the view toggle.
  */
+/** Height of the top bar, which is what a sticky toolbar sits underneath. */
+export const TOP_BAR_PX = 56;
+
 export function PageToolbar({
   left,
   right,
   className = "",
+  sticky = false,
 }: {
   left?: ReactNode;
   right?: ReactNode;
   className?: string;
+  /**
+   * Pin below the top bar on long pages, on a translucent band. The controls
+   * that decide what you are looking at should not be somewhere you have to
+   * scroll back to — by the time you want to change the filter you are four
+   * hundred rows past it.
+   */
+  sticky?: boolean;
 }) {
-  return (
+  const inner = (
     <div className={`flex flex-wrap items-center justify-between gap-2 ${className}`}>
       {/* Full width on a phone, so a long segment control gets a line of its
           own to scroll along and the buttons drop beneath it rather than
@@ -64,6 +75,21 @@ export function PageToolbar({
         {left}
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">{right}</div>
+    </div>
+  );
+
+  if (!sticky) return inner;
+
+  return (
+    // The negative margins let the band reach the edges of the page's padding
+    // rather than stopping where the content column does — a translucent strip
+    // with a gap either side reads as a floating box, not as part of the
+    // chrome. z-10 keeps it under the top bar, which owns z-20.
+    <div
+      className="sticky z-10 -mx-3 border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur-xl md:-mx-6 md:px-6"
+      style={{ top: TOP_BAR_PX }}
+    >
+      {inner}
     </div>
   );
 }

@@ -402,6 +402,7 @@ function OrdersPage() {
       </KpiBand>
 
       <PageToolbar
+        sticky
         left={<SegmentControl value={tab} onChange={setTab} options={TABS} />}
         right={
           <>

@@ -379,22 +379,28 @@ function InventoryPage() {
   const shown = rows.slice(0, visibleCount);
 
   return (
-    /* The same page container as Shipments & orders: the page scrolls, the
-       sections stack, and nothing is pinned to the viewport. It used to be one
-       full-height card with its own scrollbar inside the page's — two scroll
-       positions to keep track of, a header that could not reach the edge of the
-       screen, and a footer counting rows nobody asked about. */
-    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      <div className="space-y-3">
-        {/* The heading is its own row rather than sharing one with the
-              controls. It used to sit in a flex line beside them, and the
-              status dropdown's ml-auto ate the width the title needed, so on a
-              phone "Inventory" was squeezed to nothing. */}
-        <PageHeading title="Inventory" subtitle={`${rows.length.toLocaleString()} cars`} />
+    /* The same page container as Shipments & orders: the page scrolls and the
+       sections stack. It used to be one full-height card with its own scrollbar
+       inside the page's — two scroll positions to keep track of, a header that
+       could not reach the edge of the screen, and a footer counting rows nobody
+       asked about.
 
-        <PageToolbar
-          left={
-            /* The same control at both sizes, behaving differently at each.
+       The heading and the toolbar are direct children rather than sharing a
+       wrapper, because a sticky element only sticks inside its own parent's
+       box: in a div holding just those two, the toolbar came unpinned the
+       moment that div scrolled past. Its parent has to be the thing it should
+       outlast, which is the whole page. */
+    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
+      {/* Its own row rather than sharing one with the controls. It used to sit
+          in a flex line beside them, and the status dropdown's ml-auto ate the
+          width the title needed, so on a phone "Inventory" was squeezed to
+          nothing. */}
+      <PageHeading title="Inventory" subtitle={`${rows.length.toLocaleString()} cars`} />
+
+      <PageToolbar
+        sticky
+        left={
+          /* The same control at both sizes, behaving differently at each.
                  Eleven segments will not wrap onto a 375px screen without
                  taking four lines and more of the page than the cars do, so on
                  a phone it stays one line and scrolls sideways — the statuses
@@ -403,60 +409,54 @@ function InventoryPage() {
                  stretching them across 1600px would only make "ISO" a button
                  the width of a paragraph, so they wrap to their text and the
                  control ends where the labels do. */
-            <SegmentControl
-              value={status}
-              onChange={setStatus}
-              className="w-full gap-0.5 md:inline-flex md:w-auto md:flex-wrap"
-              options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
-            />
-          }
-          right={
-            <>
-              {sort !== "sno" && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="shrink-0"
-                  onClick={() => setSort("sno")}
-                >
-                  Reset sort
-                </Button>
-              )}
-              {/* Icon alone. The word "Filters" beside a slider icon is the
+          <SegmentControl
+            value={status}
+            onChange={setStatus}
+            className="w-full gap-0.5 md:inline-flex md:w-auto md:flex-wrap"
+            options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
+          />
+        }
+        right={
+          <>
+            {sort !== "sno" && (
+              <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setSort("sno")}>
+                Reset sort
+              </Button>
+            )}
+            {/* Icon alone. The word "Filters" beside a slider icon is the
                     icon's own caption; the count is the part that says
                     something, so that is what stays. */}
-              <Button
-                size="sm"
-                variant={activeCount ? "default" : "outline"}
-                className="shrink-0 gap-1"
-                onClick={() => {
-                  setDraft(filters);
-                  setFilterOpen((v) => !v);
-                }}
-                title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
-                aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
-                aria-expanded={filterOpen}
-              >
-                <SlidersHorizontal className="size-4" />
-                {activeCount ? <span className="tabular-nums text-xs">{activeCount}</span> : null}
-              </Button>
-              {/* Sorting lives here rather than in column headers so it
+            <Button
+              size="sm"
+              variant={activeCount ? "default" : "outline"}
+              className="shrink-0 gap-1"
+              onClick={() => {
+                setDraft(filters);
+                setFilterOpen((v) => !v);
+              }}
+              title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
+              aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
+              aria-expanded={filterOpen}
+            >
+              <SlidersHorizontal className="size-4" />
+              {activeCount ? <span className="tabular-nums text-xs">{activeCount}</span> : null}
+            </Button>
+            {/* Sorting lives here rather than in column headers so it
                     applies to the grid view too. */}
-              <FilterSelect
-                value={sort}
-                onChange={(v) => setSort(v as SortKey)}
-                icon={<ArrowUpDown className="size-3.5" />}
-                label="Sort cars"
-                neutral="sno"
-                options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-              />
-              {/* Exactly the rows on screen, filtered and sorted as they are. */}
-              <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
-              <ViewToggle value={view} onChange={setView} />
-            </>
-          }
-        />
-      </div>
+            <FilterSelect
+              value={sort}
+              onChange={(v) => setSort(v as SortKey)}
+              icon={<ArrowUpDown className="size-3.5" />}
+              label="Sort cars"
+              neutral="sno"
+              options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+            />
+            {/* Exactly the rows on screen, filtered and sorted as they are. */}
+            <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
+            <ViewToggle value={view} onChange={setView} />
+          </>
+        }
+      />
 
       {/* Inline filter row, revealed by the Filters button. It wraps on small
           screens, so there is no separate sliding panel. */}
@@ -570,7 +570,17 @@ function InventoryPage() {
           </div>
 
           {/* One panel, like a shipment card on the orders page. Only the table
-              scrolls sideways — the page itself never does. */}
+              scrolls sideways — the page itself never does.
+              This is also why the column headers are not pinned. overflow-x
+              makes this a scroll container and CSS drags overflow-y to auto
+              along with it, so a sticky thead would pin inside a box that never
+              scrolls vertically and ride away with the page regardless. The
+              alternative is letting the table push the page sideways — its
+              columns total 1152px, which does not fit a 1440px window with the
+              sidebar open — and a page that scrolls in two directions is worse
+              than a column header you have to scroll back for. The toolbar
+              above stays pinned either way, which is the part that decides what
+              you are looking at. */}
           <div className="card-elevated hidden overflow-x-auto md:block">
             {/* The detailed view: every field, no thumbnail. Sorting lives in
                 the header dropdown so it works in grid view too. */}
@@ -590,9 +600,7 @@ function InventoryPage() {
                 <col className="w-[7rem]" />
                 <col className="w-[7rem]" />
               </colgroup>
-              {/* top-14 rather than top-0: the page is what scrolls now, and
-                  the top bar is the first 3.5rem of it. */}
-              <thead className="sticky top-14 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Model</th>
                   <th className="px-3 py-2.5 font-medium">Colour</th>

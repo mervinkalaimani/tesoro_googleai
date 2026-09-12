@@ -382,6 +382,7 @@ function PreOrdersPage() {
       </KpiBand>
 
       <PageToolbar
+        sticky
         left={
           <SegmentControl
             value={grouping}
