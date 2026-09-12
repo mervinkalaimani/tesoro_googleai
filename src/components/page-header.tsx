@@ -54,6 +54,7 @@ export function PageToolbar({
   right,
   className = "",
   sticky = false,
+  oneLine = false,
 }: {
   left?: ReactNode;
   right?: ReactNode;
@@ -65,13 +66,24 @@ export function PageToolbar({
    * hundred rows past it.
    */
   sticky?: boolean;
+  /**
+   * Keep both halves on one row at every width. For a toolbar short enough to
+   * fit a phone — two segments and a view toggle — where giving the left half
+   * its own line only buys a second row of mostly empty space.
+   */
+  oneLine?: boolean;
 }) {
   const inner = (
     <div className={`flex flex-wrap items-center justify-between gap-2 ${className}`}>
       {/* Full width on a phone, so a long segment control gets a line of its
           own to scroll along and the buttons drop beneath it rather than
-          squeezing it into a corner. They share a line from md up. */}
-      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 md:w-auto md:flex-1">
+          squeezing it into a corner. They share a line from md up — or at every
+          width when the caller says the toolbar is short enough. */}
+      <div
+        className={`flex min-w-0 items-center gap-2 md:w-auto md:flex-1 md:flex-wrap ${
+          oneLine ? "w-auto flex-1 flex-nowrap" : "w-full flex-wrap"
+        }`}
+      >
         {left}
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">{right}</div>

@@ -212,6 +212,10 @@ function FavouritesPage() {
 
       <PageToolbar
         sticky
+        // Two segments, a count and a view toggle fit a phone across, so the
+        // count stays beside the control it is counting rather than being
+        // pushed onto a line of its own.
+        oneLine
         left={
           <>
             <SegmentControl

@@ -284,12 +284,33 @@ function InventoryPage() {
     return out;
   }, [searched, draft]);
 
+  /**
+   * Only the statuses you could actually land on.
+   *
+   * Narrowed by everything except the status filter itself — the search, the
+   * dropdown filters, chase and favourites — so the segments describe what is
+   * reachable rather than what the collection contains in general. Filtering to
+   * Matchbox used to leave "Pre Order" sitting there as a button whose only
+   * effect was to empty the page.
+   *
+   * Skipping its own filter is the same trick the dropdowns use: a control that
+   * narrowed its own options would remove every choice but the one already
+   * made, and there would be no way back.
+   */
   const statusOptions = useMemo(() => {
-    // Filter chips follow the same canonical status order as the rows.
-    const present = [...new Set(searched.map((r) => r.status).filter(Boolean))];
+    let base = applyFilters(searched, filters);
+    if (chaseOnly) base = base.filter((r) => r.chase);
+    if (favOnly) base = base.filter((r) => r.favourite);
+
+    const present = [...new Set(base.map((r) => r.status).filter(Boolean))];
+    // The current selection stays even once it has emptied out. Dropping it
+    // would leave the control with nothing marked active while the page is
+    // still filtered by it — the one state where you most need to see why.
+    if (status !== "all" && !present.includes(status)) present.push(status);
+    // Chips follow the same canonical status order as the rows.
     present.sort((a, b) => statusRank(a) - statusRank(b) || a.localeCompare(b));
     return ["all", ...present];
-  }, [searched]);
+  }, [searched, filters, chaseOnly, favOnly, status]);
 
   const rows = useMemo(() => {
     let out = applyFilters(searched, filters);
