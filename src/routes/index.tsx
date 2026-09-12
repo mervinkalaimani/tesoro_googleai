@@ -299,6 +299,12 @@ function DashboardPage() {
         </KpiBand>
       )}
 
+      {/* Above the tracker. It is the shortest-lived thing on the page — three
+          days and a car drops out of it for good — and it renders nothing at
+          all on a quiet week, so it costs the tracker no room when there is
+          nothing to show. */}
+      {!loading && <RecentlyAdded rows={data} />}
+
       <DashboardMiddle rows={data} etaDays={transitEtaDays} loading={loading} />
 
       <section className="grid min-w-0 items-stretch gap-4 lg:h-[min(360px,calc(100svh-7rem))] lg:grid-cols-3 lg:[&>*]:h-full">
@@ -310,15 +316,14 @@ function DashboardPage() {
           <PeakPurchase rows={data} mode={metric} onModeChange={setMetric} />
         )}
       </section>
-
-      {/* Last on the page: what has already arrived is the one thing here that
-          needs nothing done about it. */}
-      {!loading && <RecentlyAdded rows={data} />}
     </div>
   );
 }
 
 const isTransit = (s: string) => (s || "").trim().toLowerCase() === "transit";
+
+/** Today, yesterday, and the day before — the window "Recently added" covers. */
+const RECENT_DAYS = 3;
 
 function TransitTracker({
   rows,
@@ -608,7 +613,10 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
       .filter((x): x is { r: Diecast; dt: Date } => {
         if (!x.dt) return false;
         const days = daysBetween(x.dt, now);
-        return days >= 0 && days <= 3;
+        // Today, yesterday, the day before. Three days means three, and the
+        // window was counting four — a car from Monday was still "recently
+        // added" on Thursday, under a heading that said last 3 days.
+        return days >= 0 && days <= RECENT_DAYS - 1;
       })
       .sort((a, b) => b.dt.getTime() - a.dt.getTime());
     return list;
@@ -640,10 +648,19 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
           one number, and the first card won that argument.
 
           One gap value does all the spacing, inside and out, so the distance
-          between two cards is the distance between a card and the frame. The
-          caption is what each card is doing in here — it landed today, or two
-          days ago — which is the only thing separating one from the next. */}
-      <div className="flex snap-x items-stretch gap-2.5 overflow-x-auto px-2.5 pb-1 pt-2.5">
+          between two cards is the distance between a card and the frame — p-2.5
+          against gap-2.5. The bottom was 4px, which made the row sit low in its
+          own panel.
+
+          scroll-px matters as much as the padding here. Padding scrolls away
+          with the content, so a snapped card came to rest flush against the
+          frame the moment you moved the row at all — the gap was there only
+          until it was needed. Scroll padding is what the snap positions are
+          measured from, so the card stops 10px in, wherever you are in the row.
+
+          The caption is what each card is doing in here — it landed today, or
+          two days ago — which is the only thing separating one from the next. */}
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
         {recent.map(({ r, dt }, i) => (
           <CompactCarCard
             key={r.id + i}
@@ -934,15 +951,10 @@ function DashboardMiddle({
   etaDays: number;
   loading?: boolean;
 }) {
-  const now = new Date();
+  // hasRecent was computed here and never read — a second copy of the recency
+  // window, left behind when Recently added moved out of this section. Two
+  // definitions of "recent" is one more than the app can keep in step.
   const hasTransit = rows.some((r) => isTransit(r.status));
-  const hasRecent = rows.some((r) => {
-    if (r.status !== "Available") return false;
-    const dt = parseDMY(r.date);
-    if (!dt) return false;
-    const days = daysBetween(dt, now);
-    return days >= 0 && days <= 3;
-  });
 
   if (loading) {
     return (
