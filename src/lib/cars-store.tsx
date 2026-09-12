@@ -161,6 +161,11 @@ export type ShippingBatchOptions = {
   excludeAvailable?: boolean;
   /** What the undo button should offer to reverse. Defaults to the batch ID. */
   label?: string;
+  /**
+   * Which ID groups the batch. A shipping ID is the parcel a car turns up in;
+   * an order ID is the purchase it came from, and the same dialog edits either.
+   */
+  idField?: "shippingId" | "orderId";
 };
 
 /**
@@ -692,8 +697,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       const cleanId = (shippingId || "").trim();
       if (!cleanId) return 0;
 
+      const idField = options.idField ?? "shippingId";
       const matched = cars.filter((c) => {
-        if ((c.shippingId || "").trim().toLowerCase() !== cleanId.toLowerCase()) return false;
+        if ((c[idField] || "").trim().toLowerCase() !== cleanId.toLowerCase()) return false;
         if (options.excludeAvailable && (c.status || "").trim().toLowerCase() === "available") {
           return false;
         }

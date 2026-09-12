@@ -5,7 +5,9 @@ import type { Diecast } from "@/lib/types";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { findCarImage } from "@/lib/car-image";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
+import { trackingPageFor } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
+import { CHASE_COLOUR, FAVOURITE_COLOUR } from "@/components/car-marks";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/status-pill";
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -47,6 +49,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   const [currentCarId, setCurrentCarId] = useState<string | null>(null);
   const [editCar, setEditCar] = useState<Diecast | null>(null);
   const [batchShippingId, setBatchShippingId] = useState<string | null>(null);
+  const [batchField, setBatchField] = useState<"shippingId" | "orderId">("shippingId");
   const [batchOpen, setBatchOpen] = useState(false);
   const [statusCar, setStatusCar] = useState<Diecast | null>(null);
 
@@ -77,13 +80,17 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
       >
         {/* The close button is the dialog's own now, and it shows on a desktop
             only — a phone still pushes the sheet down. */}
-        <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl border-border bg-background p-5 text-foreground shadow-2xl sm:max-w-2xl sm:p-6">
+        {/* Tighter than it was — p-5/p-6 became p-4/p-5, and the sections lost
+            a step of spacing each — so the whole card fits a phone without
+            scrolling in the common case. */}
+        <DialogContent className="max-h-[92vh] overflow-y-auto rounded-2xl border-border bg-background p-4 text-foreground shadow-2xl sm:max-w-2xl sm:p-5">
           {car && (
             <CarPopupContent
               car={car}
               onEdit={() => setEditCar(car)}
-              onOpenShippingBatch={(sId) => {
-                setBatchShippingId(sId);
+              onOpenBatch={(id, field) => {
+                setBatchShippingId(id);
+                setBatchField(field);
                 setBatchOpen(true);
               }}
               onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
@@ -111,11 +118,13 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           so the car is still there when it closes — showing its new status. */}
       <StatusUpdateDialog car={statusCar} onClose={() => setStatusCar(null)} />
 
-      {/* Shipping batch update dialog triggered from shipping ID */}
+      {/* The same Update order dialog, pointed at whichever ID was pressed —
+          the parcel a car arrived in, or the purchase it came from. */}
       <ShippingBatchDialog
         open={batchOpen}
         onOpenChange={setBatchOpen}
         initialShippingId={batchShippingId || ""}
+        idField={batchField}
       />
     </CarDrawerCtx.Provider>
   );
@@ -124,7 +133,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
 interface CarPopupContentProps {
   car: Diecast;
   onEdit: () => void;
-  onOpenShippingBatch: (shippingId: string) => void;
+  onOpenBatch: (id: string, field: "shippingId" | "orderId") => void;
   onToggleFavourite: () => void;
   onToggleChase: () => void;
   onUpdateStatus: () => void;
@@ -133,7 +142,7 @@ interface CarPopupContentProps {
 function CarPopupContent({
   car,
   onEdit,
-  onOpenShippingBatch,
+  onOpenBatch,
   onToggleFavourite,
   onToggleChase,
   onUpdateStatus,
@@ -148,8 +157,10 @@ function CarPopupContent({
   const hasArrived = (car.status || "").trim().toLowerCase() === "available";
   const cleanTransitNotes = (car.transitInfo || "").trim();
 
+  const trackable = Boolean(trackingPageFor(car.deliveryPartner, car.trackingId));
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Hidden Accessible Dialog Title & Description */}
       <DialogTitle className="sr-only">
         {car.name || `${car.make} ${car.model}`} Details
@@ -158,38 +169,33 @@ function CarPopupContent({
         Diecast car specifications, status, logistics, and pricing details.
       </DialogDescription>
 
-      {/* TITLE, AT THE TOP
-          It used to sit under the photograph, which meant the first thing on
-          screen was a row of three icon buttons and the name of the car arrived
-          about 200px in. The status moves up here with it: it is the fact that
-          decides what you do next, and it reads as part of the headline rather
-          than as the sixth entry in a specification grid.
-
-          The right padding leaves the dialog's own close button its corner —
-          desktop only, since a phone pushes the sheet down instead. */}
-      <div className="flex items-start justify-between gap-3 sm:pr-8">
+      {/* 1. TITLE
+          Name and what run it belongs to on the left; the status and the close
+          button together on the right, because those are the two things you
+          reach for rather than read. The right padding is the corner the
+          dialog's own X occupies — desktop only, since a phone dismisses by
+          pushing the sheet down. */}
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h2 className="truncate text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
           </h2>
-          {/* Make and model are already in the title, so the subtitle carries the
-              collection context instead. */}
-          <p className="mt-1 text-sm font-normal text-muted-foreground">
-            {[car.brand, car.series, car.subSeries].filter(Boolean).join(" • ") || "—"}
+          {/* Make and model are already in the title, so this carries where the
+              car sits in a catalogue instead. */}
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">
+            {[car.brand, car.assortment, car.carNumber].filter(Boolean).join(" · ") || "—"}
           </p>
         </div>
-        <div className="shrink-0 pt-1">
+        <div className="flex shrink-0 items-center gap-2 sm:pr-7">
           <StatusPill status={car.status} />
         </div>
       </div>
 
-      {/* HERO IMAGE
-          The scale badge that used to be overlaid here is gone — it said "1:64"
-          on almost every car in the collection, and it reads beside the colour
-          below where a scale that is *not* 1:64 is worth noticing. What is
-          overlaid now are the two flags, which are about this car as an object
-          and belong on the picture of it. */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-border bg-muted/60 shadow-inner">
+      {/* 2. IMAGE
+          object-cover at every width. It was contain on desktop, which letter-
+          boxed most photographs into a pillar of empty panel either side — the
+          frame is a fixed shape, so the picture should fill it. */}
+      <div className="relative aspect-[2/1] w-full overflow-hidden rounded-xl border border-border bg-muted/60 shadow-inner">
         <HeroCarImage car={car} />
         <div className="absolute right-2 top-2 flex items-center gap-1.5">
           <FlagButton
@@ -197,9 +203,7 @@ function CarPopupContent({
             pressed={Boolean(car.chase)}
             title={car.chase ? "Unmark as chase" : "Mark as chase"}
           >
-            <Flame
-              className={`size-4 ${car.chase ? "fill-orange-400 text-orange-400" : "text-white"}`}
-            />
+            <Flame className={`size-4 ${car.chase ? CHASE_COLOUR : "fill-none text-white"}`} />
           </FlagButton>
           <FlagButton
             onClick={onToggleFavourite}
@@ -207,106 +211,105 @@ function CarPopupContent({
             title={car.favourite ? "Remove from favourites" : "Add to favourites"}
           >
             <Star
-              className={`size-4 ${car.favourite ? "fill-amber-400 text-amber-400" : "text-white"}`}
+              className={`size-4 ${car.favourite ? FAVOURITE_COLOUR : "fill-none text-white"}`}
             />
           </FlagButton>
         </div>
       </div>
 
-      {/* PURCHASE
-          Was a filled card of its own. Three sections each in their own
-          container stacked into three boxes on a phone with nothing to say which
-          one you were in; a rule and a heading does the same job in less. */}
-      <Section title="Purchase">
-        <div className="grid grid-cols-3 gap-2">
-          <Spec label="Spent" value={inrFull(spent)} size="lg" />
-          <Spec label="Retail / MRP" value={inrFull(mrp)} size="lg" />
+      {/* 3. DETAILS — what the object is. */}
+      <Section title="Details">
+        <SpecGrid>
+          <Spec label="Series" value={car.series} />
+          <Spec label="Sub series" value={car.subSeries} />
+          <Spec label="Car number" value={car.carNumber} />
+          <Spec label="Type" value={car.type} />
+          <Spec label="Colour" value={car.colour} />
+          <Spec label="Size" value={car.size} />
+          {/* Car ID is not here. Six fields is exactly two rows of three; a
+              seventh sat alone on a third row and cost 44px of a card that has
+              to fit a phone. It is on the duplicates page and in every export,
+              which is where anyone actually needs to read one. */}
+        </SpecGrid>
+      </Section>
+
+      {/* PURCHASE — the same type size as everything else. It was set two steps
+          larger, which made three numbers shout over the rest of the card. */}
+      <Section title="Purchase details">
+        <SpecGrid>
+          <Spec label="Spent" value={inrFull(spent)} />
+          <Spec label="Retail / MRP" value={inrFull(mrp)} />
           <Spec
-            label="Gain / Delta"
-            size="lg"
+            label="Delta"
             className={delta >= 0 ? "text-emerald-600 dark:text-[#00E599]" : "text-rose-400"}
             value={delta >= 0 ? `+${inrFull(delta)}` : `-${inrFull(Math.abs(delta))}`}
           />
-        </div>
-      </Section>
-
-      {/* DETAILS
-          Read in the order you would describe the car: what it looks like, what
-          set it belongs to, what it is, and only then the numbers that identify
-          it in the catalogue. */}
-      <Section title="Details">
-        <div className="grid grid-cols-3 gap-x-3 gap-y-4 text-sm">
-          <Spec
-            label="Colour / Livery"
-            value={[car.colour || "—", car.size].filter(Boolean).join(" · ")}
-          />
-          <Spec label="Assortment" value={car.assortment} />
-          <Spec label="Vehicle Type" value={car.type} />
-          <Spec label="Car Number" value={car.carNumber} />
-          {/* Status is the pill beside the title now, so it is not repeated. */}
-          <Spec label="Car ID" value={car.id} className="font-mono" />
-        </div>
+        </SpecGrid>
       </Section>
 
       {/* SHIPPING
-          The courier, the number and the note appear only when the car actually
-          has them. Six fields of "—" told you nothing except that this car was
-          not shipped by anyone. */}
+          Both IDs open the order they name. The courier is the link the transit
+          tracker uses — its name, going somewhere — rather than the banner that
+          used to sit under this section explaining itself in two lines. */}
       <Section title="Shipping">
-        <div className="grid grid-cols-3 gap-x-3 gap-y-4 text-sm">
+        <SpecGrid>
           <Spec label="Seller" value={car.seller} />
-          <div className="min-w-0">
-            <span className="text-xs text-muted-foreground">Shipping ID</span>
-            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-              <span className="truncate font-mono font-semibold text-foreground">
-                {car.shippingId || "—"}
-              </span>
-              {car.shippingId && (
-                <button
-                  type="button"
-                  onClick={() => onOpenShippingBatch(car.shippingId)}
-                  className="cursor-pointer text-[10px] text-primary hover:underline"
-                  title={`Update every car in order ${car.shippingId}`}
-                >
-                  (View Order)
-                </button>
-              )}
-            </div>
-          </div>
-          <Spec label="Order Date" value={car.orderDate} />
-
+          <Spec label="Order date" value={formatDayMonthYear(car.orderDate) || car.orderDate} />
           {/* A car in hand has an arrival date; one still coming has an
-              estimate. Showing "Expected" against a car that turned up last
-              month was the wrong word for the only date that mattered. */}
+              estimate. "Expected" against a car that turned up last month was
+              the wrong word for the only date that mattered. */}
           <Spec
-            label={hasArrived ? "Received Date" : "Expected Date"}
+            label={hasArrived ? "Received date" : "Expected date"}
             value={formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate)}
           />
-          {car.deliveryPartner ? (
-            <Spec label="Delivery Partner" value={car.deliveryPartner} />
-          ) : null}
-          {car.trackingId ? (
-            <Spec label="Tracking ID" value={car.trackingId} className="font-mono" />
-          ) : null}
-          {cleanTransitNotes ? (
-            <Spec label="Notes" value={cleanTransitNotes} className="col-span-3" />
-          ) : null}
-        </div>
-
-        {/* The consignment number is only useful if it goes somewhere. */}
-        <TrackingLink partner={car.deliveryPartner} trackingId={car.trackingId} className="mt-3" />
+          <IdSpec
+            label="Order ID"
+            value={car.orderId}
+            title={`See every car in order ${car.orderId}`}
+            onClick={() => onOpenBatch(car.orderId, "orderId")}
+          />
+          <IdSpec
+            label="Shipping ID"
+            value={car.shippingId}
+            title={`See every car in shipment ${car.shippingId}`}
+            onClick={() => onOpenBatch(car.shippingId, "shippingId")}
+          />
+          {(car.deliveryPartner || car.trackingId) && (
+            <div className="min-w-0">
+              <span className="text-xs text-muted-foreground">Courier</span>
+              <div className="mt-0.5 truncate text-sm font-semibold">
+                {trackable ? (
+                  <TrackingLink
+                    compact
+                    partner={car.deliveryPartner}
+                    trackingId={car.trackingId}
+                    className="text-sm font-semibold"
+                  />
+                ) : (
+                  car.deliveryPartner || car.trackingId
+                )}
+              </div>
+            </div>
+          )}
+        </SpecGrid>
       </Section>
+
+      {/* NOTES — "Transit info" was the column's name in the sheet, not a
+          description of what people put in it. Absent when there is none. */}
+      {cleanTransitNotes && (
+        <Section title="Notes">
+          <p className="text-sm text-foreground">{cleanTransitNotes}</p>
+        </Section>
+      )}
 
       {/* BOTTOM ACTIONS
           The two things you do to a car after reading about it, at the end of
-          the reading rather than scattered through it: the status button was
-          tucked into the Shipping heading and Edit was a pencil in a row of
-          icons at the very top.
+          the reading rather than scattered through it.
 
-          Delete is not here any more. It was a full-width red button one tap
-          from simply looking at a car; it lives behind Edit now, where changing
-          the record is what you already came to do. */}
-      <div className="flex items-center gap-2 border-t border-border pt-3">
+          Delete is not here. It was a full-width red button one tap from simply
+          looking at a car; it lives behind Edit now, where changing the record
+          is what you already came to do. */}
+      <div className="flex items-center gap-2 border-t-2 border-border pt-3">
         <Button variant="outline" onClick={onEdit} className="flex-1 gap-1.5">
           <Pencil className="size-4" />
           Edit
@@ -324,6 +327,51 @@ function CarPopupContent({
           }
           className="flex-1"
         />
+      </div>
+    </div>
+  );
+}
+
+/** Three across at every width, so a label always sits above its own value. */
+function SpecGrid({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-3 gap-x-3 gap-y-2.5">{children}</div>;
+}
+
+/**
+ * A derived ID that opens the batch it names.
+ *
+ * Both of these are links rather than a value with "(View Order)" bolted after
+ * it: the ID *is* the order, so the thing you would point at should be the
+ * thing you can press.
+ */
+function IdSpec({
+  label,
+  value,
+  title,
+  onClick,
+}: {
+  label: string;
+  value?: string | null;
+  title: string;
+  onClick: () => void;
+}) {
+  const id = (value || "").trim();
+  return (
+    <div className="min-w-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="mt-0.5 truncate text-sm font-semibold">
+        {id ? (
+          <button
+            type="button"
+            onClick={onClick}
+            title={title}
+            className="max-w-full truncate font-mono text-sky-500 hover:underline"
+          >
+            {id}
+          </button>
+        ) : (
+          <span className="text-foreground">—</span>
+        )}
       </div>
     </div>
   );
@@ -372,8 +420,8 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="border-t border-border pt-3">
-      <div className="mb-2.5 flex items-center justify-between gap-2">
+    <section className="border-t border-border pt-2.5">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
         <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
           {title}
         </h3>
@@ -384,25 +432,27 @@ function Section({
   );
 }
 
-/** One labelled value inside a section. */
+/**
+ * One labelled value inside a section.
+ *
+ * One size, everywhere. Purchase used to render at text-2xl while the rest of
+ * the card sat at text-sm, so three of the twenty facts on screen were four
+ * times the size of the others for no reason anyone could have named.
+ */
 function Spec({
   label,
   value,
   className,
-  size = "sm",
 }: {
   label: string;
   value?: string | null;
   className?: string;
-  size?: "sm" | "lg";
 }) {
   return (
     <div className="min-w-0">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span
-        className={`mt-0.5 block truncate font-semibold text-foreground ${
-          size === "lg" ? "text-xl sm:text-2xl font-bold" : ""
-        } ${className ?? ""}`}
+        className={`mt-0.5 block truncate text-sm font-semibold text-foreground ${className ?? ""}`}
         title={value || undefined}
       >
         {value || "—"}
@@ -455,7 +505,7 @@ function HeroCarImage({ car }: { car: Diecast }) {
         <img
           src={src}
           alt={car.name || `${car.make} ${car.model}`}
-          className="h-full w-full object-cover sm:object-contain transition-opacity duration-300"
+          className="h-full w-full object-cover transition-opacity duration-300"
           onError={() => setSrc(null)}
         />
       ) : !loading ? (

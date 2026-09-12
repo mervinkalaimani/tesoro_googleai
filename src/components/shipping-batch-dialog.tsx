@@ -60,6 +60,13 @@ export interface ShippingBatchDialogProps {
    */
   excludeAvailable?: boolean;
   onUpdated?: (count: number, shippingId: string) => void;
+  /**
+   * Which ID this dialog batches by. A shipping ID is the parcel a car arrives
+   * in; an order ID is the purchase it came from. Same dialog, same controls —
+   * only the field it groups and writes changes, so a car's order can be opened
+   * and edited exactly the way its shipment already could.
+   */
+  idField?: "shippingId" | "orderId";
 }
 
 export function ShippingBatchDialog({
@@ -69,9 +76,11 @@ export function ShippingBatchDialog({
   allowedShippingIds,
   excludeAvailable = false,
   onUpdated,
+  idField = "shippingId",
 }: ShippingBatchDialogProps) {
   const cars = useCars();
   const { updateCarsByShippingId, bulkUpdateCars } = useCarsActions();
+  const idLabel = idField === "orderId" ? "Order ID" : "Shipping ID";
 
   const [selectedShippingId, setSelectedShippingId] = useState(initialShippingId);
   const [customShippingId, setCustomShippingId] = useState("");
@@ -110,7 +119,7 @@ export function ShippingBatchDialog({
       if (hideDelivered && (car.status || "").trim().toLowerCase() === "available") {
         continue;
       }
-      const id = (car.shippingId || "").trim();
+      const id = (car[idField] || "").trim();
       if (!id) continue;
       if (
         scopedIds &&
@@ -136,7 +145,9 @@ export function ShippingBatchDialog({
         statuses: Array.from(stats.statuses),
       }))
       .sort((a, b) => a.id.localeCompare(b.id));
-  }, [cars, scopedIds, hideDelivered]);
+    // idField belongs here: this dialog stays mounted across opens, so without
+    // it a second visit in the other mode would offer the first mode's groups.
+  }, [cars, scopedIds, hideDelivered, idField]);
 
   // Reopening starts from the caller's scope again, whatever the last visit
   // left the checkbox on.
@@ -185,9 +196,9 @@ export function ShippingBatchDialog({
       if (hideDelivered && (c.status || "").trim().toLowerCase() === "available") {
         return false;
       }
-      return (c.shippingId || "").trim().toLowerCase() === activeShippingId.toLowerCase();
+      return (c[idField] || "").trim().toLowerCase() === activeShippingId.toLowerCase();
     });
-  }, [cars, activeShippingId, hideDelivered]);
+  }, [cars, activeShippingId, hideDelivered, idField]);
 
   // Pre-fill from whatever the batch already carries, but only when the batch
   // itself changes. Keyed on matchedCars it re-ran on every background refresh —
@@ -260,7 +271,9 @@ export function ShippingBatchDialog({
     return {
       ...car,
       status,
-      shippingId: activeShippingId,
+      // Whichever ID this dialog is grouping by. A car joining an order takes
+      // that order's ID; its shipping ID is then derived as usual.
+      [idField]: activeShippingId,
       seller: car.seller || template?.seller || "",
       orderDate,
       orderMonth: deriveMonth(orderDate) || car.orderMonth,
@@ -288,11 +301,11 @@ export function ShippingBatchDialog({
 
   const handleApply = async () => {
     if (!activeShippingId) {
-      setErrorMessage("Please select or enter a Shipping ID.");
+      setErrorMessage(`Please select or enter ${idField === "orderId" ? "an" : "a"} ${idLabel}.`);
       return;
     }
     if (matchedCars.length === 0 && pendingCars.length === 0) {
-      setErrorMessage(`No cars found matching Shipping ID "${activeShippingId}".`);
+      setErrorMessage(`No cars found matching ${idLabel} "${activeShippingId}".`);
       return;
     }
     const changesFields =
@@ -338,6 +351,7 @@ export function ShippingBatchDialog({
       const count = changesFields
         ? await updateCarsByShippingId(activeShippingId, updates, {
             excludeAvailable: hideDelivered,
+            idField,
           })
         : 0;
       const total = count + joined.length;
@@ -346,7 +360,7 @@ export function ShippingBatchDialog({
           ? `Added ${joined.length} car${joined.length === 1 ? "" : "s"} to "${activeShippingId}"${
               count ? ` and updated ${count} more` : ""
             }.`
-          : `Successfully updated ${count} car${count === 1 ? "" : "s"} in shipping ID "${activeShippingId}".`,
+          : `Successfully updated ${count} car${count === 1 ? "" : "s"} in ${idLabel.toLowerCase()} "${activeShippingId}".`,
       );
       setPendingCars([]);
       onUpdated?.(total, activeShippingId);
@@ -377,8 +391,8 @@ export function ShippingBatchDialog({
             <DialogTitle className="text-lg font-bold text-foreground">Update order</DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Pick a shipping ID to set the status, expected date and transit notes across every car
-            in it — or add cars to the order.
+            Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to set the status,
+            expected date and transit notes across every car in it — or add cars to the order.
           </DialogDescription>
         </DialogHeader>
 
@@ -401,10 +415,10 @@ export function ShippingBatchDialog({
                 what is in it, then say what changes. On a desktop the cars move
                 to a rail on the right and stay visible for both halves. */}
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_1fr]">
-              {/* Shipping ID Selector */}
+              {/* Batch selector — shipping ID or order ID, per idField. */}
               <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-foreground">Shipping ID</label>
+                  <label className="text-xs font-semibold text-foreground">{idLabel}</label>
                   {!allowedShippingIds && (
                     <button
                       type="button"
@@ -418,7 +432,11 @@ export function ShippingBatchDialog({
 
                 {useCustom ? (
                   <Input
-                    placeholder="e.g. FIRY/02, ANIH/PO/09..."
+                    placeholder={
+                      idField === "orderId"
+                        ? "e.g. FIRY-2026-06-001..."
+                        : "e.g. FIRY/02, ANIH/PO/09..."
+                    }
                     value={customShippingId}
                     onChange={(e) => setCustomShippingId(e.target.value)}
                     className="border-border bg-background text-xs text-foreground"
