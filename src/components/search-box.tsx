@@ -126,7 +126,11 @@ export function SearchBox({
   };
 
   return (
-    <div ref={wrapRef} className={cn("relative ml-2 max-w-2xl flex-1", className)}>
+    // The left margin separated this from the sidebar trigger, which is
+    // desktop-only now — so on a phone it was 8px of nothing against the
+    // header's own padding, leaving more room on the left of the bar than on
+    // the right. It goes when the button it was spacing away from does.
+    <div ref={wrapRef} className={cn("relative max-w-2xl flex-1 md:ml-2", className)}>
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         ref={inputRef}

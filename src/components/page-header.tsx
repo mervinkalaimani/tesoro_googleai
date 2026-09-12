@@ -57,7 +57,12 @@ export function PageToolbar({
 }) {
   return (
     <div className={`flex flex-wrap items-center justify-between gap-2 ${className}`}>
-      <div className="flex min-w-0 flex-wrap items-center gap-2">{left}</div>
+      {/* Full width on a phone, so a long segment control gets a line of its
+          own to scroll along and the buttons drop beneath it rather than
+          squeezing it into a corner. They share a line from md up. */}
+      <div className="flex w-full min-w-0 flex-wrap items-center gap-2 md:w-auto md:flex-1">
+        {left}
+      </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">{right}</div>
     </div>
   );

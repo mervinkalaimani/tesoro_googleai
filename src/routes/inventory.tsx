@@ -266,7 +266,7 @@ function InventoryPage() {
   // them.
   const [addOpen, setAddOpen] = useState(false);
 
-  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const searched = useMemo(() => filterRows(data, query), [data, query]);
 
@@ -329,8 +329,33 @@ function InventoryPage() {
 
   useEffect(() => {
     setVisibleCount(LOAD_BATCH);
-    bodyRef.current?.scrollTo({ top: 0 });
+    window.scrollTo({ top: 0 });
   }, [query, filters, status, sort, chaseOnly, favOnly]);
+
+  /**
+   * Loads the next batch when the foot of the list comes into view.
+   *
+   * A scroll handler on the list's own container is what this replaced, and it
+   * stopped working the moment the page became the thing that scrolls. An
+   * observer does not care which ancestor moved — it fires when the sentinel is
+   * near the viewport, which is the actual question.
+   */
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || visibleCount >= rows.length) return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleCount((count) => Math.min(count + LOAD_BATCH, rows.length));
+        }
+      },
+      // Start fetching before it is on screen, so the list is already longer by
+      // the time the bottom is reached.
+      { rootMargin: "600px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [visibleCount, rows.length]);
 
   // What the top bar's Export button acts on: exactly the filtered, sorted rows
   // on screen, not the whole collection.
@@ -353,219 +378,200 @@ function InventoryPage() {
   const activeCount = Object.values(filters).filter((v) => v !== "all").length;
   const shown = rows.slice(0, visibleCount);
 
-  const loadMoreOnScroll = () => {
-    const el = bodyRef.current;
-    if (!el || visibleCount >= rows.length) return;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 160) {
-      setVisibleCount((count) => Math.min(count + LOAD_BATCH, rows.length));
-    }
-  };
-
   return (
-    /* The bottom nav floats over the last rows on a phone, so the card stops
-       short of it rather than scrolling underneath. */
-    <div className="flex h-[calc(100svh-3.5rem-5.5rem-env(safe-area-inset-bottom))] flex-col p-3 md:h-[calc(100svh-3.5rem)] md:p-6">
-      <div className="card-elevated mx-auto flex w-full max-w-[1600px] min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="flex flex-col gap-3 border-b border-border p-4">
-          {/* The heading is its own row rather than sharing one with the
+    /* The same page container as Shipments & orders: the page scrolls, the
+       sections stack, and nothing is pinned to the viewport. It used to be one
+       full-height card with its own scrollbar inside the page's — two scroll
+       positions to keep track of, a header that could not reach the edge of the
+       screen, and a footer counting rows nobody asked about. */
+    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
+      <div className="space-y-3">
+        {/* The heading is its own row rather than sharing one with the
               controls. It used to sit in a flex line beside them, and the
               status dropdown's ml-auto ate the width the title needed, so on a
               phone "Inventory" was squeezed to nothing. */}
-          <PageHeading title="Inventory" subtitle={`${rows.length.toLocaleString()} cars`}>
-            {/* Phones get the status as one dropdown, here beside the title.
-                The chip row below is eleven segments; on a 375px screen it
-                wraps to four lines and takes more of the page than the cars do.
-                A dropdown is one line, and it is the filter reached for most,
-                so it sits with the heading rather than below it. */}
-            <select
+        <PageHeading title="Inventory" subtitle={`${rows.length.toLocaleString()} cars`} />
+
+        <PageToolbar
+          left={
+            /* The same control at both sizes, behaving differently at each.
+                 Eleven segments will not wrap onto a 375px screen without
+                 taking four lines and more of the page than the cars do, so on
+                 a phone it stays one line and scrolls sideways — the statuses
+                 are in the order you meet them, so the ones you want most are
+                 already at the front. On desktop there is room to spare, and
+                 stretching them across 1600px would only make "ISO" a button
+                 the width of a paragraph, so they wrap to their text and the
+                 control ends where the labels do. */
+            <SegmentControl
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              aria-label="Filter by status"
-              className="h-8 max-w-[9rem] shrink-0 rounded-md border border-input bg-background px-2 text-sm md:hidden"
-            >
-              {statusOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s === "all" ? "All statuses" : s}
-                </option>
-              ))}
-            </select>
-          </PageHeading>
-
-          <PageToolbar
-            left={
-              /* Desktop only — the phone has the dropdown beside the title.
-                 There is room to spare here, and stretching ten segments across
-                 1600px only makes "ISO" a button the width of a paragraph, so
-                 they wrap to their text and the control ends where the labels
-                 do. */
-              <SegmentControl
-                value={status}
-                onChange={setStatus}
-                className="hidden gap-0.5 md:inline-flex md:w-auto md:flex-wrap"
-                options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
-              />
-            }
-            right={
-              <>
-                {sort !== "sno" && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="shrink-0"
-                    onClick={() => setSort("sno")}
-                  >
-                    Reset sort
-                  </Button>
-                )}
-                {/* Icon alone. The word "Filters" beside a slider icon is the
-                    icon's own caption; the count is the part that says
-                    something, so that is what stays. */}
-                <Button
-                  size="sm"
-                  variant={activeCount ? "default" : "outline"}
-                  className="shrink-0 gap-1"
-                  onClick={() => {
-                    setDraft(filters);
-                    setFilterOpen((v) => !v);
-                  }}
-                  title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
-                  aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
-                  aria-expanded={filterOpen}
-                >
-                  <SlidersHorizontal className="size-4" />
-                  {activeCount ? <span className="tabular-nums text-xs">{activeCount}</span> : null}
-                </Button>
-                {/* Sorting lives here rather than in column headers so it
-                    applies to the grid view too. */}
-                <FilterSelect
-                  value={sort}
-                  onChange={(v) => setSort(v as SortKey)}
-                  icon={<ArrowUpDown className="size-3.5" />}
-                  label="Sort cars"
-                  neutral="sno"
-                  options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-                />
-                {/* Exactly the rows on screen, filtered and sorted as they are. */}
-                <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
-                <ViewToggle value={view} onChange={setView} />
-              </>
-            }
-          />
-        </div>
-
-        {/* Inline filter row, revealed by the Filters button. It wraps on small
-            screens, so there is no separate sliding panel. */}
-        {filterOpen && (
-          <div className="space-y-3 border-b border-border bg-muted/20 p-4">
-            <div className="flex flex-wrap items-end gap-3">
-              {FILTERS.map((d) => (
-                <div key={d.key} className="min-w-[9rem] flex-1">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {d.label}
-                  </label>
-                  <select
-                    value={draft[d.key]}
-                    onChange={(e) => setDraftFilter(d.key, e.target.value)}
-                    className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                  >
-                    <option value="all">All</option>
-                    {options[d.key].map((o) => (
-                      <option key={o.name} value={o.name}>
-                        {o.name} ({o.value})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => setChaseOnly((v) => !v)}
-                aria-pressed={chaseOnly}
-                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${
-                  chaseOnly
-                    ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <Sparkles className="size-4" />
-                Chase only
-              </button>
-              <button
-                type="button"
-                onClick={() => setFavOnly((v) => !v)}
-                aria-pressed={favOnly}
-                className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${
-                  favOnly
-                    ? "border-primary/50 bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <Star className={`size-4 ${favOnly ? "fill-primary" : ""}`} />
-                Favourites only
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs text-muted-foreground">
-                Showing <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
-                {searched.length.toLocaleString()} diecast models
-              </p>
-              <div className="flex gap-2">
+              onChange={setStatus}
+              className="w-full gap-0.5 md:inline-flex md:w-auto md:flex-wrap"
+              options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
+            />
+          }
+          right={
+            <>
+              {sort !== "sno" && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => {
-                    setDraft(EMPTY_FILTERS);
-                    setFilters(EMPTY_FILTERS);
-                    setChaseOnly(false);
-                    setFavOnly(false);
-                  }}
+                  className="shrink-0"
+                  onClick={() => setSort("sno")}
                 >
-                  Clear
+                  Reset sort
                 </Button>
-                <Button size="sm" onClick={() => setFilters(draft)}>
-                  Apply
-                </Button>
+              )}
+              {/* Icon alone. The word "Filters" beside a slider icon is the
+                    icon's own caption; the count is the part that says
+                    something, so that is what stays. */}
+              <Button
+                size="sm"
+                variant={activeCount ? "default" : "outline"}
+                className="shrink-0 gap-1"
+                onClick={() => {
+                  setDraft(filters);
+                  setFilterOpen((v) => !v);
+                }}
+                title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
+                aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
+                aria-expanded={filterOpen}
+              >
+                <SlidersHorizontal className="size-4" />
+                {activeCount ? <span className="tabular-nums text-xs">{activeCount}</span> : null}
+              </Button>
+              {/* Sorting lives here rather than in column headers so it
+                    applies to the grid view too. */}
+              <FilterSelect
+                value={sort}
+                onChange={(v) => setSort(v as SortKey)}
+                icon={<ArrowUpDown className="size-3.5" />}
+                label="Sort cars"
+                neutral="sno"
+                options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              />
+              {/* Exactly the rows on screen, filtered and sorted as they are. */}
+              <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
+              <ViewToggle value={view} onChange={setView} />
+            </>
+          }
+        />
+      </div>
+
+      {/* Inline filter row, revealed by the Filters button. It wraps on small
+          screens, so there is no separate sliding panel. */}
+      {filterOpen && (
+        <div className="card-elevated space-y-3 bg-muted/20 p-4">
+          <div className="flex flex-wrap items-end gap-3">
+            {FILTERS.map((d) => (
+              <div key={d.key} className="min-w-[9rem] flex-1">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {d.label}
+                </label>
+                <select
+                  value={draft[d.key]}
+                  onChange={(e) => setDraftFilter(d.key, e.target.value)}
+                  className="mt-1 h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="all">All</option>
+                  {options[d.key].map((o) => (
+                    <option key={o.name} value={o.name}>
+                      {o.name} ({o.value})
+                    </option>
+                  ))}
+                </select>
               </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setChaseOnly((v) => !v)}
+              aria-pressed={chaseOnly}
+              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${
+                chaseOnly
+                  ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
+                  : "border-border text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Sparkles className="size-4" />
+              Chase only
+            </button>
+            <button
+              type="button"
+              onClick={() => setFavOnly((v) => !v)}
+              aria-pressed={favOnly}
+              className={`inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3 text-sm transition-colors ${
+                favOnly
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Star className={`size-4 ${favOnly ? "fill-primary" : ""}`} />
+              Favourites only
+            </button>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              Showing <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
+              {searched.length.toLocaleString()} diecast models
+            </p>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setDraft(EMPTY_FILTERS);
+                  setFilters(EMPTY_FILTERS);
+                  setChaseOnly(false);
+                  setFavOnly(false);
+                }}
+              >
+                Clear
+              </Button>
+              <Button size="sm" onClick={() => setFilters(draft)}>
+                Apply
+              </Button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {view !== "table" ? (
-          <div
-            ref={bodyRef}
-            onScroll={loadMoreOnScroll}
-            className="min-h-0 flex-1 overflow-auto p-3"
-          >
-            <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
-              {shown.map((r, i) =>
-                view === "compact" ? (
-                  <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-                ) : (
-                  <InventoryCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-                ),
-              )}
-            </div>
-            {shown.length === 0 && (
-              <p className="p-8 text-center text-sm text-muted-foreground">No cars match.</p>
+      {view !== "table" ? (
+        <>
+          <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
+            {shown.map((r, i) =>
+              view === "compact" ? (
+                <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
+              ) : (
+                <InventoryCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
+              ),
             )}
           </div>
-        ) : (
-          <div ref={bodyRef} onScroll={loadMoreOnScroll} className="min-h-0 flex-1 overflow-auto">
-            {/* Phones get the same rows as cards: nine columns on a 375px screen
-                is a table you read by dragging it sideways. */}
-            <div className="space-y-2 p-2 md:hidden">
-              {shown.map((r, i) => (
-                <CarListCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-              ))}
-              {shown.length === 0 && (
-                <p className="p-8 text-center text-sm text-muted-foreground">
-                  No cars match those filters.
-                </p>
-              )}
-            </div>
+          {shown.length === 0 && (
+            <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
+              No cars match.
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Phones get the same rows as cards: nine columns on a 375px screen
+              is a table you read by dragging it sideways. */}
+          <div className="space-y-2 md:hidden">
+            {shown.map((r, i) => (
+              <CarListCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
+            ))}
+            {shown.length === 0 && (
+              <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
+                No cars match those filters.
+              </p>
+            )}
+          </div>
 
+          {/* One panel, like a shipment card on the orders page. Only the table
+              scrolls sideways — the page itself never does. */}
+          <div className="card-elevated hidden overflow-x-auto md:block">
             {/* The detailed view: every field, no thumbnail. Sorting lives in
                 the header dropdown so it works in grid view too. */}
             {/* No Actions column. Editing a car is something you do after
@@ -573,7 +579,7 @@ function InventoryPage() {
                 inside the edit form. A bin at the end of every row of a
                 1,500-row table is a destructive action you can reach by
                 accident. The table is 80px narrower for it. */}
-            <table className="hidden w-full min-w-[1000px] table-fixed text-sm md:table">
+            <table className="w-full min-w-[1000px] table-fixed text-sm">
               <colgroup>
                 <col className="w-[18rem]" />
                 <col className="w-[7rem]" />
@@ -584,7 +590,9 @@ function InventoryPage() {
                 <col className="w-[7rem]" />
                 <col className="w-[7rem]" />
               </colgroup>
-              <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+              {/* top-14 rather than top-0: the page is what scrolls now, and
+                  the top bar is the first 3.5rem of it. */}
+              <thead className="sticky top-14 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Model</th>
                   <th className="px-3 py-2.5 font-medium">Colour</th>
@@ -655,17 +663,14 @@ function InventoryPage() {
               </tbody>
             </table>
           </div>
-        )}
+        </>
+      )}
 
-        <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-2.5">
-          <span className="text-xs text-muted-foreground">
-            Showing {shown.length.toLocaleString()} of {rows.length.toLocaleString()}
-          </span>
-          {shown.length < rows.length && (
-            <span className="text-xs text-muted-foreground">Scroll for more</span>
-          )}
-        </div>
-      </div>
+      {/* What "Showing 50 of 1,500 · Scroll for more" was for, without saying
+          it: crossing this line loads the next batch. The count under the
+          heading already says how many cars there are, and "scroll for more" is
+          an instruction to do the thing you were already doing. */}
+      <div ref={sentinelRef} aria-hidden className="h-px" />
 
       <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
     </div>
