@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useCarImageCandidates } from "@/lib/car-image-search";
+import { catalogueKey, useCatalogueSearch, type CatalogueCar } from "@/lib/catalogue-search";
+import { useAuth } from "@/lib/auth-store";
 import { RARITIES, RARITY_LABEL, rarityOf, type Rarity } from "@/lib/rarity";
 import { CAR_CONDITIONS, CARD_CONDITIONS, describe } from "@/lib/condition";
 import { formatDayMonthYear } from "@/lib/format";
@@ -67,6 +69,7 @@ import {
   X,
   ClipboardCheck,
   Search,
+  Loader2,
 } from "lucide-react";
 
 const STATUS_OPTIONS = ["Available", "Pre Order", "Transit", "Waiting", "ISO", "On Hold"];
@@ -259,6 +262,7 @@ export function CarFormDialog({
 }) {
   const { addCar, updateCar } = useCarsActions();
   const cars = useCars();
+  const { isGuest } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
   // A broken image is the photo field's business now — it shows the failure in
@@ -359,7 +363,7 @@ export function CarFormDialog({
    * casting in another colour — starts from what is known. What this purchase
    * cost, who sold it and when are this car's own, so they are left alone.
    */
-  const applyExisting = (car: Diecast) => {
+  const applyExisting = (car: CatalogueCar) => {
     setForm((f) => ({
       ...f,
       make: car.make || "",
@@ -789,7 +793,7 @@ export function CarFormDialog({
             // Search first: the fastest way to add a car is one you already
             // have. Then the other ways in, and getting cars out last.
             <div className="flex flex-wrap items-center justify-center gap-2 pt-1 sm:justify-start">
-              <CollectionSearch cars={cars} onPick={applyExisting} />
+              <CollectionSearch cars={cars} onPick={applyExisting} searchAll={!isGuest} />
               <Button
                 type="button"
                 variant="outline"
@@ -2104,17 +2108,29 @@ function WizardSummary({
 }
 
 /**
- * Search the collection and copy a car's catalogue fields into the form.
+ * Search for a car and copy its catalogue fields into the form.
  *
- * Matches every word typed against the car's name and catalogue fields, so
- * "skyline white premium" finds the one it means. Distinct castings only: ten
- * copies of the same car are one suggestion.
+ * Your own collection first — instant, and the likeliest match — then cars
+ * from every account, which come from the search_catalogue database function
+ * and carry only what a car is, never anyone's price, seller or photos. Words
+ * match in any order, so "skyline white premium" finds the one it means, and a
+ * casting that appears in both lists is only suggested once.
  */
-function CollectionSearch({ cars, onPick }: { cars: Diecast[]; onPick: (car: Diecast) => void }) {
+function CollectionSearch({
+  cars,
+  onPick,
+  searchAll,
+}: {
+  cars: Diecast[];
+  onPick: (car: CatalogueCar) => void;
+  /** False for guests: the demo searches its own sample cars only. */
+  searchAll: boolean;
+}) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
+  const remote = useCatalogueSearch(query, searchAll);
 
-  const matches = useMemo(() => {
+  const local = useMemo(() => {
     const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!words.length) return [];
     const seen = new Set<string>();
@@ -2136,18 +2152,51 @@ function CollectionSearch({ cars, onPick }: { cars: Diecast[]; onPick: (car: Die
         .join(" ")
         .toLowerCase();
       if (!words.every((w) => hay.includes(w))) continue;
-      const key = [car.brand, car.make, car.model, car.variant, car.colour, car.series]
-        .join("|")
-        .toLowerCase();
+      const key = catalogueKey(car);
       if (seen.has(key)) continue;
       seen.add(key);
       out.push(car);
-      if (out.length >= 8) break;
+      if (out.length >= 6) break;
     }
     return out;
   }, [cars, query]);
 
+  const others = useMemo(() => {
+    const mine = new Set(local.map(catalogueKey));
+    return remote.cars.filter((c) => !mine.has(catalogueKey(c))).slice(0, 10);
+  }, [local, remote.cars]);
+
+  const first = local[0] ?? others[0];
   const open = focused && query.trim().length > 0;
+
+  const pick = (car: CatalogueCar) => {
+    onPick(car);
+    setQuery("");
+    setFocused(false);
+  };
+
+  const row = (car: CatalogueCar, key: string, hint?: string) => (
+    <button
+      key={key}
+      type="button"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => pick(car)}
+      className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left hover:bg-muted"
+    >
+      <span className="flex w-full min-w-0 items-center gap-1.5 text-sm font-medium">
+        <span className="truncate">{car.name || `${car.make} ${car.model}`}</span>
+        <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
+        {hint && (
+          <span className="ml-auto shrink-0 text-[10px] font-normal text-muted-foreground">
+            {hint}
+          </span>
+        )}
+      </span>
+      <span className="w-full truncate text-[11px] text-muted-foreground">
+        {[car.brand, car.assortment, car.colour, car.series].filter(Boolean).join(" · ")}
+      </span>
+    </button>
+  );
 
   return (
     <div className="relative w-full sm:w-64">
@@ -2161,48 +2210,55 @@ function CollectionSearch({ cars, onPick }: { cars: Diecast[]; onPick: (car: Die
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
-            if (matches[0]) {
-              onPick(matches[0]);
-              setQuery("");
-            }
+            if (first) pick(first);
           }
           if (e.key === "Escape") setQuery("");
         }}
-        placeholder="Search your collection to fill…"
-        aria-label="Search your collection"
+        placeholder="Search all cars to fill…"
+        aria-label="Search cars to fill in the form"
         className="h-8 pl-8 text-sm"
       />
       {open && (
-        <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-left shadow-lg sm:w-96">
-          {matches.length === 0 ? (
-            <p className="px-2 py-3 text-center text-xs text-muted-foreground">
-              Nothing in your collection matches.
+        <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border border-border bg-popover p-1 text-left shadow-lg sm:w-96">
+          {local.length > 0 && (
+            <>
+              <SearchGroupLabel>Your collection</SearchGroupLabel>
+              {local.map((car) => row(car, `mine:${car.id}`))}
+            </>
+          )}
+          {searchAll && others.length > 0 && (
+            <>
+              <SearchGroupLabel>All collections</SearchGroupLabel>
+              {others.map((car) =>
+                row(
+                  car,
+                  `all:${catalogueKey(car)}:${car.year}`,
+                  (car.copies ?? 0) > 1 ? `${car.copies} owned` : undefined,
+                ),
+              )}
+            </>
+          )}
+          {searchAll && remote.loading && (
+            <p className="flex items-center justify-center gap-1.5 px-2 py-2 text-[11px] text-muted-foreground">
+              <Loader2 className="size-3 animate-spin" />
+              Searching all collections…
             </p>
-          ) : (
-            matches.map((car) => (
-              <button
-                key={car.id}
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
-                  onPick(car);
-                  setQuery("");
-                  setFocused(false);
-                }}
-                className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left hover:bg-muted"
-              >
-                <span className="flex w-full min-w-0 items-center gap-1.5 text-sm font-medium">
-                  <span className="truncate">{car.name || `${car.make} ${car.model}`}</span>
-                  <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
-                </span>
-                <span className="w-full truncate text-[11px] text-muted-foreground">
-                  {[car.brand, car.assortment, car.colour, car.series].filter(Boolean).join(" · ")}
-                </span>
-              </button>
-            ))
+          )}
+          {!remote.loading && local.length === 0 && others.length === 0 && (
+            <p className="px-2 py-3 text-center text-xs text-muted-foreground">
+              No car matches that yet — type it in below.
+            </p>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function SearchGroupLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-2 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {children}
     </div>
   );
 }
