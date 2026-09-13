@@ -1,4 +1,5 @@
 import { ChaseMark, FavouriteMark } from "@/components/car-marks";
+import { rarityOf } from "@/lib/rarity";
 
 import type { Diecast } from "@/lib/types";
 import { CarThumb } from "@/components/car-thumb";
@@ -58,7 +59,7 @@ export function CompactCarCard({
           <div className="pointer-events-none absolute right-1 top-1 flex items-center gap-1">
             {car.chase && (
               <span className="grid size-5 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-                <ChaseMark className="size-3" />
+                <ChaseMark rarity={rarityOf(car)} className="size-3" />
               </span>
             )}
             {car.favourite && (

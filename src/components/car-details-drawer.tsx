@@ -7,7 +7,9 @@ import { findCarImage } from "@/lib/car-image";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { trackingPageFor } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
-import { CHASE_COLOUR, FAVOURITE_COLOUR } from "@/components/car-marks";
+import { FAVOURITE_COLOUR } from "@/components/car-marks";
+import { StarRating } from "@/components/star-rating";
+import { RARITY_FLAME, RARITY_LABEL, nextRarity, rarityOf, withRarity } from "@/lib/rarity";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/status-pill";
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -94,7 +96,9 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
                 setBatchOpen(true);
               }}
               onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
-              onToggleChase={() => updateCar({ ...car, chase: !car.chase })}
+              // Cycles Normal → TH → STH → Chase → Normal: each tap is the next
+              // colour of flame.
+              onToggleChase={() => updateCar(withRarity(car, nextRarity(rarityOf(car))))}
               onUpdateStatus={() => setStatusCar(car)}
             />
           )}
@@ -158,6 +162,7 @@ function CarPopupContent({
   const cleanTransitNotes = (car.transitInfo || "").trim();
 
   const trackable = Boolean(trackingPageFor(car.deliveryPartner, car.trackingId));
+  const rarity = rarityOf(car);
 
   return (
     <div className="space-y-3">
@@ -200,10 +205,12 @@ function CarPopupContent({
         <div className="absolute right-2 top-2 flex items-center gap-1.5">
           <FlagButton
             onClick={onToggleChase}
-            pressed={Boolean(car.chase)}
-            title={car.chase ? "Unmark as chase" : "Mark as chase"}
+            pressed={rarity !== "Normal"}
+            title={`${RARITY_LABEL[rarity]} — tap for ${RARITY_LABEL[nextRarity(rarity)]}`}
           >
-            <Flame className={`size-4 ${car.chase ? CHASE_COLOUR : "fill-none text-white"}`} />
+            <Flame
+              className={`size-4 ${rarity === "Normal" ? "fill-none text-white" : RARITY_FLAME[rarity]}`}
+            />
           </FlagButton>
           <FlagButton
             onClick={onToggleFavourite}
@@ -231,6 +238,12 @@ function CarPopupContent({
               to fit a phone. It is on the duplicates page and in every export,
               which is where anyone actually needs to read one. */}
         </SpecGrid>
+        {(car.carCondition || car.cardCondition || car.carRating || car.cardRating) && (
+          <div className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-2.5">
+            <ConditionSpec label="Car" grade={car.carCondition} rating={car.carRating} />
+            <ConditionSpec label="Card" grade={car.cardCondition} rating={car.cardRating} />
+          </div>
+        )}
       </Section>
 
       {/* PURCHASE — the same type size as everything else. It was set two steps
@@ -457,6 +470,27 @@ function Spec({
       >
         {value || "—"}
       </span>
+    </div>
+  );
+}
+
+/** A condition grade with its star rating underneath. */
+function ConditionSpec({
+  label,
+  grade,
+  rating,
+}: {
+  label: string;
+  grade?: string;
+  rating?: number;
+}) {
+  return (
+    <div className="min-w-0">
+      <span className="text-xs text-muted-foreground">{label} condition</span>
+      <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
+        {grade || "—"}
+      </span>
+      {rating ? <StarRating value={rating} label={`${label} rating`} size="sm" /> : null}
     </div>
   );
 }

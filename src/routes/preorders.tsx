@@ -110,7 +110,17 @@ function PreOrderCard({
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
       </button>
 
-      <div className="mt-auto grid grid-cols-3 gap-2 border-t border-border px-4 py-3">
+      <div className="mt-auto grid grid-cols-2 gap-2 border-t border-border px-4 py-3 sm:grid-cols-4">
+        {/* When it was ordered, in plain text — it is a fact, where the release
+            date beside it is the thing to watch. */}
+        <div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            Ordered on
+          </div>
+          <div className="mt-0.5 truncate text-sm font-semibold text-foreground">
+            {formatDayMonthYear(car.orderDate) || car.orderDate || "—"}
+          </div>
+        </div>
         <div>
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Target release
@@ -127,7 +137,7 @@ function PreOrderCard({
             {formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || "—"}
           </div>
         </div>
-        <div>
+        <div className="text-right sm:text-left">
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Deposit paid
           </div>

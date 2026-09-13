@@ -23,7 +23,7 @@ import { useAuth, fullName } from "@/lib/auth-store";
  * is published by the page through useExportScope, so exporting from inside this
  * dialog gives you the list you were looking at a moment ago.
  */
-export function DataActions() {
+export function DataActions({ iconOnly = false }: { iconOnly?: boolean } = {}) {
   const allCars = useCars();
   const { query } = useApp();
   const { profile } = useAuth();
@@ -38,10 +38,11 @@ export function DataActions() {
       <Button
         type="button"
         variant="outline"
-        size="sm"
-        className="gap-1.5"
+        size={iconOnly ? "icon" : "sm"}
+        className={iconOnly ? "size-8" : "gap-1.5"}
         disabled={exportRows.length === 0}
         onClick={() => setExportOpen(true)}
+        aria-label="Export"
         title={
           exportRows.length
             ? `Export ${exportRows.length.toLocaleString()} cars${scope ? ` — ${scope.label}` : ""}`
@@ -49,8 +50,8 @@ export function DataActions() {
         }
       >
         <FileText className="size-4" />
-        Export
-        {exportRows.length > 0 && (
+        {!iconOnly && "Export"}
+        {!iconOnly && exportRows.length > 0 && (
           <span className="tabular-nums text-muted-foreground">
             {exportRows.length.toLocaleString()}
           </span>
@@ -59,13 +60,14 @@ export function DataActions() {
       <Button
         type="button"
         variant="outline"
-        size="sm"
-        className="gap-1.5"
+        size={iconOnly ? "icon" : "sm"}
+        className={iconOnly ? "size-8" : "gap-1.5"}
         onClick={() => downloadCsv("template.csv", generateDiecastCsvTemplate())}
+        aria-label="Download the CSV template"
         title="Download the CSV template"
       >
         <Download className="size-4" />
-        CSV template
+        {!iconOnly && "CSV template"}
       </Button>
 
       <ExportDialog

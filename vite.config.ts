@@ -23,6 +23,30 @@ if (
   process.env.SUPABASE_PROJECT_ID = "matekrbcflojjooswoha";
 }
 
+// The version shown at the foot of Settings. Notion is the source of truth —
+// the newest "Phase" on the Tesoro Project Kanban (v0.7 Active Dev -> 0.7.0) —
+// read at build time when NOTION_TOKEN is set on the deployment. Without it
+// (local dev, a fork) package.json's version is used, which is kept in step by
+// hand. "(alpha)" until the app says otherwise, then the commit on Vercel so
+// "which build am I looking at" has an answer. Set as a VITE_ variable because
+// the config below injects those into the app.
+{
+  const { version: pkgVersion } = JSON.parse(
+    readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+  ) as { version?: string };
+  const phase = await latestPhase().catch((err: unknown) => {
+    console.warn(`[version] Could not read the version from Notion: ${String(err)}`);
+    return null;
+  });
+  const sha = (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7);
+  process.env.VITE_APP_VERSION = [
+    `${phase?.version || pkgVersion || "0.0.0"} (alpha)`,
+    sha && `· ${sha}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 // @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
 // or the app will break with duplicate plugins:
 //   - TanStack devtools (dev-only, first), tanstackStart, viteReact, tailwindcss, tsConfigPaths,
@@ -30,6 +54,9 @@ if (
 //     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import path from "node:path";
+import { readFileSync } from "node:fs";
+// @ts-expect-error — plain .mjs shared with the release workflow; no type declarations.
+import { latestPhase } from "./scripts/notion-version.mjs";
 import type { Plugin } from "vite";
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";

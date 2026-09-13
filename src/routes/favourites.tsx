@@ -1,12 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Award, ChevronDown, ChevronUp, Flame, IndianRupee, Star, TrendingUp } from "lucide-react";
+import {
+  Award,
+  CarFront,
+  ChevronDown,
+  ChevronUp,
+  Flame,
+  IndianRupee,
+  Star,
+  TrendingUp,
+} from "lucide-react";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
 import { ChaseMark, FAVOURITE_COLOUR } from "@/components/car-marks";
+import { rarityOf } from "@/lib/rarity";
 import { CarThumb } from "@/components/car-thumb";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
@@ -64,7 +74,7 @@ function GalleryCard({
             photograph — it sits in the details drawer and the table. */}
         {car.chase && (
           <span className="pointer-events-none absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-            <ChaseMark className="size-3.5" />
+            <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
           </span>
         )}
 
@@ -170,6 +180,13 @@ function FavouritesPage() {
 
       <KpiBand>
         <KpiTile
+          label="Models"
+          value={rows.length.toLocaleString()}
+          sub={mode === "favourite" ? "Marked favourite" : "Chase pulls"}
+          icon={<CarFront className="size-4" />}
+          tone="violet"
+        />
+        <KpiTile
           label="Portfolio value"
           value={inrFull(market)}
           sub={`Cost: ${inrFull(cost)}`}
@@ -202,24 +219,18 @@ function FavouritesPage() {
 
       <PageToolbar
         sticky
-        // Two segments, a count and a view toggle fit a phone across, so the
-        // count stays beside the control it is counting rather than being
-        // pushed onto a line of its own.
+        // The model count is a KPI tile now, so the segments and the view
+        // controls have the row to themselves.
         oneLine
         left={
-          <>
-            <SegmentControl
-              value={mode}
-              onChange={setMode}
-              options={[
-                { value: "favourite", label: "Favourites" },
-                { value: "chase", label: "Chase" },
-              ]}
-            />
-            <span className="shrink-0 text-xs text-muted-foreground">
-              {rows.length} model{rows.length === 1 ? "" : "s"}
-            </span>
-          </>
+          <SegmentControl
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "favourite", label: "Favourites" },
+              { value: "chase", label: "Chase" },
+            ]}
+          />
         }
         right={
           <>
@@ -254,8 +265,10 @@ function FavouritesPage() {
           )}
         </div>
       ) : (
-        <div className="card-elevated overflow-hidden">
-          <CarsTable rows={rows} badgePrimary={mode} />
+        // No frame on a phone: display:contents drops the card's box while
+        // keeping it round the table on a desktop.
+        <div className="card-elevated overflow-hidden max-md:contents">
+          <CarsTable rows={rows} badgePrimary={mode} bare />
         </div>
       )}
     </div>

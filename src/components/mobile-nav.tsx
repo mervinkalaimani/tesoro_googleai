@@ -126,14 +126,28 @@ export function MobileNav() {
 
   return (
     <>
+      {/* Spacing, and why it is these numbers.
+
+          Sides: 16px, plus the landscape notch inset where there is one.
+          Bottom: the home indicator's own safe area plus a little air, and
+          never less than 16px where there is no home line (Android, Safari with
+          its toolbar showing).
+          Corners: an iPhone's screen corner is ~55pt. A floating bar inset 16px
+          looks right when its corner is concentric with the screen's — 55 − 16
+          ≈ 39px — which at 68px tall is a full pill, and the tabs inside sit
+          concentric with the bar in turn. */}
       <nav
         aria-label="Primary"
         className="fixed inset-x-0 bottom-0 z-40 md:hidden"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{
+          paddingBottom: "max(calc(env(safe-area-inset-bottom) + 6px), 16px)",
+          paddingLeft: "max(env(safe-area-inset-left), 16px)",
+          paddingRight: "max(env(safe-area-inset-right), 16px)",
+        }}
       >
         <div
           className="
-            relative mx-3 mb-3 flex items-stretch gap-0.5 rounded-[1.75rem] p-1.5
+            relative flex min-h-[68px] items-stretch gap-1 rounded-[2.5rem] p-2
             border border-black/10 bg-background/70 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.45)]
             backdrop-blur-2xl backdrop-saturate-150
             dark:border-white/10 dark:bg-background/60
@@ -149,12 +163,12 @@ export function MobileNav() {
                 key={t.url}
                 to={t.url}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] px-1 py-1.5 transition-colors ${
+                className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-2 transition-colors ${
                   active ? "bg-primary/12 text-primary" : "text-muted-foreground"
                 }`}
               >
-                <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
-                <span className="text-[10px] font-medium leading-none">{t.title}</span>
+                <t.icon className={`size-[22px] ${active ? "stroke-[2.4]" : ""}`} />
+                <span className="text-[11px] font-medium leading-none">{t.title}</span>
               </Link>
             );
           })}
@@ -168,17 +182,17 @@ export function MobileNav() {
             onClick={() => setMenuOpen(true)}
             aria-label={`Menu — signed in as ${display}`}
             aria-expanded={menuOpen}
-            className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-[1.25rem] px-1 py-1.5 transition-colors ${
+            className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-2 transition-colors ${
               menuOpen || menuActive ? "bg-primary/12 text-primary" : "text-muted-foreground"
             }`}
           >
-            <Avatar className="size-5 border border-border">
+            <Avatar className="size-[22px] border border-border">
               {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
               <AvatarFallback className="bg-muted text-[9px] font-semibold">
                 {initialsOf(name, display)}
               </AvatarFallback>
             </Avatar>
-            <span className="text-[10px] font-medium leading-none">Menu</span>
+            <span className="text-[11px] font-medium leading-none">Menu</span>
           </button>
         </div>
       </nav>
@@ -186,7 +200,7 @@ export function MobileNav() {
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent
           side="bottom"
-          className="max-h-[88svh] overflow-y-auto rounded-t-3xl border-t border-border p-4 pb-8"
+          className="max-h-[88svh] overflow-y-auto rounded-t-[2.5rem] border-t border-border p-4 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))]"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Menu</SheetTitle>

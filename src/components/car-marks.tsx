@@ -1,6 +1,7 @@
 import { Flame, Star } from "lucide-react";
 
 import type { Diecast } from "@/lib/types";
+import { RARITY_FLAME, RARITY_LABEL, rarityOf, type Rarity } from "@/lib/rarity";
 import { cn } from "@/lib/utils";
 
 /**
@@ -21,12 +22,24 @@ import { cn } from "@/lib/utils";
 export const CHASE_COLOUR = "fill-red-500 text-red-500";
 export const FAVOURITE_COLOUR = "fill-amber-400 text-amber-500";
 
-export function ChaseMark({ className }: { className?: string }) {
+/**
+ * The flame, coloured by how rare the pull is: silver for a Treasure Hunt, gold
+ * for a Super Treasure Hunt, red for a chase. A Normal car has no flame at all,
+ * so this renders nothing for one.
+ */
+export function ChaseMark({
+  className,
+  rarity = "Chase",
+}: {
+  className?: string;
+  rarity?: Rarity;
+}) {
+  if (rarity === "Normal") return null;
   return (
     <Flame
       role="img"
-      aria-label="Chase"
-      className={cn("size-4 shrink-0", CHASE_COLOUR, className)}
+      aria-label={RARITY_LABEL[rarity]}
+      className={cn("size-4 shrink-0", RARITY_FLAME[rarity], className)}
     />
   );
 }
@@ -56,8 +69,12 @@ export function CarMarks({
   className?: string;
   iconClassName?: string;
 }) {
-  if (!car.chase && !car.favourite) return null;
-  const chase = car.chase ? <ChaseMark key="chase" className={iconClassName} /> : null;
+  const rarity = rarityOf(car);
+  if (rarity === "Normal" && !car.favourite) return null;
+  const chase =
+    rarity !== "Normal" ? (
+      <ChaseMark key="chase" rarity={rarity} className={iconClassName} />
+    ) : null;
   const fav = car.favourite ? <FavouriteMark key="fav" className={iconClassName} /> : null;
   const items = primary === "chase" ? [chase, fav] : [fav, chase];
   return <span className={cn("inline-flex items-center gap-1", className)}>{items}</span>;
@@ -69,12 +86,13 @@ export function CarMarks({
  * invisible either way, and a disc is the only one of the two that fixes it.
  */
 export function CarMarkOverlay({ car }: { car: Diecast }) {
-  if (!car.chase && !car.favourite) return null;
+  const rarity = rarityOf(car);
+  if (rarity === "Normal" && !car.favourite) return null;
   return (
     <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1">
-      {car.chase && (
+      {rarity !== "Normal" && (
         <span className="grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-          <ChaseMark className="size-3.5" />
+          <ChaseMark rarity={rarity} className="size-3.5" />
         </span>
       )}
       {car.favourite && (

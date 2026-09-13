@@ -1,5 +1,6 @@
 import type { Diecast } from "@/lib/types";
 import type { CsvColumn } from "@/lib/csv";
+import { rarityOf } from "@/lib/rarity";
 
 export const CAR_CSV_COLUMNS: CsvColumn<Diecast>[] = [
   { key: "id", label: "Car ID", get: (r) => r.id },
@@ -33,5 +34,10 @@ export const CAR_CSV_COLUMNS: CsvColumn<Diecast>[] = [
   // one is the day the car actually turned up.
   { key: "date", label: "Received date", get: (r) => r.date },
   { key: "chase", label: "Chase", get: (r) => (r.chase ? "TRUE" : "") },
+  { key: "rarity", label: "Rarity", get: (r) => rarityOf(r) },
+  { key: "carCondition", label: "Car condition", get: (r) => r.carCondition ?? "" },
+  { key: "carRating", label: "Car rating", get: (r) => r.carRating || "" },
+  { key: "cardCondition", label: "Card condition", get: (r) => r.cardCondition ?? "" },
+  { key: "cardRating", label: "Card rating", get: (r) => r.cardRating || "" },
   { key: "favourite", label: "Favourite", get: (r) => (r.favourite ? "TRUE" : "") },
 ];

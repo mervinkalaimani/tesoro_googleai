@@ -82,7 +82,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      // viewport-fit=cover is what makes iOS report the home indicator's space
+      // through env(safe-area-inset-bottom). Without it that value is always 0,
+      // and the bottom bar sat on top of the home line.
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "Tesoro — Collection Dashboard" },
       {
         name: "description",

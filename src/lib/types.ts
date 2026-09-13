@@ -39,7 +39,19 @@ export type Diecast = {
   /** Consignment / AWB number, paired with deliveryPartner to build a link. */
   trackingId?: string;
   balance: number;
+  /** True for any rarer-than-normal pull (TH, STH, Chase). Kept in step with
+   *  `rarity`, which says which one. */
   chase: boolean;
+  /** "Normal" | "TH" | "STH" | "Chase". Absent on rows saved before it existed;
+   *  read it through rarityOf(). */
+  rarity?: string;
+  /** Grade of the car itself — "Mint", "Near Mint", … — or anything typed. */
+  carCondition?: string;
+  /** Grade of the card / packaging — "Mint Card", "Near Mint", … */
+  cardCondition?: string;
+  /** 0–5 stars; 0 means not rated. */
+  carRating?: number;
+  cardRating?: number;
   favourite: boolean;
   official: boolean;
   open: boolean;

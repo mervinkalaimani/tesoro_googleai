@@ -6,7 +6,7 @@ import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { SegmentControl } from "@/components/segment-control";
-import { parseDMY, inrFull } from "@/lib/format";
+import { formatDayMonthYear, inr, inrFull, parseDMY } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import {
@@ -15,7 +15,6 @@ import {
 } from "@/components/reconcile-delivery-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 import { KpiBand, KpiTile } from "@/components/kpi";
-import { ShipmentItem } from "@/components/shipment-item";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { PageHeading, PageToolbar } from "@/components/page-header";
@@ -85,6 +84,21 @@ const TAB_MATCH: Record<Exclude<Tab, "all" | "delivered">, (status: string) => b
   preOrder: (s) => s === "pre order" || s === "preorder",
 };
 
+function inTab(r: Diecast, tab: Tab): boolean {
+  const delivered = r.status === "Available";
+  if (tab === "delivered") return delivered;
+  // "All" means all of it, delivered included. It used to quietly exclude
+  // them, which made the count under the heading disagree with the tabs.
+  if (tab === "all") return true;
+  if (delivered) return false;
+  return TAB_MATCH[tab](
+    (r.status || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, " "),
+  );
+}
+
 /**
  * Nothing has left the seller yet. Pre-orders belong here rather than with the
  * shipments: an allocation waiting on a factory and a parcel waiting on a
@@ -144,52 +158,35 @@ function ShipmentCard({
 }) {
   return (
     <article className="card-elevated overflow-hidden">
-      <header className="flex flex-wrap items-start justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-mono text-base font-bold tracking-tight">
+      <header className="space-y-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="truncate font-mono text-base font-bold tracking-tight">
               {s.shippingId || "Unassigned"}
             </h2>
-            <span
-              className={`rounded-full border px-2 py-0.5 font-mono text-[11px] ${statusTone(
-                s.status,
-                s.delivered,
-              )}`}
-            >
-              {statusLabel(s.status, s.delivered)}
-            </span>
+            <p className="truncate text-sm font-semibold text-muted-foreground">{s.seller}</p>
           </div>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm">
-            <span className="font-semibold">{s.seller}</span>
-            {s.reference ? (
-              <>
-                <span className="text-muted-foreground">·</span>
-                <span className="font-mono text-xs text-muted-foreground">Ref: {s.reference}</span>
-              </>
-            ) : null}
-            {s.orderDate ? (
-              <>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground">Ordered {s.orderDate}</span>
-              </>
-            ) : null}
-          </p>
+          <span
+            className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[11px] ${statusTone(
+              s.status,
+              s.delivered,
+            )}`}
+          >
+            {statusLabel(s.status, s.delivered)}
+          </span>
         </div>
 
-        <div className="flex shrink-0 items-start gap-6 text-right">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              {s.delivered ? "Delivered on" : "Expected arrival"}
-            </div>
-            <div className="font-mono text-sm font-semibold text-amber-400">{s.eta || "—"}</div>
-          </div>
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Total cost
-            </div>
-            <div className="text-sm font-bold tabular-nums">{inrFull(s.value)}</div>
-          </div>
-        </div>
+        {/* The one place each date is said. The footer used to repeat the
+            expected date in a sentence underneath the cars. */}
+        <dl className="grid grid-cols-3 gap-3">
+          <HeaderFact label="Ordered" value={shortDate(s.orderDate)} />
+          <HeaderFact
+            label={s.delivered ? "Delivered" : "Expected"}
+            value={shortDate(s.eta)}
+            className="text-amber-500"
+          />
+          <HeaderFact label="Total cost" value={inrFull(s.value)} align="right" />
+        </dl>
       </header>
 
       <div className="border-t border-border px-4 py-3">
@@ -198,43 +195,98 @@ function ShipmentCard({
         </div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {s.items.map((c) => (
-            <ShipmentItem key={c.id} car={c} onOpen={() => onOpenCar(c)} />
+            <ContentsItem key={c.id} car={c} onOpen={() => onOpenCar(c)} />
           ))}
         </div>
       </div>
 
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3">
-        <p className="min-w-0 text-xs text-muted-foreground">
-          {s.eta && !s.delivered ? `Expected ${s.eta}. ` : ""}
-          {s.items.length} car{s.items.length === 1 ? "" : "s"} from {s.seller}.
-        </p>
-        {/* Wraps rather than holding its ground. Three buttons do not fit
-            across 375px, and shrink-0 meant the last one ran off the edge of
-            the card instead of dropping to the next line. */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* This parcel, not the page it is on. */}
-          <ExportButton
-            rows={s.items}
-            name={`order-${s.shippingId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
-            label={s.shippingId ? `Order ${s.shippingId}` : `${s.seller} order`}
+      {/* One row, phone included: Export is an icon, and the two labelled
+          buttons share what is left between them. */}
+      <footer className="flex items-center gap-2 border-t border-border px-4 py-3 sm:justify-end">
+        {/* This parcel, not the page it is on. */}
+        <ExportButton
+          rows={s.items}
+          name={`order-${s.shippingId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+          label={s.shippingId ? `Order ${s.shippingId}` : `${s.seller} order`}
+          iconOnly
+          size="icon"
+          className="size-8 shrink-0"
+        />
+        {s.shippingId ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+            className="min-w-0 flex-1 gap-1.5 sm:flex-none"
+          >
+            <Pencil className="size-3.5" />
+            Update Order
+          </Button>
+        ) : null}
+        {!s.delivered && s.shippingId ? (
+          <UpdateStatusButton
+            onClick={onUpdateStatus}
+            className="min-w-0 flex-1 sm:flex-none"
+            title={`Update status for the ${s.items.length} car${
+              s.items.length === 1 ? "" : "s"
+            } in ${s.shippingId}`}
           />
-          {s.shippingId ? (
-            <Button variant="outline" size="sm" onClick={onEdit} className="gap-1.5">
-              <Pencil className="size-3.5" />
-              Update Order
-            </Button>
-          ) : null}
-          {!s.delivered && s.shippingId ? (
-            <UpdateStatusButton
-              onClick={onUpdateStatus}
-              title={`Update status for the ${s.items.length} car${
-                s.items.length === 1 ? "" : "s"
-              } in ${s.shippingId}`}
-            />
-          ) : null}
-        </div>
+        ) : null}
       </footer>
     </article>
+  );
+}
+
+/** "2026-09-18" -> "18 Sept 2026"; anything unparseable is shown as written. */
+function shortDate(value: string): string {
+  if (!value) return "—";
+  return formatDayMonthYear(value) || value;
+}
+
+function HeaderFact({
+  label,
+  value,
+  className = "",
+  align = "left",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
+      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dd className={`truncate text-sm font-semibold tabular-nums ${className}`}>{value}</dd>
+    </div>
+  );
+}
+
+/**
+ * A car inside a shipment: its name, then what it is on the left and what it
+ * cost against its retail price on the right.
+ */
+function ContentsItem({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
+  const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
+  const kind = [car.brand, car.assortment].filter(Boolean).join(" · ");
+  return (
+    <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
+      <button
+        type="button"
+        onClick={onOpen}
+        className="block max-w-full truncate text-left text-sm font-semibold hover:text-primary"
+      >
+        {title}
+      </button>
+      <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate">{kind || "—"}</span>
+        <span className="shrink-0 tabular-nums">
+          <span className="font-medium text-foreground">{inr(car.spent || 0)}</span>
+          {" / "}
+          {car.mrp ? inr(car.mrp) : "—"}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -294,22 +346,16 @@ function OrdersPage() {
     return { transitCount, transitValue, waitingCount, waitingValue, due };
   }, [bySeller]);
 
-  const filtered = useMemo(
+  const filtered = useMemo(() => bySeller.filter((r) => inTab(r, tab)), [bySeller, tab]);
+
+  // A segment with nothing behind it is hidden — the same rule Inventory's
+  // status segments follow. The one you are on stays, even if its last order
+  // was just delivered, so the control does not jump out from under you.
+  const visibleTabs = useMemo(
     () =>
-      bySeller.filter((r) => {
-        const delivered = r.status === "Available";
-        if (tab === "delivered") return delivered;
-        // "All" means all of it, delivered included. It used to quietly exclude
-        // them, which made the count under the heading disagree with the tabs.
-        if (tab === "all") return true;
-        if (delivered) return false;
-        return TAB_MATCH[tab](
-          (r.status || "")
-            .trim()
-            .toLowerCase()
-            .replace(/[\s-]+/g, " "),
-        );
-      }),
+      TABS.filter(
+        (t) => t.value === "all" || t.value === tab || bySeller.some((r) => inTab(r, t.value)),
+      ),
     [bySeller, tab],
   );
 
@@ -403,7 +449,7 @@ function OrdersPage() {
 
       <PageToolbar
         sticky
-        left={<SegmentControl value={tab} onChange={setTab} options={TABS} />}
+        left={<SegmentControl value={tab} onChange={setTab} options={visibleTabs} />}
         right={
           <>
             <FilterSelect

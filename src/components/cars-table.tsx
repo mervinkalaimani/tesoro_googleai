@@ -172,16 +172,22 @@ export function CarsTable({
   rows,
   showBadgeCol = true,
   badgePrimary = "favourite",
+  bare = false,
 }: {
   rows: Diecast[];
   showBadgeCol?: boolean;
   badgePrimary?: "favourite" | "chase";
+  /**
+   * The phone cards sit straight on the page rather than inset inside a
+   * frame, so they line up with the page's own edges.
+   */
+  bare?: boolean;
 }) {
   const { open } = useCarDrawer();
   return (
     <>
       {/* Phones get cards rather than a table that has to be dragged sideways. */}
-      <div className="space-y-2 p-2 md:hidden">
+      <div className={`space-y-2 md:hidden ${bare ? "" : "p-2"}`}>
         {rows.map((r, i) => (
           <CarListCard
             key={(r.id || "") + i}

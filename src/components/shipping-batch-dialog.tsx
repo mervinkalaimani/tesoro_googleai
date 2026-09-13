@@ -89,6 +89,11 @@ export function ShippingBatchDialog({
 
   const [newStatus, setNewStatus] = useState("keep");
   const [newExpectedDate, setNewExpectedDate] = useState("");
+  // Pre-filled from the order; only written when it differs from what was
+  // loaded, so opening and saving an order never flattens cars that were placed
+  // on different days into one.
+  const [newOrderDate, setNewOrderDate] = useState("");
+  const [loadedOrderDate, setLoadedOrderDate] = useState("");
   const [newTransitInfo, setNewTransitInfo] = useState("");
   const [updateTransitInfo, setUpdateTransitInfo] = useState(false);
   const [newPartner, setNewPartner] = useState("");
@@ -212,6 +217,9 @@ export function ShippingBatchDialog({
       batch.map((c) => c[key]).find((v) => Boolean(v));
 
     setNewExpectedDate(toDateInputValue(String(first("expectedDate") ?? "")));
+    const placed = toDateInputValue(String(first("orderDate") ?? ""));
+    setNewOrderDate(placed);
+    setLoadedOrderDate(placed);
     setNewTransitInfo(String(first("transitInfo") ?? ""));
     setNewPartner(String(first("deliveryPartner") ?? ""));
     setNewTrackingId(String(first("trackingId") ?? ""));
@@ -226,6 +234,8 @@ export function ShippingBatchDialog({
     setIsoQuery("");
     setNewCarSeed(null);
   }, [activeShippingId, open]);
+
+  const orderDateChanged = Boolean(newOrderDate) && newOrderDate !== loadedOrderDate;
 
   /** The row the order's own details are read from when filling gaps. */
   const template = matchedCars[0] as Diecast | undefined;
@@ -263,7 +273,11 @@ export function ShippingBatchDialog({
     const note = updateTransitInfo
       ? newTransitInfo.trim()
       : template?.transitInfo || car.transitInfo || "";
-    const orderDate = car.orderDate || template?.orderDate || new Date().toISOString().slice(0, 10);
+    const orderDate =
+      (orderDateChanged ? newOrderDate : "") ||
+      car.orderDate ||
+      template?.orderDate ||
+      new Date().toISOString().slice(0, 10);
     // Only a delivered car has an arrival date; everything else carries the
     // estimate in expectedDate alone.
     const arrivedOn = status === "Available" ? expected || car.date || orderDate : "";
@@ -309,10 +323,14 @@ export function ShippingBatchDialog({
       return;
     }
     const changesFields =
-      newStatus !== "keep" || Boolean(newExpectedDate) || updateTransitInfo || updateTracking;
+      newStatus !== "keep" ||
+      orderDateChanged ||
+      Boolean(newExpectedDate) ||
+      updateTransitInfo ||
+      updateTracking;
     if (!changesFields && pendingCars.length === 0) {
       setErrorMessage(
-        "Please choose at least one field to update (Status, Expected Date, Tracking, or Transit Info), or add a car to this order.",
+        "Please choose at least one field to update (Status, Order Date, Expected Date, Tracking, or Notes), or add a car to this order.",
       );
       return;
     }
@@ -324,6 +342,9 @@ export function ShippingBatchDialog({
       const updates: ShippingBatchUpdates = {};
       if (newStatus !== "keep") {
         updates.status = newStatus;
+      }
+      if (orderDateChanged) {
+        updates.orderDate = newOrderDate;
       }
       if (newExpectedDate) {
         updates.expectedDate = newExpectedDate;
@@ -391,8 +412,8 @@ export function ShippingBatchDialog({
             <DialogTitle className="text-lg font-bold text-foreground">Update order</DialogTitle>
           </div>
           <DialogDescription className="text-xs text-muted-foreground">
-            Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to set the status,
-            expected date and transit notes across every car in it — or add cars to the order.
+            Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to set the status, dates
+            and notes across every car in it — or add cars to the order.
           </DialogDescription>
         </DialogHeader>
 
@@ -650,6 +671,31 @@ export function ShippingBatchDialog({
                   </Select>
                 </div>
 
+                {/* Order Date */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                      <Calendar className="size-3.5 text-muted-foreground" />
+                      <span>Order Date</span>
+                    </label>
+                    {orderDateChanged && (
+                      <button
+                        type="button"
+                        onClick={() => setNewOrderDate(loadedOrderDate)}
+                        className="text-[10px] text-muted-foreground hover:text-foreground"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    type="date"
+                    value={newOrderDate}
+                    onChange={(e) => setNewOrderDate(e.target.value)}
+                    className="border-border bg-background text-xs text-foreground"
+                  />
+                </div>
+
                 {/* New Expected Date */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -751,12 +797,12 @@ export function ShippingBatchDialog({
                   )}
                 </div>
 
-                {/* Transit Info / ETA Notes (Optional) */}
+                {/* Notes (Optional) */}
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                       <Truck className="size-3.5 text-muted-foreground" />
-                      <span>Transit Info / Tracking Notes</span>
+                      <span>Notes</span>
                     </label>
                     <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-muted-foreground">
                       <input

@@ -48,11 +48,14 @@ type Effective = { seller: string; token: string; isPo: boolean };
  * shipment into as many IDs as it had order dates. What they share is the day it
  * turns up, which is what the expected date records.
  *
- * "Delayed" is not in here on purpose — say the word if it should be. Pre orders
- * are not either: their expected date is a release date that moves around, and
- * the /PO/ run counts the days orders were *placed*.
+ * "Delayed" is in here since parcels started being marked Delayed automatically
+ * the day after they were due: a late parcel is still the same parcel, and
+ * dating it by order date instead would have split the shipment and renumbered
+ * it at the exact moment you are trying to chase it. Pre orders are not: their
+ * expected date is a release date that moves around, and the /PO/ run counts
+ * the days orders were *placed*.
  */
-const IN_FLIGHT = new Set(["transit", "out for delivery", "waiting"]);
+const IN_FLIGHT = new Set(["transit", "out for delivery", "waiting", "delayed"]);
 
 const statusKey = (status: string | undefined | null) =>
   (status || "")

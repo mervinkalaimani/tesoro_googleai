@@ -1,10 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Database, Sliders, Activity, UserRound } from "lucide-react";
+import { useState } from "react";
 import { ACCENT_OPTIONS, THEME_OPTIONS, useApp, type AccentColor } from "@/lib/store";
 import { SegmentControl } from "@/components/segment-control";
 import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AccountCard } from "@/components/account-card";
 import { FavouriteDetector } from "@/components/favourite-detector";
 import { IdRebuild } from "@/components/shipping-id-rebuild";
@@ -42,6 +39,11 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
+type SettingsTab = "preferences" | "account" | "diagnostics" | "supabase";
+
+/** Set from package.json (and the commit, on Vercel) in vite.config.ts. */
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || "dev";
+
 function SettingsPage() {
   const {
     theme,
@@ -51,9 +53,8 @@ function SettingsPage() {
     setAccentColor,
     hideInvestment,
     setHideInvestment,
-    transitEtaDays,
-    setTransitEtaDays,
   } = useApp();
+  const [tab, setTab] = useState<SettingsTab>("preferences");
   // The connection settings point the whole app at a database. Anyone who can
   // edit them can redirect every other user's collection, so they belong to the
   // owner alone — not to admins, who manage people rather than infrastructure.
@@ -71,150 +72,102 @@ function SettingsPage() {
       </div>
 
       {/* General first: it is what most visits are for. The database connection
-          is owner-only plumbing you touch once, so it goes last. */}
-      <Tabs defaultValue="preferences" className="w-full space-y-4">
-        <TabsList className={`grid w-full h-10 ${isOwner ? "grid-cols-4" : "grid-cols-3"}`}>
-          <TabsTrigger
-            value="preferences"
-            id="settings-tab-preferences"
-            className="gap-2 text-xs md:text-sm font-medium"
-          >
-            <Sliders className="size-4 shrink-0" />
-            <span>General & Display</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="account"
-            id="settings-tab-account"
-            className="gap-2 text-xs md:text-sm font-medium"
-          >
-            <UserRound className="size-4 shrink-0" />
-            <span>Account</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="diagnostics"
-            id="settings-tab-diagnostics"
-            className="gap-2 text-xs md:text-sm font-medium"
-          >
-            <Activity className="size-4 shrink-0" />
-            <span>Diagnostics</span>
-          </TabsTrigger>
-          {isOwner ? (
-            <TabsTrigger
-              value="supabase"
-              id="settings-tab-supabase"
-              className="gap-2 text-xs md:text-sm font-medium"
-            >
-              <Database className="size-4 text-primary shrink-0" />
-              <span>DB Connection</span>
-            </TabsTrigger>
-          ) : null}
-        </TabsList>
+          is owner-only plumbing you touch once, so it goes last.
 
+          The same segment control as every other page, rather than a tab strip
+          of its own. Four labels do not fit across a phone, so it scrolls
+          sideways instead of squashing them. */}
+      <SegmentControl
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: "preferences", label: "General & Display" },
+          { value: "account", label: "Account" },
+          { value: "diagnostics", label: "Diagnostics" },
+          ...(isOwner ? [{ value: "supabase" as const, label: "DB Connection" }] : []),
+        ]}
+        className="w-full text-sm md:w-auto [&>button]:px-3 [&>button]:py-1.5"
+      />
+
+      <div className="space-y-4">
         {/* TAB 1: GENERAL & DISPLAY PREFERENCES */}
-        <TabsContent value="preferences" className="space-y-4 focus-visible:outline-none">
-          <section className="card-elevated p-5">
-            <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                Appearance
+        {tab === "preferences" && (
+          <div className="space-y-4">
+            <section className="card-elevated p-5">
+              <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                  Appearance
+                </h2>
+                <span className="text-xs text-muted-foreground">
+                  Saved to your account — the same on every device you sign in on.
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="font-medium">Theme</div>
+                  <div className="text-xs text-muted-foreground">
+                    {themePreference === "system"
+                      ? `Following your device, which is currently ${theme}.`
+                      : "Auto follows your device's light and dark setting."}
+                  </div>
+                </div>
+                <SegmentControl
+                  value={themePreference}
+                  onChange={setThemePreference}
+                  options={THEME_OPTIONS}
+                  className="h-9 text-sm"
+                />
+              </div>
+              <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
+                <div>
+                  <div className="font-medium">Accent colour</div>
+                  <div className="text-xs text-muted-foreground">
+                    Applies to buttons, highlights, charts, and active navigation.
+                  </div>
+                </div>
+                <Select value={accentColor} onValueChange={(v) => setAccentColor(v as AccentColor)}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ACCENT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </section>
+
+            <section className="card-elevated p-5">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Privacy
               </h2>
-              <span className="text-xs text-muted-foreground">
-                Saved to your account — the same on every device you sign in on.
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="font-medium">Theme</div>
-                <div className="text-xs text-muted-foreground">
-                  {themePreference === "system"
-                    ? `Following your device, which is currently ${theme}.`
-                    : "Auto follows your device's light and dark setting."}
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="font-medium">Hide investment value</div>
+                  <div className="text-xs text-muted-foreground">
+                    Mask the total spend in the sidebar until you tap the eye.
+                  </div>
                 </div>
+                <Switch checked={hideInvestment} onCheckedChange={setHideInvestment} />
               </div>
-              <SegmentControl
-                value={themePreference}
-                onChange={setThemePreference}
-                options={THEME_OPTIONS}
-                className="h-9 text-sm"
-              />
-            </div>
-            <div className="mt-5 flex items-center justify-between border-t border-border pt-5">
-              <div>
-                <div className="font-medium">Accent colour</div>
-                <div className="text-xs text-muted-foreground">
-                  Applies to buttons, highlights, charts, and active navigation.
-                </div>
-              </div>
-              <Select value={accentColor} onValueChange={(v) => setAccentColor(v as AccentColor)}>
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCENT_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </section>
+            </section>
 
-          <section className="card-elevated p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Privacy
-            </h2>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-medium">Hide investment value</div>
-                <div className="text-xs text-muted-foreground">
-                  Mask the total spend in the sidebar until you tap the eye.
-                </div>
-              </div>
-              <Switch checked={hideInvestment} onCheckedChange={setHideInvestment} />
-            </div>
-          </section>
-
-          <section className="card-elevated p-5">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              Orders
-            </h2>
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <Label htmlFor="eta" className="font-medium">
-                  Transit ETA (days)
-                </Label>
-                <div className="text-xs text-muted-foreground">
-                  Used to estimate expected delivery from order date.
-                </div>
-              </div>
-              <Input
-                id="eta"
-                type="number"
-                className="w-24"
-                value={transitEtaDays}
-                min={1}
-                onChange={(e) => setTransitEtaDays(Math.max(1, Number(e.target.value) || 1))}
-              />
-            </div>
-          </section>
-
-          <section className="card-elevated p-5">
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-              More coming soon
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Currency, backup / export, and shared collections are on the way.
-            </p>
-          </section>
-        </TabsContent>
+            <footer className="space-y-0.5 pt-4 text-center text-xs text-muted-foreground">
+              <p>© Mervin K</p>
+              <p>with love from Chennai</p>
+              <p className="font-mono text-[11px]">ver {APP_VERSION}</p>
+            </footer>
+          </div>
+        )}
 
         {/* TAB 2: ACCOUNT — everything signup asked for, afterwards */}
-        <TabsContent value="account" className="space-y-4 focus-visible:outline-none">
-          <AccountCard />
-        </TabsContent>
+        {tab === "account" && <AccountCard />}
 
         {/* TAB 3: DIAGNOSTICS */}
-        <TabsContent value="diagnostics" className="space-y-4 focus-visible:outline-none">
+        {tab === "diagnostics" && (
           <section className="card-elevated p-5">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
               Data diagnostics
@@ -225,11 +178,11 @@ function SettingsPage() {
               <FavouriteDetector />
             </div>
           </section>
-        </TabsContent>
+        )}
 
-        {/* TAB 3: DATABASE CONNECTION — owner only */}
-        {isOwner ? (
-          <TabsContent value="supabase" className="space-y-4 focus-visible:outline-none">
+        {/* TAB 4: DATABASE CONNECTION — owner only */}
+        {isOwner && tab === "supabase" ? (
+          <div className="space-y-4">
             {/* Above the connection card: this is about what visitors can see,
                 which is a more common thing to change than the database the
                 whole app points at. */}
@@ -240,9 +193,9 @@ function SettingsPage() {
               <OAuthProvidersCard />
             </section>
             <SupabaseSyncCard />
-          </TabsContent>
+          </div>
         ) : null}
-      </Tabs>
+      </div>
     </div>
   );
 }

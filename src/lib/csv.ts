@@ -35,6 +35,7 @@ export function exportCsv<T>(name: string, rows: T[], columns: CsvColumn<T>[]) {
 
 import type { Diecast } from "@/lib/types";
 import { monthEtaToDate } from "@/lib/date-utils";
+import { normaliseRarity } from "@/lib/rarity";
 
 /**
  * Robust RFC 4180 CSV parser supporting quotes, commas, and newlines inside fields.
@@ -165,6 +166,11 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
   const trackingCol = findCol("trackingid", "tracking", "awb", "awbno", "consignment");
   const balanceCol = findCol("balance");
   const chaseCol = findCol("chase");
+  const rarityCol = findCol("rarity");
+  const carConditionCol = findCol("carcondition", "condition");
+  const cardConditionCol = findCol("cardcondition", "packagingcondition");
+  const carRatingCol = findCol("carrating");
+  const cardRatingCol = findCol("cardrating");
   const favCol = findCol("favourite", "favorite", "fav");
   const officialCol = findCol("official");
   const openCol = findCol("open", "loose", "opened");
@@ -239,7 +245,18 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
       deliveryPartner: val(row, partnerCol) || undefined,
       trackingId: val(row, trackingCol) || undefined,
       balance,
-      chase: parseBool(val(row, chaseCol)),
+      // A Rarity column wins; a bare Chase = true from an older export reads as
+      // a chase, which is all it could have meant.
+      rarity:
+        normaliseRarity(val(row, rarityCol)) ??
+        (parseBool(val(row, chaseCol)) ? "Chase" : "Normal"),
+      chase:
+        (normaliseRarity(val(row, rarityCol)) ?? "Normal") !== "Normal" ||
+        parseBool(val(row, chaseCol)),
+      carCondition: val(row, carConditionCol),
+      cardCondition: val(row, cardConditionCol),
+      carRating: Math.min(5, Math.max(0, Math.round(parseNum(val(row, carRatingCol))))),
+      cardRating: Math.min(5, Math.max(0, Math.round(parseNum(val(row, cardRatingCol))))),
       favourite: parseBool(val(row, favCol)),
       official: parseBool(val(row, officialCol)),
       open: parseBool(val(row, openCol)),

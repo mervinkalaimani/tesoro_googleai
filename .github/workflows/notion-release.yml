@@ -1,0 +1,68 @@
+# After every production release, file it in Notion: a Kanban card per commit
+# and a section on the Release Notes page.
+#
+# "Release" is a successful Production deployment — Vercel reports those back to
+# GitHub as deployment statuses. The range is everything since the last release
+# this workflow filed, remembered by the `notion-released` tag.
+#
+# Setup (once): create a Notion internal integration, share the "Tesoro Project
+# Kanban" database and the "Tesoro — Release Notes" page with it, and save its
+# secret as the repository secret NOTION_TOKEN. Without the secret the job
+# skips cleanly.
+
+name: Notion release notes
+
+on:
+  deployment_status:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: notion-release
+  cancel-in-progress: false
+
+jobs:
+  file-release:
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       github.event.deployment.environment == 'Production')
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_SHA: ${{ github.event.deployment.sha || github.sha }}
+      # Secrets cannot be read in `if:`, so whether one exists is passed as env.
+      HAS_NOTION_TOKEN: ${{ secrets.NOTION_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Collect commits since the last filed release
+        run: |
+          if git rev-parse -q --verify refs/tags/notion-released >/dev/null; then
+            RANGE="notion-released..$RELEASE_SHA"
+          else
+            # First run: just the release commit, rather than the whole history.
+            RANGE="-1 $RELEASE_SHA"
+          fi
+          git log $RANGE --format='%H%x1f%s%x1f%b%x1f%cI%x1e' > commits.txt
+          echo "Commits in range:"; git log $RANGE --oneline
+
+      - name: File in Notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          COMMITS_FILE: commits.txt
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: node scripts/notion-release.mjs
+
+      - name: Remember this release
+        if: env.HAS_NOTION_TOKEN == 'true'
+        run: |
+          git tag -f notion-released "$RELEASE_SHA"
+          git push -f origin refs/tags/notion-released

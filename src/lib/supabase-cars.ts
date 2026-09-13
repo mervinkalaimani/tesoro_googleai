@@ -4,6 +4,7 @@ import { buildCarName } from "@/lib/car-name";
 import { getSupabaseTableName } from "@/lib/supabase-config";
 import { parseCurrency } from "@/lib/format";
 import { monthEtaToDate, toDateInputValue } from "@/lib/date-utils";
+import { normaliseRarity, rarityOf } from "@/lib/rarity";
 
 export type TesoroRawRow = {
   SNO?: number | null;
@@ -41,6 +42,11 @@ export type TesoroRawRow = {
   "Order ID"?: string | null;
   Balance?: number | null;
   Chase?: boolean | null;
+  Rarity?: string | null;
+  "Car Condition"?: string | null;
+  "Card Condition"?: string | null;
+  "Car Rating"?: number | null;
+  "Card Rating"?: number | null;
   Favourite?: boolean | null;
   Official?: boolean | null;
   Open?: boolean | null;
@@ -56,6 +62,12 @@ export type TesoroRawRow = {
  * Postgres — it is a parse error (22P02) that rejects the whole upsert. Any car
  * with no year recorded silently failed to save because of this.
  */
+/** A whole number of stars, 0–5. Anything else is 0: not rated. */
+function clampRating(value: unknown): number {
+  const n = Math.round(Number(value));
+  return Number.isFinite(n) ? Math.min(5, Math.max(0, n)) : 0;
+}
+
 function nullIfBlank(value: string | undefined): string | null {
   const v = (value ?? "").trim();
   return v === "" ? null : v;
@@ -98,7 +110,12 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
     "Shipping ID": car.shippingId || "",
     "Order ID": car.orderId || "",
     Balance: Number(car.balance) || 0,
-    Chase: Boolean(car.chase),
+    Chase: rarityOf(car) !== "Normal",
+    Rarity: rarityOf(car),
+    "Car Condition": car.carCondition || "",
+    "Card Condition": car.cardCondition || "",
+    "Car Rating": clampRating(car.carRating),
+    "Card Rating": clampRating(car.cardRating),
     Favourite: Boolean(car.favourite),
     Official: Boolean(car.official),
     Open: Boolean(car.open),
@@ -207,7 +224,12 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
     deliveryPartner: String(row["Delivery Partner"] || "").trim() || undefined,
     trackingId: String(row["Tracking ID"] || "").trim() || undefined,
     balance,
-    chase: Boolean(row.Chase),
+    chase: Boolean(row.Chase) || (normaliseRarity(row.Rarity) ?? "Normal") !== "Normal",
+    rarity: normaliseRarity(row.Rarity) ?? (row.Chase ? "Chase" : "Normal"),
+    carCondition: String(row["Car Condition"] || "").trim(),
+    cardCondition: String(row["Card Condition"] || "").trim(),
+    carRating: clampRating(row["Car Rating"]),
+    cardRating: clampRating(row["Card Rating"]),
     favourite: Boolean(row.Favourite),
     official: Boolean(row.Official),
     open: Boolean(row.Open),
@@ -225,6 +247,11 @@ const OPTIONAL_COLUMNS = [
   "Delivery Partner",
   "Tracking ID",
   "Order ID",
+  "Rarity",
+  "Car Condition",
+  "Card Condition",
+  "Car Rating",
+  "Card Rating",
 ] as const satisfies readonly (keyof TesoroRawRow)[];
 
 function isMissingColumnError(message: string): boolean {

@@ -22,7 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 phone reserves for its own home indicator. The bar is glass, so
                 it has to be scrolled *past* rather than merely avoided — the
                 padding is what lets the final card clear it. */}
-            <main className="flex-1 pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0">
+            <main className="flex-1 pb-[calc(6.75rem+env(safe-area-inset-bottom))] md:pb-0">
               {children}
             </main>
           </SidebarInset>

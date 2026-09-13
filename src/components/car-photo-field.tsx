@@ -1,21 +1,33 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, ImageIcon, Images, Link2, Loader2, Trash2, Upload } from "lucide-react";
+import {
+  Check,
+  ImageIcon,
+  ImagePlus,
+  Link2,
+  Loader2,
+  Sparkles,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ACCEPT_ATTR, deleteCarPhoto, uploadCarPhoto } from "@/lib/car-photos";
+import type { CarImageCandidate } from "@/lib/car-image-search";
+import { cn } from "@/lib/utils";
 
 /**
- * The photograph of a car: take one, pick one, drop one in, or paste a link.
+ * The photograph of a car: one found for you, one you take or pick, or a link.
  *
  * Desktop and touch get different affordances because the gestures are
- * different — there is no dragging a file onto a phone, and no camera to open
- * on most desktops. The frame itself is the drop target and the button, so on a
- * desktop there is nothing to find: the picture is where you click.
+ * different — there is no dragging a file onto a phone. On a phone it is one
+ * button: the operating system's own sheet already offers camera, photo library
+ * and files, and three buttons that each opened that same sheet were two too
+ * many.
  */
 
-/** Coarse pointer means a phone or tablet: offer the camera, not a drop zone. */
+/** Coarse pointer means a phone or tablet. */
 function useTouchDevice(): boolean {
   const [touch, setTouch] = useState(false);
   useEffect(() => {
@@ -34,23 +46,28 @@ export function CarPhotoField({
   value,
   onChange,
   className = "",
+  suggestions,
+  layout = "stacked",
 }: {
   value: string;
   onChange: (url: string) => void;
   className?: string;
+  /** Photos found from the car's details, offered under the frame. */
+  suggestions?: { candidates: CarImageCandidate[]; loading: boolean };
+  /**
+   * "split" puts a smaller frame on the left and the found photos in the space
+   * to its right, from lg up. Below lg it is the same stack as "stacked".
+   */
+  layout?: "stacked" | "split";
 }) {
+  const split = layout === "split";
   const touch = useTouchDevice();
   const [busy, setBusy] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const [broken, setBroken] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [link, setLink] = useState("");
-
-  // Three inputs rather than one: the OS picker they raise is different, and on
-  // a phone that difference is the whole point of the three buttons.
   const fileRef = useRef<HTMLInputElement>(null);
-  const cameraRef = useRef<HTMLInputElement>(null);
-  const galleryRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setBroken(false);
@@ -97,14 +114,21 @@ export function CarPhotoField({
     setLinkOpen(false);
   };
 
-  const hidden = "sr-only";
+  const found = suggestions?.candidates ?? [];
+  const chosen = found.find((c) => c.url === value);
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      {/* THE FRAME
-          object-cover, and the frame has a fixed aspect ratio — the picture
-          fills it edge to edge and the overflow is cropped, so no photograph
-          ever sits in a letterbox of dead space whatever shape it came in. */}
+    <div
+      className={cn(
+        split
+          ? // Frame, buttons and link stack in the left column; the suggestions
+            // take row 1 of the right column and span down beside them.
+            "grid gap-2 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-x-5"
+          : "space-y-2",
+        className,
+      )}
+    >
+      {/* THE FRAME */}
       <div
         onDragOver={(e) => {
           if (touch) return;
@@ -119,12 +143,23 @@ export function CarPhotoField({
       >
         {value && !broken ? (
           <>
+            {/* A card is portrait and a car is landscape: a found card is shown
+                whole rather than cropped to its middle third. */}
             <img
               src={value}
               alt="Car photo"
-              className="absolute inset-0 size-full object-cover"
+              referrerPolicy="no-referrer"
+              className={cn(
+                "absolute inset-0 size-full",
+                chosen?.kind === "card" ? "object-contain" : "object-cover",
+              )}
               onError={() => setBroken(true)}
             />
+            {chosen && (
+              <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+                {chosen.kind === "card" ? "Card" : "Photo"} · {chosen.source}
+              </span>
+            )}
             <button
               type="button"
               onClick={remove}
@@ -138,10 +173,7 @@ export function CarPhotoField({
         ) : (
           <button
             type="button"
-            // On a desktop the frame is the button. On a phone it is not: the
-            // three buttons below say which picker they open, and a frame that
-            // silently picks one of them for you is a coin toss.
-            onClick={() => (touch ? galleryRef.current?.click() : fileRef.current?.click())}
+            onClick={() => fileRef.current?.click()}
             className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
           >
             {busy ? (
@@ -171,45 +203,91 @@ export function CarPhotoField({
         )}
       </div>
 
+      {/* FOUND ONLINE */}
+      {suggestions && (suggestions.loading || found.length > 0) && (
+        <div
+          className={cn(
+            "space-y-1.5",
+            split && "min-w-0 lg:col-start-2 lg:row-span-4 lg:row-start-1",
+          )}
+        >
+          <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            {suggestions.loading ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : (
+              <Sparkles className="size-3 text-primary" />
+            )}
+            {suggestions.loading ? "Looking for this car…" : "Found from the details you typed"}
+          </p>
+          {found.length > 0 && (
+            // w-0 min-w-full: the row scrolls inside whatever width it is
+            // given, instead of reporting its full length upwards — the dialog
+            // is a grid, and it widened to fit a dozen thumbnails.
+            <div
+              className={cn(
+                "flex w-0 min-w-full snap-x gap-2 overflow-x-auto pb-1",
+                // Beside the frame there is room to lay them all out.
+                split && "lg:w-auto lg:flex-wrap lg:overflow-visible",
+              )}
+            >
+              {found.map((c) => {
+                const active = c.url === value;
+                return (
+                  <button
+                    key={c.url}
+                    type="button"
+                    onClick={() => onChange(c.url)}
+                    title={`${c.title} — ${c.source}`}
+                    aria-label={`Use ${c.kind === "card" ? "card" : "photo"}: ${c.title}`}
+                    aria-pressed={active}
+                    className={cn(
+                      "relative h-20 w-16 shrink-0 snap-start overflow-hidden rounded-md border bg-muted/40 transition",
+                      split && "lg:h-28 lg:w-[5.25rem]",
+                      active
+                        ? "border-primary ring-2 ring-primary"
+                        : "border-border hover:border-primary/60",
+                    )}
+                  >
+                    <img
+                      src={c.thumb}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="size-full object-contain"
+                    />
+                    {c.kind === "card" && (
+                      <span className="absolute inset-x-0 bottom-0 bg-black/60 text-center text-[9px] font-medium text-white">
+                        Card
+                      </span>
+                    )}
+                    {active && (
+                      <span className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
+                        <Check className="size-3" />
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* THE WAYS IN */}
-      <div className="flex flex-wrap gap-1.5">
-        {touch ? (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1.5"
-              disabled={busy}
-              onClick={() => cameraRef.current?.click()}
-            >
-              <Camera className="size-3.5" />
-              Camera
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1.5"
-              disabled={busy}
-              onClick={() => galleryRef.current?.click()}
-            >
-              <Images className="size-3.5" />
-              Gallery
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="flex-1 gap-1.5"
-              disabled={busy}
-              onClick={() => fileRef.current?.click()}
-            >
-              <Upload className="size-3.5" />
-              Files
-            </Button>
-          </>
-        ) : (
+      {touch ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full gap-1.5"
+          disabled={busy}
+          onClick={() => fileRef.current?.click()}
+        >
+          <ImagePlus className="size-4" />
+          {value ? "Replace image" : "Add image"}
+        </Button>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
           <Button
             type="button"
             variant="outline"
@@ -221,25 +299,24 @@ export function CarPhotoField({
             <Upload className="size-3.5" />
             {value ? "Replace" : "Choose a file"}
           </Button>
-        )}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+            disabled={busy}
+            onClick={() => {
+              setLink(value && !/\/storage\/v1\/object\/public\//.test(value) ? value : "");
+              setLinkOpen((v) => !v);
+            }}
+          >
+            <Link2 className="size-3.5" />
+            Link
+          </Button>
+        </div>
+      )}
 
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="gap-1.5"
-          disabled={busy}
-          onClick={() => {
-            setLink(value && !/\/storage\/v1\/object\/public\//.test(value) ? value : "");
-            setLinkOpen((v) => !v);
-          }}
-        >
-          <Link2 className="size-3.5" />
-          Link
-        </Button>
-      </div>
-
-      {linkOpen && (
+      {linkOpen && !touch && (
         <div className="flex gap-1.5">
           <Input
             autoFocus
@@ -262,34 +339,15 @@ export function CarPhotoField({
         </div>
       )}
 
-      {/* `capture` is what raises the camera rather than the gallery; without it
-          both buttons would open the same sheet. */}
-      <input
-        ref={cameraRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className={hidden}
-        onChange={(e) => {
-          void take(e.target.files?.[0]);
-          e.target.value = "";
-        }}
-      />
-      <input
-        ref={galleryRef}
-        type="file"
-        accept="image/*"
-        className={hidden}
-        onChange={(e) => {
-          void take(e.target.files?.[0]);
-          e.target.value = "";
-        }}
-      />
+      {/* One input. On a phone, image/* with no `capture` is what makes the
+          operating system offer camera, library and files in a single sheet;
+          the extension list the desktop picker uses would narrow Android to a
+          file browser. */}
       <input
         ref={fileRef}
         type="file"
-        accept={ACCEPT_ATTR}
-        className={hidden}
+        accept={touch ? "image/*" : ACCEPT_ATTR}
+        className="sr-only"
         onChange={(e) => {
           void take(e.target.files?.[0]);
           e.target.value = "";

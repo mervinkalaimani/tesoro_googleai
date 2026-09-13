@@ -14,6 +14,7 @@ import { allShippingIdFixes, resyncShippingIds, shippingInputsChanged } from "@/
 import { allOrderIdFixes, orderInputsChanged, resyncOrderIds } from "@/lib/order-id";
 import { assignCarIds } from "@/lib/car-id";
 import { sortCars } from "@/lib/status-order";
+import { canonicaliseSpellings } from "@/lib/canonical-spellings";
 import { useAuth } from "@/lib/auth-store";
 import { makeGuestCars } from "@/lib/guest-seed";
 import { toast } from "sonner";
@@ -119,6 +120,8 @@ export type ShippingBatchUpdates = {
   status?: string;
   /** Arrival date. Set directly rather than inferred from the expected date. */
   date?: string;
+  /** When the order was placed. Moves the Order ID with it, like any date edit. */
+  orderDate?: string;
   expectedDate?: string;
   transitInfo?: string;
   deliveryPartner?: string;
@@ -259,7 +262,8 @@ type Ctx = {
   addCar: (car: Diecast) => void;
   bulkAddCars: (cars: Diecast[]) => void;
   updateCar: (car: Diecast) => void;
-  bulkUpdateCars: (cars: Diecast[]) => void;
+  /** `label` names the change in the undo button ("marking 3 cars delayed"). */
+  bulkUpdateCars: (cars: Diecast[], label?: string) => void;
   updateCarsByShippingId: (
     shippingId: string,
     updates: ShippingBatchUpdates,
@@ -461,7 +465,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   }, [loadData]);
 
   const cars = useMemo<Diecast[]>(() => {
-    if (!hydrated) return sortCars(base);
+    // Spellings are merged here, once, so every page groups "KA Diecast" and
+    // "KA diecast" together without having to know that they might differ.
+    if (!hydrated) return canonicaliseSpellings(sortCars(base));
     const del = new Set(overlay.deleted);
     const addedIds = new Set(overlay.added.map((c) => c.id));
     const merged: Diecast[] = [];
@@ -477,7 +483,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     }
     // Sorted once here so every view — dashboard, collection, inventory,
     // orders — sees the same status-then-insertion order.
-    return sortCars([...overlay.added, ...merged]);
+    return canonicaliseSpellings(sortCars([...overlay.added, ...merged]));
   }, [base, overlay, hydrated]);
 
   const commit = useCallback(
@@ -671,14 +677,14 @@ export function CarsProvider({ children }: { children: ReactNode }) {
   );
 
   const bulkUpdateCars = useCallback(
-    (updatedCars: Diecast[]) => {
+    (updatedCars: Diecast[], label?: string) => {
       if (!updatedCars.length) return;
       const byId = new Map(cars.map((c) => [c.id, c]));
       const before = updatedCars.map((c) => byId.get(c.id)).filter((c): c is Diecast => Boolean(c));
 
       const written = withRenumbering(updatedCars, cars, before);
       const renumbered = written.filter((w) => !updatedCars.some((u) => u.id === w.id));
-      pushUndo(`editing ${before.length} car${before.length === 1 ? "" : "s"}`, [
+      pushUndo(label ?? `editing ${before.length} car${before.length === 1 ? "" : "s"}`, [
         ...before,
         ...renumbered.map((r) => byId.get(r.id)).filter((c): c is Diecast => Boolean(c)),
       ]);
@@ -726,6 +732,10 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         if (updates.date) {
           next.date = updates.date;
           next.month = deriveMonth(updates.date) || next.month;
+        }
+        if (updates.orderDate) {
+          next.orderDate = updates.orderDate;
+          next.orderMonth = deriveMonth(updates.orderDate) || next.orderMonth;
         }
         if (updates.expectedDate !== undefined && updates.expectedDate !== "") {
           next.expectedDate = updates.expectedDate;
