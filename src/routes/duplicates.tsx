@@ -12,6 +12,7 @@ import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
+import { KpiBand, KpiTile } from "@/components/kpi";
 import { ExportDialog } from "@/components/export-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { inrFull } from "@/lib/format";
@@ -60,35 +61,6 @@ const ATTRS = [
 type AttrKey = (typeof ATTRS)[number]["key"];
 
 const DEFAULT_ATTRS: AttrKey[] = ["make", "model", "variant", "year", "brand"];
-
-function StatCard({
-  label,
-  value,
-  sub,
-  icon,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  icon: React.ReactNode;
-  tone?: "default" | "emerald" | "sky";
-}) {
-  const valueTone =
-    tone === "emerald" ? "text-emerald-500" : tone === "sky" ? "text-sky-400" : "text-foreground";
-  return (
-    <div className="card-elevated p-4">
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <span className="text-muted-foreground">{icon}</span>
-      </div>
-      <div className={`text-display mt-1 text-2xl font-bold tabular-nums ${valueTone}`}>
-        {value}
-      </div>
-      <div className="mt-1 font-mono text-xs text-muted-foreground">{sub}</div>
-    </div>
-  );
-}
 
 function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Diecast) => void }) {
   const first = rows[0];
@@ -228,34 +200,38 @@ function DuplicatesPage() {
         subtitle="Surplus castings, what they cost, and what they are worth trading."
       />
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
+      <KpiBand>
+        <KpiTile
           label="Surplus castings"
-          value={`${surplusCount}`}
+          value={surplusCount.toLocaleString()}
           sub={`Across ${groups.length} unique model${groups.length === 1 ? "" : "s"}`}
           icon={<Copy className="size-4" />}
+          tone="amber"
         />
-        <StatCard
+        <KpiTile
           label="Tied-up capital"
           value={inrFull(tiedUp)}
           sub="Purchase cost of duplicates"
           icon={<IndianRupee className="size-4" />}
+          tone="primary"
         />
-        <StatCard
+        <KpiTile
           label="Liquidation value"
           value={inrFull(liquidation)}
           sub="Est. market liquidation"
           icon={<TrendingUp className="size-4" />}
           tone="emerald"
+          valueTone="emerald"
         />
-        <StatCard
+        <KpiTile
           label="Potential gain"
           value={`${gain >= 0 ? "+" : "-"}${inrFull(Math.abs(gain))}`}
           sub="Trade & liquidation delta"
           icon={<ArrowLeftRight className="size-4" />}
-          tone="sky"
+          tone={gain >= 0 ? "sky" : "rose"}
+          valueTone={gain >= 0 ? "sky" : "rose"}
         />
-      </div>
+      </KpiBand>
 
       <div className="card-elevated space-y-3 p-4">
         <PageToolbar

@@ -2207,11 +2207,6 @@ function CollectionSearch({
     >
       <span className="flex w-full min-w-0 items-center gap-1.5 text-sm font-medium">
         <span className="truncate">{car.name || `${car.make} ${car.model}`}</span>
-        {car.carNumber && (
-          <span className="shrink-0 rounded border border-border/60 bg-muted/60 px-1 py-0.5 text-[10px] font-mono text-muted-foreground">
-            #{car.carNumber}
-          </span>
-        )}
         <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
         {hint && (
           <span className="ml-auto shrink-0 text-[10px] font-normal text-muted-foreground">
@@ -2221,11 +2216,11 @@ function CollectionSearch({
       </span>
       <span className="w-full truncate text-[11px] text-muted-foreground">
         {[
-          car.carNumber ? `No. ${car.carNumber}` : null,
           car.brand,
           car.assortment,
           car.colour,
           car.series,
+          car.carNumber ? `#${car.carNumber}` : null,
         ]
           .filter(Boolean)
           .join(" · ")}

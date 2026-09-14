@@ -3,14 +3,12 @@ import { useMemo, useState } from "react";
 import {
   Boxes,
   CalendarDays,
+  ChevronRight,
   Copy,
-  Database,
   Eye,
   EyeOff,
   Home,
-  LogOut,
   Settings,
-  ShieldCheck,
   ShoppingBag,
   Star,
   Table,
@@ -20,37 +18,31 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useCars, useCarsSource } from "@/lib/cars-store";
+import { useCars } from "@/lib/cars-store";
 import { useAuth, fullName } from "@/lib/auth-store";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { inrFull } from "@/lib/format";
 
-/**
- * The bar along the bottom of a phone.
- *
- * Four destinations and a way to everything else, which is the iOS shape and
- * the right one here: the sidebar is reachable on a phone only by swiping in
- * from the edge, so the pages people actually use were two gestures away. These
- * four are the ones worth a permanent thumb's reach; the rest live behind Menu.
- *
- * Glass, in the current iOS sense: a floating pill rather than a bar welded to
- * the bottom edge, translucent enough that the list keeps scrolling visibly
- * underneath it, blurred and saturated so the colour below reads as tint rather
- * than as clutter, with a hairline that is light on top and dark underneath.
- */
-const TABS = [
+/** Default tabs when on Home, Habits, or general root screens. */
+const DEFAULT_TABS = [
   { title: "Home", url: "/", icon: Home },
-  { title: "Favourites", url: "/favourites", icon: Star },
-  { title: "Orders", url: "/orders", icon: Truck },
   { title: "Inventory", url: "/inventory", icon: Table },
+  { title: "Orders", url: "/orders", icon: Truck },
+  { title: "Habit", url: "/habits", icon: CalendarDays },
 ] as const;
 
-/** Pages behind Menu, in the order they are listed there. */
-const MENU_NAV = [
-  { title: "Collection", url: "/collection", icon: Boxes },
+/** Sub-tabs shown when navigating into Inventory. */
+const INVENTORY_TABS = [
+  { title: "Inventory", url: "/inventory", icon: Table },
+  { title: "Favourites", url: "/favourites", icon: Star },
+  { title: "Collections", url: "/collection", icon: Boxes },
+] as const;
+
+/** Sub-tabs shown when navigating into Orders. */
+const ORDERS_TABS = [
+  { title: "Orders", url: "/orders", icon: Truck },
   { title: "Pre-orders", url: "/preorders", icon: ShoppingBag },
-  { title: "Habits", url: "/habits", icon: CalendarDays },
   { title: "Duplicates", url: "/duplicates", icon: Copy },
 ] as const;
 
@@ -66,47 +58,33 @@ function isActive(pathname: string, url: string) {
   return url === "/" ? pathname === "/" : pathname.startsWith(url);
 }
 
-/** One row in the menu sheet. */
-function MenuLink({
-  to,
-  icon: Icon,
-  children,
-  onNavigate,
-  tone = "default",
-}: {
-  to: string;
-  icon: typeof Boxes;
-  children: React.ReactNode;
-  onNavigate: () => void;
-  tone?: "default" | "danger";
-}) {
-  return (
-    <Link
-      to={to}
-      onClick={onNavigate}
-      className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors ${
-        tone === "danger"
-          ? "text-rose-500 hover:bg-rose-500/10"
-          : "text-foreground hover:bg-muted/60"
-      }`}
-    >
-      <Icon className="size-4 shrink-0 text-muted-foreground" />
-      {children}
-    </Link>
-  );
-}
-
 export function MobileNav() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
-  const { profile, isAdmin, isOwner, isGuest, signOut } = useAuth();
+  const { profile, isAdmin, isOwner, isGuest } = useAuth();
   const { hideInvestment, setHideInvestment, query } = useApp();
-  const { source } = useCarsSource();
   const allCars = useCars();
   const [localReveal, setLocalReveal] = useState(false);
 
   const name = fullName(profile);
   const display = name || profile?.email_id || "Signed in";
+
+  // Dynamic navbar mode derived from the active route
+  const isInventoryMode =
+    pathname.startsWith("/inventory") ||
+    pathname.startsWith("/favourites") ||
+    pathname.startsWith("/collection");
+
+  const isOrdersMode =
+    pathname.startsWith("/orders") ||
+    pathname.startsWith("/preorders") ||
+    pathname.startsWith("/duplicates");
+
+  const navMode: "default" | "inventory" | "orders" = isInventoryMode
+    ? "inventory"
+    : isOrdersMode
+      ? "orders"
+      : "default";
 
   // ISO rows are wishlist entries, not cars owned — the same exclusion the
   // sidebar's totals make.
@@ -122,130 +100,231 @@ export function MobileNav() {
 
   const hidden = hideInvestment && !localReveal;
   const close = () => setMenuOpen(false);
-  const menuActive = MENU_NAV.some((m) => isActive(pathname, m.url));
 
   return (
     <>
-      {/* Spacing, and why it is these numbers.
-
-          Sides: 16px, plus the landscape notch inset where there is one.
-          Bottom: the home indicator's own safe area plus a little air, and
-          never less than 16px where there is no home line (Android, Safari with
-          its toolbar showing).
-          Corners: an iPhone's screen corner is ~55pt. A floating bar inset 16px
-          looks right when its corner is concentric with the screen's — 55 − 16
-          ≈ 39px — which at 68px tall is a full pill, and the tabs inside sit
-          concentric with the bar in turn. */}
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-40 md:hidden"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-40 md:hidden"
         style={{
-          paddingBottom: "max(calc(env(safe-area-inset-bottom) + 6px), 16px)",
-          paddingLeft: "max(env(safe-area-inset-left), 16px)",
-          paddingRight: "max(env(safe-area-inset-right), 16px)",
+          paddingBottom: "max(calc(env(safe-area-inset-bottom) + 2px), 8px)",
+          paddingLeft:
+            "max(env(safe-area-inset-left), max(calc(env(safe-area-inset-bottom) + 2px), 8px))",
+          paddingRight:
+            "max(env(safe-area-inset-right), max(calc(env(safe-area-inset-bottom) + 2px), 8px))",
         }}
       >
-        <div
-          className="
-            relative flex min-h-[68px] items-stretch gap-1 rounded-[2.5rem] p-2
-            border border-black/10 bg-background/70 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.45)]
-            backdrop-blur-2xl backdrop-saturate-150
-            dark:border-white/10 dark:bg-background/60
-            before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px
-            before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
-            dark:before:via-white/20
-          "
-        >
-          {TABS.map((t) => {
-            const active = isActive(pathname, t.url);
-            return (
-              <Link
-                key={t.url}
-                to={t.url}
-                aria-current={active ? "page" : undefined}
-                className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-2 transition-colors ${
-                  active ? "bg-primary/12 text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <t.icon className={`size-[22px] ${active ? "stroke-[2.4]" : ""}`} />
-                <span className="text-[11px] font-medium leading-none">{t.title}</span>
-              </Link>
-            );
-          })}
-
-          {/* The avatar is the icon. On a phone the account is the thing behind
-              "everything else", so the face is a better label for this than a
-              hamburger — and it is the only item here that is about you rather
-              than about the cars. */}
-          <button
-            type="button"
-            onClick={() => setMenuOpen(true)}
-            aria-label={`Menu — signed in as ${display}`}
-            aria-expanded={menuOpen}
-            className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-2 transition-colors ${
-              menuOpen || menuActive ? "bg-primary/12 text-primary" : "text-muted-foreground"
-            }`}
+        {navMode === "default" ? (
+          /* ===================================================================== */
+          /* 1. DEFAULT NAVBAR: Home, Inventory, Orders, Habit, Menu               */
+          /* ===================================================================== */
+          <div
+            className="
+              pointer-events-auto relative flex min-h-[62px] items-stretch gap-1 rounded-[2.5rem] p-1.5
+              border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
+              backdrop-blur-2xl backdrop-saturate-150
+              dark:border-white/10 dark:bg-background/70
+              before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px
+              before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
+              dark:before:via-white/20
+              transition-all duration-300 ease-out
+            "
           >
-            <Avatar className="size-[22px] border border-border">
-              {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-              <AvatarFallback className="bg-muted text-[9px] font-semibold">
-                {initialsOf(name, display)}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-[11px] font-medium leading-none">Menu</span>
-          </button>
-        </div>
+            {DEFAULT_TABS.map((t) => {
+              const active = isActive(pathname, t.url);
+              return (
+                <Link
+                  key={t.url}
+                  to={t.url}
+                  aria-current={active ? "page" : undefined}
+                  className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${
+                    active
+                      ? "bg-primary/12 font-semibold text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
+                  <span className="truncate text-[10px] font-medium leading-none">{t.title}</span>
+                </Link>
+              );
+            })}
+
+            {/* Menu button */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label={`Menu — signed in as ${display}`}
+              aria-expanded={menuOpen}
+              className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${
+                menuOpen
+                  ? "bg-primary/12 font-semibold text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Avatar className="size-5 border border-border">
+                {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
+                <AvatarFallback className="bg-muted text-[8px] font-semibold">
+                  {initialsOf(name, display)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[10px] font-medium leading-none">Menu</span>
+            </button>
+          </div>
+        ) : (
+          /* ===================================================================== */
+          /* 2. DYNAMIC NAVBAR: [ Home Circle ]  [ Sub-Section ]  [ Menu Circle ]   */
+          /* ===================================================================== */
+          <div className="flex w-full items-center gap-2 transition-all duration-300 ease-out">
+            {/* Separate Circle for Home */}
+            <Link
+              to="/"
+              aria-label="Home"
+              className="
+                pointer-events-auto relative flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full
+                border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
+                backdrop-blur-2xl backdrop-saturate-150
+                dark:border-white/10 dark:bg-background/70
+                text-muted-foreground transition-all duration-200 hover:text-foreground active:scale-95
+                before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:h-px
+                before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
+                dark:before:via-white/20
+              "
+            >
+              <Home className="size-5" />
+              <span className="text-[10px] font-medium leading-none">Home</span>
+            </Link>
+
+            {/* Middle Dynamic Section Pill */}
+            <div
+              className="
+                pointer-events-auto relative flex min-h-[58px] flex-1 min-w-0 items-stretch gap-1 rounded-[2.5rem] p-1.5
+                border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
+                backdrop-blur-2xl backdrop-saturate-150
+                dark:border-white/10 dark:bg-background/70
+                before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px
+                before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
+                dark:before:via-white/20
+                transition-all duration-300 ease-out
+              "
+            >
+              {(navMode === "inventory" ? INVENTORY_TABS : ORDERS_TABS).map((t) => {
+                const active = isActive(pathname, t.url);
+                return (
+                  <Link
+                    key={t.url}
+                    to={t.url}
+                    aria-current={active ? "page" : undefined}
+                    className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1 transition-colors ${
+                      active
+                        ? "bg-primary/12 font-semibold text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
+                    <span className="truncate text-[10px] font-medium leading-none">{t.title}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Separate Circle for Menu */}
+            <button
+              type="button"
+              onClick={() => setMenuOpen(true)}
+              aria-label={`Menu — signed in as ${display}`}
+              aria-expanded={menuOpen}
+              className={`
+                pointer-events-auto relative flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full
+                border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
+                backdrop-blur-2xl backdrop-saturate-150
+                dark:border-white/10 dark:bg-background/70
+                transition-all duration-200 active:scale-95
+                before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:h-px
+                before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
+                dark:before:via-white/20
+                ${menuOpen ? "bg-primary/12 text-primary" : "text-muted-foreground hover:text-foreground"}
+              `}
+            >
+              <Avatar className="size-5 border border-border">
+                {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
+                <AvatarFallback className="bg-muted text-[8px] font-semibold">
+                  {initialsOf(name, display)}
+                </AvatarFallback>
+              </Avatar>
+              <span className="text-[10px] font-medium leading-none">Menu</span>
+            </button>
+          </div>
+        )}
       </nav>
 
+      {/* ===================================================================== */}
+      {/* MENU SHEET: User details, Cars list, Cost details, Settings           */}
+      {/* ===================================================================== */}
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent
           side="bottom"
-          className="max-h-[88svh] overflow-y-auto rounded-t-[2.5rem] border-t border-border p-4 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))]"
+          className="max-h-[85svh] overflow-y-auto rounded-t-[2.5rem] border-t border-border p-4 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))]"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
 
-          {/* 1. Who you are, in a container of its own. */}
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-muted/40 p-3">
-            <Avatar className="size-11 border border-border">
+          {/* 1. User Details */}
+          <div className="flex items-center gap-3.5 rounded-2xl border border-border/80 bg-muted/40 p-3.5 shadow-xs">
+            <Avatar className="size-12 border border-border shadow-xs">
               {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
               <AvatarFallback className="bg-muted text-sm font-semibold">
                 {initialsOf(name, display)}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold">{display}</div>
-              {profile?.user_id && profile.user_id !== display && (
-                <div className="truncate text-xs text-muted-foreground">{profile.user_id}</div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="truncate text-sm font-semibold text-foreground">{display}</span>
+                {isOwner && (
+                  <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                    Owner
+                  </span>
+                )}
+                {!isOwner && isAdmin && (
+                  <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-medium text-sky-500">
+                    Admin
+                  </span>
+                )}
+                {isGuest && (
+                  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-500">
+                    Demo
+                  </span>
+                )}
+              </div>
+              {profile?.email_id && (
+                <div className="truncate text-xs text-muted-foreground">{profile.email_id}</div>
               )}
             </div>
           </div>
 
-          {/* 2. space — 3-6. the rest of the pages */}
-          <div className="mt-4 space-y-0.5">
-            {MENU_NAV.map((m) => (
-              <MenuLink key={m.url} to={m.url} icon={m.icon} onNavigate={close}>
-                {m.title}
-              </MenuLink>
-            ))}
-          </div>
-
-          {/* 7. space — 8. cars & investment, the pair that used to be readable
-              only with the sidebar open, which on a phone is never. */}
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl border border-border bg-muted/30 p-3">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Total cars
+          {/* 2. Cars list & Cost details */}
+          <div className="mt-3 grid grid-cols-2 gap-2.5">
+            <Link
+              to="/inventory"
+              onClick={close}
+              className="group block rounded-2xl border border-border/80 bg-card p-3.5 shadow-xs transition-colors hover:bg-muted/40 active:scale-[0.98]"
+            >
+              <div className="flex items-center justify-between">
+                <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Cars list
+                </div>
+                <Table className="size-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
               </div>
-              <div className="text-display mt-0.5 text-lg font-semibold tabular-nums">
+              <div className="text-display mt-1 text-xl font-bold tabular-nums text-foreground">
                 {stats.total.toLocaleString()}
               </div>
-            </div>
-            <div className="rounded-2xl border border-border bg-muted/30 p-3">
+              <div className="mt-0.5 text-[11px] text-muted-foreground">View diecast inventory</div>
+            </Link>
+
+            <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-xs">
               <div className="flex items-center justify-between gap-1">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  Investment
+                <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Cost details
                 </div>
                 <Button
                   variant="ghost"
@@ -255,66 +334,36 @@ export function MobileNav() {
                     if (hideInvestment) setLocalReveal((v) => !v);
                     else setHideInvestment(true);
                   }}
-                  aria-label={hidden ? "Show investment" : "Hide investment"}
+                  aria-label={hidden ? "Show cost details" : "Hide cost details"}
                 >
                   {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
                 </Button>
               </div>
-              <div className="text-display mt-0.5 truncate text-lg font-semibold tabular-nums">
+              <div className="text-display mt-1 truncate text-xl font-bold tabular-nums text-foreground">
                 {hidden ? "••••••" : inrFull(stats.spent)}
               </div>
+              <div className="mt-0.5 text-[11px] text-muted-foreground">Total spent on cars</div>
             </div>
           </div>
 
-          {/* 9. space — 10. database, the owner's only */}
-          {isOwner && (
-            <div className="mt-4">
-              <Link
-                to="/settings"
-                onClick={close}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-muted/60"
-              >
-                <Database className="size-4 shrink-0 text-primary" />
-                <span>Database</span>
-                <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {source === "supabase" ? "Supabase synced" : "Local"}
-                  <span
-                    className={`inline-block size-1.5 rounded-full ${
-                      source === "supabase" ? "bg-emerald-500" : "bg-primary/80"
-                    }`}
-                  />
-                </span>
-              </Link>
-            </div>
-          )}
-
-          {/* 11-16. the account, each behind its own rule */}
-          <div className="mt-2 border-t border-border pt-2">
-            <MenuLink to="/settings" icon={Settings} onNavigate={close}>
-              Settings
-            </MenuLink>
-          </div>
-
-          {isAdmin && (
-            <div className="mt-2 border-t border-border pt-2">
-              <MenuLink to="/admin" icon={ShieldCheck} onNavigate={close}>
-                Admin
-              </MenuLink>
-            </div>
-          )}
-
-          <div className="mt-2 border-t border-border pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                close();
-                void signOut();
-              }}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-rose-500 transition-colors hover:bg-rose-500/10"
+          {/* 3. Settings */}
+          <div className="mt-3 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <Link
+              to="/settings"
+              onClick={close}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/40 active:bg-muted/60"
             >
-              <LogOut className="size-4 shrink-0" />
-              {isGuest ? "Leave demo" : "Logout"}
-            </button>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                <Settings className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium text-foreground">Settings</div>
+                <div className="text-xs text-muted-foreground">
+                  Account, display, notifications &amp; admin controls
+                </div>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </Link>
           </div>
         </SheetContent>
       </Sheet>

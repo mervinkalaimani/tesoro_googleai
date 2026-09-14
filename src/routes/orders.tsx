@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Truck, Clock, IndianRupee, Plus, Pencil, Store, ArrowUpDown } from "lucide-react";
+import {
+  Truck,
+  Clock,
+  IndianRupee,
+  Plus,
+  Pencil,
+  Store,
+  ArrowUpDown,
+  ChevronDown,
+} from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -156,6 +165,8 @@ function ShipmentCard({
   onUpdateStatus: () => void;
   onOpenCar: (car: Diecast) => void;
 }) {
+  const [mobileCarsOpen, setMobileCarsOpen] = useState(false);
+
   return (
     <article className="card-elevated overflow-hidden">
       <header className="space-y-3 p-4">
@@ -190,10 +201,27 @@ function ShipmentCard({
       </header>
 
       <div className="border-t border-border px-4 py-3">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-          Shipment contents ({s.items.length} casting{s.items.length === 1 ? "" : "s"})
-        </div>
-        <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+        <button
+          type="button"
+          onClick={() => setMobileCarsOpen((v) => !v)}
+          className="flex w-full items-center justify-between text-left sm:cursor-default"
+          aria-expanded={mobileCarsOpen}
+        >
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+            Shipment contents ({s.items.length} casting{s.items.length === 1 ? "" : "s"})
+          </div>
+          <div className="flex items-center gap-1 text-xs font-medium text-primary sm:hidden">
+            <span>{mobileCarsOpen ? "Hide cars" : "View cars"}</span>
+            <ChevronDown
+              className={`size-3.5 transition-transform duration-200 ${
+                mobileCarsOpen ? "rotate-180" : ""
+              }`}
+            />
+          </div>
+        </button>
+        <div
+          className={`${mobileCarsOpen ? "block" : "hidden sm:grid"} mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3`}
+        >
           {s.items.map((c) => (
             <ContentsItem key={c.id} car={c} onOpen={() => onOpenCar(c)} />
           ))}

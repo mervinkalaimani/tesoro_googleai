@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
  * instead of leaving a tile-shaped hole at the bottom.
  */
 export function bentoSpan(i: number, total: number): string {
+  if (total === 4) return "col-span-3";
   const fullRows = Math.floor(total / 3) * 3;
   if (i < fullRows) return "col-span-2";
   const rest = total - fullRows;

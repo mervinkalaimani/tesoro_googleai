@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { LogOut, Settings, ShieldCheck } from "lucide-react";
+import { Settings } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -28,7 +28,7 @@ function initialsOf(name: string, fallback: string): string {
  * anyone looks for Settings, admin, and the way out.
  */
 export function UserMenu() {
-  const { profile, isAdmin, isGuest, signOut } = useAuth();
+  const { profile, isAdmin } = useAuth();
 
   const name = fullName(profile);
   const display = name || profile?.email_id || "Signed in";
@@ -69,25 +69,6 @@ export function UserMenu() {
             <Settings className="size-4" />
             Settings
           </Link>
-        </DropdownMenuItem>
-
-        {isAdmin && (
-          <DropdownMenuItem asChild>
-            <Link to="/admin" className="cursor-pointer gap-2">
-              <ShieldCheck className="size-4" />
-              Admin
-            </Link>
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          onSelect={() => void signOut()}
-          className="cursor-pointer gap-2 text-rose-500 focus:bg-rose-500/10 focus:text-rose-400"
-        >
-          <LogOut className="size-4" />
-          {isGuest ? "Leave demo" : "Logout"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
