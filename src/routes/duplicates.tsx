@@ -233,43 +233,61 @@ function DuplicatesPage() {
         />
       </KpiBand>
 
-      <div className="card-elevated space-y-3 p-4">
-        <PageToolbar
-          left={<span className="text-xs text-muted-foreground">Match on</span>}
-          right={
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setExportOpen(true)}
-                title="Export the duplicates"
-                aria-label="Export the duplicates"
-              >
-                <Download className="size-4" />
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="md:hidden"
-                onClick={() => setModifyOpen(true)}
-                title="Change what counts as a duplicate"
-                aria-label="Change what counts as a duplicate"
-              >
-                <SlidersHorizontal className="size-4" />
-              </Button>
-            </>
-          }
-        />
-        <div className="hidden md:block">{AttrGrid}</div>
+      <PageToolbar
+        sticky
+        left={
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">Match on:</span>
+            <span className="text-xs font-semibold text-foreground">
+              {active.length} attribute{active.length === 1 ? "" : "s"}
+            </span>
+            <span className="text-xs text-muted-foreground">·</span>
+            <span className="font-mono text-xs text-muted-foreground">
+              {groups.length} group{groups.length === 1 ? "" : "s"} identified
+            </span>
+          </div>
+        }
+        right={
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setExportOpen(true)}
+              title="Export the duplicates"
+              aria-label="Export the duplicates"
+              className="h-8 px-2.5"
+            >
+              <Download className="size-3.5" />
+              <span className="hidden sm:inline text-xs font-medium">Export</span>
+            </Button>
+            <Button
+              size="sm"
+              variant={modifyOpen ? "default" : "outline"}
+              onClick={() => setModifyOpen(true)}
+              title="Change what counts as a duplicate"
+              aria-label="Change what counts as a duplicate"
+              className="h-8 px-2.5 md:hidden"
+            >
+              <SlidersHorizontal className="size-3.5" />
+              <span className="text-xs font-medium">Criteria</span>
+            </Button>
+          </>
+        }
+      />
+
+      <div className="hidden card-elevated space-y-3 p-4 md:block">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Duplicate match attributes
+          </span>
+          <span className="font-mono text-xs text-muted-foreground">
+            {groups.length} group{groups.length === 1 ? "" : "s"} identified
+          </span>
+        </div>
+        <div>{AttrGrid}</div>
         {active.length === 0 && (
           <p className="text-xs text-destructive">Select at least one attribute to match on.</p>
         )}
-        {/* The count is the result of the checkboxes above, so it reads after
-            them rather than before. At the top it was a number that changed
-            for reasons you had not read yet. */}
-        <p className="border-t border-border pt-2.5 font-mono text-xs text-muted-foreground">
-          {groups.length} group{groups.length === 1 ? "" : "s"} identified
-        </p>
       </div>
 
       <div className="space-y-3">

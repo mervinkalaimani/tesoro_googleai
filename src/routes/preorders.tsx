@@ -1,6 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowUpDown, CircleCheck, Clock, IndianRupee, Plus, Store } from "lucide-react";
+import {
+  ArrowUpDown,
+  ChevronDown,
+  CircleCheck,
+  Clock,
+  IndianRupee,
+  Plus,
+  Store,
+} from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
@@ -45,7 +53,7 @@ export const Route = createFileRoute("/preorders")({
 /** Remaining balance for a pre-order row: car cost minus amount paid. */
 const balanceOf = (r: Diecast) => Math.max((r.spent || 0) - (r.paid || 0), 0);
 
-type SortMode = "balance" | "orderDate" | "seller" | "cost";
+type SortMode = "balance" | "expectedDate" | "orderDate" | "seller" | "cost";
 type Grouping = "car" | "order";
 
 function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
@@ -90,9 +98,8 @@ function PreOrderCard({
 
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
-      {/* NAME FIRST. The card ID used to take this line, so the first thing you
-          read on a card about a car was a database key. */}
-      <button type="button" onClick={onOpen} className="px-4 pb-1 pt-3 text-left">
+      {/* NAME FIRST */}
+      <button type="button" onClick={onOpen} className="px-4 pb-2 pt-3 text-left">
         <div className="flex items-start justify-between gap-3">
           <span className="min-w-0 truncate text-base font-bold tracking-tight hover:text-primary">
             {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
@@ -104,57 +111,82 @@ function PreOrderCard({
                 : "border-amber-500/40 bg-amber-500/10 text-amber-400"
             }`}
           >
-            {settled ? "Balance Paid" : "Pre-booked"}
+            {settled ? "Fully Paid" : "Pre-booked"}
           </span>
         </div>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
       </button>
 
-      <div className="mt-auto grid grid-cols-2 gap-2 border-t border-border px-4 py-3 sm:grid-cols-4">
-        {/* When it was ordered, in plain text — it is a fact, where the release
-            date beside it is the thing to watch. */}
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Ordered on
+      {/* 2-line detail structure:
+          Line 1: Ordered on (left), Expected by (right)
+          Line 2: Cost (spent) (left), Deposit (middle left-aligned), Balance (right-aligned).
+          When settled: hide deposit paid, balance due displays "Fully paid". */}
+      <div className="mt-auto space-y-2.5 border-t border-border px-4 py-3">
+        {/* Line 1: Ordered on (left) and Expected by (right) */}
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Ordered on
+            </div>
+            <div className="mt-0.5 text-xs font-semibold text-foreground">
+              {formatDayMonthYear(car.orderDate) || car.orderDate || "—"}
+            </div>
           </div>
-          <div className="mt-0.5 truncate text-sm font-semibold text-foreground">
-            {formatDayMonthYear(car.orderDate) || car.orderDate || "—"}
-          </div>
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Target release
-          </div>
-          {/* Truncated, because the fallback is a free-text note. It is meant
-              to hold a release month — "Mar 2027" — but rows carried over from
-              the sheet keep whole sentences in there ("Waiting for arrival to
-              Ankush"), and three wrapped lines under a one-line label made the
-              card twice as tall as its neighbour. */}
-          <div
-            className="mt-0.5 truncate text-sm font-semibold text-primary"
-            title={formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || undefined}
-          >
-            {formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || "—"}
-          </div>
-        </div>
-        <div className="text-right sm:text-left">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Deposit paid
-          </div>
-          <div className="mt-0.5 text-sm font-semibold tabular-nums">{inrFull(car.paid || 0)}</div>
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Balance due
-          </div>
-          <div
-            className={`mt-0.5 text-sm font-semibold tabular-nums ${
-              settled ? "text-emerald-500" : "text-amber-500"
-            }`}
-          >
-            {inrFull(due)}
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Expected by
+            </div>
+            <div
+              className="mt-0.5 truncate text-xs font-semibold text-primary"
+              title={formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || undefined}
+            >
+              {formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || "—"}
+            </div>
           </div>
         </div>
+
+        {/* Line 2: Cost (spent), Deposit, Balance */}
+        {settled ? (
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Cost</div>
+              <div className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">
+                {inrFull(car.spent || 0)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Balance due
+              </div>
+              <div className="mt-0.5 text-xs font-semibold text-emerald-500">Fully paid</div>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 items-center gap-2">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Cost</div>
+              <div className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">
+                {inrFull(car.spent || 0)}
+              </div>
+            </div>
+            <div className="text-left">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Deposit
+              </div>
+              <div className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">
+                {inrFull(car.paid || 0)}
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Balance
+              </div>
+              <div className="mt-0.5 text-xs font-semibold tabular-nums text-amber-500">
+                {inrFull(due)}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
@@ -188,11 +220,8 @@ type OrderGroup = {
 
 /**
  * One order, in the shape My Orders uses for a shipment: the ID as the heading,
- * the seller and date beneath it, the money on the right, then the cars.
- *
- * The two pages are showing the same kind of thing — a set of cars bought
- * together from one person — so they should look like it. Before this, an order
- * was a card on one page and a loose grid of cars on the other.
+ * the seller and date beneath it, the money on the right, then the cars closed
+ * in an accordion by default.
  */
 function OrderGroupCard({
   g,
@@ -205,6 +234,9 @@ function OrderGroupCard({
   onPay: (car: Diecast) => void;
   onUpdateStatus: (car: Diecast) => void;
 }) {
+  const [carsOpen, setCarsOpen] = useState(false);
+  const settled = g.due === 0;
+
   return (
     <article className="card-elevated overflow-hidden">
       <header className="flex flex-wrap items-start justify-between gap-3 p-4">
@@ -236,39 +268,79 @@ function OrderGroupCard({
             </div>
             <div
               className={`text-sm font-bold tabular-nums ${
-                g.due === 0 ? "text-emerald-500" : "text-amber-500"
+                settled ? "text-emerald-500" : "text-amber-500"
               }`}
             >
-              {inrFull(g.due)}
+              {settled ? "Fully paid" : inrFull(g.due)}
             </div>
           </div>
         </div>
       </header>
 
+      {/* Accordion toggle matching orders screen */}
       <div className="border-t border-border px-4 py-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        <button
+          type="button"
+          onClick={() => setCarsOpen((v) => !v)}
+          className="flex w-full items-center justify-between text-left"
+          aria-expanded={carsOpen}
+        >
+          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
             {g.items.length} casting{g.items.length === 1 ? "" : "s"} · {inrFull(g.value)} committed
           </div>
+          <div className="flex items-center gap-1 text-xs font-medium text-primary">
+            <span>{carsOpen ? "Hide cars" : "View cars"}</span>
+            <ChevronDown
+              className={`size-3.5 transition-transform duration-200 ${
+                carsOpen ? "rotate-180" : ""
+              }`}
+            />
+          </div>
+        </button>
+
+        {carsOpen && (
+          <div className="mt-3 grid gap-2 xl:grid-cols-2">
+            {g.items.map((c) => (
+              <PreOrderCard
+                key={c.id}
+                car={c}
+                showSeller={false}
+                onOpen={() => onOpenCar(c)}
+                onPay={() => onPay(c)}
+                onUpdateStatus={() => onUpdateStatus(c)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Footer: Export icon moved to the left near pay balance button */}
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
+        <div className="flex items-center gap-2">
           <ExportButton
             rows={g.items}
             name={`preorder-${g.orderId || g.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
             label={g.orderId ? `Pre-order ${g.orderId}` : `${g.seller} pre-order`}
+            iconOnly
+            className="size-8 p-0"
           />
+          {!settled && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const firstUnpaid = g.items.find((c) => balanceOf(c) > 0);
+                if (firstUnpaid) onPay(firstUnpaid);
+              }}
+              className="gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400 h-8 text-xs"
+            >
+              <IndianRupee className="size-3.5" />
+              Pay balance
+            </Button>
+          )}
+          {settled && <span className="text-xs font-medium text-emerald-500">Fully paid</span>}
         </div>
-        <div className="mt-2 grid gap-2 xl:grid-cols-2">
-          {g.items.map((c) => (
-            <PreOrderCard
-              key={c.id}
-              car={c}
-              showSeller={false}
-              onOpen={() => onOpenCar(c)}
-              onPay={() => onPay(c)}
-              onUpdateStatus={() => onUpdateStatus(c)}
-            />
-          ))}
-        </div>
-      </div>
+      </footer>
     </article>
   );
 }
@@ -295,6 +367,14 @@ function PreOrdersPage() {
     const t = (v: string) => parseDMY(v)?.getTime() ?? 0;
     return [...list].sort((a, b) => {
       switch (sort) {
+        case "expectedDate": {
+          const ta = t(a.expectedDate);
+          const tb = t(b.expectedDate);
+          if (!ta && !tb) return 0;
+          if (!ta) return 1;
+          if (!tb) return -1;
+          return ta - tb;
+        }
         case "orderDate":
           return t(b.orderDate) - t(a.orderDate);
         case "seller":
@@ -421,8 +501,10 @@ function PreOrdersPage() {
               icon={<ArrowUpDown className="size-3.5" />}
               label="Sort"
               neutral="balance"
+              iconOnlyOnMobile
               options={[
                 { value: "balance", label: "Balance" },
+                { value: "expectedDate", label: "Expected date" },
                 { value: "orderDate", label: "Order date" },
                 { value: "seller", label: "Seller" },
                 { value: "cost", label: "Cost" },

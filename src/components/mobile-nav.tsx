@@ -161,13 +161,29 @@ export function MobileNav() {
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Avatar className="size-5 border border-border">
-                {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-                <AvatarFallback className="bg-muted text-[8px] font-semibold">
-                  {initialsOf(name, display)}
-                </AvatarFallback>
-              </Avatar>
-              <span className="text-[10px] font-medium leading-none">Menu</span>
+              <div className="relative size-6 overflow-hidden rounded-full border border-border/80 shadow-xs">
+                <Avatar className="size-full rounded-full border-0">
+                  {profile?.avatar_url ? (
+                    <AvatarImage
+                      src={profile.avatar_url}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : null}
+                  <AvatarFallback className="size-full bg-primary/20 text-[9px] font-bold">
+                    {initialsOf(name, display)}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+              <span
+                className="text-[10px] font-bold leading-none select-none text-neutral-900 dark:text-neutral-100"
+                style={{
+                  WebkitTextStroke: "0.5px #ffffff",
+                  paintOrder: "stroke fill",
+                }}
+              >
+                Menu
+              </span>
             </button>
           </div>
         ) : (
@@ -227,31 +243,43 @@ export function MobileNav() {
               })}
             </div>
 
-            {/* Separate Circle for Menu */}
+            {/* Separate Circle for Menu — Avatar photo fills the circle with white-stroked Menu text */}
             <button
               type="button"
               onClick={() => setMenuOpen(true)}
               aria-label={`Menu — signed in as ${display}`}
               aria-expanded={menuOpen}
               className={`
-                pointer-events-auto relative flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full
-                border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
+                pointer-events-auto relative flex size-[58px] shrink-0 flex-col items-center justify-end overflow-hidden rounded-full
+                border border-black/15 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
                 backdrop-blur-2xl backdrop-saturate-150
-                dark:border-white/10 dark:bg-background/70
+                dark:border-white/20 dark:bg-background/70
                 transition-all duration-200 active:scale-95
-                before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:h-px
-                before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
-                dark:before:via-white/20
-                ${menuOpen ? "bg-primary/12 text-primary" : "text-muted-foreground hover:text-foreground"}
+                ${menuOpen ? "ring-2 ring-primary ring-offset-1" : ""}
               `}
             >
-              <Avatar className="size-5 border border-border">
-                {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-                <AvatarFallback className="bg-muted text-[8px] font-semibold">
+              <Avatar className="absolute inset-0 size-full rounded-full border-0">
+                {profile?.avatar_url ? (
+                  <AvatarImage src={profile.avatar_url} alt="" className="size-full object-cover" />
+                ) : null}
+                <AvatarFallback className="size-full bg-primary/20 text-xs font-bold text-foreground">
                   {initialsOf(name, display)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-[10px] font-medium leading-none">Menu</span>
+
+              {/* Bottom vignette so text remains crisp and readable over any avatar */}
+              <div className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+              {/* Menu text with white stroke */}
+              <span
+                className="relative z-10 pb-1 text-[10px] font-extrabold tracking-tight text-neutral-950 select-none drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
+                style={{
+                  WebkitTextStroke: "0.75px #ffffff",
+                  paintOrder: "stroke fill",
+                }}
+              >
+                Menu
+              </span>
             </button>
           </div>
         )}

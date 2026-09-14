@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cn } from "@/lib/utils";
 
 import {
   Select,
@@ -29,6 +30,7 @@ export function FilterSelect({
   /** The value that counts as "not filtering". Defaults to "all". */
   neutral = "all",
   className = "",
+  iconOnlyOnMobile = false,
 }: {
   value: string;
   onChange: (v: string) => void;
@@ -38,6 +40,7 @@ export function FilterSelect({
   label: string;
   neutral?: string;
   className?: string;
+  iconOnlyOnMobile?: boolean;
 }) {
   const isSet = value !== neutral;
   const current = options.find((o) => o.value === value);
@@ -47,16 +50,29 @@ export function FilterSelect({
       <SelectTrigger
         aria-label={label}
         title={current ? `${label}: ${current.label}` : label}
-        className={`h-8 gap-1.5 px-2 ${
+        className={cn(
+          "h-8 gap-1.5",
+          iconOnlyOnMobile
+            ? "w-8 justify-center px-0 [&>svg:last-child]:hidden sm:w-auto sm:px-2 sm:justify-between sm:[&>svg:last-child]:block"
+            : "w-auto px-2",
           isSet
-            ? "w-auto max-w-[11rem] border-primary/40 text-foreground"
-            : "w-auto text-muted-foreground"
-        } ${className}`}
+            ? cn(
+                "border-primary/40 text-foreground",
+                iconOnlyOnMobile ? "sm:max-w-[11rem]" : "max-w-[11rem]",
+              )
+            : "text-muted-foreground",
+          className,
+        )}
       >
         <span className="shrink-0">{icon}</span>
         {/* Radix needs SelectValue mounted to track the selection; it is only
             drawn once the filter is doing something. */}
-        <span className={isSet ? "min-w-0 truncate text-xs" : "sr-only"}>
+        <span
+          className={cn(
+            isSet ? "min-w-0 truncate text-xs" : "sr-only",
+            iconOnlyOnMobile && isSet && "hidden sm:inline",
+          )}
+        >
           <SelectValue />
         </span>
       </SelectTrigger>

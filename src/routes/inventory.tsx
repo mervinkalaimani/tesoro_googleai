@@ -453,6 +453,7 @@ function InventoryPage() {
               icon={<ArrowUpDown className="size-3.5" />}
               label="Sort cars"
               neutral="sno"
+              iconOnlyOnMobile
               options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
             />
             {/* Exactly the rows on screen, filtered and sorted as they are. */}

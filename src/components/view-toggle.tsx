@@ -1,4 +1,5 @@
 import { LayoutGrid, List, Grid3x3 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 /**
  * How a list of cars is laid out.
@@ -23,14 +24,20 @@ export const COMPACT_GRID_COLS =
 export function ViewToggle({
   value,
   onChange,
+  className = "",
 }: {
   value: ViewMode;
   onChange: (v: ViewMode) => void;
+  className?: string;
 }) {
   return (
-    // h-8, so it lines up with the small buttons and the sort dropdown it sits
-    // beside rather than standing 2px proud of them.
-    <div className="flex h-8 shrink-0 items-center rounded-md border border-border p-0.5">
+    // Same container styling as SegmentControl (rounded-md, border-border, bg-muted/40, p-0.5)
+    <div
+      className={cn(
+        "inline-flex h-8 shrink-0 items-center rounded-md border border-border bg-muted/40 p-0.5",
+        className,
+      )}
+    >
       {MODES.map((m) => {
         const Icon = m.icon;
         const active = value === m.value;
@@ -42,9 +49,12 @@ export function ViewToggle({
             aria-pressed={active}
             aria-label={m.label}
             title={m.label}
-            className={`grid size-7 place-items-center rounded transition-colors ${
-              active ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
+            className={cn(
+              "grid size-7 place-items-center rounded-[6px] transition-all",
+              active
+                ? "bg-background text-foreground shadow-sm font-medium"
+                : "text-muted-foreground hover:text-foreground",
+            )}
           >
             <Icon className="size-4" />
           </button>

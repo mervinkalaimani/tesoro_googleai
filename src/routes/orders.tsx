@@ -496,6 +496,7 @@ function OrdersPage() {
               icon={<ArrowUpDown className="size-3.5" />}
               label="Sort"
               neutral="status"
+              iconOnlyOnMobile
               options={[
                 { value: "status", label: "Status" },
                 { value: "seller", label: "Seller" },
