@@ -87,12 +87,12 @@ const EMPTY_FILTERS: Record<FilterKey, string> = {
 };
 
 type SortKey =
-  "sno" | "newest" | "oldest" | "valueDesc" | "valueAsc" | "costDesc" | "model" | "brand";
+  "newest" | "oldest" | "sno" | "valueDesc" | "valueAsc" | "costDesc" | "model" | "brand";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: "newest", label: "New to old" },
+  { value: "oldest", label: "Old to new" },
   { value: "sno", label: "Serial no" },
-  { value: "newest", label: "Newest added" },
-  { value: "oldest", label: "Oldest added" },
   { value: "valueDesc", label: "Highest value" },
   { value: "valueAsc", label: "Lowest value" },
   { value: "costDesc", label: "Highest cost" },
@@ -230,13 +230,13 @@ function InventoryPage() {
   const [filterOpen, setFilterOpen] = useState(false);
   const search = Route.useSearch();
   // Seeded from ?status= so a KPI click lands on a pre-filtered table; the
-  // chips remain free to change it afterwards.
-  const [status, setStatus] = useState(search.status ?? "all");
+  // chips remain free to change it afterwards. Defaults to "Available".
+  const [status, setStatus] = useState(search.status ?? "Available");
 
   useEffect(() => {
     if (search.status) setStatus(search.status);
   }, [search.status]);
-  const [sort, setSort] = useState<SortKey>("sno");
+  const [sort, setSort] = useState<SortKey>("newest");
   const [view, setView] = useState<ViewMode>("table");
   const [chaseOnly, setChaseOnly] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
@@ -297,7 +297,9 @@ function InventoryPage() {
 
   const rows = useMemo(() => {
     let out = applyFilters(searched, filters);
-    if (status !== "all") out = out.filter((r) => r.status === status);
+    if (status !== "all") {
+      out = out.filter((r) => (r.status || "").toLowerCase() === status.toLowerCase());
+    }
     if (chaseOnly) out = out.filter((r) => r.chase);
     if (favOnly) out = out.filter((r) => r.favourite);
     // Default order is status group, then SNO within the group — the same order
@@ -309,9 +311,17 @@ function InventoryPage() {
 
     switch (sort) {
       case "newest":
-        return [...out].sort((a, b) => sno(b) - sno(a));
+        return [...out].sort((a, b) => {
+          const diff = sno(b) - sno(a);
+          if (diff !== 0) return diff;
+          return (b.id || "").localeCompare(a.id || "");
+        });
       case "oldest":
-        return [...out].sort((a, b) => sno(a) - sno(b));
+        return [...out].sort((a, b) => {
+          const diff = sno(a) - sno(b);
+          if (diff !== 0) return diff;
+          return (a.id || "").localeCompare(b.id || "");
+        });
       case "valueDesc":
         return [...out].sort((a, b) => value(b) - value(a));
       case "valueAsc":
@@ -422,8 +432,13 @@ function InventoryPage() {
         }
         right={
           <>
-            {sort !== "sno" && (
-              <Button size="sm" variant="ghost" className="shrink-0" onClick={() => setSort("sno")}>
+            {sort !== "newest" && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="shrink-0"
+                onClick={() => setSort("newest")}
+              >
                 Reset sort
               </Button>
             )}
@@ -452,7 +467,7 @@ function InventoryPage() {
               onChange={(v) => setSort(v as SortKey)}
               icon={<ArrowUpDown className="size-3.5" />}
               label="Sort cars"
-              neutral="sno"
+              neutral="newest"
               iconOnlyOnMobile
               options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
             />

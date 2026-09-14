@@ -94,11 +94,11 @@ export function Combobox({
             disabled={disabled}
             className={cn(
               // Matches <Input> so a row of mixed fields still lines up.
-              "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
+              "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
               className,
             )}
           >
-            <span className={cn("truncate text-left", !value && "text-muted-foreground")}>
+            <span className={cn("min-w-0 truncate text-left", !value && "text-muted-foreground")}>
               {value || placeholder}
             </span>
             {/* The chevron keeps its space under the × so the text never shifts. */}

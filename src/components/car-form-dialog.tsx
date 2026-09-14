@@ -781,9 +781,13 @@ export function CarFormDialog({
           is the wider of the two: it puts the read-only rail beside the fields
           rather than under them, which is the whole point of the layout. */}
       <DialogContent
-        className={`max-h-[90vh] overflow-y-auto sm:max-w-3xl ${
-          mode === "add" ? "lg:max-w-5xl" : "lg:max-w-6xl"
-        }`}
+        hideDragHandle
+        className={cn(
+          "overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y",
+          "w-full max-w-full sm:max-w-3xl",
+          mode === "add" ? "lg:max-w-5xl" : "lg:max-w-6xl",
+          "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
+        )}
       >
         <DialogHeader>
           <DialogTitle>{mode === "add" ? "Add a car" : "Edit car"}</DialogTitle>
@@ -1438,7 +1442,10 @@ export function CarFormDialog({
           </div>
         ) : (
           /* ===================== MODE: EDIT (FROZEN SAVED FIELDS, ENABLED NECESSARY FIELDS) ===================== */
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-4 w-full min-w-0 max-w-full overflow-x-hidden"
+          >
             {/* Three columns on a desktop: what you came here to change takes
                 two of them, the saved record sits in the third.
 
@@ -1448,8 +1455,8 @@ export function CarFormDialog({
                 reach them in — and now that they sit in their own labelled rail,
                 being locked is something you can see rather than be warned
                 about. */}
-            <div className="grid gap-4 lg:grid-cols-3">
-              <div className="space-y-3 lg:col-span-2">
+            <div className="grid gap-4 lg:grid-cols-3 w-full min-w-0 max-w-full">
+              <div className="space-y-3 lg:col-span-2 w-full min-w-0 max-w-full">
                 {/* SECTION 1: ACTIVE / EDITABLE LOGISTICS & STATUS */}
                 <section className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
@@ -1640,7 +1647,7 @@ export function CarFormDialog({
                   did. They are ordinary fields now; the name is rebuilt from
                   them on save, and changing the seller or the order date
                   renumbers the shipping ID the same as it would anywhere else. */}
-              <aside className="space-y-2 self-start rounded-lg border border-border/60 bg-muted/20 p-3">
+              <aside className="space-y-2 self-start rounded-lg border border-border/60 bg-muted/20 p-3 w-full min-w-0 max-w-full overflow-hidden">
                 <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5">
                   <h3 className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
                     <Car className="size-3.5" />
@@ -1663,7 +1670,7 @@ export function CarFormDialog({
                 {/* Label beside the field rather than above it: fifteen stacked
                     label-and-input pairs is twice the height of the column next
                     to it, and this is a rail. */}
-                <div className="grid grid-cols-1 gap-1.5 pt-1 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="grid grid-cols-1 gap-1.5 pt-1 sm:grid-cols-2 lg:grid-cols-1 w-full min-w-0 max-w-full">
                   <RailField label="Make">
                     <Combobox
                       clearable
@@ -1878,17 +1885,17 @@ export function CarFormDialog({
                 It was a full-width button on the car's detail view, one tap from
                 simply reading about a car; behind Edit it takes a deliberate
                 trip, and it is still the only red thing on screen. */}
-            <DialogFooter className="flex-row items-center justify-between gap-2 border-t border-border/60 pt-3 sm:justify-between">
+            <DialogFooter className="flex flex-row items-center justify-between gap-2 border-t border-border/60 pt-3 sm:justify-between w-full min-w-0">
               <Button
                 type="button"
                 variant="ghost"
                 onClick={() => setConfirmDelete(true)}
-                className="gap-1.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400"
+                className="gap-1.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 shrink-0"
               >
                 <Trash2 className="size-4" />
                 Delete
               </Button>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   type="button"
                   variant="ghost"
@@ -2318,8 +2325,12 @@ function ClearableInput({ className, ...props }: React.ComponentProps<typeof Inp
   };
 
   return (
-    <div className="relative">
-      <Input {...props} ref={ref} className={cn(showClear && "pr-8", className)} />
+    <div className="relative w-full min-w-0">
+      <Input
+        {...props}
+        ref={ref}
+        className={cn("min-w-0 w-full", showClear && "pr-8", className)}
+      />
       {showClear && (
         <button
           type="button"
@@ -2347,7 +2358,7 @@ function Field({
   info?: string;
 }) {
   return (
-    <div className={`space-y-1.5 ${className}`}>
+    <div className={cn("space-y-1.5 w-full min-w-0", className)}>
       <div className="flex items-center gap-1">
         <Label className="text-xs text-muted-foreground">{label}</Label>
         {info && <InfoTip label={label} text={info} />}
@@ -2389,9 +2400,9 @@ function InfoTip({ label, text }: { label: string; text: string }) {
  */
 function RailField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex items-center gap-2">
-      <span className="w-[5.5rem] shrink-0 text-[11px] text-muted-foreground">{label}</span>
-      <span className="min-w-0 flex-1">{children}</span>
+    <label className="flex items-center gap-2 w-full min-w-0 max-w-full">
+      <span className="w-20 shrink-0 text-[11px] text-muted-foreground truncate">{label}</span>
+      <span className="min-w-0 flex-1 overflow-hidden">{children}</span>
     </label>
   );
 }

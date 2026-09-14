@@ -120,6 +120,7 @@ export function CarPhotoField({
   return (
     <div
       className={cn(
+        "min-w-0 max-w-full overflow-hidden",
         split
           ? // Frame, buttons and link stack in the left column; the suggestions
             // take row 1 of the right column and span down beside them.
@@ -207,7 +208,7 @@ export function CarPhotoField({
       {suggestions && (suggestions.loading || found.length > 0) && (
         <div
           className={cn(
-            "space-y-1.5",
+            "space-y-1.5 min-w-0 max-w-full overflow-hidden",
             split && "min-w-0 lg:col-start-2 lg:row-span-4 lg:row-start-1",
           )}
         >

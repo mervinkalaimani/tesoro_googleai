@@ -58,20 +58,20 @@ function scrolledWithin(target: EventTarget | null, root: HTMLElement) {
  * Close button rather than an onOpenChange of its own, so every dialog closes by
  * the same route whether it was swiped, tapped or escaped.
  */
-function useSheetDismiss() {
+function useSheetDismiss(disabled = false) {
   const closeRef = React.useRef<HTMLButtonElement>(null);
   const [offset, setOffset] = React.useState(0);
   const startY = React.useRef<number | null>(null);
   const latest = React.useRef(0);
 
   const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (!isPhone() || e.touches.length !== 1) return;
+    if (disabled || !isPhone() || e.touches.length !== 1) return;
     if (scrolledWithin(e.target, e.currentTarget)) return;
     startY.current = e.touches[0].clientY;
   };
 
   const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (startY.current === null) return;
+    if (disabled || startY.current === null) return;
     const dy = e.touches[0].clientY - startY.current;
     // Upward movement means they are scrolling, not dismissing: hand the
     // gesture back rather than fighting it.
@@ -84,7 +84,7 @@ function useSheetDismiss() {
   };
 
   const onTouchEnd = () => {
-    if (startY.current === null) return;
+    if (disabled || startY.current === null) return;
     startY.current = null;
     if (latest.current > DISMISS_PX) closeRef.current?.click();
     latest.current = 0;
@@ -93,9 +93,12 @@ function useSheetDismiss() {
 
   return {
     closeRef,
-    dragging: offset > 0,
-    handlers: { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel: onTouchEnd },
-    style: offset > 0 ? { transform: `translateY(${offset}px)`, transition: "none" } : undefined,
+    dragging: !disabled && offset > 0,
+    handlers: disabled ? {} : { onTouchStart, onTouchMove, onTouchEnd, onTouchCancel: onTouchEnd },
+    style:
+      !disabled && offset > 0
+        ? { transform: `translateY(${offset}px)`, transition: "none" }
+        : undefined,
   };
 }
 
@@ -105,7 +108,7 @@ const DialogContent = React.forwardRef<
     hideDragHandle?: boolean;
   }
 >(({ className, children, hideDragHandle, ...props }, ref) => {
-  const sheet = useSheetDismiss();
+  const sheet = useSheetDismiss(Boolean(hideDragHandle));
 
   return (
     <DialogPortal>
@@ -115,7 +118,7 @@ const DialogContent = React.forwardRef<
         style={sheet.style}
         {...sheet.handlers}
         className={cn(
-          "fixed z-50 grid gap-4 border bg-background shadow-lg duration-200",
+          "fixed z-50 grid gap-4 border bg-background shadow-lg duration-200 overflow-x-hidden overscroll-contain touch-pan-y max-w-full",
           // Phone: a sheet that comes up from the bottom of the screen and can
           // be pushed back down. Every dialog behaves this way, so a modal is
           // one gesture to leave wherever you meet it.
