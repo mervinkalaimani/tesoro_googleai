@@ -30,10 +30,10 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 /** How far the sheet has to be pushed down before letting go dismisses it. */
-const DISMISS_PX = 110;
+const DISMISS_PX = 75;
 
-/** Phone width. Matches the `sm:` breakpoint the layout below switches at. */
-const isPhone = () => typeof window !== "undefined" && window.innerWidth < 640;
+/** Phone width. Matches the `md:` mobile breakpoint so all phones are covered. */
+const isPhone = () => typeof window !== "undefined" && window.innerWidth < 768;
 
 /**
  * Any scroller between the touch and the sheet that is not already at its top.
@@ -42,11 +42,12 @@ const isPhone = () => typeof window !== "undefined" && window.innerWidth < 640;
  */
 function scrolledWithin(target: EventTarget | null, root: HTMLElement) {
   let el = target as HTMLElement | null;
-  while (el) {
+  if (el?.closest?.("[data-drag-handle]")) return false;
+  while (el && el !== root) {
     if (el.scrollTop > 0) return true;
-    if (el === root) break;
     el = el.parentElement;
   }
+  if (root && root.scrollTop > 0) return true;
   return false;
 }
 
@@ -55,19 +56,27 @@ function scrolledWithin(target: EventTarget | null, root: HTMLElement) {
  *
  * The sheet follows the finger so it is obvious what the gesture is doing, and
  * springs back if it was not pushed far enough. Dismissal goes through a real
- * Close button rather than an onOpenChange of its own, so every dialog closes by
- * the same route whether it was swiped, tapped or escaped.
+ * Close button or callback, so every dialog closes cleanly whether it was
+ * swiped, tapped or escaped.
  */
-function useSheetDismiss(disabled = false) {
+function useSheetDismiss({
+  disabled = false,
+  onDismiss,
+}: {
+  disabled?: boolean;
+  onDismiss?: () => void;
+} = {}) {
   const closeRef = React.useRef<HTMLButtonElement>(null);
   const [offset, setOffset] = React.useState(0);
   const startY = React.useRef<number | null>(null);
+  const startTime = React.useRef<number>(0);
   const latest = React.useRef(0);
 
   const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
     if (disabled || !isPhone() || e.touches.length !== 1) return;
     if (scrolledWithin(e.target, e.currentTarget)) return;
     startY.current = e.touches[0].clientY;
+    startTime.current = Date.now();
   };
 
   const onTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
@@ -85,8 +94,17 @@ function useSheetDismiss(disabled = false) {
 
   const onTouchEnd = () => {
     if (disabled || startY.current === null) return;
+    const elapsed = Date.now() - startTime.current;
+    const velocity = latest.current / Math.max(1, elapsed);
+    const shouldDismiss = latest.current > DISMISS_PX || (velocity > 0.5 && latest.current > 30);
     startY.current = null;
-    if (latest.current > DISMISS_PX) closeRef.current?.click();
+    if (shouldDismiss) {
+      if (onDismiss) {
+        onDismiss();
+      } else {
+        closeRef.current?.click();
+      }
+    }
     latest.current = 0;
     setOffset(0);
   };
@@ -106,9 +124,11 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     hideDragHandle?: boolean;
+    disableSheetDismiss?: boolean;
+    onDismiss?: () => void;
   }
->(({ className, children, hideDragHandle, ...props }, ref) => {
-  const sheet = useSheetDismiss(Boolean(hideDragHandle));
+>(({ className, children, hideDragHandle, disableSheetDismiss, onDismiss, ...props }, ref) => {
+  const sheet = useSheetDismiss({ disabled: Boolean(disableSheetDismiss), onDismiss });
 
   return (
     <DialogPortal>
@@ -118,7 +138,7 @@ const DialogContent = React.forwardRef<
         style={sheet.style}
         {...sheet.handlers}
         className={cn(
-          "fixed z-50 grid gap-4 border bg-background shadow-lg duration-200 overflow-x-hidden overscroll-contain touch-pan-y max-w-full",
+          "fixed z-50 grid gap-4 border bg-background shadow-lg duration-200 overflow-x-hidden overscroll-contain max-w-full",
           // Phone: a sheet that comes up from the bottom of the screen and can
           // be pushed back down. Every dialog behaves this way, so a modal is
           // one gesture to leave wherever you meet it.
@@ -149,14 +169,10 @@ const DialogContent = React.forwardRef<
           />
         )}
         {children}
-        {/* Desktop only. On a phone the sheet is pushed down or the page behind
-            it tapped, and an X in the corner of a full-width sheet was a third
-            way out sitting where a thumb rests. It is still in the tree when
-            hidden — the swipe dismisses by clicking it, which works on a
-            display:none button and keeps every close on one path. */}
+        {/* Desktop only visible. Accessible & clickable on mobile via sr-only. */}
         <DialogPrimitive.Close
           ref={sheet.closeRef}
-          className="absolute right-4 top-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground max-sm:hidden"
+          className="sr-only sm:not-sr-only sm:absolute sm:right-4 sm:top-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>

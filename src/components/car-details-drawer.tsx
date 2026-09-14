@@ -109,7 +109,8 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
         <DialogContent
           id="car-details-dialog-content"
           hideDragHandle
-          className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:pb-0 overflow-y-auto xl:overflow-hidden overflow-x-hidden rounded-3xl border-border bg-background p-0 sm:p-0 gap-0 block text-foreground shadow-2xl sm:max-h-[92vh] sm:max-w-2xl md:max-w-5xl lg:max-w-6xl xl:max-w-[1240px]"
+          onDismiss={close}
+          className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:pb-0 max-sm:flex max-sm:flex-col overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 gap-0 block text-foreground shadow-2xl sm:max-h-[92vh] sm:max-w-2xl md:max-w-5xl lg:max-w-6xl xl:max-w-[1240px]"
         >
           {car && (
             <CarPopupContent
@@ -205,22 +206,19 @@ function CarPopupContent({
   const seriesCars = useMemo(() => {
     if (!seriesName) return [];
     const targetSeries = seriesName.toLowerCase();
-    return cars.filter(
-      (c) => c.id !== car.id && (c.series || "").trim().toLowerCase() === targetSeries,
-    );
-  }, [cars, car.id, seriesName]);
+    return cars.filter((c) => (c.series || "").trim().toLowerCase() === targetSeries);
+  }, [cars, seriesName]);
 
   const setCars = useMemo(() => {
     if (!setName) return [];
     const targetSet = setName.toLowerCase();
     return cars.filter((c) => {
-      if (c.id === car.id) return false;
       const cSet = ((c as unknown as { set?: string }).set || c.subSeries || "")
         .trim()
         .toLowerCase();
       return cSet === targetSet;
     });
-  }, [cars, car.id, setName]);
+  }, [cars, setName]);
 
   const spent = Math.round(car.spent ?? 0);
   const mrp = Math.round(car.mrp ?? 0);
@@ -240,7 +238,7 @@ function CarPopupContent({
   );
 
   return (
-    <div className="relative w-full">
+    <div className="relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Hidden Accessible Dialog Title & Description */}
       <DialogTitle className="sr-only">
         {car.name || `${car.make} ${car.model}`} Details
@@ -375,7 +373,11 @@ function CarPopupContent({
             </div>
 
             {seriesCars.length > 0 ? (
-              <WebRelatedGridShelf cars={seriesCars} onSelectCar={onSelectCar} />
+              <WebRelatedGridShelf
+                cars={seriesCars}
+                currentCarId={car.id}
+                onSelectCar={onSelectCar}
+              />
             ) : (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/80 bg-background/50 py-5 px-3 text-center">
                 <Car className="size-6 text-muted-foreground/40 mb-1.5" />
@@ -408,7 +410,7 @@ function CarPopupContent({
             </div>
 
             {setCars.length > 0 ? (
-              <WebRelatedGridShelf cars={setCars} onSelectCar={onSelectCar} />
+              <WebRelatedGridShelf cars={setCars} currentCarId={car.id} onSelectCar={onSelectCar} />
             ) : (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/80 bg-background/50 py-5 px-3 text-center">
                 <Car className="size-6 text-muted-foreground/40 mb-1.5" />
@@ -553,7 +555,7 @@ function CarPopupContent({
             </div>
 
             {seriesCars.length > 0 ? (
-              <TabRelatedShelf cars={seriesCars} onSelectCar={onSelectCar} />
+              <TabRelatedShelf cars={seriesCars} currentCarId={car.id} onSelectCar={onSelectCar} />
             ) : (
               <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/50 py-3.5 px-4 text-left">
                 <Car className="size-5 shrink-0 text-muted-foreground/40" />
@@ -585,7 +587,7 @@ function CarPopupContent({
             </div>
 
             {setCars.length > 0 ? (
-              <TabRelatedShelf cars={setCars} onSelectCar={onSelectCar} />
+              <TabRelatedShelf cars={setCars} currentCarId={car.id} onSelectCar={onSelectCar} />
             ) : (
               <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/50 py-3.5 px-4 text-left">
                 <Car className="size-5 shrink-0 text-muted-foreground/40" />
@@ -603,114 +605,135 @@ function CarPopupContent({
       {/* =====================================================================
           3. MOBILE SINGLE-COLUMN LAYOUT (< md screens)
           ===================================================================== */}
-      <div className="md:hidden relative w-full flex flex-col min-h-full">
-        {/* Top Car Image with sticky positioning */}
-        <div className="sticky top-0 z-0 h-[30vh] min-h-[220px] max-h-[360px] w-full overflow-hidden bg-muted/60">
-          <HeroCarImage car={car} />
+      <div className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background">
+        {/* Scrollable body: Image + Card + More from shelves */}
+        <div
+          id="car-details-mobile-scroll"
+          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col"
+        >
+          {/* Top Car Image with drag handle & action icons */}
+          <div
+            data-drag-handle="true"
+            className="relative shrink-0 z-0 h-[32vh] min-h-[220px] max-h-[360px] w-full overflow-hidden bg-muted/60 select-none"
+          >
+            <HeroCarImage car={car} />
 
-          {/* Top left action icons: Rarity Flame & Favourite Star */}
-          <div className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center gap-1.5">
-            <FlagButton
-              onClick={onToggleChase}
-              pressed={rarity !== "Normal"}
-              title={`${RARITY_LABEL[rarity]} — tap for ${RARITY_LABEL[nextRarity(rarity)]}`}
+            {/* Drag handle affordance pill at top center */}
+            <div
+              data-drag-handle="true"
+              className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center py-1 px-4 cursor-grab"
             >
-              <Flame
-                className={`size-4 ${rarity === "Normal" ? "fill-none text-white" : RARITY_FLAME[rarity]}`}
-              />
-            </FlagButton>
-            <FlagButton
-              onClick={onToggleFavourite}
-              pressed={Boolean(car.favourite)}
-              title={car.favourite ? "Remove from favourites" : "Add to favourites"}
-            >
-              <Star
-                className={`size-4 ${car.favourite ? FAVOURITE_COLOUR : "fill-none text-white"}`}
-              />
-            </FlagButton>
+              <div className="h-1.5 w-12 rounded-full bg-white/85 shadow-md backdrop-blur-md" />
+            </div>
+
+            {/* Top left action icons: Rarity Flame & Favourite Star */}
+            <div className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center gap-1.5">
+              <FlagButton
+                onClick={onToggleChase}
+                pressed={rarity !== "Normal"}
+                title={`${RARITY_LABEL[rarity]} — tap for ${RARITY_LABEL[nextRarity(rarity)]}`}
+              >
+                <Flame
+                  className={`size-4 ${rarity === "Normal" ? "fill-none text-white" : RARITY_FLAME[rarity]}`}
+                />
+              </FlagButton>
+              <FlagButton
+                onClick={onToggleFavourite}
+                pressed={Boolean(car.favourite)}
+                title={car.favourite ? "Remove from favourites" : "Add to favourites"}
+              >
+                <Star
+                  className={`size-4 ${car.favourite ? FAVOURITE_COLOUR : "fill-none text-white"}`}
+                />
+              </FlagButton>
+            </div>
+
+            {/* Top right actions: Close button */}
+            <div className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={onClose}
+                title="Close details"
+                aria-label="Close"
+                className="flex size-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
           </div>
 
-          {/* Top right actions: Close button */}
-          <div className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={onClose}
-              title="Close details"
-              aria-label="Close"
-              className="flex size-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
-            >
-              <X className="size-4" />
-            </button>
+          {/* Car Design Card (overlaps the car image on scroll) */}
+          <div className="relative z-10 -mt-6 rounded-t-3xl border-t border-border bg-background px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] flex-1 flex flex-col justify-between">
+            <div>
+              <CarDetailsBody
+                car={car}
+                spent={spent}
+                mrp={mrp}
+                delta={delta}
+                hasCondition={hasCondition}
+                hasArrived={hasArrived}
+                cleanTransitNotes={cleanTransitNotes}
+                trackable={trackable}
+                onOpenBatch={onOpenBatch}
+              />
+
+              {/* More from series (mobile shelf: all cars in single row) */}
+              {seriesCars.length > 0 && (
+                <div className="pt-2">
+                  <hr className="my-3.5 border-border" />
+                  <div className="mb-2.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                      More from series {seriesName ? `· ${seriesName}` : ""}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
+                      {seriesCars.length} {seriesCars.length === 1 ? "car" : "cars"}
+                    </span>
+                  </div>
+                  <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
+                    {seriesCars.map((relatedCar) => (
+                      <RelatedCarCard
+                        key={relatedCar.id}
+                        car={relatedCar}
+                        isCurrent={relatedCar.id === car.id}
+                        className="w-28 sm:w-32 shrink-0 snap-start"
+                        onSelect={() => onSelectCar?.(relatedCar)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* More from set (mobile shelf: all cars in single row) */}
+              {setCars.length > 0 && (
+                <div className="pt-2">
+                  <hr className="my-3.5 border-border" />
+                  <div className="mb-2.5 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
+                      More from set {setName ? `· ${setName}` : ""}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
+                      {setCars.length} {setCars.length === 1 ? "car" : "cars"}
+                    </span>
+                  </div>
+                  <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
+                    {setCars.map((relatedCar) => (
+                      <RelatedCarCard
+                        key={relatedCar.id}
+                        car={relatedCar}
+                        isCurrent={relatedCar.id === car.id}
+                        className="w-28 sm:w-32 shrink-0 snap-start"
+                        onSelect={() => onSelectCar?.(relatedCar)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Car Design Card (overlaps the car image on scroll) */}
-        <div className="relative z-10 -mt-7 rounded-t-3xl border-t border-border bg-background px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] flex-1">
-          <CarDetailsBody
-            car={car}
-            spent={spent}
-            mrp={mrp}
-            delta={delta}
-            hasCondition={hasCondition}
-            hasArrived={hasArrived}
-            cleanTransitNotes={cleanTransitNotes}
-            trackable={trackable}
-            onOpenBatch={onOpenBatch}
-          />
-
-          {/* More from series (mobile shelf: all cars in single row. Hidden if none) */}
-          {seriesCars.length > 0 && (
-            <div className="pt-2">
-              <hr className="my-3.5 border-border" />
-              <div className="mb-2.5 flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                  More from series {seriesName ? `· ${seriesName}` : ""}
-                </span>
-                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
-                  {seriesCars.length} {seriesCars.length === 1 ? "car" : "cars"}
-                </span>
-              </div>
-              <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
-                {seriesCars.map((relatedCar) => (
-                  <RelatedCarCard
-                    key={relatedCar.id}
-                    car={relatedCar}
-                    className="w-28 sm:w-32 shrink-0 snap-start"
-                    onSelect={() => onSelectCar?.(relatedCar)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* More from set (mobile shelf: all cars in single row. Hidden if none) */}
-          {setCars.length > 0 && (
-            <div className="pt-2">
-              <hr className="my-3.5 border-border" />
-              <div className="mb-2.5 flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                  More from set {setName ? `· ${setName}` : ""}
-                </span>
-                <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
-                  {setCars.length} {setCars.length === 1 ? "car" : "cars"}
-                </span>
-              </div>
-              <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
-                {setCars.map((relatedCar) => (
-                  <RelatedCarCard
-                    key={relatedCar.id}
-                    car={relatedCar}
-                    className="w-28 sm:w-32 shrink-0 snap-start"
-                    onSelect={() => onSelectCar?.(relatedCar)}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Sticky bottom bar for mobile section */}
-        <div className="sticky bottom-0 z-20 border-t border-border bg-background/95 backdrop-blur-md p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.12)] flex items-center gap-2.5">
+        {/* Pinned bottom bar: always docked at the bottom of the screen */}
+        <div className="shrink-0 z-20 border-t border-border bg-background/95 backdrop-blur-md p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)] flex items-center gap-2.5">
           <Button variant="outline" onClick={onEdit} className="flex-1 gap-1.5 h-10 cursor-pointer">
             <Pencil className="size-4" />
             Edit
@@ -870,9 +893,11 @@ function CarDetailsBody({
 /** 3x2 grid with horizontal scrolling for desktop right column */
 function WebRelatedGridShelf({
   cars,
+  currentCarId,
   onSelectCar,
 }: {
   cars: Diecast[];
+  currentCarId?: string;
   onSelectCar?: (car: Diecast) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -909,6 +934,7 @@ function WebRelatedGridShelf({
           <RelatedCarCard
             key={relatedCar.id}
             car={relatedCar}
+            isCurrent={relatedCar.id === currentCarId}
             className="w-full h-full snap-start"
             onSelect={() => onSelectCar?.(relatedCar)}
           />
@@ -943,9 +969,11 @@ function WebRelatedGridShelf({
 /** Single-row horizontal shelf for tablet layout at bottom */
 function TabRelatedShelf({
   cars,
+  currentCarId,
   onSelectCar,
 }: {
   cars: Diecast[];
+  currentCarId?: string;
   onSelectCar?: (car: Diecast) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -969,6 +997,7 @@ function TabRelatedShelf({
           <RelatedCarCard
             key={relatedCar.id}
             car={relatedCar}
+            isCurrent={relatedCar.id === currentCarId}
             className="w-36 sm:w-40 shrink-0 snap-start"
             onSelect={() => onSelectCar?.(relatedCar)}
           />
@@ -1005,10 +1034,12 @@ function RelatedCarCard({
   car,
   onSelect,
   className,
+  isCurrent = false,
 }: {
   car: Diecast;
   onSelect: () => void;
   className?: string;
+  isCurrent?: boolean;
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   const rarity = rarityOf(car);
@@ -1020,12 +1051,18 @@ function RelatedCarCard({
       onClick={onSelect}
       title={title}
       className={cn(
-        "group flex flex-col rounded-xl border border-border/80 bg-card p-2 text-left shadow-xs transition-all hover:border-primary/50 hover:shadow-md active:scale-95 cursor-pointer",
+        "group relative flex flex-col rounded-xl border border-border/80 bg-card p-2 text-left shadow-xs transition-all hover:border-primary/50 hover:shadow-md active:scale-95 cursor-pointer",
+        isCurrent && "border-primary/70 ring-1 ring-primary/40 bg-primary/5",
         className,
       )}
     >
       <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-muted/40">
         <CarThumb car={car} className="size-full object-cover" />
+        {isCurrent && (
+          <span className="absolute left-1 top-1 rounded bg-primary/90 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary-foreground shadow-xs">
+            Viewing
+          </span>
+        )}
         {(car.chase || car.favourite) && (
           <div className="pointer-events-none absolute right-1 top-1 flex items-center gap-1">
             {car.chase && (
