@@ -45,6 +45,8 @@ type Query = {
   brand: string;
   assortment: string;
   series: string;
+  subSeries: string;
+  carNumber: string;
 };
 
 function json(body: unknown, status = 200, cache = true) {
@@ -97,8 +99,11 @@ function scoreFile(file: string, q: Query): { score: number; kind: "card" | "car
   score += hits(q.colour, 4);
   score += hits(q.assortment, 3);
   score += hits(q.series, 3);
+  score += hits(q.subSeries, 3);
+  score += hits(q.carNumber, 3);
   score += hits(q.variant, 2);
-  score += hits(`${q.make} ${q.model}`, 1);
+  score += hits(q.brand, 2);
+  score += hits(`${q.make} ${q.model}`, 2);
   if (q.year && have.has(q.year.trim())) score += 2;
   // Camera-roll names ("IMG 0544", "DSC07510") say nothing about the car.
   if (/^(img|dsc|dscf|pxl|p\d{6,})\b/i.test(name) || /^[0-9a-f-]{20,}$/i.test(name)) score -= 3;
@@ -268,48 +273,75 @@ async function fromTrendsHobby(q: Query): Promise<CarImageCandidate[]> {
 /** Web search image suggestions (DuckDuckGo / Web images) */
 async function fromWebSearch(q: Query): Promise<CarImageCandidate[]> {
   try {
-    const brandTerm = q.brand || "";
-    const queryStr = [brandTerm, q.make, q.model, q.variant, q.colour, "1/64 diecast"]
-      .filter(Boolean)
-      .join(" ");
-    if (!queryStr.trim()) return [];
-
-    const r1 = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(queryStr)}`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        Accept: "text/html,application/xhtml+xml",
-      },
-      signal: AbortSignal.timeout(6000),
-    });
-    const t1 = await r1.text();
-    const vqdMatch = t1.match(/vqd=([0-9-]+)/) || t1.match(/vqd=["']([0-9-]+)["']/);
-    if (!vqdMatch) return [];
-
-    const r2 = await fetch(
-      `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(queryStr)}&vqd=${vqdMatch[1]}`,
-      {
+    const fetchDdg = async (qs: string) => {
+      const r1 = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(qs)}`, {
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          Accept: "application/json",
+          Accept: "text/html,application/xhtml+xml",
         },
         signal: AbortSignal.timeout(6000),
-      },
-    );
-    if (!r2.ok) return [];
-    const data = (await r2.json()) as {
-      results?: Array<{ title?: string; image?: string; thumbnail?: string }>;
+      });
+      const t1 = await r1.text();
+      const vqdMatch = t1.match(/vqd=([0-9-]+)/) || t1.match(/vqd=["']([0-9-]+)["']/);
+      if (!vqdMatch) return [];
+
+      const r2 = await fetch(
+        `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(qs)}&vqd=${vqdMatch[1]}`,
+        {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            Accept: "application/json",
+          },
+          signal: AbortSignal.timeout(6000),
+        },
+      );
+      if (!r2.ok) return [];
+      const data = (await r2.json()) as {
+        results?: Array<{ title?: string; image?: string; thumbnail?: string }>;
+      };
+      return data.results ?? [];
     };
-    return (data.results ?? []).slice(0, 10).flatMap((r) => {
+
+    // Primary detailed query using all requested fields
+    const primaryQuery = [
+      q.brand,
+      q.make,
+      q.model,
+      q.variant,
+      q.year,
+      q.assortment,
+      q.series,
+      q.subSeries,
+      q.carNumber,
+      "diecast",
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    // Secondary / broader query
+    const broaderQuery = [q.brand, q.make, q.model, q.variant, q.colour, "1/64 diecast"]
+      .filter(Boolean)
+      .join(" ");
+
+    const queryStr = primaryQuery || broaderQuery;
+    if (!queryStr.trim()) return [];
+
+    let rawResults = await fetchDdg(queryStr);
+    if (rawResults.length < 4 && broaderQuery && broaderQuery !== queryStr) {
+      const more = await fetchDdg(broaderQuery);
+      rawResults = [...rawResults, ...more];
+    }
+
+    return rawResults.slice(0, 16).flatMap((r) => {
       if (!r.image) return [];
+      const scored = scoreFile(r.title || "", q);
       return [
         {
           url: r.image,
           thumb: r.thumbnail || r.image,
-          title: r.title || `${q.brand} ${q.make} ${q.model}`,
-          source: "Google / Web Search",
-          kind: /card|box|blister|pack|package/i.test(r.title || "")
-            ? ("card" as const)
-            : ("car" as const),
+          title: r.title || `${q.brand} ${q.make} ${q.model}`.trim(),
+          source: q.brand ? `${q.brand} Web Search` : "Diecast Web Search",
+          kind: scored.kind,
         },
       ];
     });
@@ -330,99 +362,59 @@ async function handler({ request }: { request: Request }) {
     brand: get("brand"),
     assortment: get("assortment"),
     series: get("series"),
+    subSeries: get("subSeries") || get("sub_series"),
+    carNumber: get("carNumber") || get("car_number"),
   };
 
-  if (!q.model && !q.make) {
-    return json({ error: "Type at least a make or a model." }, 400, false);
+  if (!q.model && !q.make && !q.brand) {
+    return json({ error: "Type at least a brand, make or model." }, 400, false);
   }
-
-  const isHotWheelsOrMatchbox =
-    Boolean(q.brand) && (/hot\s*wheels|^hw$/i.test(q.brand) || /matchbox|^mbx$/i.test(q.brand));
-
-  const isMiniGT = Boolean(q.brand) && /mini\s*gt/i.test(q.brand);
-  const isTrendsHobby = Boolean(q.brand) && /trends\s*hobby/i.test(q.brand);
 
   const candidates: CarImageCandidate[] = [];
 
-  if (isMiniGT) {
+  // 1. Check brand wikis if applicable (Hot Wheels, Matchbox, Mini GT)
+  const wiki = q.brand ? WIKIS.find((w) => w.match.test(q.brand)) : null;
+  if (wiki) {
     try {
-      candidates.push(...(await fromWiki("minigt.fandom.com", "Mini GT Wiki", q)));
-    } catch {
-      /* wiki error ignored */
-    }
-    try {
-      candidates.push(...(await fromWebSearch(q)));
-    } catch {
-      /* search error ignored */
-    }
-  } else if (isTrendsHobby) {
-    try {
-      candidates.push(...(await fromTrendsHobby(q)));
-    } catch {
-      /* trends hobby error ignored */
-    }
-    try {
-      candidates.push(...(await fromWebSearch(q)));
-    } catch {
-      /* search error ignored */
-    }
-  } else if (isHotWheelsOrMatchbox) {
-    const wiki = WIKIS.find((w) => w.match.test(q.brand));
-    if (wiki) {
-      try {
-        candidates.push(...(await fromWiki(wiki.host, wiki.name, q)));
-      } catch {
-        /* wiki error ignored */
-      }
-    }
-  } else {
-    // For cars apart from hotwheels and matchbox:
-    // Try Mini GT Wiki if query mentions mini gt
-    if (/mini\s*gt/i.test(`${q.brand} ${q.make} ${q.model} ${q.variant}`)) {
-      try {
-        candidates.push(...(await fromWiki("minigt.fandom.com", "Mini GT Wiki", q)));
-      } catch {
-        /* ignore */
-      }
-    }
-    // Try Trends Hobby
-    try {
-      candidates.push(...(await fromTrendsHobby(q)));
+      candidates.push(...(await fromWiki(wiki.host, wiki.name, q)));
     } catch {
       /* ignore */
-    }
-    // Try Google / Web Search
-    try {
-      candidates.push(...(await fromWebSearch(q)));
-    } catch {
-      /* ignore */
-    }
-
-    const wiki = q.brand ? WIKIS.find((w) => w.match.test(q.brand)) : null;
-    if (wiki) {
-      try {
-        candidates.push(...(await fromWiki(wiki.host, wiki.name, q)));
-      } catch {
-        /* ignore */
-      }
     }
   }
 
-  // If still fewer than 3 candidates, supplement with Web Search and Wikipedia
-  if (candidates.length < 3) {
-    if (!isHotWheelsOrMatchbox) {
-      try {
-        candidates.push(...(await fromWebSearch(q)));
-      } catch {
-        /* ignore */
-      }
+  // 2. Mini GT Wiki if query mentions mini gt
+  if (!wiki && /mini\s*gt/i.test(`${q.brand} ${q.make} ${q.model} ${q.variant}`)) {
+    try {
+      candidates.push(...(await fromWiki("minigt.fandom.com", "Mini GT Wiki", q)));
+    } catch {
+      /* ignore */
     }
+  }
+
+  // 3. Check Trends Hobby if relevant
+  if (/trends\s*hobby/i.test(`${q.brand} ${q.assortment} ${q.series}`)) {
+    try {
+      candidates.push(...(await fromTrendsHobby(q)));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // 4. ALWAYS run Web Search for ALL cars (not just Hot Wheels and Matchbox)
+  try {
+    candidates.push(...(await fromWebSearch(q)));
+  } catch {
+    /* ignore */
+  }
+
+  // 5. Fallback to Wikipedia if we still have few candidates
+  if (candidates.length < 3) {
     try {
       candidates.push(...(await fromWikipedia(q)));
     } catch {
       /* ignore */
     }
-    // If no brand was typed at all, try Hot Wheels wiki
+    // If no brand was typed at all, check Hot Wheels wiki as fallback
     if (!q.brand && candidates.length < 3) {
       try {
         candidates.push(...(await fromWiki(WIKIS[0].host, WIKIS[0].name, q)));
@@ -433,8 +425,11 @@ async function handler({ request }: { request: Request }) {
   }
 
   const seen = new Set<string>();
-  const unique = candidates.filter((c) => (seen.has(c.url) ? false : (seen.add(c.url), true)));
-  return json({ candidates: unique.slice(0, 16) });
+  const ranked = candidates
+    .filter((c) => (seen.has(c.url) ? false : (seen.add(c.url), true)))
+    .sort((a, b) => scoreFile(b.title, q).score - scoreFile(a.title, q).score);
+
+  return json({ candidates: ranked.slice(0, 16) });
 }
 
 export const Route = createFileRoute("/api/car-images")({

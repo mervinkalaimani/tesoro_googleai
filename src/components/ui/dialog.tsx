@@ -101,8 +101,10 @@ function useSheetDismiss() {
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    hideDragHandle?: boolean;
+  }
+>(({ className, children, hideDragHandle, ...props }, ref) => {
   const sheet = useSheetDismiss();
 
   return (
@@ -137,10 +139,12 @@ const DialogContent = React.forwardRef<
       >
         {/* The affordance for the gesture: without it a sheet that can be
             pushed away looks exactly like one that cannot. */}
-        <div
-          aria-hidden
-          className="mx-auto -mt-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 sm:hidden"
-        />
+        {!hideDragHandle && (
+          <div
+            aria-hidden
+            className="mx-auto -mt-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 sm:hidden"
+          />
+        )}
         {children}
         {/* Desktop only. On a phone the sheet is pushed down or the page behind
             it tapped, and an X in the corner of a full-width sheet was a third

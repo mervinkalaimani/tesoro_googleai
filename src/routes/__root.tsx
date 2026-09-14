@@ -150,6 +150,24 @@ try {
   var a = JSON.parse(localStorage.getItem('dg.accentColor') || '"crimson"');
   if (['crimson','blue','emerald','violet','amber'].indexOf(a) !== -1) document.documentElement.dataset.accent = a;
 } catch (e) { document.documentElement.classList.add('dark'); }
+
+window.addEventListener('vite:preloadError', function () {
+  window.location.reload();
+});
+window.addEventListener('error', function (e) {
+  var msg = (e && (e.message || (e.error && e.error.message))) || '';
+  if (
+    msg.indexOf('Importing a module script failed') !== -1 ||
+    msg.indexOf('Failed to fetch dynamically imported module') !== -1
+  ) {
+    var key = 'vite_module_reload_ts';
+    var last = parseInt(sessionStorage.getItem(key) || '0', 10);
+    if (Date.now() - last > 4000) {
+      sessionStorage.setItem(key, String(Date.now()));
+      window.location.reload();
+    }
+  }
+});
 `;
 
 function RootShell({ children }: { children: ReactNode }) {

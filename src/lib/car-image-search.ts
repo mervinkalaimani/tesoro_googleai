@@ -14,6 +14,8 @@ export type CarImageLookup = {
   brand?: string;
   assortment?: string;
   series?: string;
+  subSeries?: string;
+  carNumber?: string;
 };
 
 const KEYS = [
@@ -25,6 +27,8 @@ const KEYS = [
   "brand",
   "assortment",
   "series",
+  "subSeries",
+  "carNumber",
 ] as const;
 
 /** One key per distinct car, ignoring case and stray spaces. */

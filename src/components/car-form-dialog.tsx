@@ -554,6 +554,8 @@ export function CarFormDialog({
       brand: form.brand,
       assortment: form.assortment,
       series: form.series,
+      subSeries: form.subSeries,
+      carNumber: form.carNumber,
     },
     open && (mode === "edit" || currentStep >= 2),
   );

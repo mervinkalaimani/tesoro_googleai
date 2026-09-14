@@ -1,3 +1,5 @@
+import { searchCarImages } from "./car-image-search";
+
 // Best-effort client-side car image lookup via Wikipedia REST summary.
 // Cached in localStorage; returns null when nothing usable is found.
 
@@ -69,6 +71,11 @@ export async function findCarImage(
         colour?: string;
         brand?: string;
         make?: string;
+        year?: string;
+        assortment?: string;
+        series?: string;
+        subSeries?: string;
+        carNumber?: string;
       }
     | string,
   brand: string,
@@ -87,23 +94,50 @@ export async function findCarImage(
   if (hit === NEG) return null;
   if (hit) return hit;
 
-  const queries = [
-    [mk, model, variant, colour, b].filter(Boolean).join(" "),
-    [mk, model, variant, b].filter(Boolean).join(" "),
-    [mk, model, variant].filter(Boolean).join(" "),
-    [mk, model].filter(Boolean).join(" "),
-    model,
-  ].filter(Boolean);
-
   let url: string | null = null;
-  for (const q of queries) {
-    url = await wikiSummary(q);
-    if (url) break;
+
+  // 1. First attempt rich diecast image search using all fields
+  if (typeof car === "object") {
+    try {
+      const candidates = await searchCarImages({
+        make: mk,
+        model,
+        variant,
+        year: car.year,
+        colour,
+        brand: b,
+        assortment: car.assortment,
+        series: car.series,
+        subSeries: car.subSeries,
+        carNumber: car.carNumber,
+      });
+      if (candidates && candidates.length > 0) {
+        url = candidates[0].thumb || candidates[0].url;
+      }
+    } catch {
+      /* ignore */
+    }
   }
+
+  // 2. Wikipedia fallback if needed
   if (!url) {
+    const queries = [
+      [mk, model, variant, colour, b].filter(Boolean).join(" "),
+      [mk, model, variant, b].filter(Boolean).join(" "),
+      [mk, model, variant].filter(Boolean).join(" "),
+      [mk, model].filter(Boolean).join(" "),
+      model,
+    ].filter(Boolean);
+
     for (const q of queries) {
-      url = await wikiSearch(q);
+      url = await wikiSummary(q);
       if (url) break;
+    }
+    if (!url) {
+      for (const q of queries) {
+        url = await wikiSearch(q);
+        if (url) break;
+      }
     }
   }
 
