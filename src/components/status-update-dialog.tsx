@@ -290,7 +290,6 @@ export function StatusUpdateDialog({
             <Detail label="Car number" value={car.carNumber} />
             <Detail label="Size" value={car.size} />
             <Detail label="MRP" value={car.mrp ? inrFull(car.mrp) : ""} />
-            <Detail label="Packaging" value={car.open ? "Loose" : "Carded"} />
             <Detail label="Official" value={car.official ? "Yes" : "No"} />
             <Detail label="Added" value={car.sno ? `#${car.sno}` : ""} />
           </dl>

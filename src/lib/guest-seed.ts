@@ -596,7 +596,6 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
       chase: rand() < 0.15,
       favourite: rand() < 0.25,
       official: true,
-      open: rand() < 0.35,
       imageUrl: "",
     } satisfies Diecast;
   });

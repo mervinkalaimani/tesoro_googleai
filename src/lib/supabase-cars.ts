@@ -118,7 +118,6 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
     "Card Rating": clampRating(car.cardRating),
     Favourite: Boolean(car.favourite),
     Official: Boolean(car.official),
-    Open: Boolean(car.open),
   };
   if (car.imageUrl) {
     row["Image URL"] = car.imageUrl;
@@ -232,7 +231,6 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
     cardRating: clampRating(row["Card Rating"]),
     favourite: Boolean(row.Favourite),
     official: Boolean(row.Official),
-    open: Boolean(row.Open),
     imageUrl,
   };
 }

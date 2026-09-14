@@ -33,6 +33,7 @@ const USER_AGENT = "Tesoro/1.0 (personal diecast collection app)";
 const WIKIS: { match: RegExp; host: string; name: string }[] = [
   { match: /hot\s*wheels|^hw$/i, host: "hotwheels.fandom.com", name: "Hot Wheels Wiki" },
   { match: /matchbox|^mbx$/i, host: "matchbox.fandom.com", name: "Matchbox Wiki" },
+  { match: /mini\s*gt/i, host: "minigt.fandom.com", name: "Mini GT Wiki" },
 ];
 
 type Query = {
@@ -215,6 +216,108 @@ async function fromWikipedia(q: Query): Promise<CarImageCandidate[]> {
   });
 }
 
+/** Trends Hobby products from Treasured Models collection */
+async function fromTrendsHobby(q: Query): Promise<CarImageCandidate[]> {
+  try {
+    const res = await fetch(
+      "https://treasuredmodels.com/collections/trends-hobby/products.json?limit=250",
+      {
+        headers: {
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+          accept: "application/json",
+        },
+        signal: AbortSignal.timeout(8000),
+      },
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      products?: Array<{
+        title: string;
+        tags: string[];
+        images?: Array<{ src: string }>;
+      }>;
+    };
+    const terms = [q.make, q.model, q.variant].filter(Boolean).map((s) => s.toLowerCase());
+    if (!terms.length) return [];
+
+    const matched = (data.products ?? []).filter((p) => {
+      const text = `${p.title} ${(p.tags || []).join(" ")}`.toLowerCase();
+      return terms.some((term) => text.includes(term));
+    });
+
+    return matched
+      .flatMap((p) => {
+        const img = p.images?.[0]?.src;
+        if (!img) return [];
+        return [
+          {
+            url: img,
+            thumb: img,
+            title: p.title,
+            source: "Trends Hobby / Treasured Models",
+            kind: "car" as const,
+          },
+        ];
+      })
+      .slice(0, 10);
+  } catch {
+    return [];
+  }
+}
+
+/** Web search image suggestions (DuckDuckGo / Web images) */
+async function fromWebSearch(q: Query): Promise<CarImageCandidate[]> {
+  try {
+    const brandTerm = q.brand || "";
+    const queryStr = [brandTerm, q.make, q.model, q.variant, q.colour, "1/64 diecast"]
+      .filter(Boolean)
+      .join(" ");
+    if (!queryStr.trim()) return [];
+
+    const r1 = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(queryStr)}`, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        Accept: "text/html,application/xhtml+xml",
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+    const t1 = await r1.text();
+    const vqdMatch = t1.match(/vqd=([0-9-]+)/) || t1.match(/vqd=["']([0-9-]+)["']/);
+    if (!vqdMatch) return [];
+
+    const r2 = await fetch(
+      `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(queryStr)}&vqd=${vqdMatch[1]}`,
+      {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          Accept: "application/json",
+        },
+        signal: AbortSignal.timeout(6000),
+      },
+    );
+    if (!r2.ok) return [];
+    const data = (await r2.json()) as {
+      results?: Array<{ title?: string; image?: string; thumbnail?: string }>;
+    };
+    return (data.results ?? []).slice(0, 10).flatMap((r) => {
+      if (!r.image) return [];
+      return [
+        {
+          url: r.image,
+          thumb: r.thumbnail || r.image,
+          title: r.title || `${q.brand} ${q.make} ${q.model}`,
+          source: "Google / Web Search",
+          kind: /card|box|blister|pack|package/i.test(r.title || "")
+            ? ("card" as const)
+            : ("car" as const),
+        },
+      ];
+    });
+  } catch {
+    return [];
+  }
+}
+
 async function handler({ request }: { request: Request }) {
   const params = new URL(request.url).searchParams;
   const get = (k: keyof Query) => (params.get(k) || "").trim().slice(0, 80);
@@ -233,30 +336,105 @@ async function handler({ request }: { request: Request }) {
     return json({ error: "Type at least a make or a model." }, 400, false);
   }
 
-  // No brand typed: most of any collection is Hot Wheels, so that wiki is the
-  // best first guess.
-  const wiki = q.brand ? WIKIS.find((w) => w.match.test(q.brand)) : WIKIS[0];
+  const isHotWheelsOrMatchbox =
+    Boolean(q.brand) && (/hot\s*wheels|^hw$/i.test(q.brand) || /matchbox|^mbx$/i.test(q.brand));
+
+  const isMiniGT = Boolean(q.brand) && /mini\s*gt/i.test(q.brand);
+  const isTrendsHobby = Boolean(q.brand) && /trends\s*hobby/i.test(q.brand);
 
   const candidates: CarImageCandidate[] = [];
-  if (wiki) {
+
+  if (isMiniGT) {
     try {
-      candidates.push(...(await fromWiki(wiki.host, wiki.name, q)));
+      candidates.push(...(await fromWiki("minigt.fandom.com", "Mini GT Wiki", q)));
     } catch {
-      // A wiki being down is not an error worth showing; Wikipedia still may
-      // have something.
+      /* wiki error ignored */
+    }
+    try {
+      candidates.push(...(await fromWebSearch(q)));
+    } catch {
+      /* search error ignored */
+    }
+  } else if (isTrendsHobby) {
+    try {
+      candidates.push(...(await fromTrendsHobby(q)));
+    } catch {
+      /* trends hobby error ignored */
+    }
+    try {
+      candidates.push(...(await fromWebSearch(q)));
+    } catch {
+      /* search error ignored */
+    }
+  } else if (isHotWheelsOrMatchbox) {
+    const wiki = WIKIS.find((w) => w.match.test(q.brand));
+    if (wiki) {
+      try {
+        candidates.push(...(await fromWiki(wiki.host, wiki.name, q)));
+      } catch {
+        /* wiki error ignored */
+      }
+    }
+  } else {
+    // For cars apart from hotwheels and matchbox:
+    // Try Mini GT Wiki if query mentions mini gt
+    if (/mini\s*gt/i.test(`${q.brand} ${q.make} ${q.model} ${q.variant}`)) {
+      try {
+        candidates.push(...(await fromWiki("minigt.fandom.com", "Mini GT Wiki", q)));
+      } catch {
+        /* ignore */
+      }
+    }
+    // Try Trends Hobby
+    try {
+      candidates.push(...(await fromTrendsHobby(q)));
+    } catch {
+      /* ignore */
+    }
+    // Try Google / Web Search
+    try {
+      candidates.push(...(await fromWebSearch(q)));
+    } catch {
+      /* ignore */
+    }
+
+    const wiki = q.brand ? WIKIS.find((w) => w.match.test(q.brand)) : null;
+    if (wiki) {
+      try {
+        candidates.push(...(await fromWiki(wiki.host, wiki.name, q)));
+      } catch {
+        /* ignore */
+      }
     }
   }
+
+  // If still fewer than 3 candidates, supplement with Web Search and Wikipedia
   if (candidates.length < 3) {
+    if (!isHotWheelsOrMatchbox) {
+      try {
+        candidates.push(...(await fromWebSearch(q)));
+      } catch {
+        /* ignore */
+      }
+    }
     try {
       candidates.push(...(await fromWikipedia(q)));
     } catch {
-      /* nothing to add */
+      /* ignore */
+    }
+    // If no brand was typed at all, try Hot Wheels wiki
+    if (!q.brand && candidates.length < 3) {
+      try {
+        candidates.push(...(await fromWiki(WIKIS[0].host, WIKIS[0].name, q)));
+      } catch {
+        /* ignore */
+      }
     }
   }
 
   const seen = new Set<string>();
   const unique = candidates.filter((c) => (seen.has(c.url) ? false : (seen.add(c.url), true)));
-  return json({ candidates: unique.slice(0, 12) });
+  return json({ candidates: unique.slice(0, 16) });
 }
 
 export const Route = createFileRoute("/api/car-images")({

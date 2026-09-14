@@ -173,7 +173,6 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
   const cardRatingCol = findCol("cardrating");
   const favCol = findCol("favourite", "favorite", "fav");
   const officialCol = findCol("official");
-  const openCol = findCol("open", "loose", "opened");
 
   const val = (row: string[], colIdx: number): string =>
     colIdx >= 0 && row[colIdx] ? row[colIdx] : "";
@@ -259,7 +258,6 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
       cardRating: Math.min(5, Math.max(0, Math.round(parseNum(val(row, cardRatingCol))))),
       favourite: parseBool(val(row, favCol)),
       official: parseBool(val(row, officialCol)),
-      open: parseBool(val(row, openCol)),
     });
   });
 

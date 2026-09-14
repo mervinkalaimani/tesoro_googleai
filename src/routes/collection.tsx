@@ -1,15 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  ChevronDown,
-  ChevronUp,
-  Filter,
-  Sparkles,
-  Star,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Filter, Sparkles, Star } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -27,7 +18,7 @@ import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { Button } from "@/components/ui/button";
-import { inr, mrpRatio } from "@/lib/format";
+import { inr } from "@/lib/format";
 import {
   Accordion,
   AccordionContent,
@@ -89,10 +80,6 @@ const GROUP_LABEL: Partial<Record<GroupBy, (r: Diecast) => string>> = {
 
 /** Mirrors the inventory card so both pages read the same way. */
 function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
-  const cost = car.spent || 0;
-  const market = car.mrp || cost;
-  const ratio = mrpRatio(cost, car.mrp || 0);
-
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
       <div className="relative">
@@ -102,14 +89,6 @@ function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
 
         {/* Car ID off the photograph; it belongs in the drawer and the table. */}
         <CarMarkOverlay car={car} />
-
-        {/* Loose/Carded stays — it is the one thing about a casting you cannot
-            tell from its photograph. Type moved down into the text. */}
-        <div className="pointer-events-none absolute bottom-2 left-2">
-          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 backdrop-blur-sm">
-            {car.open ? "Loose" : "Carded"}
-          </span>
-        </div>
       </div>
 
       <div className="flex flex-1 flex-col p-3">
@@ -134,34 +113,6 @@ function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
         <p className="mt-0.5 truncate text-xs text-muted-foreground">
           {[car.status, car.type].filter(Boolean).join(" · ") || "—"}
         </p>
-
-        <div className="mt-auto flex items-end justify-between gap-2 border-t border-border pt-2.5">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              MRP value
-            </div>
-            <span className="mt-0.5 inline-flex items-baseline gap-1 text-sm font-semibold tabular-nums">
-              <span>{inr(market)}</span>
-              {ratio && (
-                <span
-                  className={`inline-flex items-center text-[11px] font-medium ${
-                    ratio.over ? "text-rose-400" : "text-emerald-500"
-                  }`}
-                >
-                  (
-                  {ratio.over ? (
-                    <ChevronUp className="size-3" />
-                  ) : (
-                    <ChevronDown className="size-3" />
-                  )}
-                  {ratio.text})
-                </span>
-              )}
-            </span>
-          </div>
-          {/* The pencil that was here has gone with every other one: a car is
-              edited from the car, which is one tap away through the card. */}
-        </div>
       </div>
     </article>
   );

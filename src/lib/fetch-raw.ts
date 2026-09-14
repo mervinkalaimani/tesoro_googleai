@@ -1,4 +1,4 @@
-﻿import type { Diecast } from "@/lib/types";
+import type { Diecast } from "@/lib/types";
 import { buildCarName } from "@/lib/car-name";
 import { monthEtaToDate } from "@/lib/date-utils";
 
@@ -133,7 +133,6 @@ export async function fetchRawSheet(): Promise<Diecast[]> {
       chase: bool(r, "Chase"),
       favourite: bool(r, ["Favourite", "Favourites", "Favorite", "Favorites"]),
       official: bool(r, "Official"),
-      open: bool(r, "Open"),
     });
   }
   return out;

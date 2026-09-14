@@ -158,7 +158,6 @@ export function UploadCarsDialog({
               chase: Boolean(item.chase),
               favourite: Boolean(item.favourite || item.favorite),
               official: Boolean(item.official),
-              open: Boolean(item.open),
             };
           });
 

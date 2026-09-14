@@ -54,6 +54,6 @@ export type Diecast = {
   cardRating?: number;
   favourite: boolean;
   official: boolean;
-  open: boolean;
+  open?: boolean;
   imageUrl?: string;
 };

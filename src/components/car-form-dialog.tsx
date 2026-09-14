@@ -43,7 +43,7 @@ import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -121,7 +121,6 @@ interface CarFormData {
   carRating: number;
   cardRating: number;
   favourite: boolean;
-  open: boolean;
   imageUrl: string;
 }
 
@@ -169,7 +168,6 @@ function getBlankForm(): CarFormData {
     carRating: 0,
     cardRating: 0,
     favourite: false,
-    open: false,
     imageUrl: "",
   };
 }
@@ -219,7 +217,6 @@ function formFromCar(initial: Diecast): CarFormData {
     carRating: initial.carRating || 0,
     cardRating: initial.cardRating || 0,
     favourite: Boolean(initial.favourite),
-    open: Boolean(initial.open),
     imageUrl: initial.imageUrl || "",
   };
 }
@@ -232,10 +229,10 @@ function sameForm(a: CarFormData, b: CarFormData): boolean {
 type CarDraft = { form: CarFormData; step: number };
 
 const WIZARD_STEPS = [
-  { id: 1, label: "Car Info", title: "Car Info", icon: Car },
-  { id: 2, label: "Purchase Info", title: "Purchase Info", icon: IndianRupee },
-  { id: 3, label: "Order Info", title: "Order Info", icon: Calendar },
-  { id: 4, label: "Image & Misc", title: "Image & Misc", icon: Sparkles },
+  { id: 1, label: "Car Details", title: "Car Details", icon: Car },
+  { id: 2, label: "Cost", title: "Cost", icon: IndianRupee },
+  { id: 3, label: "Transit", title: "Transit", icon: Calendar },
+  { id: 4, label: "Image", title: "Image", icon: Sparkles },
   { id: 5, label: "Summary", title: "Summary", icon: ClipboardCheck },
 ];
 const LAST_STEP = WIZARD_STEPS.length;
@@ -747,7 +744,6 @@ export function CarFormDialog({
       carRating: form.carRating,
       cardRating: form.cardRating,
       favourite: form.favourite,
-      open: form.open,
       imageUrl: form.imageUrl.trim() || undefined,
     };
 
@@ -952,7 +948,7 @@ export function CarFormDialog({
               {currentStep === 1 && (
                 <div className="space-y-3">
                   <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 1: Car Info</h4>
+                    <h4 className="text-sm font-semibold text-foreground">Step 1: Car Details</h4>
                     <p className="text-xs text-muted-foreground">
                       What the car is — or search your collection above to fill this in.
                     </p>
@@ -1115,6 +1111,47 @@ export function CarFormDialog({
                       />
                     </Field>
 
+                    <Field label="Rarity">
+                      <Select value={form.rarity} onValueChange={(v) => set("rarity", v as Rarity)}>
+                        <SelectTrigger className="bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {RARITIES.map((r) => (
+                            <SelectItem key={r} value={r}>
+                              <span className="flex items-center gap-2">
+                                {r === "Normal" ? (
+                                  <span className="size-4" />
+                                ) : (
+                                  <ChaseMark rarity={r} className="size-4" />
+                                )}
+                                {RARITY_LABEL[r]}
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+
+                    <div className="space-y-1.5">
+                      <Label htmlFor="car-favourite" className="text-xs text-muted-foreground">
+                        Favourite
+                      </Label>
+                      <div className="flex h-9 items-center gap-2.5 rounded-md border border-input bg-background px-3">
+                        <Switch
+                          id="car-favourite"
+                          checked={form.favourite}
+                          onCheckedChange={(v) => set("favourite", v)}
+                        />
+                        <Label
+                          htmlFor="car-favourite"
+                          className="cursor-pointer text-xs font-medium text-foreground"
+                        >
+                          Mark as favourite
+                        </Label>
+                      </div>
+                    </div>
+
                     <Field label="Notes" className="sm:col-span-2 lg:col-span-3">
                       <ClearableInput
                         value={form.transitInfo}
@@ -1126,11 +1163,11 @@ export function CarFormDialog({
                 </div>
               )}
 
-              {/* STEP 2: PURCHASE INFO */}
+              {/* STEP 2: COST */}
               {currentStep === 2 && (
                 <div className="space-y-3">
                   <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 2: Purchase Info</h4>
+                    <h4 className="text-sm font-semibold text-foreground">Step 2: Cost</h4>
                     <p className="text-xs text-muted-foreground">
                       Enter cost details. Balance is automated based on amount paid.
                     </p>
@@ -1241,13 +1278,13 @@ export function CarFormDialog({
                 </div>
               )}
 
-              {/* STEP 3: DATES & LOGISTICS */}
+              {/* STEP 3: TRANSIT */}
               {currentStep === 3 && (
                 <div className="space-y-3">
                   <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 3: Order Info</h4>
+                    <h4 className="text-sm font-semibold text-foreground">Step 3: Transit</h4>
                     <p className="text-xs text-muted-foreground">
-                      Keep track of order milestones and shipping transit info.
+                      Keep track of order milestones, shipping transit info, and item condition.
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1265,7 +1302,13 @@ export function CarFormDialog({
                       <ClearableInput
                         type="date"
                         value={form.expectedDate}
-                        onChange={(e) => set("expectedDate", e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          set("expectedDate", val);
+                          if (form.status === "Delayed" && val) {
+                            set("status", "Waiting");
+                          }
+                        }}
                       />
                     </Field>
 
@@ -1290,6 +1333,13 @@ export function CarFormDialog({
                       />
                     </Field>
 
+                    <ConditionFields
+                      form={form}
+                      set={set}
+                      carConditionOptions={carConditionOptions}
+                      cardConditionOptions={cardConditionOptions}
+                    />
+
                     <TrackingLink
                       partner={form.deliveryPartner}
                       trackingId={form.trackingId}
@@ -1299,14 +1349,12 @@ export function CarFormDialog({
                 </div>
               )}
 
-              {/* STEP 4: FLAGS & MEDIA */}
+              {/* STEP 4: IMAGE */}
               {currentStep === 4 && (
                 <div className="space-y-4">
                   <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 4: Image & Misc</h4>
-                    <p className="text-xs text-muted-foreground">
-                      A photo, how rare it is, and what condition it is in.
-                    </p>
+                    <h4 className="text-sm font-semibold text-foreground">Step 4: Image</h4>
+                    <p className="text-xs text-muted-foreground">A photo of the car.</p>
                   </div>
 
                   <div className="space-y-2">
@@ -1321,13 +1369,6 @@ export function CarFormDialog({
                       layout="split"
                     />
                   </div>
-
-                  <MiscFields
-                    form={form}
-                    set={set}
-                    carConditionOptions={carConditionOptions}
-                    cardConditionOptions={cardConditionOptions}
-                  />
                 </div>
               )}
 
@@ -1433,7 +1474,13 @@ export function CarFormDialog({
                         type="date"
                         className="bg-background"
                         value={form.expectedDate}
-                        onChange={(e) => set("expectedDate", e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          set("expectedDate", val);
+                          if ((form.status === "Delayed" || initial?.status === "Delayed") && val) {
+                            set("status", "Waiting");
+                          }
+                        }}
                       />
                     </Field>
 
@@ -1458,6 +1505,13 @@ export function CarFormDialog({
                         placeholder="Consignment / AWB number"
                       />
                     </Field>
+
+                    <ConditionFields
+                      form={form}
+                      set={set}
+                      carConditionOptions={carConditionOptions}
+                      cardConditionOptions={cardConditionOptions}
+                    />
 
                     <Field label="Notes" className="sm:col-span-2">
                       <ClearableInput
@@ -1558,17 +1612,11 @@ export function CarFormDialog({
                   </div>
                 </section>
 
-                {/* SECTION 3: ACTIVE / EDITABLE FLAGS & IMAGE */}
+                {/* SECTION 3: IMAGE */}
                 <section className="space-y-3 rounded-lg border border-border/80 bg-muted/30 p-3">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Image & Misc
+                    Image
                   </h3>
-                  <MiscFields
-                    form={form}
-                    set={set}
-                    carConditionOptions={carConditionOptions}
-                    cardConditionOptions={cardConditionOptions}
-                  />
 
                   <CarPhotoField
                     value={form.imageUrl}
@@ -1786,6 +1834,40 @@ export function CarFormDialog({
                       className="h-8 bg-background"
                     />
                   </RailField>
+                  <RailField label="Rarity">
+                    <Select value={form.rarity} onValueChange={(v) => set("rarity", v as Rarity)}>
+                      <SelectTrigger className="h-8 bg-background text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {RARITIES.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            <span className="flex items-center gap-2 text-xs">
+                              {r === "Normal" ? (
+                                <span className="size-3.5" />
+                              ) : (
+                                <ChaseMark rarity={r} className="size-3.5" />
+                              )}
+                              {RARITY_LABEL[r]}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </RailField>
+                  <div className="flex h-8 items-center justify-between rounded border border-border/60 bg-background px-2.5">
+                    <Label
+                      htmlFor="edit-rail-favourite"
+                      className="cursor-pointer text-xs font-medium text-foreground"
+                    >
+                      Favourite
+                    </Label>
+                    <Switch
+                      id="edit-rail-favourite"
+                      checked={form.favourite}
+                      onCheckedChange={(v) => set("favourite", v)}
+                    />
+                  </div>
                 </div>
               </aside>
             </div>
@@ -1875,11 +1957,9 @@ const CAR_CONDITION_NOTES = describe(CAR_CONDITIONS);
 const CARD_CONDITION_NOTES = describe(CARD_CONDITIONS);
 
 /**
- * Rarity, condition, ratings and the yes/no flags — shared by the wizard's
- * Image & Misc step and the edit form, so the two can never disagree about what
- * a car records.
+ * Condition of the car and card packaging.
  */
-function MiscFields({
+function ConditionFields({
   form,
   set,
   carConditionOptions,
@@ -1891,85 +1971,35 @@ function MiscFields({
   cardConditionOptions: string[];
 }) {
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Field label="Rarity">
-          <Select value={form.rarity} onValueChange={(v) => set("rarity", v as Rarity)}>
-            <SelectTrigger className="bg-background">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {RARITIES.map((r) => (
-                <SelectItem key={r} value={r}>
-                  <span className="flex items-center gap-2">
-                    {/* Normal has no flame — it is the absence of one. */}
-                    {r === "Normal" ? (
-                      <span className="size-4" />
-                    ) : (
-                      <ChaseMark rarity={r} className="size-4" />
-                    )}
-                    {RARITY_LABEL[r]}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
+    <>
+      <Field label="Car condition">
+        <Combobox
+          clearable
+          value={form.carCondition}
+          onChange={(v) => set("carCondition", v)}
+          options={carConditionOptions}
+          descriptions={CAR_CONDITION_NOTES}
+          placeholder="e.g. Mint"
+          searchPlaceholder="Search grades, or type one…"
+          ariaLabel="Car condition"
+          className="bg-background"
+        />
+      </Field>
 
-        <Field label="Car condition">
-          <Combobox
-            clearable
-            value={form.carCondition}
-            onChange={(v) => set("carCondition", v)}
-            options={carConditionOptions}
-            descriptions={CAR_CONDITION_NOTES}
-            placeholder="e.g. Mint"
-            searchPlaceholder="Search grades, or type one…"
-            ariaLabel="Car condition"
-            className="bg-background"
-          />
-          <StarRating
-            value={form.carRating}
-            onChange={(v) => set("carRating", v)}
-            label="Car rating"
-          />
-        </Field>
-
-        <Field label="Card condition">
-          <Combobox
-            clearable
-            value={form.cardCondition}
-            onChange={(v) => set("cardCondition", v)}
-            options={cardConditionOptions}
-            descriptions={CARD_CONDITION_NOTES}
-            placeholder="e.g. Mint Card"
-            searchPlaceholder="Search grades, or type one…"
-            ariaLabel="Card condition"
-            className="bg-background"
-          />
-          <StarRating
-            value={form.cardRating}
-            onChange={(v) => set("cardRating", v)}
-            label="Card rating"
-          />
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 bg-muted/20 p-3">
-        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-          <Checkbox checked={form.official} onCheckedChange={(v) => set("official", !!v)} />
-          Official?
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-          <Checkbox checked={form.favourite} onCheckedChange={(v) => set("favourite", !!v)} />
-          Favourite?
-        </label>
-        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-          <Checkbox checked={form.open} onCheckedChange={(v) => set("open", !!v)} />
-          Open?
-        </label>
-      </div>
-    </div>
+      <Field label="Card condition">
+        <Combobox
+          clearable
+          value={form.cardCondition}
+          onChange={(v) => set("cardCondition", v)}
+          options={cardConditionOptions}
+          descriptions={CARD_CONDITION_NOTES}
+          placeholder="e.g. Mint Card"
+          searchPlaceholder="Search grades, or type one…"
+          ariaLabel="Card condition"
+          className="bg-background"
+        />
+      </Field>
+    </>
   );
 }
 
@@ -1987,7 +2017,7 @@ function WizardSummary({
   const groups: { step: number; title: string; rows: [string, string][] }[] = [
     {
       step: 1,
-      title: "Car Info",
+      title: "Car Details",
       rows: [
         ["Make", form.make],
         ["Model", form.model],
@@ -2002,12 +2032,14 @@ function WizardSummary({
         ["Sub series", form.subSeries],
         ["Car number", form.carNumber],
         ["Size", form.size],
+        ["Rarity", form.rarity],
+        ["Favourite", form.favourite ? "Yes" : ""],
         ["Notes", form.transitInfo],
       ],
     },
     {
       step: 2,
-      title: "Purchase Info",
+      title: "Cost",
       rows: [
         ["Spent", money(form.spent)],
         ["MRP", money(form.mrp)],
@@ -2020,30 +2052,20 @@ function WizardSummary({
     },
     {
       step: 3,
-      title: "Order Info",
+      title: "Transit",
       rows: [
         ["Order date", formatDayMonthYear(form.orderDate) || form.orderDate],
         ["Expected date", formatDayMonthYear(form.expectedDate) || form.expectedDate],
         ["Delivery partner", form.deliveryPartner],
         ["Tracking ID", form.trackingId],
+        ["Car condition", form.carCondition],
+        ["Card condition", form.cardCondition],
       ],
     },
     {
       step: 4,
-      title: "Image & Misc",
-      rows: [
-        ["Rarity", form.rarity],
-        ["Car condition", form.carCondition],
-        ["Car rating", form.carRating ? `${form.carRating} / 5` : ""],
-        ["Card condition", form.cardCondition],
-        ["Card rating", form.cardRating ? `${form.cardRating} / 5` : ""],
-        [
-          "Flags",
-          [form.official && "Official", form.favourite && "Favourite", form.open && "Open"]
-            .filter(Boolean)
-            .join(", "),
-        ],
-      ],
+      title: "Image",
+      rows: [["Image", form.imageUrl ? "Provided" : "None"]],
     },
   ];
 
@@ -2185,6 +2207,11 @@ function CollectionSearch({
     >
       <span className="flex w-full min-w-0 items-center gap-1.5 text-sm font-medium">
         <span className="truncate">{car.name || `${car.make} ${car.model}`}</span>
+        {car.carNumber && (
+          <span className="shrink-0 rounded border border-border/60 bg-muted/60 px-1 py-0.5 text-[10px] font-mono text-muted-foreground">
+            #{car.carNumber}
+          </span>
+        )}
         <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
         {hint && (
           <span className="ml-auto shrink-0 text-[10px] font-normal text-muted-foreground">
@@ -2193,7 +2220,15 @@ function CollectionSearch({
         )}
       </span>
       <span className="w-full truncate text-[11px] text-muted-foreground">
-        {[car.brand, car.assortment, car.colour, car.series].filter(Boolean).join(" · ")}
+        {[
+          car.carNumber ? `No. ${car.carNumber}` : null,
+          car.brand,
+          car.assortment,
+          car.colour,
+          car.series,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
       </span>
     </button>
   );

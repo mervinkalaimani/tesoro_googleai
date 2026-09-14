@@ -20,6 +20,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ShipmentItem } from "@/components/shipment-item";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { PayBalanceDialog } from "@/components/pay-balance-dialog";
@@ -59,6 +66,8 @@ const SECTION = {
   delayed: "deliveries-delayed",
   launches: "preorder-launch",
 } as const;
+
+const STATUS_OPTIONS = ["Waiting", "Transit", "Pre Order", "Available", "Delayed", "On Hold"];
 
 /** Both are per account, so two people sharing a browser differ. */
 const collapseKey = (uid: string) => `dg.notifyCollapsed.${uid}`;
@@ -241,6 +250,7 @@ export function NotificationCenter() {
   const [statusFor, setStatusFor] = useState<Diecast | null>(null);
   const [batchFor, setBatchFor] = useState<string | null>(null);
   const [newDates, setNewDates] = useState<Record<string, string>>({});
+  const [newStatuses, setNewStatuses] = useState<Record<string, string>>({});
   const [approving, setApproving] = useState<number | null>(null);
 
   // Read after mount rather than in initial state: this renders on the server
@@ -342,15 +352,24 @@ export function NotificationCenter() {
       toast.error("Pick a date from today onwards");
       return;
     }
+    const status = newStatuses[g.key] ?? "Waiting";
     bulkUpdateCars(
-      g.cars.map((c) => ({ ...c, expectedDate: day })),
+      g.cars.map((c) => ({
+        ...c,
+        expectedDate: day,
+        ...(status ? { status } : {}),
+      })),
       `setting a new date for ${plural(g.cars.length, "car")}`,
     );
     setNewDates((prev) => {
       const { [g.key]: _drop, ...rest } = prev;
       return rest;
     });
-    toast.success(`New estimate: ${formatDayMonthYear(day)}`, {
+    setNewStatuses((prev) => {
+      const { [g.key]: _drop, ...rest } = prev;
+      return rest;
+    });
+    toast.success(`Updated: ${formatDayMonthYear(day)} · ${status}`, {
       description: g.shippingId || g.cars[0]?.name,
     });
   };
@@ -552,8 +571,28 @@ export function NotificationCenter() {
                           setNewDates((prev) => ({ ...prev, [g.key]: e.target.value }))
                         }
                         aria-label="New estimated date"
-                        className="h-8 w-auto min-w-0 flex-1 text-xs"
+                        className="h-8 w-auto min-w-[125px] flex-1 text-xs"
                       />
+                      <Select
+                        value={newStatuses[g.key] ?? "Waiting"}
+                        onValueChange={(val) =>
+                          setNewStatuses((prev) => ({ ...prev, [g.key]: val }))
+                        }
+                      >
+                        <SelectTrigger
+                          className="h-8 w-[95px] shrink-0 text-xs bg-background"
+                          aria-label="Status"
+                        >
+                          <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((s) => (
+                            <SelectItem key={s} value={s} className="text-xs">
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <Button size="sm" disabled={!newDates[g.key]} onClick={() => saveNewDate(g)}>
                         Save date
                       </Button>

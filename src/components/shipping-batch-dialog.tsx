@@ -311,6 +311,9 @@ export function ShippingBatchDialog({
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
     setNewExpectedDate(d.toISOString().slice(0, 10));
+    if (newStatus === "keep" && matchedCars.some((c) => c.status === "Delayed")) {
+      setNewStatus("Waiting");
+    }
   };
 
   const handleApply = async () => {
@@ -717,7 +720,17 @@ export function ShippingBatchDialog({
                   <Input
                     type="date"
                     value={newExpectedDate}
-                    onChange={(e) => setNewExpectedDate(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setNewExpectedDate(val);
+                      if (
+                        val &&
+                        newStatus === "keep" &&
+                        matchedCars.some((c) => c.status === "Delayed")
+                      ) {
+                        setNewStatus("Waiting");
+                      }
+                    }}
                     className="border-border bg-background text-xs text-foreground"
                   />
 

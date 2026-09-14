@@ -8,6 +8,11 @@
   "icons": [
     { "src": "/tesoro_app_icon.svg", "type": "image/svg+xml", "sizes": "any" },
     { "src": "/tesoro_app_icon.png", "type": "image/png", "sizes": "250x250" },
-    { "src": "/tesoro_app_icon.png", "type": "image/png", "sizes": "250x250", "purpose": "maskable" }
+    {
+      "src": "/tesoro_app_icon.png",
+      "type": "image/png",
+      "sizes": "250x250",
+      "purpose": "maskable"
+    }
   ]
 }

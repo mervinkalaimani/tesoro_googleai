@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
-    "start": "node .output/server/index.mjs",
+    "build": "rm -rf dist && NODE_ENV=production vite build && mkdir -p dist && cp -r .output/public/* dist/ 2>/dev/null || true",
+    "start": "node start.js",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "gen:taxonomy": "node scripts/gen-taxonomy.mjs src/data/diecast.json src/lib/car-taxonomy.generated.ts",

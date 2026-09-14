@@ -1,4 +1,4 @@
-﻿import {
+import {
   createContext,
   useCallback,
   useContext,
@@ -1072,7 +1072,6 @@ export function makeBlankCar(): Diecast {
     chase: false,
     favourite: false,
     official: false,
-    open: false,
     imageUrl: "",
   };
 }

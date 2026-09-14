@@ -1,14 +1,27 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState, type CSSProperties } from "react";
-import { CalendarDays, PackageCheck, ShoppingCart, Wallet, Store, Tag } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import {
+  CalendarDays,
+  PackageCheck,
+  ShoppingCart,
+  Wallet,
+  Store,
+  Tag,
+  X,
+  Car,
+  Boxes,
+} from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import type { Diecast } from "@/lib/types";
 import { inr, inrFull, parseDMY, formatDMY } from "@/lib/format";
+import { isPreOrder } from "@/lib/status-order";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { SegmentControl } from "@/components/segment-control";
-import { KpiBand, KpiTile } from "@/components/kpi";
+import { KpiTile } from "@/components/kpi";
 import { PageHeading } from "@/components/page-header";
 import { StatusPill, carSubLine } from "@/components/cars-table";
 import { useCarDrawer } from "@/components/car-details-drawer";
@@ -43,7 +56,8 @@ const dayKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
+const mondayIndex = (d: Date) => (d.getDay() + 6) % 7;
 
 /**
  * One square size for every view. The yearly and mobile matrices used to size
@@ -89,14 +103,47 @@ function rangeBounds(range: Range) {
   return { start, end };
 }
 
+function getDefaultRange(): Range {
+  if (typeof window === "undefined") return "12";
+  const w = window.innerWidth;
+  if (w < 640) return "3";
+  if (w < 1024) return "6";
+  return "12";
+}
+
 function HabitsPage() {
   const { query } = useApp();
   const cars = useCars();
-  const rows = useMemo(() => filterRows(cars, query), [cars, query]);
+  const [hidePreOrders, setHidePreOrders] = useState(false);
+
+  const preOrderCount = useMemo(() => {
+    const rawRows = filterRows(cars, query);
+    return rawRows.filter((r) => isPreOrder(r.status)).length;
+  }, [cars, query]);
+
+  const rows = useMemo(() => {
+    const rawRows = filterRows(cars, query);
+    if (!hidePreOrders) return rawRows;
+    return rawRows.filter((r) => !isPreOrder(r.status));
+  }, [cars, query, hidePreOrders]);
+
   const [mode, setMode] = useState<Mode>("ordered");
   const [view, setView] = useState<View>("daily");
-  const [range, setRange] = useState<Range>("6");
+  const [range, setRange] = useState<Range>(getDefaultRange);
+  const [userChangedRange, setUserChangedRange] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (!userChangedRange) {
+        setRange(getDefaultRange());
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [userChangedRange]);
 
   const byDay = useMemo(() => {
     const map = new Map<string, Diecast[]>();
@@ -142,15 +189,18 @@ function HabitsPage() {
     return out;
   }, [byDay, range, view, allBounds]);
 
-  // Heatmap columns: pad the first week so weekdays line up
+  // Heatmap columns: pad the first week so weekdays line up starting with Monday
   const grid = useMemo(() => {
     const weeks: (Cell | null)[][] = [];
     let cur: (Cell | null)[] = [];
     const first = cells[0];
-    if (first) for (let i = 0; i < first.date.getDay(); i++) cur.push(null);
+    if (first) {
+      const pad = mondayIndex(first.date);
+      for (let i = 0; i < pad; i++) cur.push(null);
+    }
     for (const c of cells) {
       cur.push(c);
-      if (c.date.getDay() === 6) {
+      if (mondayIndex(c.date) === 6) {
         weeks.push(cur);
         cur = [];
       }
@@ -177,7 +227,8 @@ function HabitsPage() {
       let key: string, label: string, sub: string | undefined;
       if (view === "weekly") {
         const ws = new Date(c.date);
-        ws.setDate(ws.getDate() - ws.getDay());
+        const mi = mondayIndex(ws);
+        ws.setDate(ws.getDate() - mi);
         key = dayKey(ws);
         label = `Week of ${formatDMY(ws)}`;
         sub = undefined;
@@ -266,14 +317,58 @@ function HabitsPage() {
     return 1;
   };
 
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const scrollRight = () => {
+      el.scrollLeft = el.scrollWidth;
+    };
+    scrollRight();
+    const t1 = setTimeout(scrollRight, 50);
+    const t2 = setTimeout(scrollRight, 200);
+
+    const ro = new ResizeObserver(() => {
+      scrollRight();
+    });
+    ro.observe(el);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      ro.disconnect();
+    };
+  }, [view, range, mode, grid, matrix]);
+
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
       <PageHeading
         title="Buying habits"
         subtitle="When you order, when cars land, and how often — by day, week, month or year."
-      />
+      >
+        <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-2.5 py-1.5 shadow-xs">
+          <Switch
+            id="hide-preorders"
+            checked={hidePreOrders}
+            onCheckedChange={(checked) => {
+              setHidePreOrders(checked);
+              setSelected(null);
+            }}
+          />
+          <Label
+            htmlFor="hide-preorders"
+            className="flex cursor-pointer select-none items-center gap-1.5 text-xs font-medium text-foreground"
+          >
+            <span>Hide pre-orders</span>
+            {preOrderCount > 0 && (
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-normal tabular-nums text-muted-foreground">
+                {preOrderCount}
+              </span>
+            )}
+          </Label>
+        </div>
+      </PageHeading>
 
-      <KpiBand>
+      <section className="grid grid-cols-2 gap-2 pb-1 sm:grid-cols-4 md:flex md:gap-3 md:snap-x md:overflow-x-auto md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
         <KpiTile
           icon={<CalendarDays className="size-4" />}
           label={`Active ${unit}s`}
@@ -306,9 +401,7 @@ function HabitsPage() {
           value={`${stats.streak} ${unit}${stats.streak === 1 ? "" : "s"}`}
           tone="emerald"
         />
-        {/* The spend tile came off: the same figure sits under the tracker
-            squares, next to the activity it is describing. */}
-      </KpiBand>
+      </section>
 
       <section className="card-elevated min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
@@ -350,6 +443,7 @@ function HabitsPage() {
               value={range}
               disabled={view === "yearly"}
               onChange={(v) => {
+                setUserChangedRange(true);
                 setRange(v);
                 setSelected(null);
               }}
@@ -366,15 +460,19 @@ function HabitsPage() {
         </div>
 
         {view === "daily" ? (
-          <div className="overflow-x-auto p-4">
-            <div className="inline-flex min-w-full flex-col gap-1.5">
-              <div className="flex gap-[6px] pl-12 text-[11px] text-muted-foreground">
+          <div ref={scrollContainerRef} className="overflow-x-auto py-4">
+            <div className="inline-flex min-w-full flex-col gap-1.5 pr-4">
+              <div className="flex items-center gap-[6px]">
+                <div className="sticky left-0 z-10 mr-1.5 h-4 w-10 shrink-0 bg-card pl-4 pr-2 border-r border-border/40" />
                 {grid.map((week, i) => {
                   const first = week.find(Boolean) as Cell | undefined;
                   const showLabel = first && first.date.getDate() <= 7;
                   const showYear = showLabel && first.date.getMonth() === 0;
                   return (
-                    <span key={i} className="w-5 shrink-0 whitespace-nowrap">
+                    <span
+                      key={i}
+                      className="w-5 shrink-0 whitespace-nowrap text-[11px] text-muted-foreground"
+                    >
                       {showLabel
                         ? showYear
                           ? `${MONTHS[0]} ${first!.date.getFullYear()}`
@@ -385,9 +483,9 @@ function HabitsPage() {
                 })}
               </div>
               <div className="flex gap-[6px]">
-                <div className="mr-1 flex w-11 shrink-0 flex-col gap-[6px] text-[11px] text-muted-foreground">
-                  {DAYS.map((d) => (
-                    <span key={d} className="h-5 leading-5">
+                <div className="sticky left-0 z-10 mr-1.5 flex w-10 shrink-0 flex-col gap-[6px] bg-card pl-4 pr-2 text-[11px] font-medium text-muted-foreground border-r border-border/40">
+                  {DAYS.map((d, i) => (
+                    <span key={i} className="h-5 leading-5 text-center">
                       {d}
                     </span>
                   ))}
@@ -402,7 +500,11 @@ function HabitsPage() {
                           key={di}
                           type="button"
                           title={`${formatDMY(cell.date)} — ${cell.count} car${cell.count === 1 ? "" : "s"}${cell.spent ? ` · ${inr(cell.spent)}` : ""}`}
-                          onClick={() => setSelected(cell.count ? cell.key : null)}
+                          onClick={() =>
+                            setSelected((prev) =>
+                              prev === cell.key ? null : cell.count ? cell.key : null,
+                            )
+                          }
                           className={`size-5 rounded-[4px] ${LEVEL_CLASS[lv]} ${
                             selected === cell.key
                               ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
@@ -414,19 +516,11 @@ function HabitsPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-2 flex items-center gap-1.5 pl-12 text-[11px] text-muted-foreground">
-                <span>Less</span>
-                {LEVEL_CLASS.map((c, i) => (
-                  <span key={i} className={`size-4 rounded-[4px] ${c}`} />
-                ))}
-                <span>More</span>
-                <span className="ml-auto tabular-nums">{inrFull(stats.totalSpent)} total</span>
-              </div>
             </div>
           </div>
         ) : view === "yearly" ? (
-          <div className="p-4">
-            <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+          <div ref={scrollContainerRef} className="overflow-x-auto p-4">
+            <div className="inline-flex min-w-full flex-wrap items-end gap-x-3 gap-y-2">
               {buckets.map((b) => (
                 <div key={b.key} className="flex flex-col items-center gap-1">
                   <div className="text-[10px] text-muted-foreground">{b.label}</div>
@@ -434,15 +528,15 @@ function HabitsPage() {
                     bucket={b}
                     level={level(b.count)}
                     selected={selected === b.key}
-                    onSelect={setSelected}
+                    onSelect={(k) => setSelected((prev) => (prev === k ? null : k))}
                   />
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div className="p-4">
-            <div className="hidden min-w-full flex-col gap-1.5 sm:flex">
+          <div ref={scrollContainerRef} className="overflow-x-auto py-4">
+            <div className="inline-flex min-w-full flex-col gap-1.5 pr-4">
               <MatrixHeader labels={matrix?.labels ?? []} />
               {(matrix?.rows ?? []).map((row) => (
                 <MatrixRow
@@ -450,45 +544,9 @@ function HabitsPage() {
                   row={row}
                   level={level}
                   selected={selected}
-                  onSelect={setSelected}
+                  onSelect={(k) => setSelected((prev) => (prev === k ? null : k))}
                 />
               ))}
-            </div>
-            <div className="grid gap-1.5 sm:hidden">
-              {(matrix?.labels ?? []).map((label, col) => (
-                <div
-                  key={col}
-                  className="grid grid-cols-[2rem_repeat(var(--years),1.25rem)] items-center gap-1"
-                  style={{ "--years": matrix?.rows.length || 1 } as CSSProperties}
-                >
-                  <span className="text-[10px] text-muted-foreground">
-                    {label || (view === "weekly" ? `W${col + 1}` : "")}
-                  </span>
-                  {(matrix?.rows ?? []).map((row) => {
-                    const b = row.cells[col];
-                    return b ? (
-                      <PeriodSquare
-                        key={row.year}
-                        bucket={b}
-                        level={level(b.count)}
-                        selected={selected === b.key}
-                        onSelect={setSelected}
-                      />
-                    ) : (
-                      <span key={row.year} className={`${SQUARE} bg-muted/25`} />
-                    );
-                  })}
-                </div>
-              ))}
-              <div
-                className="grid grid-cols-[2rem_repeat(var(--years),1.25rem)] gap-1 text-center text-[10px] text-muted-foreground"
-                style={{ "--years": matrix?.rows.length || 1 } as CSSProperties}
-              >
-                <span />
-                {(matrix?.rows ?? []).map((row) => (
-                  <span key={row.year}>{row.year}</span>
-                ))}
-              </div>
             </div>
             {(matrix?.rows.length ?? 0) === 0 && (
               <div className="p-6 text-center text-sm text-muted-foreground">
@@ -497,38 +555,55 @@ function HabitsPage() {
             )}
           </div>
         )}
+
+        {view !== "yearly" && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 px-4 py-2.5 text-[11px] text-muted-foreground">
+            <span>Less</span>
+            {LEVEL_CLASS.map((c, i) => (
+              <span key={i} className={`size-4 rounded-[4px] ${c}`} />
+            ))}
+            <span>More</span>
+            <span className="ml-auto tabular-nums">{inrFull(stats.totalSpent)} total</span>
+          </div>
+        )}
       </section>
 
-      <section className="grid min-w-0 gap-4 lg:h-[430px] lg:grid-cols-2">
-        <div className="card-elevated flex h-[430px] min-w-0 flex-col overflow-hidden">
-          <PeriodDetail bucket={selectedBucket} mode={mode} unit={unit} />
-        </div>
-        <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:h-[430px]">
-          <InsightCard
-            icon={<Store className="size-4" />}
-            title="Top sellers by cars"
-            rows={rank(insightRows, (r) => r.seller, "count")}
-            format={(v) => v.toLocaleString()}
+      {selectedBucket && (
+        <section className="card-elevated flex min-w-0 flex-col overflow-hidden">
+          <PeriodDetail
+            bucket={selectedBucket}
+            mode={mode}
+            unit={unit}
+            onClose={() => setSelected(null)}
           />
-          <InsightCard
-            icon={<Wallet className="size-4" />}
-            title="Top sellers by spend"
-            rows={rank(insightRows, (r) => r.seller, "spent")}
-            format={inr}
-          />
-          <InsightCard
-            icon={<Tag className="size-4" />}
-            title="Top brands by cars"
-            rows={rank(insightRows, (r) => r.brand, "count")}
-            format={(v) => v.toLocaleString()}
-          />
-          <InsightCard
-            icon={<Tag className="size-4" />}
-            title="Top makes by cars"
-            rows={rank(insightRows, (r) => r.make, "count")}
-            format={(v) => v.toLocaleString()}
-          />
-        </div>
+        </section>
+      )}
+
+      <section className="grid min-w-0 grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-4">
+        <InsightCard
+          icon={<Car className="size-4" />}
+          title="Top cars"
+          rows={rank(insightRows, (r) => r.name || r.model || "Unknown", "count")}
+          format={(v) => v.toLocaleString()}
+        />
+        <InsightCard
+          icon={<Wallet className="size-4" />}
+          title="Top spend cars"
+          rows={rank(insightRows, (r) => r.name || r.model || "Unknown", "spent")}
+          format={inr}
+        />
+        <InsightCard
+          icon={<Tag className="size-4" />}
+          title="Top brands"
+          rows={rank(insightRows, (r) => r.brand, "count")}
+          format={(v) => v.toLocaleString()}
+        />
+        <InsightCard
+          icon={<Boxes className="size-4" />}
+          title="Top makes"
+          rows={rank(insightRows, (r) => r.make, "count")}
+          format={(v) => v.toLocaleString()}
+        />
       </section>
     </div>
   );
@@ -559,9 +634,10 @@ function PeriodSquare({
 
 function MatrixHeader({ labels }: { labels: string[] }) {
   return (
-    <div className="flex gap-[6px] pl-12 text-[11px] text-muted-foreground">
+    <div className="flex items-center gap-[6px] text-[11px] text-muted-foreground">
+      <div className="sticky left-0 z-10 mr-1.5 h-4 w-16 shrink-0 bg-card pl-4 pr-2 border-r border-border/40" />
       {labels.map((label, i) => (
-        <span key={i} className="w-5 shrink-0 whitespace-nowrap">
+        <span key={i} className="w-5 shrink-0 whitespace-nowrap text-center">
           {label}
         </span>
       ))}
@@ -582,9 +658,9 @@ function MatrixRow({
 }) {
   return (
     <div className="flex items-center gap-[6px]">
-      <span className="mr-1 w-11 shrink-0 text-[11px] leading-5 text-muted-foreground">
+      <div className="sticky left-0 z-10 mr-1.5 flex h-5 w-16 shrink-0 items-center bg-card pl-4 pr-2 text-[11px] font-medium leading-5 text-muted-foreground border-r border-border/40">
         {row.year}
-      </span>
+      </div>
       {row.cells.map((bucket, i) =>
         bucket ? (
           <PeriodSquare
@@ -628,35 +704,51 @@ function InsightCard({
 }) {
   const max = rows[0]?.value || 1;
   return (
-    <div className="card-elevated min-w-0 overflow-hidden p-4">
-      <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-        <span className="grid size-6 place-items-center rounded-md bg-primary/15 text-primary">
+    <div className="card-elevated min-w-0 overflow-hidden p-3 sm:p-4">
+      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground sm:gap-2 sm:text-xs">
+        <span className="grid size-5 shrink-0 place-items-center rounded-md bg-primary/15 text-primary sm:size-6">
           {icon}
         </span>
         <span className="truncate">{title}</span>
       </div>
-      <ul className="mt-3 space-y-1.5">
+      <ul className="mt-2.5 space-y-1.5 sm:mt-3 sm:space-y-2">
         {rows.map((r) => (
           <li key={r.label} className="min-w-0">
-            <div className="flex items-baseline justify-between gap-2 text-sm">
-              <span className="truncate">{r.label}</span>
-              <span className="shrink-0 tabular-nums text-muted-foreground">{format(r.value)}</span>
+            <div className="flex items-baseline justify-between gap-1.5 text-xs sm:text-sm">
+              <span className="truncate font-medium text-foreground" title={r.label}>
+                {r.label}
+              </span>
+              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground sm:text-xs">
+                {format(r.value)}
+              </span>
             </div>
-            <div className="mt-1 h-1.5 rounded-full bg-muted/60">
+            <div className="mt-1 h-1 rounded-full bg-muted/60 sm:h-1.5">
               <div
-                className="h-1.5 rounded-full bg-primary/70"
-                style={{ width: `${(r.value / max) * 100}%` }}
+                className="h-full rounded-full bg-primary/70 transition-all"
+                style={{ width: `${Math.min(100, Math.max(8, (r.value / max) * 100))}%` }}
               />
             </div>
           </li>
         ))}
-        {rows.length === 0 && <li className="py-3 text-sm text-muted-foreground">No data yet.</li>}
+        {rows.length === 0 && (
+          <li className="py-2 text-xs text-muted-foreground sm:py-3 sm:text-sm">No data yet.</li>
+        )}
       </ul>
     </div>
   );
 }
 
-function PeriodDetail({ bucket, mode, unit }: { bucket: Bucket | null; mode: Mode; unit: string }) {
+function PeriodDetail({
+  bucket,
+  mode,
+  unit,
+  onClose,
+}: {
+  bucket: Bucket | null;
+  mode: Mode;
+  unit: string;
+  onClose?: () => void;
+}) {
   if (!bucket) {
     return (
       <div className="grid flex-1 place-items-center p-6 text-center text-sm text-muted-foreground">
@@ -668,15 +760,32 @@ function PeriodDetail({ bucket, mode, unit }: { bucket: Bucket | null; mode: Mod
   const spent = bucket.items.reduce((s, r) => s + (r.spent || 0), 0);
   return (
     <>
-      <div className="border-b border-border p-4">
-        <h2 className="text-display text-lg font-semibold">{bucket.label}</h2>
-        <p className="text-xs text-muted-foreground">
-          {bucket.items.length} car{bucket.items.length === 1 ? "" : "s"} · {inrFull(spent)}
-        </p>
+      <div className="flex items-center justify-between border-b border-border p-4">
+        <div>
+          <h2 className="text-display text-lg font-semibold">{bucket.label}</h2>
+          <p className="text-xs text-muted-foreground">
+            {bucket.items.length} car{bucket.items.length === 1 ? "" : "s"} · {inrFull(spent)}
+          </p>
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close detail view"
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="max-h-[228px] min-h-0 flex-1 overflow-y-auto p-2 overscroll-contain">
         <DayList items={bucket.items} />
       </div>
+      {bucket.items.length > 3 && (
+        <div className="border-t border-border/40 bg-muted/20 px-3 py-1.5 text-center text-[11px] text-muted-foreground">
+          Showing 3 of {bucket.items.length} cars · scroll to see {bucket.items.length - 3} more
+        </div>
+      )}
     </>
   );
 }
