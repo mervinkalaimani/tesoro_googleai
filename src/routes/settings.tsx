@@ -129,6 +129,8 @@ export function SettingsPage() {
     setFontSize,
     hideInvestment,
     setHideInvestment,
+    navAnimation,
+    setNavAnimation,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
   const { source } = useCarsSource();
@@ -503,6 +505,17 @@ export function SettingsPage() {
                   options={FONT_SIZE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
                   className="h-9 w-full sm:w-auto text-sm"
                 />
+              </div>
+
+              {/* Phones only: the bottom bar is a phone thing. */}
+              <div className="flex items-center justify-between gap-4 p-4 md:hidden">
+                <div>
+                  <div className="text-[15px] font-medium text-foreground">Navbar Animation</div>
+                  <div className="text-xs text-muted-foreground">
+                    Shrink the bottom bar while scrolling down.
+                  </div>
+                </div>
+                <Switch checked={navAnimation} onCheckedChange={setNavAnimation} />
               </div>
             </div>
           </div>

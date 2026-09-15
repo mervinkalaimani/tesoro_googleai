@@ -52,7 +52,14 @@ export function MobileRecordCard({
   const hidden = fields.length - shown.length;
 
   return (
-    <article className={cn(!frameless && "card-elevated", "overflow-hidden", className)}>
+    <article
+      // Off-screen records skip painting; long phone lists stay smooth.
+      className={cn(
+        !frameless && "card-elevated",
+        "overflow-hidden [contain-intrinsic-size:auto_180px] [content-visibility:auto]",
+        className,
+      )}
+    >
       <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           {onSelectedChange && (

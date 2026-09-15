@@ -9,6 +9,9 @@ export const getRouter = () => {
     routeTree,
     context: { queryClient },
     scrollRestoration: true,
+    // The page scrolls smoothly (styles.css), but arriving on a new page should
+    // not glide up from wherever the last one was left.
+    scrollRestorationBehavior: "instant",
     defaultPreloadStaleTime: 0,
   });
 

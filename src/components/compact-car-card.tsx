@@ -19,8 +19,11 @@ export function CompactCarCard({
   car,
   onOpen,
   caption,
+  marksOffset = false,
   className = "",
 }: {
+  /** Moves the chase / favourite marks left, clear of a button laid over the top-right corner. */
+  marksOffset?: boolean;
   car: Diecast;
   onOpen: () => void;
   /**
@@ -47,7 +50,9 @@ export function CompactCarCard({
       // h-full so a card fills whatever cell it is given. In a row of them the
       // tallest used to set the height and the rest floated at the top, which
       // read as a list of different-sized things rather than one shelf.
-      className={`card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40 ${className}`}
+      // content-visibility: a card scrolled well off screen is skipped when
+      // the page paints, which is what keeps a grid of hundreds smooth.
+      className={`card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors [contain-intrinsic-size:auto_220px] [content-visibility:auto] hover:border-primary/40 ${className}`}
     >
       {/* shrink-0, or the picture is the part that gives when a card is asked to
           be shorter than its contents — and then a row of cards that agree on
@@ -56,7 +61,9 @@ export function CompactCarCard({
         <CarThumb car={car} className="aspect-[16/10] w-full" />
 
         {(car.chase || car.favourite) && (
-          <div className="pointer-events-none absolute right-1 top-1 flex items-center gap-1">
+          <div
+            className={`pointer-events-none absolute top-1 flex items-center gap-1 ${marksOffset ? "right-9" : "right-1"}`}
+          >
             {car.chase && (
               <span className="grid size-5 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
                 <ChaseMark rarity={rarityOf(car)} className="size-3" />

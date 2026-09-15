@@ -1,17 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  LabelList,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
   Boxes,
   Truck,
   Clock3,
@@ -39,15 +28,11 @@ import {
   addDays,
   formatDMY,
   formatDayMonthYear,
-  monthKey,
-  monthLabel,
   relativeDay,
-  shortMonthLabel,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { PageHeading } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-store";
-import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
@@ -72,11 +57,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  PeakPurchaseSkeleton,
-  TopListSkeleton,
-  TransitTrackerSkeleton,
-} from "@/components/dashboard-skeletons";
+import { TopListSkeleton, TransitTrackerSkeleton } from "@/components/dashboard-skeletons";
+import { catalogueKey, useRecentPreorders, type RecentPreorder } from "@/lib/catalogue-search";
+import { isPreOrder } from "@/lib/status-order";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -186,7 +169,6 @@ function DashboardPage() {
   const { refreshing } = useCarsRefresh();
   const loading = refreshing && cars.length === 0;
   const data = useMemo(() => filterRows(cars, query), [cars, query]);
-  const [metric, setMetric] = useState<"count" | "cost">("count");
 
   // The first name only. "Hello Mervin Kalaimani" is how a bank addresses you;
   // the app already knows which of the two it is.
@@ -317,15 +299,11 @@ function DashboardPage() {
 
       <DashboardMiddle rows={data} etaDays={transitEtaDays} loading={loading} />
 
-      <section className="grid min-w-0 items-stretch gap-4 lg:h-[min(360px,calc(100svh-7rem))] lg:grid-cols-3 lg:[&>*]:h-full">
-        <MonthlySpending rows={data} mode={metric} />
-        <TopTenGrid rows={data} mode={metric} onModeChange={setMetric} loading={loading} />
-        {loading ? (
-          <PeakPurchaseSkeleton />
-        ) : (
-          <PeakPurchase rows={data} mode={metric} onModeChange={setMetric} />
-        )}
-      </section>
+      {/* Monthly spending moved to the Habits page. */}
+      <TopTenGrid rows={data} mode="count" loading={loading} />
+
+      {/* Pre-orders anyone has placed in the last three days, ready to add. */}
+      {!loading && <RecentPreorders />}
     </div>
   );
 }
@@ -688,269 +666,79 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
   );
 }
 
-type Window = "6m" | "12m" | "all";
-
-function resolveCarMonthKey(r: Diecast): number | null {
-  return monthKey(r.month) ?? monthKey(r.orderMonth) ?? monthKey(r.date) ?? monthKey(r.orderDate);
-}
-
 /**
- * The month a car counts in, for spending: the month it was *received*.
- *
- * This used to fall back through month -> orderMonth -> date -> orderDate,
- * which meant a car still on its way was booked to the month it was ordered and
- * a pre-order due in 2027 put money into a month two years out. Money follows
- * the car: a shipment counts when it lands, and anything that has not landed
- * counts nowhere yet. `month` is the sheet's own arrival month, so it is still
- * tried first — but only backed by the arrival date, never the order date.
+ * Pre-orders placed by anyone in the last three days, as a shelf like Recently
+ * added. Each one can be added to your own collection: the Add a car form opens
+ * with the casting's details filled in from the shared catalogue.
  */
-function receivedMonthKey(r: Diecast): number | null {
-  if (!(r.date || "").trim()) return null;
-  return monthKey(r.month) ?? monthKey(r.date);
-}
+function RecentPreorders() {
+  const { isGuest } = useAuth();
+  const { cars: shared, loading } = useRecentPreorders(!isGuest, RECENT_DAYS);
+  const mine = useCars();
+  const [adding, setAdding] = useState<RecentPreorder | null>(null);
+  const now = new Date();
 
-function MonthlySpending({ rows, mode }: { rows: Diecast[]; mode: "count" | "cost" }) {
-  const [win, setWin] = useState<Window>("6m");
-  const [mounted, setMounted] = useState(false);
+  // Castings already on your own pre-order list are not news to you — your
+  // own recent pre-orders are in the shared list too.
+  const cars = useMemo(() => {
+    const onMyList = new Set(mine.filter((c) => isPreOrder(c.status)).map(catalogueKey));
+    return shared.filter((c) => !onMyList.has(catalogueKey(c)));
+  }, [shared, mine]);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const series = useMemo(() => {
-    const map = new Map<number, { spent: number; count: number }>();
-    for (const r of rows) {
-      const k = receivedMonthKey(r);
-      if (k === null) continue;
-      const cur = map.get(k) ?? { spent: 0, count: 0 };
-      cur.spent += r.spent || 0;
-      cur.count += 1;
-      map.set(k, cur);
-    }
-    const now = new Date();
-    const curKey = now.getFullYear() * 12 + now.getMonth();
-    const all = [...map.entries()].sort((a, b) => a[0] - b[0]);
-    let filtered = all;
-    if (win === "6m") {
-      filtered = filtered.filter(([k]) => k <= curKey && k > curKey - 6);
-      if (filtered.length === 0 && all.length > 0) {
-        filtered = all.slice(-6);
-      }
-    } else if (win === "12m") {
-      filtered = filtered.filter(([k]) => k <= curKey && k > curKey - 12);
-      if (filtered.length === 0 && all.length > 0) {
-        filtered = all.slice(-12);
-      }
-    }
-    // "All" means all of it, future months included — that is why there is no
-    // longer a separate toggle for them.
-    return filtered.map(([k, v]) => ({
-      month: monthLabel(k),
-      spent: Math.round(v.spent),
-      count: v.count,
-    }));
-  }, [rows, win]);
-
-  // Which number the bars are. It follows the Count/Cost control shared with
-  // Top 5 and Peak purchase rather than carrying a third one of its own: three
-  // panels answering the same question should be answering it about the same
-  // thing at the same time.
-  const metricKey = mode === "count" ? "count" : "spent";
-  const fmt = (v: number) => (mode === "count" ? v.toLocaleString() : inr(v));
-
-  const average = useMemo(() => {
-    if (series.length === 0) return 0;
-    const total = series.reduce((s, d) => s + (mode === "count" ? d.count : d.spent), 0);
-    return Math.round(total / series.length);
-  }, [series, mode]);
+  if (loading || cars.length === 0) return null;
 
   return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-display text-lg font-semibold">Monthly spending</h2>
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border p-4">
+        <div className="min-w-0">
+          <h2 className="text-display text-lg font-semibold">Recently pre-ordered</h2>
           <p className="text-xs text-muted-foreground">
-            {mode === "count" ? "Cars received by month" : "Spent on cars received, by month"}
+            Last 3 days · {cars.length} car{cars.length === 1 ? "" : "s"}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <SegmentControl
-            value={win}
-            onChange={setWin}
-            options={[
-              { value: "6m", label: "6M" },
-              { value: "12m", label: "12M" },
-              { value: "all", label: "All" },
-            ]}
-          />
-        </div>
+        <ShoppingBag className="size-4 text-accent" />
       </div>
-
-      {/* No fixed height: flex-1 lets the plot grow to the bottom of the card
-          instead of leaving dead space under the axis. */}
-      <div className="min-h-[260px] w-full flex-1">
-        {!mounted ? (
-          <div className="flex h-full w-full items-center justify-center">
-            <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          </div>
-        ) : series.length === 0 ? (
-          <div className="flex h-full w-full flex-col items-center justify-center rounded-lg border border-dashed border-border/60 p-6 text-center text-muted-foreground">
-            <Clock3 className="mb-2 size-8 stroke-[1.5] text-muted-foreground/50" />
-            <p className="text-sm font-medium text-foreground">No monthly records in this window</p>
-            <p className="mt-1 max-w-[240px] text-xs text-muted-foreground">
-              Try switching to &quot;12M&quot; or &quot;All&quot; to view spending across all
-              recorded months.
-            </p>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%" minHeight={240}>
-            <BarChart data={series} margin={{ top: 12, right: 12, left: -10, bottom: 0 }}>
-              <CartesianGrid stroke="var(--border)" vertical={false} strokeDasharray="3 3" />
-              <XAxis
-                dataKey="month"
-                // Ticks read "Apr 25"; the tooltip still shows the full "Apr 2025".
-                tickFormatter={shortMonthLabel}
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                interval={series.length > 18 ? Math.floor(series.length / 12) : 0}
-                angle={-25}
-                textAnchor="end"
-                height={44}
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
+        {cars.map((c, i) => {
+          // Shaped as a car for the card; the price it shows is the MRP, as
+          // nobody's purchase price is shared.
+          const asCar = { ...c, id: `preorder-${i}`, spent: c.mrp || 0 } as unknown as Diecast;
+          const ordered = parseDMY(c.lastOrdered);
+          return (
+            <div key={asCar.id} className="relative w-36 shrink-0 snap-start sm:w-40">
+              <CompactCarCard
+                car={asCar}
+                onOpen={() => setAdding(c)}
+                caption={
+                  c.inMyCollection
+                    ? "In your collection"
+                    : ordered
+                      ? relativeDay(ordered, now)
+                      : undefined
+                }
+                marksOffset
+                className="w-full"
               />
-              <YAxis
-                tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                tickFormatter={(v) => fmt(Number(v))}
-                allowDecimals={false}
-              />
-              <Tooltip
-                content={({ active, payload, label }) => {
-                  if (!active || !payload?.length) return null;
-                  const row = payload[0].payload as { spent?: number; count?: number };
-                  return (
-                    <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow-lg">
-                      <div className="font-medium">{label}</div>
-                      <div className="font-semibold text-primary">
-                        {mode === "count"
-                          ? `${row.count ?? 0} car${row.count === 1 ? "" : "s"}`
-                          : inrFull(row.spent ?? 0)}
-                      </div>
-                      {/* The other half of the story, whichever half is on the
-                          axis — a month is worth reading both ways. */}
-                      <div className="text-muted-foreground">
-                        {mode === "count"
-                          ? inrFull(row.spent ?? 0)
-                          : `${row.count ?? 0} car${row.count === 1 ? "" : "s"}`}
-                      </div>
-                    </div>
-                  );
-                }}
-                cursor={{ fill: "color-mix(in srgb, var(--primary) 12%, transparent)" }}
-              />
-              {average > 0 && (
-                <ReferenceLine
-                  y={average}
-                  stroke="var(--muted-foreground)"
-                  strokeDasharray="4 4"
-                  strokeWidth={1.5}
-                  label={{
-                    value: `Avg ${fmt(average)}`,
-                    position: "insideTopRight",
-                    fill: "var(--muted-foreground)",
-                    fontSize: 10,
-                  }}
-                />
-              )}
-              <Bar dataKey={metricKey} fill="var(--primary)" radius={[6, 6, 0, 0]}>
-                {/* The bar's own value, on the bar. It used to carry the car
-                    count above a bar measuring money, so the two numbers on
-                    screen were never the same number. */}
-                <LabelList
-                  dataKey={metricKey}
-                  position="top"
-                  formatter={(v: number) => fmt(Number(v))}
-                  fill="var(--muted-foreground)"
-                  fontSize={9}
-                />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        )}
+              {/* A sibling over the card, not inside it: the card is a button. */}
+              <button
+                type="button"
+                onClick={() => setAdding(c)}
+                aria-label={`${c.inMyCollection ? "Add another" : "Add to collection"}: ${c.name}`}
+                title={c.inMyCollection ? "Add another" : "Add to collection"}
+                className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-90"
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
+          );
+        })}
       </div>
-    </div>
-  );
-}
-
-function PeakPurchase({
-  rows,
-  mode,
-  onModeChange,
-}: {
-  rows: Diecast[];
-  mode: "count" | "cost";
-  onModeChange: (m: "count" | "cost") => void;
-}) {
-  const setMode = onModeChange;
-
-  const top = useMemo(() => {
-    const map = new Map<number, { count: number; cost: number }>();
-    for (const r of rows) {
-      const k = resolveCarMonthKey(r);
-      if (k === null) continue;
-      const v = map.get(k) ?? { count: 0, cost: 0 };
-      v.count += 1;
-      v.cost += r.spent || 0;
-      map.set(k, v);
-    }
-    const arr = [...map.entries()].map(([k, v]) => ({ key: k, label: monthLabel(k), ...v }));
-    arr.sort((a, b) => (mode === "count" ? b.count - a.count : b.cost - a.cost));
-    return arr.slice(0, 5);
-  }, [rows, mode]);
-
-  const max = top.reduce((m, t) => Math.max(m, mode === "count" ? t.count : t.cost), 0) || 1;
-
-  return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <h2 className="text-display text-lg font-semibold">Peak purchase</h2>
-          <p className="text-xs text-muted-foreground">Best buying period</p>
-        </div>
-        <SegmentControl
-          value={mode}
-          onChange={setMode}
-          options={[
-            { value: "count", label: "Count" },
-            { value: "cost", label: "Cost" },
-          ]}
-        />
-      </div>
-      {top.length > 0 ? (
-        <ul className="flex min-h-0 flex-1 flex-col justify-between gap-2">
-          {top.map((t, i) => {
-            const v = mode === "count" ? t.count : t.cost;
-            const pct = (v / max) * 100;
-            return (
-              <li key={t.key} className="flex flex-1 flex-col justify-center gap-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <span className={i === 0 ? "font-semibold" : "text-muted-foreground"}>
-                    {t.label}
-                  </span>
-                  <span className={`tabular-nums ${i === 0 ? "font-semibold" : ""}`}>
-                    {mode === "count" ? v : inr(v)}
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`h-full rounded-full ${i === 0 ? "bg-primary" : "bg-primary/50"}`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <div className="text-sm text-muted-foreground">No data.</div>
-      )}
+      <CarFormDialog
+        open={adding !== null}
+        onOpenChange={(v) => !v && setAdding(null)}
+        mode="add"
+        prefill={adding}
+      />
     </div>
   );
 }
@@ -1021,12 +809,10 @@ function pickTopValue(r: Diecast, key: TopKey) {
 function TopTenGrid({
   rows,
   mode,
-  onModeChange,
   loading = false,
 }: {
   rows: Diecast[];
   mode: "count" | "cost";
-  onModeChange: (m: "count" | "cost") => void;
   loading?: boolean;
 }) {
   const [key, setKey] = useState<TopKey>("make");
@@ -1078,14 +864,7 @@ function TopTenGrid({
               ))}
             </SelectContent>
           </Select>
-          <SegmentControl
-            value={mode}
-            onChange={onModeChange}
-            options={[
-              { value: "count", label: "Count" },
-              { value: "cost", label: "Cost" },
-            ]}
-          />
+          {/* Count / Cost lives on Monthly spending; this list follows it. */}
         </div>
       </div>
 

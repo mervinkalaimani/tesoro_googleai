@@ -57,7 +57,7 @@ export function TopBar() {
   }, [undoAt]);
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
+    <header className="sticky top-0 z-40 flex h-14 transform-gpu items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
       {/* Desktop only. The bottom bar carries every destination the sidebar
           holds, so on a phone this opened a second copy of the navigation that
           was already under your thumb. Swiping in from the edge still works for

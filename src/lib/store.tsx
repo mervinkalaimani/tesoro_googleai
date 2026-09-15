@@ -63,6 +63,9 @@ type AppState = {
   setHideInvestment: (b: boolean) => void;
   transitEtaDays: number;
   setTransitEtaDays: (n: number) => void;
+  /** Phone only: the bottom bar shrinks while scrolling down. Per device. */
+  navAnimation: boolean;
+  setNavAnimation: (b: boolean) => void;
 };
 
 const AppCtx = createContext<AppState | null>(null);
@@ -120,6 +123,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [fontSize, setFontSizeState] = useState<FontSizePreference>("-2");
   const [hideInvestment, setHideInvestmentState] = useState(true);
   const [transitEtaDays, setTransitEtaDaysState] = useState(21);
+  const [navAnimation, setNavAnimationState] = useState(true);
   // The server renders with the defaults above while the inline boot script in
   // __root.tsx has already painted the stored ones. Nothing is applied to the
   // document until this flips, so the first client render cannot undo it.
@@ -138,6 +142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFontSizeState(isFontSizePreference(storedFontSize) ? storedFontSize : "-2");
     setHideInvestmentState(readLS<boolean>("dg.hideInvestment", true));
     setTransitEtaDaysState(readLS<number>("dg.transitEta", 21));
+    setNavAnimationState(readLS<boolean>("dg.navAnimation", true));
     setHydrated(true);
   }, []);
 
@@ -281,6 +286,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.transitEta", n);
   }, []);
 
+  const setNavAnimation = useCallback((b: boolean) => {
+    setNavAnimationState(b);
+    writeLS("dg.navAnimation", b);
+  }, []);
+
   const setFontSize = useCallback((s: FontSizePreference) => {
     setFontSizeState(s);
     writeLS("dg.fontSize", s);
@@ -303,8 +313,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setHideInvestment,
       transitEtaDays,
       setTransitEtaDays,
+      navAnimation,
+      setNavAnimation,
     }),
     [
+      navAnimation,
+      setNavAnimation,
       query,
       theme,
       themePreference,

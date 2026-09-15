@@ -84,7 +84,17 @@ function useScrollCompact(enabled: boolean) {
     };
     let lastY = clampedY();
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // Scroll events arrive faster than frames on a 120Hz screen; reading the
+    // position once per frame keeps the handler off the scrolling thread's back.
+    let frame = 0;
     const onScroll = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        check();
+      });
+    };
+    const check = () => {
       const y = clampedY();
       const delta = y - lastY;
       if (Math.abs(delta) < 6) return;
@@ -97,6 +107,7 @@ function useScrollCompact(enabled: boolean) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
       clearTimeout(timer);
     };
   }, [enabled]);
@@ -108,7 +119,7 @@ export function MobileNav() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
   const { profile, isAdmin, isOwner, isGuest } = useAuth();
-  const { hideInvestment, setHideInvestment, query } = useApp();
+  const { hideInvestment, setHideInvestment, query, navAnimation } = useApp();
   const allCars = useCars();
   const [localReveal, setLocalReveal] = useState(false);
 
@@ -146,7 +157,8 @@ export function MobileNav() {
 
   const hidden = hideInvestment && !localReveal;
   const close = () => setMenuOpen(false);
-  const compact = useScrollCompact(!menuOpen);
+  // Settings → Display → Navbar animation switches this off.
+  const compact = useScrollCompact(navAnimation && !menuOpen);
 
   return (
     <>
@@ -164,7 +176,9 @@ export function MobileNav() {
             from the bottom edge so it settles down rather than floating in
             mid-air. */}
         <div
-          className="origin-bottom transition-transform duration-300 ease-out motion-reduce:transition-none"
+          // will-change keeps the glass bar on its own compositor layer, so the
+          // page scrolling under its blur is not repainted every frame.
+          className="origin-bottom transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none"
           style={{ transform: compact ? "translateY(6px) scale(0.6)" : undefined }}
         >
           {navMode === "default" ? (

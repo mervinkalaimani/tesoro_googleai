@@ -149,6 +149,31 @@ interface CarFormData {
  */
 const NO_SELLER = "No seller";
 
+/**
+ * A casting's catalogue fields over a form: what the car *is*. What this
+ * purchase cost, who sold it and when stay as they were.
+ */
+function catalogueFields(car: CatalogueCar, f: CarFormData): CarFormData {
+  return {
+    ...f,
+    make: car.make || "",
+    model: car.model || "",
+    variant: car.variant || "",
+    year: car.year || "",
+    colour: car.colour || "",
+    type: car.type || "",
+    brand: car.brand || "",
+    assortment: car.assortment || "",
+    series: car.series || "",
+    subSeries: car.subSeries || "",
+    carNumber: car.carNumber || "",
+    size: car.size || f.size,
+    rarity: rarityOf(car),
+    mrp: car.mrp ? car.mrp : f.mrp,
+    imageUrl: f.imageUrl || car.imageUrl || "",
+  };
+}
+
 function getBlankForm(): CarFormData {
   const today = new Date().toISOString().slice(0, 10);
   return {
@@ -262,6 +287,7 @@ export function CarFormDialog({
   mode,
   onSwitchToBulk,
   onSwitchToUpload,
+  prefill,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -274,6 +300,11 @@ export function CarFormDialog({
   onSwitchToBulk?: (seed?: Diecast[]) => void;
   /** Add mode only: hands off to the CSV upload dialog. */
   onSwitchToUpload?: () => void;
+  /**
+   * Add mode only: a casting to start from (Home's "Recently pre-ordered"),
+   * with its catalogue fields filled in and the status set to Pre Order.
+   */
+  prefill?: CatalogueCar | null;
 }) {
   const { addCar, updateCar } = useCarsActions();
   const cars = useCars();
@@ -294,16 +325,29 @@ export function CarFormDialog({
   /** The card scanner, raised from the catalogue fields it fills in. */
   const [scanOpen, setScanOpen] = useState(false);
 
-  const draftKey = mode === "add" ? CAR_DRAFT_KEY : carEditDraftKey(initial?.id ?? "");
+  const fromPrefill = mode === "add" && !initial && Boolean(prefill);
+  // A pre-filled form keeps its draft apart, so opening one never overwrites
+  // (or clears) an unfinished car the person was adding by hand.
+  const draftKey =
+    mode === "add"
+      ? fromPrefill
+        ? `${CAR_DRAFT_KEY}:prefill`
+        : CAR_DRAFT_KEY
+      : carEditDraftKey(initial?.id ?? "");
 
   // Rebuilt per open rather than held in state: it is what "unchanged" means
   // for this dialog, and both the restore and the save below compare against it.
   const baseline = useMemo(
-    () => (initial ? formFromCar(initial) : getBlankForm()),
+    () =>
+      initial
+        ? formFromCar(initial)
+        : fromPrefill && prefill
+          ? { ...catalogueFields(prefill, getBlankForm()), status: "Pre Order" }
+          : getBlankForm(),
     // A blank form stamps today's date, so it must not be rebuilt on every
     // render — only when the dialog opens or the car being edited changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [initial, open],
+    [initial, open, prefill],
   );
 
   useEffect(() => {
@@ -318,7 +362,8 @@ export function CarFormDialog({
     // Pick up where the last session left off. On mobile this is the whole
     // point: a locked phone can have the tab evicted and reloaded underneath a
     // half-filled form, and the person comes back to an empty one otherwise.
-    const draft = readDraft<CarDraft>(draftKey);
+    // A pre-filled open always starts from the casting it was opened for.
+    const draft = fromPrefill ? null : readDraft<CarDraft>(draftKey);
     if (draft?.form) {
       // Spread over the baseline so a draft written before a field existed
       // still restores, rather than arriving with the field undefined.
@@ -331,7 +376,7 @@ export function CarFormDialog({
       setRestored(false);
     }
     setDraftReady(true);
-  }, [open, baseline, draftKey, mode]);
+  }, [open, baseline, draftKey, mode, fromPrefill]);
 
   // The save. Every keystroke lands here, and an untouched form clears the key
   // rather than leaving a draft that says nothing.
@@ -379,24 +424,7 @@ export function CarFormDialog({
    * cost, who sold it and when are this car's own, so they are left alone.
    */
   const applyExisting = (car: CatalogueCar) => {
-    setForm((f) => ({
-      ...f,
-      make: car.make || "",
-      model: car.model || "",
-      variant: car.variant || "",
-      year: car.year || "",
-      colour: car.colour || "",
-      type: car.type || "",
-      brand: car.brand || "",
-      assortment: car.assortment || "",
-      series: car.series || "",
-      subSeries: car.subSeries || "",
-      carNumber: car.carNumber || "",
-      size: car.size || f.size,
-      rarity: rarityOf(car),
-      mrp: car.mrp ? car.mrp : f.mrp,
-      imageUrl: f.imageUrl || car.imageUrl || "",
-    }));
+    setForm((f) => catalogueFields(car, f));
     setValidationError(null);
     toast.success("Filled from your collection", {
       description: car.name || `${car.make} ${car.model}`.trim(),

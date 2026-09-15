@@ -225,6 +225,14 @@
   html {
     color-scheme: light;
     font-size: var(--font-size-base, 10pt);
+    /* Jumps made by the app (back to top, into view) glide instead of cutting. */
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
   html.dark {
     color-scheme: dark;
@@ -234,6 +242,9 @@
     color: var(--color-foreground);
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "cv11", "ss01";
+    /* No grey flash on tap, and no double-tap-to-zoom wait before a tap counts. */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
 
   /* Scale custom fixed-pixel font utility classes with the user font size preference */

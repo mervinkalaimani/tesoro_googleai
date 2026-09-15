@@ -88,6 +88,54 @@ function toCar(r: CatalogueRow): CatalogueCar {
   };
 }
 
+export type RecentPreorder = CatalogueCar & {
+  /** The most recent day anyone ordered this casting, "YYYY-MM-DD". */
+  lastOrdered: string;
+  /** A car of the same casting and colour is already in your collection. */
+  inMyCollection: boolean;
+};
+
+/**
+ * Pre-orders placed by anyone in the last `days` days (today counts as one),
+ * through the recent_preorders database function. Nothing for guests.
+ */
+export function useRecentPreorders(enabled: boolean, days = 3) {
+  const [state, setState] = useState<{ cars: RecentPreorder[]; loading: boolean }>({
+    cars: [],
+    loading: enabled,
+  });
+
+  useEffect(() => {
+    if (!enabled) {
+      setState({ cars: [], loading: false });
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("recent_preorders", { days, lim: 24 });
+      if (cancelled) return;
+      const rows = (error ? [] : (data ?? [])) as (CatalogueRow & {
+        last_ordered: string | null;
+        in_my_collection: boolean | null;
+      })[];
+      setState({
+        cars: rows.map((r) => ({
+          ...toCar(r),
+          lastOrdered: r.last_ordered ?? "",
+          inMyCollection: Boolean(r.in_my_collection),
+        })),
+        loading: false,
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, days]);
+
+  return state;
+}
+
 /** Debounced search across all accounts. Empty while the query is under 2 characters. */
 export function useCatalogueSearch(query: string, enabled: boolean) {
   const [state, setState] = useState<{ q: string; cars: CatalogueCar[]; loading: boolean }>({

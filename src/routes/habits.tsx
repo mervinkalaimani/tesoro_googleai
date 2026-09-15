@@ -25,6 +25,7 @@ import { KpiTile } from "@/components/kpi";
 import { PageHeading } from "@/components/page-header";
 import { StatusPill, carSubLine } from "@/components/cars-table";
 import { useCarDrawer } from "@/components/car-details-drawer";
+import { MonthlySpending } from "@/components/monthly-spending";
 
 export const Route = createFileRoute("/habits")({
   head: () => ({
@@ -114,6 +115,7 @@ function getDefaultRange(): Range {
 function HabitsPage() {
   const { query } = useApp();
   const cars = useCars();
+  const spendingRows = useMemo(() => filterRows(cars, query), [cars, query]);
   const [hidePreOrders, setHidePreOrders] = useState(false);
 
   const preOrderCount = useMemo(() => {
@@ -605,6 +607,11 @@ function HabitsPage() {
           format={(v) => v.toLocaleString()}
         />
       </section>
+
+      {/* Its own panel, with its own controls: it reads the whole collection
+          and ignores the tracker above (its mode, range, selection and the
+          pre-order switch). */}
+      <MonthlySpending rows={spendingRows} className="lg:h-[400px]" />
     </div>
   );
 }
