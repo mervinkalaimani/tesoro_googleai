@@ -38,6 +38,7 @@ import {
   daysBetween,
   addDays,
   formatDMY,
+  formatDayMonthYear,
   monthKey,
   monthLabel,
   relativeDay,
@@ -167,6 +168,15 @@ function TransitCell({ s }: { s: Shipment }) {
   }
   const partner = (s.deliveryPartner || "").trim();
   return <span className="text-xs text-muted-foreground">{partner || s.transitInfo || "—"}</span>;
+}
+
+/** "Today", "Tomorrow", otherwise "18 Sep 2026" — when a parcel is due. */
+function expectedLabel(eta: Date, now: Date): string {
+  const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((day(eta) - day(now)) / 86_400_000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Tomorrow";
+  return formatDayMonthYear(eta);
 }
 
 function DashboardPage() {
@@ -448,57 +458,55 @@ function TransitTracker({
             <ul className="divide-y divide-border/60">
               {shipments.map((s) => {
                 const eta = s.expected ?? addDays(s.ordered, etaDays);
-                const days = daysBetween(s.ordered, now);
                 const late = eta < now;
+                const open = () => {
+                  if (!s.shippingId) return;
+                  setSelectedShippingId(s.shippingId);
+                  setBatchOpen(true);
+                };
+                // Seller · chevron, then status and cost against the shipping
+                // ID, then how it is travelling against when it lands.
                 return (
-                  <li key={s.key} className="min-w-0 p-3">
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5 truncate text-sm font-medium">
-                          <span>{s.seller}</span>
-                          {s.shippingId && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedShippingId(s.shippingId);
-                                setBatchOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-400"
-                            >
-                              <Truck className="size-2.5" />
-                              <span>{s.shippingId}</span>
-                            </button>
-                          )}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {s.status} · {s.count} car{s.count === 1 ? "" : "s"}
-                          {s.spent > 0 ? ` · ${inr(s.spent)}` : ""}
-                        </div>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] tabular-nums text-muted-foreground">
-                        {days}d
-                      </span>
-                    </div>
-                    {s.brands.length > 0 && (
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {s.brands.slice(0, 4).map((b) => (
-                          <span key={b} className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]">
-                            {b}
-                          </span>
-                        ))}
-                        {s.brands.length > 4 && (
-                          <span className="text-[10px] text-muted-foreground">
-                            +{s.brands.length - 4}
-                          </span>
+                  <li key={s.key} className="min-w-0">
+                    <div
+                      role={s.shippingId ? "button" : undefined}
+                      tabIndex={s.shippingId ? 0 : undefined}
+                      onClick={open}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          open();
+                        }
+                      }}
+                      className={`space-y-1 p-3 ${s.shippingId ? "cursor-pointer active:bg-muted/40" : ""}`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="min-w-0 truncate text-sm font-medium">{s.seller}</span>
+                        {s.shippingId && (
+                          <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                         )}
                       </div>
-                    )}
-                    <div className="mt-1.5 break-words text-xs text-muted-foreground">
-                      <TransitCell s={s} />
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-3 text-xs tabular-nums text-muted-foreground">
-                      <span>Ordered {formatDMY(s.ordered)}</span>
-                      <span className={late ? "text-rose-500" : ""}>Expected {formatDMY(eta)}</span>
+                      <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+                        <span className="min-w-0 truncate">
+                          {s.status} · {s.count} car{s.count === 1 ? "" : "s"}
+                          {s.spent > 0 ? ` · ${inr(s.spent)}` : ""}
+                        </span>
+                        {s.shippingId && <span className="shrink-0 font-mono">{s.shippingId}</span>}
+                      </div>
+                      <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+                        <span
+                          className="min-w-0 truncate"
+                          // The courier link inside must not also open the order.
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <TransitCell s={s} />
+                        </span>
+                        <span
+                          className={`shrink-0 tabular-nums ${late ? "text-rose-500" : "text-foreground"}`}
+                        >
+                          {expectedLabel(eta, now)}
+                        </span>
+                      </div>
                     </div>
                   </li>
                 );

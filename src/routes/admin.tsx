@@ -1,6 +1,8 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ChevronDown,
+  ChevronLeft,
   Crown,
   KeyRound,
   Loader2,
@@ -77,6 +79,7 @@ function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [openSno, setOpenSno] = useState<number | null>(null);
 
   const [editing, setEditing] = useState<AdminUser | null>(null);
   const [newEmail, setNewEmail] = useState("");
@@ -258,6 +261,15 @@ function AdminPage() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
+      {/* Phones reach this page from Settings and have no sidebar to leave by. */}
+      <Link
+        to="/settings"
+        className="-mb-3 inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50 md:hidden"
+      >
+        <ChevronLeft className="-ml-1 size-5" />
+        Settings
+      </Link>
+
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-display text-2xl font-semibold tracking-tight">Users</h1>
@@ -300,134 +312,162 @@ function AdminPage() {
           filtered.map((u) => {
             const isSelf = Boolean(u.auth_uid) && u.auth_uid === user?.id;
             const busy = busyId === String(u.sno);
+            const open = openSno === u.sno;
             return (
-              <MobileRecordCard
-                key={u.sno}
-                id={
-                  <span className="truncate">
-                    {u.user_id || displayName(u)}
-                    {isSelf ? <span className="ml-1.5 text-muted-foreground">(you)</span> : null}
+              <div key={u.sno} className="card-elevated overflow-hidden">
+                {/* Accordion: the name and a chevron, everything else behind a tap. */}
+                <button
+                  type="button"
+                  onClick={() => setOpenSno(open ? null : u.sno)}
+                  aria-expanded={open}
+                  className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+                >
+                  <span className="min-w-0 truncate text-sm font-semibold">
+                    {displayName(u) === "—" ? u.email_id : displayName(u)}
+                    {isSelf ? (
+                      <span className="ml-1.5 font-normal text-muted-foreground">(you)</span>
+                    ) : null}
                   </span>
-                }
-                fields={[
-                  { label: "Name", value: displayName(u) },
-                  {
-                    label: "Access",
-                    value:
-                      u.is_owner || u.is_approved ? (
-                        <Badge variant="outline" className="border-emerald-500/40 text-emerald-500">
-                          {u.is_owner ? "Always on" : "Approved"}
-                        </Badge>
+                  <ChevronDown
+                    className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {open && (
+                  <MobileRecordCard
+                    frameless
+                    collapsedCount={99}
+                    className="border-t border-border"
+                    id={
+                      <span className="truncate">
+                        {u.user_id || displayName(u)}
+                        {isSelf ? (
+                          <span className="ml-1.5 text-muted-foreground">(you)</span>
+                        ) : null}
+                      </span>
+                    }
+                    fields={[
+                      {
+                        label: "Access",
+                        value:
+                          u.is_owner || u.is_approved ? (
+                            <Badge
+                              variant="outline"
+                              className="border-emerald-500/40 text-emerald-500"
+                            >
+                              {u.is_owner ? "Always on" : "Approved"}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-amber-500/40 text-amber-500">
+                              Pending
+                            </Badge>
+                          ),
+                      },
+                      {
+                        label: "Role",
+                        value: u.is_owner ? (
+                          <Badge className="gap-1">
+                            <Crown className="size-3" />
+                            Owner
+                          </Badge>
+                        ) : u.is_admin ? (
+                          <Badge className="gap-1">
+                            <ShieldCheck className="size-3" />
+                            Admin
+                          </Badge>
+                        ) : (
+                          "User"
+                        ),
+                      },
+                      { label: "Email", value: u.email_id },
+                      { label: "Cars", value: u.car_count.toLocaleString() },
+                      { label: "Joined", value: formatDate(u.created_at) },
+                      { label: "Last seen", value: formatDate(u.last_sign_in) },
+                      {
+                        label: "Sign-in",
+                        value: u.auth_uid ? "Linked" : "Not linked yet",
+                      },
+                    ]}
+                    actions={
+                      u.is_owner ? null : (
+                        <>
+                          <RecordAction
+                            label="Change email address"
+                            disabled={busy}
+                            onClick={() => {
+                              setEditing(u);
+                              setNewEmail(u.email_id);
+                            }}
+                          >
+                            <Mail className="size-4" />
+                          </RecordAction>
+                          <RecordAction
+                            label="Send password reset link"
+                            disabled={busy}
+                            onClick={() => void sendReset(u)}
+                          >
+                            {busy ? (
+                              <Loader2 className="size-4 animate-spin" />
+                            ) : (
+                              <KeyRound className="size-4" />
+                            )}
+                          </RecordAction>
+                          {isOwner ? (
+                            <RecordAction
+                              label="Delete account"
+                              tone="destructive"
+                              disabled={busy || isSelf}
+                              onClick={() => {
+                                setDeleting(u);
+                                setDeleteConfirm("");
+                              }}
+                            >
+                              <Trash2 className="size-4" />
+                            </RecordAction>
+                          ) : null}
+                        </>
+                      )
+                    }
+                    footer={
+                      u.is_owner ? (
+                        <p className="text-xs text-muted-foreground">
+                          Owner account — cannot be changed
+                        </p>
                       ) : (
-                        <Badge variant="outline" className="border-amber-500/40 text-amber-500">
-                          Pending
-                        </Badge>
-                      ),
-                  },
-                  {
-                    label: "Role",
-                    value: u.is_owner ? (
-                      <Badge className="gap-1">
-                        <Crown className="size-3" />
-                        Owner
-                      </Badge>
-                    ) : u.is_admin ? (
-                      <Badge className="gap-1">
-                        <ShieldCheck className="size-3" />
-                        Admin
-                      </Badge>
-                    ) : (
-                      "User"
-                    ),
-                  },
-                  { label: "Email", value: u.email_id },
-                  { label: "Cars", value: u.car_count.toLocaleString() },
-                  { label: "Joined", value: formatDate(u.created_at) },
-                  { label: "Last seen", value: formatDate(u.last_sign_in) },
-                  {
-                    label: "Sign-in",
-                    value: u.auth_uid ? "Linked" : "Not linked yet",
-                  },
-                ]}
-                actions={
-                  u.is_owner ? null : (
-                    <>
-                      <RecordAction
-                        label="Change email address"
-                        disabled={busy}
-                        onClick={() => {
-                          setEditing(u);
-                          setNewEmail(u.email_id);
-                        }}
-                      >
-                        <Mail className="size-4" />
-                      </RecordAction>
-                      <RecordAction
-                        label="Send password reset link"
-                        disabled={busy}
-                        onClick={() => void sendReset(u)}
-                      >
-                        {busy ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <KeyRound className="size-4" />
-                        )}
-                      </RecordAction>
-                      {isOwner ? (
-                        <RecordAction
-                          label="Delete account"
-                          tone="destructive"
-                          disabled={busy || isSelf}
-                          onClick={() => {
-                            setDeleting(u);
-                            setDeleteConfirm("");
-                          }}
-                        >
-                          <Trash2 className="size-4" />
-                        </RecordAction>
-                      ) : null}
-                    </>
-                  )
-                }
-                footer={
-                  u.is_owner ? (
-                    <p className="text-xs text-muted-foreground">
-                      Owner account — cannot be changed
-                    </p>
-                  ) : (
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        disabled={busy || isSelf}
-                        onClick={() => void setApproval(u, !u.is_approved)}
-                      >
-                        {u.is_approved ? (
-                          <>
-                            <UserX className="size-3.5" />
-                            Suspend
-                          </>
-                        ) : (
-                          <>
-                            <UserCheck className="size-3.5" />
-                            Approve
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="flex-1"
-                        disabled={busy || isSelf}
-                        onClick={() => void setAdminRole(u, !u.is_admin)}
-                      >
-                        {u.is_admin ? "Revoke admin" : "Make admin"}
-                      </Button>
-                    </div>
-                  )
-                }
-              />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            disabled={busy || isSelf}
+                            onClick={() => void setApproval(u, !u.is_approved)}
+                          >
+                            {u.is_approved ? (
+                              <>
+                                <UserX className="size-3.5" />
+                                Suspend
+                              </>
+                            ) : (
+                              <>
+                                <UserCheck className="size-3.5" />
+                                Approve
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="flex-1"
+                            disabled={busy || isSelf}
+                            onClick={() => void setAdminRole(u, !u.is_admin)}
+                          >
+                            {u.is_admin ? "Revoke admin" : "Make admin"}
+                          </Button>
+                        </div>
+                      )
+                    }
+                  />
+                )}
+              </div>
             );
           })
         )}

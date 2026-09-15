@@ -28,8 +28,11 @@ export function MobileRecordCard({
   selected,
   onSelectedChange,
   collapsedCount = COLLAPSED_FIELDS,
+  frameless,
   className,
 }: {
+  /** No card of its own, for when it sits inside one (an accordion, say). */
+  frameless?: boolean;
   /** The short identifier in the header — a car ID, a user handle. */
   id: ReactNode;
   fields: RecordField[];
@@ -49,7 +52,7 @@ export function MobileRecordCard({
   const hidden = fields.length - shown.length;
 
   return (
-    <article className={cn("card-elevated overflow-hidden", className)}>
+    <article className={cn(!frameless && "card-elevated", "overflow-hidden", className)}>
       <header className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           {onSelectedChange && (

@@ -59,10 +59,10 @@ function isActive(pathname: string, url: string) {
 }
 
 /** How long the bar stays small after the last downward scroll. */
-const COMPACT_HOLD_MS = 2000;
+const COMPACT_HOLD_MS = 1000;
 
 /**
- * True while the page is being scrolled down, and for two seconds after: the
+ * True while the page is being scrolled down, and for a second after: the
  * bar shrinks out of the way of what you are reading, then comes back. Small
  * jitters (a finger resting on the glass) don't count.
  */
@@ -145,21 +145,14 @@ export function MobileNav() {
       <nav
         aria-label="Primary"
         className="pointer-events-none fixed inset-x-0 bottom-0 z-40 md:hidden"
-        // One gap on all three sides. The bottom used to be the whole home-
-        // indicator inset (~34px on an iPhone), which floated the bar high and
-        // pushed the sides in to match. The home line is a few pixels tall and
-        // sits ~8px from the edge, so inset − 20px (14px there, never under
-        // 12px) clears it while keeping the bar low and evenly framed.
-        style={{
-          paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) - 20px))",
-          paddingLeft:
-            "max(12px, calc(env(safe-area-inset-bottom) - 20px), env(safe-area-inset-left))",
-          paddingRight:
-            "max(12px, calc(env(safe-area-inset-bottom) - 20px), env(safe-area-inset-right))",
-        }}
+        // One fixed gap on all three sides, the same on every phone: it no
+        // longer follows the home-indicator inset, so the bar sits in exactly
+        // the same place everywhere. 16px clears the home line (a few pixels
+        // tall, ~8px from the edge). The bar's own height is untouched.
+        style={{ paddingBottom: "16px", paddingLeft: "16px", paddingRight: "16px" }}
       >
         {/* Scrolling down shrinks the bar to 60% and drops it towards the home
-            line; it grows back two seconds after the scrolling stops. Scaled
+            line; it grows back a second after the scrolling stops. Scaled
             from the bottom edge so it settles down rather than floating in
             mid-air. */}
         <div
