@@ -11,7 +11,9 @@
 //                  must both be shared with that integration
 //   COMMITS_FILE   path to the git log output
 //   RELEASE_SHA    the commit that was deployed
-//   REPO_URL       https://github.com/<owner>/<repo>, for commit links
+//
+// What is filed is deliberately thin — short SHA, type and subject — so no
+// repository links or database detail from commit bodies end up in Notion.
 
 import { readFileSync } from "node:fs";
 import {
@@ -72,15 +74,6 @@ function readCommits(path) {
   );
 }
 
-/** First paragraph of the body, without the co-author trailer. */
-function summary(body) {
-  const para = body
-    .split(/\n\s*\n/)
-    .map((p) => p.replace(/\s+/g, " ").trim())
-    .find((p) => p && !/^Co-Authored-By:/i.test(p));
-  return para || "";
-}
-
 async function alreadyFiled(shortSha) {
   const res = await notion(`databases/${KANBAN_DATABASE_ID}/query`, {
     method: "POST",
@@ -101,7 +94,8 @@ async function main() {
   }
 
   const phase = await latestPhase();
-  const repo = (process.env.REPO_URL || "").replace(/\/$/, "");
+  // No links back to the repository: Notion is kept free of repo details.
+  const repo = "";
   const filed = [];
 
   // Oldest first, so the board and the notes read in the order it happened.
@@ -111,7 +105,9 @@ async function main() {
       console.log(`skip ${short} — already on the board`);
       continue;
     }
-    const note = [short, summary(c.body)].filter(Boolean).join(" · ");
+    // Subject only. Commit bodies often name tables, policies and file paths,
+    // and Notion is kept free of repository and database detail.
+    const note = short;
     await notion("pages", {
       method: "POST",
       body: {
@@ -176,7 +172,7 @@ async function main() {
                     }),
                   ],
                   [text(typeOf(c.subject), { code: true })],
-                  [text([c.subject, summary(c.body)].filter(Boolean).join(" — "))],
+                  [text(c.subject)],
                 ]),
               ),
             ],

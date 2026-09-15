@@ -106,12 +106,17 @@ export function MobileNav() {
       <nav
         aria-label="Primary"
         className="pointer-events-none fixed inset-x-0 bottom-0 z-40 md:hidden"
+        // One gap on all three sides. The bottom used to be the whole home-
+        // indicator inset (~34px on an iPhone), which floated the bar high and
+        // pushed the sides in to match. The home line is a few pixels tall and
+        // sits ~8px from the edge, so inset − 20px (14px there, never under
+        // 12px) clears it while keeping the bar low and evenly framed.
         style={{
-          paddingBottom: "max(calc(env(safe-area-inset-bottom) + 2px), 8px)",
+          paddingBottom: "max(12px, calc(env(safe-area-inset-bottom) - 20px))",
           paddingLeft:
-            "max(env(safe-area-inset-left), max(calc(env(safe-area-inset-bottom) + 2px), 8px))",
+            "max(12px, calc(env(safe-area-inset-bottom) - 20px), env(safe-area-inset-left))",
           paddingRight:
-            "max(env(safe-area-inset-right), max(calc(env(safe-area-inset-bottom) + 2px), 8px))",
+            "max(12px, calc(env(safe-area-inset-bottom) - 20px), env(safe-area-inset-right))",
         }}
       >
         {navMode === "default" ? (

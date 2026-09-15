@@ -352,7 +352,9 @@ async function fromWebSearch(q: Query): Promise<CarImageCandidate[]> {
 
 async function handler({ request }: { request: Request }) {
   const params = new URL(request.url).searchParams;
-  const get = (k: keyof Query) => (params.get(k) || "").trim().slice(0, 80);
+  // A string, not keyof Query: the snake_case spellings below are accepted too,
+  // for callers that send the catalog's column names.
+  const get = (k: string) => (params.get(k) || "").trim().slice(0, 80);
   const q: Query = {
     make: get("make"),
     model: get("model"),

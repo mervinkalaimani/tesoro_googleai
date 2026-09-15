@@ -74,6 +74,33 @@ function preOrderSubLine(car: Diecast) {
   return [car.brand, car.assortment, car.carNumber, car.seller].filter(Boolean).join(" · ") || "—";
 }
 
+/** A label and value in the pre-order card's grid. */
+function PreOrderFact({
+  label,
+  value,
+  className = "text-foreground",
+  align = "left",
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  align?: "left" | "right";
+}) {
+  return (
+    <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
+      <dt className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+        {label}
+      </dt>
+      <dd
+        className={`mt-0.5 truncate text-xs font-semibold tabular-nums ${className}`}
+        title={value}
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 /** One pre-ordered car. */
 function PreOrderCard({
   car,
@@ -117,77 +144,32 @@ function PreOrderCard({
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
       </button>
 
-      {/* 2-line detail structure:
-          Line 1: Ordered on (left), Expected by (right)
-          Line 2: Cost (spent) (left), Deposit (middle left-aligned), Balance (right-aligned).
-          When settled: hide deposit paid, balance due displays "Fully paid". */}
-      <div className="mt-auto space-y-2.5 border-t border-border px-4 py-3">
-        {/* Line 1: Ordered on (left) and Expected by (right) */}
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Ordered on
-            </div>
-            <div className="mt-0.5 text-xs font-semibold text-foreground">
-              {formatDayMonthYear(car.orderDate) || car.orderDate || "—"}
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Expected by
-            </div>
-            <div
-              className="mt-0.5 truncate text-xs font-semibold text-primary"
-              title={formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || undefined}
-            >
-              {formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || "—"}
-            </div>
-          </div>
-        </div>
-
-        {/* Line 2: Cost (spent), Deposit, Balance */}
-        {settled ? (
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Cost</div>
-              <div className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">
-                {inrFull(car.spent || 0)}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Balance due
-              </div>
-              <div className="mt-0.5 text-xs font-semibold text-emerald-500">Fully paid</div>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-3 items-center gap-2">
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Cost</div>
-              <div className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">
-                {inrFull(car.spent || 0)}
-              </div>
-            </div>
-            <div className="text-left">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Deposit
-              </div>
-              <div className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">
-                {inrFull(car.paid || 0)}
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Balance
-              </div>
-              <div className="mt-0.5 text-xs font-semibold tabular-nums text-amber-500">
-                {inrFull(due)}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* One 3-column grid for both rows, so the columns line up:
+            Ordered on   ·            ·   Expected by
+            Cost         Deposit paid     Balance
+          Everything reads left except the last column, which is right-aligned.
+          A settled car keeps the same shape — its balance just says so. */}
+      <dl className="mt-auto grid grid-cols-3 gap-x-3 gap-y-2.5 border-t border-border px-4 py-3">
+        <PreOrderFact
+          label="Ordered on"
+          value={formatDayMonthYear(car.orderDate) || car.orderDate || "—"}
+        />
+        <div aria-hidden />
+        <PreOrderFact
+          label="Expected by"
+          value={formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || "—"}
+          className="text-primary"
+          align="right"
+        />
+        <PreOrderFact label="Cost" value={inrFull(car.spent || 0)} />
+        <PreOrderFact label="Deposit paid" value={inrFull(car.paid || 0)} />
+        <PreOrderFact
+          label="Balance"
+          value={settled ? "Fully paid" : inrFull(due)}
+          className={settled ? "text-emerald-500" : "text-amber-500"}
+          align="right"
+        />
+      </dl>
 
       <div className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
         {!settled && (

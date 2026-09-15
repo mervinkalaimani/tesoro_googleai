@@ -60,8 +60,7 @@ export const Route = createFileRoute("/catalog")({
       { property: "og:title", content: "Car Catalog | Tesoro" },
       {
         property: "og:description",
-        content:
-          "Centralized diecast car catalog framework with unique 8-component Car IDs.",
+        content: "Centralized diecast car catalog framework with unique 8-component Car IDs.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -212,7 +211,15 @@ function CatalogPage() {
 
       return haystack.includes(q);
     });
-  }, [catalog, searchFilter, query, selectedBrand, selectedAssortment, collectionFilter, rawCarsByIdCount]);
+  }, [
+    catalog,
+    searchFilter,
+    query,
+    selectedBrand,
+    selectedAssortment,
+    collectionFilter,
+    rawCarsByIdCount,
+  ]);
 
   // KPI Metrics
   const totalCastings = catalog.length;
@@ -314,47 +321,48 @@ function CatalogPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header */}
+      {/* PageHeading takes subtitle and children; the description/actions
+          props this used were ignored, so the text and the button never showed. */}
       <PageHeading
         title="Car Catalog"
-        description="Unified diecast casting repository. Unique Car IDs are generated from Brand, Make, Model, Assortment, Series, Sub-series, Car Number, and MRP. Reused across the raw inventory table to prevent duplication."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={() => setIsAddOpen(true)}
-              className="gap-1.5 shadow-sm"
-            >
-              <Plus className="size-4" />
-              <span>New Casting</span>
-            </Button>
-          </div>
-        }
-      />
+        subtitle="Every unique casting, with one Car ID built from brand, make, model, assortment, series, sub-series, car number and MRP."
+      >
+        <Button onClick={() => setIsAddOpen(true)} className="gap-1.5 shadow-sm">
+          <Plus className="size-4" />
+          <span>New Casting</span>
+        </Button>
+      </PageHeading>
 
-      {/* KPI Band */}
+      {/* KpiTile renders `icon` as a child, so it must be an element. Passing
+          the component itself (icon={Database}) handed React an object and
+          crashed the whole page. */}
       <KpiBand>
         <KpiTile
           label="Unique Castings"
           value={totalCastings.toLocaleString()}
-          subtext="Standardized specifications"
-          icon={Database}
+          sub="Standardized specifications"
+          icon={<Database className="size-4" />}
         />
         <KpiTile
           label="Owned in Collection"
           value={ownedCastingsCount.toLocaleString()}
-          subtext={`${totalCastings > 0 ? Math.round((ownedCastingsCount / totalCastings) * 100) : 0}% of catalog`}
-          icon={Boxes}
+          sub={`${totalCastings > 0 ? Math.round((ownedCastingsCount / totalCastings) * 100) : 0}% of catalog`}
+          icon={<Boxes className="size-4" />}
+          tone="emerald"
         />
         <KpiTile
           label="Raw Reused Instances"
           value={duplicationSavings.toLocaleString()}
-          subtext="Duplicate records avoided"
-          icon={Layers}
+          sub="Duplicate records avoided"
+          icon={<Layers className="size-4" />}
+          tone="sky"
         />
         <KpiTile
           label="Catalog Brands"
           value={availableBrands.length.toLocaleString()}
-          subtext="Manufacturers tracked"
-          icon={Sparkles}
+          sub="Manufacturers tracked"
+          icon={<Sparkles className="size-4" />}
+          tone="violet"
         />
       </KpiBand>
 
@@ -582,9 +590,7 @@ function CatalogPage() {
 
                 {/* Card Action Footer */}
                 <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground font-mono">
-                    ID linked
-                  </span>
+                  <span className="text-[11px] text-muted-foreground font-mono">ID linked</span>
 
                   <Button
                     size="sm"
@@ -683,8 +689,8 @@ function CatalogPage() {
               <span>Define New Catalog Casting</span>
             </DialogTitle>
             <DialogDescription>
-              Create a standard catalog entry. Its unique Car ID will be generated
-              strictly from Brand, Make, Model, Assortment, Series, Sub-series, Car Number, and MRP.
+              Create a standard catalog entry. Its unique Car ID will be generated strictly from
+              Brand, Make, Model, Assortment, Series, Sub-series, Car Number, and MRP.
             </DialogDescription>
           </DialogHeader>
 
@@ -700,7 +706,10 @@ function CatalogPage() {
                     Already in Catalog
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-0">
+                  <Badge
+                    variant="secondary"
+                    className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-0"
+                  >
                     New Unique ID
                   </Badge>
                 )}
@@ -854,6 +863,8 @@ function CatalogPage() {
       {/* =================================================================== */}
       {inventoryCarToCreate && (
         <CarFormDialog
+          // Adding a new copy to the collection, prefilled from the casting.
+          mode="add"
           open={isFormDialogOpen}
           onOpenChange={(open) => {
             setIsFormDialogOpen(open);

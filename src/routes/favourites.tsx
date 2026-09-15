@@ -96,9 +96,7 @@ function GalleryCard({
               {car.brand}
             </span>
           )}
-          <span className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] text-white/80 backdrop-blur-sm">
-            {car.open ? "Loose" : "Carded"}
-          </span>
+          {/* The Loose/Carded tag went with the "Open" column it read. */}
         </div>
       </div>
 
