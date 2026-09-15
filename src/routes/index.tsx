@@ -31,18 +31,12 @@ import {
   relativeDay,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { SegmentControl } from "@/components/segment-control";
 import { PageHeading } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import {
   Tooltip as UITooltip,
@@ -844,27 +838,15 @@ function TopTenGrid({
 
   return (
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
-      <div className="mb-3 flex items-center justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Top 5</h2>
           <p className="text-xs text-muted-foreground">Leading {label.toLowerCase()}</p>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <Select value={key} onValueChange={(v) => setKey(v as TopKey)}>
-            <SelectTrigger className="h-7 w-28 text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TOP_OPTIONS.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {/* Count / Cost lives on Monthly spending; this list follows it. */}
-        </div>
+        {/* All six at a glance instead of behind a dropdown. On a phone the
+            row is wider than the card, so it scrolls sideways. */}
+        <SegmentControl value={key} onChange={setKey} options={TOP_OPTIONS} />
       </div>
 
       {items.length > 0 ? (
