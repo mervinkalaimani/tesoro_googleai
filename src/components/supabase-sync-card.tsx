@@ -24,6 +24,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useCars, useCarsSource, useCarsRefresh } from "@/lib/cars-store";
 import { fetchCarsFromSupabase } from "@/lib/supabase-cars";
 import {
+  fetchCatalogFromSupabase,
+  extractCatalogFromCars,
+  seedCatalogToSupabase,
+} from "@/lib/catalog";
+import {
   useSupabaseConfig,
   testSupabaseConnection,
   DEFAULT_SUPABASE_CONFIG,
@@ -64,6 +69,8 @@ export function SupabaseSyncCard() {
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedCreateTable, setCopiedCreateTable] = useState(false);
   const [copiedCreateCatalogTable, setCopiedCreateCatalogTable] = useState(false);
+  const [catalogCount, setCatalogCount] = useState<number | null>(null);
+  const [syncingCatalog, setSyncingCatalog] = useState(false);
 
   // Keep inputs synchronized when external config changes
   useEffect(() => {
@@ -89,8 +96,22 @@ export function SupabaseSyncCard() {
     }
   };
 
+  const checkCatalogCount = async () => {
+    try {
+      const cat = await fetchCatalogFromSupabase();
+      if (cat !== null) {
+        setCatalogCount(cat.length);
+      } else {
+        setCatalogCount(null);
+      }
+    } catch {
+      setCatalogCount(null);
+    }
+  };
+
   useEffect(() => {
     checkCount();
+    checkCatalogCount();
   }, [config.tableName]);
 
   const handleTestConnection = async () => {
@@ -151,6 +172,7 @@ export function SupabaseSyncCard() {
         text: `Successfully synced ${result.count} cars into '${config.tableName}' on Supabase!`,
       });
       await checkCount();
+      await checkCatalogCount();
       await refresh();
     } else {
       setStatusMessage({
@@ -161,6 +183,35 @@ export function SupabaseSyncCard() {
       });
     }
     setSyncing(false);
+  };
+
+  const handleSyncCatalog = async () => {
+    if (syncingCatalog || cars.length === 0) return;
+    setSyncingCatalog(true);
+    setStatusMessage(null);
+    try {
+      const catalogEntries = extractCatalogFromCars(cars);
+      const res = await seedCatalogToSupabase(catalogEntries);
+      if (res.success) {
+        setStatusMessage({
+          type: "success",
+          text: `Successfully extracted and populated ${res.count} unique castings into 'tesoro_car_catalog'!`,
+        });
+        await checkCatalogCount();
+      } else {
+        setStatusMessage({
+          type: "error",
+          text: res.error || "Failed to populate catalog table.",
+        });
+      }
+    } catch (err) {
+      setStatusMessage({
+        type: "error",
+        text: (err as Error).message || "Failed to populate catalog.",
+      });
+    } finally {
+      setSyncingCatalog(false);
+    }
   };
 
   const isModified = useMemo(() => {
@@ -235,6 +286,7 @@ ALTER TABLE public.${table} ADD COLUMN IF NOT EXISTS "Shipping Cost" NUMERIC;`;
   }, [config.tableName]);
 
   const createCatalogTableSql = useMemo(() => {
+    const table = config.tableName.trim() || "tesoro_raw";
     return `-- =============================================================================
 -- Tesoro Car Catalog Backend Table (public.tesoro_car_catalog)
 -- Run in Supabase SQL Editor:
@@ -282,8 +334,44 @@ DROP POLICY IF EXISTS "Authenticated users can update car catalog" ON public.tes
 CREATE POLICY "Authenticated users can update car catalog" ON public.tesoro_car_catalog FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
 
 GRANT SELECT ON public.tesoro_car_catalog TO anon;
-GRANT SELECT, INSERT, UPDATE ON public.tesoro_car_catalog TO authenticated;`;
-  }, []);
+GRANT SELECT, INSERT, UPDATE ON public.tesoro_car_catalog TO authenticated;
+
+-- =============================================================================
+-- AUTO-POPULATE: Extract unique castings from public.${table}
+-- =============================================================================
+INSERT INTO public.tesoro_car_catalog (
+  car_id, brand, make, model, assortment, series, sub_series, car_number, mrp,
+  name, variant, year, colour, type, size, image_url
+)
+SELECT DISTINCT ON (
+  COALESCE(
+    NULLIF(TRIM(r."Car ID"), ''),
+    REGEXP_REPLACE(UPPER(TRIM(COALESCE(r."Brand", 'GEN')) || '-' || TRIM(COALESCE(r."Make", 'GEN')) || '-' || TRIM(COALESCE(r."Model", 'CAR')) || '-' || TRIM(COALESCE(r."Assortment", 'STD')) || '-' || TRIM(COALESCE(r."Series", 'STD')) || '-' || TRIM(COALESCE(r."Sub Series", 'NA')) || '-' || TRIM(COALESCE(r."Car Number", 'NA')) || '-M' || ROUND(COALESCE(r."MRP", 0))), '[^A-Z0-9-]', '', 'g')
+  )
+)
+  COALESCE(
+    NULLIF(TRIM(r."Car ID"), ''),
+    REGEXP_REPLACE(UPPER(TRIM(COALESCE(r."Brand", 'GEN')) || '-' || TRIM(COALESCE(r."Make", 'GEN')) || '-' || TRIM(COALESCE(r."Model", 'CAR')) || '-' || TRIM(COALESCE(r."Assortment", 'STD')) || '-' || TRIM(COALESCE(r."Series", 'STD')) || '-' || TRIM(COALESCE(r."Sub Series", 'NA')) || '-' || TRIM(COALESCE(r."Car Number", 'NA')) || '-M' || ROUND(COALESCE(r."MRP", 0))), '[^A-Z0-9-]', '', 'g')
+  ) AS car_id,
+  COALESCE(r."Brand", '') AS brand,
+  COALESCE(r."Make", '') AS make,
+  COALESCE(r."Model", '') AS model,
+  COALESCE(r."Assortment", '') AS assortment,
+  COALESCE(r."Series", '') AS series,
+  COALESCE(r."Sub Series", '') AS sub_series,
+  COALESCE(r."Car Number", '') AS car_number,
+  COALESCE(r."MRP", 0) AS mrp,
+  COALESCE(r."Name", TRIM(COALESCE(r."Make", '') || ' ' || COALESCE(r."Model", ''))) AS name,
+  COALESCE(r."Variant", '') AS variant,
+  r."Year"::TEXT AS year,
+  COALESCE(r."Colour", '') AS colour,
+  COALESCE(r."Type", '') AS type,
+  COALESCE(r."Size", '1:64') AS size,
+  COALESCE(r."Image URL", '') AS image_url
+FROM public.${table} r
+WHERE (COALESCE(r."Make", '') <> '' OR COALESCE(r."Model", '') <> '' OR COALESCE(r."Car ID", '') <> '')
+ON CONFLICT (car_id) DO NOTHING;`;
+  }, [config.tableName]);
 
   const copySql = () => {
     navigator.clipboard.writeText(sqlSnippet);
@@ -543,9 +631,9 @@ GRANT SELECT, INSERT, UPDATE ON public.tesoro_car_catalog TO authenticated;`;
 
         {/* TAB 2: SYNC & STATUS */}
         <TabsContent value="sync" className="space-y-4 pt-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
             <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
-              <div className="text-muted-foreground">Configured Table</div>
+              <div className="text-muted-foreground">Inventory Table</div>
               <div className="font-mono font-semibold text-foreground">
                 public.{config.tableName}
               </div>
@@ -562,6 +650,24 @@ GRANT SELECT, INSERT, UPDATE ON public.tesoro_car_catalog TO authenticated;`;
             </div>
 
             <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
+              <div className="text-muted-foreground flex items-center gap-1">
+                <Database className="size-3 text-primary" />
+                <span>Backend Catalog Table</span>
+              </div>
+              <div className="font-mono font-semibold text-foreground">
+                public.tesoro_car_catalog
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Master castings:{" "}
+                {catalogCount !== null ? (
+                  <span className="font-semibold text-foreground">{catalogCount} unique</span>
+                ) : (
+                  <span className="text-amber-500">empty / not populated</span>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1 sm:col-span-2 lg:col-span-1">
               <div className="text-muted-foreground">Active App Data Source</div>
               <div className="font-semibold text-foreground capitalize">
                 {source === "supabase"
@@ -595,15 +701,38 @@ GRANT SELECT, INSERT, UPDATE ON public.tesoro_car_catalog TO authenticated;`;
             </Button>
 
             <Button
-              id="check-supabase-status-btn"
+              id="sync-catalog-supabase-btn"
               variant="outline"
               size="sm"
-              onClick={checkCount}
-              disabled={checking || syncing}
+              onClick={handleSyncCatalog}
+              disabled={syncingCatalog || cars.length === 0}
+              className="gap-1.5"
+            >
+              {syncingCatalog ? (
+                <RefreshCw className="size-3.5 animate-spin" />
+              ) : (
+                <Database className="size-3.5" />
+              )}
+              <span>
+                {syncingCatalog
+                  ? "Populating Catalog..."
+                  : `Populate Catalog Table (${extractCatalogFromCars(cars).length} castings)`}
+              </span>
+            </Button>
+
+            <Button
+              id="check-supabase-status-btn"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                checkCount();
+                checkCatalogCount();
+              }}
+              disabled={checking || syncing || syncingCatalog}
               className="gap-1.5"
             >
               <RefreshCw className={`size-3.5 ${checking ? "animate-spin" : ""}`} />
-              <span>Check Table Status</span>
+              <span>Refresh Counts</span>
             </Button>
           </div>
 
