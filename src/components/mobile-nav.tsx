@@ -74,10 +74,18 @@ function useScrollCompact(enabled: boolean) {
       setCompact(false);
       return;
     }
-    let lastY = window.scrollY;
+    // iOS rubber-bands past the ends: pulled down at the top, scrollY goes
+    // negative and then climbs back to 0, which reads as scrolling down.
+    // Clamping to the real range turns the whole bounce into no movement at
+    // all (and the same at the bottom).
+    const clampedY = () => {
+      const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      return Math.min(Math.max(window.scrollY, 0), max);
+    };
+    let lastY = clampedY();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const onScroll = () => {
-      const y = window.scrollY;
+      const y = clampedY();
       const delta = y - lastY;
       if (Math.abs(delta) < 6) return;
       lastY = y;
