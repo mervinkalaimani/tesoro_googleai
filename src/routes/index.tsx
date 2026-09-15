@@ -771,11 +771,10 @@ function DashboardMiddle({
   // Recently added, which squeezed nine columns of shipment into two thirds of
   // the page; the cars that have already landed are the least urgent thing on
   // the dashboard and have gone to the bottom of it.
-  return (
-    <section className="min-w-0">
-      <TransitTracker rows={rows} etaDays={etaDays} />
-    </section>
-  );
+  // No wrapper: the tracker hides itself when none of those cars has an order
+  // date to group by, and an empty <section> left behind still took a gap in
+  // the page's spacing — the blank strip under Recently added.
+  return <TransitTracker rows={rows} etaDays={etaDays} />;
 }
 
 type TopKey = "make" | "model" | "series" | "manufacturer" | "assortment" | "seller";

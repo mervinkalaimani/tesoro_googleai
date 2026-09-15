@@ -50,9 +50,10 @@ export function CompactCarCard({
       // h-full so a card fills whatever cell it is given. In a row of them the
       // tallest used to set the height and the rest floated at the top, which
       // read as a list of different-sized things rather than one shelf.
-      // content-visibility: a card scrolled well off screen is skipped when
-      // the page paints, which is what keeps a grid of hundreds smooth.
-      className={`card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors [contain-intrinsic-size:auto_220px] [content-visibility:auto] hover:border-primary/40 ${className}`}
+      // No content-visibility here: in a sideways shelf the cards not yet
+      // painted stood in at a guessed 220px, and the row grew to that — a
+      // blank band under the cards in Recently added.
+      className={`card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40 ${className}`}
     >
       {/* shrink-0, or the picture is the part that gives when a card is asked to
           be shorter than its contents — and then a row of cards that agree on
