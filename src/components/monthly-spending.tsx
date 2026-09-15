@@ -56,7 +56,7 @@ function usePhone() {
 
 /**
  * Cars and money per month, by the month they were ordered or the month they
- * arrived, with the busiest month named in the subtitle.
+ * arrived.
  *
  * Self-contained: it keeps its own window, basis and Count / Cost, so it can
  * sit on any page without being wired to what is around it.
@@ -118,35 +118,21 @@ export function MonthlySpending({ rows, className = "" }: { rows: Diecast[]; cla
     return Math.round(total / series.length);
   }, [series, mode]);
 
-  const peak = useMemo(
-    () =>
-      series.reduce<(typeof series)[number] | null>(
-        (best, d) =>
-          !best || (mode === "count" ? d.count > best.count : d.spent > best.spent) ? d : best,
-        null,
-      ),
-    [series, mode],
-  );
-
   const verb = basis === "ordered" ? "ordered" : "received";
 
   return (
     <div className={`card-elevated flex min-w-0 flex-col overflow-hidden p-4 ${className}`}>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      {/* One line at every width: the title shortens before the months
+          selector drops beneath it. */}
+      <div className="mb-3 flex items-center justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="text-display text-lg font-semibold">Monthly spending</h2>
+          <h2 className="text-display truncate text-lg font-semibold">Monthly spending</h2>
           <p className="truncate text-xs text-muted-foreground">
             {mode === "count" ? `Cars ${verb} by month` : `Spent on cars ${verb}, by month`}
-            {peak
-              ? ` · Peak ${peak.month} (${
-                  mode === "count"
-                    ? `${peak.count} car${peak.count === 1 ? "" : "s"}`
-                    : inr(peak.spent)
-                })`
-              : ""}
           </p>
         </div>
         <SegmentControl
+          className="shrink-0"
           value={win}
           onChange={setWin}
           options={[

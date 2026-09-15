@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Trash2,
   UserCheck,
+  Users,
   UserX,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -38,6 +39,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MobileRecordCard, RecordAction } from "@/components/mobile-record-card";
+import { PageHeading, PageToolbar } from "@/components/page-header";
+import { KpiBand, KpiTile } from "@/components/kpi";
+import { SegmentControl } from "@/components/segment-control";
+import { useApp } from "@/lib/store";
 import { AdminImageRefresh } from "@/components/admin-image-refresh";
 
 export const Route = createFileRoute("/admin")({
@@ -61,6 +66,15 @@ type AdminUser = {
   rejected_at?: string | null;
 };
 
+type UserSegment = "all" | "pending" | "approved" | "admins";
+
+const SEGMENTS: { value: UserSegment; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "approved", label: "Approved" },
+  { value: "admins", label: "Admins" },
+];
+
 function displayName(u: AdminUser): string {
   return [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || "—";
 }
@@ -78,7 +92,8 @@ function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const { query } = useApp();
+  const [segment, setSegment] = useState<UserSegment>("all");
   const [openSno, setOpenSno] = useState<number | null>(null);
 
   const [editing, setEditing] = useState<AdminUser | null>(null);
@@ -225,20 +240,32 @@ function AdminPage() {
     void load();
   }, [deleting, load]);
 
+  const isPending = (u: AdminUser) => !u.is_approved && !u.is_owner && !u.rejected_at;
+  const inSegment = (u: AdminUser, s: UserSegment) =>
+    s === "all" ||
+    (s === "pending" && isPending(u)) ||
+    (s === "approved" && (u.is_approved || u.is_owner)) ||
+    (s === "admins" && (u.is_admin || u.is_owner));
+
+  // The top bar's search box drives this, the same way it filters cars
+  // everywhere else — there is no second search box on the page.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return users;
     return users.filter(
       (u) =>
-        u.email_id.toLowerCase().includes(q) ||
-        displayName(u).toLowerCase().includes(q) ||
-        (u.user_id ?? "").toLowerCase().includes(q),
+        inSegment(u, segment) &&
+        (!q ||
+          u.email_id.toLowerCase().includes(q) ||
+          displayName(u).toLowerCase().includes(q) ||
+          (u.user_id ?? "").toLowerCase().includes(q)),
     );
-  }, [users, query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [users, query, segment]);
 
-  const pendingCount = useMemo(
-    () => users.filter((u) => !u.is_approved && !u.is_owner && !u.rejected_at).length,
-    [users],
+  const pendingCount = useMemo(() => users.filter(isPending).length, [users]); // eslint-disable-line react-hooks/exhaustive-deps
+  const adminCount = useMemo(() => users.filter((u) => u.is_admin || u.is_owner).length, [users]);
+  const visibleSegments = SEGMENTS.filter(
+    (s) => s.value === "all" || s.value === segment || users.some((u) => inSegment(u, s.value)),
   );
 
   if (status !== "ready") return null;
@@ -260,36 +287,64 @@ function AdminPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
+    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       {/* Phones reach this page from Settings and have no sidebar to leave by. */}
       <Link
         to="/settings"
-        className="-mb-3 inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50 md:hidden"
+        className="-mb-2 inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50 md:hidden"
       >
         <ChevronLeft className="-ml-1 size-5" />
         Settings
       </Link>
 
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-display text-2xl font-semibold tracking-tight">Users</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {users.length} {users.length === 1 ? "account" : "accounts"}
-            {pendingCount > 0 ? ` · ${pendingCount} awaiting approval` : ""}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Input
-            placeholder="Filter by name or email"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-56"
-          />
-          <Button variant="outline" size="icon" onClick={() => void load()} aria-label="Reload">
-            <RefreshCw className={loading ? "size-4 animate-spin" : "size-4"} />
+      {/* Heading, tiles, controls, body — the order every page follows. */}
+      <PageHeading
+        title="Users"
+        subtitle={`${users.length} ${users.length === 1 ? "account" : "accounts"}${
+          query.trim() ? ` · ${filtered.length} matching "${query.trim()}"` : ""
+        }`}
+      />
+
+      <KpiBand>
+        <KpiTile
+          label="Accounts"
+          value={users.length.toLocaleString()}
+          sub="Everyone who has signed up"
+          icon={<Users className="size-4" />}
+        />
+        <KpiTile
+          label="Awaiting approval"
+          value={pendingCount.toLocaleString()}
+          sub={pendingCount ? "Approve or reject below" : "Nobody waiting"}
+          icon={<UserCheck className="size-4" />}
+          tone="amber"
+          valueTone={pendingCount ? "amber" : undefined}
+        />
+        <KpiTile
+          label="Admins"
+          value={adminCount.toLocaleString()}
+          sub="Including the owner"
+          icon={<ShieldCheck className="size-4" />}
+          tone="sky"
+        />
+      </KpiBand>
+
+      <PageToolbar
+        sticky
+        oneLine
+        left={<SegmentControl value={segment} onChange={setSegment} options={visibleSegments} />}
+        right={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void load()}
+            aria-label="Reload"
+            title="Reload"
+          >
+            <RefreshCw className={loading ? "size-3.5 animate-spin" : "size-3.5"} />
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {error ? (
         <div className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -473,7 +528,7 @@ function AdminPage() {
         )}
       </div>
 
-      <div className="hidden overflow-x-auto rounded-lg border border-border md:block">
+      <div className="card-elevated hidden overflow-x-auto md:block">
         <Table>
           <TableHeader>
             <TableRow>

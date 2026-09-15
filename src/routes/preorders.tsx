@@ -493,7 +493,7 @@ function PreOrdersPage() {
               ]}
             />
             {/* Every pre-order on the page, filtered as it stands. */}
-            <ExportButton rows={rows} name="preorders" label="Pre-orders" />
+            <ExportButton rows={rows} name="preorders" label="Pre-orders" iconOnlyOnMobile />
             <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
               <Plus className="size-4" />
               <span className="hidden sm:inline">New pre-order</span>

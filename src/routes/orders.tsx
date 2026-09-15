@@ -64,7 +64,7 @@ const STATUS_RANK: Record<string, number> = {
 /** Delivered batches are unbounded, so only recent ones are worth listing. */
 const DELIVERED_WINDOW_DAYS = 90;
 
-type SortMode = "status" | "seller" | "orderDate";
+type SortMode = "expected" | "status" | "seller" | "orderDate";
 
 /**
  * One segment per status, which is what was missing: "In transit" used to mean
@@ -298,7 +298,16 @@ function HeaderFact({
  */
 function ContentsItem({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
-  const kind = [car.brand, car.assortment].filter(Boolean).join(" · ");
+  const kind = [
+    car.brand,
+    car.assortment,
+    car.series,
+    car.subSeries,
+    car.carNumber ? `#${car.carNumber.replace(/^#/, "")}` : "",
+  ]
+    .map((v) => (v || "").trim())
+    .filter(Boolean)
+    .join(" · ");
   return (
     <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
       <button
@@ -324,7 +333,7 @@ function OrdersPage() {
   const { query } = useApp();
   const cars = useCars();
   const drawer = useCarDrawer();
-  const [mode, setMode] = useState<SortMode>("status");
+  const [mode, setMode] = useState<SortMode>("expected");
   const [tab, setTab] = useState<Tab>("all");
   const [seller, setSeller] = useState("all");
   const [batchOpen, setBatchOpen] = useState(false);
@@ -422,7 +431,17 @@ function OrdersPage() {
     const rank = (s: Shipment) => (s.delivered ? 90 : (STATUS_RANK[s.status] ?? 89));
     const t = (v: string) => parseDMY(v)?.getTime() ?? 0;
     return out.sort((a, b) => {
-      if (mode === "seller") {
+      if (mode === "expected") {
+        // Soonest arrival first. Delivered orders, and ones with no date to go
+        // by, fall to the bottom.
+        const group = (s: Shipment) => (s.delivered ? 2 : parseDMY(s.eta) ? 0 : 1);
+        const g = group(a) - group(b);
+        if (g !== 0) return g;
+        if (group(a) === 0) {
+          const d = t(a.eta) - t(b.eta);
+          if (d !== 0) return d;
+        }
+      } else if (mode === "seller") {
         const s = a.seller.localeCompare(b.seller);
         if (s !== 0) return s;
       } else if (mode === "orderDate") {
@@ -497,9 +516,10 @@ function OrdersPage() {
               onChange={(v) => setMode(v as SortMode)}
               icon={<ArrowUpDown className="size-3.5" />}
               label="Sort"
-              neutral="status"
+              neutral="expected"
               iconOnlyOnMobile
               options={[
+                { value: "expected", label: "Expected" },
                 { value: "status", label: "Status" },
                 { value: "seller", label: "Seller" },
                 { value: "orderDate", label: "Order date" },

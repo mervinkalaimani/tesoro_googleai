@@ -184,11 +184,14 @@ function CollectionPage() {
 
       <PageToolbar
         sticky
+        // One line on a phone too: the control narrows and scrolls sideways
+        // instead of taking a row of its own above the buttons.
+        oneLine
         left={
           /* min-w-0 so the seven-option control can scroll instead of
              stretching this row past the edge of the card. */
           <SegmentControl
-            className="w-full md:w-auto"
+            className="w-auto md:w-auto"
             value={group}
             onChange={(v) => {
               setGroup(v);

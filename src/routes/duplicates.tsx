@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
+  ChevronDown,
   Copy,
   Download,
   IndianRupee,
@@ -66,10 +67,18 @@ function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Dieca
   const first = rows[0];
   const valuation = rows.reduce((s, r) => s + (r.mrp || r.spent || 0), 0);
   const surplus = rows.length - 1;
+  // Closed by default: the page is a list of groups to scan, and the copies
+  // inside one are only worth the room once it is the group you are after.
+  const [open, setOpen] = useState(false);
 
   return (
     <article className="card-elevated overflow-hidden">
-      <header className="flex flex-wrap items-start justify-between gap-3 p-4">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-start justify-between gap-3 p-4 text-left"
+      >
         <div className="flex min-w-0 items-start gap-3">
           <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md bg-amber-500/15 text-sm font-bold text-amber-400">
             {rows.length}x
@@ -91,13 +100,18 @@ function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Dieca
             </p>
           </div>
         </div>
-        <div className="shrink-0 text-right">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-            Group valuation
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="text-right">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Group valuation
+            </div>
+            <div className="text-sm font-bold tabular-nums">{inrFull(valuation)}</div>
           </div>
-          <div className="text-sm font-bold tabular-nums">{inrFull(valuation)}</div>
+          <ChevronDown
+            className={`size-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          />
         </div>
-      </header>
+      </button>
 
       {/* Three across. These are copies of one casting, so what you are doing
           here is comparing them — which cost more, which came from where — and
@@ -108,39 +122,41 @@ function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Dieca
           read as the heading, when the question on this page is which duplicate
           to keep. The car ID takes its place, because with three near-identical
           cards in a row it is the only thing that tells them apart. */}
-      <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-2 xl:grid-cols-3">
-        {rows.map((r, i) => (
-          <button
-            key={(r.id || "") + i}
-            type="button"
-            onClick={() => onOpen(r)}
-            className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-muted/20 p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
-          >
-            <div className="flex min-w-0 items-center gap-2">
-              <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                #{i + 1}
-              </span>
-              <span className="min-w-0 truncate font-mono text-xs text-foreground">
-                {r.id || "—"}
-              </span>
-              <CarMarks car={r} primary="chase" iconClassName="size-3.5" className="ml-auto" />
-              <span className="shrink-0 text-sm font-semibold tabular-nums">
-                {inrFull(r.mrp || r.spent || 0)}
-              </span>
-            </div>
+      {open && (
+        <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-2 xl:grid-cols-3">
+          {rows.map((r, i) => (
+            <button
+              key={(r.id || "") + i}
+              type="button"
+              onClick={() => onOpen(r)}
+              className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-muted/20 p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                  #{i + 1}
+                </span>
+                <span className="min-w-0 truncate font-mono text-xs text-foreground">
+                  {r.id || "—"}
+                </span>
+                <CarMarks car={r} primary="chase" iconClassName="size-3.5" className="ml-auto" />
+                <span className="shrink-0 text-sm font-semibold tabular-nums">
+                  {inrFull(r.mrp || r.spent || 0)}
+                </span>
+              </div>
 
-            <div className="truncate font-mono text-xs text-muted-foreground">
-              {r.status || "—"}
-              {r.seller ? ` · ${r.seller}` : ""}
-            </div>
+              <div className="truncate font-mono text-xs text-muted-foreground">
+                {r.status || "—"}
+                {r.seller ? ` · ${r.seller}` : ""}
+              </div>
 
-            <div className="truncate font-mono text-xs text-muted-foreground">
-              Cost: {inrFull(r.spent || 0)}
-              {r.date ? ` · ${r.date}` : ""}
-            </div>
-          </button>
-        ))}
-      </div>
+              <div className="truncate font-mono text-xs text-muted-foreground">
+                Cost: {inrFull(r.spent || 0)}
+                {r.date ? ` · ${r.date}` : ""}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
     </article>
   );
 }
@@ -235,18 +251,9 @@ function DuplicatesPage() {
 
       <PageToolbar
         sticky
-        left={
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground">Match on:</span>
-            <span className="text-xs font-semibold text-foreground">
-              {active.length} attribute{active.length === 1 ? "" : "s"}
-            </span>
-            <span className="text-xs text-muted-foreground">·</span>
-            <span className="font-mono text-xs text-muted-foreground">
-              {groups.length} group{groups.length === 1 ? "" : "s"} identified
-            </span>
-          </div>
-        }
+        // Only buttons now that the "Match on" line is gone, so they share one
+        // row instead of sitting under an empty one on a phone.
+        oneLine
         right={
           <>
             <Button

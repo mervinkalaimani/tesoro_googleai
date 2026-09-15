@@ -782,6 +782,9 @@ const TOP_OPTIONS: { value: TopKey; label: string }[] = [
   { value: "seller", label: "Seller" },
 ];
 
+/** One colour per place in the Top 5 bar, leader first. */
+const TOP_COLOURS = ["var(--primary)", "#38bdf8", "#f59e0b", "#34d399", "#a78bfa"];
+
 function pickTopValue(r: Diecast, key: TopKey) {
   switch (key) {
     case "make":
@@ -810,6 +813,8 @@ function TopTenGrid({
 }) {
   const [key, setKey] = useState<TopKey>("make");
   const [selected, setSelected] = useState<string | null>(null);
+  /** The part of the bar whose value is showing. */
+  const [active, setActive] = useState<number | null>(null);
 
   const items = useMemo(() => {
     const m = new Map<string, number>();
@@ -824,13 +829,20 @@ function TopTenGrid({
       .slice(0, 5);
   }, [rows, key, mode]);
 
+  // A different five: the value label would point at the wrong part.
+  useEffect(() => setActive(null), [key, mode]);
+
   const selectedRows = useMemo(
     () => (selected ? rows.filter((r) => pickTopValue(r, key) === selected) : []),
     [rows, key, selected],
   );
 
   const label = TOP_OPTIONS.find((o) => o.value === key)!.label;
-  const max = items[0]?.value || 1;
+  // The bar is the five alone, filled edge to edge: each part is its share of
+  // the top five, not of the whole collection.
+  const topSum = items.reduce((s, it) => s + it.value, 0);
+  const fmt = (v: number) => (mode === "count" ? v.toLocaleString() : inr(v));
+  const share = (v: number) => (topSum ? (v / topSum) * 100 : 0);
 
   if (loading) {
     return <TopListSkeleton />;
@@ -838,54 +850,85 @@ function TopTenGrid({
 
   return (
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
+      {/* Title and control share the line at every width: the control is
+          capped and scrolls sideways rather than dropping underneath. */}
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="min-w-0 shrink-0">
           <h2 className="text-display text-lg font-semibold">Top 5</h2>
-          <p className="text-xs text-muted-foreground">Leading {label.toLowerCase()}</p>
+          <p className="truncate text-xs text-muted-foreground">Leading {label.toLowerCase()}</p>
         </div>
-
-        {/* All six at a glance instead of behind a dropdown. On a phone the
-            row is wider than the card, so it scrolls sideways. */}
-        <SegmentControl value={key} onChange={setKey} options={TOP_OPTIONS} />
+        <SegmentControl
+          value={key}
+          onChange={setKey}
+          options={TOP_OPTIONS}
+          className="max-w-[62%] sm:max-w-none"
+        />
       </div>
 
+      {/* Laid out like iPhone storage: one bar split by share of the whole,
+          then a legend with each value underneath. Tap a row for its cars. */}
       {items.length > 0 ? (
-        <ul className="flex min-h-0 flex-1 flex-col justify-between gap-2">
-          {items.map((it, i) => {
-            const pct = (it.value / max) * 100;
-            return (
-              <li key={it.name} className="flex flex-1 flex-col justify-center gap-1.5">
+        <div className="flex min-h-0 flex-1 flex-col justify-center gap-3">
+          {/* Values appear on hover, or on a tap for touch screens, in a small
+              label over the part of the bar being pointed at. */}
+          <div className="relative pt-7">
+            {active !== null && items[active] && (
+              <div
+                className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-0.5 text-[11px] font-medium shadow-md"
+                style={{
+                  left: `clamp(3rem, ${
+                    items.slice(0, active).reduce((s, it) => s + share(it.value), 0) +
+                    share(items[active].value) / 2
+                  }%, calc(100% - 3rem))`,
+                }}
+              >
+                {items[active].name} ·{" "}
+                <span className="tabular-nums">{fmt(items[active].value)}</span>
+              </div>
+            )}
+            <div
+              className="flex h-6 w-full gap-[2px] overflow-hidden rounded-md"
+              role="img"
+              aria-label={items.map((it) => `${it.name} ${fmt(it.value)}`).join(", ")}
+              onMouseLeave={() => setActive(null)}
+            >
+              {items.map((it, i) => (
+                <button
+                  key={it.name}
+                  type="button"
+                  aria-label={`${it.name}: ${fmt(it.value)}`}
+                  onMouseEnter={() => setActive(i)}
+                  onClick={() => setActive((cur) => (cur === i ? null : i))}
+                  className={`h-full min-w-[3px] transition-opacity ${
+                    active !== null && active !== i ? "opacity-50" : ""
+                  }`}
+                  style={{ width: `${share(it.value)}%`, background: TOP_COLOURS[i] }}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Names only, small, two rows. Tapping one opens its cars. */}
+          <ul className="grid grid-cols-3 gap-x-3 gap-y-1.5">
+            {items.map((it, i) => (
+              <li key={it.name} className="min-w-0">
                 <button
                   type="button"
                   onClick={() => setSelected(it.name)}
-                  className="group flex flex-1 flex-col justify-center gap-1.5 text-left transition-colors"
+                  onMouseEnter={() => setActive(i)}
+                  onMouseLeave={() => setActive(null)}
+                  className="flex w-full min-w-0 items-center gap-1.5 text-left text-[11px] text-muted-foreground hover:text-foreground"
                 >
-                  <div className="flex items-center justify-between text-sm">
-                    <span
-                      className={`flex min-w-0 items-center ${
-                        i === 0
-                          ? "font-semibold"
-                          : "text-muted-foreground group-hover:text-foreground"
-                      }`}
-                    >
-                      <span className="truncate">{it.name}</span>
-                      <ChevronRight className="ml-1 size-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 text-muted-foreground" />
-                    </span>
-                    <span className={`shrink-0 tabular-nums ${i === 0 ? "font-semibold" : ""}`}>
-                      {mode === "count" ? it.value : inr(it.value)}
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className={`h-full rounded-full ${i === 0 ? "bg-primary" : "bg-primary/50"}`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ background: TOP_COLOURS[i] }}
+                  />
+                  <span className="truncate">{it.name}</span>
                 </button>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+        </div>
       ) : (
         <div className="text-sm text-muted-foreground">No data.</div>
       )}

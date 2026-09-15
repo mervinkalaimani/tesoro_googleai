@@ -21,6 +21,7 @@ export function ExportButton({
   name,
   label,
   iconOnly = false,
+  iconOnlyOnMobile = false,
   size = "sm",
   variant = "outline",
   className = "",
@@ -32,6 +33,8 @@ export function ExportButton({
   label: string;
   /** Drop the word, keep the icon — for a crowded card footer. */
   iconOnly?: boolean;
+  /** The word from sm up, the icon alone on a phone. */
+  iconOnlyOnMobile?: boolean;
   size?: "sm" | "default" | "icon";
   variant?: "outline" | "ghost" | "default";
   className?: string;
@@ -57,7 +60,8 @@ export function ExportButton({
         aria-label={`Export ${label}`}
       >
         <FileText className="size-3.5" />
-        {!iconOnly && "Export"}
+        {!iconOnly &&
+          (iconOnlyOnMobile ? <span className="hidden sm:inline">Export</span> : "Export")}
       </Button>
 
       {/* Mounted only once opened. An orders page can hold thirty of these, and

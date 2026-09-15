@@ -212,7 +212,9 @@ export function CarsTable({
             <col className="w-[7rem] md:w-[8rem]" />
             {showBadgeCol && <col className="w-[7.5rem]" />}
           </colgroup>
-          <thead className="sticky top-0 z-10 bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+          {/* z-[1], not z-10: enough to stay over the rows it heads, and below
+              a page's sticky filter bar (z-10), which it used to slide over. */}
+          <thead className="sticky top-0 z-[1] bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
               <th className="px-3 py-2.5 font-medium md:px-4">Model</th>
               <th className="px-3 py-2.5 font-medium md:px-4">Brand / Assortment</th>

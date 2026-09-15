@@ -49,7 +49,8 @@ export function OAuthProvidersCard() {
   };
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
+    // No frame of its own: Settings already puts it in a card.
+    <div className="space-y-3">
       <div className="min-w-0">
         <h3 className="flex items-center gap-1.5 text-sm font-semibold">
           <KeyRound className="size-4 text-primary" />

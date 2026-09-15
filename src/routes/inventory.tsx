@@ -413,6 +413,9 @@ function InventoryPage() {
 
       <PageToolbar
         sticky
+        // One line on a phone too: the status control narrows and scrolls
+        // sideways beside the buttons instead of taking a row of its own.
+        oneLine
         left={
           /* The same control at both sizes, behaving differently at each.
                  Eleven segments will not wrap onto a 375px screen without
@@ -426,7 +429,7 @@ function InventoryPage() {
           <SegmentControl
             value={status}
             onChange={setStatus}
-            className="w-full gap-0.5 md:inline-flex md:w-auto md:flex-wrap"
+            className="w-auto gap-0.5 md:inline-flex md:w-auto md:flex-wrap"
             options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
           />
         }

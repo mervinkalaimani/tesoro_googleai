@@ -350,9 +350,9 @@ export function SettingsPage() {
                     <ShieldCheck className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="text-[15px] font-medium text-foreground">Admin</span>
+                    <span className="text-[15px] font-medium text-foreground">Users</span>
                     <p className="text-xs text-muted-foreground">
-                      User access control, account approvals &amp; role assignments
+                      Account approvals, access &amp; roles
                     </p>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">

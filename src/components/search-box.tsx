@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouterState } from "@tanstack/react-router";
 import { Search, X, Camera, Car as CarIcon, ArrowUpRight } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
@@ -86,6 +87,9 @@ export function SearchBox({
   className?: string;
 }) {
   const { query, setQuery } = useApp();
+  // On the Users page this box searches accounts: that page filters by the
+  // same query, and car suggestions and photo search mean nothing there.
+  const onUsers = useRouterState({ select: (r) => r.location.pathname === "/admin" });
   const cars = useCars();
   const { open: openCar } = useCarDrawer();
   const [open, setOpen] = useState(false);
@@ -102,7 +106,7 @@ export function SearchBox({
   const isMobile = useIsMobile();
   // Too little room on a phone for a rotating example to read as anything but
   // noise, so the hint stays a plain "Search" there.
-  const { example, visible } = useRotatingExample(!query && !isMobile);
+  const { example, visible } = useRotatingExample(!query && !isMobile && !onUsers);
 
   const fragment = useMemo(() => {
     const idx = query.lastIndexOf(",");
@@ -181,7 +185,7 @@ export function SearchBox({
           setOpen(true);
         }}
         onKeyDown={(e) => {
-          if (!open || suggestions.length === 0) return;
+          if (onUsers || !open || suggestions.length === 0) return;
           if (e.key === "ArrowDown") {
             e.preventDefault();
             setActive((a) => (a + 1) % suggestions.length);
@@ -198,7 +202,7 @@ export function SearchBox({
         // The visible hint is the animated overlay below; a real placeholder
         // would sit on top of it.
         placeholder=""
-        aria-label="Search cars"
+        aria-label={onUsers ? "Search users" : "Search cars"}
         className={query ? "pl-9 pr-16" : "pl-9 pr-10"}
       />
       {!query && (
@@ -206,8 +210,8 @@ export function SearchBox({
           aria-hidden
           className="pointer-events-none absolute inset-y-0 left-9 flex items-center gap-1.5 overflow-hidden pr-10 text-sm text-muted-foreground"
         >
-          <span className="shrink-0">Search</span>
-          {!isMobile && (
+          <span className="shrink-0">{onUsers ? "Search users" : "Search"}</span>
+          {!isMobile && !onUsers && (
             <span
               className="truncate transition-opacity duration-300 ease-in-out"
               style={{ opacity: visible ? 1 : 0 }}
@@ -236,18 +240,20 @@ export function SearchBox({
             <X className="size-3.5" />
           </button>
         )}
-        <button
-          type="button"
-          aria-label="Search by image"
-          title="Search by image (AI attribute search) or barcode"
-          onClick={() => setScanOpen(true)}
-          className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer active:scale-95"
-        >
-          <Camera className="size-4" />
-        </button>
+        {!onUsers && (
+          <button
+            type="button"
+            aria-label="Search by image"
+            title="Search by image (AI attribute search) or barcode"
+            onClick={() => setScanOpen(true)}
+            className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer active:scale-95"
+          >
+            <Camera className="size-4" />
+          </button>
+        )}
       </div>
 
-      {open && (matchingCars.length > 0 || suggestions.length > 0) && (
+      {open && !onUsers && (matchingCars.length > 0 || suggestions.length > 0) && (
         <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-xl">
           {matchingCars.length > 0 && (
             <div className="border-b border-border/70 p-1 bg-muted/10">
