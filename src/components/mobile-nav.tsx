@@ -5,7 +5,6 @@ import {
   CalendarDays,
   ChevronRight,
   Copy,
-  Database,
   Eye,
   EyeOff,
   Home,
@@ -36,7 +35,6 @@ const DEFAULT_TABS = [
 /** Sub-tabs shown when navigating into Inventory. */
 const INVENTORY_TABS = [
   { title: "Inventory", url: "/inventory", icon: Table },
-  { title: "Catalog", url: "/catalog", icon: Database },
   { title: "Favourites", url: "/favourites", icon: Star },
   { title: "Collections", url: "/collection", icon: Boxes },
 ] as const;

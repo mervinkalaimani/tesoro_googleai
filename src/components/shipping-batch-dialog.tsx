@@ -11,6 +11,7 @@ import {
   Search,
   Sparkles,
   X,
+  ChevronDown,
 } from "lucide-react";
 import {
   Dialog,
@@ -35,6 +36,7 @@ import { makeBlankCar, useCars, useCarsActions, type ShippingBatchUpdates } from
 import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
+import { cn } from "@/lib/utils";
 import type { Diecast } from "@/lib/types";
 
 const STATUS_CHOICES = [
@@ -113,6 +115,7 @@ export function ShippingBatchDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  const [carsAccordionOpen, setCarsAccordionOpen] = useState(false);
 
   // Showing delivered cars also lifts the caller's shipping-ID restriction:
   // that list was drawn from the same in-transit rows, so leaving it in place
@@ -235,6 +238,7 @@ export function ShippingBatchDialog({
     setIsoPickerOpen(false);
     setIsoQuery("");
     setNewCarSeed(null);
+    setCarsAccordionOpen(false);
   }, [activeShippingId, open]);
 
   const orderDateChanged = Boolean(newOrderDate) && newOrderDate !== loadedOrderDate;
@@ -625,33 +629,63 @@ export function ShippingBatchDialog({
                     </div>
                   )}
 
-                  {/* THE CARS. Listed, not folded away behind a "View cars"
-                    toggle — the whole reason to check a batch before writing to
-                    it is to see what is in it, and it defaulted to hidden. */}
-                  <ul className="max-h-[22rem] space-y-1.5 overflow-y-auto border-t border-border pt-2">
-                    {matchedCars.map((car) => (
-                      <li key={car.id} className="rounded bg-background/60 px-2 py-1.5 text-[11px]">
-                        <div className="truncate font-medium text-foreground">
-                          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-                        </div>
-                        <div className="mt-0.5 flex items-center justify-between gap-2">
-                          <span className="min-w-0 truncate text-[10px] text-muted-foreground">
-                            {[car.brand || car.make, car.expectedDate || car.date || "No ETA"]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </span>
-                          <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
-                            {car.status}
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                    {matchedCars.length === 0 && (
-                      <li className="px-1 py-3 text-center text-[11px] text-muted-foreground">
-                        Nothing carries this shipping ID yet.
-                      </li>
+                  {/* Mobile Accordion Toggle for Cars List (Closed by default on mobile) */}
+                  <button
+                    type="button"
+                    onClick={() => setCarsAccordionOpen((v) => !v)}
+                    className="flex w-full items-center justify-between rounded-lg border border-border bg-background/80 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted lg:hidden"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Package className="size-3.5 text-muted-foreground" />
+                      <span>
+                        {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in order
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                      <span>{carsAccordionOpen ? "Hide list" : "View list"}</span>
+                      <ChevronDown
+                        className={cn(
+                          "size-3.5 transition-transform duration-200",
+                          carsAccordionOpen && "rotate-180",
+                        )}
+                      />
+                    </span>
+                  </button>
+
+                  <div
+                    className={cn(
+                      "border-t border-border pt-2",
+                      carsAccordionOpen ? "block" : "hidden lg:block",
                     )}
-                  </ul>
+                  >
+                    <ul className="max-h-[22rem] space-y-1.5 overflow-y-auto">
+                      {matchedCars.map((car) => (
+                        <li
+                          key={car.id}
+                          className="rounded bg-background/60 px-2 py-1.5 text-[11px]"
+                        >
+                          <div className="truncate font-medium text-foreground">
+                            {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-between gap-2">
+                            <span className="min-w-0 truncate text-[10px] text-muted-foreground">
+                              {[car.brand || car.make, car.expectedDate || car.date || "No ETA"]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </span>
+                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                              {car.status}
+                            </span>
+                          </div>
+                        </li>
+                      ))}
+                      {matchedCars.length === 0 && (
+                        <li className="px-1 py-3 text-center text-[11px] text-muted-foreground">
+                          Nothing carries this shipping ID yet.
+                        </li>
+                      )}
+                    </ul>
+                  </div>
                 </aside>
               )}
 

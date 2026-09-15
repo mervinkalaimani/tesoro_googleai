@@ -46,7 +46,6 @@ const NAV = [
   { title: "Home", url: "/", icon: Home },
   { title: "Favourites", url: "/favourites", icon: Star },
   { title: "Collection", url: "/collection", icon: Boxes },
-  { title: "Catalog", url: "/catalog", icon: Database },
   { title: "My Orders", url: "/orders", icon: Truck },
   { title: "Pre-orders", url: "/preorders", icon: ShoppingBag },
   { title: "Habits", url: "/habits", icon: CalendarDays },

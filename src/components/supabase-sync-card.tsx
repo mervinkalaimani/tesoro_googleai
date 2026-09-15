@@ -63,6 +63,7 @@ export function SupabaseSyncCard() {
   } | null>(null);
   const [copiedSql, setCopiedSql] = useState(false);
   const [copiedCreateTable, setCopiedCreateTable] = useState(false);
+  const [copiedCreateCatalogTable, setCopiedCreateCatalogTable] = useState(false);
 
   // Keep inputs synchronized when external config changes
   useEffect(() => {
@@ -233,6 +234,57 @@ ALTER TABLE public.${table} ADD COLUMN IF NOT EXISTS "Image URL" TEXT;
 ALTER TABLE public.${table} ADD COLUMN IF NOT EXISTS "Shipping Cost" NUMERIC;`;
   }, [config.tableName]);
 
+  const createCatalogTableSql = useMemo(() => {
+    return `-- =============================================================================
+-- Tesoro Car Catalog Backend Table (public.tesoro_car_catalog)
+-- Run in Supabase SQL Editor:
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS public.tesoro_car_catalog (
+  car_id TEXT PRIMARY KEY,
+  brand TEXT NOT NULL DEFAULT '',
+  make TEXT NOT NULL DEFAULT '',
+  model TEXT NOT NULL DEFAULT '',
+  assortment TEXT NOT NULL DEFAULT '',
+  series TEXT NOT NULL DEFAULT '',
+  sub_series TEXT NOT NULL DEFAULT '',
+  car_number TEXT NOT NULL DEFAULT '',
+  mrp NUMERIC NOT NULL DEFAULT 0,
+  name TEXT NOT NULL DEFAULT '',
+  variant TEXT NOT NULL DEFAULT '',
+  year TEXT,
+  colour TEXT NOT NULL DEFAULT '',
+  type TEXT NOT NULL DEFAULT '',
+  size TEXT NOT NULL DEFAULT '1:64',
+  image_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL
+);
+
+-- Fast search indexes
+CREATE INDEX IF NOT EXISTS tesoro_car_catalog_brand_idx ON public.tesoro_car_catalog (brand);
+CREATE INDEX IF NOT EXISTS tesoro_car_catalog_make_model_idx ON public.tesoro_car_catalog (make, model);
+CREATE INDEX IF NOT EXISTS tesoro_car_catalog_series_idx ON public.tesoro_car_catalog (series);
+CREATE INDEX IF NOT EXISTS tesoro_car_catalog_assortment_idx ON public.tesoro_car_catalog (assortment);
+
+-- Enable RLS
+ALTER TABLE public.tesoro_car_catalog ENABLE ROW LEVEL SECURITY;
+
+-- Policies for public reading and authenticated editing
+DROP POLICY IF EXISTS "Anyone can view car catalog" ON public.tesoro_car_catalog;
+CREATE POLICY "Anyone can view car catalog" ON public.tesoro_car_catalog FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Authenticated users can insert into car catalog" ON public.tesoro_car_catalog;
+CREATE POLICY "Authenticated users can insert into car catalog" ON public.tesoro_car_catalog FOR INSERT TO authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Authenticated users can update car catalog" ON public.tesoro_car_catalog;
+CREATE POLICY "Authenticated users can update car catalog" ON public.tesoro_car_catalog FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+
+GRANT SELECT ON public.tesoro_car_catalog TO anon;
+GRANT SELECT, INSERT, UPDATE ON public.tesoro_car_catalog TO authenticated;`;
+  }, []);
+
   const copySql = () => {
     navigator.clipboard.writeText(sqlSnippet);
     setCopiedSql(true);
@@ -243,6 +295,12 @@ ALTER TABLE public.${table} ADD COLUMN IF NOT EXISTS "Shipping Cost" NUMERIC;`;
     navigator.clipboard.writeText(createTableSql);
     setCopiedCreateTable(true);
     setTimeout(() => setCopiedCreateTable(false), 2000);
+  };
+
+  const copyCreateCatalogTable = () => {
+    navigator.clipboard.writeText(createCatalogTableSql);
+    setCopiedCreateCatalogTable(true);
+    setTimeout(() => setCopiedCreateCatalogTable(false), 2000);
   };
 
   return (
@@ -624,12 +682,13 @@ ALTER TABLE public.${table} ADD COLUMN IF NOT EXISTS "Shipping Cost" NUMERIC;`;
         </TabsContent>
 
         {/* TAB 4: TABLE SCHEMA REFERENCE */}
-        <TabsContent value="schema" className="space-y-3 pt-1">
+        <TabsContent value="schema" className="space-y-4 pt-1">
+          {/* Main Collection Table */}
           <div className="rounded-lg border border-border/80 bg-background/50 p-3 space-y-2.5 text-xs">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 font-semibold text-foreground">
                 <Code2 className="size-4 text-primary" />
-                <span>Create Table SQL for public.{config.tableName}</span>
+                <span>1. Inventory Table (public.{config.tableName})</span>
               </div>
               <Button
                 variant="ghost"
@@ -645,17 +704,52 @@ ALTER TABLE public.${table} ADD COLUMN IF NOT EXISTS "Shipping Cost" NUMERIC;`;
                 ) : (
                   <>
                     <Copy className="size-3" />
-                    <span>Copy CREATE TABLE</span>
+                    <span>Copy Inventory SQL</span>
                   </>
                 )}
               </Button>
             </div>
             <p className="text-muted-foreground text-[11px]">
-              Setting up a fresh Supabase database? Execute this SQL to create the exact schema
-              expected by Tesoro:
+              Stores your collected cars and orders. Execute this in the Supabase SQL Editor:
             </p>
-            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-[11px] text-foreground max-h-48 leading-relaxed">
+            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-[11px] text-foreground max-h-40 leading-relaxed">
               {createTableSql}
+            </pre>
+          </div>
+
+          {/* Master Catalog Backend Table */}
+          <div className="rounded-lg border border-border/80 bg-background/50 p-3 space-y-2.5 text-xs">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 font-semibold text-foreground">
+                <Database className="size-4 text-primary" />
+                <span>2. Master Catalog Backend Table (public.tesoro_car_catalog)</span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={copyCreateCatalogTable}
+                className="h-7 px-2 text-xs gap-1"
+              >
+                {copiedCreateCatalogTable ? (
+                  <>
+                    <Check className="size-3 text-emerald-500" />
+                    <span className="text-emerald-500">Copied</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-3" />
+                    <span>Copy Catalog SQL</span>
+                  </>
+                )}
+              </Button>
+            </div>
+            <p className="text-muted-foreground text-[11px]">
+              Centralizes unique diecast casting specifications (Brand, Make, Model, Assortment,
+              Series, Sub Series, Car Number, MRP) for Car ID deduplication without cluttering your
+              menu:
+            </p>
+            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-[11px] text-foreground max-h-40 leading-relaxed">
+              {createCatalogTableSql}
             </pre>
           </div>
         </TabsContent>

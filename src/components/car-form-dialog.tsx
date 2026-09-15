@@ -1024,26 +1024,6 @@ export function CarFormDialog({
                     />
                   )}
 
-                  {(form.make.trim() || form.model.trim()) && (
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-2 text-xs">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Catalog Car ID:
-                        </span>
-                        <span className="font-mono text-xs font-bold text-foreground truncate">
-                          {derivedCatalogCarId}
-                        </span>
-                      </div>
-                      {existingCatalogMatch ? (
-                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                          Reusing Catalog ID (No duplicate in DB)
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground">8-Field Unique ID</span>
-                      )}
-                    </div>
-                  )}
-
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <Field label="Make *">
                       <Combobox
@@ -1459,7 +1439,13 @@ export function CarFormDialog({
                       Everything you entered. Tap a step above to change anything.
                     </p>
                   </div>
-                  <WizardSummary form={form} name={previewName} onJump={setCurrentStep} />
+                  <WizardSummary
+                    form={form}
+                    name={previewName}
+                    onJump={setCurrentStep}
+                    catalogCarId={derivedCatalogCarId}
+                    existingCatalogMatch={Boolean(existingCatalogMatch)}
+                  />
                 </div>
               )}
 
@@ -2089,10 +2075,14 @@ function WizardSummary({
   form,
   name,
   onJump,
+  catalogCarId,
+  existingCatalogMatch,
 }: {
   form: CarFormData;
   name: string;
   onJump: (step: number) => void;
+  catalogCarId?: string;
+  existingCatalogMatch?: boolean;
 }) {
   const money = (v: number | "") => (v === "" ? "" : `₹${Number(v).toLocaleString("en-IN")}`);
   const groups: { step: number; title: string; rows: [string, string][] }[] = [
@@ -2175,6 +2165,26 @@ function WizardSummary({
           </div>
         </div>
       </div>
+
+      {catalogCarId && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-2 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Catalog Car ID:
+            </span>
+            <span className="font-mono text-xs font-bold text-foreground truncate select-all">
+              {catalogCarId}
+            </span>
+          </div>
+          {existingCatalogMatch ? (
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+              Reusing Catalog ID (No duplicate in DB)
+            </span>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">8-Field Unique ID</span>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         {groups.map((g) => (

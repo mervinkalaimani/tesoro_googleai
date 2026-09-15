@@ -406,10 +406,15 @@ function TransitTracker({
         trackingId: arr.find((r) => r.trackingId)?.trackingId || "",
       });
     }
-    // Oldest order first: the one that has been waited on longest. The segment
-    // control that used to switch this to "Expected" is gone — two orderings of
-    // the same nine rows is a setting to fiddle with, not information.
-    return out.sort((a, b) => a.ordered.getTime() - b.ordered.getTime());
+    // Closest expected arrival date first (today/tomorrow/soonest at the top)
+    return out.sort((a, b) => {
+      if (a.expected && b.expected) {
+        return a.expected.getTime() - b.expected.getTime();
+      }
+      if (a.expected && !b.expected) return -1;
+      if (!a.expected && b.expected) return 1;
+      return a.ordered.getTime() - b.ordered.getTime();
+    });
   }, [src]);
 
   const now = new Date();

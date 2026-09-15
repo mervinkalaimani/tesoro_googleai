@@ -17,6 +17,7 @@ import {
   SwitchCamera,
   Keyboard,
   SlidersHorizontal,
+  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -112,6 +113,8 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileCameraInputRef = useRef<HTMLInputElement | null>(null);
+  const [cameraLoading, setCameraLoading] = useState(false);
 
   // Stop camera stream safely
   const stopLiveCamera = useCallback(() => {
@@ -123,6 +126,21 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
       videoRef.current.srcObject = null;
     }
     setIsCameraActive(false);
+    setCameraLoading(false);
+  }, []);
+
+  // Helper to connect a MediaStream to the video DOM element and start playing
+  const attachStreamToVideo = useCallback((stream: MediaStream) => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
+    video.onloadedmetadata = () => {
+      video.play().catch((err) => console.warn("Video play error:", err));
+      setCameraLoading(false);
+    };
+    video.play().catch(() => {});
   }, []);
 
   // Start live camera
@@ -130,34 +148,52 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
     async (facing: "environment" | "user" = cameraFacing) => {
       stopLiveCamera();
       setAnalysisError(null);
+      setCameraLoading(true);
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
           throw new Error("Camera not supported on this device or browser.");
         }
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: facing },
-            width: { ideal: 1280 },
-            height: { ideal: 960 },
-          },
-          audio: false,
-        });
-        mediaStreamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play().catch(() => {});
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: facing },
+              width: { ideal: 1280 },
+              height: { ideal: 960 },
+            },
+            audio: false,
+          });
+        } catch {
+          // Fallback if specific constraint (like facingMode or exact resolution) fails
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
         }
+        mediaStreamRef.current = stream;
         setIsCameraActive(true);
+        // If the video element is already mounted, attach immediately
+        if (videoRef.current) {
+          attachStreamToVideo(stream);
+        }
       } catch (err: unknown) {
         console.warn("Could not start live camera:", err);
         setIsCameraActive(false);
+        setCameraLoading(false);
         setAnalysisError(
-          "Camera access was denied or is not available. Please use 'Upload Photo' instead.",
+          "Camera access was denied or is not available. Please use 'Upload Photo' or 'Native Camera'.",
         );
       }
     },
-    [cameraFacing, stopLiveCamera],
+    [cameraFacing, stopLiveCamera, attachStreamToVideo],
   );
+
+  // Keep stream attached when video element mounts or becomes active
+  useEffect(() => {
+    if (isCameraActive && mediaStreamRef.current && videoRef.current) {
+      attachStreamToVideo(mediaStreamRef.current);
+    }
+  }, [isCameraActive, attachStreamToVideo]);
 
   // Clean up when dialog closes or opens
   useEffect(() => {
@@ -683,6 +719,15 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                 className="hidden"
                 onChange={handleFileChange}
               />
+              {/* Direct mobile camera capture input */}
+              <input
+                ref={mobileCameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileChange}
+              />
 
               {/* State 1: No Image Picked & No Live Camera */}
               {!previewUrl && !isCameraActive && (
@@ -717,7 +762,16 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                       className="gap-1.5 h-9"
                     >
                       <Camera className="size-4" />
-                      Take Photo
+                      Live Camera
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => mobileCameraInputRef.current?.click()}
+                      className="gap-1.5 h-9 sm:hidden"
+                    >
+                      <Camera className="size-4" />
+                      Device Camera
                     </Button>
                     <Button
                       type="button"
@@ -748,12 +802,29 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                 <div className="space-y-3">
                   <div className="relative rounded-xl overflow-hidden bg-black aspect-[4/3] flex items-center justify-center">
                     <video
-                      ref={videoRef}
+                      ref={(el) => {
+                        videoRef.current = el;
+                        if (el && mediaStreamRef.current) {
+                          attachStreamToVideo(mediaStreamRef.current);
+                        }
+                      }}
                       autoPlay
                       playsInline
                       muted
+                      onLoadedMetadata={(e) => {
+                        (e.target as HTMLVideoElement).play().catch(() => {});
+                        setCameraLoading(false);
+                      }}
+                      onPlay={() => setCameraLoading(false)}
                       className="size-full object-cover"
                     />
+
+                    {cameraLoading && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 z-0 text-white">
+                        <Loader2 className="size-8 animate-spin text-primary" />
+                        <span className="text-xs font-medium">Starting camera…</span>
+                      </div>
+                    )}
 
                     {/* Shutter overlay buttons */}
                     <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-4 z-10 px-4">
