@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Search, X } from "lucide-react";
+import { Search, X, Camera, Car as CarIcon, ArrowUpRight } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
 import { suggestFor } from "@/lib/search";
+import { useCarDrawer } from "@/components/car-details-drawer";
+import { ImageSearchDialog } from "@/components/image-search-dialog";
+import { inrFull } from "@/lib/format";
+import type { Diecast } from "@/lib/types";
 
 /**
  * Cycled through the empty search box one at a time. Every entry is a query the
@@ -83,7 +87,9 @@ export function SearchBox({
 }) {
   const { query, setQuery } = useApp();
   const cars = useCars();
+  const { open: openCar } = useCarDrawer();
   const [open, setOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [active, setActive] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -103,8 +109,35 @@ export function SearchBox({
     return idx >= 0 ? query.slice(idx + 1) : query;
   }, [query]);
 
+  const matchingCars = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || q.length < 2) return [];
+    return cars
+      .filter((c) => {
+        const name = (c.name || "").toLowerCase();
+        const model = (c.model || "").toLowerCase();
+        const make = (c.make || "").toLowerCase();
+        const brand = (c.brand || "").toLowerCase();
+        const id = (c.id || "").toLowerCase();
+        const carNum = (c.carNumber || "").toLowerCase();
+        const series = (c.series || "").toLowerCase();
+        const subSeries = (c.subSeries || "").toLowerCase();
+        return (
+          name.includes(q) ||
+          model.includes(q) ||
+          make.includes(q) ||
+          brand.includes(q) ||
+          id.includes(q) ||
+          carNum.includes(q) ||
+          series.includes(q) ||
+          subSeries.includes(q)
+        );
+      })
+      .slice(0, 5);
+  }, [cars, query]);
+
   const suggestions = useMemo(
-    () => (open ? suggestFor(fragment, cars).slice(0, 10) : []),
+    () => (open ? suggestFor(fragment, cars).slice(0, 8) : []),
     [open, fragment, cars],
   );
 
@@ -166,12 +199,12 @@ export function SearchBox({
         // would sit on top of it.
         placeholder=""
         aria-label="Search cars"
-        className={query ? "pl-9 pr-9" : "pl-9"}
+        className={query ? "pl-9 pr-16" : "pl-9 pr-10"}
       />
       {!query && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-9 flex items-center gap-1.5 overflow-hidden pr-9 text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-y-0 left-9 flex items-center gap-1.5 overflow-hidden pr-10 text-sm text-muted-foreground"
         >
           <span className="shrink-0">Search</span>
           {!isMobile && (
@@ -184,50 +217,128 @@ export function SearchBox({
           )}
         </div>
       )}
-      {query && (
+
+      {/* Right controls: Clear button + Scan button */}
+      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+        {query && (
+          <button
+            type="button"
+            aria-label="Clear search"
+            onClick={() => {
+              setQuery("");
+              setOpen(false);
+              // The caret goes back in the box, the suggestions stay shut.
+              skipFocusOpen.current = true;
+              inputRef.current?.focus();
+            }}
+            className="grid size-6 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
         <button
           type="button"
-          aria-label="Clear search"
-          onClick={() => {
-            setQuery("");
-            setOpen(false);
-            // The caret goes back in the box, the suggestions stay shut.
-            skipFocusOpen.current = true;
-            inputRef.current?.focus();
-          }}
-          className="absolute right-2 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label="Search by image"
+          title="Search by image (AI attribute search) or barcode"
+          onClick={() => setScanOpen(true)}
+          className="grid size-7 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground cursor-pointer active:scale-95"
         >
-          <X className="size-4" />
+          <Camera className="size-4" />
         </button>
-      )}
-      {open && suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-lg">
-          <ul className="max-h-72 overflow-y-auto py-1 text-sm">
-            {suggestions.map((s, i) => (
-              <li key={s.kind + s.label}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setActive(i)}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => choose(i)}
-                  className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left ${
-                    i === active ? "bg-muted" : ""
-                  }`}
-                >
-                  <span className="truncate">{s.label}</span>
-                  <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
-                    {s.hint}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <div className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground">
-            Use <b>+</b> for “or” (red+yellow) · <b>,</b> to add another filter · <b>&gt;</b> /{" "}
-            <b>&lt;</b> for cost &amp; year
-          </div>
+      </div>
+
+      {open && (matchingCars.length > 0 || suggestions.length > 0) && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-md border border-border bg-popover shadow-xl">
+          {matchingCars.length > 0 && (
+            <div className="border-b border-border/70 p-1 bg-muted/10">
+              <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Cars in collection ({matchingCars.length})
+              </div>
+              <div className="space-y-0.5">
+                {matchingCars.map((car) => (
+                  <button
+                    key={car.id}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setOpen(false);
+                      openCar(car);
+                    }}
+                    className="flex w-full items-center justify-between gap-2.5 rounded px-2.5 py-1.5 text-left transition-colors hover:bg-muted cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {car.imageUrl ? (
+                        <img
+                          src={car.imageUrl}
+                          alt={car.name || car.model}
+                          referrerPolicy="no-referrer"
+                          className="size-8 rounded object-cover border border-border/50 shrink-0 bg-muted/40"
+                        />
+                      ) : (
+                        <div className="size-8 rounded bg-muted/60 border border-border/50 flex items-center justify-center shrink-0 text-muted-foreground">
+                          <CarIcon className="size-4" />
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <span className="group-hover:text-primary transition-colors">
+                            {car.name || `${car.make} ${car.model}`}
+                          </span>
+                          <span className="text-[10px] font-mono text-muted-foreground">
+                            {car.id}
+                          </span>
+                        </div>
+                        <div className="truncate text-[11px] text-muted-foreground">
+                          {[car.brand, car.assortment, car.series].filter(Boolean).join(" · ")}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {car.spent ? (
+                        <span className="text-xs font-semibold tabular-nums text-foreground">
+                          {inrFull(car.spent)}
+                        </span>
+                      ) : null}
+                      <ArrowUpRight className="size-3.5 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {suggestions.length > 0 && (
+            <div>
+              <ul className="max-h-56 overflow-y-auto py-1 text-sm">
+                {suggestions.map((s, i) => (
+                  <li key={s.kind + s.label}>
+                    <button
+                      type="button"
+                      onMouseEnter={() => setActive(i)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => choose(i)}
+                      className={`flex w-full items-center justify-between gap-3 px-3 py-1.5 text-left cursor-pointer ${
+                        i === active ? "bg-muted" : ""
+                      }`}
+                    >
+                      <span className="truncate">{s.label}</span>
+                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
+                        {s.hint}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="border-t border-border px-3 py-1.5 text-[10px] text-muted-foreground">
+                Use <b>+</b> for “or” (red+yellow) · <b>,</b> to add another filter · <b>&gt;</b> /{" "}
+                <b>&lt;</b> for cost &amp; year
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      <ImageSearchDialog open={scanOpen} onOpenChange={setScanOpen} />
     </div>
   );
 }

@@ -1,96 +1,222 @@
 import type { Diecast } from "@/lib/types";
 
 /**
- * Car IDs, derived rather than typed:
+ * -----------------------------------------------------------------------------
+ * Tesoro Car Catalog ID Generator
  *
- *   BRAND / ASSORTMENT / NNN
+ * Every diecast casting receives a globally unique, deterministic Car ID
+ * generated strictly from its 8 core manufacturing and release specifications:
  *
- * where BRAND is the first three letters of the brand, ASSORTMENT is the first
- * three consonants of the assortment, and NNN counts cars already sharing that
- * pair. "Disney" + "Premium" gives DIS/PRM/001; "CCA" + "Box" gives CCA/BOX/001.
+ *   1. Brand (e.g. HW, MBX, MGT, KH, INNO, DIS)
+ *   2. Make (e.g. PORSCHE, NISSAN, CHEVROLET)
+ *   3. Model (e.g. 911GT3RS, SKYLINE, SILVERADO)
+ *   4. Assortment (e.g. MNL, PRM, BSC, CC, BLVD)
+ *   5. Series (e.g. HWEXOTICS, TOONED, FACTORYFRESH)
+ *   6. Sub Series (e.g. 2OF10, HWGETAWAY, 02-05)
+ *   7. Car Number (e.g. 042-250, 2024, 42)
+ *   8. MRP (e.g. M179, M549, M0)
  *
- * The ID is a primary key — Supabase upserts resolve on ("user_id", "Car ID") —
- * so it is assigned once, when a car is created, and never re-derived. Editing a
- * car's brand would otherwise strand the original row and insert a second one
- * under the new ID.
+ * Format:
+ *   [BRAND]-[MAKE]-[MODEL]-[ASST]-[SERIES]-[SUBSERIES]-[CARNUM]-[MRP]
+ *
+ * Because this Car ID is deterministic and unique to the car's specifications,
+ * identical castings share the exact same catalog Car ID. In the raw table
+ * (tesoro_raw), this ID is reused across multiple instances or purchases,
+ * avoiding duplication of car specifications in the main table.
+ * -----------------------------------------------------------------------------
  */
 
-const VOWELS = "AEIOU";
+export type CarIdFields = {
+  brand?: string | null;
+  make?: string | null;
+  model?: string | null;
+  assortment?: string | null;
+  series?: string | null;
+  subSeries?: string | null;
+  carNumber?: string | null;
+  mrp?: number | string | null;
+};
 
-/** Letters only, uppercased. Spaces, digits and punctuation never reach an ID. */
-function letters(value: string | undefined): string {
-  return (value ?? "").replace(/[^a-zA-Z]/g, "").toUpperCase();
+const BRAND_MAP: Record<string, string> = {
+  "HOT WHEELS": "HW",
+  HOTWHEELS: "HW",
+  MATCHBOX: "MBX",
+  "MINI GT": "MGT",
+  MINIGT: "MGT",
+  "KAIDO HOUSE": "KH",
+  KAIDOHOUSE: "KH",
+  INNO64: "INNO",
+  "INNO 64": "INNO",
+  "POP RACE": "POPR",
+  POPRACE: "POPR",
+  TOMICA: "TOM",
+  MAJORETTE: "MAJ",
+  GREENLIGHT: "GL",
+  "TARMAC WORKS": "TW",
+  TARMACWORKS: "TW",
+  DISNEY: "DIS",
+  MAISTO: "MAI",
+  BBURAGO: "BBUR",
+  "TAKARA TOMY": "TOMY",
+  TAKARATOMY: "TOMY",
+  GCD: "GCD",
+  "GCD MODEL": "GCD",
+  JADA: "JADA",
+  SIKU: "SIKU",
+  THOMAS: "THOM",
+  CCA: "CCA",
+};
+
+const ASSORTMENT_MAP: Record<string, string> = {
+  MAINLINE: "MNL",
+  PREMIUM: "PRM",
+  BASIC: "BSC",
+  "CAR CULTURE": "CC",
+  BOULEVARD: "BLVD",
+  BOX: "BOX",
+  BLISTER: "BLST",
+  REPLICA: "REPL",
+  "5 PACK": "5PK",
+  "10 PACK": "10PK",
+};
+
+/** Normalizes a text string into an alphanumeric, uppercase, hyphen-delimited token. */
+export function sanitizeToken(
+  str: string | null | undefined,
+  maxLen = 16,
+  fallback = "NA",
+): string {
+  if (!str) return fallback;
+  const cleaned = String(str)
+    .trim()
+    .toUpperCase()
+    .replace(/[/]/g, "-")
+    .replace(/[^A-Z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+  return cleaned ? cleaned.slice(0, maxLen) : fallback;
 }
 
-/** "Disney" -> "DIS". Shorter brands return what they have. */
-export function brandCode(brand: string | undefined): string {
-  return letters(brand).slice(0, 3);
+/** Standardizes Brand into a concise, recognizable uppercase code. */
+export function brandCode(brand: string | null | undefined): string {
+  if (!brand) return "GEN";
+  const upper = brand.trim().toUpperCase();
+  if (BRAND_MAP[upper]) return BRAND_MAP[upper];
+  const cleaned = upper.replace(/[^A-Z0-9]/g, "");
+  return cleaned ? cleaned.slice(0, 6) : "GEN";
+}
+
+/** Standardizes Assortment into a concise, recognizable uppercase code. */
+export function assortmentCode(assortment: string | null | undefined): string {
+  if (!assortment) return "STD";
+  const upper = assortment.trim().toUpperCase();
+  if (ASSORTMENT_MAP[upper]) return ASSORTMENT_MAP[upper];
+  const cleaned = upper.replace(/[^A-Z0-9]/g, "");
+  return cleaned ? cleaned.slice(0, 6) : "STD";
 }
 
 /**
- * "Premium" -> "PRM", dropping vowels. "Box" is the documented exception: it
- * keeps its vowel rather than collapsing to "BX".
- *
- * A word with fewer than three consonants falls back to its vowels to fill the
- * remaining places ("Pop" -> "PPO") rather than emitting a short code, so every
- * assortment produces an ID of the same shape.
+ * Generates a unique, deterministic Car ID using:
+ * Brand, Make, Model, Assortment, Series, Sub Series, Car Number, MRP.
  */
-export function assortmentCode(assortment: string | undefined): string {
-  const clean = letters(assortment);
-  if (!clean) return "";
-  if (clean === "BOX") return "BOX";
-
-  const chars = [...clean];
-  const consonants = chars.filter((c) => !VOWELS.includes(c));
-  const vowels = chars.filter((c) => VOWELS.includes(c));
-  return [...consonants, ...vowels].slice(0, 3).join("");
-}
-
-/**
- * True for an ID the app minted as a placeholder rather than one that carries
- * meaning. Used to tell a car that still needs an ID from one that arrived with
- * a real ID of its own — a CSV re-import, say, whose IDs must be left alone.
- */
-export function isPlaceholderId(id: string | undefined): boolean {
-  const v = (id ?? "").trim();
-  return v === "" || /^user-/i.test(v);
-}
-
-/**
- * The ID `car` should carry, given the collection it is joining. Returns "" when
- * brand or assortment is missing, since neither half of the prefix can be
- * guessed — the caller keeps whatever placeholder the car already has.
- */
-export function carIdFor(car: Diecast, all: Diecast[]): string {
+export function generateCatalogCarId(car: CarIdFields): string {
   const brand = brandCode(car.brand);
-  const assortment = assortmentCode(car.assortment);
-  if (!brand || !assortment) return "";
+  const make = sanitizeToken(car.make, 12, "GEN");
+  const model = sanitizeToken(car.model, 16, "CAR");
+  const asst = assortmentCode(car.assortment);
+  const series = sanitizeToken(car.series, 14, "STD");
+  const subSeries = sanitizeToken(car.subSeries, 12, "NA");
+  const carNumber = sanitizeToken(car.carNumber, 12, "NA");
+  const mrpNum = Math.round(Number(car.mrp) || 0);
+  const mrp = `M${mrpNum}`;
 
-  const prefix = `${brand}/${assortment}/`;
-  const taken = new Set(all.map((c) => (c.id || "").trim().toUpperCase()));
+  return `${brand}-${make}-${model}-${asst}-${series}-${subSeries}-${carNumber}-${mrp}`;
+}
 
-  // Continue from the highest number in use rather than counting rows: a gap
-  // left by a deleted car must not hand its number to the next one.
-  let highest = 0;
-  for (const id of taken) {
-    if (!id.startsWith(prefix)) continue;
-    const n = Number(id.slice(prefix.length));
-    if (Number.isInteger(n) && n > highest) highest = n;
+/**
+ * True for an ID the app minted as a temporary placeholder rather than one that carries
+ * real catalog meaning.
+ */
+export function isPlaceholderId(id: string | undefined | null): boolean {
+  const v = (id ?? "").trim();
+  return (
+    v === "" ||
+    /^user-/i.test(v) ||
+    /^car-/i.test(v) ||
+    /^guest-/i.test(v) ||
+    /^temp-/i.test(v) ||
+    /^draft-/i.test(v)
+  );
+}
+
+/**
+ * Checks if a string conforms to the catalog unique Car ID pattern.
+ */
+export function isCatalogCarId(id: string | undefined | null): boolean {
+  if (!id) return false;
+  // Brand-Make-Model-Asst-Series-SubSeries-CarNum-M{mrp}
+  return /^[A-Z0-9]+-[A-Z0-9-]+-[A-Z0-9-]+-[A-Z0-9]+-[A-Z0-9-]+-[A-Z0-9-]+-[A-Z0-9-]+-M\d+$/i.test(
+    id.trim(),
+  );
+}
+
+/**
+ * Derives the unique Car ID for a diecast item. If the car already has a valid catalog
+ * Car ID or legacy ID, it preserves it; otherwise it derives the unique Car ID using
+ * Brand, Make, Model, Assortment, Series, Sub Series, Car Number, MRP.
+ *
+ * If a matching car with identical 8 fields exists in the existing collection or catalog,
+ * its exact ID is reused to prevent duplicate records in the raw table.
+ */
+export function carIdFor(car: Diecast | CarIdFields, existingCars: Diecast[] = []): string {
+  // If the car has a non-placeholder ID, reuse it
+  const currentId = "id" in car ? car.id : "";
+  if (currentId && !isPlaceholderId(currentId)) {
+    return currentId.trim();
   }
 
-  let next = highest + 1;
-  while (taken.has(`${prefix}${String(next).padStart(3, "0")}`)) next++;
-  return `${prefix}${String(next).padStart(3, "0")}`;
+  // If a car in existing collection matches all 8 attributes, reuse its ID directly!
+  const targetBrand = (car.brand || "").trim().toLowerCase();
+  const targetMake = (car.make || "").trim().toLowerCase();
+  const targetModel = (car.model || "").trim().toLowerCase();
+  const targetAsst = (car.assortment || "").trim().toLowerCase();
+  const targetSeries = (car.series || "").trim().toLowerCase();
+  const targetSubSeries = (car.subSeries || "").trim().toLowerCase();
+  const targetCarNum = (car.carNumber || "").trim().toLowerCase();
+  const targetMrp = Math.round(Number(car.mrp) || 0);
+
+  if (targetMake || targetModel) {
+    const match = existingCars.find((existing) => {
+      if (isPlaceholderId(existing.id)) return false;
+      return (
+        (existing.brand || "").trim().toLowerCase() === targetBrand &&
+        (existing.make || "").trim().toLowerCase() === targetMake &&
+        (existing.model || "").trim().toLowerCase() === targetModel &&
+        (existing.assortment || "").trim().toLowerCase() === targetAsst &&
+        (existing.series || "").trim().toLowerCase() === targetSeries &&
+        (existing.subSeries || "").trim().toLowerCase() === targetSubSeries &&
+        (existing.carNumber || "").trim().toLowerCase() === targetCarNum &&
+        Math.round(Number(existing.mrp) || 0) === targetMrp
+      );
+    });
+
+    if (match && match.id) {
+      return match.id.trim();
+    }
+  }
+
+  // Generate the new unique catalog Car ID
+  return generateCatalogCarId(car);
 }
 
 /**
- * Assign IDs to a batch of new cars, so two cars added together cannot land on
- * the same number. Cars that already carry a real ID keep it.
+ * Assigns unique catalog IDs to a batch of new cars, ensuring that identical castings
+ * reuse the exact same catalog Car ID to eliminate duplication in the raw table.
  */
-export function assignCarIds(newCars: Diecast[], existing: Diecast[]): Diecast[] {
+export function assignCarIds(newCars: Diecast[], existing: Diecast[] = []): Diecast[] {
   const pool = [...existing];
   return newCars.map((car) => {
-    if (!isPlaceholderId(car.id)) {
+    if (car.id && !isPlaceholderId(car.id)) {
       pool.push(car);
       return car;
     }

@@ -75,12 +75,13 @@ type SortMode = "status" | "seller" | "orderDate";
  * parcel has shipped and is late — it is in transit, with a problem — and
  * giving it a tab of its own would mean a segment that is empty most weeks.
  */
-type Tab = "all" | "outForDelivery" | "transit" | "waiting" | "preOrder" | "delivered";
+type Tab = "all" | "outForDelivery" | "transit" | "delayed" | "waiting" | "preOrder" | "delivered";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "all", label: "All" },
   { value: "outForDelivery", label: "Out for Delivery" },
   { value: "transit", label: "Transit" },
+  { value: "delayed", label: "Delayed" },
   { value: "waiting", label: "Waiting" },
   { value: "preOrder", label: "Pre Order" },
   { value: "delivered", label: "Delivered" },
@@ -88,7 +89,8 @@ const TABS: { value: Tab; label: string }[] = [
 
 const TAB_MATCH: Record<Exclude<Tab, "all" | "delivered">, (status: string) => boolean> = {
   outForDelivery: (s) => s === "out for delivery",
-  transit: (s) => s === "transit" || s === "delayed",
+  transit: (s) => s === "transit",
+  delayed: (s) => s === "delayed",
   waiting: (s) => s === "waiting",
   preOrder: (s) => s === "pre order" || s === "preorder",
 };

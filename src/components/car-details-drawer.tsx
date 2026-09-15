@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Flame,
+  Layers,
   Loader2,
   Pencil,
   Star,
@@ -42,7 +43,15 @@ import { CarThumb } from "@/components/car-thumb";
  * A car moves forward one step at a time rather than jumping straight to
  * delivered, so the button always advances to the next real stage.
  */
-const STATUS_FLOW = ["ISO", "Pre Order", "Waiting", "Transit", "Out for Delivery", "Available"];
+const STATUS_FLOW = [
+  "ISO",
+  "Pre Order",
+  "Waiting",
+  "Transit",
+  "Delayed",
+  "Out for Delivery",
+  "Available",
+];
 
 function nextStatus(current: string): string | null {
   const now = (current || "").trim().toLowerCase();
@@ -162,6 +171,27 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   );
 }
 
+function isExactMatch(a: Diecast, b: Diecast): boolean {
+  const norm = (v?: string | number | null) =>
+    String(v ?? "")
+      .trim()
+      .toLowerCase();
+  return (
+    norm(a.make) === norm(b.make) &&
+    norm(a.model) === norm(b.model) &&
+    norm(a.variant) === norm(b.variant) &&
+    norm(a.year) === norm(b.year) &&
+    norm(a.colour) === norm(b.colour) &&
+    norm(a.brand) === norm(b.brand) &&
+    norm(a.series) === norm(b.series) &&
+    norm(a.subSeries) === norm(b.subSeries) &&
+    norm(a.carNumber) === norm(b.carNumber) &&
+    norm(a.assortment) === norm(b.assortment) &&
+    norm(a.type) === norm(b.type) &&
+    norm(a.size) === norm(b.size)
+  );
+}
+
 interface CarPopupContentProps {
   car: Diecast;
   onClose: () => void;
@@ -202,6 +232,12 @@ function CarPopupContent({
 
   const seriesName = (car.series || "").trim();
   const setName = ((car as unknown as { set?: string }).set || car.subSeries || "").trim();
+  const seriesHeading = seriesName ? `More from ${seriesName}` : "More from collection";
+  const setHeading = setName ? `More from ${setName} set` : "More from set";
+
+  const exactCount = useMemo(() => {
+    return cars.filter((c) => isExactMatch(c, car)).length;
+  }, [cars, car]);
 
   const seriesCars = useMemo(() => {
     if (!seriesName) return [];
@@ -251,63 +287,11 @@ function CarPopupContent({
           1. DESKTOP 3-COLUMN LAYOUT (Screen >= xl: Image left, Details center, More from right)
           ===================================================================== */}
       <div className="hidden xl:flex xl:flex-row xl:items-stretch xl:h-[84vh] xl:max-h-[84vh] w-full overflow-hidden">
-        {/* LEFT COLUMN: Image on top, Rarity & Favourite icons pinned at the bottom */}
-        <div className="flex flex-col justify-between border-r border-border bg-muted/15 w-[340px] xl:w-[380px] shrink-0 h-full overflow-hidden">
-          {/* Main Car Photo Area */}
+        {/* LEFT COLUMN: Main Car Photo Area */}
+        <div className="flex flex-col border-r border-border bg-muted/15 w-[340px] xl:w-[380px] shrink-0 h-full overflow-hidden">
           <div className="relative flex-1 min-h-[300px] w-full overflow-hidden bg-muted/30 flex items-center justify-center p-4">
             <div className="relative size-full rounded-2xl overflow-hidden shadow-xs bg-background/50 border border-border/60">
               <HeroCarImage car={car} />
-            </div>
-          </div>
-
-          {/* Bottom Bar: Rarity and Favourite toggles */}
-          <div className="border-t border-border bg-card/85 p-3.5 sm:p-4 backdrop-blur-xs flex flex-col gap-2">
-            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
-              <span>Tags & Rarity</span>
-              <span className="text-[10px] lowercase text-muted-foreground/70">tap to cycle</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {/* Rarity Button */}
-              <button
-                type="button"
-                onClick={onToggleChase}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer select-none active:scale-95",
-                  rarity !== "Normal"
-                    ? "bg-accent/20 border-accent/50 text-foreground shadow-xs"
-                    : "bg-muted/40 border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/70",
-                )}
-                title={`${RARITY_LABEL[rarity]} — tap for ${RARITY_LABEL[nextRarity(rarity)]}`}
-              >
-                <Flame
-                  className={cn(
-                    "size-4 shrink-0",
-                    rarity === "Normal" ? "text-muted-foreground" : RARITY_FLAME[rarity],
-                  )}
-                />
-                <span className="truncate">{RARITY_LABEL[rarity]}</span>
-              </button>
-
-              {/* Favourite Button */}
-              <button
-                type="button"
-                onClick={onToggleFavourite}
-                className={cn(
-                  "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer select-none active:scale-95",
-                  car.favourite
-                    ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-xs"
-                    : "bg-muted/40 border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/70",
-                )}
-                title={car.favourite ? "Remove from favourites" : "Add to favourites"}
-              >
-                <Star
-                  className={cn(
-                    "size-4 shrink-0",
-                    car.favourite ? FAVOURITE_COLOUR : "text-muted-foreground",
-                  )}
-                />
-                <span className="truncate">{car.favourite ? "Favourited" : "Favourite"}</span>
-              </button>
             </div>
           </div>
         </div>
@@ -328,6 +312,10 @@ function CarPopupContent({
               cleanTransitNotes={cleanTransitNotes}
               trackable={trackable}
               onOpenBatch={onOpenBatch}
+              rarity={rarity}
+              onToggleChase={onToggleChase}
+              onToggleFavourite={onToggleFavourite}
+              exactCount={exactCount}
             />
           </div>
 
@@ -361,9 +349,9 @@ function CarPopupContent({
             <div className="flex items-center justify-between">
               <span
                 className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
-                title={seriesName ? `Series: ${seriesName}` : "Series"}
+                title={seriesHeading}
               >
-                More from series {seriesName ? `· ${seriesName}` : ""}
+                {seriesHeading}
               </span>
               {seriesCars.length > 0 && (
                 <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
@@ -398,9 +386,9 @@ function CarPopupContent({
             <div className="flex items-center justify-between">
               <span
                 className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
-                title={setName ? `Set: ${setName}` : "Set"}
+                title={setHeading}
               >
-                More from set {setName ? `· ${setName}` : ""}
+                {setHeading}
               </span>
               {setCars.length > 0 && (
                 <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
@@ -437,63 +425,12 @@ function CarPopupContent({
       >
         {/* TOP SECTION: Left image (sticky), Right details */}
         <div className="flex flex-row items-stretch border-b border-border min-h-[480px]">
-          {/* LEFT SIDE: Car Photo & Tags/Rarity Controls */}
-          <div className="w-[340px] lg:w-[380px] shrink-0 border-r border-border bg-muted/15 flex flex-col justify-between self-start sticky top-0">
+          {/* LEFT SIDE: Car Photo */}
+          <div className="w-[340px] lg:w-[380px] shrink-0 border-r border-border bg-muted/15 flex flex-col self-start sticky top-0">
             {/* Car Photo Area */}
             <div className="relative flex-1 min-h-[300px] w-full overflow-hidden bg-muted/30 flex items-center justify-center p-4">
               <div className="relative size-full rounded-2xl overflow-hidden shadow-xs bg-background/50 border border-border/60">
                 <HeroCarImage car={car} />
-              </div>
-            </div>
-
-            {/* Bottom Bar: Rarity & Favourite toggles */}
-            <div className="border-t border-border bg-card/85 p-3.5 sm:p-4 backdrop-blur-xs flex flex-col gap-2">
-              <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-0.5">
-                <span>Tags & Rarity</span>
-                <span className="text-[10px] lowercase text-muted-foreground/70">tap to cycle</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {/* Rarity Button */}
-                <button
-                  type="button"
-                  onClick={onToggleChase}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer select-none active:scale-95",
-                    rarity !== "Normal"
-                      ? "bg-accent/20 border-accent/50 text-foreground shadow-xs"
-                      : "bg-muted/40 border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/70",
-                  )}
-                  title={`${RARITY_LABEL[rarity]} — tap for ${RARITY_LABEL[nextRarity(rarity)]}`}
-                >
-                  <Flame
-                    className={cn(
-                      "size-4 shrink-0",
-                      rarity === "Normal" ? "text-muted-foreground" : RARITY_FLAME[rarity],
-                    )}
-                  />
-                  <span className="truncate">{RARITY_LABEL[rarity]}</span>
-                </button>
-
-                {/* Favourite Button */}
-                <button
-                  type="button"
-                  onClick={onToggleFavourite}
-                  className={cn(
-                    "flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer select-none active:scale-95",
-                    car.favourite
-                      ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-xs"
-                      : "bg-muted/40 border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/70",
-                  )}
-                  title={car.favourite ? "Remove from favourites" : "Add to favourites"}
-                >
-                  <Star
-                    className={cn(
-                      "size-4 shrink-0",
-                      car.favourite ? FAVOURITE_COLOUR : "text-muted-foreground",
-                    )}
-                  />
-                  <span className="truncate">{car.favourite ? "Favourited" : "Favourite"}</span>
-                </button>
               </div>
             </div>
           </div>
@@ -510,6 +447,10 @@ function CarPopupContent({
               cleanTransitNotes={cleanTransitNotes}
               trackable={trackable}
               onOpenBatch={onOpenBatch}
+              rarity={rarity}
+              onToggleChase={onToggleChase}
+              onToggleFavourite={onToggleFavourite}
+              exactCount={exactCount}
             />
 
             {/* Action buttons (Edit & Update Status) */}
@@ -543,9 +484,9 @@ function CarPopupContent({
             <div className="flex items-center justify-between">
               <span
                 className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
-                title={seriesName ? `Series: ${seriesName}` : "Series"}
+                title={seriesHeading}
               >
-                More from series {seriesName ? `· ${seriesName}` : ""}
+                {seriesHeading}
               </span>
               {seriesCars.length > 0 && (
                 <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
@@ -575,9 +516,9 @@ function CarPopupContent({
             <div className="flex items-center justify-between">
               <span
                 className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
-                title={setName ? `Set: ${setName}` : "Set"}
+                title={setHeading}
               >
-                More from set {setName ? `· ${setName}` : ""}
+                {setHeading}
               </span>
               {setCars.length > 0 && (
                 <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
@@ -611,10 +552,10 @@ function CarPopupContent({
           id="car-details-mobile-scroll"
           className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col"
         >
-          {/* Top Car Image with drag handle & action icons */}
+          {/* Top Car Image with drag handle & close button */}
           <div
             data-drag-handle="true"
-            className="relative shrink-0 z-0 h-[32vh] min-h-[220px] max-h-[360px] w-full overflow-hidden bg-muted/60 select-none"
+            className="relative shrink-0 z-0 h-[48vh] min-h-[360px] max-h-[520px] w-full overflow-hidden bg-muted/60 select-none"
           >
             <HeroCarImage car={car} />
 
@@ -624,28 +565,6 @@ function CarPopupContent({
               className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center py-1 px-4 cursor-grab"
             >
               <div className="h-1.5 w-12 rounded-full bg-white/85 shadow-md backdrop-blur-md" />
-            </div>
-
-            {/* Top left action icons: Rarity Flame & Favourite Star */}
-            <div className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center gap-1.5">
-              <FlagButton
-                onClick={onToggleChase}
-                pressed={rarity !== "Normal"}
-                title={`${RARITY_LABEL[rarity]} — tap for ${RARITY_LABEL[nextRarity(rarity)]}`}
-              >
-                <Flame
-                  className={`size-4 ${rarity === "Normal" ? "fill-none text-white" : RARITY_FLAME[rarity]}`}
-                />
-              </FlagButton>
-              <FlagButton
-                onClick={onToggleFavourite}
-                pressed={Boolean(car.favourite)}
-                title={car.favourite ? "Remove from favourites" : "Add to favourites"}
-              >
-                <Star
-                  className={`size-4 ${car.favourite ? FAVOURITE_COLOUR : "fill-none text-white"}`}
-                />
-              </FlagButton>
             </div>
 
             {/* Top right actions: Close button */}
@@ -675,6 +594,10 @@ function CarPopupContent({
                 cleanTransitNotes={cleanTransitNotes}
                 trackable={trackable}
                 onOpenBatch={onOpenBatch}
+                rarity={rarity}
+                onToggleChase={onToggleChase}
+                onToggleFavourite={onToggleFavourite}
+                exactCount={exactCount}
               />
 
               {/* More from series (mobile shelf: all cars in single row) */}
@@ -682,8 +605,11 @@ function CarPopupContent({
                 <div className="pt-2">
                   <hr className="my-3.5 border-border" />
                   <div className="mb-2.5 flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                      More from series {seriesName ? `· ${seriesName}` : ""}
+                    <span
+                      className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate"
+                      title={seriesHeading}
+                    >
+                      {seriesHeading}
                     </span>
                     <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
                       {seriesCars.length} {seriesCars.length === 1 ? "car" : "cars"}
@@ -708,8 +634,11 @@ function CarPopupContent({
                 <div className="pt-2">
                   <hr className="my-3.5 border-border" />
                   <div className="mb-2.5 flex items-center justify-between">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-                      More from set {setName ? `· ${setName}` : ""}
+                    <span
+                      className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate"
+                      title={setHeading}
+                    >
+                      {setHeading}
                     </span>
                     <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
                       {setCars.length} {setCars.length === 1 ? "car" : "cars"}
@@ -765,6 +694,10 @@ function CarDetailsBody({
   cleanTransitNotes,
   trackable,
   onOpenBatch,
+  rarity,
+  onToggleChase,
+  onToggleFavourite,
+  exactCount,
 }: {
   car: Diecast;
   spent: number;
@@ -775,6 +708,10 @@ function CarDetailsBody({
   cleanTransitNotes: string;
   trackable: boolean;
   onOpenBatch: (id: string, field: "orderId" | "shippingId") => void;
+  rarity: import("@/lib/rarity").Rarity;
+  onToggleChase: () => void;
+  onToggleFavourite: () => void;
+  exactCount: number;
 }) {
   return (
     <div className="space-y-4">
@@ -799,6 +736,17 @@ function CarDetailsBody({
         <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
         </h2>
+
+        {car.id && (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-1 text-xs">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+              Car ID
+            </span>
+            <span className="font-mono text-[11px] font-medium text-foreground truncate select-all">
+              {car.id}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Divider */}
@@ -818,6 +766,67 @@ function CarDetailsBody({
           <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
             <ConditionSpec label="Car" grade={car.carCondition} rating={car.carRating} />
             <ConditionSpec label="Card" grade={car.cardCondition} rating={car.cardRating} />
+          </div>
+        ) : null}
+      </div>
+
+      {/* Divider */}
+      <hr className="border-border" />
+
+      {/* Rarity, Favourite & No of cars Section (above payment section) */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-border/80 bg-muted/20 p-2.5 sm:p-3">
+        <div className="flex items-center gap-2">
+          {/* Rarity Button */}
+          <button
+            type="button"
+            onClick={onToggleChase}
+            title={`${RARITY_LABEL[rarity]} — tap for ${RARITY_LABEL[nextRarity(rarity)]}`}
+            className={cn(
+              "flex items-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none active:scale-95",
+              rarity !== "Normal"
+                ? "bg-accent/20 border-accent/50 text-foreground shadow-xs"
+                : "bg-background/80 border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/70",
+            )}
+          >
+            <Flame
+              className={cn(
+                "size-4 shrink-0",
+                rarity === "Normal" ? "text-muted-foreground" : RARITY_FLAME[rarity],
+              )}
+            />
+            <span>{RARITY_LABEL[rarity]}</span>
+          </button>
+
+          {/* Favourite Button */}
+          <button
+            type="button"
+            onClick={onToggleFavourite}
+            title={car.favourite ? "Remove from favourites" : "Add to favourites"}
+            className={cn(
+              "flex items-center gap-2 py-2 px-3 rounded-lg border text-xs font-semibold transition-all cursor-pointer select-none active:scale-95",
+              car.favourite
+                ? "bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 shadow-xs"
+                : "bg-background/80 border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/70",
+            )}
+          >
+            <Star
+              className={cn(
+                "size-4 shrink-0",
+                car.favourite ? FAVOURITE_COLOUR : "text-muted-foreground",
+              )}
+            />
+            <span>{car.favourite ? "Favourited" : "Favourite"}</span>
+          </button>
+        </div>
+
+        {/* No of Cars (ignored if exactCount <= 1) */}
+        {exactCount > 1 ? (
+          <div
+            title={`${exactCount} identical cars with matching specifications in your collection`}
+            className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-bold text-primary tabular-nums select-none"
+          >
+            <Layers className="size-3.5 shrink-0" />
+            <span>{exactCount}x Cars</span>
           </div>
         ) : null}
       </div>

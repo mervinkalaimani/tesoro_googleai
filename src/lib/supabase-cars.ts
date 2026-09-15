@@ -5,6 +5,13 @@ import { getSupabaseTableName } from "@/lib/supabase-config";
 import { parseCurrency } from "@/lib/format";
 import { monthEtaToDate, toDateInputValue } from "@/lib/date-utils";
 import { normaliseRarity, rarityOf } from "@/lib/rarity";
+import {
+  diecastToCatalogCar,
+  saveCatalogCarToSupabase,
+  seedCatalogToSupabase,
+  extractCatalogFromCars,
+  getLocalCatalog,
+} from "@/lib/catalog";
 
 export type TesoroRawRow = {
   SNO?: number | null;
@@ -148,19 +155,23 @@ export function savedFieldsMatch(a: Diecast, b: Diecast): boolean {
 
 export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
   const id = String(row["Car ID"] || "").trim();
-  const make = String(row.Make || "").trim();
-  const model = String(row.Model || "").trim();
-  const variant = String(row.Variant || "").trim();
-  const year = String(row.Year || "").trim();
-  const type = String(row.Type || "").trim();
-  const series = String(row.Series || "").trim();
+  const localCat = getLocalCatalog();
+  const catalogMatch = id ? localCat.find((c) => c.car_id === id) : null;
+
+  const make = String(row.Make || catalogMatch?.make || "").trim();
+  const model = String(row.Model || catalogMatch?.model || "").trim();
+  const variant = String(row.Variant || catalogMatch?.variant || "").trim();
+  const year = String(row.Year || catalogMatch?.year || "").trim();
+  const type = String(row.Type || catalogMatch?.type || "").trim();
+  const series = String(row.Series || catalogMatch?.series || "").trim();
   const name =
-    String(row.Name || "").trim() || buildCarName({ make, model, variant, year, type, series });
+    String(row.Name || catalogMatch?.name || "").trim() ||
+    buildCarName({ make, model, variant, year, type, series });
 
   const rawSpent =
     row.Spent ?? (row as Record<string, unknown>).Cost ?? (row as Record<string, unknown>).Price;
   const spent = parseCurrency(rawSpent);
-  const mrp = parseCurrency(row.MRP);
+  const mrp = parseCurrency(row.MRP ?? catalogMatch?.mrp);
   const rawShipping =
     row["Shipping Cost"] ??
     (row as Record<string, unknown>).shipping_cost ??
@@ -178,6 +189,7 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
         row.Image ||
         row.image ||
         (row as Record<string, unknown>).photo ||
+        catalogMatch?.image_url ||
         "",
     ).trim() || undefined;
 
@@ -193,13 +205,13 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
     variant,
     year,
     series,
-    subSeries: String(row["Sub Series"] || "").trim(),
-    carNumber: String(row["Car Number"] || "").trim(),
-    colour: String(row.Colour || "").trim(),
+    subSeries: String(row["Sub Series"] || catalogMatch?.sub_series || "").trim(),
+    carNumber: String(row["Car Number"] || catalogMatch?.car_number || "").trim(),
+    colour: String(row.Colour || catalogMatch?.colour || "").trim(),
     type,
-    brand: String(row.Brand || "").trim(),
-    assortment: String(row.Assortment || "").trim(),
-    size: String(row.Size || "1:64").trim(),
+    brand: String(row.Brand || catalogMatch?.brand || "").trim(),
+    assortment: String(row.Assortment || catalogMatch?.assortment || "").trim(),
+    size: String(row.Size || catalogMatch?.size || "1:64").trim(),
     spent,
     mrp,
     shippingCost,
@@ -357,6 +369,8 @@ export async function saveCarToSupabase(
     if (error) {
       return { success: false, error: error.message };
     }
+    // Keep tesoro_car_catalog in sync with this car's casting specification
+    void saveCatalogCarToSupabase(diecastToCatalogCar(car));
     return { success: true };
   } catch (err) {
     return { success: false, error: (err as Error).message };
@@ -435,6 +449,11 @@ export async function seedCarsToSupabase(
         onProgress(count, cars.length);
       }
     }
+
+    // Seed unique casting specifications to tesoro_car_catalog
+    const catalogEntries = extractCatalogFromCars(cars);
+    void seedCatalogToSupabase(catalogEntries);
+
     return { success: true, count };
   } catch (err) {
     return { success: false, count: 0, error: (err as Error).message };

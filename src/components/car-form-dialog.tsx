@@ -27,6 +27,8 @@ import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { isoMatchesFor } from "@/lib/iso-match";
 import { IsoSuggestions } from "@/components/iso-suggestions";
+import { generateCatalogCarId, isPlaceholderId } from "@/lib/car-id";
+import { useCatalog } from "@/lib/catalog-store";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { DataActions } from "@/components/data-actions";
@@ -72,7 +74,16 @@ import {
   Loader2,
 } from "lucide-react";
 
-const STATUS_OPTIONS = ["Available", "Pre Order", "Transit", "Waiting", "ISO", "On Hold"];
+const STATUS_OPTIONS = [
+  "Available",
+  "Out for Delivery",
+  "Transit",
+  "Delayed",
+  "Pre Order",
+  "Waiting",
+  "ISO",
+  "On Hold",
+];
 const PAYMENT_OPTIONS = ["Paid", "Partial", "Pending"];
 
 const SPENT_INFO = "The total amount you've spent to purchase the car.";
@@ -86,7 +97,14 @@ const ARRIVED_STATUSES = new Set(["available", "wrong item"]);
  * these is carrying describes a delivery that has not happened, so it is
  * dropped rather than kept — the estimate lives in the expected date now.
  */
-const NOT_RECEIVED_STATUSES = new Set(["waiting", "pre order", "preorder", "delayed"]);
+const NOT_RECEIVED_STATUSES = new Set([
+  "waiting",
+  "pre order",
+  "preorder",
+  "delayed",
+  "transit",
+  "out for delivery",
+]);
 
 interface CarFormData {
   make: string;
@@ -525,6 +543,37 @@ export function CarFormDialog({
     ],
   );
 
+  const { catalog } = useCatalog();
+
+  const derivedCatalogCarId = useMemo(() => {
+    return generateCatalogCarId({
+      brand: form.brand,
+      make: form.make,
+      model: form.model,
+      assortment: form.assortment,
+      series: form.series,
+      subSeries: form.subSeries,
+      carNumber: form.carNumber,
+      mrp: form.mrp,
+    });
+  }, [
+    form.brand,
+    form.make,
+    form.model,
+    form.assortment,
+    form.series,
+    form.subSeries,
+    form.carNumber,
+    form.mrp,
+  ]);
+
+  const existingCatalogMatch = useMemo(() => {
+    if (!form.make.trim() && !form.model.trim()) return null;
+    return (
+      catalog.find((c) => c.car_id.toUpperCase() === derivedCatalogCarId.toUpperCase()) || null
+    );
+  }, [catalog, derivedCatalogCarId, form.make, form.model]);
+
   /**
    * The ISO entry whose status is being changed. Opening the dialog rather than
    * filling this form: the catalogue fields are already recorded on that row —
@@ -697,7 +746,10 @@ export function CarFormDialog({
     const month = deriveMonth(date) || orderMonth;
 
     const carId =
-      initial?.id || `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+      initial?.id && !isPlaceholderId(initial.id)
+        ? initial.id
+        : derivedCatalogCarId ||
+          `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 
     const payload: Diecast = {
       id: carId,
@@ -970,6 +1022,26 @@ export function CarFormDialog({
                       onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
                       onDismiss={() => setIsoDismissed(true)}
                     />
+                  )}
+
+                  {(form.make.trim() || form.model.trim()) && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-2 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Catalog Car ID:
+                        </span>
+                        <span className="font-mono text-xs font-bold text-foreground truncate">
+                          {derivedCatalogCarId}
+                        </span>
+                      </div>
+                      {existingCatalogMatch ? (
+                        <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+                          Reusing Catalog ID (No duplicate in DB)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">8-Field Unique ID</span>
+                      )}
+                    </div>
                   )}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">

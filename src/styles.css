@@ -49,8 +49,10 @@
   --font-mono: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Light theme (default) */
+/* Base Font Size Configuration (Reduced by 2pt by default across the app) */
 :root {
+  --font-size-base: 10pt;
+  --font-pt-offset: -2pt;
   --radius: 0.75rem;
   --background: oklch(0.98 0.004 240);
   --foreground: oklch(0.2 0.014 245);
@@ -191,12 +193,38 @@
   --sidebar-ring: oklch(0.78 0.15 75);
 }
 
+:root[data-font-size="-2"] {
+  --font-size-base: 10pt;
+  --font-pt-offset: -2pt;
+}
+
+:root[data-font-size="-1"] {
+  --font-size-base: 11pt;
+  --font-pt-offset: -1pt;
+}
+
+:root[data-font-size="0"] {
+  --font-size-base: 12pt;
+  --font-pt-offset: 0pt;
+}
+
+:root[data-font-size="+1"] {
+  --font-size-base: 13pt;
+  --font-pt-offset: 1pt;
+}
+
+:root[data-font-size="+2"] {
+  --font-size-base: 14pt;
+  --font-pt-offset: 2pt;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
   }
   html {
     color-scheme: light;
+    font-size: var(--font-size-base, 10pt);
   }
   html.dark {
     color-scheme: dark;
@@ -206,6 +234,23 @@
     color: var(--color-foreground);
     font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
     font-feature-settings: "cv11", "ss01";
+  }
+
+  /* Scale custom fixed-pixel font utility classes with the user font size preference */
+  .text-\[8px\] {
+    font-size: max(7px, calc(8px + var(--font-pt-offset, -2pt)));
+  }
+  .text-\[9px\] {
+    font-size: max(7.5px, calc(9px + var(--font-pt-offset, -2pt)));
+  }
+  .text-\[10px\] {
+    font-size: max(8.5px, calc(10px + var(--font-pt-offset, -2pt)));
+  }
+  .text-\[11px\] {
+    font-size: max(9px, calc(11px + var(--font-pt-offset, -2pt)));
+  }
+  .text-\[15px\] {
+    font-size: calc(15px + var(--font-pt-offset, -2pt));
   }
   html.dark body {
     background:

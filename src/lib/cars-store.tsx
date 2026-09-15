@@ -259,8 +259,8 @@ function applyRows(prev: Overlay, rows: Diecast[]): Overlay {
 
 type Ctx = {
   cars: Diecast[];
-  addCar: (car: Diecast) => void;
-  bulkAddCars: (cars: Diecast[]) => void;
+  addCar: (car: Diecast) => Diecast;
+  bulkAddCars: (cars: Diecast[]) => Diecast[];
   updateCar: (car: Diecast) => void;
   /** `label` names the change in the undo button ("marking 3 cars delayed"). */
   bulkUpdateCars: (cars: Diecast[], label?: string) => void;
@@ -600,13 +600,14 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       const prev = overlayRef.current;
       commit(applyRows({ ...prev, added: [next, ...prev.added] }, written.slice(1)));
       void persist(written, "addCar");
+      return next;
     },
     [commit, cars, persist, pushUndo],
   );
 
   const bulkAddCars = useCallback(
-    (newCars: Diecast[]) => {
-      if (!newCars.length) return;
+    (newCars: Diecast[]): Diecast[] => {
+      if (!newCars.length) return [];
       // Numbered as a batch, so two cars sharing a brand and assortment cannot
       // both claim the same number. Rows that arrive with a real ID — a CSV
       // re-import, say — keep the one they came with.
@@ -633,6 +634,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // Previously omitted entirely, so a bulk import lived in localStorage and
       // nowhere else.
       void persist(written, "bulkAddCars");
+      return fresh;
     },
     [commit, persist, cars, pushUndo],
   );

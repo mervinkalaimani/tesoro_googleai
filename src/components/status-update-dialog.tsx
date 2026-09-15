@@ -30,6 +30,7 @@ const STATUS_CHOICES = [
   "Available",
   "Out for Delivery",
   "Transit",
+  "Delayed",
   "Waiting",
   "Pre Order",
   "On Hold",
@@ -46,6 +47,7 @@ const STATUS_FLOW: NextStatus[] = [
   "Pre Order",
   "Waiting",
   "Transit",
+  "Delayed",
   "Out for Delivery",
   "Available",
 ];
@@ -70,13 +72,14 @@ const NEEDS_PURCHASE = new Set<NextStatus>([
   "Available",
   "Out for Delivery",
   "Transit",
+  "Delayed",
   "Waiting",
   "Pre Order",
   "On Hold",
 ]);
 
 /** Only a car actually moving has a courier and a consignment number. */
-const NEEDS_TRANSIT = new Set<NextStatus>(["Transit", "Out for Delivery"]);
+const NEEDS_TRANSIT = new Set<NextStatus>(["Transit", "Delayed", "Out for Delivery"]);
 
 const num = (v: string) => {
   const n = Number(String(v).replace(/[^\d.-]/g, ""));

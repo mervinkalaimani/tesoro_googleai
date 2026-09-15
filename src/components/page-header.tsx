@@ -46,8 +46,8 @@ export function PageHeading({
  * they are shown. Mixing them is how a page ends up with a status filter
  * between the sort dropdown and the view toggle.
  */
-/** Height of the top bar, which is what a sticky toolbar sits underneath. */
-export const TOP_BAR_PX = 56;
+/** Height of the top bar (matching h-14 / 3.5rem), which is what a sticky toolbar sits underneath. */
+export const TOP_BAR_PX = "3.5rem";
 
 export function PageToolbar({
   left,
@@ -97,10 +97,7 @@ export function PageToolbar({
     // rather than stopping where the content column does — a translucent strip
     // with a gap either side reads as a floating box, not as part of the
     // chrome. z-10 keeps it under the top bar, which owns z-20.
-    <div
-      className="sticky z-10 -mx-3 border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur-xl md:-mx-6 md:px-6"
-      style={{ top: TOP_BAR_PX }}
-    >
+    <div className="sticky top-14 z-10 -mx-3 border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur-xl md:-mx-6 md:px-6">
       {inner}
     </div>
   );

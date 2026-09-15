@@ -30,6 +30,20 @@ export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   { value: "amber", label: "Amber" },
 ];
 
+export type FontSizePreference = "-2" | "-1" | "0" | "+1" | "+2";
+
+export const FONT_SIZE_OPTIONS: {
+  value: FontSizePreference;
+  label: string;
+  description: string;
+}[] = [
+  { value: "-2", label: "-2 pt", description: "Compact · 2 points smaller (Default)" },
+  { value: "-1", label: "-1 pt", description: "Slightly smaller · 1 point smaller" },
+  { value: "0", label: "Default", description: "Standard · Original 12 pt scale" },
+  { value: "+1", label: "+1 pt", description: "Slightly larger · 1 point larger" },
+  { value: "+2", label: "+2 pt", description: "Large · 2 points larger" },
+];
+
 type AppState = {
   query: string;
   setQuery: (q: string) => void;
@@ -42,6 +56,9 @@ type AppState = {
   toggleTheme: () => void;
   accentColor: AccentColor;
   setAccentColor: (a: AccentColor) => void;
+  /** Global font size adjustment: -2pt (default), -1pt, 0 (standard), +1pt, +2pt */
+  fontSize: FontSizePreference;
+  setFontSize: (s: FontSizePreference) => void;
   hideInvestment: boolean;
   setHideInvestment: (b: boolean) => void;
   transitEtaDays: number;
@@ -60,12 +77,20 @@ function isThemePreference(value: unknown): value is ThemePreference {
   return value === "light" || value === "dark" || value === "system";
 }
 
+function isFontSizePreference(value: unknown): value is FontSizePreference {
+  return value === "-2" || value === "-1" || value === "0" || value === "+1" || value === "+2";
+}
+
 function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
 }
 
 function applyAccent(accent: AccentColor) {
   document.documentElement.dataset.accent = accent;
+}
+
+function applyFontSize(size: FontSizePreference) {
+  document.documentElement.dataset.fontSize = size;
 }
 
 function readLS<T>(key: string, fallback: T): T {
@@ -92,6 +117,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>("dark");
   const [systemTheme, setSystemTheme] = useState<Theme>("dark");
   const [accentColor, setAccentColorState] = useState<AccentColor>("crimson");
+  const [fontSize, setFontSizeState] = useState<FontSizePreference>("-2");
   const [hideInvestment, setHideInvestmentState] = useState(true);
   const [transitEtaDays, setTransitEtaDaysState] = useState(21);
   // The server renders with the defaults above while the inline boot script in
@@ -106,8 +132,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedTheme = readLS<unknown>("dg.theme", "dark");
     const storedAccent = readLS<unknown>("dg.accentColor", "crimson");
+    const storedFontSize = readLS<unknown>("dg.fontSize", "-2");
     setThemePreferenceState(isThemePreference(storedTheme) ? storedTheme : "dark");
     setAccentColorState(isAccentColor(storedAccent) ? storedAccent : "crimson");
+    setFontSizeState(isFontSizePreference(storedFontSize) ? storedFontSize : "-2");
     setHideInvestmentState(readLS<boolean>("dg.hideInvestment", true));
     setTransitEtaDaysState(readLS<number>("dg.transitEta", 21));
     setHydrated(true);
@@ -132,6 +160,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (hydrated) applyAccent(accentColor);
   }, [hydrated, accentColor]);
+
+  useEffect(() => {
+    if (hydrated) applyFontSize(fontSize);
+  }, [hydrated, fontSize]);
 
   // Track the signed-in account rather than reading the session once: the first
   // render usually happens before Supabase has restored it, and switching
@@ -249,6 +281,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.transitEta", n);
   }, []);
 
+  const setFontSize = useCallback((s: FontSizePreference) => {
+    setFontSizeState(s);
+    writeLS("dg.fontSize", s);
+    applyFontSize(s);
+  }, []);
+
   const value = useMemo<AppState>(
     () => ({
       query,
@@ -259,6 +297,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleTheme,
       accentColor,
       setAccentColor,
+      fontSize,
+      setFontSize,
       hideInvestment,
       setHideInvestment,
       transitEtaDays,
@@ -272,6 +312,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toggleTheme,
       accentColor,
       setAccentColor,
+      fontSize,
+      setFontSize,
       hideInvestment,
       setHideInvestment,
       transitEtaDays,

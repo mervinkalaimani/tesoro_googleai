@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Layers, Plus, Trash2, Loader2, RotateCcw } from "lucide-react";
+import { Layers, Plus, Trash2, Loader2, RotateCcw, Tag } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
 import { useCarsActions, useCars, makeBlankCar } from "@/lib/cars-store";
+import { carIdFor } from "@/lib/car-id";
 import {
   modelOptionsFor,
   optionsFor,
@@ -60,7 +61,16 @@ type FieldDef = {
   sharedByDefault: boolean;
 };
 
-const STATUSES = ["Available", "Transit", "Pre Order", "Waiting", "ISO", "On Hold"];
+const STATUSES = [
+  "Available",
+  "Out for Delivery",
+  "Transit",
+  "Delayed",
+  "Pre Order",
+  "Waiting",
+  "ISO",
+  "On Hold",
+];
 
 /**
  * Every field a bulk row can carry. Which of them are shared across the batch
@@ -282,7 +292,7 @@ export function BulkAddCarsDialog({
    */
   seed?: Diecast[];
 }) {
-  const { addCar, updateCar } = useCarsActions();
+  const { addCar, bulkAddCars, updateCar } = useCarsActions();
   const cars = useCars();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
@@ -435,6 +445,40 @@ export function BulkAddCarsDialog({
     [filled, shared, sharedKeys],
   );
 
+  /**
+   * Real-time preview of the unique Car IDs that will be assigned to each row,
+   * based on Brand and Assortment prefix (BRAND/ASSORTMENT/NNN).
+   */
+  const previewCarIds = useMemo(() => {
+    const map = new Map<string, string>();
+    const pool = [...cars];
+    for (const r of rows) {
+      if (r.isoId) {
+        const source = cars.find((c) => c.id === r.isoId);
+        if (source?.id) {
+          map.set(r.key, source.id);
+          continue;
+        }
+      }
+      const make = valueOf(r, "make").trim();
+      const model = valueOf(r, "model").trim();
+      const brand = valueOf(r, "brand").trim();
+      const assortment = valueOf(r, "assortment").trim();
+      if (make || model || brand || assortment) {
+        const dummyCar = {
+          ...makeBlankCar(),
+          brand,
+          assortment,
+        };
+        const id = carIdFor(dummyCar, pool);
+        map.set(r.key, id);
+        pool.push({ ...dummyCar, id });
+      }
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, shared, sharedKeys, cars]);
+
   /** Clears the table but leaves the draft: closing is not the same as binning. */
   const reset = () => {
     setRows([blankRow(), blankRow(), blankRow()]);
@@ -457,6 +501,7 @@ export function BulkAddCarsDialog({
 
     setSaving(true);
     try {
+      const toAdd: Diecast[] = [];
       let converted = 0;
       for (const r of filled) {
         const base = makeBlankCar();
@@ -502,15 +547,27 @@ export function BulkAddCarsDialog({
           updateCar(car);
           converted++;
         } else {
-          // addCar derives the shipping ID from seller and dates.
-          addCar(car);
+          toAdd.push(car);
         }
       }
 
+      let addedCars: Diecast[] = [];
+      if (toAdd.length > 0) {
+        addedCars = bulkAddCars(toAdd);
+      }
+
       const added = filled.length - converted;
+      const assignedIds = addedCars.map((c) => c.id).filter(Boolean);
+      const idSummary =
+        assignedIds.length > 0
+          ? assignedIds.length <= 3
+            ? ` (${assignedIds.join(", ")})`
+            : ` (${assignedIds[0]} … ${assignedIds[assignedIds.length - 1]})`
+          : "";
+
       toast.success(
         [
-          added ? `Added ${added} car${added === 1 ? "" : "s"}` : "",
+          added ? `Added ${added} car${added === 1 ? "" : "s"}${idSummary}` : "",
           converted ? `${converted} moved off your ISO list` : "",
         ]
           .filter(Boolean)
@@ -619,6 +676,9 @@ export function BulkAddCarsDialog({
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
+                  <th className="px-2.5 py-2 text-left font-medium whitespace-nowrap">
+                    Car ID (Auto)
+                  </th>
                   {perCarFields.map((f) => (
                     <th key={f.key} className="px-2 py-2 text-left font-medium">
                       {f.label}
@@ -640,6 +700,28 @@ export function BulkAddCarsDialog({
                         : undefined
                     }
                   >
+                    <td className="p-1 whitespace-nowrap">
+                      {previewCarIds.get(r.key) ? (
+                        <span
+                          className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold px-2 py-1 rounded bg-muted/60 text-foreground border border-border/60"
+                          title={
+                            r.isoId
+                              ? `Keeps existing ISO ID: ${previewCarIds.get(r.key)}`
+                              : `Auto-generated Car ID: ${previewCarIds.get(r.key)}`
+                          }
+                        >
+                          <Tag className="size-3 text-primary shrink-0" />
+                          {previewCarIds.get(r.key)}
+                          {r.isoId && (
+                            <span className="text-[9px] text-muted-foreground font-normal">
+                              (ISO)
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="font-mono text-xs text-muted-foreground px-2 py-1">—</span>
+                      )}
+                    </td>
                     {perCarFields.map((f) => (
                       <td key={f.key} className="p-1">
                         <FieldInput

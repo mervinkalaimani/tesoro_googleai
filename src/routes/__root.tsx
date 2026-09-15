@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppProvider } from "@/lib/store";
 import { CarsProvider } from "@/lib/cars-store";
+import { CatalogProvider } from "@/lib/catalog-store";
 import { CarDrawerProvider } from "@/components/car-details-drawer";
 import { AuthProvider } from "@/lib/auth-store";
 import { AuthGate } from "@/components/auth-gate";
@@ -149,7 +150,10 @@ try {
   document.documentElement.classList.toggle('dark', t === 'dark');
   var a = JSON.parse(localStorage.getItem('dg.accentColor') || '"crimson"');
   if (['crimson','blue','emerald','violet','amber'].indexOf(a) !== -1) document.documentElement.dataset.accent = a;
-} catch (e) { document.documentElement.classList.add('dark'); }
+  var f = JSON.parse(localStorage.getItem('dg.fontSize') || '"-2"');
+  if (['-2','-1','0','+1','+2'].indexOf(f) !== -1) document.documentElement.dataset.fontSize = f;
+  else document.documentElement.dataset.fontSize = '-2';
+} catch (e) { document.documentElement.classList.add('dark'); document.documentElement.dataset.fontSize = '-2'; }
 
 window.addEventListener('vite:preloadError', function () {
   window.location.reload();
@@ -172,7 +176,13 @@ window.addEventListener('error', function (e) {
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark" data-accent="crimson" suppressHydrationWarning>
+    <html
+      lang="en"
+      className="dark"
+      data-accent="crimson"
+      data-font-size="-2"
+      suppressHydrationWarning
+    >
       <head>
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
@@ -199,17 +209,19 @@ function RootComponent() {
         */}
         <AppProvider>
           <CarsProvider>
-            <CarDrawerProvider>
-              <AuthGate>
-                <Outlet />
-              </AuthGate>
-              {/* Nothing was mounting this, so every toast in the app was
-                  written to a surface that did not exist — including the one
-                  explaining that a photo upload had failed because the storage
-                  bucket was missing. The upload looked like it silently did
-                  nothing, which is exactly what it looked like. */}
-              <Toaster position="bottom-right" richColors closeButton />
-            </CarDrawerProvider>
+            <CatalogProvider>
+              <CarDrawerProvider>
+                <AuthGate>
+                  <Outlet />
+                </AuthGate>
+                {/* Nothing was mounting this, so every toast in the app was
+                    written to a surface that did not exist — including the one
+                    explaining that a photo upload had failed because the storage
+                    bucket was missing. The upload looked like it silently did
+                    nothing, which is exactly what it looked like. */}
+                <Toaster position="bottom-right" richColors closeButton />
+              </CarDrawerProvider>
+            </CatalogProvider>
           </CarsProvider>
         </AppProvider>
       </AuthProvider>

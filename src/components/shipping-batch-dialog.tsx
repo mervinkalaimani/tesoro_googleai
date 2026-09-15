@@ -40,11 +40,13 @@ import type { Diecast } from "@/lib/types";
 const STATUS_CHOICES = [
   { value: "keep", label: "— Keep current status —" },
   { value: "Available", label: "Available (Delivered / Received)" },
+  { value: "Out for Delivery", label: "Out for Delivery" },
   { value: "Transit", label: "Transit (In Courier / Shipped)" },
-  { value: "Pre Order", label: "Pre Order" },
+  { value: "Delayed", label: "Delayed" },
   { value: "Waiting", label: "Waiting" },
-  { value: "ISO", label: "ISO (In Search Of)" },
+  { value: "Pre Order", label: "Pre Order" },
   { value: "On Hold", label: "On Hold" },
+  { value: "ISO", label: "ISO (In Search Of)" },
 ];
 
 export interface ShippingBatchDialogProps {
@@ -656,7 +658,7 @@ export function ShippingBatchDialog({
               {/* Form Updates */}
               <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-2">
                 {/* New Status */}
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground">
                     Update Status for All Cars
                   </label>
@@ -672,6 +674,68 @@ export function ShippingBatchDialog({
                       ))}
                     </SelectContent>
                   </Select>
+
+                  {/* Quick status presets */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] text-muted-foreground">Quick set:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewStatus("Out for Delivery");
+                        if (!newExpectedDate) {
+                          setNewExpectedDate(new Date().toISOString().slice(0, 10));
+                        }
+                      }}
+                      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                        newStatus === "Out for Delivery"
+                          ? "border-cyan-500 bg-cyan-500/20 text-cyan-400 font-semibold"
+                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      Out for Delivery
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewStatus("Delayed");
+                        setUpdateTransitInfo(true);
+                      }}
+                      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                        newStatus === "Delayed"
+                          ? "border-rose-500 bg-rose-500/20 text-rose-400 font-semibold"
+                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      Delayed
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewStatus("Transit")}
+                      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                        newStatus === "Transit"
+                          ? "border-amber-500 bg-amber-500/20 text-amber-400 font-semibold"
+                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      In Transit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewStatus("Available");
+                        if (!newExpectedDate) {
+                          setNewExpectedDate(new Date().toISOString().slice(0, 10));
+                        }
+                      }}
+                      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                        newStatus === "Available"
+                          ? "border-emerald-500 bg-emerald-500/20 text-emerald-400 font-semibold"
+                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      Delivered
+                    </button>
+                  </div>
                 </div>
 
                 {/* Order Date */}

@@ -14,7 +14,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ACCENT_OPTIONS, THEME_OPTIONS, useApp, type AccentColor } from "@/lib/store";
+import {
+  ACCENT_OPTIONS,
+  THEME_OPTIONS,
+  FONT_SIZE_OPTIONS,
+  useApp,
+  type AccentColor,
+  type FontSizePreference,
+} from "@/lib/store";
 import { SegmentControl } from "@/components/segment-control";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -117,6 +124,8 @@ export function SettingsPage() {
     setThemePreference,
     accentColor,
     setAccentColor,
+    fontSize,
+    setFontSize,
     hideInvestment,
     setHideInvestment,
   } = useApp();
@@ -271,12 +280,13 @@ export function SettingsPage() {
               <div className="min-w-0 flex-1">
                 <span className="text-[15px] font-medium text-foreground">Display</span>
                 <p className="text-xs text-muted-foreground">
-                  Theme mode, accent colour &amp; investment privacy
+                  Theme mode, accent colour, text size &amp; investment privacy
                 </p>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span className="capitalize">
-                  {themePreference === "system" ? "Auto" : themePreference}
+                  {themePreference === "system" ? "Auto" : themePreference} ·{" "}
+                  {fontSize === "0" ? "Default" : `${fontSize} pt`}
                 </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
@@ -476,6 +486,22 @@ export function SettingsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-[15px] font-medium text-foreground">Font Size</div>
+                  <div className="text-xs text-muted-foreground">
+                    {FONT_SIZE_OPTIONS.find((o) => o.value === fontSize)?.description ||
+                      "Adjust application font size across all views (reduced by 2 pt by default)."}
+                  </div>
+                </div>
+                <SegmentControl
+                  value={fontSize}
+                  onChange={(v) => setFontSize(v as FontSizePreference)}
+                  options={FONT_SIZE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+                  className="h-9 w-full sm:w-auto text-sm"
+                />
               </div>
             </div>
           </div>

@@ -30,6 +30,72 @@ export type Database = {
         };
         Relationships: [];
       };
+      tesoro_car_catalog: {
+        Row: {
+          car_id: string;
+          brand: string;
+          make: string;
+          model: string;
+          assortment: string;
+          series: string;
+          sub_series: string;
+          car_number: string;
+          mrp: number;
+          name: string;
+          variant: string;
+          year: string | null;
+          colour: string;
+          type: string;
+          size: string;
+          image_url: string | null;
+          created_at: string;
+          updated_at: string;
+          created_by: string | null;
+        };
+        Insert: {
+          car_id: string;
+          brand?: string;
+          make?: string;
+          model?: string;
+          assortment?: string;
+          series?: string;
+          sub_series?: string;
+          car_number?: string;
+          mrp?: number;
+          name?: string;
+          variant?: string;
+          year?: string | null;
+          colour?: string;
+          type?: string;
+          size?: string;
+          image_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Update: {
+          car_id?: string;
+          brand?: string;
+          make?: string;
+          model?: string;
+          assortment?: string;
+          series?: string;
+          sub_series?: string;
+          car_number?: string;
+          mrp?: number;
+          name?: string;
+          variant?: string;
+          year?: string | null;
+          colour?: string;
+          type?: string;
+          size?: string;
+          image_url?: string | null;
+          created_at?: string;
+          updated_at?: string;
+          created_by?: string | null;
+        };
+        Relationships: [];
+      };
       tesoro_users: {
         Row: {
           sno: number;

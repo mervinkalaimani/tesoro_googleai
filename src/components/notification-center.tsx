@@ -67,7 +67,15 @@ const SECTION = {
   launches: "preorder-launch",
 } as const;
 
-const STATUS_OPTIONS = ["Waiting", "Transit", "Pre Order", "Available", "Delayed", "On Hold"];
+const STATUS_OPTIONS = [
+  "Waiting",
+  "Transit",
+  "Out for Delivery",
+  "Delayed",
+  "Pre Order",
+  "Available",
+  "On Hold",
+];
 
 /** Both are per account, so two people sharing a browser differ. */
 const collapseKey = (uid: string) => `dg.notifyCollapsed.${uid}`;
