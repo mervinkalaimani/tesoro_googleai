@@ -27,6 +27,8 @@ export type Profile = {
   is_approved: boolean;
   is_owner: boolean;
   created_at: string;
+  /** Set when an admin rejected the request to join. */
+  rejected_at?: string | null;
 };
 
 /** Mirrors is_valid_tesoro_handle() in the database. */

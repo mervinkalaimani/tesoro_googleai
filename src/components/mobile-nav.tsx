@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Boxes,
   CalendarDays,
@@ -58,6 +58,44 @@ function isActive(pathname: string, url: string) {
   return url === "/" ? pathname === "/" : pathname.startsWith(url);
 }
 
+/** How long the bar stays small after the last downward scroll. */
+const COMPACT_HOLD_MS = 2000;
+
+/**
+ * True while the page is being scrolled down, and for two seconds after: the
+ * bar shrinks out of the way of what you are reading, then comes back. Small
+ * jitters (a finger resting on the glass) don't count.
+ */
+function useScrollCompact(enabled: boolean) {
+  const [compact, setCompact] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) {
+      setCompact(false);
+      return;
+    }
+    let lastY = window.scrollY;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const delta = y - lastY;
+      if (Math.abs(delta) < 6) return;
+      lastY = y;
+      if (delta <= 0) return;
+      setCompact(true);
+      clearTimeout(timer);
+      timer = setTimeout(() => setCompact(false), COMPACT_HOLD_MS);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      clearTimeout(timer);
+    };
+  }, [enabled]);
+
+  return compact;
+}
+
 export function MobileNav() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
@@ -100,6 +138,7 @@ export function MobileNav() {
 
   const hidden = hideInvestment && !localReveal;
   const close = () => setMenuOpen(false);
+  const compact = useScrollCompact(!menuOpen);
 
   return (
     <>
@@ -119,12 +158,20 @@ export function MobileNav() {
             "max(12px, calc(env(safe-area-inset-bottom) - 20px), env(safe-area-inset-right))",
         }}
       >
-        {navMode === "default" ? (
-          /* ===================================================================== */
-          /* 1. DEFAULT NAVBAR: Home, Inventory, Orders, Habit, Menu               */
-          /* ===================================================================== */
-          <div
-            className="
+        {/* Scrolling down shrinks the bar to 60% and drops it towards the home
+            line; it grows back two seconds after the scrolling stops. Scaled
+            from the bottom edge so it settles down rather than floating in
+            mid-air. */}
+        <div
+          className="origin-bottom transition-transform duration-300 ease-out motion-reduce:transition-none"
+          style={{ transform: compact ? "translateY(6px) scale(0.6)" : undefined }}
+        >
+          {navMode === "default" ? (
+            /* ===================================================================== */
+            /* 1. DEFAULT NAVBAR: Home, Inventory, Orders, Habit, Menu               */
+            /* ===================================================================== */
+            <div
+              className="
               pointer-events-auto relative flex min-h-[62px] items-stretch gap-1 rounded-[2.5rem] p-1.5
               border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
               backdrop-blur-2xl backdrop-saturate-150
@@ -134,108 +181,15 @@ export function MobileNav() {
               dark:before:via-white/20
               transition-all duration-300 ease-out
             "
-          >
-            {DEFAULT_TABS.map((t) => {
-              const active = isActive(pathname, t.url);
-              return (
-                <Link
-                  key={t.url}
-                  to={t.url}
-                  aria-current={active ? "page" : undefined}
-                  className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${
-                    active
-                      ? "bg-primary/12 font-semibold text-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
-                  <span className="truncate text-[10px] font-medium leading-none">{t.title}</span>
-                </Link>
-              );
-            })}
-
-            {/* Menu button */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label={`Menu — signed in as ${display}`}
-              aria-expanded={menuOpen}
-              className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${
-                menuOpen
-                  ? "bg-primary/12 font-semibold text-primary"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
             >
-              <div className="relative size-6 overflow-hidden rounded-full border border-border/80 shadow-xs">
-                <Avatar className="size-full rounded-full border-0">
-                  {profile?.avatar_url ? (
-                    <AvatarImage
-                      src={profile.avatar_url}
-                      alt=""
-                      className="size-full object-cover"
-                    />
-                  ) : null}
-                  <AvatarFallback className="size-full bg-primary/20 text-[9px] font-bold">
-                    {initialsOf(name, display)}
-                  </AvatarFallback>
-                </Avatar>
-              </div>
-              <span
-                className="text-[10px] font-bold leading-none select-none text-neutral-900 dark:text-neutral-100"
-                style={{
-                  WebkitTextStroke: "0.5px #ffffff",
-                  paintOrder: "stroke fill",
-                }}
-              >
-                Menu
-              </span>
-            </button>
-          </div>
-        ) : (
-          /* ===================================================================== */
-          /* 2. DYNAMIC NAVBAR: [ Home Circle ]  [ Sub-Section ]  [ Menu Circle ]   */
-          /* ===================================================================== */
-          <div className="flex w-full items-center gap-2 transition-all duration-300 ease-out">
-            {/* Separate Circle for Home */}
-            <Link
-              to="/"
-              aria-label="Home"
-              className="
-                pointer-events-auto relative flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full
-                border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
-                backdrop-blur-2xl backdrop-saturate-150
-                dark:border-white/10 dark:bg-background/70
-                text-muted-foreground transition-all duration-200 hover:text-foreground active:scale-95
-                before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:h-px
-                before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
-                dark:before:via-white/20
-              "
-            >
-              <Home className="size-5" />
-              <span className="text-[10px] font-medium leading-none">Home</span>
-            </Link>
-
-            {/* Middle Dynamic Section Pill */}
-            <div
-              className="
-                pointer-events-auto relative flex min-h-[58px] flex-1 min-w-0 items-stretch gap-1 rounded-[2.5rem] p-1.5
-                border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
-                backdrop-blur-2xl backdrop-saturate-150
-                dark:border-white/10 dark:bg-background/70
-                before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px
-                before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
-                dark:before:via-white/20
-                transition-all duration-300 ease-out
-              "
-            >
-              {(navMode === "inventory" ? INVENTORY_TABS : ORDERS_TABS).map((t) => {
+              {DEFAULT_TABS.map((t) => {
                 const active = isActive(pathname, t.url);
                 return (
                   <Link
                     key={t.url}
                     to={t.url}
                     aria-current={active ? "page" : undefined}
-                    className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1 transition-colors ${
+                    className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${
                       active
                         ? "bg-primary/12 font-semibold text-primary"
                         : "text-muted-foreground hover:text-foreground"
@@ -246,15 +200,110 @@ export function MobileNav() {
                   </Link>
                 );
               })}
-            </div>
 
-            {/* Separate Circle for Menu — Avatar photo fills the circle with white-stroked Menu text */}
-            <button
-              type="button"
-              onClick={() => setMenuOpen(true)}
-              aria-label={`Menu — signed in as ${display}`}
-              aria-expanded={menuOpen}
-              className={`
+              {/* Menu button */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                aria-label={`Menu — signed in as ${display}`}
+                aria-expanded={menuOpen}
+                className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${
+                  menuOpen
+                    ? "bg-primary/12 font-semibold text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <div className="relative size-6 overflow-hidden rounded-full border border-border/80 shadow-xs">
+                  <Avatar className="size-full rounded-full border-0">
+                    {profile?.avatar_url ? (
+                      <AvatarImage
+                        src={profile.avatar_url}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    ) : null}
+                    <AvatarFallback className="size-full bg-primary/20 text-[9px] font-bold">
+                      {initialsOf(name, display)}
+                    </AvatarFallback>
+                  </Avatar>
+                </div>
+                <span
+                  className="text-[10px] font-bold leading-none select-none text-neutral-900 dark:text-neutral-100"
+                  style={{
+                    WebkitTextStroke: "0.5px #ffffff",
+                    paintOrder: "stroke fill",
+                  }}
+                >
+                  Menu
+                </span>
+              </button>
+            </div>
+          ) : (
+            /* ===================================================================== */
+            /* 2. DYNAMIC NAVBAR: [ Home Circle ]  [ Sub-Section ]  [ Menu Circle ]   */
+            /* ===================================================================== */
+            <div className="flex w-full items-center gap-2 transition-all duration-300 ease-out">
+              {/* Separate Circle for Home */}
+              <Link
+                to="/"
+                aria-label="Home"
+                className="
+                pointer-events-auto relative flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full
+                border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
+                backdrop-blur-2xl backdrop-saturate-150
+                dark:border-white/10 dark:bg-background/70
+                text-muted-foreground transition-all duration-200 hover:text-foreground active:scale-95
+                before:pointer-events-none before:absolute before:inset-x-2 before:top-0 before:h-px
+                before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
+                dark:before:via-white/20
+              "
+              >
+                <Home className="size-5" />
+                <span className="text-[10px] font-medium leading-none">Home</span>
+              </Link>
+
+              {/* Middle Dynamic Section Pill */}
+              <div
+                className="
+                pointer-events-auto relative flex min-h-[58px] flex-1 min-w-0 items-stretch gap-1 rounded-[2.5rem] p-1.5
+                border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
+                backdrop-blur-2xl backdrop-saturate-150
+                dark:border-white/10 dark:bg-background/70
+                before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px
+                before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent
+                dark:before:via-white/20
+                transition-all duration-300 ease-out
+              "
+              >
+                {(navMode === "inventory" ? INVENTORY_TABS : ORDERS_TABS).map((t) => {
+                  const active = isActive(pathname, t.url);
+                  return (
+                    <Link
+                      key={t.url}
+                      to={t.url}
+                      aria-current={active ? "page" : undefined}
+                      className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1 transition-colors ${
+                        active
+                          ? "bg-primary/12 font-semibold text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
+                      <span className="truncate text-[10px] font-medium leading-none">
+                        {t.title}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Separate Circle for Menu — Avatar photo fills the circle with white-stroked Menu text */}
+              <button
+                type="button"
+                onClick={() => setMenuOpen(true)}
+                aria-label={`Menu — signed in as ${display}`}
+                aria-expanded={menuOpen}
+                className={`
                 pointer-events-auto relative flex size-[58px] shrink-0 flex-col items-center justify-end overflow-hidden rounded-full
                 border border-black/15 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
                 backdrop-blur-2xl backdrop-saturate-150
@@ -262,32 +311,37 @@ export function MobileNav() {
                 transition-all duration-200 active:scale-95
                 ${menuOpen ? "ring-2 ring-primary ring-offset-1" : ""}
               `}
-            >
-              <Avatar className="absolute inset-0 size-full rounded-full border-0">
-                {profile?.avatar_url ? (
-                  <AvatarImage src={profile.avatar_url} alt="" className="size-full object-cover" />
-                ) : null}
-                <AvatarFallback className="size-full bg-primary/20 text-xs font-bold text-foreground">
-                  {initialsOf(name, display)}
-                </AvatarFallback>
-              </Avatar>
-
-              {/* Bottom vignette so text remains crisp and readable over any avatar */}
-              <div className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-
-              {/* Menu text with white stroke */}
-              <span
-                className="relative z-10 pb-1 text-[10px] font-extrabold tracking-tight text-neutral-950 select-none drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
-                style={{
-                  WebkitTextStroke: "0.75px #ffffff",
-                  paintOrder: "stroke fill",
-                }}
               >
-                Menu
-              </span>
-            </button>
-          </div>
-        )}
+                <Avatar className="absolute inset-0 size-full rounded-full border-0">
+                  {profile?.avatar_url ? (
+                    <AvatarImage
+                      src={profile.avatar_url}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : null}
+                  <AvatarFallback className="size-full bg-primary/20 text-xs font-bold text-foreground">
+                    {initialsOf(name, display)}
+                  </AvatarFallback>
+                </Avatar>
+
+                {/* Bottom vignette so text remains crisp and readable over any avatar */}
+                <div className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+
+                {/* Menu text with white stroke */}
+                <span
+                  className="relative z-10 pb-1 text-[10px] font-extrabold tracking-tight text-neutral-950 select-none drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]"
+                  style={{
+                    WebkitTextStroke: "0.75px #ffffff",
+                    paintOrder: "stroke fill",
+                  }}
+                >
+                  Menu
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
       </nav>
 
       {/* ===================================================================== */}

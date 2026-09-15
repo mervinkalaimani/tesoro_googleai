@@ -36,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MobileRecordCard, RecordAction } from "@/components/mobile-record-card";
+import { AdminImageRefresh } from "@/components/admin-image-refresh";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -55,6 +56,7 @@ type AdminUser = {
   created_at: string;
   car_count: number;
   last_sign_in: string | null;
+  rejected_at?: string | null;
 };
 
 function displayName(u: AdminUser): string {
@@ -107,7 +109,8 @@ function AdminPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: updateError } = await (supabase as any)
         .from("tesoro_users")
-        .update({ is_approved: approved })
+        // Approving someone who was rejected earlier lifts the rejection too.
+        .update(approved ? { is_approved: true, rejected_at: null } : { is_approved: false })
         .eq("sno", target.sno);
       setBusyId(null);
 
@@ -231,7 +234,7 @@ function AdminPage() {
   }, [users, query]);
 
   const pendingCount = useMemo(
-    () => users.filter((u) => !u.is_approved && !u.is_owner).length,
+    () => users.filter((u) => !u.is_approved && !u.is_owner && !u.rejected_at).length,
     [users],
   );
 
@@ -616,6 +619,8 @@ function AdminPage() {
         unreadable immediately, even through the API. Collections are never deleted by these
         actions.
       </p>
+
+      <AdminImageRefresh />
 
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent className="sm:max-w-md">

@@ -118,7 +118,9 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
         <DialogContent
           id="car-details-dialog-content"
           hideDragHandle
-          onDismiss={close}
+          // The phone layout runs its own gestures: pull the photo to close,
+          // pull the card to stretch the photo.
+          disableSheetDismiss
           className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:pb-0 max-sm:flex max-sm:flex-col overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 gap-0 block text-foreground shadow-2xl sm:max-h-[92vh] sm:max-w-2xl md:max-w-5xl lg:max-w-6xl xl:max-w-[1240px]"
         >
           {car && (
@@ -171,6 +173,137 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** How far the photo can be stretched by pulling the card down. */
+const MAX_PULL_PX = 180;
+/** How far the photo has to be pulled down, or how fast, to close the sheet. */
+const CLOSE_PX = 90;
+const SPRING = "cubic-bezier(0.2, 0.8, 0.2, 1)";
+
+/**
+ * The phone layout's gestures, on one scroller:
+ *
+ * - pushing the card up scrolls it over the photo, which stays put;
+ * - pulling the card down from the top stretches the photo (rubber-banded, so
+ *   it gives less the further it goes) and springs back on release;
+ * - a pull that starts on the photo itself drags the whole sheet down, and
+ *   closes it when let go far or fast enough.
+ *
+ * Touch listeners are attached natively because a pull has to cancel the
+ * browser's own overscroll, which React's passive touch handlers cannot.
+ */
+function useMobileHeroGestures(onClose: () => void) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const pillRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    const hero = heroRef.current;
+    const content = contentRef.current;
+    const card = cardRef.current;
+    if (!scroller || !hero || !content || !card) return;
+    const sheet = scroller.closest<HTMLElement>('[role="dialog"]');
+
+    let tracking = false;
+    let zone: "photo" | "card" = "card";
+    let mode: "stretch" | "drag" | null = null;
+    let startY = 0;
+    let startTime = 0;
+    let amount = 0;
+
+    const stretch = (px: number, animate: boolean) => {
+      const t = animate ? `260ms ${SPRING}` : "0s";
+      content.style.transition = `transform ${t}`;
+      content.style.transform = px ? `translateY(${px}px)` : "";
+      hero.style.transition = `height ${t}`;
+      hero.style.height = px ? `calc(var(--hero-h) + ${px}px)` : "var(--hero-h)";
+    };
+    const drag = (px: number, animate: boolean) => {
+      if (!sheet) return;
+      sheet.style.transition = animate ? `transform 220ms ${SPRING}` : "none";
+      sheet.style.transform = px ? `translateY(${px}px)` : "";
+    };
+
+    const onStart = (e: TouchEvent) => {
+      tracking = e.touches.length === 1;
+      if (!tracking) return;
+      startY = e.touches[0].clientY;
+      startTime = Date.now();
+      mode = null;
+      amount = 0;
+      // Above the card's top edge the finger is on the photo.
+      zone = startY < card.getBoundingClientRect().top ? "photo" : "card";
+    };
+
+    const onMove = (e: TouchEvent) => {
+      if (!tracking) return;
+      const y = e.touches[0].clientY;
+      if (!mode) {
+        const dy = y - startY;
+        // Pushing up is plain scrolling, and so is pulling down while there is
+        // still content above to scroll back to.
+        if (dy < 0) {
+          tracking = false;
+          return;
+        }
+        if (dy === 0 || scroller.scrollTop > 0) return;
+        mode = zone === "photo" ? "drag" : "stretch";
+        startY = y;
+        startTime = Date.now();
+      }
+      if (e.cancelable) e.preventDefault();
+      const d = Math.max(0, y - startY);
+      if (mode === "drag") {
+        amount = d;
+        drag(amount, false);
+      } else {
+        amount = MAX_PULL_PX * (1 - Math.exp(-d / (MAX_PULL_PX * 1.4)));
+        stretch(amount, false);
+      }
+    };
+
+    const onEnd = () => {
+      if (!tracking) return;
+      tracking = false;
+      if (mode === "drag") {
+        const velocity = amount / Math.max(1, Date.now() - startTime);
+        if (amount > CLOSE_PX || (velocity > 0.5 && amount > 30)) closeRef.current();
+        else drag(0, true);
+      } else if (mode === "stretch") {
+        stretch(0, true);
+      }
+      mode = null;
+      amount = 0;
+    };
+
+    const onScroll = () => {
+      if (pillRef.current) {
+        pillRef.current.style.opacity = String(Math.max(0, 1 - scroller.scrollTop / 120));
+      }
+    };
+
+    scroller.addEventListener("touchstart", onStart, { passive: true });
+    scroller.addEventListener("touchmove", onMove, { passive: false });
+    scroller.addEventListener("touchend", onEnd);
+    scroller.addEventListener("touchcancel", onEnd);
+    scroller.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      scroller.removeEventListener("touchstart", onStart);
+      scroller.removeEventListener("touchmove", onMove);
+      scroller.removeEventListener("touchend", onEnd);
+      scroller.removeEventListener("touchcancel", onEnd);
+      scroller.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  return { rootRef, heroRef, scrollRef, contentRef, cardRef, pillRef };
+}
+
 function isExactMatch(a: Diecast, b: Diecast): boolean {
   const norm = (v?: string | number | null) =>
     String(v ?? "")
@@ -214,8 +347,10 @@ function CarPopupContent({
   onSelectCar,
 }: CarPopupContentProps) {
   const cars = useCars();
+  const mobile = useMobileHeroGestures(onClose);
 
   useEffect(() => {
+    document.getElementById("car-details-mobile-scroll")?.scrollTo({ top: 0, behavior: "smooth" });
     const dialogElem = document.getElementById("car-details-dialog-content");
     if (dialogElem) {
       dialogElem.scrollTo({ top: 0, behavior: "smooth" });
@@ -546,119 +681,137 @@ function CarPopupContent({
       {/* =====================================================================
           3. MOBILE SINGLE-COLUMN LAYOUT (< md screens)
           ===================================================================== */}
-      <div className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background">
-        {/* Scrollable body: Image + Card + More from shelves */}
-        <div
-          id="car-details-mobile-scroll"
-          className="flex-1 overflow-y-auto overflow-x-hidden overscroll-contain flex flex-col"
-        >
-          {/* Top Car Image with drag handle & close button */}
+      <div
+        ref={mobile.rootRef}
+        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background"
+        style={{ "--hero-h": "clamp(360px, 48vh, 520px)" } as React.CSSProperties}
+      >
+        <div className="relative flex-1 min-h-0">
+          {/* The photo sits still behind the sheet: pushing the card up slides
+              it over the photo, pulling the card down stretches the photo. */}
           <div
-            data-drag-handle="true"
-            className="relative shrink-0 z-0 h-[48vh] min-h-[360px] max-h-[520px] w-full overflow-hidden bg-muted/60 select-none"
+            ref={mobile.heroRef}
+            className="absolute inset-x-0 top-0 z-0 w-full overflow-hidden bg-muted/60 select-none"
+            style={{ height: "var(--hero-h)" }}
           >
             <HeroCarImage car={car} />
-
-            {/* Drag handle affordance pill at top center */}
-            <div
-              data-drag-handle="true"
-              className="absolute top-2.5 left-1/2 -translate-x-1/2 z-20 flex items-center justify-center py-1 px-4 cursor-grab"
-            >
-              <div className="h-1.5 w-12 rounded-full bg-white/85 shadow-md backdrop-blur-md" />
-            </div>
-
-            {/* Top right actions: Close button */}
-            <div className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={onClose}
-                title="Close details"
-                aria-label="Close"
-                className="flex size-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
           </div>
 
-          {/* Car Design Card (overlaps the car image on scroll) */}
-          <div className="relative z-10 -mt-6 rounded-t-3xl border-t border-border bg-background px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] flex-1 flex flex-col justify-between">
-            <div>
-              <CarDetailsBody
-                car={car}
-                spent={spent}
-                mrp={mrp}
-                delta={delta}
-                hasCondition={hasCondition}
-                hasArrived={hasArrived}
-                cleanTransitNotes={cleanTransitNotes}
-                trackable={trackable}
-                onOpenBatch={onOpenBatch}
-                rarity={rarity}
-                onToggleChase={onToggleChase}
-                onToggleFavourite={onToggleFavourite}
-                exactCount={exactCount}
+          {/* Scrollable body: a see-through gap the height of the photo, then the card */}
+          <div
+            ref={mobile.scrollRef}
+            id="car-details-mobile-scroll"
+            className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden overscroll-contain"
+          >
+            <div ref={mobile.contentRef} className="flex min-h-full flex-col">
+              <div
+                aria-hidden
+                className="shrink-0"
+                style={{ height: "calc(var(--hero-h) - 1.5rem)" }}
               />
 
-              {/* More from series (mobile shelf: all cars in single row) */}
-              {seriesCars.length > 0 && (
-                <div className="pt-2">
-                  <hr className="my-3.5 border-border" />
-                  <div className="mb-2.5 flex items-center justify-between">
-                    <span
-                      className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate"
-                      title={seriesHeading}
-                    >
-                      {seriesHeading}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
-                      {seriesCars.length} {seriesCars.length === 1 ? "car" : "cars"}
-                    </span>
-                  </div>
-                  <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
-                    {seriesCars.map((relatedCar) => (
-                      <RelatedCarCard
-                        key={relatedCar.id}
-                        car={relatedCar}
-                        isCurrent={relatedCar.id === car.id}
-                        className="w-28 sm:w-32 shrink-0 snap-start"
-                        onSelect={() => onSelectCar?.(relatedCar)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Car Design Card (slides over the car image on scroll) */}
+              <div
+                ref={mobile.cardRef}
+                className="relative rounded-t-3xl border-t border-border bg-background px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] flex-1 flex flex-col justify-between"
+              >
+                <div>
+                  <CarDetailsBody
+                    car={car}
+                    spent={spent}
+                    mrp={mrp}
+                    delta={delta}
+                    hasCondition={hasCondition}
+                    hasArrived={hasArrived}
+                    cleanTransitNotes={cleanTransitNotes}
+                    trackable={trackable}
+                    onOpenBatch={onOpenBatch}
+                    rarity={rarity}
+                    onToggleChase={onToggleChase}
+                    onToggleFavourite={onToggleFavourite}
+                    exactCount={exactCount}
+                  />
 
-              {/* More from set (mobile shelf: all cars in single row) */}
-              {setCars.length > 0 && (
-                <div className="pt-2">
-                  <hr className="my-3.5 border-border" />
-                  <div className="mb-2.5 flex items-center justify-between">
-                    <span
-                      className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate"
-                      title={setHeading}
-                    >
-                      {setHeading}
-                    </span>
-                    <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
-                      {setCars.length} {setCars.length === 1 ? "car" : "cars"}
-                    </span>
-                  </div>
-                  <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
-                    {setCars.map((relatedCar) => (
-                      <RelatedCarCard
-                        key={relatedCar.id}
-                        car={relatedCar}
-                        isCurrent={relatedCar.id === car.id}
-                        className="w-28 sm:w-32 shrink-0 snap-start"
-                        onSelect={() => onSelectCar?.(relatedCar)}
-                      />
-                    ))}
-                  </div>
+                  {/* More from series (mobile shelf: all cars in single row) */}
+                  {seriesCars.length > 0 && (
+                    <div className="pt-2">
+                      <hr className="my-3.5 border-border" />
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <span
+                          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate"
+                          title={seriesHeading}
+                        >
+                          {seriesHeading}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
+                          {seriesCars.length} {seriesCars.length === 1 ? "car" : "cars"}
+                        </span>
+                      </div>
+                      <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
+                        {seriesCars.map((relatedCar) => (
+                          <RelatedCarCard
+                            key={relatedCar.id}
+                            car={relatedCar}
+                            isCurrent={relatedCar.id === car.id}
+                            className="w-28 sm:w-32 shrink-0 snap-start"
+                            onSelect={() => onSelectCar?.(relatedCar)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* More from set (mobile shelf: all cars in single row) */}
+                  {setCars.length > 0 && (
+                    <div className="pt-2">
+                      <hr className="my-3.5 border-border" />
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <span
+                          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate"
+                          title={setHeading}
+                        >
+                          {setHeading}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
+                          {setCars.length} {setCars.length === 1 ? "car" : "cars"}
+                        </span>
+                      </div>
+                      <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
+                        {setCars.map((relatedCar) => (
+                          <RelatedCarCard
+                            key={relatedCar.id}
+                            car={relatedCar}
+                            isCurrent={relatedCar.id === car.id}
+                            className="w-28 sm:w-32 shrink-0 snap-start"
+                            onSelect={() => onSelectCar?.(relatedCar)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
+
+          {/* Drag pill and close button float above the photo. The pill fades as
+              the card covers the photo; the close button stays reachable. */}
+          <div
+            ref={mobile.pillRef}
+            aria-hidden
+            className="pointer-events-none absolute top-2.5 left-1/2 z-20 -translate-x-1/2 py-1 px-4"
+          >
+            <div className="h-1.5 w-12 rounded-full bg-white/85 shadow-md backdrop-blur-md" />
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close details"
+            aria-label="Close"
+            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex size-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
+          >
+            <X className="size-4" />
+          </button>
         </div>
 
         {/* Pinned bottom bar: always docked at the bottom of the screen */}

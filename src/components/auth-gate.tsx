@@ -1,9 +1,10 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
-import { Clock, Database, Loader2, LogOut, RefreshCw } from "lucide-react";
+import { Ban, Clock, Database, Loader2, LogOut, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/app-shell";
 import { useAuth } from "@/lib/auth-store";
+import { announceNewUser } from "@/lib/push-client";
 
 function Centered({ children }: { children: ReactNode }) {
   return (
@@ -38,13 +39,21 @@ function Splash() {
 
 function PendingApproval() {
   const { profile, signOut, reloadProfile } = useAuth();
+  const rejected = Boolean(profile?.rejected_at);
+
+  // Pushes the admins' phones. The server only does it once per account, so a
+  // reload or a second tab is not another ping.
+  useEffect(() => {
+    if (profile && !rejected) void announceNewUser();
+  }, [profile?.sno, rejected]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <Centered>
       <div className="mx-auto grid size-12 place-items-center rounded-xl bg-muted text-muted-foreground">
-        <Clock className="size-6" />
+        {rejected ? <Ban className="size-6" /> : <Clock className="size-6" />}
       </div>
       <h1 className="text-display mt-5 text-xl font-semibold tracking-tight">
-        Waiting for approval
+        {rejected ? "Request not approved" : "Waiting for approval"}
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
         {profile?.email_id ? (
@@ -52,7 +61,9 @@ function PendingApproval() {
         ) : (
           "This account"
         )}{" "}
-        is registered, but an administrator has to grant access before your collection appears.
+        {rejected
+          ? "was not given access. If you think that is a mistake, get in touch with the administrator."
+          : "is registered, but an administrator has to grant access before your collection appears."}
       </p>
       {profile?.user_id ? (
         <p className="mt-4 text-sm text-muted-foreground">

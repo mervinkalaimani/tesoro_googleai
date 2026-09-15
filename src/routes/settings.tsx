@@ -43,6 +43,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountCard } from "@/components/account-card";
+import { AdminPushCard } from "@/components/admin-push-card";
 import { FavouriteDetector } from "@/components/favourite-detector";
 import { IdRebuild } from "@/components/shipping-id-rebuild";
 import { OAuthProvidersCard } from "@/components/oauth-providers-card";
@@ -535,6 +536,16 @@ export function SettingsPage() {
       {view === "notifications" && (
         <div className="space-y-6">
           <SubpageHeader title="Notifications" onBack={() => changeView("root")} />
+
+          {/* Admin: push to this device when someone new asks to join */}
+          {(isAdmin || isOwner) && !isGuest && (
+            <div className="space-y-1.5">
+              <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Admin
+              </div>
+              <AdminPushCard />
+            </div>
+          )}
 
           {/* Delivery Alerts */}
           <div className="space-y-1.5">

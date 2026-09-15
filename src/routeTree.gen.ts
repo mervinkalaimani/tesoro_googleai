@@ -28,6 +28,10 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as ApiCarImagesRouteImport } from './routes/api/car-images'
 import { Route as ApiScanCarRouteImport } from './routes/api/scan-car'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiPushConfigRouteImport } from './routes/api/push/config'
+import { Route as ApiPushDecideRouteImport } from './routes/api/push/decide'
+import { Route as ApiPushNewUserRouteImport } from './routes/api/push/new-user'
+import { Route as ApiPushTestRouteImport } from './routes/api/push/test'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -127,6 +131,26 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPushConfigRoute = ApiPushConfigRouteImport.update({
+  id: '/api/push/config',
+  path: '/api/push/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPushDecideRoute = ApiPushDecideRouteImport.update({
+  id: '/api/push/decide',
+  path: '/api/push/decide',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPushNewUserRoute = ApiPushNewUserRouteImport.update({
+  id: '/api/push/new-user',
+  path: '/api/push/new-user',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPushTestRoute = ApiPushTestRouteImport.update({
+  id: '/api/push/test',
+  path: '/api/push/test',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -148,6 +172,10 @@ export interface FileRoutesByFullPath {
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/scan-car': typeof ApiScanCarRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/push/config': typeof ApiPushConfigRoute
+  '/api/push/decide': typeof ApiPushDecideRoute
+  '/api/push/new-user': typeof ApiPushNewUserRoute
+  '/api/push/test': typeof ApiPushTestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -169,6 +197,10 @@ export interface FileRoutesByTo {
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/scan-car': typeof ApiScanCarRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/push/config': typeof ApiPushConfigRoute
+  '/api/push/decide': typeof ApiPushDecideRoute
+  '/api/push/new-user': typeof ApiPushNewUserRoute
+  '/api/push/test': typeof ApiPushTestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -191,6 +223,10 @@ export interface FileRoutesById {
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/scan-car': typeof ApiScanCarRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/push/config': typeof ApiPushConfigRoute
+  '/api/push/decide': typeof ApiPushDecideRoute
+  '/api/push/new-user': typeof ApiPushNewUserRoute
+  '/api/push/test': typeof ApiPushTestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -214,6 +250,10 @@ export interface FileRouteTypes {
     | '/api/car-images'
     | '/api/scan-car'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/push/config'
+    | '/api/push/decide'
+    | '/api/push/new-user'
+    | '/api/push/test'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -235,6 +275,10 @@ export interface FileRouteTypes {
     | '/api/car-images'
     | '/api/scan-car'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/push/config'
+    | '/api/push/decide'
+    | '/api/push/new-user'
+    | '/api/push/test'
   id:
     | '__root__'
     | '/'
@@ -256,6 +300,10 @@ export interface FileRouteTypes {
     | '/api/car-images'
     | '/api/scan-car'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/push/config'
+    | '/api/push/decide'
+    | '/api/push/new-user'
+    | '/api/push/test'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -278,6 +326,10 @@ export interface RootRouteChildren {
   ApiCarImagesRoute: typeof ApiCarImagesRoute
   ApiScanCarRoute: typeof ApiScanCarRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPushConfigRoute: typeof ApiPushConfigRoute
+  ApiPushDecideRoute: typeof ApiPushDecideRoute
+  ApiPushNewUserRoute: typeof ApiPushNewUserRoute
+  ApiPushTestRoute: typeof ApiPushTestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -415,6 +467,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/push/config': {
+      id: '/api/push/config'
+      path: '/api/push/config'
+      fullPath: '/api/push/config'
+      preLoaderRoute: typeof ApiPushConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/push/decide': {
+      id: '/api/push/decide'
+      path: '/api/push/decide'
+      fullPath: '/api/push/decide'
+      preLoaderRoute: typeof ApiPushDecideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/push/new-user': {
+      id: '/api/push/new-user'
+      path: '/api/push/new-user'
+      fullPath: '/api/push/new-user'
+      preLoaderRoute: typeof ApiPushNewUserRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/push/test': {
+      id: '/api/push/test'
+      path: '/api/push/test'
+      fullPath: '/api/push/test'
+      preLoaderRoute: typeof ApiPushTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -439,6 +519,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCarImagesRoute: ApiCarImagesRoute,
   ApiScanCarRoute: ApiScanCarRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPushConfigRoute: ApiPushConfigRoute,
+  ApiPushDecideRoute: ApiPushDecideRoute,
+  ApiPushNewUserRoute: ApiPushNewUserRoute,
+  ApiPushTestRoute: ApiPushTestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

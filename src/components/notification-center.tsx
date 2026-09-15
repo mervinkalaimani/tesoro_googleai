@@ -154,6 +154,7 @@ type PendingUser = {
   created_at: string;
   is_approved: boolean;
   is_owner: boolean;
+  rejected_at?: string | null;
 };
 
 /**
@@ -203,7 +204,11 @@ function usePendingApprovals(enabled: boolean) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any).rpc("admin_list_users");
     if (error) return;
-    setUsers(((data ?? []) as PendingUser[]).filter((u) => !u.is_approved && !u.is_owner));
+    setUsers(
+      ((data ?? []) as PendingUser[]).filter(
+        (u) => !u.is_approved && !u.is_owner && !u.rejected_at,
+      ),
+    );
   }, [enabled]);
 
   useEffect(() => {
@@ -215,25 +220,40 @@ function usePendingApprovals(enabled: boolean) {
     const id = setInterval(() => {
       if (!document.hidden) void load();
     }, 120_000);
-    return () => clearInterval(id);
+    // Approve / Reject tapped on a push notification: the service worker says
+    // so, and the request leaves the bell straight away.
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "tesoro-approval-decided") void load();
+    };
+    navigator.serviceWorker?.addEventListener("message", onMessage);
+    return () => {
+      clearInterval(id);
+      navigator.serviceWorker?.removeEventListener("message", onMessage);
+    };
   }, [enabled, load]);
 
-  const approve = useCallback(async (u: PendingUser) => {
+  const decide = useCallback(async (u: PendingUser, approve: boolean) => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any)
       .from("tesoro_users")
-      .update({ is_approved: true })
+      .update(
+        approve
+          ? { is_approved: true, rejected_at: null }
+          : { is_approved: false, rejected_at: new Date().toISOString() },
+      )
       .eq("sno", u.sno);
     if (error) {
-      toast.error(`Could not approve ${u.email_id}`, { description: error.message });
+      toast.error(`Could not ${approve ? "approve" : "reject"} ${u.email_id}`, {
+        description: error.message,
+      });
       return false;
     }
     setUsers((prev) => prev.filter((p) => p.sno !== u.sno));
-    toast.success("Access granted", { description: u.email_id });
+    toast.success(approve ? "Access granted" : "Request rejected", { description: u.email_id });
     return true;
   }, []);
 
-  return { users, approve, reload: load };
+  return { users, decide, reload: load };
 }
 
 /**
@@ -259,7 +279,7 @@ export function NotificationCenter() {
   const [batchFor, setBatchFor] = useState<string | null>(null);
   const [newDates, setNewDates] = useState<Record<string, string>>({});
   const [newStatuses, setNewStatuses] = useState<Record<string, string>>({});
-  const [approving, setApproving] = useState<number | null>(null);
+  const [approving, setApproving] = useState<{ sno: number; approve: boolean } | null>(null);
 
   // Read after mount rather than in initial state: this renders on the server
   // too, and a first client render that already knew would not match.
@@ -473,36 +493,51 @@ export function NotificationCenter() {
                 return (
                   <div
                     key={u.sno}
-                    className="flex items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2"
+                    className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2"
                   >
-                    <div className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1 basis-40">
                       <div className="truncate text-sm font-semibold">{name || u.email_id}</div>
                       <div className="truncate text-[11px] text-muted-foreground">
                         {name ? `${u.email_id} · ` : ""}joined{" "}
                         {formatDayMonthYear(u.created_at.slice(0, 10))}
                       </div>
                     </div>
-                    <Button
-                      size="sm"
-                      className="gap-1.5"
-                      disabled={approving === u.sno}
-                      onClick={async () => {
-                        setApproving(u.sno);
-                        await approvals.approve(u);
-                        setApproving(null);
-                      }}
-                    >
-                      {approving === u.sno ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Check className="size-3.5" />
-                      )}
-                      Approve
-                    </Button>
-                    <DismissButton
-                      label={name || u.email_id}
-                      onClick={() => clear([approvalKey(u)])}
-                    />
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {([true, false] as const).map((yes) => {
+                        const busy = approving?.sno === u.sno && approving.approve === yes;
+                        return (
+                          <Button
+                            key={String(yes)}
+                            size="sm"
+                            variant={yes ? "default" : "outline"}
+                            className={
+                              yes
+                                ? "gap-1.5"
+                                : "gap-1.5 border-rose-500/40 text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+                            }
+                            disabled={approving?.sno === u.sno}
+                            onClick={async () => {
+                              setApproving({ sno: u.sno, approve: yes });
+                              await approvals.decide(u, yes);
+                              setApproving(null);
+                            }}
+                          >
+                            {busy ? (
+                              <Loader2 className="size-3.5 animate-spin" />
+                            ) : yes ? (
+                              <Check className="size-3.5" />
+                            ) : (
+                              <X className="size-3.5" />
+                            )}
+                            {yes ? "Approve" : "Reject"}
+                          </Button>
+                        );
+                      })}
+                      <DismissButton
+                        label={name || u.email_id}
+                        onClick={() => clear([approvalKey(u)])}
+                      />
+                    </div>
                   </div>
                 );
               })}
