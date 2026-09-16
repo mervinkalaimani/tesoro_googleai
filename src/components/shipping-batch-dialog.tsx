@@ -412,32 +412,34 @@ export function ShippingBatchDialog({
           to be stacked, with the cars folded away behind a "View cars" toggle —
           so the one thing that told you whether you had the right batch was the
           one thing not on screen. */}
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-border bg-background text-foreground shadow-2xl sm:max-w-2xl lg:max-w-5xl sm:rounded-2xl">
-        <DialogHeader className="space-y-1 text-left">
-          <div className="flex items-center gap-2">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/30">
-              <Truck className="size-4" />
-            </div>
-            <DialogTitle className="text-lg font-bold text-foreground">Update order</DialogTitle>
-          </div>
-          <DialogDescription className="text-xs text-muted-foreground">
+      {/* Dressed like Update status: the same dialog frame, the same header
+          chip, the same borders and type sizes. Only the contents differ. */}
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl lg:max-w-5xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <span className="grid size-6 shrink-0 place-items-center rounded-md bg-sky-500/15 text-sky-500">
+              <Truck className="size-3.5" />
+            </span>
+            Update order
+          </DialogTitle>
+          <DialogDescription>
             Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to set the status, dates
             and notes across every car in it — or add cars to the order.
           </DialogDescription>
         </DialogHeader>
 
         {successMessage ? (
-          <div className="my-6 flex flex-col items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-6 text-center text-emerald-400 animate-in fade-in zoom-in-95">
+          <div className="my-6 flex flex-col items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-6 text-center text-emerald-600 animate-in fade-in zoom-in-95 dark:text-emerald-400">
             <CheckCircle2 className="size-8" />
             <p className="text-sm font-semibold">{successMessage}</p>
           </div>
         ) : (
-          <div className="space-y-4 py-2 text-xs">
+          <div className="space-y-4 py-2 text-sm">
             {errorMessage && (
-              <div className="flex items-center gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-rose-400">
+              <p className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
                 <AlertCircle className="size-4 shrink-0" />
-                <span className="text-xs">{errorMessage}</span>
-              </div>
+                {errorMessage}
+              </p>
             )}
 
             {/* Explicit grid placement rather than reordered markup: the order
@@ -479,7 +481,7 @@ export function ShippingBatchDialog({
                     <SelectContent className="max-h-64 border-border bg-background text-foreground">
                       {shippingIdStats.map((item) => (
                         <SelectItem key={item.id} value={item.id} className="text-xs">
-                          <span className="font-mono font-bold text-amber-400">{item.id}</span>
+                          <span className="font-mono font-semibold text-primary">{item.id}</span>
                           <span className="ml-2 text-muted-foreground">
                             ({item.count} car{item.count === 1 ? "" : "s"}
                             {item.sellers ? ` · ${item.sellers}` : ""})
@@ -518,7 +520,7 @@ export function ShippingBatchDialog({
                     <Package className="size-3.5 shrink-0 text-muted-foreground" />
                     <span className="min-w-0 truncate font-semibold text-foreground">
                       {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in{" "}
-                      <span className="font-mono text-amber-400">{activeShippingId}</span>
+                      <span className="font-mono text-primary">{activeShippingId}</span>
                     </span>
                   </div>
 
@@ -722,7 +724,7 @@ export function ShippingBatchDialog({
                       }}
                       className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
                         newStatus === "Out for Delivery"
-                          ? "border-cyan-500 bg-cyan-500/20 text-cyan-400 font-semibold"
+                          ? "border-cyan-500/60 bg-cyan-500/15 font-semibold text-cyan-600 dark:text-cyan-400"
                           : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
@@ -736,7 +738,7 @@ export function ShippingBatchDialog({
                       }}
                       className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
                         newStatus === "Delayed"
-                          ? "border-rose-500 bg-rose-500/20 text-rose-400 font-semibold"
+                          ? "border-rose-500/60 bg-rose-500/15 font-semibold text-rose-600 dark:text-rose-400"
                           : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
@@ -747,7 +749,7 @@ export function ShippingBatchDialog({
                       onClick={() => setNewStatus("Transit")}
                       className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
                         newStatus === "Transit"
-                          ? "border-amber-500 bg-amber-500/20 text-amber-400 font-semibold"
+                          ? "border-amber-500/60 bg-amber-500/15 font-semibold text-amber-600 dark:text-amber-400"
                           : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
@@ -763,7 +765,7 @@ export function ShippingBatchDialog({
                       }}
                       className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
                         newStatus === "Available"
-                          ? "border-emerald-500 bg-emerald-500/20 text-emerald-400 font-semibold"
+                          ? "border-emerald-500/60 bg-emerald-500/15 font-semibold text-emerald-600 dark:text-emerald-400"
                           : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
@@ -801,7 +803,7 @@ export function ShippingBatchDialog({
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Calendar className="size-3.5 text-amber-400" />
+                      <Calendar className="size-3.5 text-muted-foreground" />
                       <span>Expected / Available Date</span>
                     </label>
                     {newExpectedDate && (
@@ -873,7 +875,7 @@ export function ShippingBatchDialog({
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center justify-between">
                     <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                      <Truck className="size-3.5 text-sky-400" />
+                      <Truck className="size-3.5 text-sky-500" />
                       <span>Delivery partner &amp; tracking ID</span>
                     </label>
                     <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -956,7 +958,7 @@ export function ShippingBatchDialog({
             size="sm"
             onClick={handleApply}
             disabled={isSubmitting || affected === 0}
-            className="gap-1.5 bg-amber-500 text-zinc-950 font-semibold hover:bg-amber-400"
+            className="gap-1.5"
           >
             {isSubmitting ? (
               <>

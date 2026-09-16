@@ -637,6 +637,22 @@ export function CarFormDialog({
     open && (mode === "edit" || currentStep >= 2),
   );
 
+  /** The car in words, for the "Search the web" button under the photo. */
+  const webSearchWords = [
+    form.brand,
+    form.year,
+    form.make,
+    form.model,
+    form.variant,
+    form.colour,
+    form.assortment,
+    form.series,
+    form.carNumber,
+  ]
+    .map((v) => (v || "").trim())
+    .filter(Boolean)
+    .join(" ");
+
   // What the wizard put in the frame by itself, and the car it gave up on
   // because the person removed that pick. A photo they chose is never replaced.
   const autoImage = useRef("");
@@ -1452,6 +1468,7 @@ export function CarFormDialog({
                       value={form.imageUrl}
                       onChange={setImage}
                       suggestions={imageSearch}
+                      searchQuery={webSearchWords}
                       layout="split"
                     />
                   </div>
@@ -1717,6 +1734,7 @@ export function CarFormDialog({
                     value={form.imageUrl}
                     onChange={setImage}
                     suggestions={imageSearch}
+                    searchQuery={webSearchWords}
                   />
                 </section>
               </div>

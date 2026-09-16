@@ -391,6 +391,9 @@ function CarPopupContent({
     });
   }, [cars, setName]);
 
+  // A set that holds only this car has nothing to show beside it.
+  const showSet = setCars.length > 1;
+
   const spent = Math.round(car.spent ?? 0);
   const mrp = Math.round(car.mrp ?? 0);
   const delta = mrp - spent;
@@ -514,38 +517,34 @@ function CarPopupContent({
             )}
           </div>
 
-          <hr className="border-border/60" />
+          {/* Only when the set holds more than this car: a set of one is this
+              car told twice. */}
+          {showSet && (
+            <>
+              <hr className="border-border/60" />
 
-          {/* Set Section */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span
-                className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
-                title={setHeading}
-              >
-                {setHeading}
-              </span>
-              {setCars.length > 0 && (
-                <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
-                  {setCars.length} {setCars.length === 1 ? "car" : "cars"}
-                </span>
-              )}
-            </div>
+              {/* Set Section */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
+                    title={setHeading}
+                  >
+                    {setHeading}
+                  </span>
+                  <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
+                    {setCars.length} cars
+                  </span>
+                </div>
 
-            {setCars.length > 0 ? (
-              <WebRelatedGridShelf cars={setCars} currentCarId={car.id} onSelectCar={onSelectCar} />
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/80 bg-background/50 py-5 px-3 text-center">
-                <Car className="size-6 text-muted-foreground/40 mb-1.5" />
-                <span className="text-xs font-semibold text-foreground/80">No cars available</span>
-                <span className="text-[11px] text-muted-foreground mt-0.5 max-w-[200px] leading-relaxed">
-                  {setName
-                    ? `No other cars from "${setName}" in your collection.`
-                    : "No set specified for this car."}
-                </span>
+                <WebRelatedGridShelf
+                  cars={setCars}
+                  currentCarId={car.id}
+                  onSelectCar={onSelectCar}
+                />
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -644,37 +643,28 @@ function CarPopupContent({
             )}
           </div>
 
-          <hr className="border-border/60" />
+          {showSet && (
+            <>
+              <hr className="border-border/60" />
 
-          {/* Set Section */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between">
-              <span
-                className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
-                title={setHeading}
-              >
-                {setHeading}
-              </span>
-              {setCars.length > 0 && (
-                <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
-                  {setCars.length} {setCars.length === 1 ? "car" : "cars"}
-                </span>
-              )}
-            </div>
+              {/* Set Section */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
+                    title={setHeading}
+                  >
+                    {setHeading}
+                  </span>
+                  <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
+                    {setCars.length} cars
+                  </span>
+                </div>
 
-            {setCars.length > 0 ? (
-              <TabRelatedShelf cars={setCars} currentCarId={car.id} onSelectCar={onSelectCar} />
-            ) : (
-              <div className="flex items-center gap-2 rounded-xl border border-dashed border-border/80 bg-background/50 py-3.5 px-4 text-left">
-                <Car className="size-5 shrink-0 text-muted-foreground/40" />
-                <span className="text-xs text-muted-foreground">
-                  {setName
-                    ? `No other cars from "${setName}" in your collection.`
-                    : "No set specified for this car."}
-                </span>
+                <TabRelatedShelf cars={setCars} currentCarId={car.id} onSelectCar={onSelectCar} />
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -762,7 +752,7 @@ function CarPopupContent({
                   )}
 
                   {/* More from set (mobile shelf: all cars in single row) */}
-                  {setCars.length > 0 && (
+                  {showSet && (
                     <div className="pt-2">
                       <hr className="my-3.5 border-border" />
                       <div className="mb-2.5 flex items-center justify-between">

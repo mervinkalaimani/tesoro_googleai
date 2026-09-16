@@ -8,6 +8,7 @@ import {
   IndianRupee,
   Plus,
   Store,
+  Truck,
 } from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
@@ -21,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { PayBalanceDialog } from "@/components/pay-balance-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
+import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { PageHeading, PageToolbar } from "@/components/page-header";
@@ -210,11 +212,13 @@ function OrderGroupCard({
   onOpenCar,
   onPay,
   onUpdateStatus,
+  onUpdateOrder,
 }: {
   g: OrderGroup;
   onOpenCar: (car: Diecast) => void;
   onPay: (car: Diecast) => void;
   onUpdateStatus: (car: Diecast) => void;
+  onUpdateOrder: () => void;
 }) {
   const [carsOpen, setCarsOpen] = useState(false);
   const settled = g.due === 0;
@@ -296,9 +300,12 @@ function OrderGroupCard({
         )}
       </div>
 
-      {/* Footer: Export icon moved to the left near pay balance button */}
-      <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3">
-        <div className="flex items-center gap-2">
+      {/* Footer: everything this order can be done to, on the right. */}
+      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
+        {settled && (
+          <span className="mr-auto text-xs font-medium text-emerald-500">Fully paid</span>
+        )}
+        <div className="flex flex-wrap items-center justify-end gap-2">
           <ExportButton
             rows={g.items}
             name={`preorder-${g.orderId || g.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
@@ -320,7 +327,17 @@ function OrderGroupCard({
               Pay balance
             </Button>
           )}
-          {settled && <span className="text-xs font-medium text-emerald-500">Fully paid</span>}
+          {/* Grouped by order ID, so the whole order can be updated at once. */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onUpdateOrder}
+            className="h-8 gap-1.5 text-xs"
+            title="Update this order"
+          >
+            <Truck className="size-3.5" />
+            Update order
+          </Button>
         </div>
       </footer>
     </article>
@@ -337,6 +354,9 @@ function PreOrdersPage() {
   const [payFor, setPayFor] = useState<Diecast | null>(null);
   const [statusFor, setStatusFor] = useState<Diecast | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  /** The order the Update order dialog is pointed at, when grouped by order. */
+  const [batchOrderId, setBatchOrderId] = useState("");
+  const [batchOpen, setBatchOpen] = useState(false);
 
   const base = useMemo(
     () => filterRows(cars, query).filter((r) => isPreOrder(r.status)),
@@ -515,6 +535,10 @@ function PreOrdersPage() {
               onOpenCar={(c) => open(c)}
               onPay={(c) => setPayFor(c)}
               onUpdateStatus={(c) => setStatusFor(c)}
+              onUpdateOrder={() => {
+                setBatchOrderId(g.orderId);
+                setBatchOpen(true);
+              }}
             />
           ))}
         </div>
@@ -534,6 +558,13 @@ function PreOrdersPage() {
 
       <PayBalanceDialog car={payFor} onClose={() => setPayFor(null)} />
       <StatusUpdateDialog car={statusFor} onClose={() => setStatusFor(null)} />
+      {/* Grouped by order ID only: the whole order at once. */}
+      <ShippingBatchDialog
+        open={batchOpen}
+        onOpenChange={setBatchOpen}
+        initialShippingId={batchOrderId}
+        idField="orderId"
+      />
       <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
     </div>
   );

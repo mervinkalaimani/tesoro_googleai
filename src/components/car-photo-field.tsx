@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  Globe,
   ImageIcon,
   ImagePlus,
   Link2,
@@ -15,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ACCEPT_ATTR, deleteCarPhoto, uploadCarPhoto } from "@/lib/car-photos";
 import type { CarImageCandidate } from "@/lib/car-image-search";
+import { WebImageSearchDialog } from "@/components/web-image-search-dialog";
 import { cn } from "@/lib/utils";
 
 /**
@@ -47,11 +49,14 @@ export function CarPhotoField({
   onChange,
   className = "",
   suggestions,
+  searchQuery = "",
   layout = "stacked",
 }: {
   value: string;
   onChange: (url: string) => void;
   className?: string;
+  /** The car in words, for the web search button. Hidden when empty. */
+  searchQuery?: string;
   /** Photos found from the car's details, offered under the frame. */
   suggestions?: { candidates: CarImageCandidate[]; loading: boolean };
   /**
@@ -67,6 +72,7 @@ export function CarPhotoField({
   const [broken, setBroken] = useState(false);
   const [linkOpen, setLinkOpen] = useState(false);
   const [link, setLink] = useState("");
+  const [webOpen, setWebOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -276,17 +282,31 @@ export function CarPhotoField({
 
       {/* THE WAYS IN */}
       {touch ? (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="w-full gap-1.5"
-          disabled={busy}
-          onClick={() => fileRef.current?.click()}
-        >
-          <ImagePlus className="size-4" />
-          {value ? "Replace image" : "Add image"}
-        </Button>
+        <div className="space-y-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5"
+            disabled={busy}
+            onClick={() => fileRef.current?.click()}
+          >
+            <ImagePlus className="size-4" />
+            {value ? "Replace image" : "Add image"}
+          </Button>
+          {searchQuery.trim() && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={() => setWebOpen(true)}
+            >
+              <Globe className="size-4" />
+              Search the web
+            </Button>
+          )}
+        </div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           <Button
@@ -314,8 +334,27 @@ export function CarPhotoField({
             <Link2 className="size-3.5" />
             Link
           </Button>
+          {searchQuery.trim() && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setWebOpen(true)}
+            >
+              <Globe className="size-3.5" />
+              Search the web
+            </Button>
+          )}
         </div>
       )}
+
+      <WebImageSearchDialog
+        open={webOpen}
+        onOpenChange={setWebOpen}
+        initialQuery={searchQuery}
+        onPick={onChange}
+      />
 
       {linkOpen && !touch && (
         <div className="flex gap-1.5">

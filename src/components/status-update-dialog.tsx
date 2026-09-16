@@ -125,6 +125,17 @@ export function StatusUpdateDialog({
   const cars = useCars();
   const sellerOptions = useMemo(() => optionsFor("seller", cars), [cars]);
 
+  /**
+   * The eight statuses, plus the one the car is on when that is something else
+   * (an older spelling, "Wrong Item") — so where it stands now is on the list
+   * and staying put is a choice rather than a gap.
+   */
+  const choices = useMemo<NextStatus[]>(() => {
+    const current = (car?.status || "").trim();
+    const known = STATUS_CHOICES.some((s) => s.toLowerCase() === current.toLowerCase());
+    return current && !known ? [current as NextStatus, ...STATUS_CHOICES] : [...STATUS_CHOICES];
+  }, [car?.status]);
+
   const [status, setStatus] = useState<NextStatus>("Available");
   const [seller, setSeller] = useState("");
   const [spent, setSpent] = useState("");
@@ -309,7 +320,7 @@ export function StatusUpdateDialog({
           <SegmentControl
             value={status}
             onChange={setStatus}
-            options={STATUS_CHOICES.map((s) => ({ value: s, label: s }))}
+            options={choices.map((s) => ({ value: s, label: s }))}
             className="grid w-full grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-0.5"
           />
         </div>

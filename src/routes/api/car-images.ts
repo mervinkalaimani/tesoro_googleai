@@ -271,7 +271,7 @@ async function fromTrendsHobby(q: Query): Promise<CarImageCandidate[]> {
 }
 
 /** Web search image suggestions (DuckDuckGo / Web images) */
-async function fromWebSearch(q: Query): Promise<CarImageCandidate[]> {
+async function fromWebSearch(q: Query, rawQuery?: string): Promise<CarImageCandidate[]> {
   try {
     const fetchDdg = async (qs: string) => {
       const r1 = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(qs)}`, {
@@ -323,16 +323,18 @@ async function fromWebSearch(q: Query): Promise<CarImageCandidate[]> {
       .filter(Boolean)
       .join(" ");
 
-    const queryStr = primaryQuery || broaderQuery;
+    // Typed words win over the fields: this is what the "Search the web"
+    // box sends, and it is meant to be searched as written.
+    const queryStr = (rawQuery || "").trim() || primaryQuery || broaderQuery;
     if (!queryStr.trim()) return [];
 
     let rawResults = await fetchDdg(queryStr);
-    if (rawResults.length < 4 && broaderQuery && broaderQuery !== queryStr) {
+    if (!rawQuery && rawResults.length < 4 && broaderQuery && broaderQuery !== queryStr) {
       const more = await fetchDdg(broaderQuery);
       rawResults = [...rawResults, ...more];
     }
 
-    return rawResults.slice(0, 16).flatMap((r) => {
+    return rawResults.slice(0, rawQuery ? 30 : 16).flatMap((r) => {
       if (!r.image) return [];
       const scored = scoreFile(r.title || "", q);
       return [
@@ -367,6 +369,14 @@ async function handler({ request }: { request: Request }) {
     subSeries: get("subSeries") || get("sub_series"),
     carNumber: get("carNumber") || get("car_number"),
   };
+
+  // "text" is a search of its own: whatever was typed into the web search box,
+  // sent to the image search as written and answered with those results alone.
+  const text = (params.get("text") || "").trim().slice(0, 160);
+  if (text) {
+    const found = await fromWebSearch(q, text).catch(() => []);
+    return json({ candidates: found });
+  }
 
   if (!q.model && !q.make && !q.brand) {
     return json({ error: "Type at least a brand, make or model." }, 400, false);

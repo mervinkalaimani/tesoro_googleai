@@ -347,14 +347,11 @@ export function ReconcileDeliveryDialog({
                 />
               </div>
 
-              {/* Reason / Transit note */}
+              {/* One word for the field whatever the status: the placeholder
+                  below already says what is worth writing there. */}
               <div className="space-y-1.5">
                 <Label htmlFor="transit-note" className="text-xs">
-                  {status === "Delayed"
-                    ? "Delay Reason / Note"
-                    : status === "Out for Delivery"
-                      ? "Delivery Instructions / Courier Note"
-                      : "Transit Note"}
+                  Notes
                 </Label>
                 <Input
                   id="transit-note"

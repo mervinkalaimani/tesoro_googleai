@@ -782,8 +782,18 @@ const TOP_OPTIONS: { value: TopKey; label: string }[] = [
   { value: "seller", label: "Seller" },
 ];
 
-/** One colour per place in the Top 5 bar, leader first. */
-const TOP_COLOURS = ["var(--primary)", "#38bdf8", "#f59e0b", "#34d399", "#a78bfa"];
+/**
+ * One colour per place in the Top 5 bar, leader first: the accent colour alone,
+ * stepped from dark to light, so the bar changes with the theme instead of
+ * carrying five colours of its own.
+ */
+const TOP_COLOURS = [
+  "color-mix(in oklab, var(--primary) 78%, #000)",
+  "var(--primary)",
+  "color-mix(in oklab, var(--primary) 76%, #fff)",
+  "color-mix(in oklab, var(--primary) 54%, #fff)",
+  "color-mix(in oklab, var(--primary) 34%, #fff)",
+];
 
 function pickTopValue(r: Diecast, key: TopKey) {
   switch (key) {
