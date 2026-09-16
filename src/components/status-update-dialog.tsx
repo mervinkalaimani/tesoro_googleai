@@ -27,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Combobox } from "@/components/ui/combobox";
+import { Switch } from "@/components/ui/switch";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { optionsFor } from "@/lib/car-options";
 import { deriveMonth, monthEtaToDate, toDateInputValue } from "@/lib/date-utils";
@@ -181,8 +182,17 @@ export function StatusUpdateDialog({
   const [partner, setPartner] = useState("");
   const [tracking, setTracking] = useState("");
   const [transitInfo, setTransitInfo] = useState("");
+  /** Settle what is still owed as part of this update. */
+  const [payBalance, setPayBalance] = useState(true);
+  /** Once the switch has been touched, changing status stops resetting it. */
+  const [payTouched, setPayTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // Arriving or on its way usually means paid for; a pre-order usually not yet.
+  useEffect(() => {
+    if (!payTouched) setPayBalance(status !== "Pre Order");
+  }, [status, payTouched]);
 
   // Reseed per car. Whatever the ISO row already knows is carried in rather
   // than asked for again — an MRP noted while wishing for it is still the MRP.
@@ -207,6 +217,7 @@ export function StatusUpdateDialog({
     setPartner(car.deliveryPartner || "");
     setTracking(car.trackingId || "");
     setTransitInfo(car.transitInfo || "");
+    setPayTouched(false);
     setError("");
     setSaving(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -224,6 +235,19 @@ export function StatusUpdateDialog({
   const wasIso = (current.status || "").trim().toLowerCase() === "iso";
   const unchanged = status === current.status;
   const statusName = status === "Available" ? "Delivered" : status;
+
+  /** What a car has already paid towards `cost` — nothing, if it was only wished for. */
+  const paidSoFar = (c: Diecast, cost: number) =>
+    (c.status || "").trim().toLowerCase() === "iso" ? 0 : Math.min(c.paid || 0, cost);
+  const outstanding = isBatch
+    ? items.reduce((s, c) => s + Math.max((c.spent || 0) - paidSoFar(c, c.spent || 0), 0), 0)
+    : Math.max(num(spent) - paidSoFar(current, num(spent)), 0);
+  /** Paid, balance and payment label for a car costing `cost`. */
+  const money = (c: Diecast, cost: number) => {
+    const paid = payBalance ? cost : paidSoFar(c, cost);
+    const balance = Math.max(cost - paid, 0);
+    return { paid, balance, payment: balance > 0 ? (paid > 0 ? "Partial" : "Pending") : "Paid" };
+  };
 
   const save = () => {
     if (needsPurchase) {
@@ -247,7 +271,6 @@ export function StatusUpdateDialog({
 
     setSaving(true);
     try {
-      const preOrder = status === "Pre Order";
       // The arrival date only exists once the car is in hand; before that the
       // expected date carries the estimate on its own.
       const date = arrived ? expectedDate : "";
@@ -256,15 +279,14 @@ export function StatusUpdateDialog({
         // What the shipment shares is set on every car; what each car cost is
         // its own, so prices are left alone and payment follows each one.
         const nexts = items.map((c): Diecast => {
-          const cost = c.spent || 0;
-          const paid = preOrder ? Math.min(c.paid || 0, cost) : cost;
+          const m = money(c, c.spent || 0);
           return {
             ...c,
             status,
             seller: needsPurchase ? seller.trim() : c.seller,
-            paid: needsPurchase ? paid : c.paid,
-            balance: needsPurchase ? Math.max(cost - paid, 0) : c.balance,
-            payment: needsPurchase ? (cost - paid > 0 ? "Partial" : "Paid") : c.payment,
+            paid: needsPurchase ? m.paid : c.paid,
+            balance: needsPurchase ? m.balance : c.balance,
+            payment: needsPurchase ? m.payment : c.payment,
             orderDate: needsPurchase ? orderDate : c.orderDate,
             orderMonth: needsPurchase ? deriveMonth(orderDate) || c.orderMonth : c.orderMonth,
             expectedDate: needsPurchase ? expectedDate : c.expectedDate,
@@ -290,16 +312,17 @@ export function StatusUpdateDialog({
 
       const car = current;
       const cost = num(spent);
+      const m = money(car, cost);
       const next: Diecast = {
         ...car,
         status,
         seller: needsPurchase ? seller.trim() : car.seller,
         spent: needsPurchase ? cost : car.spent,
         mrp: mrp.trim() ? num(mrp) : car.mrp,
-        // Mirrors bulk add: a pre-order is committed to but not paid off.
-        paid: needsPurchase ? (preOrder ? 0 : cost) : car.paid,
-        balance: needsPurchase ? (preOrder ? cost : 0) : car.balance,
-        payment: needsPurchase ? (preOrder ? "Partial" : "Paid") : car.payment,
+        // Whatever was already paid stays paid; the switch settles the rest.
+        paid: needsPurchase ? m.paid : car.paid,
+        balance: needsPurchase ? m.balance : car.balance,
+        payment: needsPurchase ? m.payment : car.payment,
         orderDate: needsPurchase ? orderDate : car.orderDate,
         orderMonth: needsPurchase ? deriveMonth(orderDate) || car.orderMonth : car.orderMonth,
         expectedDate: needsPurchase ? expectedDate : car.expectedDate,
@@ -496,11 +519,27 @@ export function StatusUpdateDialog({
                 />
               </div>
 
-              {!isBatch && status === "Pre Order" && spent.trim() && (
-                <p className="text-xs text-muted-foreground">
-                  Recorded as {inrFull(num(spent))} outstanding — settle it from the pre-orders tab
-                  when you pay.
-                </p>
+              {outstanding > 0 && (
+                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">Pay balance</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {payBalance
+                        ? `Records ${inrFull(outstanding)} as paid, settling ${
+                            isBatch ? "every car in the order" : "the car"
+                          }.`
+                        : `${inrFull(outstanding)} stays outstanding.`}
+                    </span>
+                  </span>
+                  <Switch
+                    checked={payBalance}
+                    onCheckedChange={(v) => {
+                      setPayTouched(true);
+                      setPayBalance(v);
+                    }}
+                    aria-label="Pay balance"
+                  />
+                </label>
               )}
             </>
           )}
