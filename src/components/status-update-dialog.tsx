@@ -1,7 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Loader2, Search } from "lucide-react";
-
-import { CarMarks } from "@/components/car-marks";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CalendarClock,
+  CircleDot,
+  Clock,
+  Hourglass,
+  Loader2,
+  PackageCheck,
+  PauseCircle,
+  Search,
+  Truck,
+  type LucideIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -16,8 +27,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Combobox } from "@/components/ui/combobox";
-import { CarThumb } from "@/components/car-thumb";
-import { SegmentControl } from "@/components/segment-control";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { optionsFor } from "@/lib/car-options";
 import { deriveMonth, monthEtaToDate, toDateInputValue } from "@/lib/date-utils";
@@ -86,17 +95,30 @@ const num = (v: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-/** One read-only fact about the casting. */
-function Detail({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</dt>
-      <dd className="mt-0.5 truncate text-xs font-medium" title={value || undefined}>
-        {value || "—"}
-      </dd>
-    </div>
-  );
-}
+const STATUS_ICON: Record<NextStatus, LucideIcon> = {
+  Available: PackageCheck,
+  "Out for Delivery": Truck,
+  Transit: Clock,
+  Delayed: AlertTriangle,
+  Waiting: Hourglass,
+  "Pre Order": CalendarClock,
+  "On Hold": PauseCircle,
+  ISO: Search,
+};
+
+const STATUS_TONE: Partial<Record<NextStatus, string>> = {
+  Available: "text-emerald-500",
+  "Out for Delivery": "text-cyan-500",
+  Transit: "text-amber-500",
+  Delayed: "text-rose-500",
+  Waiting: "text-violet-500",
+  "Pre Order": "text-sky-500",
+  ISO: "text-fuchsia-500",
+};
+
+/** A status outside the eight (an older spelling) gets a plain dot. */
+const iconFor = (s: string): LucideIcon => STATUS_ICON[s as NextStatus] ?? CircleDot;
+const toneFor = (s: string) => STATUS_TONE[s as NextStatus] ?? "text-muted-foreground";
 
 /**
  * Moves a car to a new status and records what that status implies.
@@ -246,6 +268,15 @@ export function StatusUpdateDialog({
     }
   };
 
+  const setExpectedIn = (days: number) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    setExpectedDate(d.toISOString().slice(0, 10));
+  };
+
+  const StatusIcon = iconFor(status);
+  const count = choices.length;
+
   return (
     <Dialog
       open={Boolean(car)}
@@ -253,86 +284,72 @@ export function StatusUpdateDialog({
         if (!v && !saving) onClose();
       }}
     >
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      {/* Laid out like My Orders' order-status dialog: a compact card, the
+          statuses as icon tiles, then only the fields the choice needs. */}
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <span className="grid size-6 shrink-0 place-items-center rounded-md bg-sky-500/15 text-sky-500">
-              <Search className="size-3.5" />
-            </span>
+            <StatusIcon className={`size-4 ${toneFor(status)}`} />
             Update status
           </DialogTitle>
-          <DialogDescription>
-            {wasIso
-              ? "This car is on your ISO list. Say what happened to it and the entry moves with it — no second copy."
-              : "Say where the car is now. What you are asked for depends on where it moves to."}
+          <DialogDescription className="flex min-w-0 flex-wrap items-center gap-x-1.5">
+            <span className="truncate font-medium text-foreground">{title}</span>
+            <span aria-hidden>·</span>
+            <span>
+              Now <span className="font-medium text-foreground">{car.status || "no status"}</span>
+            </span>
           </DialogDescription>
         </DialogHeader>
 
-        {/* The whole casting, so there is no doubt which entry is being moved. */}
-        <section className="rounded-lg border border-border bg-muted/20 p-3">
-          <div className="flex items-start gap-3">
-            <CarThumb car={car} className="size-16 shrink-0 overflow-hidden rounded-md" />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <h3 className="truncate text-sm font-semibold">{title}</h3>
-                <CarMarks car={car} primary="chase" iconClassName="size-3.5" />
-              </div>
-              <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">{car.id}</p>
-              <p className="mt-1 flex items-center gap-1.5 text-xs">
-                <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-500">
-                  {car.status}
-                </span>
-                <ArrowRight className="size-3 text-muted-foreground" />
-                <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
-                  {status}
-                </span>
-              </p>
+        <div className="space-y-4 pt-1">
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-destructive">
+              <AlertCircle className="size-4 shrink-0" />
+              <span className="text-xs">{error}</span>
+            </div>
+          )}
+
+          {/* Every status, with the one the car is on marked. */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">New Status</Label>
+            <div
+              className={`grid grid-cols-3 gap-1.5 ${count > 8 ? "sm:grid-cols-3" : "sm:grid-cols-4"}`}
+            >
+              {choices.map((s) => {
+                const Icon = iconFor(s);
+                const selected = status === s;
+                const current = s.toLowerCase() === (car.status || "").trim().toLowerCase();
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatus(s)}
+                    aria-pressed={selected}
+                    className={`relative flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-medium transition-colors ${
+                      selected
+                        ? "border-primary bg-primary/10 font-semibold text-primary shadow-xs"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="size-3.5 shrink-0" />
+                    <span className="leading-tight">{s === "Available" ? "Delivered" : s}</span>
+                    {current && (
+                      <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-muted-foreground">
+                        Current
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-border pt-3 sm:grid-cols-4">
-            <Detail label="Make" value={car.make} />
-            <Detail label="Model" value={car.model} />
-            <Detail label="Variant" value={car.variant} />
-            <Detail label="Year" value={car.year} />
-            <Detail label="Brand" value={car.brand} />
-            <Detail label="Assortment" value={car.assortment} />
-            <Detail label="Series" value={car.series} />
-            <Detail label="Sub series" value={car.subSeries} />
-            <Detail label="Colour" value={car.colour} />
-            <Detail label="Type" value={car.type} />
-            <Detail label="Car number" value={car.carNumber} />
-            <Detail label="Size" value={car.size} />
-            <Detail label="MRP" value={car.mrp ? inrFull(car.mrp) : ""} />
-            <Detail label="Official" value={car.official ? "Yes" : "No"} />
-            <Detail label="Added" value={car.sno ? `#${car.sno}` : ""} />
-          </dl>
-        </section>
-
-        {error && (
-          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error}
-          </p>
-        )}
-
-        <div className="space-y-1.5">
-          <Label>New status</Label>
-          <SegmentControl
-            value={status}
-            onChange={setStatus}
-            options={choices.map((s) => ({ value: s, label: s }))}
-            className="grid w-full grid-cols-[repeat(auto-fit,minmax(5.5rem,1fr))] gap-0.5"
-          />
-        </div>
-
-        {needsPurchase && (
-          <section className="space-y-3 rounded-lg border border-border p-3">
-            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Purchase
-            </h4>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {needsPurchase && (
+            <>
               <div className="space-y-1.5">
-                <Label htmlFor="iso-seller">Seller *</Label>
+                <Label htmlFor="iso-seller" className="text-xs">
+                  Seller *
+                </Label>
                 <Combobox
                   id="iso-seller"
                   value={seller}
@@ -346,7 +363,9 @@ export function StatusUpdateDialog({
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="iso-spent">Cost *</Label>
+                  <Label htmlFor="iso-spent" className="text-xs">
+                    Cost *
+                  </Label>
                   <Input
                     id="iso-spent"
                     inputMode="decimal"
@@ -356,7 +375,9 @@ export function StatusUpdateDialog({
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="iso-mrp">MRP</Label>
+                  <Label htmlFor="iso-mrp" className="text-xs">
+                    MRP
+                  </Label>
                   <Input
                     id="iso-mrp"
                     inputMode="decimal"
@@ -368,7 +389,9 @@ export function StatusUpdateDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="iso-ordered">Order date *</Label>
+                <Label htmlFor="iso-ordered" className="text-xs">
+                  Order date *
+                </Label>
                 <Input
                   id="iso-ordered"
                   type="date"
@@ -378,9 +401,23 @@ export function StatusUpdateDialog({
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="iso-expected">
-                  {arrived ? "Arrival date *" : "Expected date *"}
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="iso-expected" className="text-xs">
+                    {arrived ? "Delivery date *" : "Expected date *"}
+                  </Label>
+                  <div className="flex items-center gap-1">
+                    {(arrived ? [0] : [0, 3, 7]).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setExpectedIn(d)}
+                        className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                      >
+                        {d === 0 ? "Today" : `+${d}d`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <Input
                   id="iso-expected"
                   type="date"
@@ -388,61 +425,72 @@ export function StatusUpdateDialog({
                   onChange={(e) => setExpectedDate(e.target.value)}
                 />
               </div>
-            </div>
-            {status === "Pre Order" && spent.trim() && (
-              <p className="text-xs text-muted-foreground">
-                Recorded as {inrFull(num(spent))} outstanding — settle it from the pre-orders tab
-                when you pay.
-              </p>
-            )}
-          </section>
-        )}
 
-        {needsTransit && (
-          <section className="space-y-3 rounded-lg border border-border p-3">
-            <h4 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Transit
-            </h4>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="iso-partner">Delivery partner</Label>
-                <Combobox
-                  id="iso-partner"
-                  value={partner}
-                  onChange={setPartner}
-                  options={DELIVERY_PARTNER_NAMES}
-                  placeholder="Courier"
-                  searchPlaceholder="Search or type a courier…"
-                  ariaLabel="Delivery partner"
-                />
+              {status === "Pre Order" && spent.trim() && (
+                <p className="text-xs text-muted-foreground">
+                  Recorded as {inrFull(num(spent))} outstanding — settle it from the pre-orders tab
+                  when you pay.
+                </p>
+              )}
+            </>
+          )}
+
+          {needsTransit && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="iso-partner" className="text-xs">
+                    Delivery partner
+                  </Label>
+                  <Combobox
+                    id="iso-partner"
+                    value={partner}
+                    onChange={setPartner}
+                    options={DELIVERY_PARTNER_NAMES}
+                    placeholder="Courier"
+                    searchPlaceholder="Search or type a courier…"
+                    ariaLabel="Delivery partner"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="iso-tracking" className="text-xs">
+                    Tracking ID
+                  </Label>
+                  <Input
+                    id="iso-tracking"
+                    value={tracking}
+                    onChange={(e) => setTracking(e.target.value)}
+                    placeholder="AWB number"
+                    className="font-mono"
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                </div>
               </div>
+              <TrackingLink partner={partner} trackingId={tracking} />
+
               <div className="space-y-1.5">
-                <Label htmlFor="iso-tracking">Tracking ID</Label>
-                <Input
-                  id="iso-tracking"
-                  value={tracking}
-                  onChange={(e) => setTracking(e.target.value)}
-                  placeholder="Consignment / AWB number"
-                  className="font-mono"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-              </div>
-              <div className="space-y-1.5 sm:col-span-2">
-                <Label htmlFor="iso-note">Transit note</Label>
+                <Label htmlFor="iso-note" className="text-xs">
+                  Notes
+                </Label>
                 <Input
                   id="iso-note"
                   value={transitInfo}
                   onChange={(e) => setTransitInfo(e.target.value)}
-                  placeholder="Dispatch notes, hold-ups, anything worth remembering"
+                  placeholder={
+                    status === "Delayed"
+                      ? "e.g. Courier hub delay, customs hold, weather..."
+                      : status === "Out for Delivery"
+                        ? "e.g. Out with delivery agent, expected by evening..."
+                        : "e.g. Dispatched via Bluedart, awaiting tracking scan..."
+                  }
                 />
               </div>
-            </div>
-            <TrackingLink partner={partner} trackingId={tracking} />
-          </section>
-        )}
+            </>
+          )}
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="mt-2">
           <Button variant="ghost" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
@@ -450,9 +498,11 @@ export function StatusUpdateDialog({
             {saving ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (
-              <ArrowRight className="size-4" />
+              <StatusIcon className="size-4" />
             )}
-            {unchanged ? `Save ${status} details` : `Move to ${status}`}
+            {unchanged
+              ? `Save ${status === "Available" ? "Delivered" : status} details`
+              : `Set to ${status === "Available" ? "Delivered" : status}`}
           </Button>
         </DialogFooter>
       </DialogContent>

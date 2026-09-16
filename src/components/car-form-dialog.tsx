@@ -950,12 +950,16 @@ export function CarFormDialog({
             change, which made this a banner restating a name that was already
             the dialog's subject — and a row of height the form could not spare. */}
         {mode === "add" && (
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/40 px-3.5 py-2 text-xs">
-            <div className="min-w-0">
-              <span className="font-medium text-muted-foreground">Car Name: </span>
-              <span className="truncate font-semibold text-foreground">
-                {previewName || "Enter make and model"}
-              </span>
+          // min-w-0: a grid item otherwise grows to fit its text, and a long
+          // name pushed the banner past the dialog instead of ending in "…".
+          <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/40 px-3.5 py-2 text-xs">
+            <div className="flex min-w-0 items-center gap-1">
+              <span className="shrink-0 font-medium text-muted-foreground">Car Name:</span>
+              {previewName ? (
+                <TruncatedName name={previewName} className="font-semibold text-foreground" />
+              ) : (
+                <span className="truncate font-semibold text-foreground">Enter make and model</span>
+              )}
             </div>
           </div>
         )}
@@ -2117,6 +2121,36 @@ function ConditionFields({
 }
 
 /** Every field the wizard collected, grouped by the step that asked for it. */
+/**
+ * A car name that stops at the edge with an ellipsis instead of widening the
+ * dialog. The full name shows on hover with a mouse, or on a tap on a phone.
+ */
+function TruncatedName({ name, className = "" }: { name: string; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={name}
+          onPointerEnter={(e) => e.pointerType === "mouse" && setOpen(true)}
+          onPointerLeave={(e) => e.pointerType === "mouse" && setOpen(false)}
+          className={`block min-w-0 truncate text-left ${className}`}
+        >
+          {name}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-auto max-w-[min(22rem,calc(100vw-2rem))] break-words px-3 py-2 text-xs font-medium"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        {name}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function WizardSummary({
   form,
   name,
@@ -2203,7 +2237,7 @@ function WizardSummary({
         )}
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="truncate text-base font-semibold">{name}</span>
+            <TruncatedName name={name} className="text-base font-semibold" />
             <ChaseMark rarity={form.rarity} className="size-4" />
           </div>
           <div className="truncate text-xs text-muted-foreground">
@@ -2442,6 +2476,9 @@ function ClearableInput({ className, ...props }: React.ComponentProps<typeof Inp
   const ref = useRef<HTMLInputElement>(null);
   const hasValue = props.value !== undefined && props.value !== null && props.value !== "";
   const showClear = hasValue && !props.readOnly && !props.disabled;
+  // A date field keeps its calendar icon at the far right, so the clear button
+  // sits just inside it instead of taking the end of the field.
+  const isDate = props.type === "date";
 
   const clear = () => {
     const el = ref.current;
@@ -2457,14 +2494,17 @@ function ClearableInput({ className, ...props }: React.ComponentProps<typeof Inp
       <Input
         {...props}
         ref={ref}
-        className={cn("min-w-0 w-full", showClear && "pr-8", className)}
+        className={cn("min-w-0 w-full", showClear && !isDate && "pr-8", className)}
       />
       {showClear && (
         <button
           type="button"
           onClick={clear}
           aria-label={`Clear ${props["aria-label"] || props.placeholder || "field"}`}
-          className="absolute right-2 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+          className={cn(
+            "absolute top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground",
+            isDate ? "right-9" : "right-2",
+          )}
         >
           <X className="size-3.5" />
         </button>

@@ -302,7 +302,11 @@ function DashboardPage() {
   );
 }
 
-const isTransit = (s: string) => (s || "").trim().toLowerCase() === "transit";
+/** A parcel that is moving: in the post, or on the van today. */
+const isTransit = (s: string) => {
+  const v = (s || "").trim().toLowerCase();
+  return v === "transit" || /^out\s*for\s*delivery$/.test(v);
+};
 
 /** Today, yesterday, and the day before — the window "Recently added" covers. */
 const RECENT_DAYS = 3;
@@ -319,13 +323,9 @@ function TransitTracker({
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
 
-  // Transit, and only Transit: parcels that are actually moving.
-  //
-  // Waiting and Out for delivery used to be in here too. Waiting is a seller
-  // sitting on an order — a thing to chase, but not a thing to track, and it
-  // made up most of the rows. Out for delivery is a parcel arriving today, which
-  // needs no tracking either. What is left is the list this panel is for: things
-  // in the post, with a courier and a date.
+  // Parcels that are actually moving: Transit and Out for delivery. Waiting
+  // stays out — a seller sitting on an order is a thing to chase, not a thing
+  // to track, and it made up most of the rows.
   const src = useMemo(() => rows.filter((r) => isTransit(r.status)), [rows]);
 
   // Active shipping IDs present strictly in this transit list (excluding Available)
@@ -862,7 +862,7 @@ function TopTenGrid({
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
       {/* Title and control share the line at every width: the control is
           capped and scrolls sideways rather than dropping underneath. */}
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-1 flex items-center justify-between gap-3">
         <div className="min-w-0 shrink-0">
           <h2 className="text-display text-lg font-semibold">Top 5</h2>
           <p className="truncate text-xs text-muted-foreground">Leading {label.toLowerCase()}</p>
@@ -878,10 +878,10 @@ function TopTenGrid({
       {/* Laid out like iPhone storage: one bar split by share of the whole,
           then a legend with each value underneath. Tap a row for its cars. */}
       {items.length > 0 ? (
-        <div className="flex min-h-0 flex-1 flex-col justify-center gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
           {/* Values appear on hover, or on a tap for touch screens, in a small
               label over the part of the bar being pointed at. */}
-          <div className="relative pt-7">
+          <div className="relative pt-6">
             {active !== null && items[active] && (
               <div
                 className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-0.5 text-[11px] font-medium shadow-md"

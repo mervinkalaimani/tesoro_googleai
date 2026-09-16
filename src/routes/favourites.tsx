@@ -1,15 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import {
-  Award,
-  CarFront,
-  ChevronDown,
-  ChevronUp,
-  Flame,
-  IndianRupee,
-  Star,
-  TrendingUp,
-} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Award, CarFront, Flame, IndianRupee, Star, TrendingUp } from "lucide-react";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -26,7 +17,44 @@ import { ExportButton } from "@/components/export-button";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
-import { inrFull, mrpRatio } from "@/lib/format";
+import { inrFull } from "@/lib/format";
+
+type Mode = "favourite" | "chase" | "th" | "sth";
+
+/** Which cars each segment holds. Chase, TH and STH are separate rarities. */
+const IN_MODE: Record<Mode, (car: Diecast) => boolean> = {
+  favourite: (c) => Boolean(c.favourite),
+  chase: (c) => rarityOf(c) === "Chase",
+  th: (c) => rarityOf(c) === "TH",
+  sth: (c) => rarityOf(c) === "STH",
+};
+
+const MODE_TEXT: Record<Mode, { title: string; subtitle: string; empty: string; sub: string }> = {
+  favourite: {
+    title: "Favourites",
+    subtitle: "The ones worth keeping an eye on, and what they are worth.",
+    empty: "No favourites yet.",
+    sub: "Marked favourite",
+  },
+  chase: {
+    title: "Chase cars",
+    subtitle: "The rare pulls, and what they are worth.",
+    empty: "No chase cars yet.",
+    sub: "Chase pulls",
+  },
+  th: {
+    title: "Treasure Hunts",
+    subtitle: "Hot Wheels Treasure Hunts, and what they are worth.",
+    empty: "No Treasure Hunts yet.",
+    sub: "Treasure Hunts",
+  },
+  sth: {
+    title: "Super Treasure Hunts",
+    subtitle: "Hot Wheels Super Treasure Hunts, and what they are worth.",
+    empty: "No Super Treasure Hunts yet.",
+    sub: "Super Treasure Hunts",
+  },
+};
 
 export const Route = createFileRoute("/favourites")({
   head: () => ({
@@ -59,9 +87,7 @@ function GalleryCard({
   onOpen: () => void;
   onToggleFavourite: () => void;
 }) {
-  const cost = car.spent || 0;
-  const market = car.mrp || cost;
-  const ratio = mrpRatio(cost, car.mrp || 0);
+  const market = car.mrp || car.spent || 0;
 
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
@@ -116,20 +142,7 @@ function GalleryCard({
           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Market valuation
           </div>
-          <div className="mt-0.5 flex items-baseline gap-1.5 text-sm font-semibold tabular-nums">
-            <span>{inrFull(market)}</span>
-            {ratio && (
-              <span
-                className={`inline-flex items-center text-xs font-medium ${
-                  ratio.over ? "text-rose-400" : "text-emerald-500"
-                }`}
-              >
-                (
-                {ratio.over ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-                {ratio.text})
-              </span>
-            )}
-          </div>
+          <div className="mt-0.5 text-sm font-semibold tabular-nums">{inrFull(market)}</div>
         </div>
       </div>
     </article>
@@ -141,13 +154,19 @@ function FavouritesPage() {
   const cars = useCars();
   const { open } = useCarDrawer();
   const { updateCar } = useCarsActions();
-  const [mode, setMode] = useState<"favourite" | "chase">("favourite");
+  const [mode, setMode] = useState<Mode>("favourite");
   const [view, setView] = useState<ViewMode>("table");
 
-  const rows = useMemo(() => {
-    const filtered = filterRows(cars, query);
-    return filtered.filter((r) => (mode === "favourite" ? r.favourite : r.chase));
-  }, [cars, query, mode]);
+  // TH and STH only get a segment when the collection has one. Judged on the
+  // whole collection, not the search, so the control does not jump while typing.
+  const hasTh = useMemo(() => cars.some(IN_MODE.th), [cars]);
+  const hasSth = useMemo(() => cars.some(IN_MODE.sth), [cars]);
+  useEffect(() => {
+    if ((mode === "th" && !hasTh) || (mode === "sth" && !hasSth)) setMode("favourite");
+  }, [mode, hasTh, hasSth]);
+
+  const rows = useMemo(() => filterRows(cars, query).filter(IN_MODE[mode]), [cars, query, mode]);
+  const text = MODE_TEXT[mode];
 
   const cost = rows.reduce((s, r) => s + (r.spent || 0), 0);
   const market = rows.reduce((s, r) => s + (r.mrp || r.spent || 0), 0);
@@ -156,31 +175,20 @@ function FavouritesPage() {
   const avg = rows.length ? Math.round(market / rows.length) : 0;
   const chaseCount = rows.filter((r) => r.chase).length;
 
-  useRegisterExportScope(
-    mode === "favourite" ? "favourites" : "chase",
-    mode === "favourite" ? "Favourites" : "Chase cars",
-    rows,
-  );
+  useRegisterExportScope(mode === "favourite" ? "favourites" : mode, text.title, rows);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       {/* The gallery banner is gone: a page of favourites does not need a card
           at the top telling you it is a page of favourites. The counts it
           carried are in the stats below and beside the segment control. */}
-      <PageHeading
-        title={mode === "favourite" ? "Favourites" : "Chase cars"}
-        subtitle={
-          mode === "favourite"
-            ? "The ones worth keeping an eye on, and what they are worth."
-            : "The rare pulls, and what they are worth."
-        }
-      />
+      <PageHeading title={text.title} subtitle={text.subtitle} />
 
       <KpiBand>
         <KpiTile
           label="Models"
           value={rows.length.toLocaleString()}
-          sub={mode === "favourite" ? "Marked favourite" : "Chase pulls"}
+          sub={text.sub}
           icon={<CarFront className="size-4" />}
           tone="violet"
         />
@@ -227,6 +235,8 @@ function FavouritesPage() {
             options={[
               { value: "favourite", label: "Favourites" },
               { value: "chase", label: "Chase" },
+              ...(hasTh ? [{ value: "th" as const, label: "TH" }] : []),
+              ...(hasSth ? [{ value: "sth" as const, label: "STH" }] : []),
             ]}
           />
         }
@@ -234,8 +244,8 @@ function FavouritesPage() {
           <>
             <ExportButton
               rows={rows}
-              name={mode === "favourite" ? "favourites" : "chase"}
-              label={mode === "favourite" ? "Favourites" : "Chase cars"}
+              name={mode === "favourite" ? "favourites" : mode}
+              label={text.title}
               iconOnly
             />
             <ViewToggle value={view} onChange={setView} />
@@ -245,7 +255,7 @@ function FavouritesPage() {
 
       {rows.length === 0 ? (
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
-          {mode === "favourite" ? "No favourites yet." : "No chase cars yet."}
+          {text.empty}
         </div>
       ) : view !== "table" ? (
         <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
@@ -266,7 +276,9 @@ function FavouritesPage() {
         // No frame on a phone: display:contents drops the card's box while
         // keeping it round the table on a desktop.
         <div className="card-elevated overflow-hidden max-md:contents">
-          <CarsTable rows={rows} badgePrimary={mode} bare />
+          {/* One row design for every segment, and just the price: how it
+              compares with the MRP is not what this page is for. */}
+          <CarsTable rows={rows} bare showMrp={false} />
         </div>
       )}
     </div>

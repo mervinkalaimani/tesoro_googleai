@@ -222,6 +222,7 @@
   * {
     border-color: var(--color-border);
   }
+
   html {
     color-scheme: light;
     font-size: var(--font-size-base, 10pt);
@@ -343,4 +344,21 @@ html.dark .card-elevated {
   box-shadow:
     0 1px 0 oklch(1 0 0 / 0.03) inset,
     0 10px 30px -12px oklch(0 0 0 / 0.5);
+}
+
+/* Date fields keep their calendar icon at the far right. The shared Input is
+   display:flex, which stops Chrome's date box stretching, so the icon sat
+   straight after the date; as a block it fills the field and the icon can be
+   pushed to the end. Unlayered on purpose: inside @layer base the Input's own
+   `flex` utility won. iOS draws no icon but centres the value, so that is
+   pulled left to line up with every other field. */
+input[type="date"]:not(.hidden) {
+  display: block;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+  margin-left: auto;
+  cursor: pointer;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
 }

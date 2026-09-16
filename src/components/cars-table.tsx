@@ -43,9 +43,18 @@ export function advanceText(r: Diecast): string | null {
 }
 
 /** Single consolidated cost cell: spent, MRP comparison, and advance payment. */
-export function CostCell({ car: r, align = "right" }: { car: Diecast; align?: "right" | "left" }) {
+export function CostCell({
+  car: r,
+  align = "right",
+  showMrp = true,
+}: {
+  car: Diecast;
+  align?: "right" | "left";
+  /** Off where only the price matters, not how it compares with the MRP. */
+  showMrp?: boolean;
+}) {
   const spent = r.spent || 0;
-  const mrp = r.mrp || 0;
+  const mrp = showMrp ? r.mrp || 0 : 0;
   const adv = advanceText(r);
 
   let mrpLine: string | null = null;
@@ -101,16 +110,18 @@ export function CarListCard({
   onOpen,
   actions,
   badgePrimary = "favourite",
+  showMrp = true,
 }: {
   car: Diecast;
   onOpen: () => void;
   /** Icon buttons for this car, at the foot of the card. */
   actions?: ReactNode;
   badgePrimary?: "favourite" | "chase";
+  showMrp?: boolean;
 }) {
   const pay = paymentStatusText(car) ?? advanceText(car);
   const spent = car.spent || 0;
-  const mrp = car.mrp || 0;
+  const mrp = showMrp ? car.mrp || 0 : 0;
   // The MRP line only when it says something. "MRP ₹600" against a ₹600 car is
   // a row of type to tell you nothing happened.
   const mrpNote =
@@ -173,10 +184,13 @@ export function CarsTable({
   showBadgeCol = true,
   badgePrimary = "favourite",
   bare = false,
+  showMrp = true,
 }: {
   rows: Diecast[];
   showBadgeCol?: boolean;
   badgePrimary?: "favourite" | "chase";
+  /** Hides the MRP and the cost-against-MRP lines under each price. */
+  showMrp?: boolean;
   /**
    * The phone cards sit straight on the page rather than inset inside a
    * frame, so they line up with the page's own edges.
@@ -194,6 +208,7 @@ export function CarsTable({
             car={r}
             onOpen={() => open(r)}
             badgePrimary={badgePrimary}
+            showMrp={showMrp}
           />
         ))}
         {rows.length === 0 && (
@@ -251,7 +266,7 @@ export function CarsTable({
                     {r.seller || "—"}
                   </td>
                   <td className="px-3 py-2.5 md:px-4">
-                    <CostCell car={r} />
+                    <CostCell car={r} showMrp={showMrp} />
                   </td>
                   <td className="px-3 py-2.5 md:px-4">
                     <StatusPill status={r.status} />
