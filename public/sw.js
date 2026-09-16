@@ -17,8 +17,8 @@ self.addEventListener("push", (event) => {
     self.registration.showNotification(msg.title || "Tesoro", {
       body: msg.body || "",
       tag: msg.tag,
-      icon: "/tesoro_app_icon.png",
-      badge: "/tesoro_app_icon.png",
+      icon: "/tesoro_app_icon_light.svg",
+      badge: "/tesoro_app_icon_light.svg",
       data: msg,
       // Android and desktop Chrome show these as buttons. iOS does not show
       // action buttons: tapping opens the app, where the bell has both.
@@ -65,8 +65,8 @@ async function decide(msg, decision) {
       {
         body: out.name || msg.name || "",
         tag: msg.tag,
-        icon: "/tesoro_app_icon.png",
-        badge: "/tesoro_app_icon.png",
+        icon: "/tesoro_app_icon_light.svg",
+        badge: "/tesoro_app_icon_light.svg",
         data: { url: "/admin" },
       },
     );
@@ -74,7 +74,7 @@ async function decide(msg, decision) {
     await self.registration.showNotification("Could not update that account", {
       body: `${err && err.message ? err.message : "Something went wrong"} Tap to open the app.`,
       tag: msg.tag,
-      icon: "/tesoro_app_icon.png",
+      icon: "/tesoro_app_icon_light.svg",
       data: { url: msg.url || "/admin" },
     });
   }

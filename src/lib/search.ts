@@ -1,4 +1,5 @@
 import type { Diecast } from "./types";
+import { normaliseRarity, rarityOf } from "./rarity";
 
 const TEXT_FIELDS: (keyof Diecast)[] = [
   "name",
@@ -79,6 +80,27 @@ const FIELD_ALIASES: Record<string, keyof Diecast> = {
   tracking: "trackingId",
   "tracking id": "trackingId",
   awb: "trackingId",
+  rarity: "rarity",
+};
+
+/**
+ * Words that search a car's marks rather than its text: "fav" finds favourites,
+ * "chase", "th" and "sth" find that rarity exactly — as free text, "th" would
+ * match every "Smith" and "STH" would be counted as a TH.
+ */
+const MARK_WORDS: Record<string, (r: Diecast) => boolean> = {
+  fav: (r) => Boolean(r.favourite),
+  favs: (r) => Boolean(r.favourite),
+  favourite: (r) => Boolean(r.favourite),
+  favourites: (r) => Boolean(r.favourite),
+  favorite: (r) => Boolean(r.favourite),
+  favorites: (r) => Boolean(r.favourite),
+  chase: (r) => rarityOf(r) === "Chase",
+  chases: (r) => rarityOf(r) === "Chase",
+  th: (r) => rarityOf(r) === "TH",
+  "treasure hunt": (r) => rarityOf(r) === "TH",
+  sth: (r) => rarityOf(r) === "STH",
+  "super treasure hunt": (r) => rarityOf(r) === "STH",
 };
 
 const NUMERIC_FIELDS = new Set<keyof Diecast>(["spent", "mrp", "paid", "year"]);
@@ -160,6 +182,9 @@ function matchesGroup(row: Diecast, g: QueryGroup): boolean {
     const fullClean = clean(fullText);
 
     return g.values.some((token) => {
+      const mark = MARK_WORDS[token.replace(/\s+/g, " ")];
+      if (mark) return mark(row);
+
       if (/^\d{4}$/.test(token)) {
         const start = Math.floor(Number(token) / 10) * 10;
         const y = numOf(row.year);
@@ -195,6 +220,10 @@ function matchesGroup(row: Diecast, g: QueryGroup): boolean {
 
   const value = row[g.field];
 
+  // Rarity compares whole values, so "th" is never satisfied by "STH".
+  if (g.field === "rarity") {
+    return g.values.some((v) => normaliseRarity(v) === rarityOf(row));
+  }
   if (g.op === "=" || g.op === "~") {
     if (NUMERIC_FIELDS.has(g.field)) {
       return g.values.some((v) => numOf(value) === numOf(v));
@@ -266,63 +295,110 @@ export const SEARCH_FIELDS: { label: string; field: keyof Diecast }[] = [
   { label: "paid", field: "paid" },
 ];
 
-export type Suggestion = { kind: "field" | "value"; label: string; insert: string; hint?: string };
+const MARK_SUGGESTIONS = [
+  { label: "Favourites", insert: "fav", words: ["favourites", "favorites", "fav"] },
+  { label: "Chase", insert: "chase", words: ["chase"] },
+  { label: "TH · Treasure Hunt", insert: "th", words: ["th", "treasure hunt"] },
+  { label: "STH · Super Treasure Hunt", insert: "sth", words: ["sth", "super treasure hunt"] },
+];
 
-/** Suggestions for the segment currently being typed (after the last comma). */
-export function suggestFor(fragment: string, rows: Diecast[]): Suggestion[] {
-  const frag = fragment.trim().toLowerCase();
-  const afterPlus = frag.split("+").pop()!.trim();
-  const eq = frag.match(/^([A-Za-z#][A-Za-z0-9\s_#.-]*?)\s*(?:=|:)\s*(.*)$/);
+/** Fields free text is offered back as, in the order their groups appear. */
+const CATEGORY_FIELDS: { title: string; label: string; field: keyof Diecast }[] = [
+  { title: "Brand", label: "brand", field: "brand" },
+  { title: "Make", label: "make", field: "make" },
+  { title: "Model", label: "model", field: "model" },
+  { title: "Series", label: "series", field: "series" },
+  { title: "Sub series", label: "sub series", field: "subSeries" },
+  { title: "Car #", label: "car #", field: "carNumber" },
+  { title: "Colour", label: "colour", field: "colour" },
+  { title: "Type", label: "type", field: "type" },
+  { title: "Assortment", label: "assortment", field: "assortment" },
+  { title: "Seller", label: "seller", field: "seller" },
+  { title: "Status", label: "status", field: "status" },
+];
 
+export type SuggestionGroup = {
+  title: string;
+  items: { value: string; count: number; query: string }[];
+};
+
+/** Values of `field` containing `typed`, most common first. */
+function valuesOf(rows: Diecast[], field: keyof Diecast, typed: string, limit: number) {
+  const seen = new Map<string, number>();
+  for (const r of rows) {
+    const v = String(r[field] ?? "").trim();
+    if (!v || (typed && !v.toLowerCase().includes(typed))) continue;
+    seen.set(v, (seen.get(v) ?? 0) + 1);
+  }
+  return [...seen.entries()]
+    .sort((a, b) => {
+      // A value that starts with what was typed beats one that merely contains it.
+      const pa = a[0].toLowerCase().startsWith(typed) ? 1 : 0;
+      const pb = b[0].toLowerCase().startsWith(typed) ? 1 : 0;
+      return pb - pa || b[1] - a[1];
+    })
+    .slice(0, limit);
+}
+
+/**
+ * Suggestions for the search page, grouped by what the value is. Each item
+ * carries the whole query it would produce, so picking one needs no parsing.
+ *
+ * Field names are never offered as suggestions themselves — the syntax is
+ * explained as a tip instead, and typing it narrows the values to that field.
+ */
+export function groupedSuggestions(query: string, rows: Diecast[]): SuggestionGroup[] {
+  const comma = query.lastIndexOf(",");
+  const head = comma >= 0 ? query.slice(0, comma + 1) + " " : "";
+  const segment = comma >= 0 ? query.slice(comma + 1) : query;
+  // Suggest only from what the filters before this one already leave.
+  const pool = head.trim() ? filterRows(rows, head) : rows;
+
+  const eq = segment.match(/^\s*([A-Za-z#][A-Za-z0-9\s_#.-]*?)\s*(=|:)\s*(.*)$/);
   if (eq) {
     const key = eq[1].trim().toLowerCase();
     const field = FIELD_ALIASES[key] ?? FIELD_ALIASES[key.replace(/[\s_#.-]/g, "")];
-    if (!field) return [];
-    const typed = eq[2].split("+").pop()!.trim().toLowerCase();
-    const seen = new Map<string, number>();
-    for (const r of rows) {
-      const v = String(r[field] ?? "").trim();
-      if (!v) continue;
-      if (typed && !v.toLowerCase().includes(typed)) continue;
-      seen.set(v, (seen.get(v) ?? 0) + 1);
-    }
-    return [...seen.entries()]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 8)
-      .map(([v, n]) => ({ kind: "value" as const, label: v, insert: v, hint: `${n}` }));
-  }
-
-  const fields = SEARCH_FIELDS.filter((f) => !afterPlus || f.label.startsWith(afterPlus))
-    .slice(0, 6)
-    .map((f) => ({
-      kind: "field" as const,
-      label: `${f.label} = `,
-      insert: `${f.label} = `,
-      hint: "field",
+    if (!field || NUMERIC_FIELDS.has(field)) return [];
+    const rest = eq[3];
+    const plus = rest.lastIndexOf("+");
+    const kept = plus >= 0 ? rest.slice(0, plus + 1) : "";
+    const typed = rest
+      .slice(plus + 1)
+      .trim()
+      .toLowerCase();
+    const title =
+      CATEGORY_FIELDS.find((c) => c.field === field)?.title ??
+      SEARCH_FIELDS.find((f) => f.field === field)?.label ??
+      String(field);
+    const items = valuesOf(pool, field, typed, 12).map(([value, count]) => ({
+      value,
+      count,
+      query: `${head}${eq[1].trim()} = ${kept}${value}`,
     }));
-
-  if (!afterPlus) return fields;
-
-  const seen = new Map<string, number>();
-  for (const r of rows) {
-    for (const f of [
-      "name",
-      "brand",
-      "make",
-      "series",
-      "subSeries",
-      "carNumber",
-      "seller",
-      "colour",
-    ] as (keyof Diecast)[]) {
-      const v = String(r[f] ?? "").trim();
-      if (v && v.toLowerCase().includes(afterPlus)) seen.set(v, (seen.get(v) ?? 0) + 1);
-    }
+    return items.length ? [{ title, items }] : [];
   }
-  const values = [...seen.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
-    .map(([v, n]) => ({ kind: "value" as const, label: v, insert: v, hint: `${n}` }));
 
-  return [...fields, ...values];
+  const typed = segment.split("+").pop()!.trim().toLowerCase();
+  // Operators and single characters say too little to suggest anything from.
+  if (typed.length < 2 || /[<>]/.test(segment)) return [];
+
+  const values = CATEGORY_FIELDS.map(({ title, label, field }) => ({
+    title,
+    items: valuesOf(pool, field, typed, 4).map(([value, count]) => ({
+      value,
+      count,
+      query: `${head}${label} = ${value}`,
+    })),
+  }));
+
+  // Favourites and the rarities, offered by any of the words that search them.
+  const marks = MARK_SUGGESTIONS.filter((m) => m.words.some((w) => w.startsWith(typed)))
+    .map((m) => ({
+      value: m.label,
+      count: pool.filter(MARK_WORDS[m.insert]).length,
+      query: `${head}${m.insert}`,
+    }))
+    .filter((m) => m.count > 0);
+
+  return [{ title: "Marks", items: marks }, ...values].filter((g) => g.items.length > 0);
 }

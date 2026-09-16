@@ -9,15 +9,10 @@ import { useCarDrawer } from "@/components/car-details-drawer";
 // this file — reading it from here would close a cycle between them.
 import { StatusPill } from "@/components/status-pill";
 
-// Re-exported so the pages that import it from here still can.
-export { StatusPill };
+import { carSubLine } from "@/lib/car-subline";
 
-/** Consistent secondary line for a car, matching the Inventory first column. */
-export function carSubLine(r: Diecast) {
-  return (
-    [r.brand, r.assortment, r.series, r.subSeries, r.carNumber].filter(Boolean).join(" · ") || "—"
-  );
-}
+// Re-exported so the pages that import them from here still can.
+export { StatusPill, carSubLine };
 
 /** Payment status text — only meaningful for Pre Order rows. */
 export function paymentStatusText(r: Diecast): string | null {

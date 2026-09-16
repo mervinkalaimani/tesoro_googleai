@@ -6,12 +6,11 @@
   "background_color": "#1b1b1b",
   "theme_color": "#1b1b1b",
   "icons": [
-    { "src": "/tesoro_app_icon.svg", "type": "image/svg+xml", "sizes": "any" },
-    { "src": "/tesoro_app_icon.png", "type": "image/png", "sizes": "250x250" },
+    { "src": "/tesoro_app_icon_light.svg", "type": "image/svg+xml", "sizes": "any" },
     {
-      "src": "/tesoro_app_icon.png",
-      "type": "image/png",
-      "sizes": "250x250",
+      "src": "/tesoro_app_icon_light.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
       "purpose": "maskable"
     }
   ]

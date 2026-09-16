@@ -38,6 +38,7 @@ import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { CarThumb } from "@/components/car-thumb";
+import { carSubLine } from "@/lib/car-subline";
 
 /**
  * A car moves forward one step at a time rather than jumping straight to
@@ -1195,7 +1196,7 @@ function RelatedCarCard({
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   const rarity = rarityOf(car);
-  const subtitle = car.subSeries || car.series || car.brand || car.make || "—";
+  const subtitle = carSubLine(car);
 
   return (
     <button

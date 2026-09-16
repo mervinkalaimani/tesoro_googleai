@@ -38,6 +38,7 @@ import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { cn } from "@/lib/utils";
 import type { Diecast } from "@/lib/types";
+import { carSubLine, carSubLineParts } from "@/lib/car-subline";
 
 const STATUS_CHOICES = [
   { value: "keep", label: "— Keep current status —" },
@@ -583,9 +584,9 @@ export function ShippingBatchDialog({
                               <span className="block truncate font-medium text-foreground">
                                 {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
                               </span>
-                              {[car.brand, car.series].filter(Boolean).length > 0 && (
+                              {carSubLineParts(car).length > 0 && (
                                 <span className="block truncate text-[10px] text-muted-foreground">
-                                  {[car.brand, car.series].filter(Boolean).join(" · ")}
+                                  {carSubLine(car)}
                                 </span>
                               )}
                             </span>

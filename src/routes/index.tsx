@@ -54,6 +54,7 @@ import {
 import { TopListSkeleton, TransitTrackerSkeleton } from "@/components/dashboard-skeletons";
 import { catalogueKey, useRecentPreorders, type RecentPreorder } from "@/lib/catalogue-search";
 import { isPreOrder } from "@/lib/status-order";
+import { carSubLine } from "@/lib/car-subline";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -997,10 +998,7 @@ function TopDetailDialog({
               >
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{r.name || "Unnamed car"}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {[r.brand, r.series, r.subSeries].filter(Boolean).join(" · ") ||
-                      "Brand detail not recorded"}
-                  </div>
+                  <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="text-sm tabular-nums">{r.spent ? inr(r.spent) : "—"}</div>

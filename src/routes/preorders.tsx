@@ -173,20 +173,32 @@ function PreOrderCard({
         />
       </dl>
 
-      <div className="flex flex-wrap justify-end gap-2 border-t border-border px-4 py-3">
+      {/* The same footer as a shipment on My Orders: Export as an icon, then
+          the labelled actions sharing the rest of the row on a phone. */}
+      <footer className="flex items-center gap-2 border-t border-border px-4 py-3 sm:justify-end">
+        <ExportButton
+          rows={[car]}
+          name={`preorder-${car.name || car.model || car.id}`
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")}
+          label={car.name || "Pre-order"}
+          iconOnly
+          size="icon"
+          className="size-8 shrink-0"
+        />
         {!settled && (
           <Button
             size="sm"
             variant="outline"
             onClick={onPay}
-            className="gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+            className="min-w-0 flex-1 gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400 sm:flex-none"
           >
             <IndianRupee className="size-3.5" />
             Pay balance
           </Button>
         )}
-        <UpdateStatusButton onClick={onUpdateStatus} />
-      </div>
+        <UpdateStatusButton onClick={onUpdateStatus} className="min-w-0 flex-1 sm:flex-none" />
+      </footer>
     </article>
   );
 }

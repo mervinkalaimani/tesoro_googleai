@@ -362,3 +362,89 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
 }
+/* The splash is server-rendered HTML, on screen before any script runs, and
+   fades once the app knows who is signed in (dismissSplash). */
+#tesoro-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: var(--background);
+  color: var(--foreground);
+  transition:
+    opacity 0.4s ease,
+    visibility 0s linear 0.4s;
+}
+#tesoro-splash[data-state="hidden"] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+#tesoro-splash .tesoro-splash-mark {
+  display: block;
+  width: min(62vw, 300px);
+  animation: tesoro-splash-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+#tesoro-splash .tesoro-splash-mark > svg {
+  display: block;
+}
+@keyframes tesoro-splash-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+
+/* The bottom bar changing section. Going into Inventory or Orders, the pages
+   pill grows out of the Home circle on its left; coming back, the full bar
+   opens out from where Home sits in it. Both are clip reveals, so nothing
+   inside is squashed on the way. */
+@keyframes nav-split {
+  from {
+    clip-path: inset(0 calc(100% - 58px) 0 0 round 29px);
+    transform: translateX(-66px);
+    opacity: 0.4;
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 29px);
+    transform: none;
+  }
+}
+@keyframes nav-merge {
+  from {
+    clip-path: inset(0 calc(100% - 58px) 0 0 round 29px);
+    opacity: 0.4;
+  }
+  40% {
+    opacity: 1;
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 29px);
+  }
+}
+@keyframes nav-home-pop {
+  from {
+    transform: scale(0.8);
+  }
+}
+.animate-nav-split {
+  animation: nav-split 0.5s cubic-bezier(0.3, 1.1, 0.45, 1) backwards;
+}
+.animate-nav-merge {
+  animation: nav-merge 0.45s cubic-bezier(0.3, 1.1, 0.45, 1) backwards;
+}
+.animate-nav-home {
+  animation: nav-home-pop 0.35s cubic-bezier(0.3, 1.4, 0.5, 1) backwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  #tesoro-splash .tesoro-splash-mark,
+  .animate-nav-split,
+  .animate-nav-merge,
+  .animate-nav-home {
+    animation: none;
+  }
+}

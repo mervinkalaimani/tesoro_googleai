@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { Plus, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useCarsUndo } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
+import { HomeScreenMark } from "@/components/brand-mark";
 import { SearchBox } from "@/components/search-box";
 import { NotificationCenter } from "@/components/notification-center";
-import { UserMenu } from "@/components/user-menu";
+import { AccountButton } from "@/components/account-button";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
@@ -57,27 +59,24 @@ export function TopBar() {
   }, [undoAt]);
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 transform-gpu items-center gap-2 border-b border-border bg-background/80 px-3 backdrop-blur">
+    <header className="sticky top-0 z-40 flex h-14 transform-gpu items-center gap-2 bg-background/80 px-3 backdrop-blur">
       {/* Desktop only. The bottom bar carries every destination the sidebar
           holds, so on a phone this opened a second copy of the navigation that
           was already under your thumb. Swiping in from the edge still works for
           anyone who has learned it. */}
       <SidebarTrigger className="hidden md:inline-flex" />
-      {/* Back to a real field at every width. Export and the CSV template moved
-          to the sidebar and Undo only appears when there is something to undo,
-          which is the room the search box needed. */}
-      <SearchBox />
+      {/* A phone's wordmark. On a desktop it lives in the sidebar's header. */}
+      <Link to="/" aria-label="Tesoro home" className="shrink-0 md:hidden">
+        <HomeScreenMark className="w-[80px]" />
+      </Link>
+      {/* Desktop searches here, live. A phone searches from the bottom bar. */}
+      <SearchBox className="hidden md:block" />
       {/* No Refresh button or "Updated …" stamp: CarsProvider re-reads Supabase
           every 15s on its own, and local edits are applied optimistically, so
           there was never anything for a manual refresh to reveal. */}
-      {/* Bulk add and CSV upload are reached from inside the Add car dialog,
-          keeping one entry point for getting cars into the collection. */}
-      <div className="ml-auto flex items-center gap-1">
-        {/* Only while it means something. A button that is disabled nine visits
-            out of ten is a button you stop seeing — and it was holding a slot
-            the search field needed. It shows itself when there is something to
-            reverse and withdraws half a minute later, which is about as long as
-            "that was wrong" takes to occur to anyone. */}
+      <div className="ml-auto flex items-center gap-1.5">
+        {/* Only while it means something: it shows itself when there is
+            something to reverse and withdraws half a minute later. */}
         {undoLabel && fresh && (
           <Button
             variant="outline"
@@ -90,23 +89,20 @@ export function TopBar() {
             <Undo2 className="size-4" /> <span className="hidden sm:inline">Undo</span>
           </Button>
         )}
-        {/* Reading right to left from the corner: who you are, what the app has
-            to tell you, and the thing you came to do.
 
-            The avatar takes the corner because that is where every application
-            on the machine keeps the account — it is a destination you look for
-            rather than a button you aim at. Add car sits inboard of the bell,
-            which renders nothing at all when there is nothing to say, so on a
-            quiet day the two of them sit side by side. */}
+        <NotificationCenter />
+        {/* Reading right to left from the corner: who you are, then the thing
+            you came to do. */}
         <Button
-          size="sm"
+          size="icon"
           onClick={() => setAddOpen(true)}
-          className="relative gap-1.5"
+          aria-label="Add car"
+          className="relative size-8 rounded-full"
           title={
-            pendingDraft ? "You have an unfinished car — pick up where you left off" : undefined
+            pendingDraft ? "You have an unfinished car — pick up where you left off" : "Add car"
           }
         >
-          <Plus className="size-4" /> <span className="hidden sm:inline">Add car</span>
+          <Plus className="size-4" />
           {pendingDraft && (
             <span
               aria-label="Unfinished car saved"
@@ -114,16 +110,7 @@ export function TopBar() {
             />
           )}
         </Button>
-        <NotificationCenter />
-        {/* Desktop only. The bottom bar's Menu carries the same avatar and the
-            same account items on a phone, and two faces in one screen is two
-            places to look for the way out. */}
-        <span className="hidden md:inline-flex">
-          <UserMenu />
-        </span>
-        {/* The theme toggle lived here too, competing for a bar that had no
-            room for a search field. It is a preference, and preferences are in
-            Settings → General & Display. */}
+        <AccountButton />
       </div>
       <CarFormDialog
         open={addOpen}

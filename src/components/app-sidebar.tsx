@@ -32,6 +32,7 @@ import { inrFull } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
+import { HomeScreenMark } from "@/components/brand-mark";
 
 /**
  * Where the collection is looked at, and nothing else.
@@ -80,20 +81,12 @@ export function AppSidebar() {
       {/* h-14 exactly, matching the top bar: the two rules either side of the
           sidebar's edge are one line across the whole application, and a header
           sized by its own contents lined up with nothing. */}
-      <SidebarHeader className="h-14 justify-center border-b border-sidebar-border">
+      <SidebarHeader className="h-14 justify-center">
         <div className="flex items-center gap-2 px-1">
-          {/* The accent colour, behind a mark drawn white for exactly this.
-              --sidebar-primary is the token Settings → Appearance rewrites when
-              you pick a colour, so the logo changes with everything else that
-              carries the accent instead of staying whatever it was built as. */}
-          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-sidebar-primary shadow-lg shadow-sidebar-primary/30">
-            <img src="/tesoro_in_app_icon.svg" alt="" className="size-7" />
-          </div>
+          <img src="/tesoro_app_icon_dark.svg" alt="" className="size-9 shrink-0" />
           {/* "Personal collection" said nothing the rest of the screen does not
               — a subtitle under a one-word name. */}
-          <div className="text-display min-w-0 truncate text-base font-semibold leading-tight group-data-[collapsible=icon]:hidden">
-            Tesoro
-          </div>
+          <HomeScreenMark className="w-[76px] shrink-0 group-data-[collapsible=icon]:hidden" />
         </div>
       </SidebarHeader>
 

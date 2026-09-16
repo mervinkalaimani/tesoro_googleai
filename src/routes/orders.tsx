@@ -18,10 +18,8 @@ import { SegmentControl } from "@/components/segment-control";
 import { formatDayMonthYear, inr, inrFull, parseDMY } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
-import {
-  ReconcileDeliveryDialog,
-  type ReconcileTarget,
-} from "@/components/reconcile-delivery-dialog";
+import { StatusUpdateDialog, type StatusBatch } from "@/components/status-update-dialog";
+
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { UpdateStatusButton } from "@/components/update-status-button";
@@ -338,7 +336,7 @@ function OrdersPage() {
   const [seller, setSeller] = useState("all");
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
-  const [reconcileFor, setReconcileFor] = useState<ReconcileTarget | null>(null);
+  const [reconcileFor, setReconcileFor] = useState<StatusBatch | null>(null);
 
   const scoped = useMemo(() => filterRows(cars, query), [cars, query]);
 
@@ -579,7 +577,7 @@ function OrdersPage() {
         initialShippingId={selectedShippingId}
       />
 
-      <ReconcileDeliveryDialog target={reconcileFor} onClose={() => setReconcileFor(null)} />
+      <StatusUpdateDialog batch={reconcileFor} onClose={() => setReconcileFor(null)} />
     </div>
   );
 }

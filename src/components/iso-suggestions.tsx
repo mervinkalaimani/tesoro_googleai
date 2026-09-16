@@ -3,6 +3,7 @@ import { Layers, Search, X } from "lucide-react";
 import type { Diecast } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import type { IsoMatch, IsoMatchField } from "@/lib/iso-match";
+import { carSubLine, carSubLineParts } from "@/lib/car-subline";
 
 const FIELD_LABEL: Record<IsoMatchField, string> = {
   make: "make",
@@ -89,10 +90,8 @@ export function IsoSuggestions({
               <div className="truncate text-sm font-medium">
                 {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
               </div>
-              {[car.brand, car.series].filter(Boolean).length > 0 && (
-                <div className="truncate text-[11px] text-muted-foreground">
-                  {[car.brand, car.series].filter(Boolean).join(" · ")}
-                </div>
+              {carSubLineParts(car).length > 0 && (
+                <div className="truncate text-[11px] text-muted-foreground">{carSubLine(car)}</div>
               )}
               <div className="truncate text-[11px] text-muted-foreground">
                 Matches on {matched.map((f) => FIELD_LABEL[f]).join(", ")}

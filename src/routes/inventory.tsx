@@ -20,6 +20,7 @@ import { SegmentControl } from "@/components/segment-control";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
+import { carSubLine } from "@/lib/car-subline";
 
 export const Route = createFileRoute("/inventory")({
   head: () => ({
@@ -193,11 +194,7 @@ function InventoryCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
           {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
         </button>
 
-        <p className="mt-1 text-xs leading-snug text-muted-foreground">
-          {[car.brand, car.series, car.subSeries, car.carNumber, car.colour]
-            .filter(Boolean)
-            .join(" · ") || "—"}
-        </p>
+        <p className="mt-1 text-xs leading-snug text-muted-foreground">{carSubLine(car)}</p>
 
         {/* Where the chips taken off the image now live: readable, and not on
             top of the photograph. */}
@@ -661,11 +658,7 @@ function InventoryPage() {
                         <span className="truncate font-medium">{r.name || "—"}</span>
                         <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">
-                        {[r.brand, r.assortment, r.series, r.subSeries, r.carNumber]
-                          .filter(Boolean)
-                          .join(" · ") || "—"}
-                      </div>
+                      <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
                     </td>
                     <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
                       {r.colour || "—"}

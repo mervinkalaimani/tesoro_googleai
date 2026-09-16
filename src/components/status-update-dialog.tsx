@@ -134,16 +134,30 @@ const toneFor = (s: string) => STATUS_TONE[s as NextStatus] ?? "text-muted-foreg
  * and nothing else, so a car could become Available with no seller and no
  * price, or Transit with no way to track it.
  */
+export type StatusBatch = {
+  shippingId: string;
+  seller: string;
+  items: Diecast[];
+};
+
 export function StatusUpdateDialog({
-  car,
+  car = null,
+  batch = null,
   onClose,
   onDone,
 }: {
-  car: Diecast | null;
+  /** One car… */
+  car?: Diecast | null;
+  /** …or a whole shipment, moved together. */
+  batch?: StatusBatch | null;
   onClose: () => void;
   onDone?: (car: Diecast) => void;
 }) {
-  const { updateCar } = useCarsActions();
+  const { updateCar, bulkUpdateCars } = useCarsActions();
+  const items = batch ? batch.items : car ? [car] : [];
+  // A shipment's cars travel together, so the first one speaks for the rest.
+  const lead = items[0] ?? null;
+  const isBatch = Boolean(batch);
   const cars = useCars();
   const sellerOptions = useMemo(() => optionsFor("seller", cars), [cars]);
 
@@ -153,10 +167,10 @@ export function StatusUpdateDialog({
    * and staying put is a choice rather than a gap.
    */
   const choices = useMemo<NextStatus[]>(() => {
-    const current = (car?.status || "").trim();
+    const current = (lead?.status || "").trim();
     const known = STATUS_CHOICES.some((s) => s.toLowerCase() === current.toLowerCase());
     return current && !known ? [current as NextStatus, ...STATUS_CHOICES] : [...STATUS_CHOICES];
-  }, [car?.status]);
+  }, [lead?.status]);
 
   const [status, setStatus] = useState<NextStatus>("Available");
   const [seller, setSeller] = useState("");
@@ -173,6 +187,7 @@ export function StatusUpdateDialog({
   // Reseed per car. Whatever the ISO row already knows is carried in rather
   // than asked for again — an MRP noted while wishing for it is still the MRP.
   useEffect(() => {
+    const car = lead;
     if (!car) return;
     const today = new Date().toISOString().slice(0, 10);
     // Preselect where the car would normally go next, so the common case is one
@@ -194,16 +209,21 @@ export function StatusUpdateDialog({
     setTransitInfo(car.transitInfo || "");
     setError("");
     setSaving(false);
-  }, [car]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [car, batch?.shippingId]);
 
-  if (!car) return null;
+  if (!lead) return null;
+  const current = lead;
 
   const needsPurchase = NEEDS_PURCHASE.has(status);
   const needsTransit = NEEDS_TRANSIT.has(status);
   const arrived = ARRIVED.has(status);
-  const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
-  const wasIso = (car.status || "").trim().toLowerCase() === "iso";
-  const unchanged = status === car.status;
+  const title = batch
+    ? batch.shippingId || batch.seller
+    : current.name || `${current.make} ${current.model}`.trim() || "Unnamed car";
+  const wasIso = (current.status || "").trim().toLowerCase() === "iso";
+  const unchanged = status === current.status;
+  const statusName = status === "Available" ? "Delivered" : status;
 
   const save = () => {
     if (needsPurchase) {
@@ -211,7 +231,7 @@ export function StatusUpdateDialog({
         setError("Who did it come from? A seller is needed to record the purchase.");
         return;
       }
-      if (!spent.trim()) {
+      if (!isBatch && !spent.trim()) {
         setError("What did it cost? Enter 0 if it was free.");
         return;
       }
@@ -227,12 +247,49 @@ export function StatusUpdateDialog({
 
     setSaving(true);
     try {
-      const cost = num(spent);
       const preOrder = status === "Pre Order";
       // The arrival date only exists once the car is in hand; before that the
       // expected date carries the estimate on its own.
       const date = arrived ? expectedDate : "";
 
+      if (isBatch) {
+        // What the shipment shares is set on every car; what each car cost is
+        // its own, so prices are left alone and payment follows each one.
+        const nexts = items.map((c): Diecast => {
+          const cost = c.spent || 0;
+          const paid = preOrder ? Math.min(c.paid || 0, cost) : cost;
+          return {
+            ...c,
+            status,
+            seller: needsPurchase ? seller.trim() : c.seller,
+            paid: needsPurchase ? paid : c.paid,
+            balance: needsPurchase ? Math.max(cost - paid, 0) : c.balance,
+            payment: needsPurchase ? (cost - paid > 0 ? "Partial" : "Paid") : c.payment,
+            orderDate: needsPurchase ? orderDate : c.orderDate,
+            orderMonth: needsPurchase ? deriveMonth(orderDate) || c.orderMonth : c.orderMonth,
+            expectedDate: needsPurchase ? expectedDate : c.expectedDate,
+            date,
+            month: date ? deriveMonth(date) || c.month : "",
+            transitInfo: needsTransit ? transitInfo.trim() : "",
+            deliveryPartner: needsTransit ? partner.trim() || undefined : undefined,
+            trackingId: needsTransit ? tracking.trim() || undefined : undefined,
+          };
+        });
+        bulkUpdateCars(
+          nexts,
+          `marking ${batch?.shippingId || "the order"} ${statusName.toLowerCase()}`,
+        );
+        toast.success(
+          `Set ${nexts.length} car${nexts.length === 1 ? "" : "s"} to ${statusName.toLowerCase()}`,
+          { description: batch?.shippingId },
+        );
+        onDone?.(nexts[0]);
+        onClose();
+        return;
+      }
+
+      const car = current;
+      const cost = num(spent);
       const next: Diecast = {
         ...car,
         status,
@@ -279,7 +336,7 @@ export function StatusUpdateDialog({
 
   return (
     <Dialog
-      open={Boolean(car)}
+      open={Boolean(lead)}
       onOpenChange={(v) => {
         if (!v && !saving) onClose();
       }}
@@ -293,10 +350,21 @@ export function StatusUpdateDialog({
             Update status
           </DialogTitle>
           <DialogDescription className="flex min-w-0 flex-wrap items-center gap-x-1.5">
-            <span className="truncate font-medium text-foreground">{title}</span>
+            <span className={`truncate font-medium text-foreground ${batch ? "font-mono" : ""}`}>
+              {title}
+            </span>
+            {batch && (
+              <>
+                <span aria-hidden>·</span>
+                <span>
+                  {items.length} car{items.length === 1 ? "" : "s"} from {batch.seller}
+                </span>
+              </>
+            )}
             <span aria-hidden>·</span>
             <span>
-              Now <span className="font-medium text-foreground">{car.status || "no status"}</span>
+              Now{" "}
+              <span className="font-medium text-foreground">{current.status || "no status"}</span>
             </span>
           </DialogDescription>
         </DialogHeader>
@@ -318,7 +386,7 @@ export function StatusUpdateDialog({
               {choices.map((s) => {
                 const Icon = iconFor(s);
                 const selected = status === s;
-                const current = s.toLowerCase() === (car.status || "").trim().toLowerCase();
+                const isCurrent = s.toLowerCase() === (current.status || "").trim().toLowerCase();
                 return (
                   <button
                     key={s}
@@ -333,7 +401,7 @@ export function StatusUpdateDialog({
                   >
                     <Icon className="size-3.5 shrink-0" />
                     <span className="leading-tight">{s === "Available" ? "Delivered" : s}</span>
-                    {current && (
+                    {isCurrent && (
                       <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-muted-foreground">
                         Current
                       </span>
@@ -361,32 +429,34 @@ export function StatusUpdateDialog({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="iso-spent" className="text-xs">
-                    Cost *
-                  </Label>
-                  <Input
-                    id="iso-spent"
-                    inputMode="decimal"
-                    value={spent}
-                    onChange={(e) => setSpent(e.target.value)}
-                    placeholder="450"
-                  />
+              {!isBatch && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="iso-spent" className="text-xs">
+                      Cost *
+                    </Label>
+                    <Input
+                      id="iso-spent"
+                      inputMode="decimal"
+                      value={spent}
+                      onChange={(e) => setSpent(e.target.value)}
+                      placeholder="450"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="iso-mrp" className="text-xs">
+                      MRP
+                    </Label>
+                    <Input
+                      id="iso-mrp"
+                      inputMode="decimal"
+                      value={mrp}
+                      onChange={(e) => setMrp(e.target.value)}
+                      placeholder="199"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="iso-mrp" className="text-xs">
-                    MRP
-                  </Label>
-                  <Input
-                    id="iso-mrp"
-                    inputMode="decimal"
-                    value={mrp}
-                    onChange={(e) => setMrp(e.target.value)}
-                    placeholder="199"
-                  />
-                </div>
-              </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label htmlFor="iso-ordered" className="text-xs">
@@ -426,7 +496,7 @@ export function StatusUpdateDialog({
                 />
               </div>
 
-              {status === "Pre Order" && spent.trim() && (
+              {!isBatch && status === "Pre Order" && spent.trim() && (
                 <p className="text-xs text-muted-foreground">
                   Recorded as {inrFull(num(spent))} outstanding — settle it from the pre-orders tab
                   when you pay.
@@ -490,19 +560,38 @@ export function StatusUpdateDialog({
           )}
         </div>
 
-        <DialogFooter className="mt-2">
-          <Button variant="ghost" onClick={onClose} disabled={saving}>
+        {/* Cancel on the left, the action on the right, on a phone too — the
+            same footer as Update order. */}
+        <DialogFooter className="mt-2 flex flex-row items-center justify-between gap-2 border-t border-border pt-3 sm:justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            disabled={saving}
+            className="text-muted-foreground hover:text-foreground"
+          >
             Cancel
           </Button>
-          <Button onClick={save} disabled={saving} className="gap-1.5">
+          <Button
+            type="button"
+            size="sm"
+            onClick={save}
+            disabled={saving}
+            className="min-w-0 gap-1.5"
+          >
             {saving ? (
-              <Loader2 className="size-4 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <StatusIcon className="size-4" />
+              <StatusIcon className="size-3.5" />
             )}
-            {unchanged
-              ? `Save ${status === "Available" ? "Delivered" : status} details`
-              : `Set to ${status === "Available" ? "Delivered" : status}`}
+            <span className="truncate">
+              {isBatch
+                ? `Set ${items.length} car${items.length === 1 ? "" : "s"} to ${statusName}`
+                : unchanged
+                  ? `Save ${statusName} details`
+                  : `Set to ${statusName}`}
+            </span>
           </Button>
         </DialogFooter>
       </DialogContent>

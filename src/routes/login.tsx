@@ -259,9 +259,7 @@ function LoginPage() {
               screen this page arrives from — a signed-out visit renders the
               splash and then redirects here, so anything different would read
               as two applications handing off to each other. */}
-          <div className="grid size-16 place-items-center rounded-2xl bg-[#1b1b1b] shadow-lg shadow-black/25">
-            <img src="/tesoro_app_icon.svg" alt="" className="w-9" />
-          </div>
+          <img src="/tesoro_app_icon_dark.svg" alt="" className="size-16" />
           <h1 className="text-display mt-4 text-2xl font-semibold tracking-tight">Tesoro</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {view === "reset"

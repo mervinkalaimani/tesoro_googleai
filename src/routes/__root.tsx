@@ -18,6 +18,7 @@ import { CarDrawerProvider } from "@/components/car-details-drawer";
 import { AuthProvider } from "@/lib/auth-store";
 import { AuthGate } from "@/components/auth-gate";
 import { Toaster } from "@/components/ui/sonner";
+import { BootSplash } from "@/components/brand-mark";
 
 function NotFoundComponent() {
   return (
@@ -116,19 +117,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
       },
-      // Two marks, because a tab and a home screen are not the same surface.
-      // The browser icon is the bare diamond on nothing: a tab strip and a
-      // bookmark bar supply their own background, and a tile of our own colour
-      // sitting in one reads as a sticker. The app icon carries its own dark
-      // ground, because an installed icon is placed on a wallpaper nobody here
-      // chooses and has to hold together against any of them.
-      //
-      // SVG first for anything that will take one, then the PNG for the rest.
-      // apple-touch-icon has to be a PNG — Safari will not take an SVG, and
-      // without one it saves a screenshot of the page instead.
-      { rel: "icon", href: "/tesoro_browser_icon.svg", type: "image/svg+xml" },
-      { rel: "icon", href: "/tesoro_browser_icon.png", type: "image/png", sizes: "220x220" },
-      { rel: "apple-touch-icon", href: "/tesoro_app_icon.png", sizes: "250x250" },
+      // One icon per browser theme: the light one carries a white tile, the
+      // dark one is the bare diamond for a dark tab strip.
+      {
+        rel: "icon",
+        href: "/tesoro_app_icon_light.svg",
+        type: "image/svg+xml",
+        media: "(prefers-color-scheme: light)",
+      },
+      {
+        rel: "icon",
+        href: "/tesoro_app_icon_dark.svg",
+        type: "image/svg+xml",
+        media: "(prefers-color-scheme: dark)",
+      },
+      { rel: "apple-touch-icon", href: "/tesoro_app_icon_light.svg" },
       { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
@@ -188,6 +191,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body>
+        <BootSplash />
         {children}
         <Scripts />
       </body>
