@@ -131,7 +131,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         type: "image/svg+xml",
         media: "(prefers-color-scheme: dark)",
       },
-      { rel: "apple-touch-icon", href: "/tesoro_app_icon_light.svg" },
+      // iPhone home screen, light or dark to match the phone. Safari only takes
+      // a PNG (tesoro_app_icon_light.png is the light SVG rendered at the dark
+      // icon's size), and reads the icon once, when the app is added.
+      {
+        rel: "apple-touch-icon",
+        href: "/tesoro_app_icon_dark.png",
+        sizes: "398x398",
+        media: "(prefers-color-scheme: dark)",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/tesoro_app_icon_light.png",
+        sizes: "398x398",
+        media: "(prefers-color-scheme: light)",
+      },
       { rel: "manifest", href: "/site.webmanifest" },
     ],
   }),
