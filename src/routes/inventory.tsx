@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowUpDown, ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
@@ -18,7 +18,7 @@ import { sortCars, statusRank } from "@/lib/status-order";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { PageHeading, PageToolbar } from "@/components/page-header";
-import { FilterSelect } from "@/components/filter-select";
+import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { carSubLine } from "@/lib/car-subline";
 
@@ -87,18 +87,16 @@ const EMPTY_FILTERS: Record<FilterKey, string> = {
   seller: "all",
 };
 
-type SortKey =
-  "newest" | "oldest" | "sno" | "valueDesc" | "valueAsc" | "costDesc" | "model" | "brand";
+type SortKey = "added" | "sno" | "value" | "cost" | "model" | "brand";
 
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "newest", label: "New to old" },
-  { value: "oldest", label: "Old to new" },
-  { value: "sno", label: "Serial no" },
-  { value: "valueDesc", label: "Highest value" },
-  { value: "valueAsc", label: "Lowest value" },
-  { value: "costDesc", label: "Highest cost" },
-  { value: "model", label: "Model" },
-  { value: "brand", label: "Brand" },
+/** Each order with the direction it starts in; picking it again flips it. */
+const SORT_OPTIONS: { value: SortKey; label: string; dir: SortDir }[] = [
+  { value: "added", label: "Date added", dir: "desc" },
+  { value: "sno", label: "Serial no", dir: "asc" },
+  { value: "value", label: "Value", dir: "desc" },
+  { value: "cost", label: "Cost", dir: "desc" },
+  { value: "model", label: "Model", dir: "asc" },
+  { value: "brand", label: "Brand", dir: "asc" },
 ];
 
 const LOAD_BATCH = 50;
@@ -233,7 +231,8 @@ function InventoryPage() {
   useEffect(() => {
     if (search.status) setStatus(search.status);
   }, [search.status]);
-  const [sort, setSort] = useState<SortKey>("newest");
+  const [sort, setSort] = useState<SortKey>("added");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [view, setView] = useState<ViewMode>("table");
   const [chaseOnly, setChaseOnly] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
@@ -306,42 +305,37 @@ function InventoryPage() {
     const value = (r: Diecast) => r.mrp || r.spent || 0;
     const title = (r: Diecast) => (r.name || `${r.make} ${r.model}`).trim();
 
+    // Every comparison is written ascending; descending flips it.
+    const sign = sortDir === "asc" ? 1 : -1;
     switch (sort) {
-      case "newest":
-        return [...out].sort((a, b) => {
-          const diff = sno(b) - sno(a);
-          if (diff !== 0) return diff;
-          return (b.id || "").localeCompare(a.id || "");
-        });
-      case "oldest":
-        return [...out].sort((a, b) => {
-          const diff = sno(a) - sno(b);
-          if (diff !== 0) return diff;
-          return (a.id || "").localeCompare(b.id || "");
-        });
-      case "valueDesc":
-        return [...out].sort((a, b) => value(b) - value(a));
-      case "valueAsc":
-        return [...out].sort((a, b) => value(a) - value(b));
-      case "costDesc":
-        return [...out].sort((a, b) => (b.spent || 0) - (a.spent || 0));
+      case "added":
+        return [...out].sort(
+          (a, b) => (sno(a) - sno(b) || (a.id || "").localeCompare(b.id || "")) * sign,
+        );
+      case "value":
+        return [...out].sort((a, b) => (value(a) - value(b)) * sign);
+      case "cost":
+        return [...out].sort((a, b) => ((a.spent || 0) - (b.spent || 0)) * sign);
       case "model":
-        return [...out].sort((a, b) => title(a).localeCompare(title(b)));
+        return [...out].sort((a, b) => title(a).localeCompare(title(b)) * sign);
       case "brand":
         return [...out].sort(
           (a, b) =>
-            (a.brand || "").localeCompare(b.brand || "") || title(a).localeCompare(title(b)),
+            ((a.brand || "").localeCompare(b.brand || "") || title(a).localeCompare(title(b))) *
+            sign,
         );
-      default:
+      default: {
         // Serial no: status group first, then SNO — the app-wide default order.
-        return sortCars(out);
+        const sorted = sortCars(out);
+        return sign === 1 ? sorted : sorted.reverse();
+      }
     }
-  }, [searched, filters, status, sort, chaseOnly, favOnly]);
+  }, [searched, filters, status, sort, sortDir, chaseOnly, favOnly]);
 
   useEffect(() => {
     setVisibleCount(LOAD_BATCH);
     window.scrollTo({ top: 0 });
-  }, [query, filters, status, sort, chaseOnly, favOnly]);
+  }, [query, filters, status, sort, sortDir, chaseOnly, favOnly]);
 
   /**
    * Loads the next batch when the foot of the list comes into view.
@@ -432,12 +426,15 @@ function InventoryPage() {
         }
         right={
           <>
-            {sort !== "newest" && (
+            {(sort !== "added" || sortDir !== "desc") && (
               <Button
                 size="sm"
                 variant="ghost"
                 className="shrink-0"
-                onClick={() => setSort("newest")}
+                onClick={() => {
+                  setSort("added");
+                  setSortDir("desc");
+                }}
               >
                 Reset sort
               </Button>
@@ -462,14 +459,16 @@ function InventoryPage() {
             </Button>
             {/* Sorting lives here rather than in column headers so it
                     applies to the grid view too. */}
-            <FilterSelect
+            <SortSelect
               value={sort}
-              onChange={(v) => setSort(v as SortKey)}
-              icon={<ArrowUpDown className="size-3.5" />}
+              dir={sortDir}
+              onChange={(v, d) => {
+                setSort(v);
+                setSortDir(d);
+              }}
               label="Sort cars"
-              neutral="newest"
-              iconOnlyOnMobile
-              options={SORT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+              neutral="added"
+              options={SORT_OPTIONS}
             />
             {/* Exactly the rows on screen, filtered and sorted as they are. */}
             <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />

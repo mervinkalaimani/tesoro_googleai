@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Filter, Sparkles, Star } from "lucide-react";
+import { Filter, Sparkles, Star } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -15,7 +15,7 @@ import { useRegisterExportScope } from "@/lib/export-scope";
 import { SegmentControl } from "@/components/segment-control";
 import { CarMarkOverlay } from "@/components/car-marks";
 import { PageHeading, PageToolbar } from "@/components/page-header";
-import { FilterSelect } from "@/components/filter-select";
+import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { Button } from "@/components/ui/button";
 import { inr } from "@/lib/format";
@@ -123,7 +123,7 @@ function CollectionPage() {
   const [group, setGroup] = useState<GroupBy>("series");
   const [selected, setSelected] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("count");
-  const [dir, setDir] = useState<"desc" | "asc">("desc");
+  const [dir, setDir] = useState<SortDir>("desc");
   const [view, setView] = useState<ViewMode>("table");
   const { open } = useCarDrawer();
 
@@ -223,38 +223,22 @@ function CollectionPage() {
                 })),
               ]}
             />
-            <FilterSelect
+            {/* Picking the order already in use flips its direction, so the
+                separate arrow button this used to have is folded in. */}
+            <SortSelect
               value={sortField}
-              onChange={(v) => setSortField(v as SortField)}
-              icon={<ArrowUpDown className="size-3.5" />}
-              label="Sort"
-              neutral=""
-              iconOnlyOnMobile
+              dir={dir}
+              onChange={(v, d) => {
+                setSortField(v);
+                setDir(d);
+              }}
+              neutral="count"
               options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
                 value: f,
                 label: SORT_LABELS[f],
+                dir: f === "name" ? ("asc" as const) : ("desc" as const),
               }))}
             />
-            {/* A two-state control does not need a dropdown, and the arrow is
-                the value — there is nothing for a label to add. */}
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 px-2"
-              onClick={() => setDir((d) => (d === "desc" ? "asc" : "desc"))}
-              title={
-                dir === "desc"
-                  ? "Descending — click for ascending"
-                  : "Ascending — click for descending"
-              }
-              aria-label={dir === "desc" ? "Sorted descending" : "Sorted ascending"}
-            >
-              {dir === "desc" ? (
-                <ArrowDown className="size-3.5" />
-              ) : (
-                <ArrowUp className="size-3.5" />
-              )}
-            </Button>
             <ExportButton rows={visibleCars} name="collection" label="Collection" iconOnly />
             <ViewToggle value={view} onChange={setView} />
           </>

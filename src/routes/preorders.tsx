@@ -1,15 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  ArrowUpDown,
-  ChevronDown,
-  CircleCheck,
-  Clock,
-  IndianRupee,
-  Plus,
-  Store,
-  Truck,
-} from "lucide-react";
+import { ChevronDown, CircleCheck, Clock, IndianRupee, Plus, Store, Truck } from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
@@ -26,7 +17,7 @@ import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { PageHeading, PageToolbar } from "@/components/page-header";
-import { FilterSelect } from "@/components/filter-select";
+import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { SegmentControl } from "@/components/segment-control";
 
@@ -362,6 +353,7 @@ function PreOrdersPage() {
   const { open } = useCarDrawer();
   const [seller, setSeller] = useState("all");
   const [sort, setSort] = useState<SortMode>("balance");
+  const [dir, setDir] = useState<SortDir>("desc");
   const [grouping, setGrouping] = useState<Grouping>("car");
   const [payFor, setPayFor] = useState<Diecast | null>(null);
   const [statusFor, setStatusFor] = useState<Diecast | null>(null);
@@ -379,27 +371,30 @@ function PreOrdersPage() {
   const rows = useMemo(() => {
     const list = base.filter((r) => seller === "all" || r.seller === seller);
     const t = (v: string) => parseDMY(v)?.getTime() ?? 0;
+    // Each comparison is written ascending and flipped for descending.
+    const sign = dir === "asc" ? 1 : -1;
     return [...list].sort((a, b) => {
       switch (sort) {
         case "expectedDate": {
           const ta = t(a.expectedDate);
           const tb = t(b.expectedDate);
+          // Undated cars stay last whichever way the dates run.
           if (!ta && !tb) return 0;
           if (!ta) return 1;
           if (!tb) return -1;
-          return ta - tb;
+          return (ta - tb) * sign;
         }
         case "orderDate":
-          return t(b.orderDate) - t(a.orderDate);
+          return (t(a.orderDate) - t(b.orderDate)) * sign;
         case "seller":
-          return (a.seller || "").localeCompare(b.seller || "");
+          return (a.seller || "").localeCompare(b.seller || "") * sign;
         case "cost":
-          return (b.spent || 0) - (a.spent || 0);
+          return ((a.spent || 0) - (b.spent || 0)) * sign;
         default:
-          return balanceOf(b) - balanceOf(a);
+          return (balanceOf(a) - balanceOf(b)) * sign;
       }
     });
-  }, [base, seller, sort]);
+  }, [base, seller, sort, dir]);
 
   /**
    * The same rows, gathered into the orders they were bought in.
@@ -487,13 +482,16 @@ function PreOrdersPage() {
 
       <PageToolbar
         sticky
+        // One line on a phone: the grouping shrinks beside the controls.
+        oneLine
         left={
           <SegmentControl
             value={grouping}
             onChange={setGrouping}
+            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2 max-sm:[&>button]:py-0.5"
             options={[
               { value: "car", label: "By car" },
-              { value: "order", label: "Group by Order ID" },
+              { value: "order", label: "By order ID" },
             ]}
           />
         }
@@ -504,24 +502,26 @@ function PreOrdersPage() {
               onChange={setSeller}
               icon={<Store className="size-3.5" />}
               label="Seller"
+              iconOnlyOnMobile
               options={[
                 { value: "all", label: "All sellers" },
                 ...sellerOpts.map((s) => ({ value: s, label: s })),
               ]}
             />
-            <FilterSelect
+            <SortSelect
               value={sort}
-              onChange={(v) => setSort(v as SortMode)}
-              icon={<ArrowUpDown className="size-3.5" />}
-              label="Sort"
+              dir={dir}
+              onChange={(v, d) => {
+                setSort(v);
+                setDir(d);
+              }}
               neutral="balance"
-              iconOnlyOnMobile
               options={[
-                { value: "balance", label: "Balance" },
-                { value: "expectedDate", label: "Expected date" },
-                { value: "orderDate", label: "Order date" },
-                { value: "seller", label: "Seller" },
-                { value: "cost", label: "Cost" },
+                { value: "balance", label: "Balance", dir: "desc" },
+                { value: "expectedDate", label: "Expected date", dir: "asc" },
+                { value: "orderDate", label: "Order date", dir: "desc" },
+                { value: "seller", label: "Seller", dir: "asc" },
+                { value: "cost", label: "Cost", dir: "desc" },
               ]}
             />
             {/* Every pre-order on the page, filtered as it stands. */}

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import {
@@ -8,6 +9,104 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+export type SortDir = "asc" | "desc";
+
+/**
+ * The sort control. Choosing a different order uses that order's natural
+ * direction (newest first, A to Z); choosing the one already in use flips it.
+ * The arrow on the trigger and beside the current option says which way.
+ */
+export function SortSelect<T extends string>({
+  value,
+  dir,
+  onChange,
+  options,
+  label = "Sort",
+  neutral,
+  iconOnlyOnMobile = true,
+  className = "",
+}: {
+  value: T;
+  dir: SortDir;
+  onChange: (value: T, dir: SortDir) => void;
+  /** `dir` is the direction the option starts in when picked. */
+  options: { value: T; label: string; dir: SortDir }[];
+  label?: string;
+  /** The page's default order; anything else reads as a sort being applied. */
+  neutral: T;
+  iconOnlyOnMobile?: boolean;
+  className?: string;
+}) {
+  const current = options.find((o) => o.value === value);
+  const neutralDir = options.find((o) => o.value === neutral)?.dir ?? "asc";
+  const isSet = value !== neutral || dir !== neutralDir;
+  const Arrow = dir === "asc" ? ArrowUp : ArrowDown;
+  const dirName = dir === "asc" ? "ascending" : "descending";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        aria-label={`${label}: ${current?.label ?? ""}, ${dirName}`}
+        title={`${label}: ${current?.label ?? ""} (${dirName})`}
+        className={cn(
+          "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-transparent text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          iconOnlyOnMobile ? "w-8 justify-center px-0 sm:w-auto sm:px-2" : "px-2",
+          isSet ? "max-w-[11rem] border-primary/40 text-foreground" : "text-muted-foreground",
+          className,
+        )}
+      >
+        {isSet ? (
+          <Arrow className="size-3.5 shrink-0" />
+        ) : (
+          <ArrowUpDown className="size-3.5 shrink-0" />
+        )}
+        {isSet && current && (
+          <span className={cn("min-w-0 truncate text-xs", iconOnlyOnMobile && "max-sm:hidden")}>
+            {current.label}
+          </span>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-44">
+        {options.map((o) => {
+          const active = o.value === value;
+          return (
+            <DropdownMenuItem
+              key={o.value}
+              onSelect={(e) => {
+                if (active) {
+                  // Stays open, so the flip is seen happening.
+                  e.preventDefault();
+                  onChange(o.value, dir === "asc" ? "desc" : "asc");
+                } else {
+                  onChange(o.value, o.dir);
+                }
+              }}
+              className="cursor-pointer justify-between gap-3"
+            >
+              <span className="flex items-center gap-2">
+                <Check className={cn("size-3.5", active ? "opacity-100" : "opacity-0")} />
+                {o.label}
+              </span>
+              {active && (
+                <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <Arrow className="size-3" />
+                  {dir === "asc" ? "Asc" : "Desc"}
+                </span>
+              )}
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 /**
  * A filter or sort control that leads with its icon rather than its name.
@@ -70,7 +169,9 @@ export function FilterSelect({
         <span
           className={cn(
             isSet ? "min-w-0 truncate text-xs" : "sr-only",
-            iconOnlyOnMobile && isSet && "hidden sm:inline",
+            // sr-only rather than hidden: the trigger's own [&>span] rules set a
+            // display that beat `hidden`, and a sliver of the label showed.
+            iconOnlyOnMobile && isSet && "max-sm:sr-only",
           )}
         >
           <SelectValue />

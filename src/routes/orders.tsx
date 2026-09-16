@@ -1,15 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  Truck,
-  Clock,
-  IndianRupee,
-  Plus,
-  Pencil,
-  Store,
-  ArrowUpDown,
-  ChevronDown,
-} from "lucide-react";
+import { Truck, Clock, IndianRupee, Plus, Pencil, Store, ChevronDown } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -25,7 +16,7 @@ import { KpiBand, KpiTile } from "@/components/kpi";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { PageHeading, PageToolbar } from "@/components/page-header";
-import { FilterSelect } from "@/components/filter-select";
+import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 
 export const Route = createFileRoute("/orders")({
@@ -332,6 +323,7 @@ function OrdersPage() {
   const cars = useCars();
   const drawer = useCarDrawer();
   const [mode, setMode] = useState<SortMode>("expected");
+  const [dir, setDir] = useState<SortDir>("asc");
   const [tab, setTab] = useState<Tab>("all");
   const [seller, setSeller] = useState("all");
   const [batchOpen, setBatchOpen] = useState(false);
@@ -428,29 +420,32 @@ function OrdersPage() {
 
     const rank = (s: Shipment) => (s.delivered ? 90 : (STATUS_RANK[s.status] ?? 89));
     const t = (v: string) => parseDMY(v)?.getTime() ?? 0;
+    // Each comparison is written ascending; descending flips only that one,
+    // so ties still fall back the same way.
+    const sign = dir === "asc" ? 1 : -1;
     return out.sort((a, b) => {
       if (mode === "expected") {
-        // Soonest arrival first. Delivered orders, and ones with no date to go
-        // by, fall to the bottom.
+        // Delivered orders, and ones with no date to go by, stay at the bottom
+        // whichever way the dates run.
         const group = (s: Shipment) => (s.delivered ? 2 : parseDMY(s.eta) ? 0 : 1);
         const g = group(a) - group(b);
         if (g !== 0) return g;
         if (group(a) === 0) {
-          const d = t(a.eta) - t(b.eta);
+          const d = (t(a.eta) - t(b.eta)) * sign;
           if (d !== 0) return d;
         }
       } else if (mode === "seller") {
-        const s = a.seller.localeCompare(b.seller);
+        const s = a.seller.localeCompare(b.seller) * sign;
         if (s !== 0) return s;
       } else if (mode === "orderDate") {
-        const d = t(b.orderDate) - t(a.orderDate);
+        const d = (t(a.orderDate) - t(b.orderDate)) * sign;
         if (d !== 0) return d;
       }
-      const r = rank(a) - rank(b);
+      const r = (rank(a) - rank(b)) * (mode === "status" ? sign : 1);
       if (r !== 0) return r;
       return t(b.orderDate) - t(a.orderDate);
     });
-  }, [filtered, mode]);
+  }, [filtered, mode, dir]);
 
   const totalCars = shipments.reduce((s, g) => s + g.items.length, 0);
 
@@ -496,7 +491,16 @@ function OrdersPage() {
 
       <PageToolbar
         sticky
-        left={<SegmentControl value={tab} onChange={setTab} options={visibleTabs} />}
+        // One line on a phone: the tabs shrink and scroll beside the controls.
+        oneLine
+        left={
+          <SegmentControl
+            value={tab}
+            onChange={setTab}
+            options={visibleTabs}
+            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2 max-sm:[&>button]:py-0.5"
+          />
+        }
         right={
           <>
             <FilterSelect
@@ -504,23 +508,25 @@ function OrdersPage() {
               onChange={setSeller}
               icon={<Store className="size-3.5" />}
               label="Seller"
+              iconOnlyOnMobile
               options={[
                 { value: "all", label: "All sellers" },
                 ...sellerOpts.map((s) => ({ value: s, label: s })),
               ]}
             />
-            <FilterSelect
+            <SortSelect
               value={mode}
-              onChange={(v) => setMode(v as SortMode)}
-              icon={<ArrowUpDown className="size-3.5" />}
-              label="Sort"
+              dir={dir}
+              onChange={(v, d) => {
+                setMode(v);
+                setDir(d);
+              }}
               neutral="expected"
-              iconOnlyOnMobile
               options={[
-                { value: "expected", label: "Expected" },
-                { value: "status", label: "Status" },
-                { value: "seller", label: "Seller" },
-                { value: "orderDate", label: "Order date" },
+                { value: "expected", label: "Expected", dir: "asc" },
+                { value: "status", label: "Status", dir: "asc" },
+                { value: "seller", label: "Seller", dir: "asc" },
+                { value: "orderDate", label: "Order date", dir: "desc" },
               ]}
             />
             <Button
