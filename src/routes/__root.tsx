@@ -167,10 +167,10 @@ try {
   document.documentElement.classList.toggle('dark', t === 'dark');
   var a = JSON.parse(localStorage.getItem('dg.accentColor') || '"crimson"');
   if (['crimson','blue','emerald','violet','amber'].indexOf(a) !== -1) document.documentElement.dataset.accent = a;
-  var f = JSON.parse(localStorage.getItem('dg.fontSize') || '"-2"');
+  var f = JSON.parse(localStorage.getItem('dg.fontSize') || '"0"');
   if (['-2','-1','0','+1','+2'].indexOf(f) !== -1) document.documentElement.dataset.fontSize = f;
-  else document.documentElement.dataset.fontSize = '-2';
-} catch (e) { document.documentElement.classList.add('dark'); document.documentElement.dataset.fontSize = '-2'; }
+  else document.documentElement.dataset.fontSize = '0';
+} catch (e) { document.documentElement.classList.add('dark'); document.documentElement.dataset.fontSize = '0'; }
 
 window.addEventListener('vite:preloadError', function () {
   window.location.reload();
@@ -197,7 +197,7 @@ function RootShell({ children }: { children: ReactNode }) {
       lang="en"
       className="dark"
       data-accent="crimson"
-      data-font-size="-2"
+      data-font-size="0"
       suppressHydrationWarning
     >
       <head>

@@ -33,6 +33,8 @@ import { FAVOURITE_COLOUR, ChaseMark, FavouriteMark } from "@/components/car-mar
 import { StarRating } from "@/components/star-rating";
 import { RARITY_FLAME, RARITY_LABEL, nextRarity, rarityOf, withRarity } from "@/lib/rarity";
 import { Button } from "@/components/ui/button";
+import type { CatalogCar } from "@/lib/catalog";
+import { resolveCatalogUserId } from "@/lib/catalog";
 import { StatusPill } from "@/components/status-pill";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
@@ -1477,6 +1479,7 @@ function HeroCarImage({ car }: { car: Diecast }) {
  */
 export function CatalogCarDetails({
   car,
+  catalogCar,
   preOrder,
   expectedDate,
   owned,
@@ -1485,6 +1488,7 @@ export function CatalogCarDetails({
 }: {
   /** The entry shaped as a car; null when closed. */
   car: Diecast | null;
+  catalogCar?: CatalogCar | null;
   preOrder: boolean;
   expectedDate?: string | null;
   owned: boolean;
@@ -1501,6 +1505,7 @@ export function CatalogCarDetails({
         {car && (
           <CatalogDetailsContent
             car={car}
+            catalogCar={catalogCar}
             preOrder={preOrder}
             expectedDate={expectedDate}
             owned={owned}
@@ -1515,6 +1520,7 @@ export function CatalogCarDetails({
 
 function CatalogDetailsContent({
   car,
+  catalogCar,
   preOrder,
   expectedDate,
   owned,
@@ -1522,6 +1528,7 @@ function CatalogDetailsContent({
   onAdd,
 }: {
   car: Diecast;
+  catalogCar?: CatalogCar | null;
   preOrder: boolean;
   expectedDate?: string | null;
   owned: boolean;
@@ -1536,7 +1543,13 @@ function CatalogDetailsContent({
     </Button>
   );
   const body = (
-    <CatalogDetailsBody car={car} preOrder={preOrder} expectedDate={expectedDate} owned={owned} />
+    <CatalogDetailsBody
+      car={car}
+      catalogCar={catalogCar}
+      preOrder={preOrder}
+      expectedDate={expectedDate}
+      owned={owned}
+    />
   );
 
   return (
@@ -1623,16 +1636,23 @@ function CatalogDetailsContent({
 
 function CatalogDetailsBody({
   car,
+  catalogCar,
   preOrder,
   expectedDate,
   owned,
 }: {
   car: Diecast;
+  catalogCar?: CatalogCar | null;
   preOrder: boolean;
   expectedDate?: string | null;
   owned: boolean;
 }) {
   const rarity = rarityOf(car);
+  const addedBy = resolveCatalogUserId(catalogCar?.created_by);
+  const addedOn = formatDayMonthYear(catalogCar?.created_at) || "—";
+  const lastUpdated =
+    formatDayMonthYear(catalogCar?.updated_at) || formatDayMonthYear(catalogCar?.created_at) || "—";
+
   return (
     <div className="space-y-4">
       <div>
@@ -1716,6 +1736,19 @@ function CatalogDetailsBody({
           />
         )}
       </SpecGrid>
+
+      <hr className="border-border" />
+
+      <div>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Catalogue Provenance
+        </h3>
+        <SpecGrid>
+          <Spec label="Added by" value={addedBy} />
+          <Spec label="Added on" value={addedOn} />
+          <Spec label="Last updated" value={lastUpdated} />
+        </SpecGrid>
+      </div>
     </div>
   );
 }

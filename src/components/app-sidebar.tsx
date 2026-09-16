@@ -95,19 +95,24 @@ export function AppSidebar() {
             a heading over the only list on screen names nothing. */}
         <SidebarGroup>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className="gap-1.5">
               {NAV.map((item) => {
                 const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
                 return (
                   <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={active}
+                      tooltip={item.title}
+                      className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                    >
                       <Link
                         to={item.url}
                         onClick={() => {
                           if (isMobile) setOpenMobile(false);
                         }}
                       >
-                        <item.icon className="size-4" />
+                        <item.icon className="size-4.5" />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>

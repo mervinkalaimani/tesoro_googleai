@@ -262,7 +262,7 @@ function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [users, query, segment]);
 
-  const pendingCount = useMemo(() => users.filter(isPending).length, [users]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pendingCount = useMemo(() => users.filter(isPending).length, [users]);
   const adminCount = useMemo(() => users.filter((u) => u.is_admin || u.is_owner).length, [users]);
   const visibleSegments = SEGMENTS.filter(
     (s) => s.value === "all" || s.value === segment || users.some((u) => inSegment(u, s.value)),
@@ -288,22 +288,21 @@ function AdminPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* Phones reach this page from Settings and have no sidebar to leave by. */}
-      <Link
-        to="/settings"
-        className="-mb-2 inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50 md:hidden"
-      >
-        <ChevronLeft className="-ml-1 size-5" />
-        Settings
-      </Link>
+      {/* Centered header like other screens in settings */}
+      <div className="flex items-center justify-between border-b border-border/60 pb-3">
+        <Link
+          to="/settings"
+          className="inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50"
+        >
+          <ChevronLeft className="-ml-1 size-5" />
+          <span>Settings</span>
+        </Link>
 
-      {/* Heading, tiles, controls, body — the order every page follows. */}
-      <PageHeading
-        title="Users"
-        subtitle={`${users.length} ${users.length === 1 ? "account" : "accounts"}${
-          query.trim() ? ` · ${filtered.length} matching "${query.trim()}"` : ""
-        }`}
-      />
+        <h1 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">Users</h1>
+
+        {/* Placeholder to keep title optically centered */}
+        <div className="w-16" aria-hidden="true" />
+      </div>
 
       <KpiBand>
         <KpiTile

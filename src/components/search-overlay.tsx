@@ -139,7 +139,12 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
           <input
             ref={ref}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (e.target.value.trim().length > 0) {
+                setDrawerOpen(true);
+              }
+            }}
             tabIndex={open ? 0 : -1}
             enterKeyHint="search"
             autoComplete="off"
@@ -206,7 +211,7 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
 }
 
 /** Suggestions, grouped by what they are — pulled down from the top on request. */
-function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { query, setQuery } = useApp();
   const cars = useCars();
   const { open: openCar } = useCarDrawer();
@@ -220,6 +225,8 @@ function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   // A price is noise in a list of names, unless the search is about price.
   const showCost = useMemo(() => parseQuery(query).some((g) => g.field === "spent"), [query]);
 
+  const inset = useKeyboardInset(open);
+
   return (
     <>
       <button
@@ -227,16 +234,19 @@ function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: () => vo
         aria-label="Close suggestions"
         tabIndex={-1}
         onClick={onClose}
-        className={`pointer-events-auto fixed inset-0 z-50 cursor-default bg-black/30 transition-opacity duration-300 ${
+        className={`pointer-events-auto fixed inset-0 z-50 cursor-default bg-black/25 transition-opacity duration-200 ${
           open ? "opacity-100" : "pointer-events-none opacity-0"
         }`}
       />
       <div
-        className={`fixed inset-x-0 top-0 z-50 transition-transform duration-500 ease-[cubic-bezier(0.32,1.25,0.5,1)] motion-reduce:transition-none ${
-          open ? "pointer-events-auto translate-y-0" : "pointer-events-none -translate-y-[110%]"
+        style={{ bottom: `${(inset || 0) + 72}px` }}
+        className={`fixed inset-x-2 sm:inset-x-6 z-50 transition-all duration-300 ease-out ${
+          open
+            ? "pointer-events-auto opacity-100 translate-y-0"
+            : "pointer-events-none opacity-0 translate-y-3"
         }`}
       >
-        <div className="mx-auto max-h-[calc(100dvh-7rem)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-b-[1.75rem] border-x border-b border-border/80 bg-background/95 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
+        <div className="mx-auto max-h-[min(480px,58dvh)] w-full max-w-2xl overflow-y-auto overscroll-contain rounded-2xl border border-border/80 bg-background/98 p-3.5 shadow-[0_16px_40px_-12px_rgba(0,0,0,0.5)] backdrop-blur-2xl">
           <div className="space-y-4">
             {matches.length > 0 && (
               <section>

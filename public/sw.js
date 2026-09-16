@@ -58,7 +58,8 @@ async function decide(msg, decision) {
 
     // Tell open tabs so the bell and the admin page drop the request.
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    for (const client of windows) client.postMessage({ type: "tesoro-approval-decided", sno: msg.sno });
+    for (const client of windows)
+      client.postMessage({ type: "tesoro-approval-decided", sno: msg.sno });
 
     await self.registration.showNotification(
       decision === "approve" ? "Access granted" : "Request rejected",

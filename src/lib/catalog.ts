@@ -36,6 +36,37 @@ export type ReleaseStatus = "Released" | "Pre Order";
 
 const CATALOG_STORAGE_KEY = "tesoro_car_catalog_cache";
 
+const userHandleMap: Record<string, string> = {};
+
+/** Preloads user_id handles for known auth_uids so creator IDs are human readable. */
+export async function loadUserHandles(): Promise<Record<string, string>> {
+  try {
+    const { data } = await supabase.from("tesoro_users").select("auth_uid, user_id");
+    if (data) {
+      for (const row of data) {
+        if (row.auth_uid && row.user_id) {
+          userHandleMap[row.auth_uid] = row.user_id;
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore fetch failures
+  }
+  return userHandleMap;
+}
+
+/** Resolves an auth_uid or creator string to a clean user_id handle. */
+export function resolveCatalogUserId(raw: string | null | undefined): string {
+  if (!raw || !raw.trim()) return "system";
+  const clean = raw.trim();
+  if (userHandleMap[clean]) return userHandleMap[clean];
+  // If it is a UUID:
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)) {
+    return userHandleMap[clean] || clean.slice(0, 8);
+  }
+  return clean;
+}
+
 /** Extracts unique catalog castings from any list of Diecast cars. */
 export function extractCatalogFromCars(cars: Diecast[]): CatalogCar[] {
   const map = new Map<string, CatalogCar>();
@@ -137,6 +168,7 @@ export function saveLocalCatalog(catalog: CatalogCar[]): void {
  */
 export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
   try {
+    void loadUserHandles();
     // Paged: a single select stops at the API's 1,000-row cap, and the
     // catalogue is past that.
     const PAGE = 1000;
@@ -228,6 +260,8 @@ export async function saveCatalogCarToSupabase(
     // 2. Persist to Supabase tesoro_car_catalog
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData?.session?.user?.id ?? null;
+    const authorHandle = userId ? userHandleMap[userId] || userId : null;
+    const effectiveCreatedBy = catalogCar.created_by || authorHandle || "system";
 
     const payload = {
       car_id: catalogCar.car_id,
@@ -246,8 +280,9 @@ export async function saveCatalogCarToSupabase(
       type: catalogCar.type || "",
       size: catalogCar.size || "1:64",
       image_url: catalogCar.image_url || null,
-      created_by: userId,
+      created_by: effectiveCreatedBy,
       updated_at: new Date().toISOString(),
+      ...(catalogCar.created_at ? { created_at: catalogCar.created_at } : {}),
       // Only when stated: saving a casting from Add a car must not reset a
       // pre-order back to the column's Released default.
       ...(catalogCar.release_status ? { release_status: catalogCar.release_status } : {}),

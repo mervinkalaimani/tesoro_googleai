@@ -270,36 +270,157 @@ async function fromTrendsHobby(q: Query): Promise<CarImageCandidate[]> {
   }
 }
 
-/** Web search image suggestions (DuckDuckGo / Web images) */
-async function fromWebSearch(q: Query, rawQuery?: string): Promise<CarImageCandidate[]> {
+/** Multi-provider web image search suggestions (Bing, DuckDuckGo, Wikimedia, Google, Auto) */
+async function fromWebSearch(
+  q: Query,
+  rawQuery?: string,
+  engine = "auto",
+): Promise<CarImageCandidate[]> {
   try {
-    const fetchDdg = async (qs: string) => {
-      const r1 = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(qs)}`, {
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-          Accept: "text/html,application/xhtml+xml",
-        },
-        signal: AbortSignal.timeout(6000),
-      });
-      const t1 = await r1.text();
-      const vqdMatch = t1.match(/vqd=([0-9-]+)/) || t1.match(/vqd=["']([0-9-]+)["']/);
-      if (!vqdMatch) return [];
+    const fetchBing = async (qs: string) => {
+      try {
+        const res = await fetch(
+          `https://www.bing.com/images/async?q=${encodeURIComponent(qs)}&first=0&count=30&mmasync=1`,
+          {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+              Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+            signal: AbortSignal.timeout(6000),
+          },
+        );
+        if (!res.ok) return [];
+        const html = await res.text();
+        const results: Array<{ title?: string; image?: string; thumbnail?: string }> = [];
+        const matches = [...html.matchAll(/m="([^"]+)"/g)];
+        for (const match of matches) {
+          try {
+            const decoded = match[1]
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/&amp;/g, "&");
+            const parsed = JSON.parse(decoded);
+            if (parsed.murl) {
+              results.push({
+                image: parsed.murl,
+                thumbnail: parsed.turl || parsed.murl,
+                title: parsed.t || parsed.desc || "",
+              });
+            }
+          } catch {
+            // ignore malformed items
+          }
+        }
+        return results;
+      } catch {
+        return [];
+      }
+    };
 
-      const r2 = await fetch(
-        `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(qs)}&vqd=${vqdMatch[1]}`,
-        {
+    const fetchDdg = async (qs: string) => {
+      try {
+        const r1 = await fetch(`https://duckduckgo.com/?q=${encodeURIComponent(qs)}`, {
           headers: {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            Accept: "application/json",
+            "User-Agent":
+              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+            Accept: "text/html,application/xhtml+xml",
           },
           signal: AbortSignal.timeout(6000),
-        },
-      );
-      if (!r2.ok) return [];
-      const data = (await r2.json()) as {
-        results?: Array<{ title?: string; image?: string; thumbnail?: string }>;
-      };
-      return data.results ?? [];
+        });
+        const t1 = await r1.text();
+        const vqdMatch = t1.match(/vqd=([0-9-]+)/) || t1.match(/vqd=["']([0-9-]+)["']/);
+        if (!vqdMatch) return [];
+
+        const r2 = await fetch(
+          `https://duckduckgo.com/i.js?l=us-en&o=json&q=${encodeURIComponent(qs)}&vqd=${vqdMatch[1]}`,
+          {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+              Accept: "application/json",
+            },
+            signal: AbortSignal.timeout(6000),
+          },
+        );
+        if (!r2.ok) return [];
+        const data = (await r2.json()) as {
+          results?: Array<{ title?: string; image?: string; thumbnail?: string }>;
+        };
+        return data.results ?? [];
+      } catch {
+        return [];
+      }
+    };
+
+    const fetchWikimedia = async (qs: string) => {
+      try {
+        const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
+          qs + " diecast OR car filetype:bitmap",
+        )}&gsrlimit=25&prop=imageinfo&iiprop=url|thumburl|mime&iiurlwidth=400&format=json`;
+        const res = await fetch(url, {
+          headers: { "user-agent": USER_AGENT, accept: "application/json" },
+          signal: AbortSignal.timeout(6000),
+        });
+        if (!res.ok) return [];
+        const data = (await res.json()) as {
+          query?: {
+            pages?: Record<
+              string,
+              {
+                title?: string;
+                imageinfo?: Array<{ url?: string; thumburl?: string }>;
+              }
+            >;
+          };
+        };
+        if (!data.query?.pages) return [];
+        return Object.values(data.query.pages)
+          .map((p) => {
+            const info = p.imageinfo?.[0];
+            if (!info?.url) return null;
+            return {
+              title: (p.title || "").replace(/^File:/i, ""),
+              image: info.url,
+              thumbnail: info.thumburl || info.url,
+            };
+          })
+          .filter(Boolean) as Array<{ title?: string; image?: string; thumbnail?: string }>;
+      } catch {
+        return [];
+      }
+    };
+
+    const fetchGoogle = async (qs: string) => {
+      try {
+        const res = await fetch(
+          `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(qs)}&hl=en`,
+          {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+              Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+            signal: AbortSignal.timeout(6000),
+          },
+        );
+        if (!res.ok) return [];
+        const html = await res.text();
+        const results: Array<{ title?: string; image?: string; thumbnail?: string }> = [];
+        // Extract high-res image and thumbnails from Google Images markup
+        const imgRegex = /\["(https:\/\/[^"]+\.(?:jpe?g|png|webp))",\s*(\d+),\s*(\d+)\]/g;
+        const matches = [...html.matchAll(imgRegex)];
+        for (const m of matches.slice(0, 25)) {
+          results.push({
+            image: m[1],
+            thumbnail: m[1],
+            title: qs,
+          });
+        }
+        return results;
+      } catch {
+        return [];
+      }
     };
 
     // Primary detailed query using all requested fields
@@ -328,11 +449,49 @@ async function fromWebSearch(q: Query, rawQuery?: string): Promise<CarImageCandi
     const queryStr = (rawQuery || "").trim() || primaryQuery || broaderQuery;
     if (!queryStr.trim()) return [];
 
-    let rawResults = await fetchDdg(queryStr);
-    if (!rawQuery && rawResults.length < 4 && broaderQuery && broaderQuery !== queryStr) {
-      const more = await fetchDdg(broaderQuery);
-      rawResults = [...rawResults, ...more];
+    let rawResults: Array<{ title?: string; image?: string; thumbnail?: string }> = [];
+    const eng = (engine || "auto").toLowerCase();
+
+    if (eng === "bing") {
+      rawResults = await fetchBing(queryStr);
+      if (!rawQuery && rawResults.length < 4 && broaderQuery && broaderQuery !== queryStr) {
+        rawResults = [...rawResults, ...(await fetchBing(broaderQuery))];
+      }
+    } else if (eng === "duckduckgo") {
+      rawResults = await fetchDdg(queryStr);
+      if (!rawQuery && rawResults.length < 4 && broaderQuery && broaderQuery !== queryStr) {
+        rawResults = [...rawResults, ...(await fetchDdg(broaderQuery))];
+      }
+    } else if (eng === "wikimedia") {
+      rawResults = await fetchWikimedia(queryStr);
+    } else if (eng === "google") {
+      rawResults = await fetchGoogle(queryStr);
+      if (!rawQuery && rawResults.length < 4 && broaderQuery && broaderQuery !== queryStr) {
+        rawResults = [...rawResults, ...(await fetchGoogle(broaderQuery))];
+      }
+    } else {
+      // Auto (Smart Multi-Engine fallback)
+      rawResults = await fetchBing(queryStr);
+      if (rawResults.length < 3) {
+        const ddg = await fetchDdg(queryStr);
+        rawResults = [...rawResults, ...ddg];
+      }
+      if (rawResults.length < 3) {
+        const wiki = await fetchWikimedia(queryStr);
+        rawResults = [...rawResults, ...wiki];
+      }
     }
+
+    const providerLabel =
+      eng === "bing"
+        ? "Bing"
+        : eng === "duckduckgo"
+          ? "DuckDuckGo"
+          : eng === "wikimedia"
+            ? "Wikimedia Commons"
+            : eng === "google"
+              ? "Google Images"
+              : "Web Search";
 
     return rawResults.slice(0, rawQuery ? 30 : 16).flatMap((r) => {
       if (!r.image) return [];
@@ -342,7 +501,7 @@ async function fromWebSearch(q: Query, rawQuery?: string): Promise<CarImageCandi
           url: r.image,
           thumb: r.thumbnail || r.image,
           title: r.title || `${q.brand} ${q.make} ${q.model}`.trim(),
-          source: q.brand ? `${q.brand} Web Search` : "Diecast Web Search",
+          source: `${q.brand || "Diecast"} (${providerLabel})`,
           kind: scored.kind,
         },
       ];
@@ -373,8 +532,9 @@ async function handler({ request }: { request: Request }) {
   // "text" is a search of its own: whatever was typed into the web search box,
   // sent to the image search as written and answered with those results alone.
   const text = (params.get("text") || "").trim().slice(0, 160);
+  const engine = (params.get("engine") || "auto").trim().slice(0, 40);
   if (text) {
-    const found = await fromWebSearch(q, text).catch(() => []);
+    const found = await fromWebSearch(q, text, engine).catch(() => []);
     return json({ candidates: found });
   }
 
@@ -414,7 +574,7 @@ async function handler({ request }: { request: Request }) {
 
   // 4. ALWAYS run Web Search for ALL cars (not just Hot Wheels and Matchbox)
   try {
-    candidates.push(...(await fromWebSearch(q)));
+    candidates.push(...(await fromWebSearch(q, undefined, engine)));
   } catch {
     /* ignore */
   }

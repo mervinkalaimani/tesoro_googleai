@@ -97,12 +97,12 @@ export function TopBar() {
           size="icon"
           onClick={() => setAddOpen(true)}
           aria-label="Add car"
-          className="relative size-8 rounded-full"
+          className="relative size-9 rounded-full"
           title={
             pendingDraft ? "You have an unfinished car — pick up where you left off" : "Add car"
           }
         >
-          <Plus className="size-4" />
+          <Plus className="size-4.5" />
           {pendingDraft && (
             <span
               aria-label="Unfinished car saved"
@@ -115,11 +115,11 @@ export function TopBar() {
           asChild
           variant="outline"
           size="icon"
-          className="size-8 rounded-full"
+          className="size-9 rounded-full"
           title="Catalog"
         >
           <Link to="/catalog" aria-label="Catalog">
-            <Store className="size-4" />
+            <Store className="size-4.5" />
           </Link>
         </Button>
         <AccountButton />

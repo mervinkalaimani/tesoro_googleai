@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   RotateCcw,
   Check,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,6 +23,12 @@ import {
   type AccentColor,
   type FontSizePreference,
 } from "@/lib/store";
+import {
+  getSearchEngine,
+  setSearchEngine,
+  SEARCH_ENGINES,
+  type SearchEngine,
+} from "@/lib/car-image-search";
 import { SegmentControl } from "@/components/segment-control";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -31,16 +38,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AccountCard } from "@/components/account-card";
 import { AdminPushCard } from "@/components/admin-push-card";
@@ -78,9 +75,10 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
 });
 
-type SettingsView = "root" | "account" | "display" | "notifications" | "diagnostics" | "database";
+type SettingsView =
+  "root" | "account" | "display" | "notifications" | "diagnostics" | "database" | "search_engine";
 
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.7.0";
+const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.8.0 (alpha)";
 
 function parseTab(tab?: string): SettingsView {
   if (!tab) return "root";
@@ -90,6 +88,7 @@ function parseTab(tab?: string): SettingsView {
   if (t === "notifications" || t === "alerts") return "notifications";
   if (t === "diagnostics" || t === "diag") return "diagnostics";
   if (t === "database" || t === "supabase" || t === "db") return "database";
+  if (t === "search_engine" || t === "search-engine" || t === "search") return "search_engine";
   return "root";
 }
 
@@ -104,7 +103,7 @@ export function SettingsPage() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [view, setView] = useState<SettingsView>(() => parseTab(search.tab));
-  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
+  const [selectedEngine, setSelectedEngine] = useState<SearchEngine>(() => getSearchEngine());
 
   // Synchronize with URL search param
   useEffect(() => {
@@ -261,9 +260,6 @@ export function SettingsPage() {
                 {profile?.email_id ||
                   (isGuest ? "Sample data · Stored locally" : "Account & Security")}
               </p>
-              <p className="mt-0.5 text-[11px] text-muted-foreground/80">
-                Tap to view personal details, profile picture &amp; password
-              </p>
             </div>
 
             <ChevronRight className="size-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -287,10 +283,6 @@ export function SettingsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="capitalize">
-                  {themePreference === "system" ? "Auto" : themePreference} ·{" "}
-                  {fontSize === "0" ? "Default" : `${fontSize} pt`}
-                </span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </button>
@@ -311,7 +303,26 @@ export function SettingsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>{notifyDeliveries ? "Active" : "Off"}</span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </button>
+
+            {/* SEARCH ENGINE */}
+            <button
+              type="button"
+              onClick={() => changeView("search_engine")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-sky-500 to-blue-600 text-white shadow-xs">
+                <Search className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Search Engine</span>
+                <p className="text-xs text-muted-foreground">
+                  Web image lookup provider for car photos &amp; casting specs
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </button>
@@ -398,7 +409,7 @@ export function SettingsPage() {
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
               <button
                 type="button"
-                onClick={() => setLogoutConfirmOpen(true)}
+                onClick={() => void handleSignOut()}
                 className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-[15px] font-semibold text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15"
               >
                 <LogOut className="size-4" />
@@ -410,7 +421,8 @@ export function SettingsPage() {
           {/* Footer Info */}
           <footer className="space-y-1 pt-4 text-center text-xs text-muted-foreground">
             <p className="font-medium text-foreground/70">Tesoro Diecast Tracker</p>
-            <p>Crafted with love in Chennai · Version {APP_VERSION}</p>
+            <p>Crafted with love in Chennai</p>
+            <p>Version {APP_VERSION}</p>
           </footer>
         </div>
       )}
@@ -429,7 +441,7 @@ export function SettingsPage() {
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
               <button
                 type="button"
-                onClick={() => setLogoutConfirmOpen(true)}
+                onClick={() => void handleSignOut()}
                 className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-[15px] font-semibold text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15"
               >
                 <LogOut className="size-4" />
@@ -491,19 +503,16 @@ export function SettingsPage() {
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-between gap-4 p-4">
                 <div>
-                  <div className="text-[15px] font-medium text-foreground">Font Size</div>
+                  <div className="text-[15px] font-medium text-foreground">Smaller Fonts</div>
                   <div className="text-xs text-muted-foreground">
-                    {FONT_SIZE_OPTIONS.find((o) => o.value === fontSize)?.description ||
-                      "Adjust application font size across all views (reduced by 2 pt by default)."}
+                    Reduce application text size across all views.
                   </div>
                 </div>
-                <SegmentControl
-                  value={fontSize}
-                  onChange={(v) => setFontSize(v as FontSizePreference)}
-                  options={FONT_SIZE_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-                  className="h-9 w-full sm:w-auto text-sm"
+                <Switch
+                  checked={fontSize === "-2"}
+                  onCheckedChange={(checked) => setFontSize(checked ? "-2" : "0")}
                 />
               </div>
 
@@ -790,31 +799,58 @@ export function SettingsPage() {
       )}
 
       {/* ========================================================================= */}
-      {/* LOGOUT CONFIRMATION DIALOG (iOS Style Alert)                              */}
+      {/* SUBPAGE: SEARCH ENGINE                                                    */}
       {/* ========================================================================= */}
-      <AlertDialog open={logoutConfirmOpen} onOpenChange={setLogoutConfirmOpen}>
-        <AlertDialogContent className="rounded-2xl sm:rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-semibold">
-              {isGuest ? "Leave Demo Mode?" : "Sign Out of Tesoro?"}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground">
-              {isGuest
-                ? "Leaving demo mode will clear temporary guest cars from memory."
-                : "You will be signed out of your account on this browser. Your cloud database records remain safely preserved."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col-reverse sm:flex-row gap-2">
-            <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => void handleSignOut()}
-              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isGuest ? "Leave Demo" : "Sign Out"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {view === "search_engine" && (
+        <div className="space-y-6">
+          <SubpageHeader title="Search Engine" onBack={() => changeView("root")} />
+
+          <div className="space-y-1.5">
+            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Web Image Lookup Provider
+            </div>
+            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+              {SEARCH_ENGINES.map((engine) => {
+                const isSelected = selectedEngine === engine.value;
+                return (
+                  <button
+                    key={engine.value}
+                    type="button"
+                    onClick={() => {
+                      setSelectedEngine(engine.value);
+                      setSearchEngine(engine.value);
+                      toast.success(`Search engine set to ${engine.label}`);
+                    }}
+                    className="flex w-full items-start justify-between gap-4 p-4 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[15px] font-medium text-foreground">
+                          {engine.label}
+                        </span>
+                        {engine.value === "bing" && (
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                            Recommended
+                          </span>
+                        )}
+                        {engine.value === "auto" && (
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                            Smart Fallback
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{engine.description}</p>
+                    </div>
+                    <div className="flex size-5 shrink-0 items-center justify-center rounded-full border border-border mt-0.5">
+                      {isSelected && <div className="size-2.5 rounded-full bg-primary" />}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

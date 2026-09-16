@@ -1,8 +1,15 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, ImageOff, Loader2, Search } from "lucide-react";
+import { ExternalLink, Globe, ImageOff, Loader2, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +17,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { CarImageCandidate } from "@/lib/car-image-search";
+import {
+  getSearchEngine,
+  setSearchEngine,
+  SEARCH_ENGINES,
+  type CarImageCandidate,
+  type SearchEngine,
+} from "@/lib/car-image-search";
 
 /**
  * A web image search for the car being added, in the app rather than in another
@@ -34,6 +47,7 @@ export function WebImageSearchDialog({
   onPick: (url: string) => void;
 }) {
   const [text, setText] = useState(initialQuery);
+  const [engine, setEngineState] = useState<SearchEngine>(() => getSearchEngine());
   const [results, setResults] = useState<CarImageCandidate[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
@@ -42,17 +56,26 @@ export function WebImageSearchDialog({
   useEffect(() => {
     if (!open) return;
     setText(initialQuery);
+    setEngineState(getSearchEngine());
     setResults([]);
     setSearched(false);
   }, [open, initialQuery]);
 
-  const run = async (q: string) => {
+  const handleEngineChange = (newEngine: SearchEngine) => {
+    setEngineState(newEngine);
+    setSearchEngine(newEngine);
+    if (text.trim()) void run(text, newEngine);
+  };
+
+  const run = async (q: string, eng = engine) => {
     const clean = q.trim();
     if (!clean) return;
     setLoading(true);
     setSearched(true);
     try {
-      const res = await fetch(`/api/car-images?text=${encodeURIComponent(clean)}`);
+      const res = await fetch(
+        `/api/car-images?text=${encodeURIComponent(clean)}&engine=${encodeURIComponent(eng)}`,
+      );
       const body = (await res.json()) as { candidates?: CarImageCandidate[] };
       setResults(body.candidates ?? []);
     } catch {
@@ -74,32 +97,54 @@ export function WebImageSearchDialog({
         <DialogHeader>
           <DialogTitle>Search the web for a photo</DialogTitle>
           <DialogDescription>
-            Edit the words if you like, then tap a picture to use it for this car.
+            Edit the words or switch providers if needed, then tap a picture to use it for this car.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-1.5">
-          <Input
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== "Enter") return;
-              // This dialog can sit inside the car form: Enter searches.
-              e.preventDefault();
-              void run(text);
-            }}
-            placeholder="Brand, make, model, colour…"
-            className="h-9"
-          />
-          <Button
-            type="button"
-            className="h-9 shrink-0 gap-1.5"
-            disabled={loading || !text.trim()}
-            onClick={() => void run(text)}
-          >
-            {loading ? <Loader2 className="size-4 animate-spin" /> : <Search className="size-4" />}
-            Search
-          </Button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex flex-1 gap-1.5">
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                // This dialog can sit inside the car form: Enter searches.
+                e.preventDefault();
+                void run(text);
+              }}
+              placeholder="Brand, make, model, colour…"
+              className="h-9"
+            />
+            <Button
+              type="button"
+              className="h-9 shrink-0 gap-1.5"
+              disabled={loading || !text.trim()}
+              onClick={() => void run(text)}
+            >
+              {loading ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Search className="size-4" />
+              )}
+              Search
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-1.5 self-end sm:self-auto">
+            <span className="text-xs text-muted-foreground whitespace-nowrap">Engine:</span>
+            <Select value={engine} onValueChange={(v) => handleEngineChange(v as SearchEngine)}>
+              <SelectTrigger className="h-9 w-36 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SEARCH_ENGINES.map((eng) => (
+                  <SelectItem key={eng.value} value={eng.value} className="text-xs">
+                    {eng.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="max-h-[55vh] min-h-[8rem] overflow-y-auto">

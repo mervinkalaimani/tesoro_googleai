@@ -120,7 +120,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>("dark");
   const [systemTheme, setSystemTheme] = useState<Theme>("dark");
   const [accentColor, setAccentColorState] = useState<AccentColor>("crimson");
-  const [fontSize, setFontSizeState] = useState<FontSizePreference>("-2");
+  const [fontSize, setFontSizeState] = useState<FontSizePreference>("0");
   const [hideInvestment, setHideInvestmentState] = useState(true);
   const [transitEtaDays, setTransitEtaDaysState] = useState(21);
   const [navAnimation, setNavAnimationState] = useState(true);
@@ -136,10 +136,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const storedTheme = readLS<unknown>("dg.theme", "dark");
     const storedAccent = readLS<unknown>("dg.accentColor", "crimson");
-    const storedFontSize = readLS<unknown>("dg.fontSize", "-2");
+    const storedFontSize = readLS<unknown>("dg.fontSize", "0");
     setThemePreferenceState(isThemePreference(storedTheme) ? storedTheme : "dark");
     setAccentColorState(isAccentColor(storedAccent) ? storedAccent : "crimson");
-    setFontSizeState(isFontSizePreference(storedFontSize) ? storedFontSize : "-2");
+    setFontSizeState(isFontSizePreference(storedFontSize) ? storedFontSize : "0");
     setHideInvestmentState(readLS<boolean>("dg.hideInvestment", true));
     setTransitEtaDaysState(readLS<number>("dg.transitEta", 21));
     setNavAnimationState(readLS<boolean>("dg.navAnimation", true));

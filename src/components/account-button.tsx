@@ -72,7 +72,7 @@ function MobileAccountMenu() {
         aria-expanded={menuOpen}
         className="ml-0.5 rounded-full outline-none ring-offset-background transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        <Avatar className="size-8 border border-border">
+        <Avatar className="size-9 border border-border">
           {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
           <AvatarFallback className="bg-muted text-xs font-semibold">
             {initialsOf(name, display)}

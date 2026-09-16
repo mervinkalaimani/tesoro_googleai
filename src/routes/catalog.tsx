@@ -8,10 +8,11 @@ import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
+import { resolveCatalogUserId, loadUserHandles } from "@/lib/catalog";
 import type { CatalogueCar } from "@/lib/catalogue-search";
 import { generateCatalogCarId } from "@/lib/car-id";
 import { carSubLine } from "@/lib/car-subline";
-import { inr } from "@/lib/format";
+import { inr, formatDayMonthYear } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { RARITIES } from "@/lib/rarity";
@@ -151,6 +152,10 @@ function CatalogPage() {
   const [editing, setEditing] = useState<CatalogCar | "new" | null>(null);
   const [visible, setVisible] = useState(LOAD_BATCH);
   const sentinel = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void loadUserHandles();
+  }, []);
 
   const owned = useMemo(() => new Set(mine.map((c) => (c.id || "").toUpperCase())), [mine]);
 
@@ -360,6 +365,7 @@ function CatalogPage() {
 
       <CatalogCarDetails
         car={viewing ? asCar(viewing) : null}
+        catalogCar={viewing}
         preOrder={viewing ? isPreOrder(viewing) : false}
         expectedDate={viewing?.expected_date}
         owned={viewing ? owned.has(viewing.car_id.toUpperCase()) : false}
@@ -397,6 +403,7 @@ function CatalogCard({
   onEdit?: () => void;
 }) {
   const car = asCar(c);
+
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
       <button type="button" onClick={onOpen} className="relative block w-full">
@@ -421,6 +428,7 @@ function CatalogCard({
           {car.name}
         </button>
         <p className="mt-1 truncate text-xs text-muted-foreground">{carSubLine(car)}</p>
+
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">MRP</div>
@@ -564,6 +572,31 @@ function CatalogEntryDialog({
               : "Changes are written into this car in every collection that has it. Owners can still edit their own copy afterwards."}
           </DialogDescription>
         </DialogHeader>
+
+        {!isNew && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            <div>
+              <span className="text-muted-foreground/75">Added by:</span>{" "}
+              <span className="font-semibold text-foreground">
+                {resolveCatalogUserId(entry.created_by)}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground/75">Added on:</span>{" "}
+              <span className="font-semibold text-foreground">
+                {formatDayMonthYear(entry.created_at) || "—"}
+              </span>
+            </div>
+            <div>
+              <span className="text-muted-foreground/75">Last updated:</span>{" "}
+              <span className="font-semibold text-foreground">
+                {formatDayMonthYear(entry.updated_at) ||
+                  formatDayMonthYear(entry.created_at) ||
+                  "—"}
+              </span>
+            </div>
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="space-y-1.5">

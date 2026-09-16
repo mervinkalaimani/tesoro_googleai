@@ -4,6 +4,66 @@ import type { CarImageCandidate } from "@/routes/api/car-images";
 
 export type { CarImageCandidate };
 
+export type SearchEngine = "bing" | "duckduckgo" | "google" | "wikimedia" | "auto";
+
+export const SEARCH_ENGINES: { value: SearchEngine; label: string; description: string }[] = [
+  {
+    value: "auto",
+    label: "Auto (Smart Fallback)",
+    description:
+      "Multi-engine lookup: tries Bing first, fails over to DuckDuckGo/Wikimedia if blocked.",
+  },
+  {
+    value: "bing",
+    label: "Bing Images",
+    description: "Highly reliable high-resolution diecast casting and packaging lookup.",
+  },
+  {
+    value: "duckduckgo",
+    label: "DuckDuckGo",
+    description: "Standard privacy-focused web search.",
+  },
+  {
+    value: "google",
+    label: "Google Images",
+    description: "Broad global web image indexing.",
+  },
+  {
+    value: "wikimedia",
+    label: "Wikimedia Commons",
+    description: "Open-source automotive and diecast encyclopedic image database.",
+  },
+];
+
+export function getSearchEngine(): SearchEngine {
+  if (typeof window === "undefined") return "auto";
+  try {
+    const val = localStorage.getItem("tesoro_search_engine");
+    if (
+      val === "bing" ||
+      val === "duckduckgo" ||
+      val === "google" ||
+      val === "wikimedia" ||
+      val === "auto"
+    ) {
+      return val;
+    }
+  } catch {
+    // ignore
+  }
+  return "auto";
+}
+
+export function setSearchEngine(engine: SearchEngine) {
+  try {
+    localStorage.setItem("tesoro_search_engine", engine);
+    // Clear memo cache so subsequent searches use the new engine
+    memo.clear();
+  } catch {
+    // ignore
+  }
+}
+
 /** What is known about a car that a photo search can use. */
 export type CarImageLookup = {
   make?: string;
@@ -41,7 +101,8 @@ export function lookupKey(lookup: CarImageLookup): string {
 const memo = new Map<string, Promise<CarImageCandidate[]>>();
 
 export function searchCarImages(lookup: CarImageLookup): Promise<CarImageCandidate[]> {
-  const key = lookupKey(lookup);
+  const engine = getSearchEngine();
+  const key = `${lookupKey(lookup)}|${engine}`;
   const hit = memo.get(key);
   if (hit) return hit;
 
@@ -50,6 +111,7 @@ export function searchCarImages(lookup: CarImageLookup): Promise<CarImageCandida
     const v = (lookup[k] || "").trim();
     if (v) params.set(k, v);
   }
+  params.set("engine", engine);
   const request = fetch(`/api/car-images?${params}`)
     .then((res) => (res.ok ? res.json() : { candidates: [] }))
     .then((body: { candidates?: CarImageCandidate[] }) => body.candidates ?? [])
