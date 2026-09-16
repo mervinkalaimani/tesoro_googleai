@@ -25,10 +25,13 @@ export function ViewToggle({
   value,
   onChange,
   className = "",
+  modes,
 }: {
   value: ViewMode;
   onChange: (v: ViewMode) => void;
   className?: string;
+  /** Limit the choices, for a page with no table to show. */
+  modes?: ViewMode[];
 }) {
   return (
     // Same container styling as SegmentControl (rounded-md, border-border, bg-muted/40, p-0.5)
@@ -38,7 +41,7 @@ export function ViewToggle({
         className,
       )}
     >
-      {MODES.map((m) => {
+      {MODES.filter((m) => !modes || modes.includes(m.value)).map((m) => {
         const Icon = m.icon;
         const active = value === m.value;
         return (

@@ -288,6 +288,7 @@ export function CarFormDialog({
   onSwitchToBulk,
   onSwitchToUpload,
   prefill,
+  prefillStatus = "Pre Order",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -305,6 +306,8 @@ export function CarFormDialog({
    * with its catalogue fields filled in and the status set to Pre Order.
    */
   prefill?: CatalogueCar | null;
+  /** The status a prefilled form starts on. Pre Order unless the caller knows better. */
+  prefillStatus?: string;
 }) {
   const { addCar, updateCar } = useCarsActions();
   const cars = useCars();
@@ -315,7 +318,10 @@ export function CarFormDialog({
   // the frame where the picture would have been.
   // Per-car: dismissing is "not this one", not "never show me these".
   const [isoDismissed, setIsoDismissed] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
+  /** The first required field left empty, shown on the field itself. */
+  const [validationError, setValidationError] = useState<FieldError | null>(null);
+  /** Set by Next / Add car, so the field is scrolled to once it is on screen. */
+  const jumpToError = useRef(false);
   /** True when this session's form came back from storage rather than blank. */
   const [restored, setRestored] = useState(false);
   /** Set once the draft for this open has been read, so the save can begin. */
@@ -342,12 +348,12 @@ export function CarFormDialog({
       initial
         ? formFromCar(initial)
         : fromPrefill && prefill
-          ? { ...catalogueFields(prefill, getBlankForm()), status: "Pre Order" }
+          ? { ...catalogueFields(prefill, getBlankForm()), status: prefillStatus }
           : getBlankForm(),
     // A blank form stamps today's date, so it must not be rebuilt on every
     // render — only when the dialog opens or the car being edited changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [initial, open, prefill],
+    [initial, open, prefill, prefillStatus],
   );
 
   useEffect(() => {
@@ -403,7 +409,11 @@ export function CarFormDialog({
 
   const set = <K extends keyof CarFormData>(k: K, v: CarFormData[K]) => {
     setForm((f) => ({ ...f, [k]: v }));
+    // Filling in the field that was flagged clears the flag.
+    setValidationError((e) => (e && e.field === k ? null : e));
   };
+  const errorFor = (k: keyof CarFormData) =>
+    validationError?.field === k ? validationError.message : undefined;
 
   /**
    * What the card scanner read, over the top of what is in the form.
@@ -694,29 +704,48 @@ export function CarFormDialog({
   }, [form.make, form.model, form.variant, form.year, form.type, form.series]);
 
   // Validation per step
-  const validateStep = (step: number): string | null => {
+  const validateStep = (step: number): FieldError | null => {
+    const need = (field: keyof CarFormData, message: string): FieldError => ({ field, message });
+    // In the order the fields appear, so the first one flagged is the first on screen.
     if (step === 1) {
-      if (!form.make.trim()) return "Make is required.";
-      if (!form.model.trim()) return "Model is required.";
-      if (!form.type.trim()) return "Type is required.";
-      if (!form.brand.trim()) return "Brand is required.";
-      if (!form.assortment.trim()) return "Assortment is required.";
-      if (!form.status.trim()) return "Status is required.";
+      if (!form.make.trim()) return need("make", "Enter the make.");
+      if (!form.model.trim()) return need("model", "Enter the model.");
+      if (!form.status.trim()) return need("status", "Pick a status.");
+      if (!form.type.trim()) return need("type", "Enter the type.");
+      if (!form.brand.trim()) return need("brand", "Enter the brand.");
+      if (!form.assortment.trim()) return need("assortment", "Enter the assortment.");
     } else if (step === 2) {
-      if (form.spent === "" || form.spent === null) return "Spent amount is required.";
-      if (form.mrp === "" || form.mrp === null) return "MRP amount is required.";
-      if (!form.payment.trim()) return "Payment status is required.";
+      if (form.spent === "" || form.spent === null) return need("spent", "Enter what it cost.");
+      if (form.mrp === "" || form.mrp === null) return need("mrp", "Enter the MRP.");
+      if (!form.payment.trim()) return need("payment", "Pick a payment status.");
       if (!form.seller.trim())
-        return `Seller is required — pick "${NO_SELLER}" if there wasn't one.`;
+        return need("seller", `Pick a seller, or "${NO_SELLER}" if there wasn't one.`);
     } else if (step === 3) {
-      if (!form.orderDate.trim()) return "Order Date is required.";
+      if (!form.orderDate.trim()) return need("orderDate", "Pick the order date.");
     }
     return null;
   };
 
+  // Once the flagged field is rendered (a step change may be needed first),
+  // bring it into view and put the caret in it.
+  useEffect(() => {
+    if (!jumpToError.current || !validationError) return;
+    jumpToError.current = false;
+    const frame = requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-field="${validationError.field}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.querySelector<HTMLElement>("input, [role=combobox], button")?.focus({
+        preventScroll: true,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [validationError, currentStep]);
+
   const handleNext = () => {
     const error = validateStep(currentStep);
     if (error) {
+      jumpToError.current = true;
       setValidationError(error);
       return;
     }
@@ -742,7 +771,8 @@ export function CarFormDialog({
     for (let s = 1; s <= 3; s++) {
       const err = validateStep(s);
       if (err) {
-        setValidationError(`Step ${s}: ${err}`);
+        jumpToError.current = true;
+        setValidationError(err);
         if (mode === "add") setCurrentStep(s);
         return;
       }
@@ -844,6 +874,29 @@ export function CarFormDialog({
       favourite: form.favourite,
       imageUrl: form.imageUrl.trim() || undefined,
     };
+
+    // A new car of a casting the catalogue already describes takes the
+    // catalogue's description, whatever was typed — the database does the same
+    // on insert. Later edits to the car are the owner's own.
+    const entry = catalog.find((c) => c.car_id.toUpperCase() === carId.toUpperCase());
+    if (entry && mode === "add") {
+      Object.assign(payload, {
+        brand: entry.brand,
+        make: entry.make,
+        model: entry.model,
+        variant: entry.variant || "",
+        colour: entry.colour || "",
+        type: entry.type || "",
+        assortment: entry.assortment,
+        series: entry.series,
+        subSeries: entry.sub_series,
+        carNumber: entry.car_number,
+        size: entry.size || payload.size,
+        mrp: Number(entry.mrp) || 0,
+        year: entry.year || "",
+        name: entry.name || payload.name,
+      });
+    }
 
     if (payload.imageUrl) {
       setCachedCarImage(
@@ -982,10 +1035,11 @@ export function CarFormDialog({
           </div>
         )}
 
-        {validationError && (
+        {/* Adding marks the field itself; editing has no step fields to mark. */}
+        {validationError && mode !== "add" && (
           <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             <AlertCircle className="size-4 shrink-0" />
-            <span>{validationError}</span>
+            <span>{validationError.message}</span>
           </div>
         )}
 
@@ -1073,7 +1127,7 @@ export function CarFormDialog({
                   )}
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Make *">
+                    <Field label="Make *" name="make" error={errorFor("make")}>
                       <Combobox
                         clearable
                         value={form.make}
@@ -1084,7 +1138,7 @@ export function CarFormDialog({
                       />
                     </Field>
 
-                    <Field label="Model *">
+                    <Field label="Model *" name="model" error={errorFor("model")}>
                       <Combobox
                         clearable
                         value={form.model}
@@ -1117,7 +1171,7 @@ export function CarFormDialog({
                       />
                     </Field>
 
-                    <Field label="Status *">
+                    <Field label="Status *" name="status" error={errorFor("status")}>
                       <Select value={form.status} onValueChange={(v) => set("status", v)}>
                         <SelectTrigger>
                           <SelectValue />
@@ -1143,7 +1197,7 @@ export function CarFormDialog({
                       />
                     </Field>
 
-                    <Field label="Type *">
+                    <Field label="Type *" name="type" error={errorFor("type")}>
                       <Combobox
                         clearable
                         value={form.type}
@@ -1154,7 +1208,7 @@ export function CarFormDialog({
                       />
                     </Field>
 
-                    <Field label="Brand *">
+                    <Field label="Brand *" name="brand" error={errorFor("brand")}>
                       <Combobox
                         clearable
                         value={form.brand}
@@ -1165,7 +1219,7 @@ export function CarFormDialog({
                       />
                     </Field>
 
-                    <Field label="Assortment *">
+                    <Field label="Assortment *" name="assortment" error={errorFor("assortment")}>
                       <Combobox
                         clearable
                         value={form.assortment}
@@ -1279,7 +1333,12 @@ export function CarFormDialog({
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Spent * (INR)" info={SPENT_INFO}>
+                    <Field
+                      label="Spent * (INR)"
+                      name="spent"
+                      error={errorFor("spent")}
+                      info={SPENT_INFO}
+                    >
                       <ClearableInput
                         type="number"
                         min="0"
@@ -1294,7 +1353,7 @@ export function CarFormDialog({
                       />
                     </Field>
 
-                    <Field label="MRP * (INR)">
+                    <Field label="MRP * (INR)" name="mrp" error={errorFor("mrp")}>
                       <ClearableInput
                         type="number"
                         min="0"
@@ -1321,7 +1380,7 @@ export function CarFormDialog({
                       />
                     </Field>
 
-                    <Field label="Payment *">
+                    <Field label="Payment *" name="payment" error={errorFor("payment")}>
                       <Select value={form.payment} onValueChange={handlePaymentChange}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select payment status" />
@@ -1336,7 +1395,7 @@ export function CarFormDialog({
                       </Select>
                     </Field>
 
-                    <Field label="Seller *">
+                    <Field label="Seller *" name="seller" error={errorFor("seller")}>
                       <Combobox
                         clearable
                         value={form.seller}
@@ -1394,7 +1453,7 @@ export function CarFormDialog({
                     </p>
                   </div>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Order Date *">
+                    <Field label="Order Date *" name="orderDate" error={errorFor("orderDate")}>
                       <ClearableInput
                         type="date"
                         value={form.orderDate}
@@ -1498,8 +1557,11 @@ export function CarFormDialog({
                 </div>
               )}
 
-              {/* Wizard Footer Controls */}
-              <DialogFooter className="pt-3 flex items-center justify-between sm:justify-between border-t border-border/50">
+              {/* Wizard Footer Controls. On a phone: one row, Cancel left and
+                  Next right, pinned to the bottom of the sheet while the step
+                  scrolls under it. The negative margins take the bar to the
+                  edges of the sheet's padding. */}
+              <DialogFooter className="flex flex-row items-center justify-between border-t border-border/50 pt-3 sm:justify-between max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3.5 max-sm:-mb-3.5 max-sm:bg-background max-sm:px-3.5 max-sm:pb-[max(0.875rem,env(safe-area-inset-bottom))]">
                 <div>
                   {/* Cancel is the one gesture that means "throw this away", so
                       it is also the one that drops the draft. Closing by
@@ -1570,7 +1632,7 @@ export function CarFormDialog({
                     Status & Logistics
                   </h3>
                   <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
-                    <Field label="Status *">
+                    <Field label="Status *" name="status" error={errorFor("status")}>
                       <Select value={form.status} onValueChange={(v) => set("status", v)}>
                         <SelectTrigger className="bg-background">
                           <SelectValue />
@@ -2513,25 +2575,50 @@ function ClearableInput({ className, ...props }: React.ComponentProps<typeof Inp
   );
 }
 
+type FieldError = { field: keyof CarFormData; message: string };
+
 function Field({
   label,
   children,
   className = "",
   info,
+  name,
+  error,
 }: {
   label: string;
   children: React.ReactNode;
   className?: string;
   /** A sentence explaining the field, behind an ⓘ beside its label. */
   info?: string;
+  /** The form key, so a failed Next can find and scroll to the field. */
+  name?: keyof CarFormData;
+  /** What is missing, shown under the field with the field outlined in red. */
+  error?: string;
 }) {
   return (
-    <div className={cn("space-y-1.5 w-full min-w-0", className)}>
+    <div
+      data-field={name}
+      aria-invalid={error ? true : undefined}
+      className={cn(
+        "space-y-1.5 w-full min-w-0 scroll-mt-24 scroll-mb-28",
+        error &&
+          "[&_input]:border-destructive [&_input]:ring-1 [&_input]:ring-destructive/40 [&_[role=combobox]]:border-destructive [&_[role=combobox]]:ring-1 [&_[role=combobox]]:ring-destructive/40",
+        className,
+      )}
+    >
       <div className="flex items-center gap-1">
-        <Label className="text-xs text-muted-foreground">{label}</Label>
+        <Label className={cn("text-xs", error ? "text-destructive" : "text-muted-foreground")}>
+          {label}
+        </Label>
         {info && <InfoTip label={label} text={info} />}
       </div>
       {children}
+      {error && (
+        <p role="alert" className="flex items-center gap-1 text-[11px] text-destructive">
+          <AlertCircle className="size-3 shrink-0" />
+          {error}
+        </p>
+      )}
     </div>
   );
 }

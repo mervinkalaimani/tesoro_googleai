@@ -47,6 +47,9 @@ export type Database = {
           colour: string;
           type: string;
           size: string;
+          release_status: string;
+          rarity: string;
+          expected_date: string | null;
           image_url: string | null;
           created_at: string;
           updated_at: string;
@@ -68,6 +71,9 @@ export type Database = {
           colour?: string;
           type?: string;
           size?: string;
+          release_status?: string;
+          rarity?: string;
+          expected_date?: string | null;
           image_url?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -89,6 +95,9 @@ export type Database = {
           colour?: string;
           type?: string;
           size?: string;
+          release_status?: string;
+          rarity?: string;
+          expected_date?: string | null;
           image_url?: string | null;
           created_at?: string;
           updated_at?: string;

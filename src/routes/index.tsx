@@ -686,9 +686,9 @@ function RecentPreorders() {
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
-          <h2 className="text-display text-lg font-semibold">Recently pre-ordered</h2>
+          <h2 className="text-display text-lg font-semibold">New Pre Orders</h2>
           <p className="text-xs text-muted-foreground">
-            Last 3 days · {cars.length} car{cars.length === 1 ? "" : "s"}
+            See what others have pre-ordered in last {RECENT_DAYS} days
           </p>
         </div>
         <ShoppingBag className="size-4 text-accent" />

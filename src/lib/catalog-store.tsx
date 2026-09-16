@@ -15,6 +15,8 @@ interface CatalogContextType {
   isLoading: boolean;
   refreshCatalog: () => Promise<void>;
   addCatalogCar: (car: CatalogCar) => Promise<boolean>;
+  /** Admin only: rewrites an entry, and with it every car linked to it. */
+  updateCatalogCar: (car: CatalogCar) => Promise<boolean>;
   findMatchingInCatalog: (fields: CarIdFields) => CatalogCar | undefined;
   getCatalogCarById: (carId: string) => CatalogCar | undefined;
 }
@@ -41,8 +43,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     void refreshCatalog();
   }, [refreshCatalog]);
 
-  const addCatalogCar = useCallback(async (car: CatalogCar): Promise<boolean> => {
-    const res = await saveCatalogCarToSupabase(car);
+  const writeCatalogCar = useCallback(async (car: CatalogCar, overwrite: boolean) => {
+    const res = await saveCatalogCarToSupabase(car, { overwrite });
     if (res.success) {
       setCatalog((prev) => {
         const idx = prev.findIndex((c) => c.car_id === car.car_id);
@@ -59,6 +61,14 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
   }, []);
+  const addCatalogCar = useCallback(
+    (car: CatalogCar) => writeCatalogCar(car, false),
+    [writeCatalogCar],
+  );
+  const updateCatalogCar = useCallback(
+    (car: CatalogCar) => writeCatalogCar(car, true),
+    [writeCatalogCar],
+  );
 
   const findMatchingInCatalog = useCallback(
     (fields: CarIdFields): CatalogCar | undefined => {
@@ -108,10 +118,19 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       refreshCatalog,
       addCatalogCar,
+      updateCatalogCar,
       findMatchingInCatalog,
       getCatalogCarById,
     }),
-    [catalog, isLoading, refreshCatalog, addCatalogCar, findMatchingInCatalog, getCatalogCarById],
+    [
+      catalog,
+      isLoading,
+      refreshCatalog,
+      addCatalogCar,
+      updateCatalogCar,
+      findMatchingInCatalog,
+      getCatalogCarById,
+    ],
   );
 
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;

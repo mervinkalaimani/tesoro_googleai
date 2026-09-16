@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plus, Undo2 } from "lucide-react";
+import { Plus, Store, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useCarsUndo } from "@/lib/cars-store";
@@ -109,6 +109,18 @@ export function TopBar() {
               className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-amber-400"
             />
           )}
+        </Button>
+        {/* The shared catalogue: every casting, ready to add. */}
+        <Button
+          asChild
+          variant="outline"
+          size="icon"
+          className="size-8 rounded-full"
+          title="Catalog"
+        >
+          <Link to="/catalog" aria-label="Catalog">
+            <Store className="size-4" />
+          </Link>
         </Button>
         <AccountButton />
       </div>

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import type { Diecast } from "@/lib/types";
 import { generateCatalogCarId, carIdFor, isPlaceholderId } from "@/lib/car-id";
 import rawDiecastData from "@/data/diecast.json";
@@ -20,10 +21,18 @@ export type CatalogCar = {
   type?: string;
   size?: string;
   image_url?: string | null;
+  /** Out in shops, or only open to pre-order so far. Absent reads as Released. */
+  release_status?: ReleaseStatus;
+  /** Normal, TH, STH or Chase. Absent reads as Normal. */
+  rarity?: string;
+  /** For a pre-order: when it is expected, "YYYY-MM-DD". */
+  expected_date?: string | null;
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
 };
+
+export type ReleaseStatus = "Released" | "Pre Order";
 
 const CATALOG_STORAGE_KEY = "tesoro_car_catalog_cache";
 
@@ -128,12 +137,27 @@ export function saveLocalCatalog(catalog: CatalogCar[]): void {
  */
 export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
   try {
-    const { data, error } = await supabase
-      .from("tesoro_car_catalog")
-      .select("*")
-      .order("brand", { ascending: true })
-      .order("make", { ascending: true })
-      .order("model", { ascending: true });
+    // Paged: a single select stops at the API's 1,000-row cap, and the
+    // catalogue is past that.
+    const PAGE = 1000;
+    const data: Database["public"]["Tables"]["tesoro_car_catalog"]["Row"][] = [];
+    let error: { message: string } | null = null;
+    for (let from = 0; ; from += PAGE) {
+      const res = await supabase
+        .from("tesoro_car_catalog")
+        .select("*")
+        .order("brand", { ascending: true })
+        .order("make", { ascending: true })
+        .order("model", { ascending: true })
+        .order("car_id", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (res.error) {
+        error = res.error;
+        break;
+      }
+      data.push(...(res.data ?? []));
+      if (!res.data || res.data.length < PAGE) break;
+    }
 
     if (error) {
       console.warn("Supabase fetch tesoro_car_catalog error:", error.message);
@@ -158,6 +182,9 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         type: row.type || "",
         size: row.size || "1:64",
         image_url: row.image_url || null,
+        release_status: row.release_status === "Pre Order" ? "Pre Order" : "Released",
+        rarity: row.rarity || "Normal",
+        expected_date: row.expected_date || null,
         created_at: row.created_at,
         updated_at: row.updated_at,
         created_by: row.created_by,
@@ -174,17 +201,25 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
 }
 
 /**
- * Upserts a car into `tesoro_car_catalog`.
+ * Files a casting in `tesoro_car_catalog`.
+ *
+ * By default only a casting the catalogue has not seen is added: an existing
+ * entry is the catalogue's to describe, and saving a car never rewrites it.
+ * `overwrite` is the admin edit — the database allows it for admins only, and
+ * pushes the change into every car linked to the entry.
  */
 export async function saveCatalogCarToSupabase(
   catalogCar: CatalogCar,
+  { overwrite = false }: { overwrite?: boolean } = {},
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // 1. Update local cache immediately
     const local = getLocalCatalog();
     const idx = local.findIndex((c) => c.car_id === catalogCar.car_id);
     if (idx >= 0) {
-      local[idx] = { ...local[idx], ...catalogCar, updated_at: new Date().toISOString() };
+      if (overwrite) {
+        local[idx] = { ...local[idx], ...catalogCar, updated_at: new Date().toISOString() };
+      }
     } else {
       local.unshift(catalogCar);
     }
@@ -213,11 +248,18 @@ export async function saveCatalogCarToSupabase(
       image_url: catalogCar.image_url || null,
       created_by: userId,
       updated_at: new Date().toISOString(),
+      // Only when stated: saving a casting from Add a car must not reset a
+      // pre-order back to the column's Released default.
+      ...(catalogCar.release_status ? { release_status: catalogCar.release_status } : {}),
+      ...(catalogCar.rarity ? { rarity: catalogCar.rarity } : {}),
+      ...(catalogCar.expected_date !== undefined
+        ? { expected_date: catalogCar.expected_date }
+        : {}),
     };
 
     const { error } = await supabase
       .from("tesoro_car_catalog")
-      .upsert(payload, { onConflict: "car_id" });
+      .upsert(payload, { onConflict: "car_id", ignoreDuplicates: !overwrite });
 
     if (error) {
       console.warn("saveCatalogCarToSupabase warning:", error.message);
@@ -266,9 +308,10 @@ export async function seedCatalogToSupabase(
         created_by: userId,
       }));
 
+      // New castings only: existing entries are the catalogue's, not the seed's.
       const { error } = await supabase
         .from("tesoro_car_catalog")
-        .upsert(rows, { onConflict: "car_id" });
+        .upsert(rows, { onConflict: "car_id", ignoreDuplicates: true });
 
       if (error) {
         console.warn("seedCatalogToSupabase chunk warning:", error.message);

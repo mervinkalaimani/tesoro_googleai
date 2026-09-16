@@ -17,6 +17,7 @@ import {
   Layers,
   Loader2,
   Pencil,
+  Plus,
   Star,
   X,
 } from "lucide-react";
@@ -1465,6 +1466,256 @@ function HeroCarImage({ car }: { car: Diecast }) {
           <span className="text-xs">No image available</span>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * A catalogue entry, in the car details layout with everything about a purchase
+ * taken out: what the casting is, how rare, what it retails for, and — for a
+ * pre-order — when it is due. One long button at the bottom adds it.
+ */
+export function CatalogCarDetails({
+  car,
+  preOrder,
+  expectedDate,
+  owned,
+  onClose,
+  onAdd,
+}: {
+  /** The entry shaped as a car; null when closed. */
+  car: Diecast | null;
+  preOrder: boolean;
+  expectedDate?: string | null;
+  owned: boolean;
+  onClose: () => void;
+  onAdd: () => void;
+}) {
+  return (
+    <Dialog open={Boolean(car)} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        hideDragHandle
+        disableSheetDismiss
+        className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:flex max-sm:flex-col block gap-0 overflow-hidden rounded-3xl border-border bg-background p-0 text-foreground shadow-2xl sm:max-h-[92vh] sm:max-w-2xl sm:p-0 md:max-w-4xl"
+      >
+        {car && (
+          <CatalogDetailsContent
+            car={car}
+            preOrder={preOrder}
+            expectedDate={expectedDate}
+            owned={owned}
+            onClose={onClose}
+            onAdd={onAdd}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CatalogDetailsContent({
+  car,
+  preOrder,
+  expectedDate,
+  owned,
+  onClose,
+  onAdd,
+}: {
+  car: Diecast;
+  preOrder: boolean;
+  expectedDate?: string | null;
+  owned: boolean;
+  onClose: () => void;
+  onAdd: () => void;
+}) {
+  const mobile = useMobileHeroGestures(onClose);
+  const addButton = (
+    <Button onClick={onAdd} className="h-11 w-full gap-2 text-sm font-semibold">
+      <Plus className="size-4" />
+      {owned ? "Add another to collection" : "Add to collection"}
+    </Button>
+  );
+  const body = (
+    <CatalogDetailsBody car={car} preOrder={preOrder} expectedDate={expectedDate} owned={owned} />
+  );
+
+  return (
+    <div className="relative flex h-full w-full min-h-0 flex-1 flex-col overflow-hidden">
+      <DialogTitle className="sr-only">{car.name} — catalogue</DialogTitle>
+      <DialogDescription className="sr-only">
+        What this casting is, its rarity and retail price, with a button to add it.
+      </DialogDescription>
+
+      {/* Tablet and desktop: photo left, details right, the button at the foot. */}
+      <div className="hidden w-full md:flex md:h-[78vh] md:max-h-[78vh] md:flex-row md:items-stretch">
+        <div className="flex w-[340px] shrink-0 flex-col border-r border-border bg-muted/15 lg:w-[400px]">
+          <div className="relative flex min-h-[300px] w-full flex-1 items-center justify-center overflow-hidden bg-muted/30 p-4">
+            <div className="relative size-full overflow-hidden rounded-2xl border border-border/60 bg-background/50 shadow-xs">
+              <HeroCarImage car={car} />
+            </div>
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="min-w-0 flex-1 overflow-y-auto p-6 pr-12 scrollbar-thin lg:p-7">
+            {body}
+          </div>
+          <div className="shrink-0 border-t border-border bg-background/95 p-4 px-6 backdrop-blur-xs lg:px-7">
+            {addButton}
+          </div>
+        </div>
+      </div>
+
+      {/* Phone: the same photo-under-card layout as a car's own details. */}
+      <div
+        ref={mobile.rootRef}
+        className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-background md:hidden"
+        style={{ "--hero-h": "clamp(320px, 44vh, 480px)" } as React.CSSProperties}
+      >
+        <div className="relative min-h-0 flex-1">
+          <div
+            ref={mobile.heroRef}
+            className="absolute inset-x-0 top-0 z-0 w-full select-none overflow-hidden bg-muted/60"
+            style={{ height: "var(--hero-h)" }}
+          >
+            <HeroCarImage car={car} />
+          </div>
+          <div
+            ref={mobile.scrollRef}
+            className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden overscroll-contain"
+          >
+            <div ref={mobile.contentRef} className="flex min-h-full flex-col">
+              <div
+                aria-hidden
+                className="shrink-0"
+                style={{ height: "calc(var(--hero-h) - 1.5rem)" }}
+              />
+              <div
+                ref={mobile.cardRef}
+                className="relative flex-1 rounded-t-3xl border-t border-border bg-background px-4 pb-6 pt-5 shadow-[0_-8px_24px_rgba(0,0,0,0.1)]"
+              >
+                {body}
+              </div>
+            </div>
+          </div>
+          <div
+            ref={mobile.pillRef}
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-2.5 z-20 -translate-x-1/2 px-4 py-1"
+          >
+            <div className="h-1.5 w-12 rounded-full bg-white/85 shadow-md backdrop-blur-md" />
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex size-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="z-20 shrink-0 border-t border-border bg-background/95 p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)] backdrop-blur-md">
+          {addButton}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CatalogDetailsBody({
+  car,
+  preOrder,
+  expectedDate,
+  owned,
+}: {
+  car: Diecast;
+  preOrder: boolean;
+  expectedDate?: string | null;
+  owned: boolean;
+}) {
+  const rarity = rarityOf(car);
+  return (
+    <div className="space-y-4">
+      <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <span>{car.brand || "—"}</span>
+            {car.assortment && (
+              <>
+                <span className="text-muted-foreground/40">·</span>
+                <span className="truncate">{car.assortment}</span>
+              </>
+            )}
+          </div>
+          <span
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+              preOrder
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
+            )}
+          >
+            {preOrder ? "Pre Order" : "Released"}
+          </span>
+        </div>
+        <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+        </h2>
+        {owned && (
+          <p className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-500">
+            <CheckCircle2 className="size-3.5" /> In your collection
+          </p>
+        )}
+      </div>
+
+      <hr className="border-border" />
+
+      <SpecGrid>
+        <Spec label="Make" value={car.make} />
+        <Spec label="Model" value={car.model} />
+        <Spec label="Year" value={car.year} />
+        <Spec label="Colour" value={car.colour} />
+        <Spec label="Assortment" value={car.assortment} />
+        <Spec label="Series" value={car.series} />
+        <Spec label="Sub series" value={car.subSeries} />
+        <Spec label="Car number" value={car.carNumber} />
+      </SpecGrid>
+
+      <hr className="border-border" />
+
+      {/* Read-only here: the rarity is the catalogue's, not something to tap. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/80 bg-muted/20 p-2.5 sm:p-3">
+        {(["Chase", "TH", "STH"] as const).map((r) => (
+          <span
+            key={r}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold",
+              rarity === r
+                ? "border-accent/50 bg-accent/20 text-foreground shadow-xs"
+                : "border-border/80 bg-background/80 text-muted-foreground/60",
+            )}
+          >
+            <Flame
+              className={cn(
+                "size-4 shrink-0",
+                rarity === r ? RARITY_FLAME[r] : "text-muted-foreground/50",
+              )}
+            />
+            {r}
+          </span>
+        ))}
+      </div>
+
+      <hr className="border-border" />
+
+      <SpecGrid>
+        <Spec label="Retail / MRP" value={car.mrp ? inrFull(Math.round(car.mrp)) : ""} />
+        {preOrder && (
+          <Spec
+            label="Expected date"
+            value={formatDayMonthYear(expectedDate || "") || expectedDate || ""}
+          />
+        )}
+      </SpecGrid>
     </div>
   );
 }

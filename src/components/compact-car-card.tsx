@@ -89,9 +89,16 @@ export function CompactCarCard({
             {car.spent ? inr(car.spent) : "—"}
           </span>
         </div>
-        {caption && (
-          <div className="mt-1 truncate text-[10px] text-muted-foreground/80">{caption}</div>
-        )}
+        {/* Third line: the assortment, and when there is one, the day on the
+            right — lined up under the price the way the brand is under the name. */}
+        <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
+          <span className="truncate text-[10px] text-muted-foreground">
+            {car.assortment || "—"}
+          </span>
+          {caption && (
+            <span className="shrink-0 text-[10px] text-muted-foreground/80">{caption}</span>
+          )}
+        </div>
       </div>
     </button>
   );
