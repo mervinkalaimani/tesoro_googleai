@@ -30,6 +30,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      tesoro_catalog_codes: {
+        Row: {
+          kind: string;
+          parent_key: string;
+          value_key: string;
+          code: number;
+          created_at: string;
+        };
+        Insert: {
+          kind: string;
+          parent_key?: string;
+          value_key: string;
+          code: number;
+          created_at?: string;
+        };
+        Update: {
+          kind?: string;
+          parent_key?: string;
+          value_key?: string;
+          code?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       tesoro_car_catalog: {
         Row: {
           car_id: string;
@@ -117,6 +141,7 @@ export type Database = {
           is_admin: boolean;
           is_approved: boolean;
           is_owner: boolean;
+          id_prefix: string | null;
           created_at: string;
         };
         Insert: {
@@ -130,6 +155,7 @@ export type Database = {
           is_admin?: boolean;
           is_approved?: boolean;
           is_owner?: boolean;
+          id_prefix?: string | null;
           created_at?: string;
         };
         Update: {
@@ -143,8 +169,15 @@ export type Database = {
           is_admin?: boolean;
           is_approved?: boolean;
           is_owner?: boolean;
+          id_prefix?: string | null;
           created_at?: string;
         };
+        Relationships: [];
+      };
+      tesoro_raw_codes: {
+        Row: { kind: string; value_key: string; code: string; created_at: string };
+        Insert: { kind: string; value_key: string; code: string; created_at?: string };
+        Update: { kind?: string; value_key?: string; code?: string; created_at?: string };
         Relationships: [];
       };
     };

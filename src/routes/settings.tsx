@@ -202,7 +202,6 @@ export function SettingsPage() {
   };
 
   const handleSignOut = async () => {
-    setLogoutConfirmOpen(false);
     await signOut();
     toast.success(isGuest ? "Left demo mode" : "Signed out successfully");
   };

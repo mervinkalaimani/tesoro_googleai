@@ -17,6 +17,8 @@ export type TesoroRawRow = {
   SNO?: number | null;
   user_id?: string | null;
   "Car ID"?: string | null;
+  "Catalog ID"?: string | null;
+  "Case Number"?: string | null;
   Name?: string | null;
   Make?: string | null;
   Model?: string | null;
@@ -83,6 +85,10 @@ function nullIfBlank(value: string | undefined): string | null {
 export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
   const row: TesoroRawRow = {
     "Car ID": car.id,
+    // Which casting this is. Blank lets the database work it out — an old ID, or
+    // a car matched to the catalogue by its details.
+    "Catalog ID": car.catalogId || "",
+    "Case Number": car.caseNumber || "",
     Name: car.name,
     Make: car.make,
     Model: car.model,
@@ -155,8 +161,9 @@ export function savedFieldsMatch(a: Diecast, b: Diecast): boolean {
 
 export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
   const id = String(row["Car ID"] || "").trim();
+  const catalogId = String(row["Catalog ID"] || "").trim();
   const localCat = getLocalCatalog();
-  const catalogMatch = id ? localCat.find((c) => c.car_id === id) : null;
+  const catalogMatch = catalogId ? localCat.find((c) => c.car_id === catalogId) : null;
 
   const make = String(row.Make || catalogMatch?.make || "").trim();
   const model = String(row.Model || catalogMatch?.model || "").trim();
@@ -197,6 +204,7 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
 
   return {
     id,
+    catalogId: catalogId || undefined,
     // Identity column, carried through so views can order by insertion.
     sno: Number.isFinite(snoRaw) ? snoRaw : undefined,
     name,
@@ -207,6 +215,7 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
     series,
     subSeries: String(row["Sub Series"] || catalogMatch?.sub_series || "").trim(),
     carNumber: String(row["Car Number"] || catalogMatch?.car_number || "").trim(),
+    caseNumber: String(row["Case Number"] || "").trim() || undefined,
     colour: String(row.Colour || catalogMatch?.colour || "").trim(),
     type,
     brand: String(row.Brand || catalogMatch?.brand || "").trim(),
@@ -347,7 +356,7 @@ export async function saveCarToSupabase(
     let { error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(tableName as any)
-      .upsert(payload, { onConflict: "user_id,Car ID" });
+      .upsert(payload, { onConflict: "Car ID" });
 
     // A column the migrations have not added yet must not take the whole save
     // down with it. Deployments and migrations do not land at the same instant,
@@ -362,7 +371,7 @@ export async function saveCarToSupabase(
       const res = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
-        .upsert(fallbackPayload, { onConflict: "user_id,Car ID" });
+        .upsert(fallbackPayload, { onConflict: "Car ID" });
       error = res.error;
     }
 
@@ -424,7 +433,7 @@ export async function seedCarsToSupabase(
       let { error } = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
-        .upsert(rows, { onConflict: "user_id,Car ID" });
+        .upsert(rows, { onConflict: "Car ID" });
 
       // Same reasoning as saveCarToSupabase: a column the schema has not caught
       // up to should cost those fields, not the entire sync.
@@ -437,7 +446,7 @@ export async function seedCarsToSupabase(
         const res = await supabase
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .from(tableName as any)
-          .upsert(fallbackRows, { onConflict: "user_id,Car ID" });
+          .upsert(fallbackRows, { onConflict: "Car ID" });
         error = res.error;
       }
 

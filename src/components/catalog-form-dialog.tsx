@@ -128,7 +128,7 @@ export function CatalogFormDialog({
   const makeOptions = useMemo(() => {
     const setMakes = new Set<string>(MAKE_SEED);
     for (const c of catalog) if (c.make) setMakes.add(c.make);
-    return [...setMakes].sort().map((m) => ({ value: m, label: m }));
+    return [...setMakes].sort();
   }, [catalog]);
 
   const modelOptions = useMemo(() => {
@@ -140,7 +140,7 @@ export function CatalogFormDialog({
         setModels.add(c.model);
       }
     }
-    return [...setModels].sort().map((m) => ({ value: m, label: m }));
+    return [...setModels].sort();
   }, [form.make, catalog]);
 
   const variantOptions = useMemo(() => {
@@ -152,54 +152,54 @@ export function CatalogFormDialog({
         setVariants.add(c.variant);
       }
     }
-    return [...setVariants].sort().map((v) => ({ value: v, label: v }));
+    return [...setVariants].sort();
   }, [form.model, catalog]);
 
   const brandOptions = useMemo(() => {
     const setBrands = new Set<string>(BRAND_SEED);
     for (const c of catalog) if (c.brand) setBrands.add(c.brand);
-    return [...setBrands].sort().map((b) => ({ value: b, label: b }));
+    return [...setBrands].sort();
   }, [catalog]);
 
   const assortmentOptions = useMemo(() => {
     const setAssortments = new Set<string>(ASSORTMENT_SEED);
     for (const c of catalog) if (c.assortment) setAssortments.add(c.assortment);
-    return [...setAssortments].sort().map((a) => ({ value: a, label: a }));
+    return [...setAssortments].sort();
   }, [catalog]);
 
   const colourOptions = useMemo(() => {
     const setColours = new Set<string>(COLOUR_SEED);
     for (const c of catalog) if (c.colour) setColours.add(c.colour);
-    return [...setColours].sort().map((c) => ({ value: c, label: c }));
+    return [...setColours].sort();
   }, [catalog]);
 
   const typeOptions = useMemo(() => {
     const setTypes = new Set<string>(TYPE_SEED);
     for (const c of catalog) if (c.type) setTypes.add(c.type);
-    return [...setTypes].sort().map((t) => ({ value: t, label: t }));
+    return [...setTypes].sort();
   }, [catalog]);
 
-  const sizeOptions = useMemo(() => SIZE_SEED.map((s) => ({ value: s, label: s })), []);
+  const sizeOptions = useMemo(() => [...SIZE_SEED], []);
 
   const seriesOptions = useMemo(() => {
     const setSeries = new Set<string>(SERIES_SEED);
     for (const c of catalog) if (c.series) setSeries.add(c.series);
-    return [...setSeries].sort().map((s) => ({ value: s, label: s }));
+    return [...setSeries].sort();
   }, [catalog]);
 
   const subSeriesOptions = useMemo(() => {
     const setSubSeries = new Set<string>(SUB_SERIES_SEED);
     for (const c of catalog) if (c.sub_series) setSubSeries.add(c.sub_series);
-    return [...setSubSeries].sort().map((s) => ({ value: s, label: s }));
+    return [...setSubSeries].sort();
   }, [catalog]);
 
   // Image search suggestions
-  const { candidates: imageSuggestions } = useCarImageCandidates({
+  const imageSuggestions = useCarImageCandidates({
     make: form.make,
     model: form.model,
     variant: form.variant,
     colour: form.colour,
-    year: form.year,
+    year: form.year || undefined,
     brand: form.brand,
     series: form.series,
   });
@@ -232,7 +232,6 @@ export function CatalogFormDialog({
       sub_series: scanned.subSeries || prev.sub_series,
       car_number: scanned.carNumber || prev.car_number,
       size: scanned.size || prev.size,
-      rarity: (scanned.rarity as string) || prev.rarity,
       name:
         prev.name ||
         `${scanned.make || prev.make || ""} ${scanned.model || prev.model || ""}`.trim(),

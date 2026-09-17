@@ -27,7 +27,13 @@ import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { isoMatchesFor } from "@/lib/iso-match";
 import { IsoSuggestions } from "@/components/iso-suggestions";
-import { generateCatalogCarId, isPlaceholderId } from "@/lib/car-id";
+import {
+  catalogEntryMatches,
+  findCatalogEntry,
+  generateCatalogCarId,
+  isCatalogCarId,
+  isPlaceholderId,
+} from "@/lib/car-id";
 import { useCatalog } from "@/lib/catalog-store";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
@@ -116,6 +122,7 @@ interface CarFormData {
   series: string;
   subSeries: string;
   carNumber: string;
+  caseNumber: string;
   brand: string;
   assortment: string;
   size: string;
@@ -167,6 +174,8 @@ function catalogueFields(car: CatalogueCar, f: CarFormData): CarFormData {
     series: car.series || "",
     subSeries: car.subSeries || "",
     carNumber: car.carNumber || "",
+    // The catalogue has no case number: it belongs to the car, not the casting.
+    caseNumber: (car as Partial<Diecast>).caseNumber || f.caseNumber,
     size: car.size || f.size,
     rarity: rarityOf(car),
     mrp: car.mrp ? car.mrp : f.mrp,
@@ -186,6 +195,7 @@ function getBlankForm(): CarFormData {
     series: "",
     subSeries: "",
     carNumber: "",
+    caseNumber: "",
     brand: "",
     assortment: "",
     size: "1:64",
@@ -227,6 +237,7 @@ function formFromCar(initial: Diecast): CarFormData {
     series: initial.series || "",
     subSeries: initial.subSeries || "",
     carNumber: initial.carNumber || "",
+    caseNumber: initial.caseNumber || "",
     brand: initial.brand || "",
     assortment: initial.assortment || "",
     size: initial.size || "1:64",
@@ -583,8 +594,11 @@ export function CarFormDialog({
 
   const { catalog } = useCatalog();
 
-  const derivedCatalogCarId = useMemo(() => {
-    return generateCatalogCarId({
+  // The catalogue entry this car is: the one picked on the Catalog page while
+  // its details still describe it, otherwise the one with the same details.
+  const existingCatalogMatch = useMemo(() => {
+    if (!form.make.trim() && !form.model.trim()) return null;
+    const fields = {
       brand: form.brand,
       make: form.make,
       model: form.model,
@@ -593,8 +607,18 @@ export function CarFormDialog({
       subSeries: form.subSeries,
       carNumber: form.carNumber,
       mrp: form.mrp,
-    });
+      variant: form.variant,
+      colour: form.colour,
+    };
+    const picked = prefill?.catalogId
+      ? catalog.find((c) => c.car_id === prefill.catalogId)
+      : undefined;
+    if (picked && catalogEntryMatches(picked, fields)) return picked;
+    const found = findCatalogEntry(fields);
+    return (found && catalog.find((c) => c.car_id === found.car_id)) || null;
   }, [
+    catalog,
+    prefill?.catalogId,
     form.brand,
     form.make,
     form.model,
@@ -603,14 +627,35 @@ export function CarFormDialog({
     form.subSeries,
     form.carNumber,
     form.mrp,
+    form.variant,
+    form.colour,
   ]);
 
-  const existingCatalogMatch = useMemo(() => {
-    if (!form.make.trim() && !form.model.trim()) return null;
-    return (
-      catalog.find((c) => c.car_id.toUpperCase() === derivedCatalogCarId.toUpperCase()) || null
-    );
-  }, [catalog, derivedCatalogCarId, form.make, form.model]);
+  const derivedCatalogCarId = useMemo(
+    () =>
+      existingCatalogMatch?.car_id ??
+      generateCatalogCarId(
+        {
+          brand: form.brand,
+          make: form.make,
+          model: form.model,
+          assortment: form.assortment,
+          series: form.series,
+          subSeries: form.subSeries,
+        },
+        cars.filter((c) => isCatalogCarId(c.id)).map((c) => ({ id: c.id, car: c })),
+      ),
+    [
+      existingCatalogMatch,
+      cars,
+      form.brand,
+      form.make,
+      form.model,
+      form.assortment,
+      form.series,
+      form.subSeries,
+    ],
+  );
 
   /**
    * The ISO entry whose status is being changed. Opening the dialog rather than
@@ -819,14 +864,13 @@ export function CarFormDialog({
         : initial?.date?.trim() || "";
     const month = deriveMonth(date) || orderMonth;
 
-    const carId =
-      initial?.id && !isPlaceholderId(initial.id)
-        ? initial.id
-        : derivedCatalogCarId ||
-          `user-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    // An edit keeps the car's own ID; a new car is numbered by the store, which
+    // can see the whole collection. The catalogue ID says which casting it is.
+    const carId = initial?.id && !isPlaceholderId(initial.id) ? initial.id : "";
 
     const payload: Diecast = {
       id: carId,
+      catalogId: derivedCatalogCarId || initial?.catalogId,
       sno: initial?.sno,
       name,
       make,
@@ -838,6 +882,7 @@ export function CarFormDialog({
       series: form.series.trim(),
       subSeries: form.subSeries.trim(),
       carNumber: form.carNumber.trim(),
+      caseNumber: form.caseNumber.trim() || undefined,
       brand,
       assortment,
       size: form.size.trim() || "1:64",
@@ -1257,6 +1302,16 @@ export function CarFormDialog({
                         value={form.carNumber}
                         onChange={(e) => set("carNumber", e.target.value)}
                         placeholder="e.g. 3/5 or 142/250"
+                      />
+                    </Field>
+
+                    {/* Which box this one came in, not what the casting is —
+                        so it stays on your car rather than the catalogue. */}
+                    <Field label="Case Number">
+                      <ClearableInput
+                        value={form.caseNumber}
+                        onChange={(e) => set("caseNumber", e.target.value)}
+                        placeholder="e.g. 2026 K Case"
                       />
                     </Field>
 
@@ -1967,6 +2022,15 @@ export function CarFormDialog({
                       aria-label="Car number"
                     />
                   </RailField>
+                  <RailField label="Case number">
+                    <ClearableInput
+                      className="h-8 bg-background"
+                      value={form.caseNumber}
+                      onChange={(e) => set("caseNumber", e.target.value)}
+                      placeholder="2026 K Case"
+                      aria-label="Case number"
+                    />
+                  </RailField>
                   <RailField label="Scale">
                     <Combobox
                       clearable
@@ -2244,6 +2308,7 @@ function WizardSummary({
         ["Series", form.series],
         ["Sub series", form.subSeries],
         ["Car number", form.carNumber],
+        ["Case number", form.caseNumber],
         ["Size", form.size],
         ["Rarity", form.rarity],
         ["Favourite", form.favourite ? "Yes" : ""],
@@ -2323,7 +2388,7 @@ function WizardSummary({
               Reusing Catalog ID (No duplicate in DB)
             </span>
           ) : (
-            <span className="text-[10px] text-muted-foreground">8-Field Unique ID</span>
+            <span className="text-[10px] text-muted-foreground">New catalog ID</span>
           )}
         </div>
       )}

@@ -1,5 +1,8 @@
 export type Diecast = {
+  /** This car in this collection: PREFIX/BRAND/ASST/nnn, unique to the row. */
   id: string;
+  /** The catalogue entry this car is, e.g. 0F1406-01-0E02-1. Several cars share one. */
+  catalogId?: string;
   /** tesoro_raw identity column: the order the row was added. Absent on cars
    *  created locally that have not been round-tripped through Supabase yet. */
   sno?: number;
@@ -11,6 +14,8 @@ export type Diecast = {
   series: string;
   subSeries: string;
   carNumber: string;
+  /** Which case or mix this one came in, e.g. "2026 K Case". Per car, not per casting. */
+  caseNumber?: string;
   colour: string;
   type: string;
   brand: string;

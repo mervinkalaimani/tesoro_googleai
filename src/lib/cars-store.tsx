@@ -59,9 +59,11 @@ async function persistCars(
 
 // Collections are cached in localStorage, so every key is namespaced by user id:
 // two accounts on the same browser must never see each other's cars.
-const lsKey = (uid: string) => `dg.carsOverlay.v2.${uid}`;
-const cacheKey = (uid: string) => `dg.carsCache.v4.${uid}`;
-const tsKey = (uid: string) => `dg.carsCache.ts.v4.${uid}`;
+// Bumped when Car IDs moved to the coded hex form: a cache or overlay holding
+// the old IDs would show every car twice next to the renamed rows.
+const lsKey = (uid: string) => `dg.carsOverlay.v4.${uid}`;
+const cacheKey = (uid: string) => `dg.carsCache.v6.${uid}`;
+const tsKey = (uid: string) => `dg.carsCache.ts.v6.${uid}`;
 
 type Overlay = {
   added: Diecast[];

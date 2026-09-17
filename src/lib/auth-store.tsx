@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { setUserIdPrefix } from "@/lib/car-id";
 import { clearAllDrafts } from "@/lib/form-draft";
 
 export type Profile = {
@@ -26,6 +27,8 @@ export type Profile = {
   is_admin: boolean;
   is_approved: boolean;
   is_owner: boolean;
+  /** Starts every Car ID in this collection, e.g. "MKCCB". Assigned once, never changed. */
+  id_prefix?: string | null;
   created_at: string;
   /** Set when an admin rejected the request to join. */
   rejected_at?: string | null;
@@ -242,6 +245,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const row = (data as Profile | null) ?? null;
     setSchemaMissing(false);
     setProfile(row);
+    // Car IDs are minted locally, so the generator needs this account's prefix
+    // before the first car is added.
+    setUserIdPrefix(row?.id_prefix ?? null);
     // The owner is always an admin, mirroring is_tesoro_admin() in the database.
     setIsAdmin(Boolean(row?.is_admin) || Boolean(row?.is_owner));
   }, []);

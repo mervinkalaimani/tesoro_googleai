@@ -1,7 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { Diecast } from "@/lib/types";
-import { generateCatalogCarId, carIdFor, isPlaceholderId } from "@/lib/car-id";
+import {
+  catalogIdFor,
+  setCatalogCodes,
+  setCatalogIdEntries,
+  setRawCodes,
+  type CatalogCodeKind,
+  type CatalogCodeRow,
+} from "@/lib/car-id";
 import rawDiecastData from "@/data/diecast.json";
 
 export type CatalogCar = {
@@ -34,7 +41,10 @@ export type CatalogCar = {
 
 export type ReleaseStatus = "Released" | "Pre Order";
 
-const CATALOG_STORAGE_KEY = "tesoro_car_catalog_cache";
+// v2: the catalogue moved to coded hex Car IDs; a cache of the old ones is dropped.
+const CATALOG_STORAGE_KEY = "tesoro_car_catalog_cache.v2";
+const CODES_STORAGE_KEY = "tesoro_catalog_codes_cache";
+const RAW_CODES_STORAGE_KEY = "tesoro_raw_codes_cache";
 
 const userHandleMap: Record<string, string> = {};
 
@@ -73,9 +83,7 @@ export function extractCatalogFromCars(cars: Diecast[]): CatalogCar[] {
 
   for (const car of cars) {
     if (!car.make && !car.model && !car.name) continue;
-    const car_id = isPlaceholderId(car.id)
-      ? generateCatalogCarId(car)
-      : car.id || generateCatalogCarId(car);
+    const car_id = catalogIdFor(car);
 
     if (!map.has(car_id)) {
       map.set(car_id, {
@@ -106,9 +114,7 @@ export function extractCatalogFromCars(cars: Diecast[]): CatalogCar[] {
 
 /** Convert a Diecast item into a CatalogCar entry. */
 export function diecastToCatalogCar(car: Diecast): CatalogCar {
-  const car_id = isPlaceholderId(car.id)
-    ? generateCatalogCarId(car)
-    : car.id || generateCatalogCarId(car);
+  const car_id = catalogIdFor(car);
   return {
     car_id,
     brand: car.brand || "",
@@ -141,7 +147,11 @@ export function getLocalCatalog(): CatalogCar[] {
     const cached = localStorage.getItem(CATALOG_STORAGE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached) as CatalogCar[];
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setCatalogIdEntries(parsed);
+        loadCachedCodes();
+        return parsed;
+      }
     }
   } catch (e) {
     console.warn("Failed to parse cached catalog from localStorage:", e);
@@ -152,8 +162,61 @@ export function getLocalCatalog(): CatalogCar[] {
   return bundled;
 }
 
+/** The codes behind the Car IDs, from tesoro_catalog_codes. */
+async function fetchCatalogCodes(): Promise<void> {
+  const rows: CatalogCodeRow[] = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const res = await supabase
+      .from("tesoro_catalog_codes")
+      .select("kind, parent_key, value_key, code")
+      .order("kind")
+      .order("parent_key")
+      .order("code")
+      .range(from, from + PAGE - 1);
+    if (res.error) return;
+    rows.push(
+      ...(res.data ?? []).map((r) => ({ ...r, kind: r.kind as CatalogCodeKind })),
+    );
+    if (!res.data || res.data.length < PAGE) break;
+  }
+  setCatalogCodes(rows);
+  try {
+    localStorage.setItem(CODES_STORAGE_KEY, JSON.stringify(rows));
+  } catch {
+    // The codes are read again on the next load.
+  }
+}
+
+function loadCachedCodes() {
+  try {
+    const cached = localStorage.getItem(CODES_STORAGE_KEY);
+    if (cached) setCatalogCodes(JSON.parse(cached) as CatalogCodeRow[]);
+    const cachedRaw = localStorage.getItem(RAW_CODES_STORAGE_KEY);
+    if (cachedRaw) setRawCodes(JSON.parse(cachedRaw) as RawCodeRow[]);
+  } catch {
+    // Codes still come back with the catalogue fetch.
+  }
+}
+
+type RawCodeRow = { kind: "brand" | "assortment"; value_key: string; code: string };
+
+/** The brand and assortment codes a Car ID is written from (tesoro_raw_codes). */
+async function fetchRawCodes(): Promise<void> {
+  const res = await supabase.from("tesoro_raw_codes").select("kind, value_key, code");
+  if (res.error || !res.data) return;
+  const rows = res.data.map((r) => ({ ...r, kind: r.kind as RawCodeRow["kind"] }));
+  setRawCodes(rows);
+  try {
+    localStorage.setItem(RAW_CODES_STORAGE_KEY, JSON.stringify(rows));
+  } catch {
+    // Read again on the next load.
+  }
+}
+
 /** Caches catalog to localStorage. */
 export function saveLocalCatalog(catalog: CatalogCar[]): void {
+  setCatalogIdEntries(catalog);
   if (typeof window === "undefined") return;
   try {
     localStorage.setItem(CATALOG_STORAGE_KEY, JSON.stringify(catalog));
@@ -169,6 +232,8 @@ export function saveLocalCatalog(catalog: CatalogCar[]): void {
 export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
   try {
     void loadUserHandles();
+    void fetchCatalogCodes();
+    void fetchRawCodes();
     // Paged: a single select stops at the API's 1,000-row cap, and the
     // catalogue is past that.
     const PAGE = 1000;
@@ -260,8 +325,11 @@ export async function saveCatalogCarToSupabase(
     // 2. Persist to Supabase tesoro_car_catalog
     const { data: sessionData } = await supabase.auth.getSession();
     const userId = sessionData?.session?.user?.id ?? null;
-    const authorHandle = userId ? userHandleMap[userId] || userId : null;
-    const effectiveCreatedBy = catalogCar.created_by || authorHandle || "system";
+    // created_by is a uuid column: a handle or "system" would fail the whole
+    // write. The readable handle is resolved on display instead.
+    const isUuid = (v?: string | null) =>
+      !!v && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+    const effectiveCreatedBy = isUuid(catalogCar.created_by) ? catalogCar.created_by : userId;
 
     const payload = {
       car_id: catalogCar.car_id,

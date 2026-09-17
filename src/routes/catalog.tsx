@@ -10,7 +10,6 @@ import { useAuth } from "@/lib/auth-store";
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
 import { resolveCatalogUserId, loadUserHandles } from "@/lib/catalog";
 import type { CatalogueCar } from "@/lib/catalogue-search";
-import { generateCatalogCarId } from "@/lib/car-id";
 import { carSubLine } from "@/lib/car-subline";
 import { inr, formatDayMonthYear } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
@@ -126,6 +125,7 @@ function toPrefill(c: CatalogCar): CatalogueCar {
     chase: (c.rarity || "Normal") !== "Normal",
     mrp: c.mrp,
     imageUrl: c.image_url || undefined,
+    catalogId: c.car_id,
   };
 }
 
@@ -156,7 +156,12 @@ function CatalogPage() {
     void loadUserHandles();
   }, []);
 
-  const owned = useMemo(() => new Set(mine.map((c) => (c.id || "").toUpperCase())), [mine]);
+  // A car is "owned" when one of your cars points at that catalogue entry; your
+  // own Car IDs are per car, so they never match a catalogue ID.
+  const owned = useMemo(
+    () => new Set(mine.map((c) => (c.catalogId || "").toUpperCase()).filter(Boolean)),
+    [mine],
+  );
 
   // Segment and the top bar's search first; the filter options come from what is left.
   const searched = useMemo(() => {

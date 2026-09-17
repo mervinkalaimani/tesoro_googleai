@@ -39,8 +39,17 @@ if (
     return null;
   });
   const sha = (process.env.VERCEL_GIT_COMMIT_SHA || "").slice(0, 7);
+  // Whichever is further on: a version bumped in package.json is not held back
+  // by a Kanban that has not caught up yet.
+  const parts = (v?: string | null) => (v || "0.0.0").split(".").map((n) => Number(n) || 0);
+  const newer = (a?: string | null, b?: string | null) => {
+    const [x, y] = [parts(a), parts(b)];
+    for (let i = 0; i < 3; i++)
+      if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0) ? a : b;
+    return a || b;
+  };
   process.env.VITE_APP_VERSION = [
-    `${phase?.version || pkgVersion || "0.0.0"} (alpha)`,
+    `${newer(phase?.version, pkgVersion) || "0.0.0"} (alpha)`,
     sha && `· ${sha}`,
   ]
     .filter(Boolean)

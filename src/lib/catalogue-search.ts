@@ -53,6 +53,8 @@ export type CatalogueCar = Pick<
 > & {
   /** How many cars across all accounts share this casting. Absent for your own. */
   copies?: number;
+  /** The catalogue entry this was picked from, when it came from the Catalog page. */
+  catalogId?: string;
 };
 
 /** Same casting, same paint, same series: one suggestion. */

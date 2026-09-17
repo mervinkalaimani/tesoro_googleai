@@ -885,13 +885,26 @@ function CarDetailsBody({
         </h2>
 
         {car.id && (
-          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-1 text-xs">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
-              Car ID
-            </span>
-            <span className="font-mono text-[11px] font-medium text-foreground truncate select-all">
-              {car.id}
-            </span>
+          <div className="mt-2 space-y-1">
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-1 text-xs">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+                Car ID
+              </span>
+              <span className="font-mono text-[11px] font-medium text-foreground truncate select-all">
+                {car.id}
+              </span>
+            </div>
+            {/* The casting itself, shared with everyone else who owns this car. */}
+            {car.catalogId && (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-1 text-xs">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0">
+                  Catalog ID
+                </span>
+                <span className="font-mono text-[11px] font-medium text-foreground truncate select-all">
+                  {car.catalogId}
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -905,6 +918,7 @@ function CarDetailsBody({
           <Spec label="Series" value={car.series} />
           <Spec label="Sub series" value={car.subSeries} />
           <Spec label="Car number" value={car.carNumber} />
+          {car.caseNumber ? <Spec label="Case number" value={car.caseNumber} /> : null}
           <Spec label="Type" value={car.type} />
           <Spec label="Colour" value={car.colour} />
           <Spec label="Size" value={car.size} />

@@ -470,9 +470,9 @@ export function BulkAddCarsDialog({
           brand,
           assortment,
         };
-        const id = carIdFor(dummyCar, pool);
+        const { id, catalogId } = carIdFor(dummyCar, pool);
         map.set(r.key, id);
-        pool.push({ ...dummyCar, id });
+        pool.push({ ...dummyCar, id, catalogId });
       }
     }
     return map;

@@ -6,7 +6,7 @@ import {
   saveCatalogCarToSupabase,
   diecastToCatalogCar,
 } from "@/lib/catalog";
-import { generateCatalogCarId, isPlaceholderId, CarIdFields } from "@/lib/car-id";
+import { findCatalogEntry, type CarIdFields } from "@/lib/car-id";
 import type { Diecast } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -72,33 +72,9 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   const findMatchingInCatalog = useCallback(
     (fields: CarIdFields): CatalogCar | undefined => {
-      const targetBrand = (fields.brand || "").trim().toLowerCase();
-      const targetMake = (fields.make || "").trim().toLowerCase();
-      const targetModel = (fields.model || "").trim().toLowerCase();
-      const targetAsst = (fields.assortment || "").trim().toLowerCase();
-      const targetSeries = (fields.series || "").trim().toLowerCase();
-      const targetSubSeries = (fields.subSeries || "").trim().toLowerCase();
-      const targetCarNum = (fields.carNumber || "").trim().toLowerCase();
-      const targetMrp = Math.round(Number(fields.mrp) || 0);
-
-      // Fast check: if generated ID matches directly
-      const generatedId = generateCatalogCarId(fields);
-      const byId = catalog.find((c) => c.car_id.toUpperCase() === generatedId.toUpperCase());
-      if (byId) return byId;
-
-      // Check by attribute matching
-      return catalog.find((c) => {
-        return (
-          c.brand.trim().toLowerCase() === targetBrand &&
-          c.make.trim().toLowerCase() === targetMake &&
-          c.model.trim().toLowerCase() === targetModel &&
-          c.assortment.trim().toLowerCase() === targetAsst &&
-          c.series.trim().toLowerCase() === targetSeries &&
-          c.sub_series.trim().toLowerCase() === targetSubSeries &&
-          c.car_number.trim().toLowerCase() === targetCarNum &&
-          Math.round(Number(c.mrp) || 0) === targetMrp
-        );
-      });
+      // The ID no longer spells the casting out, so it is matched on its fields.
+      const entry = findCatalogEntry(fields);
+      return entry ? catalog.find((c) => c.car_id === entry.car_id) : undefined;
     },
     [catalog],
   );
