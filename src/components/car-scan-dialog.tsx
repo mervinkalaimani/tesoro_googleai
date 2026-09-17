@@ -189,7 +189,9 @@ export function CarScanDialog({
     const parsed = parseTextToCarFields(pastedText);
     const ok = processFields(parsed);
     if (!ok) {
-      setError("Could not extract recognizable car fields from that text. Try pasting car details.");
+      setError(
+        "Could not extract recognizable car fields from that text. Try pasting car details.",
+      );
     }
   };
 
