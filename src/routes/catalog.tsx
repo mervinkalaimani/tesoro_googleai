@@ -23,17 +23,11 @@ import { CompactCarCard } from "@/components/compact-car-card";
 import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
+import { CatalogFormDialog } from "@/components/catalog-form-dialog";
+import { parseQuery, matchesQuery } from "@/lib/search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({
@@ -61,6 +55,8 @@ const FILTERS = [
   { key: "colour", label: "Colour", get: (c: CatalogCar) => c.colour || "" },
   { key: "brand", label: "Brand", get: (c: CatalogCar) => c.brand },
   { key: "assortment", label: "Assortment", get: (c: CatalogCar) => c.assortment },
+  { key: "series", label: "Series", get: (c: CatalogCar) => c.series || "" },
+  { key: "subSeries", label: "Sub-series", get: (c: CatalogCar) => c.sub_series || "" },
   { key: "rarity", label: "Rarity", get: (c: CatalogCar) => c.rarity || "Normal" },
 ] as const;
 
@@ -75,6 +71,8 @@ const NO_FILTERS: Filters = {
   colour: "all",
   brand: "all",
   assortment: "all",
+  series: "all",
+  subSeries: "all",
   rarity: "all",
 };
 
@@ -137,7 +135,7 @@ function toPrefill(c: CatalogCar): CatalogueCar {
  * entry — which corrects it in every collection that has the car.
  */
 function CatalogPage() {
-  const { catalog, isLoading } = useCatalog();
+  const { catalog, isLoading, addCatalogCar, updateCatalogCar } = useCatalog();
   const { isAdmin, isGuest } = useAuth();
   const { query } = useApp();
   const mine = useCars();
@@ -145,6 +143,7 @@ function CatalogPage() {
   const [segment, setSegment] = useState<Segment>("all");
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [hideOwned, setHideOwned] = useState(false);
   const [view, setView] = useState<ViewMode>("grid");
   const [adding, setAdding] = useState<CatalogCar | null>(null);
   /** The entry whose details are open. */
@@ -161,40 +160,33 @@ function CatalogPage() {
 
   // Segment and the top bar's search first; the filter options come from what is left.
   const searched = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim();
+    if (!q) {
+      return catalog.filter((c) => {
+        if (segment === "released" && isPreOrder(c)) return false;
+        if (segment === "preorder" && !isPreOrder(c)) return false;
+        return true;
+      });
+    }
+
+    const groups = parseQuery(q);
     return catalog.filter((c) => {
       if (segment === "released" && isPreOrder(c)) return false;
       if (segment === "preorder" && !isPreOrder(c)) return false;
-      if (!q) return true;
-      return [
-        c.name,
-        c.brand,
-        c.make,
-        c.model,
-        c.variant,
-        c.year,
-        c.colour,
-        c.assortment,
-        c.series,
-        c.sub_series,
-        c.car_number,
-      ]
-        .join(" ")
-        .toLowerCase()
-        .includes(q);
+      return matchesQuery(asCar(c), groups);
     });
   }, [catalog, segment, query]);
 
   const matches = (c: CatalogCar, f: Filters, skip?: FilterKey) =>
     FILTERS.every((d) => d.key === skip || f[d.key] === "all" || d.get(c) === f[d.key]);
 
-  const rows = useMemo(
-    () =>
-      searched
-        .filter((c) => matches(c, filters))
-        .sort((a, b) => (a.name || "").localeCompare(b.name || "")),
-    [searched, filters],
-  );
+  const rows = useMemo(() => {
+    let result = searched.filter((c) => matches(c, filters));
+    if (hideOwned) {
+      result = result.filter((c) => !owned.has(c.car_id.toUpperCase()));
+    }
+    return result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }, [searched, filters, hideOwned, owned]);
 
   /** Each filter's choices, narrowed by the other filters, with counts. */
   const options = useMemo(() => {
@@ -202,6 +194,7 @@ function CatalogPage() {
     for (const d of FILTERS) {
       const counts = new Map<string, number>();
       for (const c of searched) {
+        if (hideOwned && owned.has(c.car_id.toUpperCase())) continue;
         if (!matches(c, filters, d.key)) continue;
         const v = d.get(c).trim();
         if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
@@ -211,11 +204,12 @@ function CatalogPage() {
         .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
     }
     return out;
-  }, [searched, filters]);
+  }, [searched, filters, hideOwned, owned]);
 
-  const activeCount = Object.values(filters).filter((v) => v !== "all").length;
+  const activeCount =
+    Object.values(filters).filter((v) => v !== "all").length + (hideOwned ? 1 : 0);
 
-  useEffect(() => setVisible(LOAD_BATCH), [segment, filters, query]);
+  useEffect(() => setVisible(LOAD_BATCH), [segment, filters, hideOwned, query]);
 
   useEffect(() => {
     const el = sentinel.current;
@@ -282,16 +276,16 @@ function CatalogPage() {
 
       {filterOpen && (
         <div className="card-elevated space-y-2.5 bg-muted/20 p-2.5 md:space-y-3 md:p-4">
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-8 md:gap-3">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 md:gap-2">
             {FILTERS.map((d) => (
               <div key={d.key} className="min-w-0">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                <label className="text-[10px] uppercase tracking-wider text-muted-foreground truncate block">
                   {d.label}
                 </label>
                 <select
                   value={filters[d.key]}
                   onChange={(e) => setFilters((f) => ({ ...f, [d.key]: e.target.value }))}
-                  className="mt-0.5 h-8 w-full min-w-0 rounded-md border border-input bg-background px-1.5 text-xs sm:px-2 sm:text-sm md:h-9"
+                  className="mt-0.5 h-8 w-full min-w-0 rounded-md border border-input bg-background px-1.5 text-xs sm:px-2 sm:text-sm md:h-9 truncate"
                 >
                   <option value="all">All</option>
                   {options[d.key].map((o) => (
@@ -303,19 +297,34 @@ function CatalogPage() {
               </div>
             ))}
           </div>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">
-              <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
-              {searched.length.toLocaleString()}
-            </p>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={!activeCount}
-              onClick={() => setFilters(NO_FILTERS)}
-            >
-              Clear filters
-            </Button>
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60">
+            <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={hideOwned}
+                onChange={(e) => setHideOwned(e.target.checked)}
+                className="size-4 rounded border-input text-primary accent-primary focus:ring-primary/20 cursor-pointer"
+              />
+              <span>Hide owned cars</span>
+            </label>
+
+            <div className="flex items-center gap-3">
+              <p className="text-xs text-muted-foreground">
+                <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
+                {searched.length.toLocaleString()}
+              </p>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={!activeCount}
+                onClick={() => {
+                  setFilters(NO_FILTERS);
+                  setHideOwned(false);
+                }}
+              >
+                Clear filters
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -370,6 +379,12 @@ function CatalogPage() {
         expectedDate={viewing?.expected_date}
         owned={viewing ? owned.has(viewing.car_id.toUpperCase()) : false}
         onClose={() => setViewing(null)}
+        canEdit={isAdmin && !isGuest}
+        onEdit={() => {
+          const target = viewing;
+          setViewing(null);
+          setEditing(target);
+        }}
         onAdd={() => {
           setAdding(viewing);
           setViewing(null);
@@ -383,7 +398,19 @@ function CatalogPage() {
         prefillStatus={adding && isPreOrder(adding) ? "Pre Order" : "Waiting"}
       />
       {isAdmin && !isGuest && (
-        <CatalogEntryDialog entry={editing} onClose={() => setEditing(null)} />
+        <CatalogFormDialog
+          open={editing !== null}
+          entry={editing}
+          catalog={catalog}
+          onClose={() => setEditing(null)}
+          onSave={async (car) => {
+            if (editing === "new") {
+              return await addCatalogCar(car);
+            } else {
+              return await updateCatalogCar(car);
+            }
+          }}
+        />
       )}
     </div>
   );
@@ -455,235 +482,5 @@ function CatalogCard({
         </div>
       </div>
     </article>
-  );
-}
-
-const ENTRY_FIELDS: { key: keyof CatalogCar; label: string; required?: boolean }[] = [
-  { key: "brand", label: "Brand", required: true },
-  { key: "make", label: "Make", required: true },
-  { key: "model", label: "Model", required: true },
-  { key: "variant", label: "Variant" },
-  { key: "year", label: "Year" },
-  { key: "colour", label: "Colour" },
-  { key: "type", label: "Type" },
-  { key: "assortment", label: "Assortment", required: true },
-  { key: "series", label: "Series" },
-  { key: "sub_series", label: "Sub series" },
-  { key: "car_number", label: "Car number" },
-  { key: "size", label: "Size" },
-  { key: "name", label: "Name" },
-  { key: "image_url", label: "Image URL" },
-];
-
-/**
- * Admin only: add a casting, or correct one. Saving a correction rewrites the
- * matching car in every collection — the database does that, not this dialog.
- */
-function CatalogEntryDialog({
-  entry,
-  onClose,
-}: {
-  entry: CatalogCar | "new" | null;
-  onClose: () => void;
-}) {
-  const { catalog, addCatalogCar, updateCatalogCar } = useCatalog();
-  const isNew = entry === "new";
-  const [form, setForm] = useState<CatalogCar | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!entry) return setForm(null);
-    setForm(
-      entry === "new"
-        ? {
-            car_id: "",
-            brand: "",
-            make: "",
-            model: "",
-            assortment: "",
-            series: "",
-            sub_series: "",
-            car_number: "",
-            mrp: 0,
-            name: "",
-            size: "1:64",
-            release_status: "Released",
-            rarity: "Normal",
-            expected_date: null,
-          }
-        : { ...entry, release_status: entry.release_status ?? "Released" },
-    );
-    setSaving(false);
-  }, [entry]);
-
-  if (!entry || !form) return null;
-
-  const set = <K extends keyof CatalogCar>(k: K, v: CatalogCar[K]) =>
-    setForm((f) => (f ? { ...f, [k]: v } : f));
-  const missing = ENTRY_FIELDS.find((f) => f.required && !String(form[f.key] ?? "").trim());
-
-  const save = async () => {
-    if (missing) return;
-    setSaving(true);
-    const car: CatalogCar = {
-      ...form,
-      // A new entry is keyed like every other; an existing one keeps its key, so
-      // the cars already linked to it stay linked.
-      car_id: isNew
-        ? generateCatalogCarId({
-            brand: form.brand,
-            make: form.make,
-            model: form.model,
-            assortment: form.assortment,
-            series: form.series,
-            subSeries: form.sub_series,
-            carNumber: form.car_number,
-            mrp: form.mrp,
-          })
-        : form.car_id,
-      name: form.name.trim() || `${form.make} ${form.model}`.trim(),
-    };
-    if (isNew && catalog.some((c) => c.car_id.toUpperCase() === car.car_id.toUpperCase())) {
-      setSaving(false);
-      toast.error("That casting is already in the catalogue", { description: car.car_id });
-      return;
-    }
-    const ok = isNew ? await addCatalogCar(car) : await updateCatalogCar(car);
-    setSaving(false);
-    if (ok) {
-      toast.success(isNew ? "Added to the catalogue" : "Catalogue entry updated", {
-        description: isNew ? car.name : "Every collection with this car now shows the change.",
-      });
-      onClose();
-    }
-  };
-
-  return (
-    <Dialog open onOpenChange={(v) => !v && !saving && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Store className="size-4 text-primary" />
-            {isNew ? "New casting" : "Edit catalogue entry"}
-          </DialogTitle>
-          <DialogDescription>
-            {isNew
-              ? "Added to the shared catalogue for everyone to browse."
-              : "Changes are written into this car in every collection that has it. Owners can still edit their own copy afterwards."}
-          </DialogDescription>
-        </DialogHeader>
-
-        {!isNew && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-            <div>
-              <span className="text-muted-foreground/75">Added by:</span>{" "}
-              <span className="font-semibold text-foreground">
-                {resolveCatalogUserId(entry.created_by)}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground/75">Added on:</span>{" "}
-              <span className="font-semibold text-foreground">
-                {formatDayMonthYear(entry.created_at) || "—"}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground/75">Last updated:</span>{" "}
-              <span className="font-semibold text-foreground">
-                {formatDayMonthYear(entry.updated_at) ||
-                  formatDayMonthYear(entry.created_at) ||
-                  "—"}
-              </span>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs">Release</Label>
-            <SegmentControl<ReleaseStatus>
-              value={form.release_status ?? "Released"}
-              onChange={(v) => set("release_status", v)}
-              options={[
-                { value: "Released", label: "Released" },
-                { value: "Pre Order", label: "Pre Order" },
-              ]}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Rarity</Label>
-            <SegmentControl<string>
-              value={form.rarity || "Normal"}
-              onChange={(v) => set("rarity", v)}
-              options={RARITIES.map((r) => ({ value: r, label: r }))}
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {form.release_status === "Pre Order" && (
-              <div className="space-y-1">
-                <Label className="text-xs">Expected date</Label>
-                <Input
-                  type="date"
-                  value={form.expected_date || ""}
-                  onChange={(e) => set("expected_date", e.target.value || null)}
-                  className="h-9"
-                />
-              </div>
-            )}
-            {ENTRY_FIELDS.map((f) => (
-              <div key={f.key} className="space-y-1">
-                <Label className="text-xs">
-                  {f.label}
-                  {f.required ? " *" : ""}
-                </Label>
-                <Input
-                  value={String(form[f.key] ?? "")}
-                  onChange={(e) => set(f.key, e.target.value as never)}
-                  className="h-9"
-                />
-              </div>
-            ))}
-            <div className="space-y-1">
-              <Label className="text-xs">MRP (₹) *</Label>
-              <Input
-                type="number"
-                inputMode="decimal"
-                value={form.mrp || ""}
-                onChange={(e) => set("mrp", Number(e.target.value) || 0)}
-                className="h-9"
-              />
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter className="mt-2 flex flex-row items-center justify-between gap-2 border-t border-border pt-3 sm:justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            disabled={saving}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => void save()}
-            disabled={saving || Boolean(missing)}
-            className="gap-1.5"
-            title={missing ? `${missing.label} is required` : undefined}
-          >
-            {saving ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Check className="size-3.5" />
-            )}
-            {isNew ? "Add casting" : "Save changes"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

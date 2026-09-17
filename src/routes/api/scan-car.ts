@@ -8,7 +8,12 @@ import { GoogleGenAI, Type } from "@google/genai";
  * Server-side route using @google/genai with GEMINI_API_KEY.
  */
 
-const DEFAULT_MODEL = "gemini-3.8-flash";
+const CANDIDATE_MODELS = [
+  "gemini-2.5-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-3.8-flash",
+  "gemini-flash-latest",
+];
 const MAX_BASE64 = 6_000_000;
 
 export const SCAN_FIELDS = [
@@ -114,55 +119,72 @@ async function handler({ request }: { request: Request }) {
     return json({ error: "Send a JPEG, PNG or WebP under about 4MB." }, 400);
   }
 
-  const model = process.env["GEMINI_MODEL"] || DEFAULT_MODEL;
+  const specifiedModel = process.env["GEMINI_MODEL"];
+  const modelsToTry = specifiedModel ? [specifiedModel] : CANDIDATE_MODELS;
 
-  try {
-    const ai = getGenAI(key);
-    const response = await ai.models.generateContent({
-      model,
-      contents: {
-        parts: [
-          { text: PROMPT },
-          {
-            inlineData: {
-              mimeType: image.mimeType,
-              data: image.data,
-            },
-          },
-        ],
-      },
-      config: {
-        temperature: 0,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: Object.fromEntries(SCAN_FIELDS.map((f) => [f, { type: Type.STRING }])),
-          required: [...SCAN_FIELDS],
-        },
-      },
-    });
+  let lastError = "Image analysis failed.";
+  const ai = getGenAI(key);
 
-    const text = response.text;
-    if (!text) {
-      return json({ error: "Nothing came back from image analysis." }, 502);
-    }
-
-    let parsed: unknown;
+  for (const model of modelsToTry) {
     try {
-      parsed = JSON.parse(text);
-    } catch {
-      return json({ error: "The response was in an unexpected format." }, 502);
-    }
+      const response = await ai.models.generateContent({
+        model,
+        contents: {
+          parts: [
+            { text: PROMPT },
+            {
+              inlineData: {
+                mimeType: image.mimeType,
+                data: image.data,
+              },
+            },
+          ],
+        },
+        config: {
+          temperature: 0,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: Object.fromEntries(SCAN_FIELDS.map((f) => [f, { type: Type.STRING }])),
+            required: [...SCAN_FIELDS],
+          },
+        },
+      });
 
-    if (!parsed || typeof parsed !== "object") {
-      return json({ error: "No attributes were detected from the image." }, 502);
-    }
+      const text = response.text;
+      if (!text) {
+        lastError = "Nothing came back from image analysis.";
+        continue;
+      }
 
-    return json({ fields: cleanFields(parsed as Record<string, unknown>) });
-  } catch (err: unknown) {
-    const detail = (err as Error)?.message || "Image analysis failed.";
-    return json({ error: `${detail} (model: ${model})` }, 502);
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        lastError = "The response was in an unexpected format.";
+        continue;
+      }
+
+      if (!parsed || typeof parsed !== "object") {
+        lastError = "No attributes were detected from the image.";
+        continue;
+      }
+
+      return json({ fields: cleanFields(parsed as Record<string, unknown>), modelUsed: model });
+    } catch (err: unknown) {
+      const detail = (err as Error)?.message || "Image analysis failed.";
+      lastError = `${detail} (model: ${model})`;
+      // If quota exceeded or 429, continue to next model
+      const isQuota = /429|quota|resource_exhausted|rate limit/i.test(detail);
+      if (isQuota) {
+        continue;
+      }
+      // For other critical failures, continue trying next candidate model
+      continue;
+    }
   }
+
+  return json({ error: lastError }, 502);
 }
 
 export const Route = createFileRoute("/api/scan-car")({

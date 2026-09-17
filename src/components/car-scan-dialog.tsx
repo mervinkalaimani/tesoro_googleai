@@ -1,5 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { Camera, Check, Images, Loader2, ScanLine, Upload } from "lucide-react";
+import {
+  Camera,
+  Check,
+  Images,
+  Loader2,
+  ScanLine,
+  Upload,
+  RefreshCw,
+  Sparkles,
+  FileText,
+  Cpu,
+} from "lucide-react";
 
 import {
   Dialog,
@@ -11,7 +22,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { ACCEPT_ATTR, imageToBase64 } from "@/lib/car-photos";
+import { runClientOcr, parseTextToCarFields } from "@/lib/card-ocr";
+import { cn } from "@/lib/utils";
 
 /**
  * Photograph the card, keep what it read.
@@ -70,12 +84,16 @@ export function CarScanDialog({
   onApply: (fields: ScanResult) => void;
 }) {
   const touch = useTouchDevice();
+  const [engine, setEngine] = useState<"ai" | "ocr" | "paste">("ai");
   const [busy, setBusy] = useState(false);
+  const [busyMessage, setBusyMessage] = useState("");
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<string>("");
+  const [pastedText, setPastedText] = useState("");
   const [found, setFound] = useState<ScanResult | null>(null);
   const [take, setTake] = useState<Set<ScanKey>>(new Set());
 
+  const lastFileRef = useRef<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -84,17 +102,32 @@ export function CarScanDialog({
   useEffect(() => {
     if (open) return;
     setBusy(false);
+    setBusyMessage("");
     setError("");
     setFound(null);
     setTake(new Set());
+    lastFileRef.current = null;
+    setPastedText("");
     setPreview((url) => {
       if (url) URL.revokeObjectURL(url);
       return "";
     });
   }, [open]);
 
-  const scan = async (file: File | undefined | null) => {
+  const processFields = (fields: ScanResult) => {
+    const filled = FIELDS.map((f) => f.key).filter((k) => (fields[k] || "").trim());
+    if (filled.length === 0) {
+      setError("Nothing legible on that one. A flatter, closer shot of the card usually does it.");
+      return false;
+    }
+    setFound(fields);
+    setTake(new Set(filled));
+    return true;
+  };
+
+  const scan = async (file: File | undefined | null, targetEngine = engine) => {
     if (!file) return;
+    lastFileRef.current = file;
     setError("");
     setFound(null);
     setBusy(true);
@@ -103,6 +136,26 @@ export function CarScanDialog({
       return URL.createObjectURL(file);
     });
 
+    if (targetEngine === "ocr") {
+      setBusyMessage("Reading text with on-device OCR…");
+      try {
+        const { text, fields } = await runClientOcr(file);
+        if (text) setPastedText(text);
+        const ok = processFields(fields);
+        if (!ok && !text) {
+          setError("Could not read any text on the image. Try taking a brighter, closer photo.");
+        }
+      } catch (err) {
+        setError("On-device text scan failed. Try a different angle or photo.");
+      } finally {
+        setBusy(false);
+        setBusyMessage("");
+      }
+      return;
+    }
+
+    // Default: AI Vision with automatic model fallback
+    setBusyMessage("Analyzing card with AI Vision…");
     try {
       const image = await imageToBase64(file);
       const res = await fetch("/api/scan-car", {
@@ -116,24 +169,27 @@ export function CarScanDialog({
       } | null;
 
       if (!res.ok || !body?.fields) {
-        setError(body?.error || "That scan did not work.");
+        const errMsg = body?.error || "That scan did not work.";
+        setError(errMsg);
         return;
       }
 
-      const fields = body.fields;
-      const filled = FIELDS.map((f) => f.key).filter((k) => (fields[k] || "").trim());
-      if (filled.length === 0) {
-        setError(
-          "Nothing legible on that one. A flatter, closer shot of the card usually does it.",
-        );
-        return;
-      }
-      setFound(fields);
-      setTake(new Set(filled));
+      processFields(body.fields);
     } catch {
       setError("That scan did not work.");
     } finally {
       setBusy(false);
+      setBusyMessage("");
+    }
+  };
+
+  const parsePasted = () => {
+    if (!pastedText.trim()) return;
+    setError("");
+    const parsed = parseTextToCarFields(pastedText);
+    const ok = processFields(parsed);
+    if (!ok) {
+      setError("Could not extract recognizable car fields from that text. Try pasting car details.");
     }
   };
 
@@ -156,6 +212,8 @@ export function CarScanDialog({
     onOpenChange(false);
   };
 
+  const isQuotaError = /quota|429|resource_exhausted|rate limit/i.test(error);
+
   const rows = found
     ? FIELDS.filter((f) => (found[f.key] || "").trim())
     : ([] as { key: ScanKey; label: string }[]);
@@ -171,61 +229,156 @@ export function CarScanDialog({
             Scan the card
           </DialogTitle>
           <DialogDescription>
-            Photograph the blister card or the box. What it reads comes back as a list you can
-            correct before any of it reaches the form.
+            Photograph the blister card or packaging to automatically extract car details.
           </DialogDescription>
         </DialogHeader>
 
-        {/* WHAT WAS PHOTOGRAPHED */}
-        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-dashed border-border bg-muted/30">
-          {preview ? (
-            <img src={preview} alt="" className="absolute inset-0 size-full object-contain" />
-          ) : (
-            <div className="absolute inset-0 grid place-items-center text-center text-xs text-muted-foreground">
-              <span className="px-6">
-                Hold the card flat and fill the frame. The small print on the back is where most of
-                this comes from.
-              </span>
-            </div>
-          )}
-          {busy && (
-            <div className="absolute inset-0 grid place-items-center gap-2 bg-background/70">
-              <Loader2 className="size-6 animate-spin text-primary" />
-            </div>
-          )}
+        {/* Scan Mode / Engine Switcher */}
+        <div className="flex rounded-lg border border-border bg-muted/40 p-1 text-xs">
+          <button
+            type="button"
+            onClick={() => {
+              setEngine("ai");
+              if (lastFileRef.current && !busy) void scan(lastFileRef.current, "ai");
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors",
+              engine === "ai"
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Sparkles className="size-3.5 text-primary" />
+            AI Vision
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setEngine("ocr");
+              if (lastFileRef.current && !busy) void scan(lastFileRef.current, "ocr");
+            }}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors",
+              engine === "ocr"
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+            title="Local in-browser OCR (100% offline, zero API quota)"
+          >
+            <Cpu className="size-3.5 text-emerald-500" />
+            On-Device OCR
+          </button>
+          <button
+            type="button"
+            onClick={() => setEngine("paste")}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-md py-1.5 font-medium transition-colors",
+              engine === "paste"
+                ? "bg-background text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <FileText className="size-3.5 text-blue-500" />
+            Paste Text
+          </button>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {touch && (
+        {engine === "paste" ? (
+          <div className="space-y-2">
+            <Textarea
+              placeholder="Paste raw text from Google Lens, photo OCR, or web listing here…"
+              value={pastedText}
+              onChange={(e) => setPastedText(e.target.value)}
+              rows={4}
+              className="text-xs font-mono"
+            />
             <Button
               type="button"
-              variant="outline"
               size="sm"
-              className="flex-1 gap-1.5"
-              disabled={busy}
-              onClick={() => cameraRef.current?.click()}
+              onClick={parsePasted}
+              disabled={!pastedText.trim()}
+              className="w-full gap-1.5"
             >
-              <Camera className="size-3.5" />
-              Camera
+              <Check className="size-3.5" />
+              Extract Details from Text
             </Button>
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={touch ? "flex-1 gap-1.5" : "gap-1.5"}
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
-          >
-            {touch ? <Images className="size-3.5" /> : <Upload className="size-3.5" />}
-            {found || error ? "Try another" : touch ? "Gallery" : "Choose a photo"}
-          </Button>
-        </div>
+          </div>
+        ) : (
+          <>
+            {/* WHAT WAS PHOTOGRAPHED */}
+            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-dashed border-border bg-muted/30">
+              {preview ? (
+                <img src={preview} alt="" className="absolute inset-0 size-full object-contain" />
+              ) : (
+                <div className="absolute inset-0 grid place-items-center text-center text-xs text-muted-foreground">
+                  <span className="px-6">
+                    Hold the card flat and fill the frame. The small print on the back or card face
+                    is where this comes from.
+                  </span>
+                </div>
+              )}
+              {busy && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 p-4 text-center">
+                  <Loader2 className="size-6 animate-spin text-primary" />
+                  <span className="text-xs font-medium text-foreground">
+                    {busyMessage || "Scanning image…"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {touch && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5"
+                  disabled={busy}
+                  onClick={() => cameraRef.current?.click()}
+                >
+                  <Camera className="size-3.5" />
+                  Camera
+                </Button>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={touch ? "flex-1 gap-1.5" : "gap-1.5"}
+                disabled={busy}
+                onClick={() => fileRef.current?.click()}
+              >
+                {touch ? <Images className="size-3.5" /> : <Upload className="size-3.5" />}
+                {found || error ? "Choose another" : touch ? "Gallery" : "Choose a photo"}
+              </Button>
+            </div>
+          </>
+        )}
 
         {error && (
-          <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error}
-          </p>
+          <div className="space-y-1.5 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+            <p className="font-medium">{error}</p>
+            {isQuotaError && (
+              <div className="pt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 gap-1.5 border-destructive/40 bg-background text-[11px] text-foreground hover:bg-muted"
+                  onClick={() => {
+                    setEngine("ocr");
+                    if (lastFileRef.current) {
+                      void scan(lastFileRef.current, "ocr");
+                    }
+                  }}
+                >
+                  <Cpu className="size-3 text-emerald-500" />
+                  Switch to On-Device OCR (Quota-Free)
+                </Button>
+              </div>
+            )}
+          </div>
         )}
 
         {rows.length > 0 && (
@@ -233,7 +386,7 @@ export function CarScanDialog({
             <p className="text-xs text-muted-foreground">
               {take.size} of {rows.length} will be filled in. Untick anything it got wrong.
             </p>
-            <ul className="max-h-64 divide-y divide-border/60 overflow-y-auto rounded-lg border border-border">
+            <ul className="max-h-60 divide-y divide-border/60 overflow-y-auto rounded-lg border border-border">
               {rows.map((f) => (
                 <li key={f.key}>
                   <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2">
@@ -255,13 +408,48 @@ export function CarScanDialog({
           </div>
         )}
 
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={apply} disabled={take.size === 0} className="gap-1.5">
+        {/* Footer arranged from left to right: Save (Fill in), Refresh (Recheck), Cancel */}
+        <DialogFooter className="flex w-full flex-row items-center justify-between gap-2 border-t border-border/60 pt-3 sm:justify-between">
+          {/* 1. Save (Left) */}
+          <Button
+            type="button"
+            onClick={apply}
+            disabled={take.size === 0 || busy}
+            className="gap-1.5 text-xs font-semibold"
+          >
             <Check className="size-4" />
-            Fill in {take.size || ""} {take.size === 1 ? "field" : "fields"}
+            Save {take.size ? `(${take.size})` : ""}
+          </Button>
+
+          {/* 2. Refresh / Recheck (Middle) */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (engine === "paste") {
+                parsePasted();
+              } else if (lastFileRef.current) {
+                void scan(lastFileRef.current, engine);
+              }
+            }}
+            disabled={busy || (!lastFileRef.current && engine !== "paste")}
+            className="gap-1.5 text-xs"
+            title="Recheck the card image or text"
+          >
+            <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
+            Recheck
+          </Button>
+
+          {/* 3. Cancel (Right) */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Cancel
           </Button>
         </DialogFooter>
 

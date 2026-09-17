@@ -1485,6 +1485,8 @@ export function CatalogCarDetails({
   owned,
   onClose,
   onAdd,
+  canEdit,
+  onEdit,
 }: {
   /** The entry shaped as a car; null when closed. */
   car: Diecast | null;
@@ -1494,6 +1496,8 @@ export function CatalogCarDetails({
   owned: boolean;
   onClose: () => void;
   onAdd: () => void;
+  canEdit?: boolean;
+  onEdit?: () => void;
 }) {
   return (
     <Dialog open={Boolean(car)} onOpenChange={(v) => !v && onClose()}>
@@ -1511,6 +1515,8 @@ export function CatalogCarDetails({
             owned={owned}
             onClose={onClose}
             onAdd={onAdd}
+            canEdit={canEdit}
+            onEdit={onEdit}
           />
         )}
       </DialogContent>
@@ -1526,6 +1532,8 @@ function CatalogDetailsContent({
   owned,
   onClose,
   onAdd,
+  canEdit,
+  onEdit,
 }: {
   car: Diecast;
   catalogCar?: CatalogCar | null;
@@ -1534,13 +1542,28 @@ function CatalogDetailsContent({
   owned: boolean;
   onClose: () => void;
   onAdd: () => void;
+  canEdit?: boolean;
+  onEdit?: () => void;
 }) {
   const mobile = useMobileHeroGestures(onClose);
-  const addButton = (
-    <Button onClick={onAdd} className="h-11 w-full gap-2 text-sm font-semibold">
-      <Plus className="size-4" />
-      {owned ? "Add another to collection" : "Add to collection"}
-    </Button>
+  const actionButtons = (
+    <div className="flex w-full items-center gap-2.5">
+      {canEdit && onEdit && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onEdit}
+          className="h-11 shrink-0 gap-1.5 px-4 text-sm font-semibold cursor-pointer border-border hover:bg-muted"
+        >
+          <Pencil className="size-4" />
+          Edit
+        </Button>
+      )}
+      <Button onClick={onAdd} className="h-11 flex-1 gap-2 text-sm font-semibold">
+        <Plus className="size-4" />
+        {owned ? "Add another to collection" : "Add to collection"}
+      </Button>
+    </div>
   );
   const body = (
     <CatalogDetailsBody
@@ -1573,7 +1596,7 @@ function CatalogDetailsContent({
             {body}
           </div>
           <div className="shrink-0 border-t border-border bg-background/95 p-4 px-6 backdrop-blur-xs lg:px-7">
-            {addButton}
+            {actionButtons}
           </div>
         </div>
       </div>
@@ -1627,7 +1650,7 @@ function CatalogDetailsContent({
           </button>
         </div>
         <div className="z-20 shrink-0 border-t border-border bg-background/95 p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)] backdrop-blur-md">
-          {addButton}
+          {actionButtons}
         </div>
       </div>
     </div>

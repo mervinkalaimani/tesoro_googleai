@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
 import { Search, X, Camera, SlidersHorizontal } from "lucide-react";
 
@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
+import { useCatalog } from "@/lib/catalog-store";
+import type { Diecast } from "@/lib/types";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { ImageSearchDialog } from "@/components/image-search-dialog";
 import { SearchSuggestionsTray } from "@/components/search-suggestions-tray";
@@ -68,9 +70,41 @@ export function SearchBox({ className }: { className?: string }) {
   const { query, setQuery } = useApp();
   const cars = useCars();
   const { open: openCar } = useCarDrawer();
-  // On the Users page this box searches accounts: that page filters by the
-  // same query, and photo search means nothing there.
-  const onUsers = useRouterState({ select: (r) => r.location.pathname === "/admin" });
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const onUsers = pathname === "/admin";
+  const onCatalog = pathname === "/catalog";
+  const { catalog } = useCatalog();
+
+  const catalogCars = useMemo(() => {
+    if (!onCatalog) return [];
+    return catalog.map(
+      (c) =>
+        ({
+          id: c.car_id,
+          name: c.name || `${c.make} ${c.model}`.trim(),
+          make: c.make,
+          model: c.model,
+          variant: c.variant || "",
+          year: c.year || "",
+          colour: c.colour || "",
+          type: c.type || "",
+          brand: c.brand,
+          assortment: c.assortment,
+          series: c.series,
+          subSeries: c.sub_series,
+          carNumber: c.car_number,
+          size: c.size || "1:64",
+          mrp: c.mrp,
+          spent: c.mrp,
+          imageUrl: c.image_url || undefined,
+          rarity: c.rarity || "Normal",
+          chase: (c.rarity || "Normal") !== "Normal",
+        }) as unknown as Diecast,
+    );
+  }, [onCatalog, catalog]);
+
+  const activeCars = onCatalog ? catalogCars : cars;
+
   const [scanOpen, setScanOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -200,7 +234,7 @@ export function SearchBox({ className }: { className?: string }) {
       <SearchSuggestionsTray
         open={showTray}
         query={query}
-        cars={cars}
+        cars={activeCars}
         onClose={() => {
           setAdvancedOpen(false);
           setIsFocused(false);
@@ -210,7 +244,11 @@ export function SearchBox({ className }: { className?: string }) {
           inputRef.current?.focus();
         }}
         onSelectCar={(car) => {
-          openCar(car);
+          if (onCatalog) {
+            setQuery(car.name || `${car.make} ${car.model}`);
+          } else {
+            openCar(car);
+          }
           setAdvancedOpen(false);
           setIsFocused(false);
         }}
