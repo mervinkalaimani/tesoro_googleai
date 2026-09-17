@@ -1,9 +1,15 @@
 // Production startup script for containerized deployment (Cloud Run)
-import * as jsxRuntime from "react/jsx-runtime";
-import * as jsxDevRuntime from "react/jsx-dev-runtime";
+import { createRequire } from "node:module";
 
-if (typeof jsxDevRuntime.jsxDEV !== "function" && jsxRuntime.jsx) {
-  jsxDevRuntime.jsxDEV = (type, props, key) => jsxRuntime.jsx(type, props, key);
+try {
+  const require = createRequire(import.meta.url);
+  const jsxDevRuntime = require("react/jsx-dev-runtime");
+  const jsxRuntime = require("react/jsx-runtime");
+  if (typeof jsxDevRuntime.jsxDEV !== "function" && jsxRuntime.jsx) {
+    jsxDevRuntime.jsxDEV = (type, props, key) => jsxRuntime.jsx(type, props, key);
+  }
+} catch {
+  // Ignore if already shimmed or unavailable
 }
 
 if (

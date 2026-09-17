@@ -1,4 +1,3 @@
-import { createWorker } from "tesseract.js";
 import {
   BRANDS,
   MAKES,
@@ -192,16 +191,20 @@ export function parseTextToCarFields(rawText: string): ScanResult {
 /**
  * Runs Tesseract OCR entirely client-side on the supplied image File or Blob.
  */
-let workerPromise: Promise<Tesseract.Worker> | null = null;
+let workerPromise: Promise<unknown> | null = null;
 
-async function getWorker(): Promise<Tesseract.Worker> {
+async function getWorker(): Promise<{ recognize: (img: unknown) => Promise<{ data: { text: string } }> }> {
+  if (typeof window === "undefined") {
+    throw new Error("Tesseract OCR is only available in the browser.");
+  }
   if (!workerPromise) {
     workerPromise = (async () => {
+      const { createWorker } = await import("tesseract.js");
       const worker = await createWorker("eng");
       return worker;
     })();
   }
-  return workerPromise;
+  return workerPromise as Promise<{ recognize: (img: unknown) => Promise<{ data: { text: string } }> }>;
 }
 
 export async function runClientOcr(

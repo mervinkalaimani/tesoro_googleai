@@ -81,11 +81,20 @@ function withNativeRoot(plugin: Plugin): Plugin {
   };
 }
 
+const jsxDevShim = path.resolve("./src/lib/jsx-dev-runtime-shim.js");
+const tesseractShim = path.resolve("./src/lib/tesseract-server-shim.js");
+
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
+  },
+  nitro: {
+    alias: {
+      "react/jsx-dev-runtime": jsxDevShim,
+      "tesseract.js": tesseractShim,
+    },
   },
   vite: {
     plugins: [withNativeRoot(mcpPlugin())],

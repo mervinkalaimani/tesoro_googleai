@@ -11,6 +11,7 @@ export default tseslint.config(
       "dist",
       ".output",
       ".vinxi",
+      ".vercel",
       "src/routes/\\[.mcp\\]/**",
       "src/routes/\\[.well-known\\]/**",
       "src/routes/mcp.ts",
