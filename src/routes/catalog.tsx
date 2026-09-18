@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Pencil, Plus, SlidersHorizontal, Store } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Store, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useCatalog } from "@/lib/catalog-store";
@@ -8,7 +8,7 @@ import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
-import { resolveCatalogUserId, loadUserHandles } from "@/lib/catalog";
+import { catalogEntryUsage, resolveCatalogUserId, loadUserHandles } from "@/lib/catalog";
 import type { CatalogueCar } from "@/lib/catalogue-search";
 import { carSubLine } from "@/lib/car-subline";
 import { inr, formatDayMonthYear } from "@/lib/format";
@@ -27,6 +27,13 @@ import { parseQuery, matchesQuery } from "@/lib/search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({
@@ -74,6 +81,74 @@ const NO_FILTERS: Filters = {
   subSeries: "all",
   rarity: "all",
 };
+
+/**
+ * How the list is ordered. Tapping the chosen one again turns it round, which
+ * is why direction is not a control of its own — there is nothing to set it to
+ * until you have said what you are ordering by.
+ */
+type SortKey = "sno" | "brand" | "make" | "year";
+type Sort = { key: SortKey; dir: "asc" | "desc" };
+
+const SORTS: { value: SortKey; label: string }[] = [
+  { value: "sno", label: "S.No" },
+  { value: "brand", label: "Brand" },
+  { value: "make", label: "Make" },
+  { value: "year", label: "Year" },
+];
+
+/**
+ * What the list is broken into. "Set" is the three fields that together name a
+ * release — Hot Wheels · Car Culture · Japanese Classics — which is how a
+ * collector talks about what they are missing, and no single column holds it.
+ */
+type GroupKey = "none" | "brand" | "make" | "series" | "set";
+
+const GROUPS: { value: GroupKey; label: string }[] = [
+  { value: "none", label: "No grouping" },
+  { value: "brand", label: "Group by brand" },
+  { value: "make", label: "Group by make" },
+  { value: "series", label: "Group by series" },
+  { value: "set", label: "Group by set" },
+];
+
+const clean = (v: string | null | undefined) => (v ?? "").trim();
+/** Year as it is filed: the sheet import left some as "2024.0". */
+const yearOf = (c: CatalogCar) => clean(c.year).replace(/\.0+$/, "");
+
+/** What a casting is filed under, for the chosen grouping. */
+function groupLabel(c: CatalogCar, by: GroupKey): string {
+  if (by === "brand") return clean(c.brand) || "No brand";
+  if (by === "make") return clean(c.make) || "No make";
+  if (by === "series") return clean(c.series) || "No series";
+  if (by === "set") {
+    const parts = [c.brand, c.series, c.sub_series].map(clean).filter(Boolean);
+    return parts.length ? parts.join(" · ") : "No set";
+  }
+  return "";
+}
+
+const cmpText = (a: string, b: string) =>
+  a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" });
+
+function compareBy(a: CatalogCar, b: CatalogCar, sort: Sort, serials: Map<string, number>) {
+  const flip = sort.dir === "desc" ? -1 : 1;
+  if (sort.key === "sno") {
+    return flip * ((serials.get(a.car_id) ?? 0) - (serials.get(b.car_id) ?? 0));
+  }
+
+  const av = sort.key === "year" ? yearOf(a) : clean(a[sort.key]);
+  const bv = sort.key === "year" ? yearOf(b) : clean(b[sort.key]);
+
+  // An entry with the field blank goes last whichever way round the rest is:
+  // "unknown" is not early in the alphabet, it is simply not an answer.
+  if (!av && !bv) return cmpText(clean(a.name), clean(b.name));
+  if (!av) return 1;
+  if (!bv) return -1;
+
+  const primary = cmpText(av, bv);
+  return primary ? flip * primary : cmpText(clean(a.name), clean(b.name));
+}
 
 /** How many cards go on the page at a time; more load as the end comes into view. */
 const LOAD_BATCH = 60;
@@ -135,22 +210,48 @@ function toPrefill(c: CatalogCar): CatalogueCar {
  * entry — which corrects it in every collection that has the car.
  */
 function CatalogPage() {
-  const { catalog, isLoading, addCatalogCar, updateCatalogCar } = useCatalog();
-  const { isAdmin, isGuest } = useAuth();
+  const { catalog, isLoading, addCatalogCar, updateCatalogCar, deleteCatalogCar } = useCatalog();
+  const { isAdmin, isOwner, isGuest } = useAuth();
   const { query } = useApp();
   const mine = useCars();
 
   const [segment, setSegment] = useState<Segment>("all");
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
-  const [filterOpen, setFilterOpen] = useState(false);
   const [hideOwned, setHideOwned] = useState(false);
+  const [sort, setSort] = useState<Sort>({ key: "sno", dir: "asc" });
+  const [group, setGroup] = useState<GroupKey>("none");
   const [view, setView] = useState<ViewMode>("grid");
   const [adding, setAdding] = useState<CatalogCar | null>(null);
   /** The entry whose details are open. */
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [editing, setEditing] = useState<CatalogCar | "new" | null>(null);
+  /** Owner only: the entry being removed, with the confirm open over it. */
+  const [deleting, setDeleting] = useState<CatalogCar | null>(null);
   const [visible, setVisible] = useState(LOAD_BATCH);
   const sentinel = useRef<HTMLDivElement>(null);
+
+  /**
+   * The catalogue's own numbering: oldest entry is 1.
+   *
+   * Taken over the whole catalogue rather than the filtered list, so an entry
+   * keeps its number whatever is being looked at — a serial that renumbered
+   * itself every time a filter changed would not be one. car_id breaks a tie
+   * between two filed in the same instant, which the seed import did in bulk.
+   */
+  const serials = useMemo(() => {
+    const order = [...catalog].sort(
+      (a, b) =>
+        clean(a.created_at).localeCompare(clean(b.created_at)) ||
+        a.car_id.localeCompare(b.car_id),
+    );
+    const out = new Map<string, number>();
+    order.forEach((c, i) => out.set(c.car_id, i + 1));
+    return out;
+  }, [catalog]);
+
+  /** Tapping the column you are already sorted by turns it round. */
+  const sortBy = (key: SortKey) =>
+    setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
 
   useEffect(() => {
     void loadUserHandles();
@@ -190,8 +291,8 @@ function CatalogPage() {
     if (hideOwned) {
       result = result.filter((c) => !owned.has(c.car_id.toUpperCase()));
     }
-    return result.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  }, [searched, filters, hideOwned, owned]);
+    return result.sort((a, b) => compareBy(a, b, sort, serials));
+  }, [searched, filters, hideOwned, owned, sort, serials]);
 
   /** Each filter's choices, narrowed by the other filters, with counts. */
   const options = useMemo(() => {
@@ -214,7 +315,12 @@ function CatalogPage() {
   const activeCount =
     Object.values(filters).filter((v) => v !== "all").length + (hideOwned ? 1 : 0);
 
-  useEffect(() => setVisible(LOAD_BATCH), [segment, filters, hideOwned, query]);
+  // Reordering is as much a new list as refiltering is: sixty rows into a
+  // different order are sixty different rows.
+  useEffect(
+    () => setVisible(LOAD_BATCH),
+    [segment, filters, hideOwned, query, sort, group],
+  );
 
   useEffect(() => {
     const el = sentinel.current;
@@ -230,6 +336,71 @@ function CatalogPage() {
   }, [visible, rows.length]);
 
   const shown = rows.slice(0, visible);
+
+  /**
+   * The loaded rows broken into their groups.
+   *
+   * Grouped after the slice, not before: the page loads sixty at a time and a
+   * group has to be built from what is actually on screen, or scrolling would
+   * keep reopening sections above you. They come out in sort order, because
+   * that is the order their first member appeared in.
+   */
+  const sections = useMemo(() => {
+    if (group === "none") return [{ label: "", rows: shown }];
+    const out: { label: string; rows: CatalogCar[] }[] = [];
+    const seen = new Map<string, number>();
+    for (const c of shown) {
+      const label = groupLabel(c, group);
+      const at = seen.get(label);
+      if (at === undefined) {
+        seen.set(label, out.length);
+        out.push({ label, rows: [c] });
+      } else {
+        out[at].rows.push(c);
+      }
+    }
+    return out;
+  }, [shown, group]);
+
+  const renderRows = (list: CatalogCar[]) =>
+    view === "compact" ? (
+      // Three across on a phone rather than the shared two.
+      <div className={cn(COMPACT_GRID_COLS, "max-sm:grid-cols-3")}>
+        {list.map((c) => (
+          <CompactCarCard
+            key={c.car_id}
+            car={asCar(c)}
+            onOpen={() => setViewing(c)}
+            caption={
+              owned.has(c.car_id.toUpperCase()) ? "Owned" : isPreOrder(c) ? "Pre Order" : undefined
+            }
+          />
+        ))}
+      </div>
+    ) : view === "table" ? (
+      <CatalogTable
+        rows={list}
+        serials={serials}
+        owned={owned}
+        onOpen={setViewing}
+        onAdd={setAdding}
+        onEdit={isAdmin ? setEditing : undefined}
+      />
+    ) : (
+      // Two across on a phone rather than one full-width card per row.
+      <div className={cn(GRID_COLS, "max-sm:grid-cols-2 max-sm:gap-2")}>
+        {list.map((c) => (
+          <CatalogCard
+            key={c.car_id}
+            c={c}
+            owned={owned.has(c.car_id.toUpperCase())}
+            onOpen={() => setViewing(c)}
+            onAdd={() => setAdding(c)}
+            onEdit={isAdmin ? () => setEditing(c) : undefined}
+          />
+        ))}
+      </div>
+    );
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
@@ -262,77 +433,98 @@ function CatalogPage() {
         }
         right={
           <>
-            <Button
-              size="sm"
-              variant={activeCount ? "default" : "outline"}
-              className="shrink-0 gap-1"
-              onClick={() => setFilterOpen((v) => !v)}
-              aria-expanded={filterOpen}
-              aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
-              title="Filters"
+            {/* Tapping the chosen one again turns it round, so the arrow rides
+                on the label rather than sitting in a control of its own. */}
+            <SegmentControl
+              value={sort.key}
+              onChange={sortBy}
+              className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2 max-sm:[&>button]:py-0.5"
+              options={SORTS.map((s) => ({
+                value: s.value,
+                label:
+                  sort.key === s.value
+                    ? `${s.label} ${sort.dir === "asc" ? "↑" : "↓"}`
+                    : s.label,
+              }))}
+            />
+            <select
+              value={group}
+              onChange={(e) => setGroup(e.target.value as GroupKey)}
+              aria-label="Group by"
+              className="h-8 shrink-0 rounded-md border border-input bg-background px-2 text-xs"
             >
-              <SlidersHorizontal className="size-4" />
-              {activeCount ? <span className="text-xs tabular-nums">{activeCount}</span> : null}
-            </Button>
-            <ViewToggle value={view} onChange={setView} modes={["grid", "compact"]} />
+              {GROUPS.map((g) => (
+                <option key={g.value} value={g.value}>
+                  {g.label}
+                </option>
+              ))}
+            </select>
+            <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "table"]} />
           </>
         }
       />
 
-      {filterOpen && (
-        <div className="card-elevated space-y-2.5 bg-muted/20 p-2.5 md:space-y-3 md:p-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 md:gap-2">
-            {FILTERS.map((d) => (
-              <div key={d.key} className="min-w-0">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground truncate block">
-                  {d.label}
-                </label>
-                <select
-                  value={filters[d.key]}
-                  onChange={(e) => setFilters((f) => ({ ...f, [d.key]: e.target.value }))}
-                  className="mt-0.5 h-8 w-full min-w-0 rounded-md border border-input bg-background px-1.5 text-xs sm:px-2 sm:text-sm md:h-9 truncate"
-                >
-                  <option value="all">All</option>
-                  {options[d.key].map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.value} ({o.count})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60">
-            <label className="flex items-center gap-2 text-xs font-medium text-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={hideOwned}
-                onChange={(e) => setHideOwned(e.target.checked)}
-                className="size-4 rounded border-input text-primary accent-primary focus:ring-primary/20 cursor-pointer"
-              />
-              <span>Hide owned cars</span>
-            </label>
-
-            <div className="flex items-center gap-3">
-              <p className="text-xs text-muted-foreground">
-                <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
-                {searched.length.toLocaleString()}
-              </p>
-              <Button
-                size="sm"
-                variant="ghost"
-                disabled={!activeCount}
-                onClick={() => {
-                  setFilters(NO_FILTERS);
-                  setHideOwned(false);
-                }}
+      {/* Always here, on one line, rather than behind a button. Ten narrow
+          selects that scroll sideways beat a panel that has to be opened first:
+          the filter you want to clear is the one you can no longer see. */}
+      <div className="flex items-center gap-2">
+        {/* The ten selects scroll; Hide owned and Clear do not. A Clear button
+            you have to swipe to reach is a Clear button you cannot find when
+            the filters are exactly what is in your way. */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {FILTERS.map((d) => {
+            const active = filters[d.key] !== "all";
+            return (
+              <select
+                key={d.key}
+                value={filters[d.key]}
+                onChange={(e) => setFilters((f) => ({ ...f, [d.key]: e.target.value }))}
+                aria-label={d.label}
+                title={d.label}
+                className={cn(
+                  "h-8 w-[8.5rem] shrink-0 truncate rounded-md border bg-background px-2 text-xs",
+                  active ? "border-primary text-foreground" : "border-input text-muted-foreground",
+                )}
               >
-                Clear filters
-              </Button>
-            </div>
-          </div>
+                <option value="all">{d.label}</option>
+                {options[d.key].map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.value} ({o.count})
+                  </option>
+                ))}
+              </select>
+            );
+          })}
         </div>
-      )}
+
+        <label
+          className={cn(
+            "flex h-8 shrink-0 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium",
+            hideOwned ? "border-primary text-foreground" : "border-input text-muted-foreground",
+          )}
+        >
+          <input
+            type="checkbox"
+            checked={hideOwned}
+            onChange={(e) => setHideOwned(e.target.checked)}
+            className="size-3.5 rounded border-input accent-primary"
+          />
+          Hide owned
+        </label>
+
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 shrink-0"
+          disabled={!activeCount}
+          onClick={() => {
+            setFilters(NO_FILTERS);
+            setHideOwned(false);
+          }}
+        >
+          Clear
+        </Button>
+      </div>
 
       {isLoading && catalog.length === 0 ? (
         <div className="grid place-items-center py-16 text-muted-foreground">
@@ -342,36 +534,20 @@ function CatalogPage() {
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
           {segment === "preorder" ? "Nothing open to pre-order matches." : "No castings match."}
         </div>
-      ) : view === "compact" ? (
-        // Three across on a phone rather than the shared two.
-        <div className={cn(COMPACT_GRID_COLS, "max-sm:grid-cols-3")}>
-          {shown.map((c) => (
-            <CompactCarCard
-              key={c.car_id}
-              car={asCar(c)}
-              onOpen={() => setViewing(c)}
-              caption={
-                owned.has(c.car_id.toUpperCase())
-                  ? "Owned"
-                  : isPreOrder(c)
-                    ? "Pre Order"
-                    : undefined
-              }
-            />
-          ))}
-        </div>
       ) : (
-        // Two across on a phone rather than one full-width card per row.
-        <div className={cn(GRID_COLS, "max-sm:grid-cols-2 max-sm:gap-2")}>
-          {shown.map((c) => (
-            <CatalogCard
-              key={c.car_id}
-              c={c}
-              owned={owned.has(c.car_id.toUpperCase())}
-              onOpen={() => setViewing(c)}
-              onAdd={() => setAdding(c)}
-              onEdit={isAdmin ? () => setEditing(c) : undefined}
-            />
+        <div className="space-y-5">
+          {sections.map((s) => (
+            <section key={s.label || "all"} className="min-w-0 space-y-2">
+              {group !== "none" && (
+                <div className="flex items-baseline gap-2 border-b border-border/60 pb-1">
+                  <h2 className="truncate text-sm font-semibold">{s.label}</h2>
+                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                    {s.rows.length}
+                  </span>
+                </div>
+              )}
+              {renderRows(s.rows)}
+            </section>
           ))}
         </div>
       )}
@@ -393,6 +569,25 @@ function CatalogPage() {
         onAdd={() => {
           setAdding(viewing);
           setViewing(null);
+        }}
+        canDelete={isOwner && !isGuest}
+        onDelete={() => {
+          const target = viewing;
+          setViewing(null);
+          setDeleting(target);
+        }}
+      />
+
+      <DeleteCastingDialog
+        entry={deleting}
+        onClose={() => setDeleting(null)}
+        onConfirm={async (carId) => {
+          const res = await deleteCatalogCar(carId);
+          if (res.deleted) {
+            toast.success("Casting removed from the catalogue");
+            setDeleting(null);
+          }
+          return res;
         }}
       />
       <CarFormDialog
@@ -487,5 +682,261 @@ function CatalogCard({
         </div>
       </div>
     </article>
+  );
+}
+
+/**
+ * The catalogue as a list.
+ *
+ * The one view that answers questions about the entries themselves rather than
+ * about the cars — which is where the serial number, and who filed and last
+ * corrected each one, belong. The grids are for finding a casting by looking at
+ * it; this is for reading the catalogue.
+ */
+function CatalogTable({
+  rows,
+  serials,
+  owned,
+  onOpen,
+  onAdd,
+  onEdit,
+}: {
+  rows: CatalogCar[];
+  serials: Map<string, number>;
+  owned: Set<string>;
+  onOpen: (c: CatalogCar) => void;
+  onAdd: (c: CatalogCar) => void;
+  onEdit?: (c: CatalogCar) => void;
+}) {
+  return (
+    <div className="card-elevated overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[54rem] table-fixed text-sm">
+          <colgroup>
+            <col className="w-[4rem]" />
+            <col />
+            <col className="w-[10rem]" />
+            <col className="w-[10rem]" />
+            <col className="w-[6rem]" />
+            <col className="w-[7.5rem]" />
+            <col className="w-[7.5rem]" />
+            <col className="w-[7rem]" />
+          </colgroup>
+          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-3 py-2.5 text-right font-medium">S.No</th>
+              <th className="px-3 py-2.5 font-medium">Casting</th>
+              <th className="px-3 py-2.5 font-medium">Brand / Assortment</th>
+              <th className="px-3 py-2.5 font-medium">Series</th>
+              <th className="px-3 py-2.5 text-right font-medium">MRP</th>
+              <th className="px-3 py-2.5 font-medium">Added by</th>
+              <th className="px-3 py-2.5 font-medium">Updated by</th>
+              <th className="px-3 py-2.5 font-medium" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((c) => {
+              const car = asCar(c);
+              return (
+                <tr key={c.car_id} className="border-t border-border align-middle hover:bg-muted/40">
+                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
+                    {serials.get(c.car_id) ?? "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <button
+                      type="button"
+                      onClick={() => onOpen(c)}
+                      className="flex w-full min-w-0 items-center gap-2 text-left"
+                    >
+                      <CarThumb car={car} className="size-9 shrink-0 rounded-md" />
+                      <span className="min-w-0">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate font-medium">{car.name}</span>
+                          {isPreOrder(c) && (
+                            <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-500">
+                              Pre
+                            </span>
+                          )}
+                          {owned.has(c.car_id.toUpperCase()) && (
+                            <Check className="size-3 shrink-0 text-emerald-500" />
+                          )}
+                        </span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {carSubLine(car)}
+                        </span>
+                      </span>
+                    </button>
+                  </td>
+                  <td className="truncate px-3 py-2">
+                    <span className="block truncate">{c.brand || "—"}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {c.assortment || "—"}
+                    </span>
+                  </td>
+                  <td className="truncate px-3 py-2 text-muted-foreground">
+                    <span className="block truncate">{c.series || "—"}</span>
+                    <span className="block truncate text-xs">{c.sub_series || ""}</span>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">{c.mrp ? inr(c.mrp) : "—"}</td>
+                  <td className="truncate px-3 py-2 text-xs text-muted-foreground">
+                    {resolveCatalogUserId(c.created_by)}
+                  </td>
+                  {/* Blank rather than "system": an entry nobody has corrected
+                      has no editor, and naming one would invent an edit. */}
+                  <td className="truncate px-3 py-2 text-xs text-muted-foreground">
+                    {c.updated_by ? resolveCatalogUserId(c.updated_by) : "—"}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center justify-end gap-1.5">
+                      {onEdit && (
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          className="size-7"
+                          onClick={() => onEdit(c)}
+                          aria-label={`Edit ${car.name} in the catalogue`}
+                          title="Edit catalogue entry"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                      )}
+                      <Button size="sm" className="h-7 gap-1 px-2" onClick={() => onAdd(c)}>
+                        <Plus className="size-3.5" />
+                        Add
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Removing a casting from the shared catalogue.
+ *
+ * Stricter than deleting one of your own cars, because it is not one of your
+ * own: the entry is what every collection that has this casting reads its
+ * details from. So the dialog counts the cars linked to it first — across every
+ * account, which is why the count comes from the database rather than from what
+ * this browser can see — and offers nothing to press unless the answer is none.
+ *
+ * The count is also checked again inside the delete itself. This is the warning;
+ * the database is the rule.
+ */
+function DeleteCastingDialog({
+  entry,
+  onClose,
+  onConfirm,
+}: {
+  entry: CatalogCar | null;
+  onClose: () => void;
+  onConfirm: (carId: string) => Promise<{ deleted: boolean; uses: number }>;
+}) {
+  /** null while counting, -1 when the count could not be had. */
+  const [uses, setUses] = useState<number | null>(null);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setTyped("");
+    setBusy(false);
+    setUses(null);
+    if (!entry) return;
+    let cancelled = false;
+    void (async () => {
+      const n = await catalogEntryUsage(entry.car_id);
+      if (!cancelled) setUses(n ?? -1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [entry]);
+
+  if (!entry) return null;
+
+  const name = entry.name || `${entry.make} ${entry.model}`.trim() || "casting";
+  const phrase = `remove ${name}`.toLowerCase();
+  const counting = uses === null;
+  const unknown = uses === -1;
+  const inUse = typeof uses === "number" && uses > 0;
+  const removable = uses === 0 && typed.trim().toLowerCase() === phrase;
+
+  const confirm = async () => {
+    if (!removable || busy) return;
+    setBusy(true);
+    const res = await onConfirm(entry.car_id);
+    setBusy(false);
+    // The count moved under us between the check and the press.
+    if (!res.deleted && res.uses > 0) setUses(res.uses);
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogTitle className="text-lg font-semibold">Remove this casting?</DialogTitle>
+        <DialogDescription className="text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{name}</span> would be gone from the shared
+          catalogue for everyone. This cannot be undone.
+        </DialogDescription>
+
+        {counting ? (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Checking whether any cars use it…
+          </p>
+        ) : unknown ? (
+          <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+            The catalogue could not be asked how many cars are linked to this entry, so it will not
+            be removed. Only the owner can run that check.
+          </p>
+        ) : inUse ? (
+          <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-foreground">
+            <b className="tabular-nums">{uses}</b> {uses === 1 ? "car is" : "cars are"} linked to
+            this entry, so it stays. Those cars read their details from it, and removing it would
+            leave them pointing at nothing. Correct the entry instead, or remove the cars first.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">
+              No cars are linked to it. Type{" "}
+              <code className="rounded bg-muted px-1.5 py-0.5 text-foreground">{phrase}</code> to
+              confirm.
+            </p>
+            <Input
+              autoFocus
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void confirm();
+              }}
+              placeholder={phrase}
+              aria-label="Type the confirmation phrase"
+            />
+          </div>
+        )}
+
+        <DialogFooter className="pt-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {inUse || unknown ? "Close" : "Cancel"}
+          </Button>
+          {!inUse && !unknown && (
+            <Button
+              type="button"
+              disabled={!removable || busy}
+              onClick={() => void confirm()}
+              className="gap-1.5 bg-rose-600 text-white hover:bg-rose-500"
+            >
+              {busy ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              Remove
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

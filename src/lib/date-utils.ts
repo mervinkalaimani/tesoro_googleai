@@ -40,14 +40,17 @@ const MONTH_NAMES = [
 ];
 
 /**
- * Turns a month-level ETA into a real date: "Mar 2027" -> "2027-03-10".
+ * Turns a month-level ETA into a real date: "Mar 2027" -> "2027-03-01".
  *
  * Pre-orders were logged with the release month in the ETA note, because that is
  * all a seller ever commits to. Anything else — "Not Released", "Waiting for
  * Arrival to Ankush" — returns "" and is left alone.
  *
- * The 10th, rather than the 1st, so a card does not announce itself as due on
- * the day the month turns over while still landing inside the window promised.
+ * The 1st: picking "March 2027" in the form means the reminder should arrive as
+ * that month opens, and the same rule has to read the months already written in
+ * the ETA notes or a pre-order would move ten days when it was next edited. This
+ * was the 10th, chosen so a card would not announce itself due the moment the
+ * month turned over; being told at the start of the release window won out.
  */
 export function monthEtaToDate(text?: string | null): string {
   const s = (text || "").trim();
@@ -58,7 +61,7 @@ export function monthEtaToDate(text?: string | null): string {
   if (mi < 0) return "";
   const year = Number(m[2]);
   if (year < 1900 || year > 2100) return "";
-  return `${year}-${String(mi + 1).padStart(2, "0")}-10`;
+  return `${year}-${String(mi + 1).padStart(2, "0")}-01`;
 }
 
 /**

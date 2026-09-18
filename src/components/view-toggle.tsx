@@ -30,9 +30,17 @@ export function ViewToggle({
   value: ViewMode;
   onChange: (v: ViewMode) => void;
   className?: string;
-  /** Limit the choices, for a page with no table to show. */
+  /**
+   * Limit the choices, for a page with no table to show — and order them: the
+   * icons come out in the order given. The catalogue puts its list last because
+   * the grids are what people browse it with; the collection leaves this unset
+   * and gets the table first, which is what it is read through.
+   */
   modes?: ViewMode[];
 }) {
+  const shown = modes
+    ? modes.flatMap((v) => MODES.filter((m) => m.value === v))
+    : MODES;
   return (
     // Same container styling as SegmentControl (rounded-md, border-border, bg-muted/40, p-0.5)
     <div
@@ -41,7 +49,7 @@ export function ViewToggle({
         className,
       )}
     >
-      {MODES.filter((m) => !modes || modes.includes(m.value)).map((m) => {
+      {shown.map((m) => {
         const Icon = m.icon;
         const active = value === m.value;
         return (

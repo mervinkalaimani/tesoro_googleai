@@ -135,10 +135,6 @@ export function TopBar() {
           setAddOpen(false);
           setBulkOpen(true);
         }}
-        onSwitchToUpload={() => {
-          setAddOpen(false);
-          setUploadOpen(true);
-        }}
       />
       <BulkAddCarsDialog
         open={bulkOpen}
@@ -149,6 +145,11 @@ export function TopBar() {
           if (!v) setBulkSeed(undefined);
         }}
         seed={bulkSeed}
+        // CSV is a batch, so it is offered where batches are.
+        onSwitchToUpload={() => {
+          setBulkOpen(false);
+          setUploadOpen(true);
+        }}
       />
       <UploadCarsDialog open={uploadOpen} onOpenChange={setUploadOpen} />
     </header>

@@ -19,6 +19,7 @@ import {
   Pencil,
   Plus,
   Star,
+  Trash2,
   X,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -1501,6 +1502,8 @@ export function CatalogCarDetails({
   onAdd,
   canEdit,
   onEdit,
+  canDelete,
+  onDelete,
 }: {
   /** The entry shaped as a car; null when closed. */
   car: Diecast | null;
@@ -1512,6 +1515,9 @@ export function CatalogCarDetails({
   onAdd: () => void;
   canEdit?: boolean;
   onEdit?: () => void;
+  /** Owner only: removing the casting from the catalogue altogether. */
+  canDelete?: boolean;
+  onDelete?: () => void;
 }) {
   return (
     <Dialog open={Boolean(car)} onOpenChange={(v) => !v && onClose()}>
@@ -1531,6 +1537,8 @@ export function CatalogCarDetails({
             onAdd={onAdd}
             canEdit={canEdit}
             onEdit={onEdit}
+            canDelete={canDelete}
+            onDelete={onDelete}
           />
         )}
       </DialogContent>
@@ -1548,6 +1556,8 @@ function CatalogDetailsContent({
   onAdd,
   canEdit,
   onEdit,
+  canDelete,
+  onDelete,
 }: {
   car: Diecast;
   catalogCar?: CatalogCar | null;
@@ -1558,6 +1568,9 @@ function CatalogDetailsContent({
   onAdd: () => void;
   canEdit?: boolean;
   onEdit?: () => void;
+  /** Owner only: removing the casting from the catalogue altogether. */
+  canDelete?: boolean;
+  onDelete?: () => void;
 }) {
   const mobile = useMobileHeroGestures(onClose);
   const actionButtons = (
@@ -1571,6 +1584,19 @@ function CatalogDetailsContent({
         >
           <Pencil className="size-4" />
           Edit
+        </Button>
+      )}
+      {canDelete && onDelete && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onDelete}
+          aria-label="Remove this casting from the catalogue"
+          title="Remove from the catalogue"
+          className="h-11 shrink-0 gap-1.5 px-4 text-sm font-semibold cursor-pointer border-border text-rose-500 hover:bg-rose-500/10 hover:text-rose-400"
+        >
+          <Trash2 className="size-4" />
+          <span className="max-sm:sr-only">Remove</span>
         </Button>
       )}
       <Button onClick={onAdd} className="h-11 flex-1 gap-2 text-sm font-semibold">
@@ -1687,8 +1713,12 @@ function CatalogDetailsBody({
   const rarity = rarityOf(car);
   const addedBy = resolveCatalogUserId(catalogCar?.created_by);
   const addedOn = formatDayMonthYear(catalogCar?.created_at) || "—";
-  const lastUpdated =
-    formatDayMonthYear(catalogCar?.updated_at) || formatDayMonthYear(catalogCar?.created_at) || "—";
+  // An entry nobody has corrected has no editor and no edit date. Falling back
+  // to the creator and the filing date, as this used to, described an edit that
+  // never happened — and now that the column exists it can say so instead.
+  const edited = Boolean(catalogCar?.updated_by);
+  const updatedBy = edited ? resolveCatalogUserId(catalogCar?.updated_by) : "—";
+  const updatedOn = edited ? formatDayMonthYear(catalogCar?.updated_at) || "—" : "—";
 
   return (
     <div className="space-y-4">
@@ -1766,26 +1796,36 @@ function CatalogDetailsBody({
 
       <SpecGrid>
         <Spec label="Retail / MRP" value={car.mrp ? inrFull(Math.round(car.mrp)) : ""} />
-        {preOrder && (
+        {preOrder && expectedDate && (
           <Spec
             label="Expected date"
-            value={formatDayMonthYear(expectedDate || "") || expectedDate || ""}
+            value={formatDayMonthYear(expectedDate) || expectedDate}
           />
         )}
       </SpecGrid>
 
-      <hr className="border-border" />
+      {/* Only when the entry itself is to hand. Opened off a shared pre-order
+          there is no catalogue row behind it, and three em-dashes under a
+          heading say less than no heading at all. */}
+      {catalogCar && (
+        <>
+          <hr className="border-border" />
 
-      <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Catalogue Provenance
-        </h3>
-        <SpecGrid>
-          <Spec label="Added by" value={addedBy} />
-          <Spec label="Added on" value={addedOn} />
-          <Spec label="Last updated" value={lastUpdated} />
-        </SpecGrid>
-      </div>
+          <div>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Catalogue Provenance
+            </h3>
+            {/* Two columns, not three: who and when, read across — filed on the
+                top line, last corrected on the bottom. */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+              <Spec label="Added by" value={addedBy} />
+              <Spec label="Added on" value={addedOn} />
+              <Spec label="Updated by" value={updatedBy} />
+              <Spec label="Updated on" value={updatedOn} />
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

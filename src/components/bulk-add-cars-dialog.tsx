@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Layers, Plus, Trash2, Loader2, RotateCcw, Tag } from "lucide-react";
+import { Download, Layers, Plus, Trash2, Loader2, RotateCcw, Tag, Upload } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -17,12 +17,14 @@ import { Label } from "@/components/ui/label";
 import { useCarsActions, useCars, makeBlankCar } from "@/lib/cars-store";
 import { carIdFor } from "@/lib/car-id";
 import {
+  assortmentOptionsFor,
   modelOptionsFor,
   optionsFor,
   variantOptionsFor,
   type OptionField,
 } from "@/lib/car-options";
 import { BULK_DRAFT_KEY, clearDraft, readDraft, writeDraft } from "@/lib/form-draft";
+import { downloadCsv, generateDiecastCsvTemplate } from "@/lib/csv";
 import { buildCarName } from "@/lib/car-name";
 import { deriveMonth } from "@/lib/date-utils";
 import { inrFull } from "@/lib/format";
@@ -280,6 +282,7 @@ export function BulkAddCarsDialog({
   open: controlledOpen,
   onOpenChange,
   seed,
+  onSwitchToUpload,
 }: {
   trigger?: ReactNode;
   /** Omit both to let the dialog own its state via `trigger`. */
@@ -291,6 +294,8 @@ export function BulkAddCarsDialog({
    * "add all five" is a clear statement of what the table should contain.
    */
   seed?: Diecast[];
+  /** Hands off to the CSV importer: a spreadsheet is a batch like any other. */
+  onSwitchToUpload?: () => void;
 }) {
   const { addCar, bulkAddCars, updateCar } = useCarsActions();
   const cars = useCars();
@@ -380,7 +385,9 @@ export function BulkAddCarsDialog({
 
   // Built once per collection rather than per cell: a table of ten rows would
   // otherwise re-derive the same six lists on every keystroke.
-  const flatOptions = useMemo(
+  // Partial: the bulk table carries no case field, so not every OptionField has
+  // a list here, and indexing one that is absent is a legitimate "no options".
+  const flatOptions: Partial<Record<OptionField, string[]>> = useMemo(
     () => ({
       make: optionsFor("make", cars),
       colour: optionsFor("colour", cars),
@@ -421,14 +428,28 @@ export function BulkAddCarsDialog({
     };
   }, [cars]);
 
+  const assortmentsForBrand = useMemo(() => {
+    const cache = new Map<string, string[]>();
+    return (brand: string) => {
+      const key = brand.trim().toLowerCase();
+      let list = cache.get(key);
+      if (!list) {
+        list = assortmentOptionsFor(cars, brand);
+        cache.set(key, list);
+      }
+      return list;
+    };
+  }, [cars]);
+
   /**
-   * `make` and `model` are whichever ones govern this cell — the shared values
-   * in the header, the row's own in the table — so the model and variant columns
-   * narrow per row.
+   * `make`, `model` and `brand` are whichever ones govern this cell — the shared
+   * values in the header, the row's own in the table — so the model, variant and
+   * assortment columns narrow per row.
    */
-  const optionsForCell = (def: FieldDef, make: string, model: string) => {
+  const optionsForCell = (def: FieldDef, make: string, model: string, brand: string) => {
     if (def.key === "model") return modelsForMake(make);
     if (def.key === "variant") return variantsForModel(make, model);
+    if (def.key === "assortment") return assortmentsForBrand(brand);
     return def.option ? flatOptions[def.option] : undefined;
   };
 
@@ -604,6 +625,38 @@ export function BulkAddCarsDialog({
             Pick which fields are the same for every car in this order. The rest become columns you
             fill in per car.
           </DialogDescription>
+          {/* Both ways of getting a batch in, in the one dialog that is about
+              batches. Upload CSV used to be a third button in the add-car
+              header, and the template download sat in a "Data" row beside
+              Export — several screens from the importer that reads it. */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {onSwitchToUpload && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={onSwitchToUpload}
+              >
+                <Upload className="size-4" />
+                Upload CSV
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => downloadCsv("template.csv", generateDiecastCsvTemplate())}
+              title="Download the CSV template"
+            >
+              <Download className="size-4" />
+              CSV template
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              The template carries every column in the order the importer reads them.
+            </span>
+          </div>
         </DialogHeader>
 
         {restored && (
@@ -657,7 +710,7 @@ export function BulkAddCarsDialog({
                   <FieldInput
                     def={f}
                     value={shared[f.key] ?? ""}
-                    options={optionsForCell(f, shared.make ?? "", shared.model ?? "")}
+                    options={optionsForCell(f, shared.make ?? "", shared.model ?? "", shared.brand ?? "")}
                     onChange={(v) => setShared((s) => ({ ...s, [f.key]: v }))}
                   />
                 </div>
@@ -728,7 +781,7 @@ export function BulkAddCarsDialog({
                           def={f}
                           compact
                           value={r[f.key] ?? ""}
-                          options={optionsForCell(f, valueOf(r, "make"), valueOf(r, "model"))}
+                          options={optionsForCell(f, valueOf(r, "make"), valueOf(r, "model"), valueOf(r, "brand"))}
                           onChange={(v) => setRow(r.key, { [f.key]: v })}
                         />
                       </td>

@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { CarPhotoField } from "@/components/car-photo-field";
+import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
+import { useCars } from "@/lib/cars-store";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import {
@@ -75,6 +77,8 @@ export function CatalogFormDialog({
 
   const [saving, setSaving] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  /** Ranks the suggestion lists, the same way the car form ranks them. */
+  const cars = useCars();
 
   useEffect(() => {
     if (!open) return;
@@ -111,6 +115,30 @@ export function CatalogFormDialog({
     }
   }, [open, entry]);
 
+  const catalogueValues: CatalogueValues = {
+    make: form.make || "",
+    model: form.model || "",
+    variant: form.variant || "",
+    year: form.year || "",
+    colour: form.colour || "",
+    type: form.type || "",
+    brand: form.brand || "",
+    assortment: form.assortment || "",
+    series: form.series || "",
+    subSeries: form.sub_series || "",
+    carNumber: form.car_number || "",
+    size: form.size || "1:64",
+    rarity: (form.rarity as CatalogueValues["rarity"]) || "Normal",
+  };
+
+  /** camelCase in, snake_case out — the only place the two spellings meet. */
+  const setCatalogueValue = <K extends keyof CatalogueValues>(k: K, v: CatalogueValues[K]) => {
+    const column = (
+      { subSeries: "sub_series", carNumber: "car_number" } as Record<string, string>
+    )[k as string];
+    set((column ?? k) as keyof CatalogCar, v as never);
+  };
+
   const set = <K extends keyof CatalogCar>(key: K, value: CatalogCar[K]) =>
     setForm((f) => {
       const next = { ...f, [key]: value };
@@ -123,75 +151,6 @@ export function CatalogFormDialog({
       }
       return next;
     });
-
-  // Autocomplete options derived from taxonomy & catalog
-  const makeOptions = useMemo(() => {
-    const setMakes = new Set<string>(MAKE_SEED);
-    for (const c of catalog) if (c.make) setMakes.add(c.make);
-    return [...setMakes].sort();
-  }, [catalog]);
-
-  const modelOptions = useMemo(() => {
-    const makeKey = (form.make || "").toLowerCase();
-    const taxonomyModels = (MODELS_BY_MAKE as Record<string, string[]>)[makeKey] || [];
-    const setModels = new Set<string>(taxonomyModels);
-    for (const c of catalog) {
-      if (form.make && c.make?.toLowerCase() === makeKey && c.model) {
-        setModels.add(c.model);
-      }
-    }
-    return [...setModels].sort();
-  }, [form.make, catalog]);
-
-  const variantOptions = useMemo(() => {
-    const modelKey = (form.model || "").toLowerCase();
-    const taxonomyVariants = (VARIANTS_BY_MODEL as Record<string, string[]>)[modelKey] || [];
-    const setVariants = new Set<string>(taxonomyVariants);
-    for (const c of catalog) {
-      if (form.model && c.model?.toLowerCase() === modelKey && c.variant) {
-        setVariants.add(c.variant);
-      }
-    }
-    return [...setVariants].sort();
-  }, [form.model, catalog]);
-
-  const brandOptions = useMemo(() => {
-    const setBrands = new Set<string>(BRAND_SEED);
-    for (const c of catalog) if (c.brand) setBrands.add(c.brand);
-    return [...setBrands].sort();
-  }, [catalog]);
-
-  const assortmentOptions = useMemo(() => {
-    const setAssortments = new Set<string>(ASSORTMENT_SEED);
-    for (const c of catalog) if (c.assortment) setAssortments.add(c.assortment);
-    return [...setAssortments].sort();
-  }, [catalog]);
-
-  const colourOptions = useMemo(() => {
-    const setColours = new Set<string>(COLOUR_SEED);
-    for (const c of catalog) if (c.colour) setColours.add(c.colour);
-    return [...setColours].sort();
-  }, [catalog]);
-
-  const typeOptions = useMemo(() => {
-    const setTypes = new Set<string>(TYPE_SEED);
-    for (const c of catalog) if (c.type) setTypes.add(c.type);
-    return [...setTypes].sort();
-  }, [catalog]);
-
-  const sizeOptions = useMemo(() => [...SIZE_SEED], []);
-
-  const seriesOptions = useMemo(() => {
-    const setSeries = new Set<string>(SERIES_SEED);
-    for (const c of catalog) if (c.series) setSeries.add(c.series);
-    return [...setSeries].sort();
-  }, [catalog]);
-
-  const subSeriesOptions = useMemo(() => {
-    const setSubSeries = new Set<string>(SUB_SERIES_SEED);
-    for (const c of catalog) if (c.sub_series) setSubSeries.add(c.sub_series);
-    return [...setSubSeries].sort();
-  }, [catalog]);
 
   // Image search suggestions
   const imageSuggestions = useCarImageCandidates({
@@ -441,157 +400,16 @@ export function CatalogFormDialog({
                   <span>Casting Specifications</span>
                 </h3>
 
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Brand *</Label>
-                    <Combobox
-                      clearable
-                      value={form.brand || ""}
-                      onChange={(v) => set("brand", v)}
-                      options={brandOptions}
-                      placeholder="Brand"
-                      searchPlaceholder="Search brands…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Make *</Label>
-                    <Combobox
-                      clearable
-                      value={form.make || ""}
-                      onChange={(v) => set("make", v)}
-                      options={makeOptions}
-                      placeholder="Make"
-                      searchPlaceholder="Search makes…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Model *</Label>
-                    <Combobox
-                      clearable
-                      value={form.model || ""}
-                      onChange={(v) => set("model", v)}
-                      options={modelOptions}
-                      placeholder="Model"
-                      searchPlaceholder="Search models…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Variant</Label>
-                    <Combobox
-                      clearable
-                      value={form.variant || ""}
-                      onChange={(v) => set("variant", v)}
-                      options={variantOptions}
-                      placeholder="Variant"
-                      searchPlaceholder="Search variants…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Year</Label>
-                    <Input
-                      value={form.year || ""}
-                      onChange={(e) => set("year", e.target.value)}
-                      placeholder="e.g. 2024"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Colour</Label>
-                    <Combobox
-                      clearable
-                      value={form.colour || ""}
-                      onChange={(v) => set("colour", v)}
-                      options={colourOptions}
-                      placeholder="Colour"
-                      searchPlaceholder="Search colours…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Vehicle Type</Label>
-                    <Combobox
-                      clearable
-                      value={form.type || ""}
-                      onChange={(v) => set("type", v)}
-                      options={typeOptions}
-                      placeholder="Type"
-                      searchPlaceholder="Search types…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Scale / Size</Label>
-                    <Combobox
-                      clearable
-                      value={form.size || "1:64"}
-                      onChange={(v) => set("size", v)}
-                      options={sizeOptions}
-                      placeholder="Scale"
-                      searchPlaceholder="Search scales…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Assortment *</Label>
-                    <Combobox
-                      clearable
-                      value={form.assortment || "Mainline"}
-                      onChange={(v) => set("assortment", v)}
-                      options={assortmentOptions}
-                      placeholder="Assortment"
-                      searchPlaceholder="Search assortments…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Series</Label>
-                    <Combobox
-                      clearable
-                      value={form.series || ""}
-                      onChange={(v) => set("series", v)}
-                      options={seriesOptions}
-                      placeholder="Series"
-                      searchPlaceholder="Search series…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Sub Series</Label>
-                    <Combobox
-                      clearable
-                      value={form.sub_series || ""}
-                      onChange={(v) => set("sub_series", v)}
-                      options={subSeriesOptions}
-                      placeholder="Sub series"
-                      searchPlaceholder="Search sub series…"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs">Car Number</Label>
-                    <Input
-                      value={form.car_number || ""}
-                      onChange={(e) => set("car_number", e.target.value)}
-                      placeholder="e.g. 3/5 or 142/250"
-                      className="h-8 bg-background"
-                    />
-                  </div>
-                </div>
+                {/* The same thirteen fields the car form edits, from the same
+                    component — so a brand narrows its assortments here too, and
+                    the labels cannot drift apart again. Rarity is omitted: this
+                    dialog keeps it upstairs beside Release Status. */}
+                <CatalogueFields
+                  values={catalogueValues}
+                  onChange={setCatalogueValue}
+                  cars={cars}
+                  omit={["rarity"]}
+                />
 
                 <div className="space-y-1 pt-1 border-t border-border/50">
                   <Label className="text-xs">Display Name (Casting Name)</Label>

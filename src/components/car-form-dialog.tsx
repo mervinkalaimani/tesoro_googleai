@@ -5,15 +5,28 @@ import { useCarImageCandidates } from "@/lib/car-image-search";
 import { catalogueKey, useCatalogueSearch, type CatalogueCar } from "@/lib/catalogue-search";
 import { useAuth } from "@/lib/auth-store";
 import { RARITIES, RARITY_LABEL, rarityOf, type Rarity } from "@/lib/rarity";
-import { CAR_CONDITIONS, CARD_CONDITIONS, describe } from "@/lib/condition";
-import { formatDayMonthYear } from "@/lib/format";
+import {
+  CAR_CONDITIONS,
+  CARD_CONDITIONS,
+  cardGradeForCarGrade,
+  describe,
+} from "@/lib/condition";
+import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { ChaseMark } from "@/components/car-marks";
 import { StarRating } from "@/components/star-rating";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Diecast } from "@/lib/types";
 import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
-import { modelOptionsFor, optionsFor, variantOptionsFor } from "@/lib/car-options";
+import { carSubLine } from "@/lib/car-subline";
+import { mrpOptionsFor, topSellers } from "@/lib/car-prices";
+import {
+  assortmentOptionsFor,
+  modelOptionsFor,
+  optionsFor,
+  variantOptionsFor,
+  yearOptionsFor,
+} from "@/lib/car-options";
 import {
   CAR_DRAFT_KEY,
   carEditDraftKey,
@@ -36,8 +49,16 @@ import {
 } from "@/lib/car-id";
 import { useCatalog } from "@/lib/catalog-store";
 import { CarPhotoField } from "@/components/car-photo-field";
+import {
+  ClearableInput,
+  Field,
+  FormSection,
+  PillButton,
+  PillRow,
+} from "@/components/form-parts";
+import { SegmentControl } from "@/components/segment-control";
+import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
-import { DataActions } from "@/components/data-actions";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import {
   Dialog,
@@ -91,6 +112,11 @@ const STATUS_OPTIONS = [
   "On Hold",
 ];
 const PAYMENT_OPTIONS = ["Paid", "Partial", "Pending"];
+
+const MONTH_LABELS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
 
 const SPENT_INFO = "The total amount you've spent to purchase the car.";
 const PAID_INFO = "The amount you've paid till now.";
@@ -282,12 +308,19 @@ function sameForm(a: CarFormData, b: CarFormData): boolean {
 
 type CarDraft = { form: CarFormData; step: number };
 
+/**
+ * Two steps: which car, then your copy of it.
+ *
+ * It was five — car details, cost, transit, image, summary — and the first of
+ * them asked for sixteen fields the catalogue already knows. Picking a catalogue
+ * entry fills fourteen, so the search became the step and everything that is
+ * true of *this purchase* became the other one. The summary went with them: it
+ * existed because five steps make it easy to lose track of what you typed, and
+ * on one screen you are already looking at it.
+ */
 const WIZARD_STEPS = [
-  { id: 1, label: "Car Details", title: "Car Details", icon: Car },
-  { id: 2, label: "Cost", title: "Cost", icon: IndianRupee },
-  { id: 3, label: "Transit", title: "Transit", icon: Calendar },
-  { id: 4, label: "Image", title: "Image", icon: Sparkles },
-  { id: 5, label: "Summary", title: "Summary", icon: ClipboardCheck },
+  { id: 1, label: "Which car", title: "Which car", icon: Search },
+  { id: 2, label: "Your copy", title: "Your copy", icon: IndianRupee },
 ];
 const LAST_STEP = WIZARD_STEPS.length;
 
@@ -297,7 +330,6 @@ export function CarFormDialog({
   initial,
   mode,
   onSwitchToBulk,
-  onSwitchToUpload,
   prefill,
   prefillStatus = "Pre Order",
 }: {
@@ -310,8 +342,6 @@ export function CarFormDialog({
    * prefill it with — the ISO matches, when several turn up at once.
    */
   onSwitchToBulk?: (seed?: Diecast[]) => void;
-  /** Add mode only: hands off to the CSV upload dialog. */
-  onSwitchToUpload?: () => void;
   /**
    * Add mode only: a casting to start from (Home's "Recently pre-ordered"),
    * with its catalogue fields filled in and the status set to Pre Order.
@@ -341,6 +371,125 @@ export function CarFormDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   /** The card scanner, raised from the catalogue fields it fills in. */
   const [scanOpen, setScanOpen] = useState(false);
+  /**
+   * Step two's three groups. The catalogue fields start shut because a picked car
+   * has already filled them in; they open on their own when the car was entered
+   * by hand, or when one of them fails validation and has to be shown.
+   */
+  const [showIdentity, setShowIdentity] = useState(false);
+  const [showPurchase, setShowPurchase] = useState(true);
+  const [showCondition, setShowCondition] = useState(false);
+  const [showExtras, setShowExtras] = useState(false);
+  /**
+   * Whether step two's summary describes a car the catalogue filled in. Only for
+   * the badge: a car entered by hand has nothing to claim credit for.
+   */
+  const [fromCatalogue, setFromCatalogue] = useState(false);
+
+  /**
+   * An ISO row is a car you are looking for, not one you bought. There is no
+   * seller, no order, nothing spent and nothing to settle, so those four leave
+   * the form and are stored as NA instead of as blanks or meaningless zeroes.
+   */
+  const isIso = form.status.trim().toLowerCase() === "iso";
+  /** Still coming, so a courier and a tracking number can exist. */
+  const stillComing = NOT_RECEIVED_STATUSES.has(form.status.trim().toLowerCase());
+  /** A pre-order has a release month, never a shipping date. */
+  const isPreOrder = form.status.trim().toLowerCase() === "pre order";
+  /**
+   * In hand. The courier and the tracking number stop mattering, but what the
+   * delivery cost is still part of what the car cost, so shipping stays.
+   */
+  const hasArrived = ARRIVED_STATUSES.has(form.status.trim().toLowerCase());
+
+  /**
+   * Editing an owned car cannot change what the casting is: that entry is shared
+   * with everyone else who owns one. Everything about *this copy* stays yours to
+   * correct, which now includes the seller, the order date and the MRP — they
+   * used to sit in a read-only rail, so a mistyped seller was permanent.
+   */
+  const isEdit = mode === "edit";
+
+  const catalogueValues: CatalogueValues = {
+    make: form.make,
+    model: form.model,
+    variant: form.variant,
+    year: form.year,
+    colour: form.colour,
+    type: form.type,
+    brand: form.brand,
+    assortment: form.assortment,
+    series: form.series,
+    subSeries: form.subSeries,
+    carNumber: form.carNumber,
+    size: form.size,
+    rarity: form.rarity,
+  };
+  const setCatalogueValue = <K extends keyof CatalogueValues>(k: K, v: CatalogueValues[K]) =>
+    set(k as keyof CarFormData, v as CarFormData[keyof CarFormData]);
+
+  /** The standard secondary line, so the summary reads like a car anywhere else. */
+  const identityLine = carSubLine({
+    brand: form.brand,
+    assortment: form.assortment,
+    series: form.series,
+    subSeries: form.subSeries,
+    carNumber: form.carNumber,
+    caseNumber: form.caseNumber,
+  });
+
+  /** What this brand and assortment has cost before, most used first. */
+  const mrpChoices = useMemo(
+    () => mrpOptionsFor(cars, form.brand, form.assortment),
+    [cars, form.brand, form.assortment],
+  );
+  /** Who this collection buys from most, for one tap. */
+  const sellerChips = useMemo(() => topSellers(cars, 3), [cars]);
+  // The grades as the segment control wants them. The descriptions stay in the
+  // combobox lists the edit rail still uses.
+  const carConditionSegments = useMemo(
+    () => CAR_CONDITIONS.map((c) => ({ value: c.value, label: c.value })),
+    [],
+  );
+  const cardConditionSegments = useMemo(
+    () => CARD_CONDITIONS.map((c) => ({ value: c.value, label: c.value })),
+    [],
+  );
+  const paymentSegments = useMemo(
+    () => PAYMENT_OPTIONS.map((o) => ({ value: o, label: o })),
+    [],
+  );
+
+  /**
+   * A pre-order's window, held in expectedDate as the 1st of the month so one
+   * column carries both and nothing downstream has to learn a second shape.
+   */
+  const etaMonth = form.expectedDate ? String(Number(form.expectedDate.slice(5, 7)) - 1) : "";
+  const etaYear = form.expectedDate ? form.expectedDate.slice(0, 4) : "";
+  const thisYear = new Date().getFullYear();
+  const ETA_YEARS = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2, thisYear + 3];
+  const setEta = (monthIdx: string, year: string) => {
+    if (!monthIdx || !year) {
+      set("expectedDate", "");
+      return;
+    }
+    set("expectedDate", `${year}-${String(Number(monthIdx) + 1).padStart(2, "0")}-01`);
+  };
+
+  /** Each section says what it holds, so it can stay shut and still be read. */
+  const purchaseBadge = isIso
+    ? "NA — still looking"
+    : form.seller.trim()
+      ? `${form.payment} · ${form.seller.trim()}`
+      : `${form.payment} · seller needed`;
+  const purchaseBadgeTone: "muted" | "warn" = !isIso && !form.seller.trim() ? "warn" : "muted";
+  const conditionBadge =
+    [form.carCondition, form.cardCondition].filter(Boolean).length > 0
+      ? `${[form.carCondition, form.cardCondition].filter(Boolean).length} of 2 set`
+      : "not set";
+  const extrasBadge =
+    form.caseNumber.trim() ||
+    (form.transitInfo.trim() ? "note added" : form.imageUrl ? "photo set" : "nothing yet");
 
   const fromPrefill = mode === "add" && !initial && Boolean(prefill);
   // A pre-filled form keeps its draft apart, so opening one never overwrites
@@ -392,6 +541,21 @@ export function CarFormDialog({
       setCurrentStep(1);
       setRestored(false);
     }
+    // A pre-filled open has already answered step one — the casting was chosen,
+    // off a catalogue entry or a pre-order somebody else placed — so it lands on
+    // step two the same way picking one from the search does, with the identity
+    // fields shut because they are already right. Opening on the search box and
+    // asking for a car that is sitting filled in behind it reads as a mistake.
+    if (fromPrefill) {
+      setFromCatalogue(true);
+      setShowIdentity(false);
+      setCurrentStep(2);
+    } else {
+      // Otherwise back to how a fresh dialog starts: a previous pre-filled open
+      // must not leave the next by-hand one thinking it came from the catalogue.
+      setFromCatalogue(false);
+      setShowIdentity(false);
+    }
     setDraftReady(true);
   }, [open, baseline, draftKey, mode, fromPrefill]);
 
@@ -436,6 +600,13 @@ export function CarFormDialog({
   const applyScan = (fields: ScanResult) => {
     setForm((f) => ({ ...f, ...fields }));
     setValidationError(null);
+    // A scan answers step one the same way picking a car does, so it moves on
+    // with the fields open: what a camera read is worth checking.
+    if (mode === "add" && currentStep === 1) {
+      setFromCatalogue(false);
+      setShowIdentity(true);
+      setCurrentStep(2);
+    }
   };
 
   /**
@@ -445,11 +616,54 @@ export function CarFormDialog({
    * cost, who sold it and when are this car's own, so they are left alone.
    */
   const applyExisting = (car: CatalogueCar) => {
-    setForm((f) => catalogueFields(car, f));
+    setForm((f) => {
+      const next = catalogueFields(car, f);
+      // What this brand and assortment has cost before, for the entries that
+      // carry no price of their own.
+      const known = mrpOptionsFor(cars, next.brand, next.assortment);
+      const mrp = next.mrp === "" ? (known[0] ?? "") : next.mrp;
+      // Spent starts equal to MRP: you normally pay list, and a figure you can
+      // correct beats an empty box you must fill. Only when it is untouched.
+      const spent = f.spent === "" ? mrp : f.spent;
+      const paid = next.payment === "Paid" ? spent : next.paid;
+      const balance = Math.max(0, (Number(spent) || 0) - (Number(paid) || 0));
+      return { ...next, mrp, spent, paid, balance };
+    });
     setValidationError(null);
     toast.success("Filled from your collection", {
       description: car.name || `${car.make} ${car.model}`.trim(),
     });
+  };
+
+  /**
+   * A car can only be graded below Mint once it is out of the blister, so any
+   * grade but Mint carries the card grade with it.
+   */
+  const setCarCondition = (v: string) => {
+    setForm((f) => {
+      const implied = cardGradeForCarGrade(v);
+      return { ...f, carCondition: v, cardCondition: implied ?? f.cardCondition };
+    });
+    setValidationError((e) => (e && e.field === "carCondition" ? null : e));
+  };
+
+  /**
+   * Step one, resolved: a catalogue entry fills the casting in and step two asks
+   * what your copy cost. The details stay shut, because they are already right.
+   */
+  const pickFromCatalogue = (car: CatalogueCar) => {
+    applyExisting(car);
+    setFromCatalogue(true);
+    setShowIdentity(false);
+    setCurrentStep(2);
+  };
+
+  /** The other way through step one: nothing to copy, so the fields open. */
+  const startByHand = () => {
+    setValidationError(null);
+    setFromCatalogue(false);
+    setShowIdentity(true);
+    setCurrentStep(2);
   };
 
   /**
@@ -526,10 +740,17 @@ export function CarFormDialog({
     () => variantOptionsFor(cars, form.make, form.model),
     [cars, form.make, form.model],
   );
+  const yearOptions = useMemo(() => yearOptionsFor(cars), [cars]);
+  const caseOptions = useMemo(() => optionsFor("caseNumber", cars), [cars]);
   const colourOptions = useMemo(() => optionsFor("colour", cars), [cars]);
   const typeOptions = useMemo(() => optionsFor("type", cars), [cars]);
   const brandOptions = useMemo(() => optionsFor("brand", cars), [cars]);
-  const assortmentOptions = useMemo(() => optionsFor("assortment", cars), [cars]);
+  // An assortment belongs to its brand the way a model belongs to its make:
+  // "Qube Carz" is Mini GT's, and offering it under Matchbox helped nobody.
+  const assortmentOptions = useMemo(
+    () => assortmentOptionsFor(cars, form.brand),
+    [cars, form.brand],
+  );
   const sizeOptions = useMemo(() => optionsFor("size", cars), [cars]);
   const seriesOptions = useMemo(() => optionsFor("series", cars), [cars]);
   const subSeriesOptions = useMemo(() => optionsFor("subSeries", cars), [cars]);
@@ -539,25 +760,6 @@ export function CarFormDialog({
     () => optionsFor("seller", cars).filter((s) => s.toLowerCase() !== NO_SELLER.toLowerCase()),
     [cars],
   );
-  // Condition grades: the defaults first in their own order (best to worst),
-  // then anything this collection has typed that is not one of them.
-  const carConditionOptions = useMemo(
-    () =>
-      withDefaults(
-        CAR_CONDITIONS.map((c) => c.value),
-        cars.map((c) => c.carCondition),
-      ),
-    [cars],
-  );
-  const cardConditionOptions = useMemo(
-    () =>
-      withDefaults(
-        CARD_CONDITIONS.map((c) => c.value),
-        cars.map((c) => c.cardCondition),
-      ),
-    [cars],
-  );
-
   /**
    * ISO entries this car might be. Recomputed as the catalogue fields change,
    * which is cheap: it is one pass over the collection comparing seven strings,
@@ -753,29 +955,42 @@ export function CarFormDialog({
     const need = (field: keyof CarFormData, message: string): FieldError => ({ field, message });
     // In the order the fields appear, so the first one flagged is the first on screen.
     if (step === 1) {
-      if (!form.make.trim()) return need("make", "Enter the make.");
+      // Step one is the search. Nothing can be right yet unless a car was picked
+      // or the manual route filled these in, and both land on step two.
+      if (!form.make.trim()) return need("make", "Pick a car, or enter one by hand.");
       if (!form.model.trim()) return need("model", "Enter the model.");
-      if (!form.status.trim()) return need("status", "Pick a status.");
+    } else if (step === 2) {
+      // The catalogue fields first: they sit above the purchase on this step.
       if (!form.type.trim()) return need("type", "Enter the type.");
       if (!form.brand.trim()) return need("brand", "Enter the brand.");
       if (!form.assortment.trim()) return need("assortment", "Enter the assortment.");
-    } else if (step === 2) {
-      if (form.spent === "" || form.spent === null) return need("spent", "Enter what it cost.");
-      if (form.mrp === "" || form.mrp === null) return need("mrp", "Enter the MRP.");
-      if (!form.payment.trim()) return need("payment", "Pick a payment status.");
+      if (!form.status.trim()) return need("status", "Pick a status.");
+      // Everything below describes a purchase, and an ISO row is not one.
+      if (isIso) return null;
       if (!form.seller.trim())
         return need("seller", `Pick a seller, or "${NO_SELLER}" if there wasn't one.`);
-    } else if (step === 3) {
       if (!form.orderDate.trim()) return need("orderDate", "Pick the order date.");
+      if (form.mrp === "" || form.mrp === null) return need("mrp", "Enter the MRP.");
+      if (form.spent === "" || form.spent === null) return need("spent", "Enter what it cost.");
+      if (!form.payment.trim()) return need("payment", "Pick a payment status.");
     }
     return null;
   };
 
   // Once the flagged field is rendered (a step change may be needed first),
   // bring it into view and put the caret in it.
+  /** The fields that live behind "Edit these details". */
+  const CATALOGUE_FIELDS = new Set<keyof CarFormData>([
+    "make", "model", "variant", "year", "colour", "type",
+    "brand", "assortment", "series", "subSeries", "carNumber", "size", "rarity",
+  ]);
+
   useEffect(() => {
     if (!jumpToError.current || !validationError) return;
     jumpToError.current = false;
+    // Opening it first: scrolling to a field inside a shut group scrolls to
+    // nothing, and the person is told to fix something they cannot see.
+    if (CATALOGUE_FIELDS.has(validationError.field)) setShowIdentity(true);
     const frame = requestAnimationFrame(() => {
       const el = document.querySelector<HTMLElement>(`[data-field="${validationError.field}"]`);
       if (!el) return;
@@ -813,7 +1028,7 @@ export function CarFormDialog({
     setValidationError(null);
 
     // Validate all steps if submitting
-    for (let s = 1; s <= 3; s++) {
+    for (let s = 1; s <= LAST_STEP; s++) {
       const err = validateStep(s);
       if (err) {
         jumpToError.current = true;
@@ -829,15 +1044,26 @@ export function CarFormDialog({
     const type = form.type.trim();
     const brand = form.brand.trim();
     const assortment = form.assortment.trim();
-    const payment = form.payment.trim();
-    const seller = form.seller.trim() === NO_SELLER ? "" : form.seller.trim();
     const status = form.status.trim();
-    const orderDate = form.orderDate.trim();
+    /**
+     * An ISO row records that the question did not apply rather than leaving the
+     * fields blank, which would read as "not filled in yet". Only the two text
+     * columns can actually hold "NA": spent, paid and balance are numbers, so
+     * they stay at zero — which is also what every total wants them to be.
+     */
+    const iso = status.toLowerCase() === "iso";
+    const payment = iso ? "NA" : form.payment.trim();
+    const seller = iso
+      ? "NA"
+      : form.seller.trim() === NO_SELLER
+        ? ""
+        : form.seller.trim();
+    const orderDate = iso ? "" : form.orderDate.trim();
 
-    const spent = Number(form.spent) || 0;
+    const spent = iso ? 0 : Number(form.spent) || 0;
     const mrp = Number(form.mrp) || 0;
-    const shippingCost = form.shippingCost === "" ? 0 : Number(form.shippingCost) || 0;
-    const paid = form.paid === "" ? (payment === "Paid" ? spent : 0) : Number(form.paid) || 0;
+    const shippingCost = iso || form.shippingCost === "" ? 0 : Number(form.shippingCost) || 0;
+    const paid = iso ? 0 : form.paid === "" ? (payment === "Paid" ? spent : 0) : Number(form.paid) || 0;
     // Automated balance guarantee
     const balance = Math.max(0, spent - paid);
 
@@ -969,6 +1195,500 @@ export function CarFormDialog({
     onOpenChange(false);
   };
 
+  /**
+   * Everything that is true of *your copy* of a casting: what it cost, where
+   * it is, what condition it is in, and the photo and notes you keep with it.
+   *
+   * One definition, rendered by both modes. Adding a car shows it as step two;
+   * editing one shows it on its own. They were two different forms over the
+   * same fields, which is how edit ended up with a Payment dropdown after add
+   * had segments, and a read-only rail listing a seller you could not correct.
+   */
+  const copyFields = (
+            <div className="space-y-3">
+              {/* What the car is, as one line you confirm rather than sixteen
+                  fields you fill. The fields are still here, one tap down. */}
+              <section className="overflow-hidden rounded-lg border border-border bg-muted/30">
+                <div className="flex items-start gap-3 p-3">
+                  <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
+                    {form.imageUrl ? (
+                      <img src={form.imageUrl} alt="" className="size-full object-cover" />
+                    ) : (
+                      <Car className="size-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <TruncatedName
+                        name={previewName || "New casting"}
+                        className="text-sm font-semibold text-foreground"
+                      />
+                      <ChaseMark rarity={form.rarity} className="size-3.5 shrink-0" />
+                    </div>
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {identityLine}
+                    </p>
+                    {fromCatalogue && !isEdit && (
+                      <span className="mt-1.5 inline-flex rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                        Filled from the catalogue
+                      </span>
+                    )}
+                  </div>
+                  {/* Adding, you can go back and pick a different casting.
+                      Editing, the car is the car. */}
+                  {!isEdit && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0"
+                      onClick={() => {
+                        setValidationError(null);
+                        setCurrentStep(1);
+                      }}
+                    >
+                      Change
+                    </Button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowIdentity((v) => !v)}
+                  aria-expanded={showIdentity}
+                  className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  {isEdit ? "What the car is" : "Edit these details"}
+                  <ChevronRight
+                    className={cn(
+                      "ml-auto size-3.5 transition-transform",
+                      showIdentity && "rotate-90",
+                    )}
+                  />
+                </button>
+                {showIdentity && (
+                  <div className="border-t border-border bg-background p-3">
+                    <CatalogueFields
+                      values={catalogueValues}
+                      onChange={setCatalogueValue}
+                      cars={cars}
+                      errorFor={(k) => errorFor(k as keyof CarFormData)}
+                      disabled={isEdit}
+                    />
+                    <p className="mt-2.5 text-[11px] text-muted-foreground">
+                      {isEdit
+                        ? "The casting is shared with everyone who owns one, so it is edited in the catalogue rather than here."
+                        : "Open only when the catalogue has it wrong. Editing a coded field regenerates the Catalog ID and repoints every owner's row."}
+                    </p>
+                  </div>
+                )}
+              </section>
+
+              {/* The purchase. Open by default: every required field on this
+                  step is in here, and shut it would be a form that looks
+                  finished while being empty. */}
+              <FormSection
+                title="Seller & payment"
+                badge={purchaseBadge}
+                badgeTone={purchaseBadgeTone}
+                open={showPurchase}
+                onToggle={() => setShowPurchase((v) => !v)}
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* Status leads: it decides what the rest of this section
+                      asks for. ISO takes four fields away, a pre-order
+                      swaps the expected date for a release month. */}
+                  <Field label="Status *" name="status" error={errorFor("status")}>
+                    <Select value={form.status} onValueChange={(v) => set("status", v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUS_OPTIONS.map((st) => (
+                          <SelectItem key={st} value={st}>
+                            {st}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+
+                  {!isIso && (
+                    <Field label="Seller *" name="seller" error={errorFor("seller")}>
+                      <Combobox
+                        clearable
+                        value={form.seller}
+                        onChange={(v) => set("seller", v)}
+                        // "No seller" always first: a gift or a swap is a
+                        // real answer, and the field is required.
+                        options={[NO_SELLER, ...sellerOptions]}
+                        placeholder="Who sold it?"
+                        searchPlaceholder="Search sellers, or type a new one…"
+                        ariaLabel="Seller"
+                      />
+                      {sellerChips.length > 0 && (
+                        <PillRow scroll>
+                          {sellerChips.map((name) => (
+                            <PillButton
+                              key={name}
+                              active={form.seller === name}
+                              onClick={() => set("seller", name)}
+                            >
+                              {name}
+                            </PillButton>
+                          ))}
+                        </PillRow>
+                      )}
+                    </Field>
+                  )}
+
+                  {!isIso && (
+                    <Field label="Order Date *" name="orderDate" error={errorFor("orderDate")}>
+                      <ClearableInput
+                        type="date"
+                        value={form.orderDate}
+                        onChange={(e) => set("orderDate", e.target.value)}
+                      />
+                    </Field>
+                  )}
+
+                  <Field label={isIso ? "MRP (INR)" : "MRP * (INR)"} name="mrp" error={errorFor("mrp")}>
+                    <ClearableInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={form.mrp}
+                      onChange={(e) =>
+                        set("mrp", e.target.value === "" ? "" : Number(e.target.value))
+                      }
+                      placeholder="e.g. 549"
+                    />
+                    {/* One known price fills itself in and says nothing.
+                        Several means the form cannot guess — a Mini GT
+                        blister spans a dozen — so it offers them, and
+                        picking one is picking what you paid. */}
+                    {mrpChoices.length > 1 && (
+                      <PillRow>
+                        {mrpChoices.map((v) => (
+                          <PillButton
+                            key={v}
+                            active={Number(form.mrp) === v}
+                            onClick={() => {
+                              set("mrp", v);
+                              handleSpentChange(v);
+                            }}
+                          >
+                            {inrFull(v)}
+                          </PillButton>
+                        ))}
+                      </PillRow>
+                    )}
+                  </Field>
+
+                  {!isIso && (
+                    <Field
+                      label="Spent * (INR)"
+                      name="spent"
+                      error={errorFor("spent")}
+                      info={SPENT_INFO}
+                    >
+                      <ClearableInput
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={form.spent}
+                        onChange={(e) =>
+                          handleSpentChange(e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                        placeholder="e.g. 549"
+                      />
+                    </Field>
+                  )}
+
+                  {!isIso && (
+                    <Field label="Payment *" name="payment" error={errorFor("payment")}>
+                      <SegmentControl
+                        fill
+                        value={form.payment}
+                        options={paymentSegments}
+                        onChange={handlePaymentChange}
+                      />
+                    </Field>
+                  )}
+
+                </div>
+
+                {isIso && (
+                  <p className="mt-3 border-l-2 border-primary/60 pl-3 text-[11px] text-muted-foreground">
+                    An ISO entry is a car you are looking for, so seller, order date, spent,
+                    payment and shipping do not apply — the two text ones are saved as NA rather
+                    than left blank. Its MRP is worth noting, but not owed.
+                  </p>
+                )}
+
+                {/* Paid only when there is something left to settle, and
+                    Balance is worked out rather than asked for. */}
+                {!isIso && form.payment !== "Paid" && (
+                  <div className="mt-3 border-l-2 border-amber-500/60 pl-3">
+                    <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Shown because payment is not Paid
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <Field label="Paid (INR)" info={PAID_INFO}>
+                        <ClearableInput
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={form.paid}
+                          onChange={(e) =>
+                            handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                          placeholder="0"
+                        />
+                      </Field>
+                      <Field label="Balance (INR)">
+                        <div className="flex h-9 items-center rounded-md border border-dashed border-input px-3 text-sm font-semibold tabular-nums">
+                          {inrFull(Number(form.balance) || 0)}
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Spent {inrFull(Number(form.spent) || 0)} − paid{" "}
+                          {inrFull(Number(form.paid) || 0)}
+                        </p>
+                      </Field>
+                    </div>
+                  </div>
+                )}
+
+                {/* Nothing has shipped on a pre-order, so it has a release
+                    month instead of a date, and no courier or tracking. */}
+                {(stillComing || hasArrived) && (
+                  <div className="mt-3 border-l-2 border-sky-500/60 pl-3">
+                    <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {isPreOrder
+                        ? "A pre-order has a release window, not a shipping date"
+                        : hasArrived
+                          ? "It is here — only what the delivery cost is still worth recording"
+                          : `Shown because the status is "${form.status}"`}
+                    </p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {hasArrived ? (
+                        <Field label="Shipping Cost (INR)">
+                          <ClearableInput
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={form.shippingCost}
+                            onChange={(e) =>
+                              set(
+                                "shippingCost",
+                                e.target.value === "" ? "" : Number(e.target.value),
+                              )
+                            }
+                            placeholder="e.g. 50"
+                          />
+                        </Field>
+                      ) : isPreOrder ? (
+                        <>
+                          <Field label="Expected month">
+                            <Select
+                              value={etaMonth}
+                              onValueChange={(v) => setEta(v, etaYear || String(thisYear))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Month" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {MONTH_LABELS.map((m, i) => (
+                                  <SelectItem key={m} value={String(i)}>
+                                    {m}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </Field>
+                          <Field label="Expected year">
+                            <Select
+                              value={etaYear}
+                              onValueChange={(v) => setEta(etaMonth || "0", v)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Year" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {ETA_YEARS.map((y) => (
+                                  <SelectItem key={y} value={String(y)}>
+                                    {y}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </Field>
+                          {form.expectedDate && (
+                            <p className="self-end text-[11px] text-muted-foreground sm:col-span-2 lg:col-span-1">
+                              Saved as{" "}
+                              <span className="font-medium text-foreground">
+                                {form.expectedDate}
+                              </span>{" "}
+                              — the 1st, and the day you will be reminded.
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <Field label="Expected / available Date">
+                            <ClearableInput
+                              type="date"
+                              value={form.expectedDate}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                set("expectedDate", val);
+                                if (form.status === "Delayed" && val) set("status", "Waiting");
+                              }}
+                            />
+                          </Field>
+                          <Field label="Delivery Partner">
+                            <Combobox
+                              clearable
+                              value={form.deliveryPartner}
+                              onChange={(v) => set("deliveryPartner", v)}
+                              options={DELIVERY_PARTNER_NAMES}
+                              placeholder="Courier"
+                              searchPlaceholder="Search or type a courier…"
+                              ariaLabel="Delivery partner"
+                            />
+                          </Field>
+                          <Field label="Tracking ID">
+                            <ClearableInput
+                              className="font-mono"
+                              value={form.trackingId}
+                              onChange={(e) => set("trackingId", e.target.value)}
+                              placeholder="Consignment / AWB number"
+                            />
+                          </Field>
+                          {/* Shipping belongs with the shipment: you learn
+                              what it cost from the same courier line that
+                              gives you the tracking number. */}
+                          <Field label="Shipping Cost (INR)">
+                            <ClearableInput
+                              type="number"
+                              min="0"
+                              step="any"
+                              value={form.shippingCost}
+                              onChange={(e) =>
+                                set(
+                                  "shippingCost",
+                                  e.target.value === "" ? "" : Number(e.target.value),
+                                )
+                              }
+                              placeholder="e.g. 50"
+                            />
+                          </Field>
+                          <TrackingLink
+                            partner={form.deliveryPartner}
+                            trackingId={form.trackingId}
+                            className="sm:col-span-2 lg:col-span-3"
+                          />
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </FormSection>
+
+              <FormSection
+                title="Condition"
+                badge={conditionBadge}
+                open={showCondition}
+                onToggle={() => setShowCondition((v) => !v)}
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Field label="Car condition">
+                    <SegmentControl
+                      fill
+                      value={form.carCondition}
+                      options={carConditionSegments}
+                      onChange={setCarCondition}
+                      clearable
+                    />
+                  </Field>
+                  <Field label="Card condition">
+                    <SegmentControl
+                      fill
+                      value={form.cardCondition}
+                      options={cardConditionSegments}
+                      onChange={(v) => set("cardCondition", v)}
+                      clearable
+                    />
+                  </Field>
+                </div>
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  Only meaningful once the car is in hand. Tap the chosen grade again to clear
+                  it.
+                </p>
+              </FormSection>
+
+              <FormSection
+                title="Photo & notes"
+                badge={extrasBadge}
+                open={showExtras}
+                onToggle={() => setShowExtras((v) => !v)}
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {/* Which box this one came out of, not what the casting is
+                      — so it stays on your car rather than the catalogue. */}
+                  <Field label="Case / Mix">
+                    <Combobox
+                      clearable
+                      value={form.caseNumber}
+                      onChange={(v) => set("caseNumber", v)}
+                      options={caseOptions}
+                      placeholder="e.g. 2026 K Case, 2026 Mix 3"
+                      searchPlaceholder="Search cases, or type a new one…"
+                      ariaLabel="Case or mix"
+                    />
+                  </Field>
+                  <Field label="Notes">
+                    <ClearableInput
+                      value={form.transitInfo}
+                      onChange={(e) => set("transitInfo", e.target.value)}
+                      placeholder="Anything worth remembering about this copy"
+                    />
+                  </Field>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="car-favourite" className="text-xs text-muted-foreground">
+                      Favourite
+                    </Label>
+                    <div className="flex h-9 items-center gap-2.5 rounded-md border border-input bg-background px-3">
+                      <Switch
+                        id="car-favourite"
+                        checked={form.favourite}
+                        onCheckedChange={(v) => set("favourite", v)}
+                      />
+                      <Label
+                        htmlFor="car-favourite"
+                        className="cursor-pointer text-xs font-medium text-foreground"
+                      >
+                        Mark as favourite
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  <Label className="text-xs text-muted-foreground">Photo</Label>
+                  {/* layout="split": on a desktop the frame is smaller and
+                      the found photos fill the space to its right. */}
+                  <CarPhotoField
+                    value={form.imageUrl}
+                    onChange={setImage}
+                    suggestions={imageSearch}
+                    searchQuery={webSearchWords}
+                    layout="split"
+                  />
+                </div>
+              </FormSection>
+            </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Widths carry the `sm:` modifier deliberately — see DialogContent. Edit
@@ -985,82 +1705,23 @@ export function CarFormDialog({
       >
         <DialogHeader>
           <DialogTitle>{mode === "add" ? "Add a car" : "Edit car"}</DialogTitle>
-          {mode === "add" && (
-            // Search first: the fastest way to add a car is one you already
-            // have. Then the other ways in, and getting cars out last.
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-1 sm:justify-start">
-              <CollectionSearch cars={cars} onPick={applyExisting} searchAll={!isGuest} />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => setScanOpen(true)}
-              >
-                <ScanLine className="size-4" />
-                {/* Short labels on a phone keep all five on one row. */}
-                <span className="sm:hidden">Scan</span>
-                <span className="hidden sm:inline">Scan the card</span>
-              </Button>
-              {onSwitchToBulk && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  // Wrapped, not passed directly: onSwitchToBulk takes seed
-                  // cars, and a bare handler would hand it the click event as
-                  // the batch to prefill.
-                  onClick={() => onSwitchToBulk()}
-                >
-                  <Layers className="size-4" />
-                  <span className="sm:hidden">Bulk</span>
-                  <span className="hidden sm:inline">Add in bulk</span>
-                </Button>
-              )}
-              {onSwitchToUpload && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="gap-1.5"
-                  onClick={onSwitchToUpload}
-                >
-                  <Upload className="size-4" />
-                  <span className="sm:hidden">CSV</span>
-                  <span className="hidden sm:inline">Upload CSV</span>
-                </Button>
-              )}
-              <span aria-hidden className="h-5 w-px bg-border" />
-              <DataActions iconOnly />
-            </div>
-          )}
+          {/* The search, Scan and Add in bulk used to sit here in one row of six
+              small controls, with Export and the CSV template beside them. They
+              are step one now — the search full width and focused, the other two
+              as buttons you can hit on a phone. Export went back to the page
+              toolbars, where the list it exports actually is. */}
           <DialogDescription>
             {mode === "add"
-              ? "Five short steps to catalogue a new diecast into your collection."
+              ? "Find the car, then say what your copy cost."
               : "Status, logistics, payment and flags. What the car is stays as catalogued."}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Live auto-generated car title preview banner.
-            Add only: the name is assembled from fields as they are typed, so
-            there is something to preview. In edit mode none of those fields can
-            change, which made this a banner restating a name that was already
-            the dialog's subject — and a row of height the form could not spare. */}
-        {mode === "add" && (
-          // min-w-0: a grid item otherwise grows to fit its text, and a long
-          // name pushed the banner past the dialog instead of ending in "…".
-          <div className="flex min-w-0 items-center justify-between gap-2 rounded-lg border border-border/70 bg-muted/40 px-3.5 py-2 text-xs">
-            <div className="flex min-w-0 items-center gap-1">
-              <span className="shrink-0 font-medium text-muted-foreground">Car Name:</span>
-              {previewName ? (
-                <TruncatedName name={previewName} className="font-semibold text-foreground" />
-              ) : (
-                <span className="truncate font-semibold text-foreground">Enter make and model</span>
-              )}
-            </div>
-          </div>
-        )}
+        {/* The "Car Name:" banner that used to sit here is gone. It existed to
+            preview a name assembled from fields as they were typed — but step
+            one has nothing typed yet and read "Make Model", and step two prints
+            the same name at the top of the summary card a few pixels below it.
+            Edit mode had already dropped it for the same reason. */}
 
         {restored && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
@@ -1088,12 +1749,12 @@ export function CarFormDialog({
           </div>
         )}
 
-        {/* ===================== MODE: ADD (WIZARD NAVIGATION) ===================== */}
+        {/* ===================== MODE: ADD ===================== */}
         {mode === "add" ? (
           <div className="space-y-4">
-            {/* Wizard Stepper Bar */}
+            {/* Two steps, so the rail is two buttons rather than a strip of five. */}
             <div className="space-y-2">
-              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 {WIZARD_STEPS.map((step) => {
                   const StepIcon = step.icon;
                   const isActive = currentStep === step.id;
@@ -1103,43 +1764,38 @@ export function CarFormDialog({
                       key={step.id}
                       type="button"
                       onClick={() => {
-                        // Allow clicking to go back to visited steps
                         if (step.id < currentStep) {
                           setValidationError(null);
                           setCurrentStep(step.id);
                         }
                       }}
-                      className={`flex min-w-0 flex-col items-center gap-1.5 rounded-lg border p-1.5 text-center transition-all sm:p-2 ${
+                      className={cn(
+                        "flex min-w-0 items-center justify-center gap-2 rounded-lg border p-2 text-center transition-all",
                         isActive
                           ? "border-primary bg-primary/10 text-primary shadow-xs"
                           : isCompleted
-                            ? "border-border bg-muted/60 text-foreground hover:bg-muted cursor-pointer"
-                            : "border-border/40 bg-muted/20 text-muted-foreground/60 cursor-not-allowed"
-                      }`}
+                            ? "cursor-pointer border-border bg-muted/60 text-foreground hover:bg-muted"
+                            : "cursor-not-allowed border-border/40 bg-muted/20 text-muted-foreground/60",
+                      )}
                     >
-                      <div className="flex items-center gap-1.5">
-                        <div
-                          className={`flex size-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                            isActive
-                              ? "bg-primary text-primary-foreground"
-                              : isCompleted
-                                ? "bg-emerald-500 text-white"
-                                : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {isCompleted ? <Check className="size-3" /> : step.id}
-                        </div>
-                        <StepIcon className="size-3.5 hidden sm:inline" />
-                      </div>
-                      <span className="w-full truncate text-[10px] font-medium sm:text-[11px]">
-                        {step.label}
+                      <span
+                        className={cn(
+                          "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
+                          isActive
+                            ? "bg-primary text-primary-foreground"
+                            : isCompleted
+                              ? "bg-emerald-500 text-white"
+                              : "bg-muted text-muted-foreground",
+                        )}
+                      >
+                        {isCompleted ? <Check className="size-3" /> : step.id}
                       </span>
+                      <StepIcon className="hidden size-3.5 sm:inline" />
+                      <span className="truncate text-xs font-medium">{step.label}</span>
                     </button>
                   );
                 })}
               </div>
-
-              {/* Progress bar */}
               <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full bg-primary transition-all duration-300"
@@ -1149,19 +1805,12 @@ export function CarFormDialog({
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* STEP 1: VEHICLE INFORMATION */}
+              {/* ---------------- STEP 1: WHICH CAR ---------------- */}
               {currentStep === 1 && (
-                <div className="space-y-3">
-                  <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 1: Car Details</h4>
-                    <p className="text-xs text-muted-foreground">
-                      What the car is — or search your collection above to fill this in.
-                    </p>
-                  </div>
-
-                  {/* Above the fields rather than below: by the time three of
-                      them agree with something on the ISO list, the useful
-                      moment is before the rest is typed out by hand. */}
+                <div className="space-y-4">
+                  {/* Above the search rather than below: by the time three fields
+                      agree with something on the ISO list, the useful moment is
+                      before the rest is typed out by hand. */}
                   {!isoDismissed && (
                     <IsoSuggestions
                       matches={isoMatches}
@@ -1171,457 +1820,74 @@ export function CarFormDialog({
                     />
                   )}
 
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Make *" name="make" error={errorFor("make")}>
-                      <Combobox
-                        clearable
-                        value={form.make}
-                        onChange={(v) => set("make", v)}
-                        options={makeOptions}
-                        placeholder="e.g. Porsche, Nissan, Ford"
-                        searchPlaceholder="Search makes, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Model *" name="model" error={errorFor("model")}>
-                      <Combobox
-                        clearable
-                        value={form.model}
-                        onChange={(v) => set("model", v)}
-                        options={modelOptions}
-                        // The base name only. The trim goes in Variant next to
-                        // it, so "Skyline" here and "GT-R R34" there.
-                        placeholder="e.g. Skyline, Supra, 911"
-                        searchPlaceholder="Search models, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Variant">
-                      <Combobox
-                        clearable
-                        value={form.variant}
-                        onChange={(v) => set("variant", v)}
-                        options={variantOptions}
-                        placeholder="e.g. R34, KH, Custom"
-                        searchPlaceholder="Search variants, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Year">
-                      <ClearableInput
-                        value={form.year}
-                        onChange={(e) => set("year", e.target.value)}
-                        placeholder="e.g. 2024 or '71"
-                        inputMode="numeric"
-                      />
-                    </Field>
-
-                    <Field label="Status *" name="status" error={errorFor("status")}>
-                      <Select value={form.status} onValueChange={(v) => set("status", v)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-
-                    <Field label="Colour">
-                      <Combobox
-                        clearable
-                        value={form.colour}
-                        onChange={(v) => set("colour", v)}
-                        options={colourOptions}
-                        placeholder="e.g. Spectraflame Red, Blue, White"
-                        searchPlaceholder="Search colours, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Type *" name="type" error={errorFor("type")}>
-                      <Combobox
-                        clearable
-                        value={form.type}
-                        onChange={(v) => set("type", v)}
-                        options={typeOptions}
-                        placeholder="e.g. Race Car, Classic Car, Supercar"
-                        searchPlaceholder="Search types, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Brand *" name="brand" error={errorFor("brand")}>
-                      <Combobox
-                        clearable
-                        value={form.brand}
-                        onChange={(v) => set("brand", v)}
-                        options={brandOptions}
-                        placeholder="e.g. Hot Wheels, Mini GT, Matchbox"
-                        searchPlaceholder="Search brands, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Assortment *" name="assortment" error={errorFor("assortment")}>
-                      <Combobox
-                        clearable
-                        value={form.assortment}
-                        onChange={(v) => set("assortment", v)}
-                        options={assortmentOptions}
-                        placeholder="e.g. Mainline, Premium, Boulevard"
-                        searchPlaceholder="Search assortments, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Series">
-                      <Combobox
-                        clearable
-                        value={form.series}
-                        onChange={(v) => set("series", v)}
-                        options={seriesOptions}
-                        placeholder="e.g. Circuit Legends, HW Exotics"
-                        searchPlaceholder="Search series, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Sub Series">
-                      <Combobox
-                        clearable
-                        value={form.subSeries}
-                        onChange={(v) => set("subSeries", v)}
-                        options={subSeriesOptions}
-                        placeholder="e.g. Factory Fresh, Then and Now"
-                        searchPlaceholder="Search sub series, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Car Number">
-                      <ClearableInput
-                        value={form.carNumber}
-                        onChange={(e) => set("carNumber", e.target.value)}
-                        placeholder="e.g. 3/5 or 142/250"
-                      />
-                    </Field>
-
-                    {/* Which box this one came in, not what the casting is —
-                        so it stays on your car rather than the catalogue. */}
-                    <Field label="Case Number">
-                      <ClearableInput
-                        value={form.caseNumber}
-                        onChange={(e) => set("caseNumber", e.target.value)}
-                        placeholder="e.g. 2026 K Case"
-                      />
-                    </Field>
-
-                    <Field label="Size (default 1:64)">
-                      <Combobox
-                        clearable
-                        value={form.size}
-                        onChange={(v) => set("size", v)}
-                        options={sizeOptions}
-                        placeholder="1:64"
-                        searchPlaceholder="Search scales, or type a new one…"
-                      />
-                    </Field>
-
-                    <Field label="Rarity">
-                      <Select value={form.rarity} onValueChange={(v) => set("rarity", v as Rarity)}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {RARITIES.map((r) => (
-                            <SelectItem key={r} value={r}>
-                              <span className="flex items-center gap-2">
-                                {r === "Normal" ? (
-                                  <span className="size-4" />
-                                ) : (
-                                  <ChaseMark rarity={r} className="size-4" />
-                                )}
-                                {RARITY_LABEL[r]}
-                              </span>
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-
-                    <div className="space-y-1.5">
-                      <Label htmlFor="car-favourite" className="text-xs text-muted-foreground">
-                        Favourite
-                      </Label>
-                      <div className="flex h-9 items-center gap-2.5 rounded-md border border-input bg-background px-3">
-                        <Switch
-                          id="car-favourite"
-                          checked={form.favourite}
-                          onCheckedChange={(v) => set("favourite", v)}
-                        />
-                        <Label
-                          htmlFor="car-favourite"
-                          className="cursor-pointer text-xs font-medium text-foreground"
-                        >
-                          Mark as favourite
-                        </Label>
-                      </div>
-                    </div>
-
-                    <Field label="Notes" className="sm:col-span-2 lg:col-span-3">
-                      <ClearableInput
-                        value={form.transitInfo}
-                        onChange={(e) => set("transitInfo", e.target.value)}
-                        placeholder="e.g. release month, anything worth remembering"
-                      />
-                    </Field>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: COST */}
-              {currentStep === 2 && (
-                <div className="space-y-3">
-                  <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 2: Cost</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Enter cost details. Balance is automated based on amount paid.
+                  <div className="space-y-1.5">
+                    <CollectionSearch
+                      cars={cars}
+                      onPick={pickFromCatalogue}
+                      searchAll={!isGuest}
+                      wide
+                      autoFocus
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Pick a car and the fourteen fields that describe the casting fill themselves
+                      in. Your collection first, then every collection.
                     </p>
                   </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field
-                      label="Spent * (INR)"
-                      name="spent"
-                      error={errorFor("spent")}
-                      info={SPENT_INFO}
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setScanOpen(true)}
+                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
                     >
-                      <ClearableInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={form.spent}
-                        onChange={(e) =>
-                          handleSpentChange(e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                        placeholder="e.g. 549"
-                        required
-                        autoFocus
-                      />
-                    </Field>
-
-                    <Field label="MRP * (INR)" name="mrp" error={errorFor("mrp")}>
-                      <ClearableInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={form.mrp}
-                        onChange={(e) =>
-                          set("mrp", e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                        placeholder="e.g. 549"
-                        required
-                      />
-                    </Field>
-
-                    <Field label="Shipping Cost (INR)">
-                      <ClearableInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={form.shippingCost}
-                        onChange={(e) =>
-                          set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                        placeholder="e.g. 50"
-                      />
-                    </Field>
-
-                    <Field label="Payment *" name="payment" error={errorFor("payment")}>
-                      <Select value={form.payment} onValueChange={handlePaymentChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select payment status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PAYMENT_OPTIONS.map((p) => (
-                            <SelectItem key={p} value={p}>
-                              {p}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-
-                    <Field label="Seller *" name="seller" error={errorFor("seller")}>
-                      <Combobox
-                        clearable
-                        value={form.seller}
-                        onChange={(v) => set("seller", v)}
-                        // "No seller" always first: a gift or a swap is a real
-                        // answer, and the field is required.
-                        options={[NO_SELLER, ...sellerOptions]}
-                        placeholder="Who sold it?"
-                        searchPlaceholder="Search sellers, or type a new one…"
-                        ariaLabel="Seller"
-                      />
-                    </Field>
-
-                    <Field label="Paid (INR)" info={PAID_INFO}>
-                      <ClearableInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={form.paid}
-                        onChange={(e) =>
-                          handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                        placeholder="0"
-                      />
-                    </Field>
-
-                    <Field label="Balance (INR) [Automated]">
-                      <div className="relative">
-                        <ClearableInput
-                          type="number"
-                          readOnly
-                          value={form.balance}
-                          className="bg-muted/60 font-semibold text-foreground cursor-not-allowed"
-                        />
-                        <span className="absolute right-2.5 top-2.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                          Automated
+                      <span className="flex items-center gap-2 text-sm font-semibold">
+                        <ScanLine className="size-4 text-primary" />
+                        Scan a card
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Read make, model and series off the card
+                      </span>
+                    </button>
+                    {onSwitchToBulk && (
+                      <button
+                        type="button"
+                        // Wrapped, not passed directly: onSwitchToBulk takes seed
+                        // cars, and a bare handler would hand it the click event
+                        // as the batch to prefill.
+                        onClick={() => onSwitchToBulk()}
+                        className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                      >
+                        <span className="flex items-center gap-2 text-sm font-semibold">
+                          <Layers className="size-4 text-primary" />
+                          Add in bulk
                         </span>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground mt-1">
-                        Spent (₹{Number(form.spent) || 0}) − Paid (₹{Number(form.paid) || 0}) = ₹
-                        {Number(form.balance) || 0}
-                      </p>
-                    </Field>
+                        <span className="text-[11px] text-muted-foreground">
+                          Several at once, or a CSV
+                        </span>
+                      </button>
+                    )}
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={startByHand}
+                    className="text-xs text-primary underline underline-offset-2"
+                  >
+                    Not in the catalogue? Enter it manually →
+                  </button>
                 </div>
               )}
 
-              {/* STEP 3: TRANSIT */}
-              {currentStep === 3 && (
-                <div className="space-y-3">
-                  <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 3: Transit</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Keep track of order milestones, shipping transit info, and item condition.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    <Field label="Order Date *" name="orderDate" error={errorFor("orderDate")}>
-                      <ClearableInput
-                        type="date"
-                        value={form.orderDate}
-                        onChange={(e) => set("orderDate", e.target.value)}
-                        required
-                        autoFocus
-                      />
-                    </Field>
+              {/* ---------------- STEP 2: YOUR COPY ---------------- */}
+              {currentStep === 2 && copyFields}
 
-                    <Field label="Expected / available Date">
-                      <ClearableInput
-                        type="date"
-                        value={form.expectedDate}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          set("expectedDate", val);
-                          if (form.status === "Delayed" && val) {
-                            set("status", "Waiting");
-                          }
-                        }}
-                      />
-                    </Field>
-
-                    <Field label="Delivery Partner">
-                      <Combobox
-                        clearable
-                        value={form.deliveryPartner}
-                        onChange={(v) => set("deliveryPartner", v)}
-                        options={DELIVERY_PARTNER_NAMES}
-                        placeholder="Courier"
-                        searchPlaceholder="Search or type a courier…"
-                        ariaLabel="Delivery partner"
-                      />
-                    </Field>
-
-                    <Field label="Tracking ID">
-                      <ClearableInput
-                        className="font-mono"
-                        value={form.trackingId}
-                        onChange={(e) => set("trackingId", e.target.value)}
-                        placeholder="Consignment / AWB number"
-                      />
-                    </Field>
-
-                    <ConditionFields
-                      form={form}
-                      set={set}
-                      carConditionOptions={carConditionOptions}
-                      cardConditionOptions={cardConditionOptions}
-                    />
-
-                    <TrackingLink
-                      partner={form.deliveryPartner}
-                      trackingId={form.trackingId}
-                      className="sm:col-span-2 lg:col-span-3"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 4: IMAGE */}
-              {currentStep === 4 && (
-                <div className="space-y-4">
-                  <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 4: Image</h4>
-                    <p className="text-xs text-muted-foreground">A photo of the car.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Photo</Label>
-                    {/* layout="split": on a desktop the frame is smaller and the
-                        found photos fill the space to its right, rather than a
-                        strip underneath that scrolls sideways. */}
-                    <CarPhotoField
-                      value={form.imageUrl}
-                      onChange={setImage}
-                      suggestions={imageSearch}
-                      searchQuery={webSearchWords}
-                      layout="split"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 5: SUMMARY */}
-              {currentStep === 5 && (
-                <div className="space-y-3">
-                  <div className="border-b border-border/50 pb-1">
-                    <h4 className="text-sm font-semibold text-foreground">Step 5: Summary</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Everything you entered. Tap a step above to change anything.
-                    </p>
-                  </div>
-                  <WizardSummary
-                    form={form}
-                    name={previewName}
-                    onJump={setCurrentStep}
-                    catalogCarId={derivedCatalogCarId}
-                    existingCatalogMatch={Boolean(existingCatalogMatch)}
-                  />
-                </div>
-              )}
-
-              {/* Wizard Footer Controls. On a phone: one row, Cancel left and
-                  Next right, pinned to the bottom of the sheet while the step
-                  scrolls under it. The negative margins take the bar to the
-                  edges of the sheet's padding. */}
+              {/* Footer. On a phone: one row, Cancel left and Next right, pinned
+                  to the bottom of the sheet while the step scrolls under it. */}
               <DialogFooter className="flex flex-row items-center justify-between border-t border-border/50 pt-3 sm:justify-between max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3.5 max-sm:-mb-3.5 max-sm:bg-background max-sm:px-3.5 max-sm:pb-[max(0.875rem,env(safe-area-inset-bottom))]">
                 <div>
                   {/* Cancel is the one gesture that means "throw this away", so
-                      it is also the one that drops the draft. Closing by
-                      Escape, the X, or a phone deciding to reload the tab all
-                      leave it in place. */}
+                      it is also the one that drops the draft. Closing by Escape,
+                      the X, or a phone deciding to reload the tab all leave it. */}
                   <Button
                     type="button"
                     variant="ghost"
@@ -1643,14 +1909,12 @@ export function CarFormDialog({
 
                       Without them React sees one <button> in this slot across
                       both branches and keeps the same DOM node, swapping only
-                      its `type` attribute. Clicking Next on step 3 then ran
-                      handleNext, React flushed the state update before the
-                      browser got round to the click's default action, and the
-                      browser read type="submit" off the element it had just
-                      changed — saving the car and closing the dialog on the way
-                      to a step nobody ever saw. Distinct keys mean distinct
-                      nodes, so the button that was clicked is still the button
-                      whose default action runs. */}
+                      its `type` attribute. Clicking Next then ran handleNext,
+                      React flushed the state update before the browser got round
+                      to the click's default action, and the browser read
+                      type="submit" off the element it had just changed — saving
+                      the car on the way to a step nobody ever saw. Distinct keys
+                      mean distinct nodes. */}
                   {currentStep < LAST_STEP ? (
                     <Button key="next" type="button" onClick={handleNext}>
                       Next <ChevronRight className="size-4 ml-1" />
@@ -1665,455 +1929,14 @@ export function CarFormDialog({
             </form>
           </div>
         ) : (
-          /* ===================== MODE: EDIT (FROZEN SAVED FIELDS, ENABLED NECESSARY FIELDS) ===================== */
+          /* ===================== MODE: EDIT ===================== */
+          /* The same block adding a car uses for step two, with the casting
+             locked. What differs is the footer: editing can delete. */
           <form
             onSubmit={handleSubmit}
             className="space-y-4 w-full min-w-0 max-w-full overflow-x-hidden"
           >
-            {/* Three columns on a desktop: what you came here to change takes
-                two of them, the saved record sits in the third.
-
-                The amber "Editing Mode: saved specifications are frozen" banner
-                that used to head this form is gone. It explained the read-only
-                fields from the opposite end of a dialog you had to scroll to
-                reach them in — and now that they sit in their own labelled rail,
-                being locked is something you can see rather than be warned
-                about. */}
-            <div className="grid gap-4 lg:grid-cols-3 w-full min-w-0 max-w-full">
-              <div className="space-y-3 lg:col-span-2 w-full min-w-0 max-w-full">
-                {/* SECTION 1: ACTIVE / EDITABLE LOGISTICS & STATUS */}
-                <section className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary">
-                    Status & Logistics
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-2">
-                    <Field label="Status *" name="status" error={errorFor("status")}>
-                      <Select value={form.status} onValueChange={(v) => set("status", v)}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {STATUS_OPTIONS.map((s) => (
-                            <SelectItem key={s} value={s}>
-                              {s}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-
-                    <Field label="Expected / available Date">
-                      <ClearableInput
-                        type="date"
-                        className="bg-background"
-                        value={form.expectedDate}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          set("expectedDate", val);
-                          if ((form.status === "Delayed" || initial?.status === "Delayed") && val) {
-                            set("status", "Waiting");
-                          }
-                        }}
-                      />
-                    </Field>
-
-                    <Field label="Delivery Partner">
-                      <Combobox
-                        clearable
-                        value={form.deliveryPartner}
-                        onChange={(v) => set("deliveryPartner", v)}
-                        options={DELIVERY_PARTNER_NAMES}
-                        placeholder="Courier"
-                        searchPlaceholder="Search or type a courier…"
-                        ariaLabel="Delivery partner"
-                        className="bg-background"
-                      />
-                    </Field>
-
-                    <Field label="Tracking ID">
-                      <ClearableInput
-                        className="bg-background font-mono"
-                        value={form.trackingId}
-                        onChange={(e) => set("trackingId", e.target.value)}
-                        placeholder="Consignment / AWB number"
-                      />
-                    </Field>
-
-                    <ConditionFields
-                      form={form}
-                      set={set}
-                      carConditionOptions={carConditionOptions}
-                      cardConditionOptions={cardConditionOptions}
-                    />
-
-                    <Field label="Notes" className="sm:col-span-2">
-                      <ClearableInput
-                        className="bg-background"
-                        value={form.transitInfo}
-                        onChange={(e) => set("transitInfo", e.target.value)}
-                        placeholder="Release month, courier updates, dispatch notes..."
-                      />
-                    </Field>
-
-                    <TrackingLink
-                      partner={form.deliveryPartner}
-                      trackingId={form.trackingId}
-                      className="sm:col-span-2"
-                    />
-                  </div>
-                </section>
-
-                {/* SECTION 2: ACTIVE / EDITABLE FINANCIALS & PAYMENT PROGRESS */}
-                <section className="space-y-2 rounded-lg border border-border/80 bg-muted/30 p-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Payment & Expenditure
-                  </h3>
-                  <div className="grid grid-cols-1 gap-3 pt-1 sm:grid-cols-3">
-                    <Field label="Spent (INR)" info={SPENT_INFO}>
-                      <ClearableInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        className="bg-background"
-                        value={form.spent}
-                        onChange={(e) =>
-                          handleSpentChange(e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                        placeholder="e.g. 549"
-                      />
-                    </Field>
-
-                    <Field label="Shipping Cost (INR)">
-                      <ClearableInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        className="bg-background"
-                        value={form.shippingCost}
-                        onChange={(e) =>
-                          set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                        placeholder="e.g. 50"
-                      />
-                    </Field>
-
-                    <Field label="Payment Status *">
-                      <Select value={form.payment} onValueChange={handlePaymentChange}>
-                        <SelectTrigger className="bg-background">
-                          <SelectValue placeholder="Select payment status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {PAYMENT_OPTIONS.map((p) => (
-                            <SelectItem key={p} value={p}>
-                              {p}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-
-                    <Field label="Paid Amount (INR)" info={PAID_INFO}>
-                      <ClearableInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        className="bg-background"
-                        value={form.paid}
-                        onChange={(e) =>
-                          handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                        placeholder="0"
-                      />
-                    </Field>
-
-                    {/* The sentence spelling out "Spent − Paid = Balance" that
-                        used to sit under this is what the chip in the field
-                        already says, in a row of its own. */}
-                    <Field label="Balance (INR)" className="sm:col-span-2">
-                      <div className="relative">
-                        <ClearableInput
-                          type="number"
-                          readOnly
-                          value={form.balance}
-                          className="cursor-not-allowed bg-muted/70 font-semibold text-foreground"
-                        />
-                        <span className="absolute right-2.5 top-2.5 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-                          Automated: Spent − Paid
-                        </span>
-                      </div>
-                    </Field>
-                  </div>
-                </section>
-
-                {/* SECTION 3: IMAGE */}
-                <section className="space-y-3 rounded-lg border border-border/80 bg-muted/30 p-3">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-                    Image
-                  </h3>
-
-                  <CarPhotoField
-                    value={form.imageUrl}
-                    onChange={setImage}
-                    suggestions={imageSearch}
-                    searchQuery={webSearchWords}
-                  />
-                </section>
-              </div>
-
-              {/* SECTION 4: WHAT THE CAR IS
-                  A rail rather than a fourth band across the bottom — these are
-                  the values you check against while editing, so they belong
-                  beside the fields rather than below them.
-
-                  They used to be locked, on the theory that catalogue history
-                  should not move. In practice a mis-typed make or a missing
-                  series could only be corrected by deleting the car and adding
-                  it again, which loses far more history than the typo ever
-                  did. They are ordinary fields now; the name is rebuilt from
-                  them on save, and changing the seller or the order date
-                  renumbers the shipping ID the same as it would anywhere else. */}
-              <aside className="space-y-2 self-start rounded-lg border border-border/60 bg-muted/20 p-3 w-full min-w-0 max-w-full overflow-hidden">
-                <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5">
-                  <h3 className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-                    <Car className="size-3.5" />
-                    <span>Vehicle &amp; purchase</span>
-                  </h3>
-                  {/* The same scanner as the wizard. A car catalogued in a hurry
-                      and corrected later is the common case for these fields,
-                      and re-photographing the card beats retyping it. */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 shrink-0 gap-1.5 px-2 text-[11px]"
-                    onClick={() => setScanOpen(true)}
-                  >
-                    <ScanLine className="size-3.5" />
-                    Scan
-                  </Button>
-                </div>
-                {/* Label beside the field rather than above it: fifteen stacked
-                    label-and-input pairs is twice the height of the column next
-                    to it, and this is a rail. */}
-                <div className="grid grid-cols-1 gap-1.5 pt-1 sm:grid-cols-2 lg:grid-cols-1 w-full min-w-0 max-w-full">
-                  <RailField label="Make">
-                    <Combobox
-                      clearable
-                      value={form.make}
-                      onChange={(v) => set("make", v)}
-                      options={makeOptions}
-                      placeholder="Make"
-                      searchPlaceholder="Search makes…"
-                      ariaLabel="Make"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Model">
-                    <Combobox
-                      clearable
-                      value={form.model}
-                      onChange={(v) => set("model", v)}
-                      options={modelOptions}
-                      placeholder="Model"
-                      searchPlaceholder="Search models…"
-                      ariaLabel="Model"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Variant">
-                    <Combobox
-                      clearable
-                      value={form.variant}
-                      onChange={(v) => set("variant", v)}
-                      options={variantOptions}
-                      placeholder="Variant"
-                      searchPlaceholder="Search variants…"
-                      ariaLabel="Variant"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Year">
-                    <ClearableInput
-                      className="h-8 bg-background"
-                      value={form.year}
-                      onChange={(e) => set("year", e.target.value)}
-                      inputMode="numeric"
-                      aria-label="Year"
-                    />
-                  </RailField>
-                  <RailField label="Colour">
-                    <Combobox
-                      clearable
-                      value={form.colour}
-                      onChange={(v) => set("colour", v)}
-                      options={colourOptions}
-                      placeholder="Colour"
-                      searchPlaceholder="Search colours…"
-                      ariaLabel="Colour"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Type">
-                    <Combobox
-                      clearable
-                      value={form.type}
-                      onChange={(v) => set("type", v)}
-                      options={typeOptions}
-                      placeholder="Type"
-                      searchPlaceholder="Search types…"
-                      ariaLabel="Vehicle type"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Brand">
-                    <Combobox
-                      clearable
-                      value={form.brand}
-                      onChange={(v) => set("brand", v)}
-                      options={brandOptions}
-                      placeholder="Brand"
-                      searchPlaceholder="Search brands…"
-                      ariaLabel="Brand"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Assortment">
-                    <Combobox
-                      clearable
-                      value={form.assortment}
-                      onChange={(v) => set("assortment", v)}
-                      options={assortmentOptions}
-                      placeholder="Assortment"
-                      searchPlaceholder="Search assortments…"
-                      ariaLabel="Assortment"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Series">
-                    <Combobox
-                      clearable
-                      value={form.series}
-                      onChange={(v) => set("series", v)}
-                      options={seriesOptions}
-                      placeholder="Series"
-                      searchPlaceholder="Search series…"
-                      ariaLabel="Series"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Sub series">
-                    <Combobox
-                      clearable
-                      value={form.subSeries}
-                      onChange={(v) => set("subSeries", v)}
-                      options={subSeriesOptions}
-                      placeholder="Sub series"
-                      searchPlaceholder="Search sub series…"
-                      ariaLabel="Sub series"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Car number">
-                    <ClearableInput
-                      className="h-8 bg-background"
-                      value={form.carNumber}
-                      onChange={(e) => set("carNumber", e.target.value)}
-                      placeholder="126/250"
-                      aria-label="Car number"
-                    />
-                  </RailField>
-                  <RailField label="Case number">
-                    <ClearableInput
-                      className="h-8 bg-background"
-                      value={form.caseNumber}
-                      onChange={(e) => set("caseNumber", e.target.value)}
-                      placeholder="2026 K Case"
-                      aria-label="Case number"
-                    />
-                  </RailField>
-                  <RailField label="Scale">
-                    <Combobox
-                      clearable
-                      value={form.size}
-                      onChange={(v) => set("size", v)}
-                      options={sizeOptions}
-                      placeholder="1:64"
-                      searchPlaceholder="Search scales…"
-                      ariaLabel="Scale"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Order date">
-                    <ClearableInput
-                      type="date"
-                      className="h-8 bg-background"
-                      value={form.orderDate}
-                      onChange={(e) => set("orderDate", e.target.value)}
-                      aria-label="Order date"
-                    />
-                  </RailField>
-                  <RailField label="MRP">
-                    <ClearableInput
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="h-8 bg-background"
-                      value={form.mrp}
-                      onChange={(e) =>
-                        set("mrp", e.target.value === "" ? "" : Number(e.target.value))
-                      }
-                      aria-label="Retail price"
-                    />
-                  </RailField>
-                  <RailField label="Seller">
-                    <Combobox
-                      clearable
-                      value={form.seller}
-                      onChange={(v) => set("seller", v)}
-                      options={sellerOptions}
-                      placeholder="Seller"
-                      searchPlaceholder="Search sellers…"
-                      ariaLabel="Seller"
-                      className="h-8 bg-background"
-                    />
-                  </RailField>
-                  <RailField label="Rarity">
-                    <Select value={form.rarity} onValueChange={(v) => set("rarity", v as Rarity)}>
-                      <SelectTrigger className="h-8 bg-background text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {RARITIES.map((r) => (
-                          <SelectItem key={r} value={r}>
-                            <span className="flex items-center gap-2 text-xs">
-                              {r === "Normal" ? (
-                                <span className="size-3.5" />
-                              ) : (
-                                <ChaseMark rarity={r} className="size-3.5" />
-                              )}
-                              {RARITY_LABEL[r]}
-                            </span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </RailField>
-                  <div className="flex h-8 items-center justify-between rounded border border-border/60 bg-background px-2.5">
-                    <Label
-                      htmlFor="edit-rail-favourite"
-                      className="cursor-pointer text-xs font-medium text-foreground"
-                    >
-                      Favourite
-                    </Label>
-                    <Switch
-                      id="edit-rail-favourite"
-                      checked={form.favourite}
-                      onCheckedChange={(v) => set("favourite", v)}
-                    />
-                  </div>
-                </div>
-              </aside>
-            </div>
+            {copyFields}
 
             {/* Delete lives here now, at the far end of the footer from Save.
                 It was a full-width button on the car's detail view, one tap from
@@ -2184,73 +2007,15 @@ export function CarFormDialog({
 }
 
 /** Defaults in their given order, then collected values not among them. */
-function withDefaults(defaults: string[], collected: (string | undefined)[]): string[] {
-  const seen = new Set(defaults.map((d) => d.toLowerCase()));
-  const extra: string[] = [];
-  for (const raw of collected) {
-    const v = (raw || "").trim();
-    if (!v || seen.has(v.toLowerCase())) continue;
-    seen.add(v.toLowerCase());
-    extra.push(v);
-  }
-  return [...defaults, ...extra.sort((a, b) => a.localeCompare(b))];
-}
-
-const CAR_CONDITION_NOTES = describe(CAR_CONDITIONS);
 const CARD_CONDITION_NOTES = describe(CARD_CONDITIONS);
-
-/**
- * Condition of the car and card packaging.
- */
-function ConditionFields({
-  form,
-  set,
-  carConditionOptions,
-  cardConditionOptions,
-}: {
-  form: CarFormData;
-  set: <K extends keyof CarFormData>(k: K, v: CarFormData[K]) => void;
-  carConditionOptions: string[];
-  cardConditionOptions: string[];
-}) {
-  return (
-    <>
-      <Field label="Car condition">
-        <Combobox
-          clearable
-          value={form.carCondition}
-          onChange={(v) => set("carCondition", v)}
-          options={carConditionOptions}
-          descriptions={CAR_CONDITION_NOTES}
-          placeholder="e.g. Mint"
-          searchPlaceholder="Search grades, or type one…"
-          ariaLabel="Car condition"
-          className="bg-background"
-        />
-      </Field>
-
-      <Field label="Card condition">
-        <Combobox
-          clearable
-          value={form.cardCondition}
-          onChange={(v) => set("cardCondition", v)}
-          options={cardConditionOptions}
-          descriptions={CARD_CONDITION_NOTES}
-          placeholder="e.g. Mint Card"
-          searchPlaceholder="Search grades, or type one…"
-          ariaLabel="Card condition"
-          className="bg-background"
-        />
-      </Field>
-    </>
-  );
-}
 
 /** Every field the wizard collected, grouped by the step that asked for it. */
 /**
  * A car name that stops at the edge with an ellipsis instead of widening the
  * dialog. The full name shows on hover with a mouse, or on a tap on a phone.
  */
+type FieldError = { field: keyof CarFormData; message: string };
+
 function TruncatedName({ name, className = "" }: { name: string; className?: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -2277,156 +2042,6 @@ function TruncatedName({ name, className = "" }: { name: string; className?: str
   );
 }
 
-function WizardSummary({
-  form,
-  name,
-  onJump,
-  catalogCarId,
-  existingCatalogMatch,
-}: {
-  form: CarFormData;
-  name: string;
-  onJump: (step: number) => void;
-  catalogCarId?: string;
-  existingCatalogMatch?: boolean;
-}) {
-  const money = (v: number | "") => (v === "" ? "" : `₹${Number(v).toLocaleString("en-IN")}`);
-  const groups: { step: number; title: string; rows: [string, string][] }[] = [
-    {
-      step: 1,
-      title: "Car Details",
-      rows: [
-        ["Make", form.make],
-        ["Model", form.model],
-        ["Variant", form.variant],
-        ["Year", form.year],
-        ["Status", form.status],
-        ["Colour", form.colour],
-        ["Type", form.type],
-        ["Brand", form.brand],
-        ["Assortment", form.assortment],
-        ["Series", form.series],
-        ["Sub series", form.subSeries],
-        ["Car number", form.carNumber],
-        ["Case number", form.caseNumber],
-        ["Size", form.size],
-        ["Rarity", form.rarity],
-        ["Favourite", form.favourite ? "Yes" : ""],
-        ["Notes", form.transitInfo],
-      ],
-    },
-    {
-      step: 2,
-      title: "Cost",
-      rows: [
-        ["Spent", money(form.spent)],
-        ["MRP", money(form.mrp)],
-        ["Shipping cost", money(form.shippingCost)],
-        ["Payment", form.payment],
-        ["Seller", form.seller],
-        ["Paid", money(form.paid)],
-        ["Balance", money(form.balance)],
-      ],
-    },
-    {
-      step: 3,
-      title: "Transit",
-      rows: [
-        ["Order date", formatDayMonthYear(form.orderDate) || form.orderDate],
-        ["Expected date", formatDayMonthYear(form.expectedDate) || form.expectedDate],
-        ["Delivery partner", form.deliveryPartner],
-        ["Tracking ID", form.trackingId],
-        ["Car condition", form.carCondition],
-        ["Card condition", form.cardCondition],
-      ],
-    },
-    {
-      step: 4,
-      title: "Image",
-      rows: [["Image", form.imageUrl ? "Provided" : "None"]],
-    },
-  ];
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-3 rounded-lg border border-border/70 bg-muted/30 p-3">
-        {form.imageUrl ? (
-          <img
-            src={form.imageUrl}
-            alt=""
-            referrerPolicy="no-referrer"
-            className="size-16 shrink-0 rounded-md bg-muted object-contain"
-          />
-        ) : (
-          <div className="grid size-16 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-            <Car className="size-6" />
-          </div>
-        )}
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
-            <TruncatedName name={name} className="text-base font-semibold" />
-            <ChaseMark rarity={form.rarity} className="size-4" />
-          </div>
-          <div className="truncate text-xs text-muted-foreground">
-            {[form.brand, form.assortment, form.carNumber].filter(Boolean).join(" · ") || "—"}
-          </div>
-        </div>
-      </div>
-
-      {catalogCarId && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/80 bg-muted/40 px-3 py-2 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Catalog Car ID:
-            </span>
-            <span className="font-mono text-xs font-bold text-foreground truncate select-all">
-              {catalogCarId}
-            </span>
-          </div>
-          {existingCatalogMatch ? (
-            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
-              Reusing Catalog ID (No duplicate in DB)
-            </span>
-          ) : (
-            <span className="text-[10px] text-muted-foreground">New catalog ID</span>
-          )}
-        </div>
-      )}
-
-      <div className="grid gap-3 md:grid-cols-2">
-        {groups.map((g) => (
-          <section key={g.step} className="rounded-lg border border-border/60 p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <h5 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {g.title}
-              </h5>
-              <button
-                type="button"
-                onClick={() => onJump(g.step)}
-                className="text-[11px] font-medium text-primary hover:underline"
-              >
-                Edit
-              </button>
-            </div>
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-              {g.rows
-                .filter(([, v]) => v !== "" && v !== undefined)
-                .map(([label, v]) => (
-                  <div key={label} className="min-w-0">
-                    <dt className="text-[10px] text-muted-foreground">{label}</dt>
-                    <dd className="truncate font-medium" title={v}>
-                      {v}
-                    </dd>
-                  </div>
-                ))}
-            </dl>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /**
  * Search for a car and copy its catalogue fields into the form.
  *
@@ -2440,11 +2055,16 @@ function CollectionSearch({
   cars,
   onPick,
   searchAll,
+  wide = false,
+  autoFocus = false,
 }: {
   cars: Diecast[];
   onPick: (car: CatalogueCar) => void;
   /** False for guests: the demo searches its own sample cars only. */
   searchAll: boolean;
+  /** Full width and a taller field: it is the whole of step one, not a control. */
+  wide?: boolean;
+  autoFocus?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -2527,9 +2147,15 @@ function CollectionSearch({
   );
 
   return (
-    <div className="relative w-full sm:w-64">
-      <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+    <div className={cn("relative w-full", !wide && "sm:w-64")}>
+      <Search
+        className={cn(
+          "pointer-events-none absolute top-1/2 size-4 -translate-y-1/2 text-muted-foreground",
+          wide ? "left-3" : "left-2.5",
+        )}
+      />
       <Input
+        autoFocus={autoFocus}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setFocused(true)}
@@ -2542,12 +2168,12 @@ function CollectionSearch({
           }
           if (e.key === "Escape") setQuery("");
         }}
-        placeholder="Search all cars to fill…"
-        aria-label="Search cars to fill in the form"
-        className="h-8 pl-8 text-sm"
+        placeholder={wide ? "Search catalogue" : "Search all cars to fill…"}
+        aria-label="Search catalogue"
+        className={cn(wide ? "h-11 pl-10 text-base" : "h-8 pl-8 text-sm")}
       />
       {open && (
-        <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border border-border bg-popover p-1 text-left shadow-lg sm:w-96">
+        <div className={cn("absolute inset-x-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border border-border bg-popover p-1 text-left shadow-lg", !wide && "sm:w-96")}>
           {local.length > 0 && (
             <>
               <SearchGroupLabel>Your collection</SearchGroupLabel>
@@ -2592,140 +2218,6 @@ function SearchGroupLabel({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * An <Input> with an × at its end once it holds something.
- *
- * Clearing goes through the element's own value setter and a real input event,
- * so each field's existing onChange runs exactly as if the text had been
- * deleted by hand — Spent still recalculates the balance, a number still
- * becomes "". Read-only fields (the automated balance) get no ×.
- */
-function ClearableInput({ className, ...props }: React.ComponentProps<typeof Input>) {
-  const ref = useRef<HTMLInputElement>(null);
-  const hasValue = props.value !== undefined && props.value !== null && props.value !== "";
-  const showClear = hasValue && !props.readOnly && !props.disabled;
-  // A date field keeps its calendar icon at the far right, so the clear button
-  // sits just inside it instead of taking the end of the field.
-  const isDate = props.type === "date";
-
-  const clear = () => {
-    const el = ref.current;
-    if (!el) return;
-    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-    setter?.call(el, "");
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-    el.focus();
-  };
-
-  return (
-    <div className="relative w-full min-w-0">
-      <Input
-        {...props}
-        ref={ref}
-        className={cn("min-w-0 w-full", showClear && !isDate && "pr-8", className)}
-      />
-      {showClear && (
-        <button
-          type="button"
-          onClick={clear}
-          aria-label={`Clear ${props["aria-label"] || props.placeholder || "field"}`}
-          className={cn(
-            "absolute top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground",
-            isDate ? "right-9" : "right-2",
-          )}
-        >
-          <X className="size-3.5" />
-        </button>
-      )}
-    </div>
-  );
-}
-
-type FieldError = { field: keyof CarFormData; message: string };
-
-function Field({
-  label,
-  children,
-  className = "",
-  info,
-  name,
-  error,
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-  /** A sentence explaining the field, behind an ⓘ beside its label. */
-  info?: string;
-  /** The form key, so a failed Next can find and scroll to the field. */
-  name?: keyof CarFormData;
-  /** What is missing, shown under the field with the field outlined in red. */
-  error?: string;
-}) {
-  return (
-    <div
-      data-field={name}
-      aria-invalid={error ? true : undefined}
-      className={cn(
-        "space-y-1.5 w-full min-w-0 scroll-mt-24 scroll-mb-28",
-        error &&
-          "[&_input]:border-destructive [&_input]:ring-1 [&_input]:ring-destructive/40 [&_[role=combobox]]:border-destructive [&_[role=combobox]]:ring-1 [&_[role=combobox]]:ring-destructive/40",
-        className,
-      )}
-    >
-      <div className="flex items-center gap-1">
-        <Label className={cn("text-xs", error ? "text-destructive" : "text-muted-foreground")}>
-          {label}
-        </Label>
-        {info && <InfoTip label={label} text={info} />}
-      </div>
-      {children}
-      {error && (
-        <p role="alert" className="flex items-center gap-1 text-[11px] text-destructive">
-          <AlertCircle className="size-3 shrink-0" />
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
-/**
- * A popover rather than a tooltip: a tooltip needs a hover, and on a phone
- * there is none — the ⓘ would be decoration.
- */
-function InfoTip({ label, text }: { label: string; text: string }) {
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`About ${label}`}
-          className="grid size-4 place-items-center rounded-full text-muted-foreground hover:text-foreground"
-        >
-          <Info className="size-3.5" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent side="top" align="start" className="w-60 p-2.5 text-xs leading-relaxed">
-        {text}
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-/**
- * One field in the right-hand rail: label on the left, control on the right.
- *
- * Stacked label-above-input would make this column twice the height of the one
- * beside it for the same fifteen values, and a rail that is twice as tall as the
- * form is not a rail.
- */
-function RailField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex items-center gap-2 w-full min-w-0 max-w-full">
-      <span className="w-20 shrink-0 text-[11px] text-muted-foreground truncate">{label}</span>
-      <span className="min-w-0 flex-1 overflow-hidden">{children}</span>
-    </label>
-  );
-}
 
 /**
  * Deleting a car is not undoable past a reload, so it takes a typed phrase

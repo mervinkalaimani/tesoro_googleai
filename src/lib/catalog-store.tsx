@@ -4,6 +4,7 @@ import {
   fetchCatalogFromSupabase,
   getLocalCatalog,
   saveCatalogCarToSupabase,
+  deleteCatalogCarFromSupabase,
   diecastToCatalogCar,
 } from "@/lib/catalog";
 import { findCatalogEntry, type CarIdFields } from "@/lib/car-id";
@@ -17,6 +18,11 @@ interface CatalogContextType {
   addCatalogCar: (car: CatalogCar) => Promise<boolean>;
   /** Admin only: rewrites an entry, and with it every car linked to it. */
   updateCatalogCar: (car: CatalogCar) => Promise<boolean>;
+  /**
+   * Owner only: removes an entry no car is linked to. `uses` says how many
+   * are when it refused.
+   */
+  deleteCatalogCar: (carId: string) => Promise<{ deleted: boolean; uses: number }>;
   findMatchingInCatalog: (fields: CarIdFields) => CatalogCar | undefined;
   getCatalogCarById: (carId: string) => CatalogCar | undefined;
 }
@@ -46,14 +52,16 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const writeCatalogCar = useCallback(async (car: CatalogCar, overwrite: boolean) => {
     const res = await saveCatalogCarToSupabase(car, { overwrite });
     if (res.success) {
+      // The row as written, not as asked for: it carries who edited it and when.
+      const stored = res.saved ?? car;
       setCatalog((prev) => {
         const idx = prev.findIndex((c) => c.car_id === car.car_id);
         if (idx >= 0) {
           const next = [...prev];
-          next[idx] = car;
+          next[idx] = stored;
           return next;
         }
-        return [car, ...prev];
+        return [stored, ...prev];
       });
       return true;
     } else {
@@ -69,6 +77,19 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     (car: CatalogCar) => writeCatalogCar(car, true),
     [writeCatalogCar],
   );
+
+  const deleteCatalogCar = useCallback(async (carId: string) => {
+    const res = await deleteCatalogCarFromSupabase(carId);
+    if (res.error) {
+      toast.error(`Could not remove the casting: ${res.error}`);
+      return { deleted: false, uses: res.uses };
+    }
+    if (res.deleted) {
+      const clean = carId.trim().toUpperCase();
+      setCatalog((prev) => prev.filter((c) => c.car_id.toUpperCase() !== clean));
+    }
+    return { deleted: res.deleted, uses: res.uses };
+  }, []);
 
   const findMatchingInCatalog = useCallback(
     (fields: CarIdFields): CatalogCar | undefined => {
@@ -95,6 +116,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       refreshCatalog,
       addCatalogCar,
       updateCatalogCar,
+      deleteCatalogCar,
       findMatchingInCatalog,
       getCatalogCarById,
     }),
@@ -104,6 +126,7 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       refreshCatalog,
       addCatalogCar,
       updateCatalogCar,
+      deleteCatalogCar,
       findMatchingInCatalog,
       getCatalogCarById,
     ],

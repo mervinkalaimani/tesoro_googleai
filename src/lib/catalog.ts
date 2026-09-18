@@ -37,6 +37,8 @@ export type CatalogCar = {
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
+  /** Who last corrected the entry. Null when nobody has since it was filed. */
+  updated_by?: string | null;
 };
 
 export type ReleaseStatus = "Released" | "Pre Order";
@@ -286,6 +288,7 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         created_at: row.created_at,
         updated_at: row.updated_at,
         created_by: row.created_by,
+        updated_by: row.updated_by,
       }));
       saveLocalCatalog(formatted);
       return formatted;
@@ -309,7 +312,7 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
 export async function saveCatalogCarToSupabase(
   catalogCar: CatalogCar,
   { overwrite = false }: { overwrite?: boolean } = {},
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; saved?: CatalogCar }> {
   try {
     // 1. Update local cache immediately
     const local = getLocalCatalog();
@@ -351,6 +354,10 @@ export async function saveCatalogCarToSupabase(
       image_url: catalogCar.image_url || null,
       created_by: effectiveCreatedBy,
       updated_at: new Date().toISOString(),
+      // Only on an edit. A fresh entry has a creator and no editor, and saying
+      // it was "updated by" the person who filed it a second ago reads as a
+      // change that never happened.
+      ...(overwrite ? { updated_by: userId } : {}),
       ...(catalogCar.created_at ? { created_at: catalogCar.created_at } : {}),
       // Only when stated: saving a casting from Add a car must not reset a
       // pre-order back to the column's Released default.
@@ -370,9 +377,70 @@ export async function saveCatalogCarToSupabase(
       return { success: false, error: error.message };
     }
 
-    return { success: true };
+    // What actually landed, so the list can show the new "Updated by" without
+    // waiting for the next fetch to tell it something it already knows.
+    return {
+      success: true,
+      saved: {
+        ...catalogCar,
+        created_by: effectiveCreatedBy,
+        updated_at: payload.updated_at,
+        ...(overwrite ? { updated_by: userId } : {}),
+      },
+    };
   } catch (err) {
     return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * How many cars, across every collection, are linked to a catalogue entry.
+ *
+ * Owner only — it counts rows no single account can read — and the reason the
+ * delete below can refuse before it is pressed. Returns null when the question
+ * cannot be answered, which is not the same as zero and must never be treated
+ * as "safe to remove".
+ */
+export async function catalogEntryUsage(carId: string): Promise<number | null> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("catalog_entry_usage", {
+      _car_id: carId,
+    });
+    if (error) return null;
+    return Number(data) || 0;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Removes a casting from the catalogue.
+ *
+ * The rule — an entry any car is linked to cannot be removed — lives in the
+ * database, not here: `delete_catalog_entry` counts and deletes in the one
+ * statement, so the count cannot go stale between the check and the delete, and
+ * a client that skipped the check would be refused anyway. `uses` comes back
+ * when it declined, for a message that says why.
+ */
+export async function deleteCatalogCarFromSupabase(
+  carId: string,
+): Promise<{ deleted: boolean; uses: number; error?: string }> {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (supabase as any).rpc("delete_catalog_entry", {
+      _car_id: carId,
+    });
+    if (error) return { deleted: false, uses: 0, error: error.message };
+
+    const res = (data ?? {}) as { deleted?: boolean; uses?: number };
+    if (res.deleted) {
+      const clean = carId.trim().toUpperCase();
+      saveLocalCatalog(getLocalCatalog().filter((c) => c.car_id.toUpperCase() !== clean));
+    }
+    return { deleted: Boolean(res.deleted), uses: Number(res.uses) || 0 };
+  } catch (err) {
+    return { deleted: false, uses: 0, error: (err as Error).message };
   }
 }
 

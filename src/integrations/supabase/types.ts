@@ -78,6 +78,7 @@ export type Database = {
           created_at: string;
           updated_at: string;
           created_by: string | null;
+          updated_by: string | null;
         };
         Insert: {
           car_id: string;
@@ -102,6 +103,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          updated_by?: string | null;
         };
         Update: {
           car_id?: string;
@@ -126,6 +128,7 @@ export type Database = {
           created_at?: string;
           updated_at?: string;
           created_by?: string | null;
+          updated_by?: string | null;
         };
         Relationships: [];
       };

@@ -37,7 +37,7 @@ import { useAuth } from "@/lib/auth-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
-import { useCarDrawer } from "@/components/car-details-drawer";
+import { CatalogCarDetails, useCarDrawer } from "@/components/car-details-drawer";
 import {
   Tooltip as UITooltip,
   TooltipContent,
@@ -661,16 +661,26 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
   );
 }
 
+/** The shared pre-order shaped as a car, for the card and the details view. */
+const preorderAsCar = (c: RecentPreorder, key: string) =>
+  ({ ...c, id: key, spent: c.mrp || 0 }) as unknown as Diecast;
+
 /**
  * Pre-orders placed by anyone in the last three days, as a shelf like Recently
- * added. Each one can be added to your own collection: the Add a car form opens
- * with the casting's details filled in from the shared catalogue.
+ * added.
+ *
+ * Tapping one opens what the casting is, the same catalogue view the Catalog
+ * page opens — looking at a car somebody else has ordered is the common move,
+ * and it used to drop you straight into a form for buying it. The + adds it,
+ * and because the casting has already been chosen the form opens on step two
+ * with the details filled in, exactly as if it had been picked from the search.
  */
 function RecentPreorders() {
   const { isGuest } = useAuth();
   const { cars: shared, loading } = useRecentPreorders(!isGuest, RECENT_DAYS);
   const mine = useCars();
   const [adding, setAdding] = useState<RecentPreorder | null>(null);
+  const [viewing, setViewing] = useState<RecentPreorder | null>(null);
   const now = new Date();
 
   // Castings already on your own pre-order list are not news to you — your
@@ -697,13 +707,13 @@ function RecentPreorders() {
         {cars.map((c, i) => {
           // Shaped as a car for the card; the price it shows is the MRP, as
           // nobody's purchase price is shared.
-          const asCar = { ...c, id: `preorder-${i}`, spent: c.mrp || 0 } as unknown as Diecast;
+          const asCar = preorderAsCar(c, `preorder-${i}`);
           const ordered = parseDMY(c.lastOrdered);
           return (
             <div key={asCar.id} className="relative w-36 shrink-0 snap-start sm:w-40">
               <CompactCarCard
                 car={asCar}
-                onOpen={() => setAdding(c)}
+                onOpen={() => setViewing(c)}
                 caption={
                   c.inMyCollection
                     ? "In your collection"
@@ -728,6 +738,18 @@ function RecentPreorders() {
           );
         })}
       </div>
+      {/* What the casting is, with nothing about anyone's purchase in it. */}
+      <CatalogCarDetails
+        car={viewing ? preorderAsCar(viewing, "preorder-viewing") : null}
+        preOrder
+        owned={Boolean(viewing?.inMyCollection)}
+        onClose={() => setViewing(null)}
+        onAdd={() => {
+          const target = viewing;
+          setViewing(null);
+          setAdding(target);
+        }}
+      />
       <CarFormDialog
         open={adding !== null}
         onOpenChange={(v) => !v && setAdding(null)}
