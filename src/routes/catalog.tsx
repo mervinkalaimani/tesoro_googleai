@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Pencil, Plus, Store, Trash2 } from "lucide-react";
+import {
+  ArrowDownUp,
+  Check,
+  Layers,
+  Loader2,
+  Pencil,
+  Plus,
+  Store,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { useCatalog } from "@/lib/catalog-store";
@@ -34,6 +43,13 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Route = createFileRoute("/catalog")({
   head: () => ({
@@ -418,12 +434,19 @@ function CatalogPage() {
 
       <PageToolbar
         sticky
+        // One row on a phone: All/Released/Pre Order, then sort and group as
+        // single icons, then the view toggle. Spelled out they needed 775px of
+        // a 375px screen; as icons the whole toolbar comes to about 346.
         oneLine
         left={
           <SegmentControl
             value={segment}
             onChange={setSegment}
-            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2 max-sm:[&>button]:py-0.5"
+            // h-8 to stand the same height as the icon buttons and the view
+            // toggle beside it. Only the labels are trimmed on a phone — the
+            // vertical padding went too, and left this control visibly shorter
+            // than everything sharing its row.
+            className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
             options={[
               { value: "all", label: "All" },
               { value: "released", label: "Released" },
@@ -433,12 +456,71 @@ function CatalogPage() {
         }
         right={
           <>
+            {/* A phone gets two icons and a menu each. Spelled out, sort and
+                group take the whole row between them and the view toggle — the
+                control you change most often — ends up off the edge. */}
+            <div className="flex items-center gap-2 sm:hidden">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="size-8 shrink-0"
+                    aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${sort.dir === "asc" ? "ascending" : "descending"}`}
+                    title="Sort"
+                  >
+                    <ArrowDownUp className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44">
+                  <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+                  {SORTS.map((s) => (
+                    <DropdownMenuItem
+                      key={s.value}
+                      onSelect={() => sortBy(s.value)}
+                      className="justify-between text-xs"
+                    >
+                      {s.label}
+                      {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={group === "none" ? "outline" : "default"}
+                    className="size-8 shrink-0"
+                    aria-label={GROUPS.find((g) => g.value === group)?.label}
+                    title="Group"
+                  >
+                    <Layers className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-44">
+                  <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
+                  {GROUPS.map((g) => (
+                    <DropdownMenuItem
+                      key={g.value}
+                      onSelect={() => setGroup(g.value)}
+                      className="justify-between text-xs"
+                    >
+                      {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
+                      {group === g.value && <Check className="size-3.5" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
             {/* Tapping the chosen one again turns it round, so the arrow rides
                 on the label rather than sitting in a control of its own. */}
             <SegmentControl
               value={sort.key}
               onChange={sortBy}
-              className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2 max-sm:[&>button]:py-0.5"
+              className="hidden h-8 w-auto sm:inline-flex"
               options={SORTS.map((s) => ({
                 value: s.value,
                 label:
@@ -451,7 +533,7 @@ function CatalogPage() {
               value={group}
               onChange={(e) => setGroup(e.target.value as GroupKey)}
               aria-label="Group by"
-              className="h-8 shrink-0 rounded-md border border-input bg-background px-2 text-xs"
+              className="hidden h-8 shrink-0 rounded-md border border-input bg-background px-2 text-xs sm:block"
             >
               {GROUPS.map((g) => (
                 <option key={g.value} value={g.value}>
@@ -468,10 +550,29 @@ function CatalogPage() {
           selects that scroll sideways beat a panel that has to be opened first:
           the filter you want to clear is the one you can no longer see. */}
       <div className="flex items-center gap-2">
-        {/* The ten selects scroll; Hide owned and Clear do not. A Clear button
-            you have to swipe to reach is a Clear button you cannot find when
-            the filters are exactly what is in your way. */}
+        {/* The filters scroll; Clear does not. A Clear button you have to swipe
+            to reach is a Clear button you cannot find when the filters are
+            exactly what is in your way.
+
+            Hide owned rides inside the scroller with the rest, because it is
+            one of them. Pinned beside Clear it took 190px of a 375px phone and
+            left the ten selects sharing 168. */}
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <label
+            className={cn(
+              "flex h-8 shrink-0 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium",
+              hideOwned ? "border-primary text-foreground" : "border-input text-muted-foreground",
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={hideOwned}
+              onChange={(e) => setHideOwned(e.target.checked)}
+              className="size-3.5 rounded border-input accent-primary"
+            />
+            Hide owned
+          </label>
+
           {FILTERS.map((d) => {
             const active = filters[d.key] !== "all";
             return (
@@ -497,25 +598,10 @@ function CatalogPage() {
           })}
         </div>
 
-        <label
-          className={cn(
-            "flex h-8 shrink-0 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium",
-            hideOwned ? "border-primary text-foreground" : "border-input text-muted-foreground",
-          )}
-        >
-          <input
-            type="checkbox"
-            checked={hideOwned}
-            onChange={(e) => setHideOwned(e.target.checked)}
-            className="size-3.5 rounded border-input accent-primary"
-          />
-          Hide owned
-        </label>
-
         <Button
           size="sm"
           variant="ghost"
-          className="h-8 shrink-0"
+          className="h-8 shrink-0 px-2"
           disabled={!activeCount}
           onClick={() => {
             setFilters(NO_FILTERS);

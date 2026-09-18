@@ -1697,13 +1697,21 @@ export function CarFormDialog({
       <DialogContent
         hideDragHandle
         className={cn(
-          "overflow-y-auto overflow-x-hidden overscroll-contain touch-pan-y",
+          // A column with one scrolling middle, so the steps stay at the top
+          // and Cancel/Next stay at the bottom however long the form gets.
+          // The dialog itself no longer scrolls; the part between them does.
+          "flex flex-col overflow-hidden overscroll-contain touch-pan-y",
           "w-full max-w-full sm:max-w-3xl",
           mode === "add" ? "lg:max-w-5xl" : "lg:max-w-6xl",
+          // Pinned near the top of the window rather than centred on it. A
+          // centred dialog puts step one — a search box and two buttons — in
+          // the middle of the screen, and the form appears to jump up the page
+          // as it grows on step two.
+          "sm:top-6 sm:translate-y-0 sm:max-h-[calc(100dvh-3rem)]",
           "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
         )}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <DialogTitle>{mode === "add" ? "Add a car" : "Edit car"}</DialogTitle>
           {/* The search, Scan and Add in bulk used to sit here in one row of six
               small controls, with Export and the CSV template beside them. They
@@ -1724,7 +1732,7 @@ export function CarFormDialog({
             Edit mode had already dropped it for the same reason. */}
 
         {restored && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
             <span className="flex items-center gap-2 text-foreground">
               <RotateCcw className="size-3.5 shrink-0 text-primary" />
               Picked up where you left off — nothing you typed was lost.
@@ -1743,7 +1751,7 @@ export function CarFormDialog({
 
         {/* Adding marks the field itself; editing has no step fields to mark. */}
         {validationError && mode !== "add" && (
-          <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <div className="flex shrink-0 items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             <AlertCircle className="size-4 shrink-0" />
             <span>{validationError.message}</span>
           </div>
@@ -1751,9 +1759,9 @@ export function CarFormDialog({
 
         {/* ===================== MODE: ADD ===================== */}
         {mode === "add" ? (
-          <div className="space-y-4">
+          <div className="flex min-h-0 flex-1 flex-col gap-4">
             {/* Two steps, so the rail is two buttons rather than a strip of five. */}
-            <div className="space-y-2">
+            <div className="shrink-0 space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 {WIZARD_STEPS.map((step) => {
                   const StepIcon = step.icon;
@@ -1804,7 +1812,11 @@ export function CarFormDialog({
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
+              {/* The only part that scrolls. `min-h-0` is what lets it: without
+                  it a flex child refuses to shrink below its content and the
+                  footer is pushed off the bottom of the dialog instead. */}
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-0.5">
               {/* ---------------- STEP 1: WHICH CAR ---------------- */}
               {currentStep === 1 && (
                 <div className="space-y-4">
@@ -1880,10 +1892,12 @@ export function CarFormDialog({
 
               {/* ---------------- STEP 2: YOUR COPY ---------------- */}
               {currentStep === 2 && copyFields}
+              </div>
 
-              {/* Footer. On a phone: one row, Cancel left and Next right, pinned
-                  to the bottom of the sheet while the step scrolls under it. */}
-              <DialogFooter className="flex flex-row items-center justify-between border-t border-border/50 pt-3 sm:justify-between max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-3.5 max-sm:-mb-3.5 max-sm:bg-background max-sm:px-3.5 max-sm:pb-[max(0.875rem,env(safe-area-inset-bottom))]">
+              {/* Cancel left, Next right, at the foot of the dialog at every
+                  width — outside the scroller, so they are where you left them
+                  however far down the form you are. */}
+              <DialogFooter className="flex shrink-0 flex-row items-center justify-between border-t border-border/50 pt-3 sm:justify-between">
                 <div>
                   {/* Cancel is the one gesture that means "throw this away", so
                       it is also the one that drops the draft. Closing by Escape,
@@ -1934,15 +1948,17 @@ export function CarFormDialog({
              locked. What differs is the footer: editing can delete. */
           <form
             onSubmit={handleSubmit}
-            className="space-y-4 w-full min-w-0 max-w-full overflow-x-hidden"
+            className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col gap-4 overflow-x-hidden"
           >
-            {copyFields}
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-0.5">
+              {copyFields}
+            </div>
 
             {/* Delete lives here now, at the far end of the footer from Save.
                 It was a full-width button on the car's detail view, one tap from
                 simply reading about a car; behind Edit it takes a deliberate
                 trip, and it is still the only red thing on screen. */}
-            <DialogFooter className="flex flex-row items-center justify-between gap-2 border-t border-border/60 pt-3 sm:justify-between w-full min-w-0">
+            <DialogFooter className="flex shrink-0 flex-row items-center justify-between gap-2 border-t border-border/60 pt-3 sm:justify-between w-full min-w-0">
               <Button
                 type="button"
                 variant="ghost"

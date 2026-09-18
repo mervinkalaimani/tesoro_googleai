@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -205,6 +206,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [schemaMissing, setSchemaMissing] = useState(false);
   const [resolving, setResolving] = useState(true);
+  /**
+   * Which account the profile in hand belongs to, and whether it has ever
+   * finished loading.
+   *
+   * Both are refs because the auth listener below is registered once and would
+   * otherwise close over the first render's values. They exist so a token
+   * refresh can be told apart from a sign-in: see the listener.
+   */
+  const loadedFor = useRef<string | null>(null);
+  const settledOnce = useRef(false);
   // Read in an effect rather than at init: the server render has no
   // sessionStorage, and a mismatch here would fail hydration.
   const [isGuest, setIsGuest] = useState(false);
@@ -245,6 +256,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const row = (data as Profile | null) ?? null;
     setSchemaMissing(false);
     setProfile(row);
+    // Whose profile is now in hand, so the listener can tell a refreshed token
+    // from a different person signing in.
+    loadedFor.current = userId;
     // Car IDs are minted locally, so the generator needs this account's prefix
     // before the first car is added.
     setUserIdPrefix(row?.id_prefix ?? null);
@@ -266,17 +280,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!nextSession?.user) {
         setProfile(null);
         setIsAdmin(false);
+        loadedFor.current = null;
+        settledOnce.current = true;
         setResolving(false);
         return;
       }
 
+      /**
+       * A token refresh is not a sign-in.
+       *
+       * Supabase re-validates the session whenever the tab is looked at again,
+       * and every hour or so besides, and each time fires this listener with
+       * the same account. Going back to `resolving` for that put the splash up,
+       * which unmounts the whole app — and with it whatever dialog was open. A
+       * car half added in one tab was lost by glancing at another.
+       *
+       * So the splash is only for a session this provider has not settled yet,
+       * or one that belongs to somebody else. Otherwise the profile is
+       * refetched quietly underneath a screen that never goes away.
+       */
+      const sameAccount = loadedFor.current === nextSession.user.id;
+      if (!settledOnce.current || !sameAccount) setResolving(true);
+
       // Supabase deadlocks if another supabase-js call is awaited inside this
       // callback, so the profile fetch is deferred to a fresh task.
-      setResolving(true);
       setTimeout(() => {
         if (!active) return;
         loadProfile(nextSession.user.id).finally(() => {
-          if (active) setResolving(false);
+          if (!active) return;
+          settledOnce.current = true;
+          setResolving(false);
         });
       }, 0);
     });
@@ -285,11 +318,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       setSession(data.session);
       if (!data.session?.user) {
+        settledOnce.current = true;
         setResolving(false);
         return;
       }
       loadProfile(data.session.user.id).finally(() => {
-        if (active) setResolving(false);
+        if (!active) return;
+        settledOnce.current = true;
+        setResolving(false);
       });
     });
 

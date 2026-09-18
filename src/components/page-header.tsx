@@ -88,7 +88,21 @@ export function PageToolbar({
       >
         {left}
       </div>
-      <div className="flex shrink-0 flex-wrap items-center gap-2">{right}</div>
+      {/* Content-width from md up, the full row below it — unless the caller
+          says the toolbar is one line, in which case it stays content-width
+          throughout and its contents are expected to be small enough to sit
+          beside the left half on a phone.
+
+          Held at shrink-0 at every width, a right half of several controls
+          could not give any of them less room than they asked for, so the last
+          one hung off the edge of a phone. */}
+      <div
+        className={`flex min-w-0 flex-wrap items-center gap-2 ${
+          oneLine ? "shrink-0" : "max-md:w-full md:shrink-0"
+        }`}
+      >
+        {right}
+      </div>
     </div>
   );
 
