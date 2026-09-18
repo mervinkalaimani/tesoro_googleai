@@ -1,15 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ArrowDownUp,
-  Check,
-  Layers,
-  Loader2,
-  Pencil,
-  Plus,
-  Store,
-  Trash2,
-} from "lucide-react";
+import { ArrowDownUp, Check, Layers, Loader2, Pencil, Plus, Store, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { useCatalog } from "@/lib/catalog-store";
@@ -32,6 +23,7 @@ import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
+import { isCarMatchingCatalog } from "@/lib/catalog";
 import { parseQuery, matchesQuery } from "@/lib/search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,8 +249,7 @@ function CatalogPage() {
   const serials = useMemo(() => {
     const order = [...catalog].sort(
       (a, b) =>
-        clean(a.created_at).localeCompare(clean(b.created_at)) ||
-        a.car_id.localeCompare(b.car_id),
+        clean(a.created_at).localeCompare(clean(b.created_at)) || a.car_id.localeCompare(b.car_id),
     );
     const out = new Map<string, number>();
     order.forEach((c, i) => out.set(c.car_id, i + 1));
@@ -273,12 +264,22 @@ function CatalogPage() {
     void loadUserHandles();
   }, []);
 
-  // A car is "owned" when one of your cars points at that catalogue entry; your
-  // own Car IDs are per car, so they never match a catalogue ID.
-  const owned = useMemo(
-    () => new Set(mine.map((c) => (c.catalogId || "").toUpperCase()).filter(Boolean)),
-    [mine],
-  );
+  // A car is "owned" when one of your cars points at that catalogue entry,
+  // or matches its specifications (exact make/model/series/brand or calculated ID).
+  const owned = useMemo(() => {
+    const set = new Set<string>();
+    for (const c of mine) {
+      if (c.catalogId) set.add(c.catalogId.toUpperCase());
+    }
+    for (const cat of catalog) {
+      if (!set.has(cat.car_id.toUpperCase())) {
+        if (mine.some((m) => isCarMatchingCatalog(m, cat))) {
+          set.add(cat.car_id.toUpperCase());
+        }
+      }
+    }
+    return set;
+  }, [mine, catalog]);
 
   // Segment and the top bar's search first; the filter options come from what is left.
   const searched = useMemo(() => {
@@ -333,10 +334,7 @@ function CatalogPage() {
 
   // Reordering is as much a new list as refiltering is: sixty rows into a
   // different order are sixty different rows.
-  useEffect(
-    () => setVisible(LOAD_BATCH),
-    [segment, filters, hideOwned, query, sort, group],
-  );
+  useEffect(() => setVisible(LOAD_BATCH), [segment, filters, hideOwned, query, sort, group]);
 
   useEffect(() => {
     const el = sentinel.current;
@@ -420,196 +418,199 @@ function CatalogPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      <PageHeading
-        title="Catalog"
-        subtitle={`${rows.length.toLocaleString()} casting${rows.length === 1 ? "" : "s"} · tap one to add it to your collection`}
-      >
-        {isAdmin && (
-          <Button size="sm" className="gap-1.5" onClick={() => setEditing("new")}>
-            <Plus className="size-4" />
-            New casting
-          </Button>
-        )}
-      </PageHeading>
+      {/* Sticky header section: keeps title, count, actions, toolbar, and filters pinned to top while scrolling */}
+      <div className="sticky top-14 z-30 -mx-3 -mt-3 border-b border-border/70 bg-background/95 px-3 py-3 backdrop-blur-xl md:-mx-6 md:-mt-6 md:px-6 shadow-xs space-y-2.5">
+        <PageHeading
+          title="Catalog"
+          subtitle={`${rows.length.toLocaleString()} casting${rows.length === 1 ? "" : "s"} · tap one to add it to your collection`}
+        >
+          {isAdmin && (
+            <Button size="sm" className="gap-1.5" onClick={() => setEditing("new")}>
+              <Plus className="size-4" />
+              New casting
+            </Button>
+          )}
+        </PageHeading>
 
-      <PageToolbar
-        sticky
-        // One row on a phone: All/Released/Pre Order, then sort and group as
-        // single icons, then the view toggle. Spelled out they needed 775px of
-        // a 375px screen; as icons the whole toolbar comes to about 346.
-        oneLine
-        left={
-          <SegmentControl
-            value={segment}
-            onChange={setSegment}
-            // h-8 to stand the same height as the icon buttons and the view
-            // toggle beside it. Only the labels are trimmed on a phone — the
-            // vertical padding went too, and left this control visibly shorter
-            // than everything sharing its row.
-            className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
-            options={[
-              { value: "all", label: "All" },
-              { value: "released", label: "Released" },
-              { value: "preorder", label: "Pre Order" },
-            ]}
-          />
-        }
-        right={
-          <>
-            {/* A phone gets two icons and a menu each. Spelled out, sort and
+        <PageToolbar
+          sticky={false}
+          // One row on a phone: All/Released/Pre Order, then sort and group as
+          // single icons, then the view toggle. Spelled out they needed 775px of
+          // a 375px screen; as icons the whole toolbar comes to about 346.
+          oneLine
+          left={
+            <SegmentControl
+              value={segment}
+              onChange={setSegment}
+              // h-8 to stand the same height as the icon buttons and the view
+              // toggle beside it. Only the labels are trimmed on a phone — the
+              // vertical padding went too, and left this control visibly shorter
+              // than everything sharing its row.
+              className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
+              options={[
+                { value: "all", label: "All" },
+                { value: "released", label: "Released" },
+                { value: "preorder", label: "Pre Order" },
+              ]}
+            />
+          }
+          right={
+            <>
+              {/* A phone gets two icons and a menu each. Spelled out, sort and
                 group take the whole row between them and the view toggle — the
                 control you change most often — ends up off the edge. */}
-            <div className="flex items-center gap-2 sm:hidden">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="size-8 shrink-0"
-                    aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${sort.dir === "asc" ? "ascending" : "descending"}`}
-                    title="Sort"
-                  >
-                    <ArrowDownUp className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-44">
-                  <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
-                  {SORTS.map((s) => (
-                    <DropdownMenuItem
-                      key={s.value}
-                      onSelect={() => sortBy(s.value)}
-                      className="justify-between text-xs"
+              <div className="flex items-center gap-2 sm:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="outline"
+                      className="size-8 shrink-0"
+                      aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${sort.dir === "asc" ? "ascending" : "descending"}`}
+                      title="Sort"
                     >
-                      {s.label}
-                      {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                      <ArrowDownUp className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+                    {SORTS.map((s) => (
+                      <DropdownMenuItem
+                        key={s.value}
+                        onSelect={() => sortBy(s.value)}
+                        className="justify-between text-xs"
+                      >
+                        {s.label}
+                        {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant={group === "none" ? "outline" : "default"}
-                    className="size-8 shrink-0"
-                    aria-label={GROUPS.find((g) => g.value === group)?.label}
-                    title="Group"
-                  >
-                    <Layers className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-44">
-                  <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
-                  {GROUPS.map((g) => (
-                    <DropdownMenuItem
-                      key={g.value}
-                      onSelect={() => setGroup(g.value)}
-                      className="justify-between text-xs"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant={group === "none" ? "outline" : "default"}
+                      className="size-8 shrink-0"
+                      aria-label={GROUPS.find((g) => g.value === group)?.label}
+                      title="Group"
                     >
-                      {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
-                      {group === g.value && <Check className="size-3.5" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                      <Layers className="size-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-44">
+                    <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
+                    {GROUPS.map((g) => (
+                      <DropdownMenuItem
+                        key={g.value}
+                        onSelect={() => setGroup(g.value)}
+                        className="justify-between text-xs"
+                      >
+                        {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
+                        {group === g.value && <Check className="size-3.5" />}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
-            {/* Tapping the chosen one again turns it round, so the arrow rides
+              {/* Tapping the chosen one again turns it round, so the arrow rides
                 on the label rather than sitting in a control of its own. */}
-            <SegmentControl
-              value={sort.key}
-              onChange={sortBy}
-              className="hidden h-8 w-auto sm:inline-flex"
-              options={SORTS.map((s) => ({
-                value: s.value,
-                label:
-                  sort.key === s.value
-                    ? `${s.label} ${sort.dir === "asc" ? "↑" : "↓"}`
-                    : s.label,
-              }))}
-            />
-            <select
-              value={group}
-              onChange={(e) => setGroup(e.target.value as GroupKey)}
-              aria-label="Group by"
-              className="hidden h-8 shrink-0 rounded-md border border-input bg-background px-2 text-xs sm:block"
-            >
-              {GROUPS.map((g) => (
-                <option key={g.value} value={g.value}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
-            <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "table"]} />
-          </>
-        }
-      />
+              <SegmentControl
+                value={sort.key}
+                onChange={sortBy}
+                className="hidden h-8 w-auto sm:inline-flex"
+                options={SORTS.map((s) => ({
+                  value: s.value,
+                  label:
+                    sort.key === s.value ? `${s.label} ${sort.dir === "asc" ? "↑" : "↓"}` : s.label,
+                }))}
+              />
+              <select
+                value={group}
+                onChange={(e) => setGroup(e.target.value as GroupKey)}
+                aria-label="Group by"
+                className="hidden h-8 shrink-0 rounded-md border border-input bg-background px-2 text-xs sm:block"
+              >
+                {GROUPS.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label}
+                  </option>
+                ))}
+              </select>
+              <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "table"]} />
+            </>
+          }
+        />
 
-      {/* Always here, on one line, rather than behind a button. Ten narrow
+        {/* Always here, on one line, rather than behind a button. Ten narrow
           selects that scroll sideways beat a panel that has to be opened first:
           the filter you want to clear is the one you can no longer see. */}
-      <div className="flex items-center gap-2">
-        {/* The filters scroll; Clear does not. A Clear button you have to swipe
+        <div className="flex items-center gap-2">
+          {/* The filters scroll; Clear does not. A Clear button you have to swipe
             to reach is a Clear button you cannot find when the filters are
             exactly what is in your way.
 
             Hide owned rides inside the scroller with the rest, because it is
             one of them. Pinned beside Clear it took 190px of a 375px phone and
             left the ten selects sharing 168. */}
-        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <label
-            className={cn(
-              "flex h-8 shrink-0 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium",
-              hideOwned ? "border-primary text-foreground" : "border-input text-muted-foreground",
-            )}
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <label
+              className={cn(
+                "flex h-8 shrink-0 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium",
+                hideOwned ? "border-primary text-foreground" : "border-input text-muted-foreground",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={hideOwned}
+                onChange={(e) => setHideOwned(e.target.checked)}
+                className="size-3.5 rounded border-input accent-primary"
+              />
+              Hide owned
+            </label>
+
+            {FILTERS.map((d) => {
+              const active = filters[d.key] !== "all";
+              return (
+                <select
+                  key={d.key}
+                  value={filters[d.key]}
+                  onChange={(e) => setFilters((f) => ({ ...f, [d.key]: e.target.value }))}
+                  aria-label={d.label}
+                  title={d.label}
+                  className={cn(
+                    "h-8 w-[8.5rem] shrink-0 truncate rounded-md border bg-background px-2 text-xs",
+                    active
+                      ? "border-primary text-foreground"
+                      : "border-input text-muted-foreground",
+                  )}
+                >
+                  <option value="all">{d.label}</option>
+                  {options[d.key].map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.value} ({o.count})
+                    </option>
+                  ))}
+                </select>
+              );
+            })}
+          </div>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 shrink-0 px-2"
+            disabled={!activeCount}
+            onClick={() => {
+              setFilters(NO_FILTERS);
+              setHideOwned(false);
+            }}
           >
-            <input
-              type="checkbox"
-              checked={hideOwned}
-              onChange={(e) => setHideOwned(e.target.checked)}
-              className="size-3.5 rounded border-input accent-primary"
-            />
-            Hide owned
-          </label>
-
-          {FILTERS.map((d) => {
-            const active = filters[d.key] !== "all";
-            return (
-              <select
-                key={d.key}
-                value={filters[d.key]}
-                onChange={(e) => setFilters((f) => ({ ...f, [d.key]: e.target.value }))}
-                aria-label={d.label}
-                title={d.label}
-                className={cn(
-                  "h-8 w-[8.5rem] shrink-0 truncate rounded-md border bg-background px-2 text-xs",
-                  active ? "border-primary text-foreground" : "border-input text-muted-foreground",
-                )}
-              >
-                <option value="all">{d.label}</option>
-                {options[d.key].map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.value} ({o.count})
-                  </option>
-                ))}
-              </select>
-            );
-          })}
+            Clear
+          </Button>
         </div>
-
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 shrink-0 px-2"
-          disabled={!activeCount}
-          onClick={() => {
-            setFilters(NO_FILTERS);
-            setHideOwned(false);
-          }}
-        >
-          Clear
-        </Button>
       </div>
 
       {isLoading && catalog.length === 0 ? (
@@ -656,12 +657,6 @@ function CatalogPage() {
           setAdding(viewing);
           setViewing(null);
         }}
-        canDelete={isOwner && !isGuest}
-        onDelete={() => {
-          const target = viewing;
-          setViewing(null);
-          setDeleting(target);
-        }}
       />
 
       <DeleteCastingDialog
@@ -689,6 +684,14 @@ function CatalogPage() {
           entry={editing}
           catalog={catalog}
           onClose={() => setEditing(null)}
+          canDelete={isOwner && !isGuest}
+          onDelete={() => {
+            if (editing && editing !== "new") {
+              const target = editing;
+              setEditing(null);
+              setDeleting(target);
+            }
+          }}
           onSave={async (car) => {
             if (editing === "new") {
               return await addCatalogCar(car);
@@ -824,7 +827,10 @@ function CatalogTable({
             {rows.map((c) => {
               const car = asCar(c);
               return (
-                <tr key={c.car_id} className="border-t border-border align-middle hover:bg-muted/40">
+                <tr
+                  key={c.car_id}
+                  className="border-t border-border align-middle hover:bg-muted/40"
+                >
                   <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
                     {serials.get(c.car_id) ?? "—"}
                   </td>

@@ -21,7 +21,8 @@ const groupKey = (brand?: string | null, assortment?: string | null) =>
 function byFrequency<T>(values: T[]): T[] {
   const counts = new Map<T, number>();
   for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
-  return [...counts.entries()].sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || Number(a[0]) - Number(b[0]))
     .map(([v]) => v);
 }
 

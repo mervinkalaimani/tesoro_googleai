@@ -5,12 +5,7 @@ import { useCarImageCandidates } from "@/lib/car-image-search";
 import { catalogueKey, useCatalogueSearch, type CatalogueCar } from "@/lib/catalogue-search";
 import { useAuth } from "@/lib/auth-store";
 import { RARITIES, RARITY_LABEL, rarityOf, type Rarity } from "@/lib/rarity";
-import {
-  CAR_CONDITIONS,
-  CARD_CONDITIONS,
-  cardGradeForCarGrade,
-  describe,
-} from "@/lib/condition";
+import { CAR_CONDITIONS, CARD_CONDITIONS, cardGradeForCarGrade, describe } from "@/lib/condition";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { ChaseMark } from "@/components/car-marks";
 import { StarRating } from "@/components/star-rating";
@@ -49,13 +44,7 @@ import {
 } from "@/lib/car-id";
 import { useCatalog } from "@/lib/catalog-store";
 import { CarPhotoField } from "@/components/car-photo-field";
-import {
-  ClearableInput,
-  Field,
-  FormSection,
-  PillButton,
-  PillRow,
-} from "@/components/form-parts";
+import { ClearableInput, Field, FormSection, PillButton, PillRow } from "@/components/form-parts";
 import { SegmentControl } from "@/components/segment-control";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
@@ -114,8 +103,18 @@ const STATUS_OPTIONS = [
 const PAYMENT_OPTIONS = ["Paid", "Partial", "Pending"];
 
 const MONTH_LABELS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 const SPENT_INFO = "The total amount you've spent to purchase the car.";
@@ -455,10 +454,7 @@ export function CarFormDialog({
     () => CARD_CONDITIONS.map((c) => ({ value: c.value, label: c.value })),
     [],
   );
-  const paymentSegments = useMemo(
-    () => PAYMENT_OPTIONS.map((o) => ({ value: o, label: o })),
-    [],
-  );
+  const paymentSegments = useMemo(() => PAYMENT_OPTIONS.map((o) => ({ value: o, label: o })), []);
 
   /**
    * A pre-order's window, held in expectedDate as the 1st of the month so one
@@ -492,13 +488,16 @@ export function CarFormDialog({
     (form.transitInfo.trim() ? "note added" : form.imageUrl ? "photo set" : "nothing yet");
 
   const fromPrefill = mode === "add" && !initial && Boolean(prefill);
+  const isClone = mode === "add" && Boolean(initial);
   // A pre-filled form keeps its draft apart, so opening one never overwrites
   // (or clears) an unfinished car the person was adding by hand.
   const draftKey =
     mode === "add"
       ? fromPrefill
         ? `${CAR_DRAFT_KEY}:prefill`
-        : CAR_DRAFT_KEY
+        : isClone
+          ? `${CAR_DRAFT_KEY}:clone`
+          : CAR_DRAFT_KEY
       : carEditDraftKey(initial?.id ?? "");
 
   // Rebuilt per open rather than held in state: it is what "unchanged" means
@@ -529,7 +528,7 @@ export function CarFormDialog({
     // point: a locked phone can have the tab evicted and reloaded underneath a
     // half-filled form, and the person comes back to an empty one otherwise.
     // A pre-filled open always starts from the casting it was opened for.
-    const draft = fromPrefill ? null : readDraft<CarDraft>(draftKey);
+    const draft = fromPrefill || isClone ? null : readDraft<CarDraft>(draftKey);
     if (draft?.form) {
       // Spread over the baseline so a draft written before a field existed
       // still restores, rather than arriving with the field undefined.
@@ -538,7 +537,7 @@ export function CarFormDialog({
       setRestored(true);
     } else {
       setForm(baseline);
-      setCurrentStep(1);
+      setCurrentStep(isClone ? 2 : 1);
       setRestored(false);
     }
     // A pre-filled open has already answered step one — the casting was chosen,
@@ -546,7 +545,7 @@ export function CarFormDialog({
     // step two the same way picking one from the search does, with the identity
     // fields shut because they are already right. Opening on the search box and
     // asking for a car that is sitting filled in behind it reads as a mistake.
-    if (fromPrefill) {
+    if (fromPrefill || isClone) {
       setFromCatalogue(true);
       setShowIdentity(false);
       setCurrentStep(2);
@@ -557,7 +556,7 @@ export function CarFormDialog({
       setShowIdentity(false);
     }
     setDraftReady(true);
-  }, [open, baseline, draftKey, mode, fromPrefill]);
+  }, [open, baseline, draftKey, mode, fromPrefill, isClone]);
 
   // The save. Every keystroke lands here, and an untouched form clears the key
   // rather than leaving a draft that says nothing.
@@ -981,8 +980,19 @@ export function CarFormDialog({
   // bring it into view and put the caret in it.
   /** The fields that live behind "Edit these details". */
   const CATALOGUE_FIELDS = new Set<keyof CarFormData>([
-    "make", "model", "variant", "year", "colour", "type",
-    "brand", "assortment", "series", "subSeries", "carNumber", "size", "rarity",
+    "make",
+    "model",
+    "variant",
+    "year",
+    "colour",
+    "type",
+    "brand",
+    "assortment",
+    "series",
+    "subSeries",
+    "carNumber",
+    "size",
+    "rarity",
   ]);
 
   useEffect(() => {
@@ -1053,17 +1063,19 @@ export function CarFormDialog({
      */
     const iso = status.toLowerCase() === "iso";
     const payment = iso ? "NA" : form.payment.trim();
-    const seller = iso
-      ? "NA"
-      : form.seller.trim() === NO_SELLER
-        ? ""
-        : form.seller.trim();
+    const seller = iso ? "NA" : form.seller.trim() === NO_SELLER ? "" : form.seller.trim();
     const orderDate = iso ? "" : form.orderDate.trim();
 
     const spent = iso ? 0 : Number(form.spent) || 0;
     const mrp = Number(form.mrp) || 0;
     const shippingCost = iso || form.shippingCost === "" ? 0 : Number(form.shippingCost) || 0;
-    const paid = iso ? 0 : form.paid === "" ? (payment === "Paid" ? spent : 0) : Number(form.paid) || 0;
+    const paid = iso
+      ? 0
+      : form.paid === ""
+        ? payment === "Paid"
+          ? spent
+          : 0
+        : Number(form.paid) || 0;
     // Automated balance guarantee
     const balance = Math.max(0, spent - paid);
 
@@ -1092,12 +1104,12 @@ export function CarFormDialog({
 
     // An edit keeps the car's own ID; a new car is numbered by the store, which
     // can see the whole collection. The catalogue ID says which casting it is.
-    const carId = initial?.id && !isPlaceholderId(initial.id) ? initial.id : "";
+    const carId = isEdit && initial?.id && !isPlaceholderId(initial.id) ? initial.id : "";
 
     const payload: Diecast = {
       id: carId,
       catalogId: derivedCatalogCarId || initial?.catalogId,
-      sno: initial?.sno,
+      sno: isEdit ? initial?.sno : undefined,
       name,
       make,
       model,
@@ -1126,10 +1138,10 @@ export function CarFormDialog({
       // Blank for a conversion: an ISO row never had a seller or dates to
       // derive one from, so the store computes it fresh from what was just
       // entered rather than carrying nothing forward.
-      shippingId: initial?.shippingId || "",
+      shippingId: isEdit ? initial?.shippingId || "" : "",
       // Both IDs are derived on save; an edit carries the existing one
       // forward so an unrelated change does not look like a renumber.
-      orderId: initial?.orderId || "",
+      orderId: isEdit ? initial?.orderId || "" : "",
       orderDate,
       orderMonth,
       expectedDate: form.expectedDate.trim(),
@@ -1205,488 +1217,462 @@ export function CarFormDialog({
    * had segments, and a read-only rail listing a seller you could not correct.
    */
   const copyFields = (
-            <div className="space-y-3">
-              {/* What the car is, as one line you confirm rather than sixteen
+    <div className="space-y-3">
+      {/* What the car is, as one line you confirm rather than sixteen
                   fields you fill. The fields are still here, one tap down. */}
-              <section className="overflow-hidden rounded-lg border border-border bg-muted/30">
-                <div className="flex items-start gap-3 p-3">
-                  <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
-                    {form.imageUrl ? (
-                      <img src={form.imageUrl} alt="" className="size-full object-cover" />
-                    ) : (
-                      <Car className="size-5 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <TruncatedName
-                        name={previewName || "New casting"}
-                        className="text-sm font-semibold text-foreground"
-                      />
-                      <ChaseMark rarity={form.rarity} className="size-3.5 shrink-0" />
-                    </div>
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      {identityLine}
-                    </p>
-                    {fromCatalogue && !isEdit && (
-                      <span className="mt-1.5 inline-flex rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                        Filled from the catalogue
-                      </span>
-                    )}
-                  </div>
-                  {/* Adding, you can go back and pick a different casting.
+      <section className="overflow-hidden rounded-lg border border-border bg-muted/30">
+        <div className="flex items-start gap-3 p-3">
+          <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
+            {form.imageUrl ? (
+              <img src={form.imageUrl} alt="" className="size-full object-cover" />
+            ) : (
+              <Car className="size-5 text-muted-foreground" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <TruncatedName
+                name={previewName || "New casting"}
+                className="text-sm font-semibold text-foreground"
+              />
+              <ChaseMark rarity={form.rarity} className="size-3.5 shrink-0" />
+            </div>
+            <p className="truncate text-[11px] text-muted-foreground">{identityLine}</p>
+            {fromCatalogue && !isEdit && (
+              <span className="mt-1.5 inline-flex rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                Filled from the catalogue
+              </span>
+            )}
+          </div>
+          {/* Adding, you can go back and pick a different casting.
                       Editing, the car is the car. */}
-                  {!isEdit && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0"
-                      onClick={() => {
-                        setValidationError(null);
-                        setCurrentStep(1);
-                      }}
-                    >
-                      Change
-                    </Button>
-                  )}
-                </div>
+          {!isEdit && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => {
+                setValidationError(null);
+                setCurrentStep(1);
+              }}
+            >
+              Change
+            </Button>
+          )}
+        </div>
 
-                <button
-                  type="button"
-                  onClick={() => setShowIdentity((v) => !v)}
-                  aria-expanded={showIdentity}
-                  className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-                >
-                  {isEdit ? "What the car is" : "Edit these details"}
-                  <ChevronRight
-                    className={cn(
-                      "ml-auto size-3.5 transition-transform",
-                      showIdentity && "rotate-90",
-                    )}
-                  />
-                </button>
-                {showIdentity && (
-                  <div className="border-t border-border bg-background p-3">
-                    <CatalogueFields
-                      values={catalogueValues}
-                      onChange={setCatalogueValue}
-                      cars={cars}
-                      errorFor={(k) => errorFor(k as keyof CarFormData)}
-                      disabled={isEdit}
-                    />
-                    <p className="mt-2.5 text-[11px] text-muted-foreground">
-                      {isEdit
-                        ? "The casting is shared with everyone who owns one, so it is edited in the catalogue rather than here."
-                        : "Open only when the catalogue has it wrong. Editing a coded field regenerates the Catalog ID and repoints every owner's row."}
-                    </p>
-                  </div>
-                )}
-              </section>
+        <button
+          type="button"
+          onClick={() => setShowIdentity((v) => !v)}
+          aria-expanded={showIdentity}
+          className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+        >
+          {isEdit ? "What the car is" : "Edit these details"}
+          <ChevronRight
+            className={cn("ml-auto size-3.5 transition-transform", showIdentity && "rotate-90")}
+          />
+        </button>
+        {showIdentity && (
+          <div className="border-t border-border bg-background p-3">
+            <CatalogueFields
+              values={catalogueValues}
+              onChange={setCatalogueValue}
+              cars={cars}
+              errorFor={(k) => errorFor(k as keyof CarFormData)}
+              disabled={isEdit}
+            />
+            <p className="mt-2.5 text-[11px] text-muted-foreground">
+              {isEdit
+                ? "The casting is shared with everyone who owns one, so it is edited in the catalogue rather than here."
+                : "Open only when the catalogue has it wrong. Editing a coded field regenerates the Catalog ID and repoints every owner's row."}
+            </p>
+          </div>
+        )}
+      </section>
 
-              {/* The purchase. Open by default: every required field on this
+      {/* The purchase. Open by default: every required field on this
                   step is in here, and shut it would be a form that looks
                   finished while being empty. */}
-              <FormSection
-                title="Seller & payment"
-                badge={purchaseBadge}
-                badgeTone={purchaseBadgeTone}
-                open={showPurchase}
-                onToggle={() => setShowPurchase((v) => !v)}
-              >
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {/* Status leads: it decides what the rest of this section
+      <FormSection
+        title="Seller & payment"
+        badge={purchaseBadge}
+        badgeTone={purchaseBadgeTone}
+        open={showPurchase}
+        onToggle={() => setShowPurchase((v) => !v)}
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Status leads: it decides what the rest of this section
                       asks for. ISO takes four fields away, a pre-order
                       swaps the expected date for a release month. */}
-                  <Field label="Status *" name="status" error={errorFor("status")}>
-                    <Select value={form.status} onValueChange={(v) => set("status", v)}>
+          <Field label="Status *" name="status" error={errorFor("status")}>
+            <Select value={form.status} onValueChange={(v) => set("status", v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((st) => (
+                  <SelectItem key={st} value={st}>
+                    {st}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {!isIso && (
+            <Field label="Seller *" name="seller" error={errorFor("seller")}>
+              <Combobox
+                clearable
+                value={form.seller}
+                onChange={(v) => set("seller", v)}
+                // "No seller" always first: a gift or a swap is a
+                // real answer, and the field is required.
+                options={[NO_SELLER, ...sellerOptions]}
+                placeholder="Who sold it?"
+                searchPlaceholder="Search sellers, or type a new one…"
+                ariaLabel="Seller"
+              />
+              {sellerChips.length > 0 && (
+                <PillRow scroll>
+                  {sellerChips.map((name) => (
+                    <PillButton
+                      key={name}
+                      active={form.seller === name}
+                      onClick={() => set("seller", name)}
+                    >
+                      {name}
+                    </PillButton>
+                  ))}
+                </PillRow>
+              )}
+            </Field>
+          )}
+
+          {!isIso && (
+            <Field label="Order Date *" name="orderDate" error={errorFor("orderDate")}>
+              <ClearableInput
+                type="date"
+                value={form.orderDate}
+                onChange={(e) => set("orderDate", e.target.value)}
+              />
+            </Field>
+          )}
+
+          <Field label={isIso ? "MRP (INR)" : "MRP * (INR)"} name="mrp" error={errorFor("mrp")}>
+            <ClearableInput
+              type="number"
+              min="0"
+              step="any"
+              value={form.mrp}
+              onChange={(e) => set("mrp", e.target.value === "" ? "" : Number(e.target.value))}
+              placeholder="e.g. 549"
+            />
+            {/* One known price fills itself in and says nothing.
+                        Several means the form cannot guess — a Mini GT
+                        blister spans a dozen — so it offers them, and
+                        picking one is picking what you paid. */}
+            {mrpChoices.length > 1 && (
+              <PillRow>
+                {mrpChoices.map((v) => (
+                  <PillButton
+                    key={v}
+                    active={Number(form.mrp) === v}
+                    onClick={() => {
+                      set("mrp", v);
+                      handleSpentChange(v);
+                    }}
+                  >
+                    {inrFull(v)}
+                  </PillButton>
+                ))}
+              </PillRow>
+            )}
+          </Field>
+
+          {!isIso && (
+            <Field label="Spent * (INR)" name="spent" error={errorFor("spent")} info={SPENT_INFO}>
+              <ClearableInput
+                type="number"
+                min="0"
+                step="any"
+                value={form.spent}
+                onChange={(e) =>
+                  handleSpentChange(e.target.value === "" ? "" : Number(e.target.value))
+                }
+                placeholder="e.g. 549"
+              />
+            </Field>
+          )}
+
+          {!isIso && (
+            <Field label="Payment *" name="payment" error={errorFor("payment")}>
+              <SegmentControl
+                fill
+                value={form.payment}
+                options={paymentSegments}
+                onChange={handlePaymentChange}
+              />
+            </Field>
+          )}
+        </div>
+
+        {isIso && (
+          <p className="mt-3 border-l-2 border-primary/60 pl-3 text-[11px] text-muted-foreground">
+            An ISO entry is a car you are looking for, so seller, order date, spent, payment and
+            shipping do not apply — the two text ones are saved as NA rather than left blank. Its
+            MRP is worth noting, but not owed.
+          </p>
+        )}
+
+        {/* Paid only when there is something left to settle, and
+                    Balance is worked out rather than asked for. */}
+        {!isIso && form.payment !== "Paid" && (
+          <div className="mt-3 border-l-2 border-amber-500/60 pl-3">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Shown because payment is not Paid
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Paid (INR)" info={PAID_INFO}>
+                <ClearableInput
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.paid}
+                  onChange={(e) =>
+                    handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
+                  }
+                  placeholder="0"
+                />
+              </Field>
+              <Field label="Balance (INR)">
+                <div className="flex h-9 items-center rounded-md border border-dashed border-input px-3 text-sm font-semibold tabular-nums">
+                  {inrFull(Number(form.balance) || 0)}
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Spent {inrFull(Number(form.spent) || 0)} − paid {inrFull(Number(form.paid) || 0)}
+                </p>
+              </Field>
+            </div>
+          </div>
+        )}
+
+        {/* Nothing has shipped on a pre-order, so it has a release
+                    month instead of a date, and no courier or tracking. */}
+        {(stillComing || hasArrived) && (
+          <div className="mt-3 border-l-2 border-sky-500/60 pl-3">
+            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              {isPreOrder
+                ? "A pre-order has a release window, not a shipping date"
+                : hasArrived
+                  ? "It is here — only what the delivery cost is still worth recording"
+                  : `Shown because the status is "${form.status}"`}
+            </p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {hasArrived ? (
+                <Field label="Shipping Cost (INR)">
+                  <ClearableInput
+                    type="number"
+                    min="0"
+                    step="any"
+                    value={form.shippingCost}
+                    onChange={(e) =>
+                      set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
+                    }
+                    placeholder="e.g. 50"
+                  />
+                </Field>
+              ) : isPreOrder ? (
+                <>
+                  <Field label="Expected month">
+                    <Select
+                      value={etaMonth}
+                      onValueChange={(v) => setEta(v, etaYear || String(thisYear))}
+                    >
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Month" />
                       </SelectTrigger>
                       <SelectContent>
-                        {STATUS_OPTIONS.map((st) => (
-                          <SelectItem key={st} value={st}>
-                            {st}
+                        {MONTH_LABELS.map((m, i) => (
+                          <SelectItem key={m} value={String(i)}>
+                            {m}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </Field>
-
-                  {!isIso && (
-                    <Field label="Seller *" name="seller" error={errorFor("seller")}>
-                      <Combobox
-                        clearable
-                        value={form.seller}
-                        onChange={(v) => set("seller", v)}
-                        // "No seller" always first: a gift or a swap is a
-                        // real answer, and the field is required.
-                        options={[NO_SELLER, ...sellerOptions]}
-                        placeholder="Who sold it?"
-                        searchPlaceholder="Search sellers, or type a new one…"
-                        ariaLabel="Seller"
-                      />
-                      {sellerChips.length > 0 && (
-                        <PillRow scroll>
-                          {sellerChips.map((name) => (
-                            <PillButton
-                              key={name}
-                              active={form.seller === name}
-                              onClick={() => set("seller", name)}
-                            >
-                              {name}
-                            </PillButton>
-                          ))}
-                        </PillRow>
-                      )}
-                    </Field>
+                  <Field label="Expected year">
+                    <Select value={etaYear} onValueChange={(v) => setEta(etaMonth || "0", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Year" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ETA_YEARS.map((y) => (
+                          <SelectItem key={y} value={String(y)}>
+                            {y}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  {form.expectedDate && (
+                    <p className="self-end text-[11px] text-muted-foreground sm:col-span-2 lg:col-span-1">
+                      Saved as{" "}
+                      <span className="font-medium text-foreground">{form.expectedDate}</span> — the
+                      1st, and the day you will be reminded.
+                    </p>
                   )}
-
-                  {!isIso && (
-                    <Field label="Order Date *" name="orderDate" error={errorFor("orderDate")}>
-                      <ClearableInput
-                        type="date"
-                        value={form.orderDate}
-                        onChange={(e) => set("orderDate", e.target.value)}
-                      />
-                    </Field>
-                  )}
-
-                  <Field label={isIso ? "MRP (INR)" : "MRP * (INR)"} name="mrp" error={errorFor("mrp")}>
+                </>
+              ) : (
+                <>
+                  <Field label="Expected / available Date">
+                    <ClearableInput
+                      type="date"
+                      value={form.expectedDate}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        set("expectedDate", val);
+                        if (form.status === "Delayed" && val) set("status", "Waiting");
+                      }}
+                    />
+                  </Field>
+                  <Field label="Delivery Partner">
+                    <Combobox
+                      clearable
+                      value={form.deliveryPartner}
+                      onChange={(v) => set("deliveryPartner", v)}
+                      options={DELIVERY_PARTNER_NAMES}
+                      placeholder="Courier"
+                      searchPlaceholder="Search or type a courier…"
+                      ariaLabel="Delivery partner"
+                    />
+                  </Field>
+                  <Field label="Tracking ID">
+                    <ClearableInput
+                      className="font-mono"
+                      value={form.trackingId}
+                      onChange={(e) => set("trackingId", e.target.value)}
+                      placeholder="Consignment / AWB number"
+                    />
+                  </Field>
+                  {/* Shipping belongs with the shipment: you learn
+                              what it cost from the same courier line that
+                              gives you the tracking number. */}
+                  <Field label="Shipping Cost (INR)">
                     <ClearableInput
                       type="number"
                       min="0"
                       step="any"
-                      value={form.mrp}
+                      value={form.shippingCost}
                       onChange={(e) =>
-                        set("mrp", e.target.value === "" ? "" : Number(e.target.value))
+                        set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
                       }
-                      placeholder="e.g. 549"
-                    />
-                    {/* One known price fills itself in and says nothing.
-                        Several means the form cannot guess — a Mini GT
-                        blister spans a dozen — so it offers them, and
-                        picking one is picking what you paid. */}
-                    {mrpChoices.length > 1 && (
-                      <PillRow>
-                        {mrpChoices.map((v) => (
-                          <PillButton
-                            key={v}
-                            active={Number(form.mrp) === v}
-                            onClick={() => {
-                              set("mrp", v);
-                              handleSpentChange(v);
-                            }}
-                          >
-                            {inrFull(v)}
-                          </PillButton>
-                        ))}
-                      </PillRow>
-                    )}
-                  </Field>
-
-                  {!isIso && (
-                    <Field
-                      label="Spent * (INR)"
-                      name="spent"
-                      error={errorFor("spent")}
-                      info={SPENT_INFO}
-                    >
-                      <ClearableInput
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={form.spent}
-                        onChange={(e) =>
-                          handleSpentChange(e.target.value === "" ? "" : Number(e.target.value))
-                        }
-                        placeholder="e.g. 549"
-                      />
-                    </Field>
-                  )}
-
-                  {!isIso && (
-                    <Field label="Payment *" name="payment" error={errorFor("payment")}>
-                      <SegmentControl
-                        fill
-                        value={form.payment}
-                        options={paymentSegments}
-                        onChange={handlePaymentChange}
-                      />
-                    </Field>
-                  )}
-
-                </div>
-
-                {isIso && (
-                  <p className="mt-3 border-l-2 border-primary/60 pl-3 text-[11px] text-muted-foreground">
-                    An ISO entry is a car you are looking for, so seller, order date, spent,
-                    payment and shipping do not apply — the two text ones are saved as NA rather
-                    than left blank. Its MRP is worth noting, but not owed.
-                  </p>
-                )}
-
-                {/* Paid only when there is something left to settle, and
-                    Balance is worked out rather than asked for. */}
-                {!isIso && form.payment !== "Paid" && (
-                  <div className="mt-3 border-l-2 border-amber-500/60 pl-3">
-                    <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Shown because payment is not Paid
-                    </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Field label="Paid (INR)" info={PAID_INFO}>
-                        <ClearableInput
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={form.paid}
-                          onChange={(e) =>
-                            handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
-                          }
-                          placeholder="0"
-                        />
-                      </Field>
-                      <Field label="Balance (INR)">
-                        <div className="flex h-9 items-center rounded-md border border-dashed border-input px-3 text-sm font-semibold tabular-nums">
-                          {inrFull(Number(form.balance) || 0)}
-                        </div>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          Spent {inrFull(Number(form.spent) || 0)} − paid{" "}
-                          {inrFull(Number(form.paid) || 0)}
-                        </p>
-                      </Field>
-                    </div>
-                  </div>
-                )}
-
-                {/* Nothing has shipped on a pre-order, so it has a release
-                    month instead of a date, and no courier or tracking. */}
-                {(stillComing || hasArrived) && (
-                  <div className="mt-3 border-l-2 border-sky-500/60 pl-3">
-                    <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      {isPreOrder
-                        ? "A pre-order has a release window, not a shipping date"
-                        : hasArrived
-                          ? "It is here — only what the delivery cost is still worth recording"
-                          : `Shown because the status is "${form.status}"`}
-                    </p>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                      {hasArrived ? (
-                        <Field label="Shipping Cost (INR)">
-                          <ClearableInput
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={form.shippingCost}
-                            onChange={(e) =>
-                              set(
-                                "shippingCost",
-                                e.target.value === "" ? "" : Number(e.target.value),
-                              )
-                            }
-                            placeholder="e.g. 50"
-                          />
-                        </Field>
-                      ) : isPreOrder ? (
-                        <>
-                          <Field label="Expected month">
-                            <Select
-                              value={etaMonth}
-                              onValueChange={(v) => setEta(v, etaYear || String(thisYear))}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Month" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {MONTH_LABELS.map((m, i) => (
-                                  <SelectItem key={m} value={String(i)}>
-                                    {m}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
-                          <Field label="Expected year">
-                            <Select
-                              value={etaYear}
-                              onValueChange={(v) => setEta(etaMonth || "0", v)}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder="Year" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {ETA_YEARS.map((y) => (
-                                  <SelectItem key={y} value={String(y)}>
-                                    {y}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </Field>
-                          {form.expectedDate && (
-                            <p className="self-end text-[11px] text-muted-foreground sm:col-span-2 lg:col-span-1">
-                              Saved as{" "}
-                              <span className="font-medium text-foreground">
-                                {form.expectedDate}
-                              </span>{" "}
-                              — the 1st, and the day you will be reminded.
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <Field label="Expected / available Date">
-                            <ClearableInput
-                              type="date"
-                              value={form.expectedDate}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                set("expectedDate", val);
-                                if (form.status === "Delayed" && val) set("status", "Waiting");
-                              }}
-                            />
-                          </Field>
-                          <Field label="Delivery Partner">
-                            <Combobox
-                              clearable
-                              value={form.deliveryPartner}
-                              onChange={(v) => set("deliveryPartner", v)}
-                              options={DELIVERY_PARTNER_NAMES}
-                              placeholder="Courier"
-                              searchPlaceholder="Search or type a courier…"
-                              ariaLabel="Delivery partner"
-                            />
-                          </Field>
-                          <Field label="Tracking ID">
-                            <ClearableInput
-                              className="font-mono"
-                              value={form.trackingId}
-                              onChange={(e) => set("trackingId", e.target.value)}
-                              placeholder="Consignment / AWB number"
-                            />
-                          </Field>
-                          {/* Shipping belongs with the shipment: you learn
-                              what it cost from the same courier line that
-                              gives you the tracking number. */}
-                          <Field label="Shipping Cost (INR)">
-                            <ClearableInput
-                              type="number"
-                              min="0"
-                              step="any"
-                              value={form.shippingCost}
-                              onChange={(e) =>
-                                set(
-                                  "shippingCost",
-                                  e.target.value === "" ? "" : Number(e.target.value),
-                                )
-                              }
-                              placeholder="e.g. 50"
-                            />
-                          </Field>
-                          <TrackingLink
-                            partner={form.deliveryPartner}
-                            trackingId={form.trackingId}
-                            className="sm:col-span-2 lg:col-span-3"
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </FormSection>
-
-              <FormSection
-                title="Condition"
-                badge={conditionBadge}
-                open={showCondition}
-                onToggle={() => setShowCondition((v) => !v)}
-              >
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Field label="Car condition">
-                    <SegmentControl
-                      fill
-                      value={form.carCondition}
-                      options={carConditionSegments}
-                      onChange={setCarCondition}
-                      clearable
+                      placeholder="e.g. 50"
                     />
                   </Field>
-                  <Field label="Card condition">
-                    <SegmentControl
-                      fill
-                      value={form.cardCondition}
-                      options={cardConditionSegments}
-                      onChange={(v) => set("cardCondition", v)}
-                      clearable
-                    />
-                  </Field>
-                </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  Only meaningful once the car is in hand. Tap the chosen grade again to clear
-                  it.
-                </p>
-              </FormSection>
-
-              <FormSection
-                title="Photo & notes"
-                badge={extrasBadge}
-                open={showExtras}
-                onToggle={() => setShowExtras((v) => !v)}
-              >
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {/* Which box this one came out of, not what the casting is
-                      — so it stays on your car rather than the catalogue. */}
-                  <Field label="Case / Mix">
-                    <Combobox
-                      clearable
-                      value={form.caseNumber}
-                      onChange={(v) => set("caseNumber", v)}
-                      options={caseOptions}
-                      placeholder="e.g. 2026 K Case, 2026 Mix 3"
-                      searchPlaceholder="Search cases, or type a new one…"
-                      ariaLabel="Case or mix"
-                    />
-                  </Field>
-                  <Field label="Notes">
-                    <ClearableInput
-                      value={form.transitInfo}
-                      onChange={(e) => set("transitInfo", e.target.value)}
-                      placeholder="Anything worth remembering about this copy"
-                    />
-                  </Field>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="car-favourite" className="text-xs text-muted-foreground">
-                      Favourite
-                    </Label>
-                    <div className="flex h-9 items-center gap-2.5 rounded-md border border-input bg-background px-3">
-                      <Switch
-                        id="car-favourite"
-                        checked={form.favourite}
-                        onCheckedChange={(v) => set("favourite", v)}
-                      />
-                      <Label
-                        htmlFor="car-favourite"
-                        className="cursor-pointer text-xs font-medium text-foreground"
-                      >
-                        Mark as favourite
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-3 space-y-2">
-                  <Label className="text-xs text-muted-foreground">Photo</Label>
-                  {/* layout="split": on a desktop the frame is smaller and
-                      the found photos fill the space to its right. */}
-                  <CarPhotoField
-                    value={form.imageUrl}
-                    onChange={setImage}
-                    suggestions={imageSearch}
-                    searchQuery={webSearchWords}
-                    layout="split"
+                  <TrackingLink
+                    partner={form.deliveryPartner}
+                    trackingId={form.trackingId}
+                    className="sm:col-span-2 lg:col-span-3"
                   />
-                </div>
-              </FormSection>
+                </>
+              )}
             </div>
+          </div>
+        )}
+      </FormSection>
+
+      <FormSection
+        title="Condition"
+        badge={conditionBadge}
+        open={showCondition}
+        onToggle={() => setShowCondition((v) => !v)}
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Car condition">
+            <SegmentControl
+              fill
+              value={form.carCondition}
+              options={carConditionSegments}
+              onChange={setCarCondition}
+              clearable
+            />
+          </Field>
+          <Field label="Card condition">
+            <SegmentControl
+              fill
+              value={form.cardCondition}
+              options={cardConditionSegments}
+              onChange={(v) => set("cardCondition", v)}
+              clearable
+            />
+          </Field>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Only meaningful once the car is in hand. Tap the chosen grade again to clear it.
+        </p>
+      </FormSection>
+
+      <FormSection
+        title="Photo & notes"
+        badge={extrasBadge}
+        open={showExtras}
+        onToggle={() => setShowExtras((v) => !v)}
+      >
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {/* Which box this one came out of, not what the casting is
+                      — so it stays on your car rather than the catalogue. */}
+          <Field label="Case / Mix">
+            <Combobox
+              clearable
+              value={form.caseNumber}
+              onChange={(v) => set("caseNumber", v)}
+              options={caseOptions}
+              placeholder="e.g. 2026 K Case, 2026 Mix 3"
+              searchPlaceholder="Search cases, or type a new one…"
+              ariaLabel="Case or mix"
+            />
+          </Field>
+          <Field label="Notes">
+            <ClearableInput
+              value={form.transitInfo}
+              onChange={(e) => set("transitInfo", e.target.value)}
+              placeholder="Anything worth remembering about this copy"
+            />
+          </Field>
+          <div className="space-y-1.5">
+            <Label htmlFor="car-favourite" className="text-xs text-muted-foreground">
+              Favourite
+            </Label>
+            <div className="flex h-9 items-center gap-2.5 rounded-md border border-input bg-background px-3">
+              <Switch
+                id="car-favourite"
+                checked={form.favourite}
+                onCheckedChange={(v) => set("favourite", v)}
+              />
+              <Label
+                htmlFor="car-favourite"
+                className="cursor-pointer text-xs font-medium text-foreground"
+              >
+                Mark as favourite
+              </Label>
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 space-y-2">
+          <Label className="text-xs text-muted-foreground">Photo</Label>
+          {/* layout="split": on a desktop the frame is smaller and
+                      the found photos fill the space to its right. */}
+          <CarPhotoField
+            value={form.imageUrl}
+            onChange={setImage}
+            suggestions={imageSearch}
+            searchQuery={webSearchWords}
+            layout="split"
+          />
+        </div>
+      </FormSection>
+    </div>
   );
 
   return (
@@ -1712,7 +1698,7 @@ export function CarFormDialog({
         )}
       >
         <DialogHeader className="shrink-0">
-          <DialogTitle>{mode === "add" ? "Add a car" : "Edit car"}</DialogTitle>
+          <DialogTitle>{mode === "add" ? "Add a car" : "Update car"}</DialogTitle>
           {/* The search, Scan and Add in bulk used to sit here in one row of six
               small controls, with Export and the CSV template beside them. They
               are step one now — the search full width and focused, the other two
@@ -1817,81 +1803,81 @@ export function CarFormDialog({
                   it a flex child refuses to shrink below its content and the
                   footer is pushed off the bottom of the dialog instead. */}
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-0.5">
-              {/* ---------------- STEP 1: WHICH CAR ---------------- */}
-              {currentStep === 1 && (
-                <div className="space-y-4">
-                  {/* Above the search rather than below: by the time three fields
+                {/* ---------------- STEP 1: WHICH CAR ---------------- */}
+                {currentStep === 1 && (
+                  <div className="space-y-4">
+                    {/* Above the search rather than below: by the time three fields
                       agree with something on the ISO list, the useful moment is
                       before the rest is typed out by hand. */}
-                  {!isoDismissed && (
-                    <IsoSuggestions
-                      matches={isoMatches}
-                      onUse={setIsoStatusCar}
-                      onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
-                      onDismiss={() => setIsoDismissed(true)}
-                    />
-                  )}
+                    {!isoDismissed && (
+                      <IsoSuggestions
+                        matches={isoMatches}
+                        onUse={setIsoStatusCar}
+                        onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
+                        onDismiss={() => setIsoDismissed(true)}
+                      />
+                    )}
 
-                  <div className="space-y-1.5">
-                    <CollectionSearch
-                      cars={cars}
-                      onPick={pickFromCatalogue}
-                      searchAll={!isGuest}
-                      wide
-                      autoFocus
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Pick a car and the fourteen fields that describe the casting fill themselves
-                      in. Your collection first, then every collection.
-                    </p>
-                  </div>
+                    <div className="space-y-1.5">
+                      <CollectionSearch
+                        cars={cars}
+                        onPick={pickFromCatalogue}
+                        searchAll={!isGuest}
+                        wide
+                        autoFocus
+                      />
+                      <p className="text-[11px] text-muted-foreground">
+                        Pick a car and the fourteen fields that describe the casting fill themselves
+                        in. Your collection first, then every collection.
+                      </p>
+                    </div>
 
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setScanOpen(true)}
-                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
-                    >
-                      <span className="flex items-center gap-2 text-sm font-semibold">
-                        <ScanLine className="size-4 text-primary" />
-                        Scan a card
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        Read make, model and series off the card
-                      </span>
-                    </button>
-                    {onSwitchToBulk && (
+                    <div className="grid grid-cols-2 gap-2.5">
                       <button
                         type="button"
-                        // Wrapped, not passed directly: onSwitchToBulk takes seed
-                        // cars, and a bare handler would hand it the click event
-                        // as the batch to prefill.
-                        onClick={() => onSwitchToBulk()}
+                        onClick={() => setScanOpen(true)}
                         className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
                       >
                         <span className="flex items-center gap-2 text-sm font-semibold">
-                          <Layers className="size-4 text-primary" />
-                          Add in bulk
+                          <ScanLine className="size-4 text-primary" />
+                          Scan a card
                         </span>
                         <span className="text-[11px] text-muted-foreground">
-                          Several at once, or a CSV
+                          Read make, model and series off the card
                         </span>
                       </button>
-                    )}
+                      {onSwitchToBulk && (
+                        <button
+                          type="button"
+                          // Wrapped, not passed directly: onSwitchToBulk takes seed
+                          // cars, and a bare handler would hand it the click event
+                          // as the batch to prefill.
+                          onClick={() => onSwitchToBulk()}
+                          className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                        >
+                          <span className="flex items-center gap-2 text-sm font-semibold">
+                            <Layers className="size-4 text-primary" />
+                            Add in bulk
+                          </span>
+                          <span className="text-[11px] text-muted-foreground">
+                            Several at once, or a CSV
+                          </span>
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={startByHand}
+                      className="text-xs text-primary underline underline-offset-2"
+                    >
+                      Not in the catalogue? Enter it manually →
+                    </button>
                   </div>
+                )}
 
-                  <button
-                    type="button"
-                    onClick={startByHand}
-                    className="text-xs text-primary underline underline-offset-2"
-                  >
-                    Not in the catalogue? Enter it manually →
-                  </button>
-                </div>
-              )}
-
-              {/* ---------------- STEP 2: YOUR COPY ---------------- */}
-              {currentStep === 2 && copyFields}
+                {/* ---------------- STEP 2: YOUR COPY ---------------- */}
+                {currentStep === 2 && copyFields}
               </div>
 
               {/* Cancel left, Next right, at the foot of the dialog at every
@@ -1979,7 +1965,7 @@ export function CarFormDialog({
                 >
                   Cancel
                 </Button>
-                <Button type="submit">Save changes</Button>
+                <Button type="submit">Update car</Button>
               </div>
             </DialogFooter>
           </form>
@@ -2189,7 +2175,12 @@ function CollectionSearch({
         className={cn(wide ? "h-11 pl-10 text-base" : "h-8 pl-8 text-sm")}
       />
       {open && (
-        <div className={cn("absolute inset-x-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border border-border bg-popover p-1 text-left shadow-lg", !wide && "sm:w-96")}>
+        <div
+          className={cn(
+            "absolute inset-x-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border border-border bg-popover p-1 text-left shadow-lg",
+            !wide && "sm:w-96",
+          )}
+        >
           {local.length > 0 && (
             <>
               <SearchGroupLabel>Your collection</SearchGroupLabel>

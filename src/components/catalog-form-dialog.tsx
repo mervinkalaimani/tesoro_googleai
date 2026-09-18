@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Loader2, ScanLine, Sparkles, Store, Car, IndianRupee, Layers } from "lucide-react";
+import {
+  Check,
+  Loader2,
+  ScanLine,
+  Sparkles,
+  Store,
+  Car,
+  IndianRupee,
+  Layers,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
@@ -45,12 +55,16 @@ export function CatalogFormDialog({
   catalog,
   onClose,
   onSave,
+  canDelete,
+  onDelete,
 }: {
   open: boolean;
   entry: CatalogCar | "new" | null;
   catalog: CatalogCar[];
   onClose: () => void;
   onSave: (car: CatalogCar) => Promise<boolean>;
+  canDelete?: boolean;
+  onDelete?: () => void;
 }) {
   const isNew = entry === "new" || !entry;
 
@@ -133,9 +147,9 @@ export function CatalogFormDialog({
 
   /** camelCase in, snake_case out — the only place the two spellings meet. */
   const setCatalogueValue = <K extends keyof CatalogueValues>(k: K, v: CatalogueValues[K]) => {
-    const column = (
-      { subSeries: "sub_series", carNumber: "car_number" } as Record<string, string>
-    )[k as string];
+    const column = ({ subSeries: "sub_series", carNumber: "car_number" } as Record<string, string>)[
+      k as string
+    ];
     set((column ?? k) as keyof CatalogCar, v as never);
   };
 
@@ -429,16 +443,31 @@ export function CatalogFormDialog({
 
           {/* Footer */}
           <DialogFooter className="mt-2 flex flex-row items-center justify-between gap-2 border-t border-border pt-3 sm:justify-between">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              disabled={saving}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              Cancel
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                disabled={saving}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                Cancel
+              </Button>
+              {!isNew && canDelete && onDelete && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={onDelete}
+                  disabled={saving}
+                  className="gap-1.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 border-border"
+                >
+                  <Trash2 className="size-3.5" />
+                  <span>Remove</span>
+                </Button>
+              )}
+            </div>
             <Button
               type="button"
               size="sm"

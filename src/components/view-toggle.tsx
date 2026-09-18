@@ -38,9 +38,7 @@ export function ViewToggle({
    */
   modes?: ViewMode[];
 }) {
-  const shown = modes
-    ? modes.flatMap((v) => MODES.filter((m) => m.value === v))
-    : MODES;
+  const shown = modes ? modes.flatMap((v) => MODES.filter((m) => m.value === v)) : MODES;
   return (
     // Same container styling as SegmentControl (rounded-md, border-border, bg-muted/40, p-0.5)
     <div

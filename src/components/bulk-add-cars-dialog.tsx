@@ -710,7 +710,12 @@ export function BulkAddCarsDialog({
                   <FieldInput
                     def={f}
                     value={shared[f.key] ?? ""}
-                    options={optionsForCell(f, shared.make ?? "", shared.model ?? "", shared.brand ?? "")}
+                    options={optionsForCell(
+                      f,
+                      shared.make ?? "",
+                      shared.model ?? "",
+                      shared.brand ?? "",
+                    )}
                     onChange={(v) => setShared((s) => ({ ...s, [f.key]: v }))}
                   />
                 </div>
@@ -781,7 +786,12 @@ export function BulkAddCarsDialog({
                           def={f}
                           compact
                           value={r[f.key] ?? ""}
-                          options={optionsForCell(f, valueOf(r, "make"), valueOf(r, "model"), valueOf(r, "brand"))}
+                          options={optionsForCell(
+                            f,
+                            valueOf(r, "make"),
+                            valueOf(r, "model"),
+                            valueOf(r, "brand"),
+                          )}
                           onChange={(v) => setRow(r.key, { [f.key]: v })}
                         />
                       </td>

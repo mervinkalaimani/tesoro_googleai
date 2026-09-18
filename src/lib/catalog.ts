@@ -178,9 +178,7 @@ async function fetchCatalogCodes(): Promise<void> {
       .order("code")
       .range(from, from + PAGE - 1);
     if (res.error) return;
-    rows.push(
-      ...(res.data ?? []).map((r) => ({ ...r, kind: r.kind as CatalogCodeKind })),
-    );
+    rows.push(...(res.data ?? []).map((r) => ({ ...r, kind: r.kind as CatalogCodeKind })));
     if (!res.data || res.data.length < PAGE) break;
   }
   setCatalogCodes(rows);
@@ -498,4 +496,277 @@ export async function seedCatalogToSupabase(
   } catch (err) {
     return { success: false, count: 0, error: (err as Error).message };
   }
+}
+
+export type CatalogCarOwner = {
+  auth_uid: string;
+  user_id: string;
+  first_name?: string | null;
+  last_name?: string | null;
+  display_name: string;
+  date_added: string;
+};
+
+export type CatalogCarOwnerOptions = {
+  catalogCar?: CatalogCar | null;
+  isOwned?: boolean;
+  currentUser?: {
+    uid: string;
+    email?: string | null;
+    profile?: {
+      user_id?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      created_at?: string | null;
+    } | null;
+  } | null;
+  userCar?: Diecast | null;
+};
+
+/**
+ * Fetches the list of users who have added a given casting to their collection.
+ * Admin only. Tries database RPC `catalog_car_owners` first, then direct table query,
+ * API route, and current user collection state.
+ */
+export async function getCatalogCarOwners(
+  carId: string,
+  options?: CatalogCarOwnerOptions,
+): Promise<CatalogCarOwner[]> {
+  const cleanId = (carId || "").trim();
+  const ownersMap = new Map<string, CatalogCarOwner>();
+
+  if (cleanId) {
+    try {
+      // 1. Database RPC
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("catalog_car_owners", {
+        _car_id: cleanId,
+      });
+
+      if (!error && Array.isArray(data) && data.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        data.forEach((row: any) => {
+          const parts = [row.first_name, row.last_name].filter(Boolean).join(" ").trim();
+          const uid = row.auth_uid || row.user_id;
+          if (uid) {
+            ownersMap.set(uid, {
+              auth_uid: row.auth_uid,
+              user_id: row.user_id || "",
+              first_name: row.first_name || null,
+              last_name: row.last_name || null,
+              display_name: parts || row.user_id || "Collector",
+              date_added: row.date_added || "—",
+            });
+          }
+        });
+      }
+    } catch {
+      // ignore
+    }
+
+    // 2. Direct Supabase query if RPC yielded no results
+    if (ownersMap.size === 0) {
+      try {
+        let { data: rawCars } = await supabase
+          .from("tesoro_raw")
+          .select('user_id, "Date", "O_Date", "Catalog ID", "Car ID", Make, Model, Brand')
+          .or(`"Catalog ID".ilike.${cleanId},"Car ID".ilike.${cleanId}`);
+
+        if (
+          (!rawCars || rawCars.length === 0) &&
+          options?.catalogCar?.make &&
+          options?.catalogCar?.model
+        ) {
+          const { data: byModel } = await supabase
+            .from("tesoro_raw")
+            .select('user_id, "Date", "O_Date", "Catalog ID", "Car ID", Make, Model, Brand')
+            .ilike("Make", options.catalogCar.make)
+            .ilike("Model", options.catalogCar.model);
+          if (byModel && byModel.length > 0) {
+            rawCars = options.catalogCar.brand
+              ? byModel.filter(
+                  (c: { Brand?: string | null }) =>
+                    !c.Brand || c.Brand.toLowerCase() === options.catalogCar?.brand?.toLowerCase(),
+                )
+              : byModel;
+          }
+        }
+
+        if (rawCars && rawCars.length > 0) {
+          const userDateMap = new Map<string, string>();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          for (const r of rawCars as any[]) {
+            if (!r.user_id) continue;
+            const d = (r.Date || r.O_Date || "").trim();
+            const existing = userDateMap.get(r.user_id);
+            if (!existing || (d && d > existing)) {
+              userDateMap.set(r.user_id, d || existing || "—");
+            }
+          }
+          const uids = Array.from(userDateMap.keys());
+          if (uids.length > 0) {
+            const { data: usersData } = await supabase
+              .from("tesoro_users")
+              .select("auth_uid, user_id, first_name, last_name, created_at")
+              .in("auth_uid", uids);
+
+            for (const u of usersData ?? []) {
+              if (!u.auth_uid) continue;
+              const parts = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
+              const rawDate = userDateMap.get(u.auth_uid);
+              const createdAt = u.created_at
+                ? new Date(u.created_at).toISOString().slice(0, 10)
+                : "—";
+              ownersMap.set(u.auth_uid, {
+                auth_uid: u.auth_uid,
+                user_id: u.user_id || "",
+                first_name: u.first_name || null,
+                last_name: u.last_name || null,
+                display_name: parts || u.user_id || "Collector",
+                date_added: rawDate && rawDate !== "—" ? rawDate : createdAt,
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Direct tesoro_raw query failed:", err);
+      }
+    }
+
+    // 3. Server route fallback if still empty
+    if (ownersMap.size === 0) {
+      try {
+        const urlParams = new URLSearchParams({ car_id: cleanId });
+        if (options?.catalogCar?.make) urlParams.set("make", options.catalogCar.make);
+        if (options?.catalogCar?.model) urlParams.set("model", options.catalogCar.model);
+        if (options?.catalogCar?.brand) urlParams.set("brand", options.catalogCar.brand);
+        const res = await fetch(`/api/catalog-owners?${urlParams.toString()}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (Array.isArray(json.owners)) {
+            for (const o of json.owners) {
+              const uid = o.auth_uid || o.user_id;
+              if (uid && !ownersMap.has(uid)) {
+                ownersMap.set(uid, o);
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  // 4. Current user ownership: if current user owns this car, ensure they are in the list
+  if (options?.isOwned || options?.userCar) {
+    const cu = options?.currentUser;
+    const uid = cu?.uid || cu?.profile?.user_id || "current-user";
+    const existing = ownersMap.get(uid);
+    if (!existing) {
+      const profile = cu?.profile;
+      const parts = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
+      const userDate =
+        options.userCar?.date ||
+        options.userCar?.orderDate ||
+        (profile?.created_at ? new Date(profile.created_at).toISOString().slice(0, 10) : "—");
+      ownersMap.set(uid, {
+        auth_uid: uid,
+        user_id: profile?.user_id || cu?.email?.split("@")[0] || "You",
+        first_name: profile?.first_name || null,
+        last_name: profile?.last_name || null,
+        display_name: parts || profile?.user_id || cu?.email?.split("@")[0] || "You",
+        date_added: userDate || "—",
+      });
+    }
+  }
+
+  return Array.from(ownersMap.values()).sort((a, b) =>
+    (b.date_added || "").localeCompare(a.date_added || ""),
+  );
+}
+
+/**
+ * Checks if a Diecast car from the user's collection matches a catalog car.
+ * Handles exact IDs, calculated catalog IDs, and fuzzy matching for make/model/series/brand.
+ */
+export function isCarMatchingCatalog(
+  c: Diecast | null | undefined,
+  catalogCar: CatalogCar | null | undefined,
+): boolean {
+  if (!c || !catalogCar) return false;
+
+  // 1. Direct ID matches
+  const catId = (catalogCar.car_id || "").trim().toUpperCase();
+  if (catId) {
+    if ((c.catalogId || "").trim().toUpperCase() === catId) return true;
+    if ((c.id || "").trim().toUpperCase() === catId) return true;
+    if ((c.carId || "").trim().toUpperCase() === catId) return true;
+    try {
+      if (catalogIdFor(c).toUpperCase() === catId) return true;
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2. Normalize helper: strip non-alphanumeric, remove leading apostrophes ('18 -> 18)
+  const norm = (s: string | null | undefined) =>
+    (s || "")
+      .toLowerCase()
+      .replace(/['"’`]/g, "")
+      .replace(/[^a-z0-9]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const cBrand = norm(c.brand);
+  const catBrand = norm(catalogCar.brand);
+
+  // If brands are specified on both and differ, they don't match
+  if (cBrand && catBrand && cBrand !== catBrand) {
+    return false;
+  }
+
+  const cMake = norm(c.make);
+  const catMake = norm(catalogCar.make);
+  const cModel = norm(c.model);
+  const catModel = norm(catalogCar.model);
+  const cName = norm(c.name || `${c.make || ""} ${c.model || ""}`);
+  const catName = norm(catalogCar.name || `${catalogCar.make || ""} ${catalogCar.model || ""}`);
+
+  // Check make compatibility
+  const makeMatch =
+    !cMake || !catMake || cMake === catMake || catName.includes(cMake) || cName.includes(catMake);
+
+  if (!makeMatch) return false;
+
+  // Check model / name match
+  const modelMatch =
+    (cModel &&
+      catModel &&
+      (cModel === catModel || cModel.includes(catModel) || catModel.includes(cModel))) ||
+    (cName &&
+      catName &&
+      (cName === catName || cName.includes(catName) || catName.includes(cName))) ||
+    (cModel && catName.includes(cModel)) ||
+    (catModel && cName.includes(catModel));
+
+  if (!modelMatch) return false;
+
+  // Check series / assortment: if one is Tuning and brand is CCA, or matching series/assortment
+  const cSeries = norm(c.series);
+  const cAssort = norm(c.assortment);
+  const catSeries = norm(catalogCar.series);
+
+  // If catalog specifies series, check if user's car has that anywhere in series/assortment/name
+  if (catSeries && catSeries !== "all" && catSeries !== "none") {
+    const userHasSeries =
+      !cSeries ||
+      cSeries === catSeries ||
+      cAssort === catSeries ||
+      cName.includes(catSeries) ||
+      catName.includes(cSeries);
+    if (!userHasSeries) return false;
+  }
+
+  return true;
 }

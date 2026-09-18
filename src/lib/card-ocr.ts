@@ -193,7 +193,9 @@ export function parseTextToCarFields(rawText: string): ScanResult {
  */
 let workerPromise: Promise<unknown> | null = null;
 
-async function getWorker(): Promise<{ recognize: (img: unknown) => Promise<{ data: { text: string } }> }> {
+async function getWorker(): Promise<{
+  recognize: (img: unknown) => Promise<{ data: { text: string } }>;
+}> {
   if (typeof window === "undefined") {
     throw new Error("Tesseract OCR is only available in the browser.");
   }
@@ -204,7 +206,9 @@ async function getWorker(): Promise<{ recognize: (img: unknown) => Promise<{ dat
       return worker;
     })();
   }
-  return workerPromise as Promise<{ recognize: (img: unknown) => Promise<{ data: { text: string } }> }>;
+  return workerPromise as Promise<{
+    recognize: (img: unknown) => Promise<{ data: { text: string } }>;
+  }>;
 }
 
 export async function runClientOcr(
