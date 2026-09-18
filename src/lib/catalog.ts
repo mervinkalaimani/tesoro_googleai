@@ -41,8 +41,9 @@ export type CatalogCar = {
 
 export type ReleaseStatus = "Released" | "Pre Order";
 
-// v2: the catalogue moved to coded hex Car IDs; a cache of the old ones is dropped.
-const CATALOG_STORAGE_KEY = "tesoro_car_catalog_cache.v2";
+// v3: mix numbers left Sub Series, which changed 53 entry ids; an older cache
+// would render the stale sub series until the fetch lands.
+const CATALOG_STORAGE_KEY = "tesoro_car_catalog_cache.v3";
 const CODES_STORAGE_KEY = "tesoro_catalog_codes_cache";
 const RAW_CODES_STORAGE_KEY = "tesoro_raw_codes_cache";
 
