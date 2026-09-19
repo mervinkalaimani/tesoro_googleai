@@ -118,3 +118,5 @@ export function PageToolbar({
     </div>
   );
 }
+
+export { PageTopBar, TopBarChips } from "@/components/page-top-bar";

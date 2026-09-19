@@ -92,37 +92,39 @@ export function TopBar() {
 
         <NotificationCenter />
         {/* Reading right to left from the corner: who you are, then the thing
-            you came to do. */}
-        <Button
-          size="icon"
-          onClick={() => setAddOpen(true)}
-          aria-label="Add car"
-          className="relative size-9 rounded-full"
-          title={
-            pendingDraft ? "You have an unfinished car — pick up where you left off" : "Add car"
-          }
-        >
-          <Plus className="size-4.5" />
-          {pendingDraft && (
-            <span
-              aria-label="Unfinished car saved"
-              className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-amber-400"
-            />
-          )}
-        </Button>
-        {/* The shared catalogue: every casting, ready to add. */}
-        <Button
-          asChild
-          variant="outline"
-          size="icon"
-          className="size-9 rounded-full"
-          title="Catalog"
-        >
-          <Link to="/catalog" aria-label="Catalog">
-            <Store className="size-4.5" />
-          </Link>
-        </Button>
-        <AccountButton />
+            you came to do. +, catalog, and avatar buttons share identical size with an additional 2pt spacing on desktop */}
+        <div className="flex items-center gap-1.5 md:gap-2.5">
+          <Button
+            size="icon"
+            onClick={() => setAddOpen(true)}
+            aria-label="Add car"
+            className="relative size-9 rounded-full shrink-0 flex items-center justify-center p-0"
+            title={
+              pendingDraft ? "You have an unfinished car — pick up where you left off" : "Add car"
+            }
+          >
+            <Plus className="size-4.5" />
+            {pendingDraft && (
+              <span
+                aria-label="Unfinished car saved"
+                className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-amber-400"
+              />
+            )}
+          </Button>
+          {/* The shared catalogue: every casting, ready to add. */}
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            className="size-9 rounded-full shrink-0 flex items-center justify-center p-0"
+            title="Catalog"
+          >
+            <Link to="/catalog" aria-label="Catalog">
+              <Store className="size-4.5" />
+            </Link>
+          </Button>
+          <AccountButton />
+        </div>
       </div>
       <CarFormDialog
         open={addOpen}

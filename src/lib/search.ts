@@ -135,6 +135,7 @@ function splitOr(raw: string): string[] {
 }
 
 export function parseQuery(q: string): QueryGroup[] {
+  if (typeof q !== "string" || !q.trim()) return [];
   const groups: QueryGroup[] = [];
   let currentList: QueryGroup | null = null;
 
@@ -271,6 +272,7 @@ export function filterRows(rows: Diecast[], query: string): Diecast[] {
 
 /** Kept for backwards compatibility with older callers. */
 export function tokenize(q: string): string[] {
+  if (typeof q !== "string" || !q.trim()) return [];
   return q
     .split(",")
     .map((s) => s.trim().toLowerCase())

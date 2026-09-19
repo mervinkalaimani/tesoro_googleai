@@ -70,7 +70,7 @@ function MobileAccountMenu() {
         onClick={() => setMenuOpen(true)}
         aria-label={`Menu — signed in as ${display}`}
         aria-expanded={menuOpen}
-        className="ml-0.5 rounded-full outline-none ring-offset-background transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="size-9 rounded-full outline-none ring-offset-background transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0 flex items-center justify-center"
       >
         <Avatar className="size-9 border border-border">
           {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}

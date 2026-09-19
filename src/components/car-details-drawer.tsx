@@ -1977,9 +1977,26 @@ function CatalogDetailsBody({
             <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
             </h2>
-            {(catalogCar?.car_id || car.catalogId) && (
-              <p className="font-mono text-xs text-muted-foreground/80 select-all tracking-wider mt-1">
-                {catalogCar?.car_id || car.catalogId}
+            {isAdmin && onSeeAllOwners ? (
+              <button
+                type="button"
+                onClick={onSeeAllOwners}
+                className="mt-1 inline-flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left"
+                title="Click to view people who own this"
+              >
+                {ownersLoading
+                  ? "Loading collection stats..."
+                  : owners.length === 1
+                    ? "1 person add this to their collection."
+                    : `${owners.length} people add this to their collection.`}
+              </button>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {ownersLoading
+                  ? "Loading collection stats..."
+                  : owners.length === 1
+                    ? "1 person add this to their collection."
+                    : `${owners.length} people add this to their collection.`}
               </p>
             )}
           </div>
@@ -2027,86 +2044,42 @@ function CatalogDetailsBody({
 
       <hr className="border-border" />
 
-      <SpecGrid>
-        <Spec
-          label="Catalogue ID"
-          value={catalogCar?.car_id || car.catalogId || car.carId || car.id || "—"}
-        />
-        {preOrder && expectedDate && (
-          <Spec label="Expected date" value={formatDayMonthYear(expectedDate) || expectedDate} />
-        )}
-      </SpecGrid>
-
-      {/* Only when the entry itself is to hand. Opened off a shared pre-order
-          there is no catalogue row behind it, and three em-dashes under a
-          heading say less than no heading at all. */}
-      {catalogCar && (
-        <>
-          <hr className="border-border" />
-
-          <div>
-            <div className="flex items-center gap-2.5 mb-2">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Catalogue Provenance
-              </h3>
-              {isAdmin && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={onSeeAllOwners || (() => setOwnersModalOpen(true))}
-                  className="h-6 px-2 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/10 cursor-pointer"
-                >
-                  See All
-                </Button>
-              )}
+      {/* Provenance section: Catalogue ID on top, no section title, no people who owns it */}
+      <div>
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+          <div className="col-span-2">
+            <Spec
+              label="Catalogue ID"
+              value={catalogCar?.car_id || car.catalogId || car.carId || car.id || "—"}
+            />
+          </div>
+          {preOrder && expectedDate && (
+            <div className="col-span-2">
+              <Spec
+                label="Expected date"
+                value={formatDayMonthYear(expectedDate) || expectedDate}
+              />
             </div>
-            {/* Two columns, not three: who and when, read across — filed on the
-                top line, last corrected on the bottom. */}
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
+          )}
+          {catalogCar && (
+            <>
               <Spec label="Added by" value={addedBy} />
               <Spec label="Added on" value={addedOn} />
               <Spec label="Updated by" value={updatedBy} />
               <Spec label="Updated on" value={updatedOn} />
-
-              {isAdmin && (
-                <div className="col-span-2 pt-2 border-t border-border/50">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-medium text-muted-foreground">
-                      People who owns it
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={onSeeAllOwners || (() => setOwnersModalOpen(true))}
-                      className="h-5 px-1.5 text-xs font-semibold text-primary hover:text-primary/80 hover:bg-primary/10 cursor-pointer"
-                    >
-                      See All
-                    </Button>
-                  </div>
-                  <div className="text-sm font-semibold text-foreground mt-0.5">
-                    {ownersLoading ? (
-                      <span className="text-xs text-muted-foreground">Loading...</span>
-                    ) : (
-                      `${owners.length} ${owners.length === 1 ? "user" : "users"}`
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {isAdmin && !onSeeAllOwners && (
-            <CatalogOwnersDialog
-              open={ownersModalOpen}
-              onClose={() => setOwnersModalOpen(false)}
-              carName={car.name || `${car.make} ${car.model}`}
-              owners={owners}
-              loading={ownersLoading}
-            />
+            </>
           )}
-        </>
+        </div>
+      </div>
+
+      {isAdmin && !onSeeAllOwners && (
+        <CatalogOwnersDialog
+          open={ownersModalOpen}
+          onClose={() => setOwnersModalOpen(false)}
+          carName={car.name || `${car.make} ${car.model}`}
+          owners={owners}
+          loading={ownersLoading}
+        />
       )}
     </div>
   );
@@ -2117,15 +2090,20 @@ export function CatalogCarTitleSection({
   catalogCar,
   owned,
   preOrder,
+  owners,
+  ownersLoading,
   onSeeAllOwners,
 }: {
   car: Diecast;
   catalogCar?: CatalogCar | null;
   owned: boolean;
   preOrder: boolean;
+  owners?: CatalogCarOwner[];
+  ownersLoading?: boolean;
   onSeeAllOwners?: () => void;
 }) {
   const { isAdmin } = useAuth();
+  const ownersList = owners || [];
 
   return (
     <div className="space-y-2.5">
@@ -2165,10 +2143,27 @@ export function CatalogCarTitleSection({
         {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
       </h2>
 
-      {/* Catalog ID sits below the title, no container, no title label */}
-      {(catalogCar?.car_id || car.catalogId) && (
-        <p className="font-mono text-xs text-muted-foreground/80 select-all tracking-wider">
-          {catalogCar?.car_id || car.catalogId}
+      {/* Replaced catalog ID with single line: "n people add this to their collection." */}
+      {isAdmin && onSeeAllOwners ? (
+        <button
+          type="button"
+          onClick={onSeeAllOwners}
+          className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left"
+          title="Click to view people who own this"
+        >
+          {ownersLoading
+            ? "Loading collection stats..."
+            : ownersList.length === 1
+              ? "1 person add this to their collection."
+              : `${ownersList.length} people add this to their collection.`}
+        </button>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          {ownersLoading
+            ? "Loading collection stats..."
+            : ownersList.length === 1
+              ? "1 person add this to their collection."
+              : `${ownersList.length} people add this to their collection.`}
         </p>
       )}
     </div>

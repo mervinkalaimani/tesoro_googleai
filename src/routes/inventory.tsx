@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -14,13 +14,13 @@ import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio } from "@/lib/format";
-import { sortCars, statusRank } from "@/lib/status-order";
+import { isPreOrder, sortCars, statusRank } from "@/lib/status-order";
 import { Button } from "@/components/ui/button";
-import { SegmentControl } from "@/components/segment-control";
-import { PageHeading, PageToolbar } from "@/components/page-header";
+import { TopBarChips } from "@/components/page-top-bar";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { carSubLine } from "@/lib/car-subline";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/inventory")({
   head: () => ({
@@ -215,6 +215,22 @@ function InventoryCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
   );
 }
 
+const OTHERS_CANONICAL_ORDER = ["wrong item", "delayed", "lost"];
+
+function getOthersRank(statusName: string): number {
+  const norm = (statusName || "").trim().toLowerCase();
+  const idx = OTHERS_CANONICAL_ORDER.indexOf(norm);
+  if (idx !== -1) return idx;
+  return OTHERS_CANONICAL_ORDER.length + statusRank(statusName);
+}
+
+function isOtherStatus(s: string | undefined | null): boolean {
+  const norm = (s || "").trim().toLowerCase();
+  return (
+    norm !== "available" && norm !== "waiting" && !isPreOrder(s) && norm !== "po" && norm !== "iso"
+  );
+}
+
 function InventoryPage() {
   const { query } = useApp();
   const data = useCars();
@@ -227,6 +243,17 @@ function InventoryPage() {
   // Seeded from ?status= so a KPI click lands on a pre-filtered table; the
   // chips remain free to change it afterwards. Defaults to "Available".
   const [status, setStatus] = useState(search.status ?? "Available");
+  const [otherSubFilter, setOtherSubFilter] = useState<string>("all_others");
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 28);
+    };
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (search.status) setStatus(search.status);
@@ -263,41 +290,78 @@ function InventoryPage() {
     return out;
   }, [searched, draft]);
 
-  /**
-   * Only the statuses you could actually land on.
-   *
-   * Narrowed by everything except the status filter itself — the search, the
-   * dropdown filters, chase and favourites — so the segments describe what is
-   * reachable rather than what the collection contains in general. Filtering to
-   * Matchbox used to leave "Pre Order" sitting there as a button whose only
-   * effect was to empty the page.
-   *
-   * Skipping its own filter is the same trick the dropdowns use: a control that
-   * narrowed its own options would remove every choice but the one already
-   * made, and there would be no way back.
-   */
-  const statusOptions = useMemo(() => {
+  // Base rows for computing status chip counts
+  const baseForStatus = useMemo(() => {
     let base = applyFilters(searched, filters);
     if (chaseOnly) base = base.filter((r) => r.chase);
     if (favOnly) base = base.filter((r) => r.favourite);
+    return base;
+  }, [searched, filters, chaseOnly, favOnly]);
 
-    const present = [...new Set(base.map((r) => r.status).filter(Boolean))];
-    // The current selection stays even once it has emptied out. Dropping it
-    // would leave the control with nothing marked active while the page is
-    // still filtered by it — the one state where you most need to see why.
-    if (status !== "all" && !present.includes(status)) present.push(status);
-    // Chips follow the same canonical status order as the rows.
-    present.sort((a, b) => statusRank(a) - statusRank(b) || a.localeCompare(b));
-    return ["all", ...present];
-  }, [searched, filters, chaseOnly, favOnly, status]);
+  const countAvailable = useMemo(
+    () => baseForStatus.filter((r) => (r.status || "").trim().toLowerCase() === "available").length,
+    [baseForStatus],
+  );
+  const countWaiting = useMemo(
+    () => baseForStatus.filter((r) => (r.status || "").trim().toLowerCase() === "waiting").length,
+    [baseForStatus],
+  );
+  const countPO = useMemo(
+    () =>
+      baseForStatus.filter(
+        (r) => isPreOrder(r.status) || (r.status || "").trim().toLowerCase() === "po",
+      ).length,
+    [baseForStatus],
+  );
+  const countISO = useMemo(
+    () => baseForStatus.filter((r) => (r.status || "").trim().toLowerCase() === "iso").length,
+    [baseForStatus],
+  );
+  const countOthers = useMemo(
+    () => baseForStatus.filter((r) => isOtherStatus(r.status)).length,
+    [baseForStatus],
+  );
+
+  // Status chips: only show Available, Waiting, PO, ISO and others
+  const statusChipsOptions = useMemo(
+    () => [
+      { value: "Available", label: "Available", count: countAvailable },
+      { value: "Waiting", label: "Waiting", count: countWaiting },
+      { value: "PO", label: "PO", count: countPO },
+      { value: "ISO", label: "ISO", count: countISO },
+      { value: "others", label: "Others", count: countOthers },
+    ],
+    [countAvailable, countWaiting, countPO, countISO, countOthers],
+  );
 
   const rows = useMemo(() => {
     let out = applyFilters(searched, filters);
-    if (status !== "all") {
-      out = out.filter((r) => (r.status || "").toLowerCase() === status.toLowerCase());
+    const normStatus = (status || "").trim().toLowerCase();
+
+    if (normStatus === "available") {
+      out = out.filter((r) => (r.status || "").trim().toLowerCase() === "available");
+    } else if (normStatus === "waiting") {
+      out = out.filter((r) => (r.status || "").trim().toLowerCase() === "waiting");
+    } else if (normStatus === "po") {
+      out = out.filter(
+        (r) => isPreOrder(r.status) || (r.status || "").trim().toLowerCase() === "po",
+      );
+    } else if (normStatus === "iso") {
+      out = out.filter((r) => (r.status || "").trim().toLowerCase() === "iso");
+    } else if (normStatus === "others") {
+      out = out.filter((r) => isOtherStatus(r.status));
+      if (otherSubFilter !== "all_others") {
+        out = out.filter(
+          (r) => (r.status || "").trim().toLowerCase() === otherSubFilter.trim().toLowerCase(),
+        );
+      }
+    } else if (normStatus !== "all") {
+      out = out.filter((r) => (r.status || "").toLowerCase() === normStatus);
     }
+
     if (chaseOnly) out = out.filter((r) => r.chase);
     if (favOnly) out = out.filter((r) => r.favourite);
+
     // Default order is status group, then SNO within the group — the same order
     // every other view uses.
     const sno = (r: Diecast) => (typeof r.sno === "number" ? r.sno : Number.MAX_SAFE_INTEGER);
@@ -330,20 +394,15 @@ function InventoryPage() {
         return sign === 1 ? sorted : sorted.reverse();
       }
     }
-  }, [searched, filters, status, sort, sortDir, chaseOnly, favOnly]);
+  }, [searched, filters, status, otherSubFilter, sort, sortDir, chaseOnly, favOnly]);
 
   useEffect(() => {
     setVisibleCount(LOAD_BATCH);
     window.scrollTo({ top: 0 });
-  }, [query, filters, status, sort, sortDir, chaseOnly, favOnly]);
+  }, [query, filters, status, otherSubFilter, sort, sortDir, chaseOnly, favOnly]);
 
   /**
    * Loads the next batch when the foot of the list comes into view.
-   *
-   * A scroll handler on the list's own container is what this replaced, and it
-   * stopped working the moment the page became the thing that scrolls. An
-   * observer does not care which ancestor moved — it fires when the sentinel is
-   * near the viewport, which is the actual question.
    */
   useEffect(() => {
     const el = sentinelRef.current;
@@ -354,8 +413,6 @@ function InventoryPage() {
           setVisibleCount((count) => Math.min(count + LOAD_BATCH, rows.length));
         }
       },
-      // Start fetching before it is on screen, so the list is already longer by
-      // the time the bottom is reached.
       { rootMargin: "600px" },
     );
     io.observe(el);
@@ -383,65 +440,66 @@ function InventoryPage() {
   const activeCount = Object.values(filters).filter((v) => v !== "all").length;
   const shown = rows.slice(0, visibleCount);
 
+  // Grouped other statuses in canonical order: Wrong Item, Delayed, Lost, and any others
+  const otherGroups = useMemo(() => {
+    if (status.toLowerCase() !== "others") return [];
+    const map = new Map<string, Diecast[]>();
+    for (const r of shown) {
+      const name = (r.status || "Other").trim();
+      const existing = map.get(name) ?? [];
+      existing.push(r);
+      map.set(name, existing);
+    }
+    return [...map.entries()]
+      .map(([statusName, cars]) => ({ statusName, cars }))
+      .sort(
+        (a, b) =>
+          getOthersRank(a.statusName) - getOthersRank(b.statusName) ||
+          a.statusName.localeCompare(b.statusName),
+      );
+  }, [status, shown]);
+
+  const allOtherGroups = useMemo(() => {
+    if (status.toLowerCase() !== "others") return [];
+    const map = new Map<string, number>();
+    for (const r of rows) {
+      const name = (r.status || "Other").trim();
+      map.set(name, (map.get(name) ?? 0) + 1);
+    }
+    return [...map.entries()]
+      .map(([statusName, count]) => ({ statusName, count }))
+      .sort(
+        (a, b) =>
+          getOthersRank(a.statusName) - getOthersRank(b.statusName) ||
+          a.statusName.localeCompare(b.statusName),
+      );
+  }, [status, rows]);
+
   return (
-    /* The same page container as Shipments & orders: the page scrolls and the
-       sections stack. It used to be one full-height card with its own scrollbar
-       inside the page's — two scroll positions to keep track of, a header that
-       could not reach the edge of the screen, and a footer counting rows nobody
-       asked about.
+    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
+      {/* Page Title: scrolls away with the page. When not scrolled, buttons sit inline on the right. */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 sm:flex-nowrap min-w-0">
+        <div className="min-w-0 shrink-0">
+          <h1 className="text-display truncate text-lg sm:text-xl font-semibold">Inventory</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground truncate">
+            {rows.length.toLocaleString()} cars
+          </p>
+        </div>
 
-       The heading and the toolbar are direct children rather than sharing a
-       wrapper, because a sticky element only sticks inside its own parent's
-       box: in a div holding just those two, the toolbar came unpinned the
-       moment that div scrolled past. Its parent has to be the thing it should
-       outlast, which is the whole page. */
-    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* Its own row rather than sharing one with the controls. It used to sit
-          in a flex line beside them, and the status dropdown's ml-auto ate the
-          width the title needed, so on a phone "Inventory" was squeezed to
-          nothing. */}
-      <PageHeading title="Inventory" subtitle={`${rows.length.toLocaleString()} cars`} />
-
-      <PageToolbar
-        sticky
-        // One line on a phone too: the status control narrows and scrolls
-        // sideways beside the buttons instead of taking a row of its own.
-        oneLine
-        left={
-          /* The same control at both sizes, behaving differently at each.
-                 Eleven segments will not wrap onto a 375px screen without
-                 taking four lines and more of the page than the cars do, so on
-                 a phone it stays one line and scrolls sideways — the statuses
-                 are in the order you meet them, so the ones you want most are
-                 already at the front. On desktop there is room to spare, and
-                 stretching them across 1600px would only make "ISO" a button
-                 the width of a paragraph, so they wrap to their text and the
-                 control ends where the labels do. */
-          <SegmentControl
-            value={status}
-            onChange={setStatus}
-            className="w-auto gap-0.5 md:inline-flex md:w-auto md:flex-wrap"
-            options={statusOptions.map((s) => ({ value: s, label: s === "all" ? "All" : s }))}
-          />
-        }
-        right={
-          <>
-            {(sort !== "added" || sortDir !== "desc") && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="shrink-0"
-                onClick={() => {
-                  setSort("added");
-                  setSortDir("desc");
-                }}
-              >
-                Reset sort
-              </Button>
-            )}
-            {/* Icon alone. The word "Filters" beside a slider icon is the
-                    icon's own caption; the count is the part that says
-                    something, so that is what stays. */}
+        {!isScrolled && (
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap justify-end shrink-0 ml-auto">
+            <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
+            <SortSelect
+              value={sort}
+              dir={sortDir}
+              onChange={(v, d) => {
+                setSort(v);
+                setSortDir(d);
+              }}
+              label="Sort cars"
+              neutral="added"
+              options={SORT_OPTIONS}
+            />
             <Button
               size="sm"
               variant={activeCount ? "default" : "outline"}
@@ -457,143 +515,293 @@ function InventoryPage() {
               <SlidersHorizontal className="size-4" />
               {activeCount ? <span className="tabular-nums text-xs">{activeCount}</span> : null}
             </Button>
-            {/* Sorting lives here rather than in column headers so it
-                    applies to the grid view too. */}
-            <SortSelect
-              value={sort}
-              dir={sortDir}
-              onChange={(v, d) => {
-                setSort(v);
-                setSortDir(d);
-              }}
-              label="Sort cars"
-              neutral="added"
-              options={SORT_OPTIONS}
-            />
-            {/* Exactly the rows on screen, filtered and sorted as they are. */}
-            <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
-            <ViewToggle value={view} onChange={setView} />
-          </>
-        }
-      />
-
-      {/* Inline filter row, revealed by the Filters button. It wraps on small
-          screens, so there is no separate sliding panel. */}
-      {filterOpen && (
-        /* Two columns on a phone, six across on a wide screen. Stacked at one
-           per row with 36px controls it ran to about 70% of a 812px screen —
-           a filter panel you have to scroll through to reach the Apply button
-           is a page, not a panel. Tighter padding, 32px controls and the
-           labels tucked closer bring it to a third of that. */
-        <div className="card-elevated space-y-2.5 bg-muted/20 p-2.5 md:space-y-3 md:p-4">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6 md:gap-3">
-            {FILTERS.map((d) => (
-              <div key={d.key} className="min-w-0">
-                <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                  {d.label}
-                </label>
-                <select
-                  value={draft[d.key]}
-                  onChange={(e) => setDraftFilter(d.key, e.target.value)}
-                  className="mt-0.5 h-8 w-full rounded-md border border-input bg-background px-2 text-sm md:h-9"
-                >
-                  <option value="all">All</option>
-                  {options[d.key].map((o) => (
-                    <option key={o.name} value={o.name}>
-                      {o.name} ({o.value})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-
-          {/* A row of their own, each taking half of it. They used to be
-              inline with the dropdowns, so they inherited whatever gap the
-              last one left — sometimes a full width, sometimes a sliver.
-              Colours now match the marks they filter on: red for the flame,
-              gold for the star. Favourites was on the accent colour, so it
-              changed hue with the theme and matched nothing. */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setChaseOnly((v) => !v)}
-              aria-pressed={chaseOnly}
-              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors md:h-9 ${
-                chaseOnly
-                  ? "border-red-500/50 bg-red-500/10 text-red-500"
-                  : "border-border text-muted-foreground hover:bg-muted/50"
-              }`}
-            >
-              <ChaseMark className={chaseOnly ? "size-4" : "size-4 fill-none text-current"} />
-              Chase only
-            </button>
-            <button
-              type="button"
-              onClick={() => setFavOnly((v) => !v)}
-              aria-pressed={favOnly}
-              className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors md:h-9 ${
-                favOnly
-                  ? "border-amber-500/50 bg-amber-500/10 text-amber-500"
-                  : "border-border text-muted-foreground hover:bg-muted/50"
-              }`}
-            >
-              <FavouriteMark className={favOnly ? "size-4" : "size-4 fill-none text-current"} />
-              Favourites only
-            </button>
-          </div>
-
-          <div className="flex items-center justify-between gap-2">
-            <p className="min-w-0 text-xs text-muted-foreground">
-              <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
-              {searched.length.toLocaleString()}
-            </p>
-            <div className="flex shrink-0 gap-2">
+            {(sort !== "added" || sortDir !== "desc") && (
               <Button
                 size="sm"
                 variant="ghost"
+                className="shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:inline-flex"
                 onClick={() => {
-                  setDraft(EMPTY_FILTERS);
-                  setFilters(EMPTY_FILTERS);
-                  setChaseOnly(false);
-                  setFavOnly(false);
+                  setSort("added");
+                  setSortDir("desc");
                 }}
               >
-                Clear
+                Reset sort
               </Button>
-              <Button size="sm" onClick={() => setFilters(draft)}>
-                Apply
+            )}
+            <ViewToggle value={view} onChange={setView} />
+          </div>
+        )}
+      </div>
+
+      {/* Sticky top section: sticks at top-14 (under global TopBar). On scroll: export, sort, filter buttons move to the left, view buttons sticky, chips sticky below. */}
+      <div
+        className={cn(
+          "sticky top-14 z-30 -mx-3 px-3 md:-mx-6 md:px-6 bg-background/95 backdrop-blur-md space-y-2 py-2 border-b border-border/40 transition-all",
+          isScrolled ? "shadow-xs" : "",
+        )}
+      >
+        {isScrolled && (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
+              <SortSelect
+                value={sort}
+                dir={sortDir}
+                onChange={(v, d) => {
+                  setSort(v);
+                  setSortDir(d);
+                }}
+                label="Sort cars"
+                neutral="added"
+                options={SORT_OPTIONS}
+              />
+              <Button
+                size="sm"
+                variant={activeCount ? "default" : "outline"}
+                className="shrink-0 gap-1"
+                onClick={() => {
+                  setDraft(filters);
+                  setFilterOpen((v) => !v);
+                }}
+                title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
+                aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
+                aria-expanded={filterOpen}
+              >
+                <SlidersHorizontal className="size-4" />
+                {activeCount ? <span className="tabular-nums text-xs">{activeCount}</span> : null}
               </Button>
+              {(sort !== "added" || sortDir !== "desc") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:inline-flex"
+                  onClick={() => {
+                    setSort("added");
+                    setSortDir("desc");
+                  }}
+                >
+                  Reset sort
+                </Button>
+              )}
+            </div>
+            <div className="shrink-0">
+              <ViewToggle value={view} onChange={setView} />
             </div>
           </div>
+        )}
+
+        {/* Expandable filter panel */}
+        {filterOpen && (
+          <div className="card-elevated space-y-2.5 bg-muted/20 p-2.5 md:space-y-3 md:p-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6 md:gap-3">
+              {FILTERS.map((d) => (
+                <div key={d.key} className="min-w-0">
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {d.label}
+                  </label>
+                  <select
+                    value={draft[d.key]}
+                    onChange={(e) => setDraftFilter(d.key, e.target.value)}
+                    className="mt-0.5 h-8 w-full rounded-md border border-input bg-background px-2 text-sm md:h-9"
+                  >
+                    <option value="all">All</option>
+                    {options[d.key].map((o) => (
+                      <option key={o.name} value={o.name}>
+                        {o.name} ({o.value})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setChaseOnly((v) => !v)}
+                aria-pressed={chaseOnly}
+                className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors md:h-9 ${
+                  chaseOnly
+                    ? "border-red-500/50 bg-red-500/10 text-red-500"
+                    : "border-border text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                <ChaseMark className={chaseOnly ? "size-4" : "size-4 fill-none text-current"} />
+                Chase only
+              </button>
+              <button
+                type="button"
+                onClick={() => setFavOnly((v) => !v)}
+                aria-pressed={favOnly}
+                className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors md:h-9 ${
+                  favOnly
+                    ? "border-amber-500/50 bg-amber-500/10 text-amber-500"
+                    : "border-border text-muted-foreground hover:bg-muted/50"
+                }`}
+              >
+                <FavouriteMark className={favOnly ? "size-4" : "size-4 fill-none text-current"} />
+                Favourites only
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <p className="min-w-0 text-xs text-muted-foreground">
+                <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
+                {searched.length.toLocaleString()}
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setDraft(EMPTY_FILTERS);
+                    setFilters(EMPTY_FILTERS);
+                    setChaseOnly(false);
+                    setFavOnly(false);
+                  }}
+                >
+                  Clear
+                </Button>
+                <Button size="sm" onClick={() => setFilters(draft)}>
+                  Apply
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Sticky chips: only show Available, Waiting, PO, ISO and others */}
+        <div className="space-y-1.5">
+          <TopBarChips
+            value={status}
+            onChange={(newStatus) => {
+              setStatus(newStatus);
+              setOtherSubFilter("all_others");
+            }}
+            options={statusChipsOptions}
+          />
+
+          {/* When Others is selected: other statuses shown in groups (Wrong Item, Delayed, Lost, etc.) */}
+          {status.toLowerCase() === "others" && allOtherGroups.length > 0 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none sm:flex-wrap pl-1 border-t border-border/40 pt-1.5">
+              <span className="text-[11px] font-medium text-muted-foreground shrink-0 mr-1">
+                Other groups:
+              </span>
+              <button
+                type="button"
+                onClick={() => setOtherSubFilter("all_others")}
+                className={cn(
+                  "shrink-0 text-xs px-2.5 py-0.5 rounded-full border transition-colors cursor-pointer",
+                  otherSubFilter === "all_others"
+                    ? "bg-primary text-primary-foreground font-semibold border-primary shadow-xs"
+                    : "bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted",
+                )}
+              >
+                All Others ({countOthers})
+              </button>
+              {allOtherGroups.map((grp) => (
+                <button
+                  key={grp.statusName}
+                  type="button"
+                  onClick={() => setOtherSubFilter(grp.statusName)}
+                  className={cn(
+                    "shrink-0 text-xs px-2.5 py-0.5 rounded-full border transition-colors cursor-pointer",
+                    otherSubFilter.toLowerCase() === grp.statusName.toLowerCase()
+                      ? "bg-primary text-primary-foreground font-semibold border-primary shadow-xs"
+                      : "bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted",
+                  )}
+                >
+                  {grp.statusName} ({grp.count})
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {view !== "table" ? (
         <>
-          <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
-            {shown.map((r, i) =>
-              view === "compact" ? (
-                <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-              ) : (
-                <InventoryCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-              ),
-            )}
-          </div>
-          {shown.length === 0 && (
-            <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
-              No cars match.
-            </p>
+          {status.toLowerCase() === "others" && otherSubFilter === "all_others" ? (
+            <div className="space-y-6">
+              {otherGroups.map((grp) => (
+                <div key={grp.statusName} className="space-y-2.5">
+                  <div className="flex items-center justify-between border-b border-border/60 pb-1.5 pt-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-foreground tracking-tight">
+                        {grp.statusName}
+                      </span>
+                      <span className="rounded-full bg-muted/80 px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
+                        {grp.cars.length} {grp.cars.length === 1 ? "car" : "cars"}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
+                    {grp.cars.map((r, i) =>
+                      view === "compact" ? (
+                        <CompactCarCard
+                          key={(r.id || "") + i}
+                          car={r}
+                          onOpen={() => openDrawer(r)}
+                        />
+                      ) : (
+                        <InventoryCard
+                          key={(r.id || "") + i}
+                          car={r}
+                          onOpen={() => openDrawer(r)}
+                        />
+                      ),
+                    )}
+                  </div>
+                </div>
+              ))}
+              {otherGroups.length === 0 && (
+                <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
+                  No cars match.
+                </p>
+              )}
+            </div>
+          ) : (
+            <>
+              <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
+                {shown.map((r, i) =>
+                  view === "compact" ? (
+                    <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
+                  ) : (
+                    <InventoryCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
+                  ),
+                )}
+              </div>
+              {shown.length === 0 && (
+                <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
+                  No cars match.
+                </p>
+              )}
+            </>
           )}
         </>
       ) : (
         <>
-          {/* Phones get the same rows as cards: nine columns on a 375px screen
-              is a table you read by dragging it sideways. */}
+          {/* Phones get the same rows as cards */}
           <div className="space-y-2 md:hidden">
-            {shown.map((r, i) => (
-              <CarListCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-            ))}
+            {status.toLowerCase() === "others" && otherSubFilter === "all_others"
+              ? otherGroups.map((grp) => (
+                  <div key={grp.statusName} className="space-y-2">
+                    <div className="flex items-center justify-between border-b border-border/60 pb-1 pt-2">
+                      <span className="font-semibold text-sm text-foreground">
+                        {grp.statusName}
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        ({grp.cars.length})
+                      </span>
+                    </div>
+                    {grp.cars.map((r, i) => (
+                      <CarListCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
+                    ))}
+                  </div>
+                ))
+              : shown.map((r, i) => (
+                  <CarListCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
+                ))}
             {shown.length === 0 && (
               <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
                 No cars match those filters.
@@ -601,26 +809,7 @@ function InventoryPage() {
             )}
           </div>
 
-          {/* One panel, like a shipment card on the orders page. Only the table
-              scrolls sideways — the page itself never does.
-              This is also why the column headers are not pinned. overflow-x
-              makes this a scroll container and CSS drags overflow-y to auto
-              along with it, so a sticky thead would pin inside a box that never
-              scrolls vertically and ride away with the page regardless. The
-              alternative is letting the table push the page sideways — its
-              columns total 1152px, which does not fit a 1440px window with the
-              sidebar open — and a page that scrolls in two directions is worse
-              than a column header you have to scroll back for. The toolbar
-              above stays pinned either way, which is the part that decides what
-              you are looking at. */}
           <div className="card-elevated hidden overflow-x-auto md:block">
-            {/* The detailed view: every field, no thumbnail. Sorting lives in
-                the header dropdown so it works in grid view too. */}
-            {/* No Actions column. Editing a car is something you do after
-                looking at one, so it is on the car; deleting is behind that,
-                inside the edit form. A bin at the end of every row of a
-                1,500-row table is a destructive action you can reach by
-                accident. The table is 80px narrower for it. */}
             <table className="w-full min-w-[1000px] table-fixed text-sm">
               <colgroup>
                 <col className="w-[18rem]" />
@@ -646,42 +835,99 @@ function InventoryPage() {
               </thead>
 
               <tbody>
-                {shown.map((r, i) => (
-                  <tr
-                    key={r.id + i}
-                    onClick={() => openDrawer(r)}
-                    className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
-                  >
-                    <td className="px-4 py-2.5 align-top">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="truncate font-medium">{r.name || "—"}</span>
-                        <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
-                    </td>
-                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                      {r.colour || "—"}
-                    </td>
-                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                      {r.type || "—"}
-                    </td>
-                    <td className="px-3 py-2.5 align-top">
-                      <CostCell car={r} />
-                    </td>
-                    <td className="px-3 py-2.5 align-top">
-                      <StatusPill status={r.status} />
-                    </td>
-                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                      {r.seller || "—"}
-                    </td>
-                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
-                      {r.orderDate || "—"}
-                    </td>
-                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
-                      {r.date || "—"}
-                    </td>
-                  </tr>
-                ))}
+                {status.toLowerCase() === "others" && otherSubFilter === "all_others"
+                  ? otherGroups.map((grp) => (
+                      <Fragment key={grp.statusName}>
+                        <tr className="bg-muted/40 border-t-2 border-border/80 font-medium text-foreground">
+                          <td colSpan={8} className="px-4 py-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-xs uppercase tracking-wider text-foreground">
+                                {grp.statusName}
+                              </span>
+                              <span className="text-xs text-muted-foreground tabular-nums">
+                                ({grp.cars.length} {grp.cars.length === 1 ? "car" : "cars"})
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                        {grp.cars.map((r, i) => (
+                          <tr
+                            key={r.id + i}
+                            onClick={() => openDrawer(r)}
+                            className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
+                          >
+                            <td className="px-4 py-2.5 align-top">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span className="truncate font-medium">{r.name || "—"}</span>
+                                <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
+                              </div>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {carSubLine(r)}
+                              </div>
+                            </td>
+                            <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                              {r.colour || "—"}
+                            </td>
+                            <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                              {r.type || "—"}
+                            </td>
+                            <td className="px-3 py-2.5 align-top">
+                              <CostCell car={r} />
+                            </td>
+                            <td className="px-3 py-2.5 align-top">
+                              <StatusPill status={r.status} />
+                            </td>
+                            <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                              {r.seller || "—"}
+                            </td>
+                            <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
+                              {r.orderDate || "—"}
+                            </td>
+                            <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
+                              {r.date || "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </Fragment>
+                    ))
+                  : shown.map((r, i) => (
+                      <tr
+                        key={r.id + i}
+                        onClick={() => openDrawer(r)}
+                        className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
+                      >
+                        <td className="px-4 py-2.5 align-top">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className="truncate font-medium">{r.name || "—"}</span>
+                            <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
+                          </div>
+                          <div className="truncate text-xs text-muted-foreground">
+                            {carSubLine(r)}
+                          </div>
+                        </td>
+                        <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                          {r.colour || "—"}
+                        </td>
+                        <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                          {r.type || "—"}
+                        </td>
+                        <td className="px-3 py-2.5 align-top">
+                          <CostCell car={r} />
+                        </td>
+                        <td className="px-3 py-2.5 align-top">
+                          <StatusPill status={r.status} />
+                        </td>
+                        <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                          {r.seller || "—"}
+                        </td>
+                        <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
+                          {r.orderDate || "—"}
+                        </td>
+                        <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
+                          {r.date || "—"}
+                        </td>
+                      </tr>
+                    ))}
                 {shown.length === 0 && (
                   <tr>
                     <td colSpan={8} className="p-10 text-center text-muted-foreground">

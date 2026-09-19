@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronDown, CircleCheck, Clock, IndianRupee, Plus, Store, Truck } from "lucide-react";
+import {
+  Calendar,
+  ChevronDown,
+  CircleCheck,
+  Clock,
+  IndianRupee,
+  Plus,
+  Store,
+  Truck,
+} from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
@@ -45,6 +54,24 @@ export const Route = createFileRoute("/preorders")({
 
 /** Remaining balance for a pre-order row: car cost minus amount paid. */
 const balanceOf = (r: Diecast) => Math.max((r.spent || 0) - (r.paid || 0), 0);
+
+/** Date when the pre-order is scheduled/arriving, falling back to order date or creation date. */
+function getPreorderDate(car: Diecast): Date | null {
+  const raw = (car.expectedDate || car.orderDate || car.date || "").trim();
+  if (!raw) return null;
+  const d = parseDMY(raw);
+  if (d) return d;
+  const ymMatch = raw.match(/^(\d{4})[/-](\d{1,2})$/);
+  if (ymMatch) {
+    return new Date(Number(ymMatch[1]), Number(ymMatch[2]) - 1, 1);
+  }
+  const myMatch = raw.match(/^(\d{1,2})[/-](\d{4})$/);
+  if (myMatch) {
+    return new Date(Number(myMatch[2]), Number(myMatch[1]) - 1, 1);
+  }
+  const fallback = new Date(raw);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
 
 type SortMode = "balance" | "expectedDate" | "orderDate" | "seller" | "cost";
 type Grouping = "car" | "order";
@@ -438,6 +465,27 @@ function PreOrdersPage() {
   const totalDue = rows.reduce((s, r) => s + balanceOf(r), 0);
   const uniqueModels = new Set(rows.map((r) => `${r.make}|${r.model}`)).size;
 
+  // "PO for this month" metric:
+  // Current month is till 15th of every month. From 16th, show the PO balance for next month.
+  const now = new Date();
+  const isNextMonth = now.getDate() > 15;
+  const targetDate = new Date(now.getFullYear(), now.getMonth() + (isNextMonth ? 1 : 0), 1);
+  const targetYear = targetDate.getFullYear();
+  const targetMonth = targetDate.getMonth();
+  const targetMonthLabel = targetDate.toLocaleDateString("en-US", { month: "short" });
+
+  const monthCars = useMemo(() => {
+    return rows.filter((r) => {
+      const dt = getPreorderDate(r);
+      if (!dt) return false;
+      return dt.getFullYear() === targetYear && dt.getMonth() === targetMonth;
+    });
+  }, [rows, targetYear, targetMonth]);
+
+  const monthBalance = useMemo(() => {
+    return monthCars.reduce((s, r) => s + balanceOf(r), 0);
+  }, [monthCars]);
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <PageHeading
@@ -477,6 +525,14 @@ function PreOrdersPage() {
           icon={<Clock className="size-4" />}
           tone="amber"
           valueTone="amber"
+        />
+        <KpiTile
+          label={isNextMonth ? "PO for next month" : "PO for this month"}
+          value={inrFull(monthBalance)}
+          sub={`${targetMonthLabel} ${targetYear} · ${monthCars.length} casting${monthCars.length === 1 ? "" : "s"}`}
+          icon={<Calendar className="size-4" />}
+          tone="sky"
+          valueTone="sky"
         />
       </KpiBand>
 

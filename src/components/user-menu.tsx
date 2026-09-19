@@ -41,7 +41,7 @@ export function UserMenu() {
           type="button"
           aria-label={`Account: ${display}`}
           title={display}
-          className="ml-0.5 rounded-full outline-none ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="size-9 rounded-full outline-none ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0 flex items-center justify-center"
         >
           <Avatar className="size-9 border border-border">
             {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Boxes,
   Truck,
@@ -55,6 +55,9 @@ import { TopListSkeleton, TransitTrackerSkeleton } from "@/components/dashboard-
 import { catalogueKey, useRecentPreorders, type RecentPreorder } from "@/lib/catalogue-search";
 import { isPreOrder } from "@/lib/status-order";
 import { carSubLine } from "@/lib/car-subline";
+import { useCatalog } from "@/lib/catalog-store";
+import { isCarMatchingCatalog, type CatalogCar } from "@/lib/catalog";
+import { catalogIdFor } from "@/lib/car-id";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -679,9 +682,65 @@ function RecentPreorders() {
   const { isGuest } = useAuth();
   const { cars: shared, loading } = useRecentPreorders(!isGuest, RECENT_DAYS);
   const mine = useCars();
+  const { catalog, findMatchingInCatalog, getCatalogCarById } = useCatalog();
   const [adding, setAdding] = useState<RecentPreorder | null>(null);
   const [viewing, setViewing] = useState<RecentPreorder | null>(null);
   const now = new Date();
+
+  const resolveCatalogCar = useCallback(
+    (p: RecentPreorder): CatalogCar | undefined => {
+      const rawId = (p.catalogId ||
+        (p as Record<string, unknown>).car_id ||
+        (p as Record<string, unknown>).carId ||
+        "") as string;
+      if (rawId) {
+        const found = getCatalogCarById(rawId);
+        if (found) return found;
+      }
+      const matched = findMatchingInCatalog({
+        make: p.make,
+        model: p.model,
+        brand: p.brand,
+        series: p.series,
+        year: p.year,
+        colour: p.colour,
+        tampo: p.tampo,
+        castingNumber: p.castingNumber,
+        carNumber: p.carNumber,
+      });
+      if (matched) return matched;
+
+      const dummy = { ...p, id: rawId || "temp", spent: p.mrp || 0 } as unknown as Diecast;
+      return catalog.find((cat) => isCarMatchingCatalog(dummy, cat));
+    },
+    [catalog, findMatchingInCatalog, getCatalogCarById],
+  );
+
+  const toCarWithCatalogId = useCallback(
+    (c: RecentPreorder, fallbackKey: string): Diecast => {
+      const cat = resolveCatalogCar(c);
+      const rawId = (c.catalogId ||
+        (c as Record<string, unknown>).car_id ||
+        (c as Record<string, unknown>).carId ||
+        "") as string;
+      let actualId = cat?.car_id || rawId;
+      if (!actualId) {
+        try {
+          actualId = catalogIdFor(c as unknown as Parameters<typeof catalogIdFor>[0]);
+        } catch {
+          actualId = fallbackKey;
+        }
+      }
+      return {
+        ...c,
+        id: actualId,
+        carId: actualId,
+        catalogId: actualId,
+        spent: c.mrp || 0,
+      } as unknown as Diecast;
+    },
+    [resolveCatalogCar],
+  );
 
   // Castings already on your own pre-order list are not news to you — your
   // own recent pre-orders are in the shared list too.
@@ -689,6 +748,14 @@ function RecentPreorders() {
     const onMyList = new Set(mine.filter((c) => isPreOrder(c.status)).map(catalogueKey));
     return shared.filter((c) => !onMyList.has(catalogueKey(c)));
   }, [shared, mine]);
+
+  const viewingCatalogCar = useMemo(() => {
+    return viewing ? resolveCatalogCar(viewing) : undefined;
+  }, [viewing, resolveCatalogCar]);
+
+  const viewingCar = useMemo(() => {
+    return viewing ? toCarWithCatalogId(viewing, "preorder-car") : null;
+  }, [viewing, toCarWithCatalogId]);
 
   if (loading || cars.length === 0) return null;
 
@@ -705,12 +772,11 @@ function RecentPreorders() {
       </div>
       <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
         {cars.map((c, i) => {
-          // Shaped as a car for the card; the price it shows is the MRP, as
-          // nobody's purchase price is shared.
-          const asCar = preorderAsCar(c, `preorder-${i}`);
+          // Shaped as a car for the card pointing to the actual car in the catalogue
+          const asCar = toCarWithCatalogId(c, `preorder-${i}`);
           const ordered = parseDMY(c.lastOrdered);
           return (
-            <div key={asCar.id} className="relative w-36 shrink-0 snap-start sm:w-40">
+            <div key={asCar.id ?? i} className="relative w-36 shrink-0 snap-start sm:w-40">
               <CompactCarCard
                 car={asCar}
                 onOpen={() => setViewing(c)}
@@ -738,9 +804,10 @@ function RecentPreorders() {
           );
         })}
       </div>
-      {/* What the casting is, with nothing about anyone's purchase in it. */}
+      {/* What the casting is, pointing to the actual car in the catalogue */}
       <CatalogCarDetails
-        car={viewing ? preorderAsCar(viewing, "preorder-viewing") : null}
+        car={viewingCar}
+        catalogCar={viewingCatalogCar}
         preOrder
         owned={Boolean(viewing?.inMyCollection)}
         onClose={() => setViewing(null)}
