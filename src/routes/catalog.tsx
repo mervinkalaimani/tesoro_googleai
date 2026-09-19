@@ -18,7 +18,12 @@ import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
-import { catalogEntryUsage, resolveCatalogUserId, loadUserHandles } from "@/lib/catalog";
+import {
+  catalogEntryUsage,
+  resolveCatalogUserId,
+  resolveCatalogUserFirstName,
+  loadUserHandles,
+} from "@/lib/catalog";
 import type { CatalogueCar } from "@/lib/catalogue-search";
 import { carSubLine } from "@/lib/car-subline";
 import { inr, formatDayMonthYear } from "@/lib/format";
@@ -105,10 +110,11 @@ const NO_FILTERS: Filters = {
  * is why direction is not a control of its own — there is nothing to set it to
  * until you have said what you are ordering by.
  */
-type SortKey = "sno" | "brand" | "make" | "year";
+type SortKey = "added" | "sno" | "brand" | "make" | "year";
 type Sort = { key: SortKey; dir: "asc" | "desc" };
 
 const SORTS: { value: SortKey; label: string }[] = [
+  { value: "added", label: "Date added" },
   { value: "sno", label: "S.No" },
   { value: "brand", label: "Brand" },
   { value: "make", label: "Make" },
@@ -120,7 +126,7 @@ const SORTS: { value: SortKey; label: string }[] = [
  * release — Hot Wheels · Car Culture · Japanese Classics — which is how a
  * collector talks about what they are missing, and no single column holds it.
  */
-type GroupKey = "none" | "brand" | "make" | "series" | "set";
+type GroupKey = "none" | "brand" | "make" | "series" | "set" | "added_by";
 
 const GROUPS: { value: GroupKey; label: string }[] = [
   { value: "none", label: "No grouping" },
@@ -128,6 +134,7 @@ const GROUPS: { value: GroupKey; label: string }[] = [
   { value: "make", label: "Group by make" },
   { value: "series", label: "Group by series" },
   { value: "set", label: "Group by set" },
+  { value: "added_by", label: "Group by added by" },
 ];
 
 const clean = (v: string | null | undefined) => (v ?? "").trim();
@@ -143,6 +150,9 @@ function groupLabel(c: CatalogCar, by: GroupKey): string {
     const parts = [c.brand, c.series, c.sub_series].map(clean).filter(Boolean);
     return parts.length ? parts.join(" · ") : "No set";
   }
+  if (by === "added_by") {
+    return resolveCatalogUserFirstName(c.created_by) || "Unknown";
+  }
   return "";
 }
 
@@ -151,6 +161,15 @@ const cmpText = (a: string, b: string) =>
 
 function compareBy(a: CatalogCar, b: CatalogCar, sort: Sort, serials: Map<string, number>) {
   const flip = sort.dir === "desc" ? -1 : 1;
+  if (sort.key === "added") {
+    const da = clean(a.created_at);
+    const db = clean(b.created_at);
+    if (da !== db) {
+      if (da && db) return flip * da.localeCompare(db);
+      return flip * (da ? 1 : -1);
+    }
+    return flip * ((serials.get(a.car_id) ?? 0) - (serials.get(b.car_id) ?? 0));
+  }
   if (sort.key === "sno") {
     return flip * ((serials.get(a.car_id) ?? 0) - (serials.get(b.car_id) ?? 0));
   }
@@ -239,7 +258,7 @@ function CatalogPage() {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<Filters>(NO_FILTERS);
   const [draftHideOwned, setDraftHideOwned] = useState(false);
-  const [sort, setSort] = useState<Sort>({ key: "sno", dir: "asc" });
+  const [sort, setSort] = useState<Sort>({ key: "added", dir: "desc" });
   const [group, setGroup] = useState<GroupKey>("none");
   const [view, setView] = useState<ViewMode>("grid");
   const [adding, setAdding] = useState<CatalogCar | null>(null);
@@ -271,10 +290,14 @@ function CatalogPage() {
 
   /** Tapping the column you are already sorted by turns it round. */
   const sortBy = (key: SortKey) =>
-    setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
+    setSort((s) => ({
+      key,
+      dir: s.key === key ? (s.dir === "asc" ? "desc" : "asc") : key === "added" ? "desc" : "asc",
+    }));
 
+  const [, setHandlesLoaded] = useState(0);
   useEffect(() => {
-    void loadUserHandles();
+    loadUserHandles().then(() => setHandlesLoaded((n) => n + 1));
   }, []);
 
   // A car is "owned" when one of your cars points at that catalogue entry,
@@ -998,12 +1021,12 @@ function CatalogTable({
                   </td>
                   <td className="px-3 py-2 text-right tabular-nums">{c.mrp ? inr(c.mrp) : "—"}</td>
                   <td className="truncate px-3 py-2 text-xs text-muted-foreground">
-                    {resolveCatalogUserId(c.created_by)}
+                    {resolveCatalogUserFirstName(c.created_by)}
                   </td>
                   {/* Blank rather than "system": an entry nobody has corrected
                       has no editor, and naming one would invent an edit. */}
                   <td className="truncate px-3 py-2 text-xs text-muted-foreground">
-                    {c.updated_by ? resolveCatalogUserId(c.updated_by) : "—"}
+                    {c.updated_by ? resolveCatalogUserFirstName(c.updated_by) : "—"}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1.5">

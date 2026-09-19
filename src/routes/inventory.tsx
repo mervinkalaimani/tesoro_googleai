@@ -16,10 +16,11 @@ import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio } from "@/lib/format";
 import { isPreOrder, sortCars, statusRank } from "@/lib/status-order";
 import { Button } from "@/components/ui/button";
-import { TopBarChips } from "@/components/page-top-bar";
+import { SegmentControl } from "@/components/segment-control";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { carSubLine } from "@/lib/car-subline";
+import { toDateInputValue } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/inventory")({
@@ -290,48 +291,17 @@ function InventoryPage() {
     return out;
   }, [searched, draft]);
 
-  // Base rows for computing status chip counts
-  const baseForStatus = useMemo(() => {
-    let base = applyFilters(searched, filters);
-    if (chaseOnly) base = base.filter((r) => r.chase);
-    if (favOnly) base = base.filter((r) => r.favourite);
-    return base;
-  }, [searched, filters, chaseOnly, favOnly]);
-
-  const countAvailable = useMemo(
-    () => baseForStatus.filter((r) => (r.status || "").trim().toLowerCase() === "available").length,
-    [baseForStatus],
-  );
-  const countWaiting = useMemo(
-    () => baseForStatus.filter((r) => (r.status || "").trim().toLowerCase() === "waiting").length,
-    [baseForStatus],
-  );
-  const countPO = useMemo(
-    () =>
-      baseForStatus.filter(
-        (r) => isPreOrder(r.status) || (r.status || "").trim().toLowerCase() === "po",
-      ).length,
-    [baseForStatus],
-  );
-  const countISO = useMemo(
-    () => baseForStatus.filter((r) => (r.status || "").trim().toLowerCase() === "iso").length,
-    [baseForStatus],
-  );
-  const countOthers = useMemo(
-    () => baseForStatus.filter((r) => isOtherStatus(r.status)).length,
-    [baseForStatus],
-  );
-
-  // Status chips: only show Available, Waiting, PO, ISO and others
-  const statusChipsOptions = useMemo(
+  // Status segment control options: All is first option, Available is default
+  const statusSegmentOptions = useMemo(
     () => [
-      { value: "Available", label: "Available", count: countAvailable },
-      { value: "Waiting", label: "Waiting", count: countWaiting },
-      { value: "PO", label: "PO", count: countPO },
-      { value: "ISO", label: "ISO", count: countISO },
-      { value: "others", label: "Others", count: countOthers },
+      { value: "all", label: "All" },
+      { value: "Available", label: "Available" },
+      { value: "Waiting", label: "Waiting" },
+      { value: "PO", label: "PO" },
+      { value: "ISO", label: "ISO" },
+      { value: "others", label: "Others" },
     ],
-    [countAvailable, countWaiting, countPO, countISO, countOthers],
+    [],
   );
 
   const rows = useMemo(() => {
@@ -369,13 +339,33 @@ function InventoryPage() {
     const value = (r: Diecast) => r.mrp || r.spent || 0;
     const title = (r: Diecast) => (r.name || `${r.make} ${r.model}`).trim();
 
+    // Most relevant chronological date for the car (order date, received date, or ETA)
+    const getCarDate = (r: Diecast): string => {
+      const o = toDateInputValue(r.orderDate);
+      const d = toDateInputValue(r.date);
+      if (o && d) return o > d ? o : d;
+      return o || d || toDateInputValue(r.expectedDate) || "";
+    };
+
     // Every comparison is written ascending; descending flips it.
     const sign = sortDir === "asc" ? 1 : -1;
     switch (sort) {
       case "added":
-        return [...out].sort(
-          (a, b) => (sno(a) - sno(b) || (a.id || "").localeCompare(b.id || "")) * sign,
-        );
+        return [...out].sort((a, b) => {
+          const dateA = getCarDate(a);
+          const dateB = getCarDate(b);
+          if (dateA !== dateB) {
+            if (dateA && dateB) {
+              return dateA.localeCompare(dateB) * sign;
+            }
+            return (dateA ? 1 : -1) * sign;
+          }
+          const snoDiff = sno(a) - sno(b);
+          if (snoDiff !== 0) {
+            return snoDiff * sign;
+          }
+          return (a.id || "").localeCompare(b.id || "") * sign;
+        });
       case "value":
         return [...out].sort((a, b) => (value(a) - value(b)) * sign);
       case "cost":
@@ -477,18 +467,35 @@ function InventoryPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
-      {/* Page Title: scrolls away with the page. When not scrolled, buttons sit inline on the right. */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 sm:flex-nowrap min-w-0">
-        <div className="min-w-0 shrink-0">
-          <h1 className="text-display truncate text-lg sm:text-xl font-semibold">Inventory</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground truncate">
+      {/* Inventory page title */}
+      <div className="flex items-baseline justify-between gap-2 pb-0.5">
+        <div>
+          <h1 className="text-display text-xl sm:text-2xl font-semibold tracking-tight">
+            Inventory
+          </h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {rows.length.toLocaleString()} cars
           </p>
         </div>
+      </div>
 
-        {!isScrolled && (
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap justify-end shrink-0 ml-auto">
-            <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
+      {/* Filter & Actions section below title */}
+      <div
+        className={cn(
+          "sticky top-14 z-30 -mx-3 px-3 md:-mx-6 md:px-6 bg-background/95 backdrop-blur-md space-y-2 py-2 border-b border-border/40 transition-shadow",
+          isScrolled ? "shadow-xs" : "",
+        )}
+      >
+        {/* Top row: 3 buttons on the left with equal width, ViewToggle on the right */}
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
+            <ExportButton
+              rows={rows}
+              name="inventory"
+              label="Inventory"
+              iconOnlyOnMobile={false}
+              className="w-[84px] sm:w-28 h-8 justify-center text-xs"
+            />
             <SortSelect
               value={sort}
               dir={sortDir}
@@ -497,13 +504,16 @@ function InventoryPage() {
                 setSortDir(d);
               }}
               label="Sort cars"
+              triggerLabel="Sort"
               neutral="added"
               options={SORT_OPTIONS}
+              iconOnlyOnMobile={false}
+              className="w-[84px] sm:w-28 h-8 justify-center text-xs"
             />
             <Button
               size="sm"
               variant={activeCount ? "default" : "outline"}
-              className="shrink-0 gap-1"
+              className="w-[84px] sm:w-28 h-8 justify-center gap-1 text-xs shrink-0"
               onClick={() => {
                 setDraft(filters);
                 setFilterOpen((v) => !v);
@@ -512,14 +522,17 @@ function InventoryPage() {
               aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
               aria-expanded={filterOpen}
             >
-              <SlidersHorizontal className="size-4" />
-              {activeCount ? <span className="tabular-nums text-xs">{activeCount}</span> : null}
+              <SlidersHorizontal className="size-3.5 shrink-0" />
+              <span>Filter</span>
+              {activeCount ? (
+                <span className="tabular-nums text-[11px] font-semibold">({activeCount})</span>
+              ) : null}
             </Button>
             {(sort !== "added" || sortDir !== "desc") && (
               <Button
                 size="sm"
                 variant="ghost"
-                className="shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:inline-flex"
+                className="h-8 shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:inline-flex"
                 onClick={() => {
                   setSort("added");
                   setSortDir("desc");
@@ -528,69 +541,14 @@ function InventoryPage() {
                 Reset sort
               </Button>
             )}
+          </div>
+
+          <div className="shrink-0">
             <ViewToggle value={view} onChange={setView} />
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Sticky top section: sticks at top-14 (under global TopBar). On scroll: export, sort, filter buttons move to the left, view buttons sticky, chips sticky below. */}
-      <div
-        className={cn(
-          "sticky top-14 z-30 -mx-3 px-3 md:-mx-6 md:px-6 bg-background/95 backdrop-blur-md space-y-2 py-2 border-b border-border/40 transition-all",
-          isScrolled ? "shadow-xs" : "",
-        )}
-      >
-        {isScrolled && (
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <ExportButton rows={rows} name="inventory" label="Inventory" iconOnly />
-              <SortSelect
-                value={sort}
-                dir={sortDir}
-                onChange={(v, d) => {
-                  setSort(v);
-                  setSortDir(d);
-                }}
-                label="Sort cars"
-                neutral="added"
-                options={SORT_OPTIONS}
-              />
-              <Button
-                size="sm"
-                variant={activeCount ? "default" : "outline"}
-                className="shrink-0 gap-1"
-                onClick={() => {
-                  setDraft(filters);
-                  setFilterOpen((v) => !v);
-                }}
-                title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
-                aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
-                aria-expanded={filterOpen}
-              >
-                <SlidersHorizontal className="size-4" />
-                {activeCount ? <span className="tabular-nums text-xs">{activeCount}</span> : null}
-              </Button>
-              {(sort !== "added" || sortDir !== "desc") && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:inline-flex"
-                  onClick={() => {
-                    setSort("added");
-                    setSortDir("desc");
-                  }}
-                >
-                  Reset sort
-                </Button>
-              )}
-            </div>
-            <div className="shrink-0">
-              <ViewToggle value={view} onChange={setView} />
-            </div>
-          </div>
-        )}
-
-        {/* Expandable filter panel */}
+        {/* Expandable filter section */}
         {filterOpen && (
           <div className="card-elevated space-y-2.5 bg-muted/20 p-2.5 md:space-y-3 md:p-4">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6 md:gap-3">
@@ -670,15 +628,16 @@ function InventoryPage() {
           </div>
         )}
 
-        {/* Sticky chips: only show Available, Waiting, PO, ISO and others */}
-        <div className="space-y-1.5">
-          <TopBarChips
+        {/* Status segment control: All as first option, Available as default, matching height with top buttons */}
+        <div className="space-y-1.5 pt-0.5">
+          <SegmentControl
             value={status}
             onChange={(newStatus) => {
               setStatus(newStatus);
               setOtherSubFilter("all_others");
             }}
-            options={statusChipsOptions}
+            options={statusSegmentOptions}
+            className="w-auto"
           />
 
           {/* When Others is selected: other statuses shown in groups (Wrong Item, Delayed, Lost, etc.) */}
@@ -691,13 +650,13 @@ function InventoryPage() {
                 type="button"
                 onClick={() => setOtherSubFilter("all_others")}
                 className={cn(
-                  "shrink-0 text-xs px-2.5 py-0.5 rounded-full border transition-colors cursor-pointer",
+                  "inline-flex h-7 items-center rounded-[6px] px-2.5 text-xs font-medium transition-colors shrink-0",
                   otherSubFilter === "all_others"
-                    ? "bg-primary text-primary-foreground font-semibold border-primary shadow-xs"
-                    : "bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted",
+                    ? "bg-foreground text-background font-semibold"
+                    : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
-                All Others ({countOthers})
+                All Others
               </button>
               {allOtherGroups.map((grp) => (
                 <button
@@ -705,13 +664,13 @@ function InventoryPage() {
                   type="button"
                   onClick={() => setOtherSubFilter(grp.statusName)}
                   className={cn(
-                    "shrink-0 text-xs px-2.5 py-0.5 rounded-full border transition-colors cursor-pointer",
+                    "inline-flex h-7 items-center rounded-[6px] px-2.5 text-xs font-medium transition-colors shrink-0",
                     otherSubFilter.toLowerCase() === grp.statusName.toLowerCase()
-                      ? "bg-primary text-primary-foreground font-semibold border-primary shadow-xs"
-                      : "bg-muted/40 text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted",
+                      ? "bg-foreground text-background font-semibold"
+                      : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted",
                   )}
                 >
-                  {grp.statusName} ({grp.count})
+                  {grp.statusName}
                 </button>
               ))}
             </div>

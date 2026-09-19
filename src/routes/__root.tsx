@@ -42,31 +42,59 @@ function NotFoundComponent() {
   );
 }
 
+function isModuleLoadError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return (
+    msg.includes("Importing a module script failed") ||
+    msg.includes("Failed to fetch dynamically imported module") ||
+    msg.includes("error loading dynamically imported module") ||
+    msg.includes("Loading chunk") ||
+    msg.includes("Loading CSS chunk")
+  );
+}
+
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const isModuleError = isModuleLoadError(error);
+
   useEffect(() => {
+    if (isModuleError && typeof window !== "undefined") {
+      const key = "vite_module_reload_ts";
+      const last = parseInt(sessionStorage.getItem(key) || "0", 10);
+      if (Date.now() - last > 4000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        window.location.reload();
+        return;
+      }
+    }
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
+  }, [error, isModuleError]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
+          {isModuleError ? "App update available" : "This page didn't load"}
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          {isModuleError
+            ? "A newer version of the application components is available. Please reload the page."
+            : "Something went wrong on our end. You can try refreshing or head back home."}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
-              router.invalidate();
-              reset();
+              if (isModuleError && typeof window !== "undefined") {
+                window.location.reload();
+              } else {
+                router.invalidate();
+                reset();
+              }
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            Try again
+            {isModuleError ? "Reload page" : "Try again"}
           </button>
           <a
             href="/"
@@ -175,11 +203,28 @@ try {
 window.addEventListener('vite:preloadError', function () {
   window.location.reload();
 });
+window.addEventListener('unhandledrejection', function (e) {
+  var reason = e && (e.reason || e);
+  var msg = (reason && (reason.message || String(reason))) || '';
+  if (
+    msg.indexOf('Importing a module script failed') !== -1 ||
+    msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
+    msg.indexOf('error loading dynamically imported module') !== -1
+  ) {
+    var key = 'vite_module_reload_ts';
+    var last = parseInt(sessionStorage.getItem(key) || '0', 10);
+    if (Date.now() - last > 4000) {
+      sessionStorage.setItem(key, String(Date.now()));
+      window.location.reload();
+    }
+  }
+});
 window.addEventListener('error', function (e) {
   var msg = (e && (e.message || (e.error && e.error.message))) || '';
   if (
     msg.indexOf('Importing a module script failed') !== -1 ||
-    msg.indexOf('Failed to fetch dynamically imported module') !== -1
+    msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
+    msg.indexOf('error loading dynamically imported module') !== -1
   ) {
     var key = 'vite_module_reload_ts';
     var last = parseInt(sessionStorage.getItem(key) || '0', 10);

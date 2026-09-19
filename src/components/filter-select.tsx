@@ -29,6 +29,7 @@ export function SortSelect<T extends string>({
   onChange,
   options,
   label = "Sort",
+  triggerLabel,
   neutral,
   iconOnlyOnMobile = true,
   className = "",
@@ -39,6 +40,7 @@ export function SortSelect<T extends string>({
   /** `dir` is the direction the option starts in when picked. */
   options: { value: T; label: string; dir: SortDir }[];
   label?: string;
+  triggerLabel?: string;
   /** The page's default order; anything else reads as a sort being applied. */
   neutral: T;
   iconOnlyOnMobile?: boolean;
@@ -58,7 +60,7 @@ export function SortSelect<T extends string>({
         className={cn(
           "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-transparent text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
           iconOnlyOnMobile ? "w-8 justify-center px-0 sm:w-auto sm:px-2" : "px-2",
-          isSet ? "max-w-[11rem] border-primary/40 text-foreground" : "text-muted-foreground",
+          isSet ? "border-primary/40 text-foreground font-medium" : "text-muted-foreground",
           className,
         )}
       >
@@ -67,11 +69,9 @@ export function SortSelect<T extends string>({
         ) : (
           <ArrowUpDown className="size-3.5 shrink-0" />
         )}
-        {isSet && current && (
-          <span className={cn("min-w-0 truncate text-xs", iconOnlyOnMobile && "max-sm:hidden")}>
-            {current.label}
-          </span>
-        )}
+        <span className={cn("min-w-0 truncate text-xs", iconOnlyOnMobile && "max-sm:hidden")}>
+          {triggerLabel ?? (isSet && current ? current.label : "Sort")}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
         {options.map((o) => {

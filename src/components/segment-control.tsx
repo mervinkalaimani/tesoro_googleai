@@ -35,7 +35,7 @@ export function SegmentControl<T extends string>({
         // wider than a phone. Without `fill` the options never shrink, so the
         // control scrolls rather than squashing its labels; with it they share
         // the width and truncate, which is what a form field wants.
-        "min-w-0 max-w-full snap-x overflow-x-auto rounded-md border border-border bg-muted/40 p-0.5 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto rounded-md border border-border bg-muted/40 p-0.5 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         fill ? "flex w-full" : "inline-flex",
         disabled && "pointer-events-none opacity-50",
         className,
@@ -53,10 +53,10 @@ export function SegmentControl<T extends string>({
               // min-w-0 + truncate keep a long label from stretching its cell:
               // in a grid the columns are equal, so one wide option would
               // otherwise widen every other one with it.
-              "min-w-0 snap-start truncate rounded-[6px] px-2.5 py-1 text-center transition-colors",
+              "min-w-0 h-7 inline-flex items-center justify-center snap-start truncate rounded-[6px] px-2.5 text-center font-medium leading-none transition-colors",
               fill ? "flex-1 basis-0" : "shrink-0",
               active
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

@@ -498,7 +498,7 @@ function OrdersPage() {
             value={tab}
             onChange={setTab}
             options={visibleTabs}
-            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2 max-sm:[&>button]:py-0.5"
+            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
           />
         }
         right={

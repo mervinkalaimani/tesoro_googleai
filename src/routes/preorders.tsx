@@ -544,7 +544,7 @@ function PreOrdersPage() {
           <SegmentControl
             value={grouping}
             onChange={setGrouping}
-            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2 max-sm:[&>button]:py-0.5"
+            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
             options={[
               { value: "car", label: "By car" },
               { value: "order", label: "By order ID" },

@@ -50,32 +50,53 @@ const CODES_STORAGE_KEY = "tesoro_catalog_codes_cache";
 const RAW_CODES_STORAGE_KEY = "tesoro_raw_codes_cache";
 
 const userHandleMap: Record<string, string> = {};
+const userFirstNameMap: Record<string, string> = {};
 
-/** Preloads user_id handles for known auth_uids so creator IDs are human readable. */
+/** Preloads user first names and user_id handles for known users so creator IDs are human readable. */
 export async function loadUserHandles(): Promise<Record<string, string>> {
   try {
-    const { data } = await supabase.from("tesoro_users").select("auth_uid, user_id");
+    const { data } = await supabase.from("tesoro_users").select("auth_uid, user_id, first_name");
     if (data) {
       for (const row of data) {
-        if (row.auth_uid && row.user_id) {
-          userHandleMap[row.auth_uid] = row.user_id;
+        const fName = (row.first_name || "").trim();
+        const uId = (row.user_id || "").trim();
+        if (row.auth_uid) {
+          if (uId) userHandleMap[row.auth_uid] = uId;
+          if (fName) userFirstNameMap[row.auth_uid] = fName;
+        }
+        if (uId) {
+          userHandleMap[uId] = uId;
+          if (fName) userFirstNameMap[uId] = fName;
         }
       }
     }
   } catch (e) {
     // Ignore fetch failures
   }
-  return userHandleMap;
+  return userFirstNameMap;
 }
 
-/** Resolves an auth_uid or creator string to a clean user_id handle. */
+/** Resolves an auth_uid or creator string to the user's First Name (or falls back to handle/ID). */
+export function resolveCatalogUserFirstName(raw: string | null | undefined): string {
+  return resolveCatalogUserId(raw);
+}
+
+/** Resolves an auth_uid or creator string to a clean first name or user handle. */
 export function resolveCatalogUserId(raw: string | null | undefined): string {
-  if (!raw || !raw.trim()) return "system";
+  if (!raw || !raw.trim()) return "System";
   const clean = raw.trim();
+  if (userFirstNameMap[clean]) return userFirstNameMap[clean];
   if (userHandleMap[clean]) return userHandleMap[clean];
+  const lower = clean.toLowerCase();
+  for (const [k, v] of Object.entries(userFirstNameMap)) {
+    if (k.toLowerCase() === lower) return v;
+  }
+  for (const [k, v] of Object.entries(userHandleMap)) {
+    if (k.toLowerCase() === lower) return v;
+  }
   // If it is a UUID:
   if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean)) {
-    return userHandleMap[clean] || clean.slice(0, 8);
+    return clean.slice(0, 8);
   }
   return clean;
 }

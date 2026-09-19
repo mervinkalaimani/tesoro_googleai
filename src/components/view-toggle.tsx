@@ -16,10 +16,10 @@ const MODES: { value: ViewMode; label: string; icon: typeof List }[] = [
   { value: "compact", label: "Compact grid view", icon: Grid3x3 },
 ];
 
-/** Column counts for the two grids, shared so every page matches. */
-export const GRID_COLS = "grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+/** Column counts for the two grids, shared so every page matches: 2 cols for grid and 3 cols for compact on phone */
+export const GRID_COLS = "grid gap-2.5 sm:gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
 export const COMPACT_GRID_COLS =
-  "grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
+  "grid gap-1.5 sm:gap-2 grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
 
 export function ViewToggle({
   value,
