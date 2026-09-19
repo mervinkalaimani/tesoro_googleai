@@ -1,6 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDownUp, Check, Layers, Loader2, Pencil, Plus, Store, Trash2 } from "lucide-react";
+import {
+  ArrowDownUp,
+  Check,
+  Layers,
+  Loader2,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+  Store,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { useCatalog } from "@/lib/catalog-store";
@@ -226,6 +236,9 @@ function CatalogPage() {
   const [segment, setSegment] = useState<Segment>("all");
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [hideOwned, setHideOwned] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<Filters>(NO_FILTERS);
+  const [draftHideOwned, setDraftHideOwned] = useState(false);
   const [sort, setSort] = useState<Sort>({ key: "sno", dir: "asc" });
   const [group, setGroup] = useState<GroupKey>("none");
   const [view, setView] = useState<ViewMode>("grid");
@@ -332,6 +345,43 @@ function CatalogPage() {
   const activeCount =
     Object.values(filters).filter((v) => v !== "all").length + (hideOwned ? 1 : 0);
 
+  const openFilterModal = () => {
+    setDraftFilters(filters);
+    setDraftHideOwned(hideOwned);
+    setFilterModalOpen(true);
+  };
+
+  const handleClearFilters = () => {
+    setDraftFilters(NO_FILTERS);
+    setDraftHideOwned(false);
+  };
+
+  const handleApplyFilters = () => {
+    setFilters(draftFilters);
+    setHideOwned(draftHideOwned);
+    setFilterModalOpen(false);
+  };
+
+  const draftActiveCount =
+    Object.values(draftFilters).filter((v) => v !== "all").length + (draftHideOwned ? 1 : 0);
+
+  const draftOptions = useMemo(() => {
+    const out = {} as Record<FilterKey, { value: string; count: number }[]>;
+    for (const d of FILTERS) {
+      const counts = new Map<string, number>();
+      for (const c of searched) {
+        if (draftHideOwned && owned.has(c.car_id.toUpperCase())) continue;
+        if (!matches(c, draftFilters, d.key)) continue;
+        const v = d.get(c).trim();
+        if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
+      }
+      out[d.key] = [...counts.entries()]
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
+    }
+    return out;
+  }, [searched, draftFilters, draftHideOwned, owned]);
+
   // Reordering is as much a new list as refiltering is: sixty rows into a
   // different order are sixty different rows.
   useEffect(() => setVisible(LOAD_BATCH), [segment, filters, hideOwned, query, sort, group]);
@@ -385,9 +435,7 @@ function CatalogPage() {
             key={c.car_id}
             car={asCar(c)}
             onOpen={() => setViewing(c)}
-            caption={
-              owned.has(c.car_id.toUpperCase()) ? "Owned" : isPreOrder(c) ? "Pre Order" : undefined
-            }
+            caption={owned.has(c.car_id.toUpperCase()) ? "Owned" : isPreOrder(c) ? "PO" : undefined}
           />
         ))}
       </div>
@@ -410,7 +458,6 @@ function CatalogPage() {
             owned={owned.has(c.car_id.toUpperCase())}
             onOpen={() => setViewing(c)}
             onAdd={() => setAdding(c)}
-            onEdit={isAdmin ? () => setEditing(c) : undefined}
           />
         ))}
       </div>
@@ -418,7 +465,7 @@ function CatalogPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* Sticky header section: keeps title, count, actions, toolbar, and filters pinned to top while scrolling */}
+      {/* Sticky header section: keeps title, count, actions, toolbar pinned to top while scrolling */}
       <div className="sticky top-14 z-30 -mx-3 -mt-3 border-b border-border/70 bg-background/95 px-3 py-3 backdrop-blur-xl md:-mx-6 md:-mt-6 md:px-6 shadow-xs space-y-2.5">
         <PageHeading
           title="Catalog"
@@ -434,25 +481,42 @@ function CatalogPage() {
 
         <PageToolbar
           sticky={false}
-          // One row on a phone: All/Released/Pre Order, then sort and group as
-          // single icons, then the view toggle. Spelled out they needed 775px of
-          // a 375px screen; as icons the whole toolbar comes to about 346.
           oneLine
           left={
-            <SegmentControl
-              value={segment}
-              onChange={setSegment}
-              // h-8 to stand the same height as the icon buttons and the view
-              // toggle beside it. Only the labels are trimmed on a phone — the
-              // vertical padding went too, and left this control visibly shorter
-              // than everything sharing its row.
-              className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
-              options={[
-                { value: "all", label: "All" },
-                { value: "released", label: "Released" },
-                { value: "preorder", label: "Pre Order" },
-              ]}
-            />
+            <div className="flex items-center gap-2">
+              <SegmentControl
+                value={segment}
+                onChange={setSegment}
+                className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "released", label: "Released" },
+                  { value: "preorder", label: "PO" },
+                ]}
+              />
+              <Button
+                type="button"
+                variant={activeCount > 0 ? "default" : "outline"}
+                size="sm"
+                onClick={openFilterModal}
+                className={cn(
+                  "h-8 gap-1.5 px-2.5 text-xs font-semibold shrink-0 cursor-pointer shadow-xs max-sm:px-2 max-sm:gap-1",
+                  activeCount > 0
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                title="Filter castings"
+                aria-label="Filter castings"
+              >
+                <SlidersHorizontal className="size-3.5" />
+                <span className="hidden sm:inline">Filters</span>
+                {activeCount > 0 && (
+                  <span className="flex size-4 items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground">
+                    {activeCount}
+                  </span>
+                )}
+              </Button>
+            </div>
           }
           right={
             <>
@@ -543,74 +607,6 @@ function CatalogPage() {
             </>
           }
         />
-
-        {/* Always here, on one line, rather than behind a button. Ten narrow
-          selects that scroll sideways beat a panel that has to be opened first:
-          the filter you want to clear is the one you can no longer see. */}
-        <div className="flex items-center gap-2">
-          {/* The filters scroll; Clear does not. A Clear button you have to swipe
-            to reach is a Clear button you cannot find when the filters are
-            exactly what is in your way.
-
-            Hide owned rides inside the scroller with the rest, because it is
-            one of them. Pinned beside Clear it took 190px of a 375px phone and
-            left the ten selects sharing 168. */}
-          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <label
-              className={cn(
-                "flex h-8 shrink-0 cursor-pointer select-none items-center gap-2 rounded-md border px-2.5 text-xs font-medium",
-                hideOwned ? "border-primary text-foreground" : "border-input text-muted-foreground",
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={hideOwned}
-                onChange={(e) => setHideOwned(e.target.checked)}
-                className="size-3.5 rounded border-input accent-primary"
-              />
-              Hide owned
-            </label>
-
-            {FILTERS.map((d) => {
-              const active = filters[d.key] !== "all";
-              return (
-                <select
-                  key={d.key}
-                  value={filters[d.key]}
-                  onChange={(e) => setFilters((f) => ({ ...f, [d.key]: e.target.value }))}
-                  aria-label={d.label}
-                  title={d.label}
-                  className={cn(
-                    "h-8 w-[8.5rem] shrink-0 truncate rounded-md border bg-background px-2 text-xs",
-                    active
-                      ? "border-primary text-foreground"
-                      : "border-input text-muted-foreground",
-                  )}
-                >
-                  <option value="all">{d.label}</option>
-                  {options[d.key].map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.value} ({o.count})
-                    </option>
-                  ))}
-                </select>
-              );
-            })}
-          </div>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 shrink-0 px-2"
-            disabled={!activeCount}
-            onClick={() => {
-              setFilters(NO_FILTERS);
-              setHideOwned(false);
-            }}
-          >
-            Clear
-          </Button>
-        </div>
       </div>
 
       {isLoading && catalog.length === 0 ? (
@@ -647,7 +643,7 @@ function CatalogPage() {
         expectedDate={viewing?.expected_date}
         owned={viewing ? owned.has(viewing.car_id.toUpperCase()) : false}
         onClose={() => setViewing(null)}
-        canEdit={isAdmin && !isGuest}
+        canEdit={!isGuest}
         onEdit={() => {
           const target = viewing;
           setViewing(null);
@@ -678,7 +674,7 @@ function CatalogPage() {
         prefill={adding ? toPrefill(adding) : null}
         prefillStatus={adding && isPreOrder(adding) ? "Pre Order" : "Waiting"}
       />
-      {isAdmin && !isGuest && (
+      {!isGuest && (
         <CatalogFormDialog
           open={editing !== null}
           entry={editing}
@@ -701,6 +697,95 @@ function CatalogPage() {
           }}
         />
       )}
+
+      {/* Filter Bottom Sheet Modal */}
+      <Dialog open={filterModalOpen} onOpenChange={setFilterModalOpen}>
+        <DialogContent
+          hideDragHandle={false}
+          className="max-sm:top-auto max-sm:bottom-0 max-sm:inset-x-0 max-sm:h-auto max-sm:max-h-[85dvh] max-sm:rounded-t-3xl max-sm:rounded-b-none max-sm:p-0 flex flex-col overflow-hidden sm:max-w-lg p-0 border-border bg-background"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-border/80 px-4 py-3.5 shrink-0">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="size-4 text-primary" />
+              <DialogTitle className="text-base font-bold text-foreground">Filters</DialogTitle>
+              {draftActiveCount > 0 && (
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+                  {draftActiveCount} active
+                </span>
+              )}
+            </div>
+            <DialogDescription className="sr-only">Filter catalog cars</DialogDescription>
+          </div>
+
+          {/* Scrollable Filter List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60dvh]">
+            {/* Hide owned toggle */}
+            <label className="flex cursor-pointer items-center justify-between rounded-xl border border-border/80 bg-muted/30 p-3 hover:bg-muted/50 transition-colors">
+              <span className="text-sm font-medium text-foreground">Hide owned castings</span>
+              <input
+                type="checkbox"
+                checked={draftHideOwned}
+                onChange={(e) => setDraftHideOwned(e.target.checked)}
+                className="size-4 rounded border-input accent-primary cursor-pointer"
+              />
+            </label>
+
+            {/* All filter dropdowns arranged in 2 columns */}
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+              {FILTERS.map((d) => {
+                const isSelected = draftFilters[d.key] !== "all";
+                const filterOpts = draftOptions[d.key] || [];
+                return (
+                  <div key={d.key} className="space-y-1">
+                    <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block truncate">
+                      {d.label}
+                    </label>
+                    <select
+                      value={draftFilters[d.key]}
+                      onChange={(e) => setDraftFilters((f) => ({ ...f, [d.key]: e.target.value }))}
+                      aria-label={d.label}
+                      className={cn(
+                        "w-full h-9 rounded-lg border bg-background px-2.5 text-xs transition-colors cursor-pointer truncate",
+                        isSelected
+                          ? "border-primary font-medium text-foreground ring-1 ring-primary/20"
+                          : "border-input text-muted-foreground",
+                      )}
+                    >
+                      <option value="all">All {d.label}s</option>
+                      {filterOpts.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.value} ({o.count})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sticky footer: Clear on left, Apply on right */}
+          <div className="sticky bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur-md p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-3 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClearFilters}
+              disabled={draftActiveCount === 0}
+              className="h-10 px-4 text-sm font-semibold cursor-pointer"
+            >
+              Clear
+            </Button>
+            <Button
+              type="button"
+              onClick={handleApplyFilters}
+              className="h-10 flex-1 sm:flex-initial px-6 text-sm font-semibold cursor-pointer"
+            >
+              Apply
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -710,13 +795,11 @@ function CatalogCard({
   owned,
   onOpen,
   onAdd,
-  onEdit,
 }: {
   c: CatalogCar;
   owned: boolean;
   onOpen: () => void;
   onAdd: () => void;
-  onEdit?: () => void;
 }) {
   const car = asCar(c);
 
@@ -726,7 +809,7 @@ function CatalogCard({
         <CarThumb car={car} className="aspect-[16/10] w-full" />
         {isPreOrder(c) && (
           <span className="absolute left-2 top-2 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-amber-400 backdrop-blur-sm">
-            Pre Order
+            PO
           </span>
         )}
         {owned && (
@@ -751,18 +834,6 @@ function CatalogCard({
             <div className="text-sm font-semibold tabular-nums">{c.mrp ? inr(c.mrp) : "—"}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            {onEdit && (
-              <Button
-                size="icon"
-                variant="outline"
-                className="size-8"
-                onClick={onEdit}
-                aria-label={`Edit ${car.name} in the catalogue`}
-                title="Edit catalogue entry"
-              >
-                <Pencil className="size-3.5" />
-              </Button>
-            )}
             <Button size="sm" className="gap-1.5" onClick={onAdd}>
               <Plus className="size-3.5" />
               Add
@@ -798,8 +869,64 @@ function CatalogTable({
   onEdit?: (c: CatalogCar) => void;
 }) {
   return (
-    <div className="card-elevated overflow-hidden">
-      <div className="overflow-x-auto">
+    <>
+      {/* Phones get the same rows as cards: copying the design of list view from inventory */}
+      <div className="space-y-2 md:hidden">
+        {rows.map((c) => {
+          const car = asCar(c);
+          return (
+            <article key={c.car_id} className="card-elevated overflow-hidden">
+              <button
+                type="button"
+                onClick={() => onOpen(c)}
+                className="block w-full space-y-1 p-2.5 text-left transition-colors hover:bg-muted/30"
+              >
+                {/* NAME AND MRP */}
+                <div className="flex items-start justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
+                    {isPreOrder(c) && (
+                      <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-semibold text-amber-500">
+                        PO
+                      </span>
+                    )}
+                    {owned.has(c.car_id.toUpperCase()) && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-500">
+                        <Check className="size-3" />
+                        <span>Owned</span>
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-sm font-semibold tabular-nums">
+                    {c.mrp ? inr(c.mrp) : "—"}
+                  </span>
+                </div>
+
+                {/* WHAT KIND OF CAR */}
+                <div className="truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
+
+                {/* BRAND, ASSORTMENT AND S.NO / SERIES */}
+                <div className="flex items-end justify-between gap-3 text-xs text-muted-foreground">
+                  <span className="min-w-0 truncate">
+                    {[c.brand, c.assortment].filter(Boolean).join(" · ") || "—"}
+                  </span>
+                  <span className="shrink-0 truncate text-[11px]">
+                    {c.series ? `Series: ${c.series}` : c.car_id}
+                  </span>
+                </div>
+              </button>
+            </article>
+          );
+        })}
+        {rows.length === 0 && (
+          <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
+            No castings match those filters.
+          </p>
+        )}
+      </div>
+
+      {/* Desktop: clean table matching inventory */}
+      <div className="card-elevated hidden overflow-x-auto md:block">
         <table className="w-full min-w-[54rem] table-fixed text-sm">
           <colgroup>
             <col className="w-[4rem]" />
@@ -846,7 +973,7 @@ function CatalogTable({
                           <span className="truncate font-medium">{car.name}</span>
                           {isPreOrder(c) && (
                             <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-500">
-                              Pre
+                              PO
                             </span>
                           )}
                           {owned.has(c.car_id.toUpperCase()) && (
@@ -884,7 +1011,7 @@ function CatalogTable({
                         <Button
                           size="icon"
                           variant="outline"
-                          className="size-7"
+                          className="size-7 cursor-pointer"
                           onClick={() => onEdit(c)}
                           aria-label={`Edit ${car.name} in the catalogue`}
                           title="Edit catalogue entry"
@@ -892,7 +1019,11 @@ function CatalogTable({
                           <Pencil className="size-3.5" />
                         </Button>
                       )}
-                      <Button size="sm" className="h-7 gap-1 px-2" onClick={() => onAdd(c)}>
+                      <Button
+                        size="sm"
+                        className="h-7 gap-1 px-2 cursor-pointer shadow-xs"
+                        onClick={() => onAdd(c)}
+                      >
                         <Plus className="size-3.5" />
                         Add
                       </Button>
@@ -904,7 +1035,7 @@ function CatalogTable({
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -712,11 +712,13 @@ function CarPopupContent({
               {/* Car Design Card (slides over the car image on scroll) */}
               <div
                 ref={mobile.cardRef}
-                className="relative rounded-t-3xl border-t border-border bg-background px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] flex-1 flex flex-col justify-between"
+                className="relative rounded-t-3xl border-t border-border bg-background px-4 pt-3 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] flex-1 flex flex-col justify-between"
               >
                 <div className="space-y-4">
-                  {/* Car title section */}
-                  <CarTitleSection car={car} />
+                  {/* Car title section: sticky to the top as you scroll on phone, pinned on top */}
+                  <div className="sticky top-0 z-30 -mx-4 px-4 pt-2 pb-3 bg-background/95 backdrop-blur-md border-b border-border/50 shadow-xs">
+                    <CarTitleSection car={car} />
+                  </div>
 
                   {/* Action buttons on the left / card top: View in Catalogue | Add Another */}
                   <CarActionButtons onViewInCatalog={onViewInCatalog} onAddAnother={onAddAnother} />
@@ -851,6 +853,25 @@ function CarPopupContent({
 
 /** Reusable title section placed on left column above or in card */
 export function CarTitleSection({ car }: { car: Diecast }) {
+  const cars = useCars();
+  const { catalog } = useCatalog();
+
+  const catalogCount = useMemo(() => {
+    const targetCatId = (car.catalogId || "").trim().toUpperCase();
+    if (targetCatId) {
+      const matchCount = cars.filter(
+        (c) => (c.catalogId || "").trim().toUpperCase() === targetCatId,
+      ).length;
+      if (matchCount > 0) return matchCount;
+    }
+    const matchedCat = catalog.find((c) => isCarMatchingCatalog(car, c));
+    if (matchedCat) {
+      const matchCount = cars.filter((c) => isCarMatchingCatalog(c, matchedCat)).length;
+      if (matchCount > 0) return matchCount;
+    }
+    return 0;
+  }, [cars, catalog, car]);
+
   return (
     <div className="space-y-1.5">
       {/* Brand & Assortment on the left side, status tag on the right side */}
@@ -874,10 +895,11 @@ export function CarTitleSection({ car }: { car: Diecast }) {
         {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
       </h2>
 
-      {/* Car ID sits below the car name, no title, no container. Show only the last 11 characters. */}
+      {/* Car ID sits below the car name, no title, no container. Show only the last 11 characters, followed by · x{count} if repeated */}
       {car.id && (
         <p className="font-mono text-xs text-muted-foreground/80 select-all tracking-wider">
-          {car.id.slice(-11)}
+          <span>{car.id.slice(-11)}</span>
+          {catalogCount > 1 && <span> · x{catalogCount}</span>}
         </p>
       )}
     </div>
@@ -1577,7 +1599,7 @@ export function CatalogCarDetails({
       <DialogContent
         hideDragHandle
         disableSheetDismiss
-        className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:flex max-sm:flex-col block gap-0 overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 text-foreground shadow-2xl sm:max-h-[92vh] sm:w-fit w-fit max-w-fit sm:max-w-[calc(100vw-2rem)] transition-[max-width] duration-200"
+        className="max-md:top-0 max-md:inset-x-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:w-full max-md:max-w-full max-md:rounded-none max-md:p-0 max-md:flex max-md:flex-col block gap-0 overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 text-foreground shadow-2xl md:max-h-[82vh] md:w-fit md:max-w-[calc(100vw-2rem)] transition-[max-width] duration-200"
       >
         {car && (
           <CatalogDetailsContent
@@ -1639,7 +1661,7 @@ function CatalogDetailsContent({
   const isActuallyOwned = owned || Boolean(matchingUserCar);
 
   useEffect(() => {
-    if (!isAdmin || !catalogCar?.car_id) {
+    if (!catalogCar?.car_id) {
       setOwners([]);
       return;
     }
@@ -1664,7 +1686,7 @@ function CatalogDetailsContent({
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, catalogCar?.car_id, catalogCar, isActuallyOwned, user, profile, matchingUserCar]);
+  }, [catalogCar?.car_id, catalogCar, isActuallyOwned, user, profile, matchingUserCar]);
 
   const handleSeeAll = () => {
     if (typeof window !== "undefined" && window.innerWidth >= 768 && onToggleOwnersColumn) {
@@ -1713,6 +1735,8 @@ function CatalogDetailsContent({
             catalogCar={catalogCar}
             owned={isActuallyOwned}
             preOrder={preOrder}
+            owners={owners}
+            ownersLoading={ownersLoading}
             onSeeAllOwners={handleSeeAll}
           />
         </div>
@@ -1893,7 +1917,7 @@ function CatalogDetailsBody({
 
   useEffect(() => {
     if (externalOwners !== undefined) return;
-    if (!isAdmin || !catalogCar?.car_id) {
+    if (!catalogCar?.car_id) {
       setInternalOwners([]);
       return;
     }
@@ -1914,16 +1938,7 @@ function CatalogDetailsBody({
     return () => {
       cancelled = true;
     };
-  }, [
-    externalOwners,
-    isAdmin,
-    catalogCar?.car_id,
-    catalogCar,
-    owned,
-    user,
-    profile,
-    matchingUserCar,
-  ]);
+  }, [externalOwners, catalogCar?.car_id, catalogCar, owned, user, profile, matchingUserCar]);
 
   return (
     <div className="space-y-4">
@@ -1955,13 +1970,18 @@ function CatalogDetailsBody({
                       : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
                   )}
                 >
-                  {preOrder ? "Pre Order" : "Released"}
+                  {preOrder ? "PO" : "Released"}
                 </span>
               </div>
             </div>
             <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
             </h2>
+            {(catalogCar?.car_id || car.catalogId) && (
+              <p className="font-mono text-xs text-muted-foreground/80 select-all tracking-wider mt-1">
+                {catalogCar?.car_id || car.catalogId}
+              </p>
+            )}
           </div>
 
           <hr className="border-border" />
@@ -2135,7 +2155,7 @@ export function CatalogCarTitleSection({
                 : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
             )}
           >
-            {preOrder ? "Pre Order" : "Released"}
+            {preOrder ? "PO" : "Released"}
           </span>
         </div>
       </div>

@@ -32,6 +32,7 @@ import { SegmentControl } from "@/components/segment-control";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { useCars } from "@/lib/cars-store";
+import { useAuth } from "@/lib/auth-store";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import {
@@ -66,7 +67,24 @@ export function CatalogFormDialog({
   canDelete?: boolean;
   onDelete?: () => void;
 }) {
+  const { user, profile, isAdmin } = useAuth();
   const isNew = entry === "new" || !entry;
+  const currentUid = user?.id || profile?.user_id;
+  const isCreator = Boolean(
+    !isNew &&
+    entry &&
+    currentUid &&
+    (entry.created_by === currentUid ||
+      (user?.id && entry.created_by === user.id) ||
+      (profile?.user_id && entry.created_by === profile.user_id)),
+  );
+
+  // General users will only be able to edit the image.
+  // For the person who added the car, they can edit all details but not delete the casting.
+  // Admins can edit all details and delete the casting.
+  const canEditAll = isAdmin || isCreator || isNew;
+  const isImageOnly = !canEditAll;
+  const effectiveCanDelete = isAdmin && canDelete;
 
   const [form, setForm] = useState<Partial<CatalogCar>>({
     brand: "Hot Wheels",
@@ -213,16 +231,18 @@ export function CatalogFormDialog({
   };
 
   const isPreOrder = form.release_status === "Pre Order";
-  const missingMake = !form.make?.trim();
-  const missingModel = !form.model?.trim();
-  const missingBrand = !form.brand?.trim();
-  const missingAssortment = !form.assortment?.trim();
-  const missingMrp = !form.mrp || form.mrp <= 0;
+  const missingMake = !isImageOnly && !form.make?.trim();
+  const missingModel = !isImageOnly && !form.model?.trim();
+  const missingBrand = !isImageOnly && !form.brand?.trim();
+  const missingAssortment = !isImageOnly && !form.assortment?.trim();
+  const missingMrp = !isImageOnly && (!form.mrp || form.mrp <= 0);
 
-  const hasMissing = missingMake || missingModel || missingBrand || missingAssortment || missingMrp;
+  const hasMissing =
+    !isImageOnly &&
+    (missingMake || missingModel || missingBrand || missingAssortment || missingMrp);
 
   const save = async () => {
-    if (hasMissing) {
+    if (!isImageOnly && hasMissing) {
       if (missingBrand) toast.error("Brand is required");
       else if (missingMake) toast.error("Make is required");
       else if (missingModel) toast.error("Model is required");
@@ -232,39 +252,44 @@ export function CatalogFormDialog({
     }
 
     setSaving(true);
-    const car: CatalogCar = {
-      ...(entry && entry !== "new" ? entry : {}),
-      brand: (form.brand || "Hot Wheels").trim(),
-      make: (form.make || "").trim(),
-      model: (form.model || "").trim(),
-      variant: (form.variant || "").trim(),
-      year: (form.year || "").trim() || null,
-      colour: (form.colour || "").trim(),
-      type: (form.type || "").trim(),
-      size: (form.size || "1:64").trim(),
-      assortment: (form.assortment || "Mainline").trim(),
-      series: (form.series || "").trim(),
-      sub_series: (form.sub_series || "").trim(),
-      car_number: (form.car_number || "").trim(),
-      mrp: Number(form.mrp) || 179,
-      image_url: (form.image_url || "").trim() || null,
-      release_status: form.release_status ?? "Released",
-      rarity: form.rarity || "Normal",
-      expected_date: isPreOrder ? form.expected_date || null : null,
-      car_id: isNew
-        ? generateCatalogCarId({
-            brand: form.brand || "Hot Wheels",
-            make: form.make || "",
-            model: form.model || "",
-            assortment: form.assortment || "",
-            series: form.series || "",
-            subSeries: form.sub_series || "",
-            carNumber: form.car_number || "",
-            mrp: Number(form.mrp) || 179,
-          })
-        : (entry as CatalogCar).car_id,
-      name: (form.name || "").trim() || `${form.make} ${form.model}`.trim(),
-    };
+    const car: CatalogCar = isImageOnly
+      ? {
+          ...(entry as CatalogCar),
+          image_url: (form.image_url || "").trim() || null,
+        }
+      : {
+          ...(entry && entry !== "new" ? entry : {}),
+          brand: (form.brand || "Hot Wheels").trim(),
+          make: (form.make || "").trim(),
+          model: (form.model || "").trim(),
+          variant: (form.variant || "").trim(),
+          year: (form.year || "").trim() || null,
+          colour: (form.colour || "").trim(),
+          type: (form.type || "").trim(),
+          size: (form.size || "1:64").trim(),
+          assortment: (form.assortment || "Mainline").trim(),
+          series: (form.series || "").trim(),
+          sub_series: (form.sub_series || "").trim(),
+          car_number: (form.car_number || "").trim(),
+          mrp: Number(form.mrp) || 179,
+          image_url: (form.image_url || "").trim() || null,
+          release_status: form.release_status ?? "Released",
+          rarity: form.rarity || "Normal",
+          expected_date: isPreOrder ? form.expected_date || null : null,
+          car_id: isNew
+            ? generateCatalogCarId({
+                brand: form.brand || "Hot Wheels",
+                make: form.make || "",
+                model: form.model || "",
+                assortment: form.assortment || "",
+                series: form.series || "",
+                subSeries: form.sub_series || "",
+                carNumber: form.car_number || "",
+                mrp: Number(form.mrp) || 179,
+              })
+            : (entry as CatalogCar).car_id,
+          name: (form.name || "").trim() || `${form.make} ${form.model}`.trim(),
+        };
 
     if (isNew && catalog.some((c) => c.car_id.toUpperCase() === car.car_id.toUpperCase())) {
       setSaving(false);
@@ -293,21 +318,25 @@ export function CatalogFormDialog({
                 <Store className="size-5 text-primary" />
                 {isNew ? "New catalogue casting" : "Edit catalogue casting"}
               </DialogTitle>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5 px-3 text-xs"
-                onClick={() => setScanOpen(true)}
-              >
-                <ScanLine className="size-3.5" />
-                Scan card
-              </Button>
+              {!isImageOnly && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 px-3 text-xs"
+                  onClick={() => setScanOpen(true)}
+                >
+                  <ScanLine className="size-3.5" />
+                  Scan card
+                </Button>
+              )}
             </div>
             <DialogDescription className="text-xs">
-              {isNew
-                ? "Added to the shared catalogue for everyone to browse and add to their collection."
-                : "Changes are written into this casting in the shared catalogue for all collectors."}
+              {isImageOnly
+                ? "You can update or propose the photo for this catalogue casting."
+                : isNew
+                  ? "Added to the shared catalogue for everyone to browse and add to their collection."
+                  : "Changes are written into this casting in the shared catalogue for all collectors."}
             </DialogDescription>
           </DialogHeader>
 
@@ -339,12 +368,15 @@ export function CatalogFormDialog({
 
           {/* SECTION 1: Release, Rarity & MRP */}
           <div className="space-y-3 rounded-lg border border-border/80 bg-muted/20 p-3 sm:p-4">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 items-end">
-              <div className="space-y-1.5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-start">
+              <div className="flex flex-col space-y-1.5 w-full">
                 <Label className="text-xs font-semibold">Release Status</Label>
                 <SegmentControl<ReleaseStatus>
+                  fill
+                  disabled={isImageOnly}
                   value={form.release_status ?? "Released"}
                   onChange={(v) => set("release_status", v)}
+                  className="w-full h-9"
                   options={[
                     { value: "Released", label: "Released" },
                     { value: "Pre Order", label: "Pre Order" },
@@ -352,37 +384,42 @@ export function CatalogFormDialog({
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="flex flex-col space-y-1.5 w-full">
                 <Label className="text-xs font-semibold">Rarity</Label>
                 <SegmentControl<string>
+                  fill
+                  disabled={isImageOnly}
                   value={form.rarity || "Normal"}
                   onChange={(v) => set("rarity", v)}
+                  className="w-full h-9"
                   options={RARITIES.map((r) => ({ value: r, label: r }))}
                 />
               </div>
 
-              <div className="space-y-1.5">
+              <div className="flex flex-col space-y-1.5 w-full">
                 <Label className="text-xs font-semibold flex items-center gap-1">
                   <IndianRupee className="size-3" /> Retail / MRP (₹) *
                 </Label>
                 <Input
                   type="number"
                   inputMode="decimal"
+                  disabled={isImageOnly}
                   placeholder="179"
                   value={form.mrp || ""}
                   onChange={(e) => set("mrp", Number(e.target.value) || 0)}
-                  className="h-9 bg-background"
+                  className="h-9 bg-background w-full"
                 />
               </div>
 
               {isPreOrder && (
-                <div className="space-y-1.5">
+                <div className="flex flex-col space-y-1.5 w-full">
                   <Label className="text-xs font-semibold">Expected Release Date</Label>
                   <Input
                     type="date"
+                    disabled={isImageOnly}
                     value={form.expected_date || ""}
                     onChange={(e) => set("expected_date", e.target.value || null)}
-                    className="h-9 bg-background"
+                    className="h-9 bg-background w-full"
                   />
                 </div>
               )}
@@ -423,11 +460,13 @@ export function CatalogFormDialog({
                   onChange={setCatalogueValue}
                   cars={cars}
                   omit={["rarity"]}
+                  disabled={isImageOnly}
                 />
 
                 <div className="space-y-1 pt-1 border-t border-border/50">
                   <Label className="text-xs">Display Name (Casting Name)</Label>
                   <Input
+                    disabled={isImageOnly}
                     value={form.name || ""}
                     onChange={(e) => set("name", e.target.value)}
                     placeholder={`${form.make || "Make"} ${form.model || "Model"}`.trim()}
@@ -454,7 +493,7 @@ export function CatalogFormDialog({
               >
                 Cancel
               </Button>
-              {!isNew && canDelete && onDelete && (
+              {!isNew && effectiveCanDelete && onDelete && (
                 <Button
                   type="button"
                   variant="outline"
