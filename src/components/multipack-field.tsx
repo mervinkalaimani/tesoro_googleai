@@ -170,7 +170,7 @@ export function MultipackField({
           })}
 
           {canEditMembers ? (
-            <div className="relative">
+            <div className="space-y-1">
               <Input
                 disabled={disabled}
                 value={query}
@@ -179,8 +179,13 @@ export function MultipackField({
                 className="h-8 bg-background"
                 aria-label="Add a car to the pack"
               />
+              {/* In the flow rather than floating over it. Floating, the list
+                  was clipped away to nothing: this sits inside a section with
+                  `overflow-hidden` and inside the dialog's own scroller, and
+                  either one is enough to hide an absolutely-positioned panel.
+                  Pushing the rest of the form down costs nothing here. */}
               {choices.length > 0 && (
-                <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-lg">
+                <div className="max-h-56 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-lg">
                   {choices.map((c) => (
                     <button
                       key={c.car_id}

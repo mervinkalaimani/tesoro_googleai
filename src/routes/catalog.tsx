@@ -39,7 +39,7 @@ import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
-import { isCarMatchingCatalog } from "@/lib/catalog";
+import { isCarMatchingCatalog, catalogCarToCatalogueCar } from "@/lib/catalog";
 import { parseQuery, matchesQuery } from "@/lib/search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -222,30 +222,6 @@ function asCar(c: CatalogCar): Diecast {
     rarity: c.rarity || "Normal",
     chase: (c.rarity || "Normal") !== "Normal",
   } as unknown as Diecast;
-}
-
-/** Everything the catalogue knows, for the Add a car form. */
-function toPrefill(c: CatalogCar): CatalogueCar {
-  return {
-    name: c.name || `${c.make} ${c.model}`.trim(),
-    make: c.make,
-    model: c.model,
-    variant: c.variant || "",
-    year: (c.year || "").replace(/\.0+$/, ""),
-    colour: c.colour || "",
-    type: c.type || "",
-    brand: c.brand,
-    assortment: c.assortment,
-    series: c.series,
-    subSeries: c.sub_series,
-    carNumber: c.car_number,
-    size: c.size || "1:64",
-    rarity: c.rarity || "Normal",
-    chase: (c.rarity || "Normal") !== "Normal",
-    mrp: c.mrp,
-    imageUrl: c.image_url || undefined,
-    catalogId: c.car_id,
-  };
 }
 
 /**
@@ -727,7 +703,7 @@ function CatalogPage() {
         open={adding !== null}
         onOpenChange={(v) => !v && setAdding(null)}
         mode="add"
-        prefill={adding ? toPrefill(adding) : null}
+        prefill={adding ? catalogCarToCatalogueCar(adding) : null}
         prefillStatus={adding && isPreOrder(adding) ? "Pre Order" : "Waiting"}
       />
       {!isGuest && (

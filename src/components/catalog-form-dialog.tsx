@@ -20,6 +20,8 @@ import { CarPhotoField } from "@/components/car-photo-field";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { ClearableInput, Field, FormSection } from "@/components/form-parts";
 import { MultipackField } from "@/components/multipack-field";
+import { DuplicateNotice } from "@/components/duplicate-notice";
+import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
 import { packBadge } from "@/lib/pack";
 import { ChaseMark } from "@/components/car-marks";
 import { useCars } from "@/lib/cars-store";
@@ -304,9 +306,50 @@ export function CatalogFormDialog({
     if (!form.model?.trim()) return { field: "model", message: "Enter the model." };
     if (!form.brand?.trim()) return { field: "brand", message: "Enter the brand." };
     if (!form.assortment?.trim()) return { field: "assortment", message: "Enter the assortment." };
+    if (needsCarNumber(form.brand) && !form.car_number?.trim())
+      return {
+        field: "carNumber",
+        message: `${form.brand?.trim()} prints a collector number on the box — it is what tells two near-identical castings apart.`,
+      };
     if (!form.mrp || form.mrp <= 0) return { field: "mrp", message: "Enter the retail price." };
     return null;
   };
+
+  /** What the catalogue already has that looks like this. */
+  const duplicates = useMemo(
+    () =>
+      isImageOnly
+        ? []
+        : findDuplicates(
+            {
+              brand: form.brand,
+              make: form.make,
+              model: form.model,
+              variant: form.variant,
+              colour: form.colour,
+              assortment: form.assortment,
+              series: form.series,
+              subSeries: form.sub_series,
+              carNumber: form.car_number,
+            },
+            catalog,
+            { excludeCarId: entry && entry !== "new" ? entry.car_id : "" },
+          ),
+    [
+      isImageOnly,
+      catalog,
+      entry,
+      form.brand,
+      form.make,
+      form.model,
+      form.variant,
+      form.colour,
+      form.assortment,
+      form.series,
+      form.sub_series,
+      form.car_number,
+    ],
+  );
 
   // Once the flagged field is rendered — its group may have to be opened first —
   // bring it into view and put the caret in it.
@@ -528,6 +571,11 @@ export function CatalogFormDialog({
                   </div>
                 )}
               </section>
+
+              {/* Above the fields, not below them: by the time the catalogue
+                  already has this casting, the useful moment is before the rest
+                  of it is typed out. */}
+              <DuplicateNotice hits={duplicates} />
 
               <FormSection
                 title="What the casting is"

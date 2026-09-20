@@ -43,9 +43,12 @@ import {
   isPlaceholderId,
 } from "@/lib/car-id";
 import { useCatalog } from "@/lib/catalog-store";
+import { catalogCarToCatalogueCar } from "@/lib/catalog";
 import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { MultipackField } from "@/components/multipack-field";
+import { DuplicateNotice } from "@/components/duplicate-notice";
+import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
 import { packBadge } from "@/lib/pack";
 import { ClearableInput, Field, FormSection, PillButton, PillRow } from "@/components/form-parts";
 import { SegmentControl } from "@/components/segment-control";
@@ -1012,6 +1015,14 @@ export function CarFormDialog({
       if (!form.type.trim()) return need("type", "Enter the type.");
       if (!form.brand.trim()) return need("brand", "Enter the brand.");
       if (!form.assortment.trim()) return need("assortment", "Enter the assortment.");
+      // Hot Wheels and Matchbox print a position in a series; every other brand
+      // prints a number that belongs to the casting, and it is what tells two
+      // near-identical ones apart.
+      if (needsCarNumber(form.brand) && !form.carNumber.trim())
+        return need(
+          "carNumber",
+          `${form.brand.trim()} prints a collector number on the box — enter it so this casting can be told from its near-twins.`,
+        );
       if (!form.status.trim()) return need("status", "Pick a status.");
       // Everything below describes a purchase, and an ISO row is not one.
       if (isIso) return null;
@@ -1305,8 +1316,58 @@ export function CarFormDialog({
    * same fields, which is how edit ended up with a Payment dropdown after add
    * had segments, and a read-only rail listing a seller you could not correct.
    */
+  /**
+   * Castings the catalogue already has that look like the one being typed.
+   *
+   * Only when it was entered by hand. Picking one from the search is not a way
+   * to create a duplicate — it is the opposite — and editing a car cannot
+   * change the casting at all.
+   */
+  const duplicates = useMemo(
+    () =>
+      isEdit || fromCatalogue
+        ? []
+        : findDuplicates(
+            {
+              brand: form.brand,
+              make: form.make,
+              model: form.model,
+              variant: form.variant,
+              colour: form.colour,
+              assortment: form.assortment,
+              series: form.series,
+              subSeries: form.subSeries,
+              carNumber: form.carNumber,
+            },
+            catalog,
+            { excludeCarId: derivedCatalogCarId },
+          ),
+    [
+      isEdit,
+      fromCatalogue,
+      catalog,
+      derivedCatalogCarId,
+      form.brand,
+      form.make,
+      form.model,
+      form.variant,
+      form.colour,
+      form.assortment,
+      form.series,
+      form.subSeries,
+      form.carNumber,
+    ],
+  );
+
   const copyFields = (
     <div className="space-y-3">
+      {/* Above the summary, so it is read before the purchase is filled in.
+          "Use this" is the whole point: the fix for a duplicate is to pick the
+          entry that already exists, which is one tap from here. */}
+      <DuplicateNotice
+        hits={duplicates}
+        onUse={(c) => pickFromCatalogue(catalogCarToCatalogueCar(c))}
+      />
       {/* What the car is, as one line you confirm rather than sixteen
                   fields you fill. The fields are still here, one tap down. */}
       <section className="overflow-hidden rounded-lg border border-border bg-muted/30">

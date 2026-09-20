@@ -11,6 +11,7 @@ import {
   yearOptionsFor,
 } from "@/lib/car-options";
 import { RARITIES, type Rarity } from "@/lib/rarity";
+import { needsCarNumber } from "@/lib/duplicate";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -86,6 +87,9 @@ export function CatalogueFields({
 }) {
   const err = (k: keyof CatalogueValues) => errorFor?.(k);
   const skip = (k: keyof CatalogueValues) => omit.includes(k);
+  // Hot Wheels and Matchbox print a position in a series, not a number that
+  // belongs to the casting, so they are the two brands that cannot be asked.
+  const carNumberRequired = needsCarNumber(values.brand);
 
   const makeOptions = useMemo(() => optionsFor("make", cars), [cars]);
   const modelOptions = useMemo(() => modelOptionsFor(cars, values.make), [cars, values.make]);
@@ -287,12 +291,21 @@ export function CatalogueFields({
       {/* The catalogue's, shared by every owner of the casting. The box a
           particular copy came out of is Case / Mix, and lives on the car. */}
       {!skip("carNumber") && (
-        <Field label="Car Number">
+        <Field
+          label={carNumberRequired ? "Car Number *" : "Car Number"}
+          name="carNumber"
+          error={err("carNumber")}
+          info={
+            carNumberRequired
+              ? "The collector number printed on the box — Mini GT 1133, Kaido House KHMG217. It is what tells two near-identical castings apart, so this brand asks for it."
+              : undefined
+          }
+        >
           <ClearableInput
             disabled={disabled}
             value={values.carNumber}
             onChange={(e) => onChange("carNumber", e.target.value)}
-            placeholder="e.g. 3/5 or 142/250"
+            placeholder={carNumberRequired ? "e.g. 1133 or KHMG217" : "e.g. 3/5 or 142/250"}
             aria-label="Car number"
           />
         </Field>

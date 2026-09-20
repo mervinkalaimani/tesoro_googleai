@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import type { Diecast } from "@/lib/types";
+import type { CatalogueCar } from "@/lib/catalogue-search";
 import {
   catalogIdFor,
   setCatalogCodes,
@@ -145,6 +146,33 @@ export function extractCatalogFromCars(cars: Diecast[]): CatalogCar[] {
   }
 
   return Array.from(map.values());
+}
+
+/**
+ * A catalogue entry as the Add a car form wants it: camelCase, and carrying the
+ * entry's id so the car it fills in is pointed at the right casting.
+ */
+export function catalogCarToCatalogueCar(c: CatalogCar): CatalogueCar {
+  return {
+    name: c.name || `${c.make} ${c.model}`.trim(),
+    make: c.make,
+    model: c.model,
+    variant: c.variant || "",
+    year: (c.year || "").replace(/\.0+$/, ""),
+    colour: c.colour || "",
+    type: c.type || "",
+    brand: c.brand,
+    assortment: c.assortment,
+    series: c.series,
+    subSeries: c.sub_series,
+    carNumber: c.car_number,
+    size: c.size || "1:64",
+    rarity: c.rarity || "Normal",
+    chase: (c.rarity || "Normal") !== "Normal",
+    mrp: c.mrp,
+    imageUrl: c.image_url || undefined,
+    catalogId: c.car_id,
+  };
 }
 
 /** Convert a Diecast item into a CatalogCar entry. */
