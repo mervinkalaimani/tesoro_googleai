@@ -5,6 +5,7 @@ import {
   Check,
   Layers,
   Loader2,
+  Merge,
   Package,
   Pencil,
   Plus,
@@ -39,6 +40,7 @@ import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
+import { MergeDuplicatesDialog } from "@/components/merge-duplicates-dialog";
 import { isCarMatchingCatalog, catalogCarToCatalogueCar } from "@/lib/catalog";
 import { parseQuery, matchesQuery } from "@/lib/search";
 import { Button } from "@/components/ui/button";
@@ -230,8 +232,15 @@ function asCar(c: CatalogCar): Diecast {
  * entry — which corrects it in every collection that has the car.
  */
 function CatalogPage() {
-  const { catalog, isLoading, addCatalogCar, updateCatalogCar, deleteCatalogCar, packMembers } =
-    useCatalog();
+  const {
+    catalog,
+    isLoading,
+    addCatalogCar,
+    updateCatalogCar,
+    deleteCatalogCar,
+    packMembers,
+    refreshCatalog,
+  } = useCatalog();
   const { isAdmin, isOwner, isGuest } = useAuth();
   const { query } = useApp();
   const mine = useCars();
@@ -264,6 +273,7 @@ function CatalogPage() {
   /** The entry whose details are open. */
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [editing, setEditing] = useState<CatalogCar | "new" | null>(null);
+  const [merging, setMerging] = useState(false);
   /** Owner only: the entry being removed, with the confirm open over it. */
   const [deleting, setDeleting] = useState<CatalogCar | null>(null);
   const [visible, setVisible] = useState(LOAD_BATCH);
@@ -517,10 +527,21 @@ function CatalogPage() {
           subtitle={`${rows.length.toLocaleString()} casting${rows.length === 1 ? "" : "s"} · tap one to add it to your collection`}
         >
           {isAdmin && (
-            <Button size="sm" className="gap-1.5" onClick={() => setEditing("new")}>
-              <Plus className="size-4" />
-              New casting
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => setMerging(true)}
+              >
+                <Merge className="size-4" />
+                <span className="max-sm:sr-only">Duplicates</span>
+              </Button>
+              <Button size="sm" className="gap-1.5" onClick={() => setEditing("new")}>
+                <Plus className="size-4" />
+                New casting
+              </Button>
+            </>
           )}
         </PageHeading>
 
@@ -706,6 +727,15 @@ function CatalogPage() {
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
         prefillStatus={adding && isPreOrder(adding) ? "Pre Order" : "Waiting"}
       />
+      {isAdmin && (
+        <MergeDuplicatesDialog
+          open={merging}
+          onClose={() => setMerging(false)}
+          catalog={catalog}
+          onMerged={refreshCatalog}
+        />
+      )}
+
       {!isGuest && (
         <CatalogFormDialog
           open={editing !== null}

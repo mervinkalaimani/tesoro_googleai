@@ -146,3 +146,89 @@ export function findDuplicates(
   hits.sort((a, b) => rank[a.level] - rank[b.level]);
   return hits.slice(0, limit);
 }
+
+/** A set of catalogue entries that look like one casting. */
+export type DuplicateGroup = {
+  /** Stable across renders, so a chosen keeper survives the list refreshing. */
+  key: string;
+  level: DuplicateLevel;
+  label: string;
+  because: string;
+  cars: CatalogCar[];
+};
+
+/**
+ * Every group of catalogue entries that look like duplicates of each other.
+ *
+ * Two passes, because two different things make a duplicate certain. A shared
+ * collector number within one assortment is the strongest evidence there is —
+ * that number names one product — but only for the brands that print one.
+ * Everything else is judged on the description agreeing all the way down.
+ *
+ * Boxes are left out. A multipack shares its make and model with nothing, and
+ * merging one would take its contents with it.
+ */
+export function findDuplicateGroups(catalog: CatalogCar[]): DuplicateGroup[] {
+  const certain = new Map<string, CatalogCar[]>();
+  const likely = new Map<string, CatalogCar[]>();
+
+  for (const c of catalog) {
+    if (c.is_multipack) continue;
+    const brand = brandKey(c.brand);
+    if (!brand) continue;
+    const assortment = norm(c.assortment);
+    const number = norm(c.car_number);
+
+    if (brandUsesCarNumber(c.brand) && number) {
+      const k = `n|${brand}|${assortment}|${number}`;
+      (certain.get(k) ?? certain.set(k, []).get(k)!).push(c);
+      continue;
+    }
+
+    const k = [
+      "d",
+      brand,
+      norm(c.make),
+      norm(c.model),
+      norm(c.variant),
+      norm(c.colour),
+      assortment,
+      norm(c.series),
+      norm(c.sub_series),
+    ].join("|");
+    if (!norm(c.make) || !norm(c.model)) continue;
+    (likely.get(k) ?? likely.set(k, []).get(k)!).push(c);
+  }
+
+  const out: DuplicateGroup[] = [];
+  const nameOf = (c: CatalogCar) => c.name || `${c.make} ${c.model}`.trim();
+
+  for (const [key, cars] of certain) {
+    if (cars.length < 2) continue;
+    out.push({
+      key,
+      level: "certain",
+      label: `${cars[0].brand} ${cars[0].car_number} · ${nameOf(cars[0])}`,
+      because: `${cars.length} entries share ${cars[0].brand} number ${cars[0].car_number} in ${cars[0].assortment || "this assortment"}`,
+      cars,
+    });
+  }
+  for (const [key, cars] of likely) {
+    if (cars.length < 2) continue;
+    out.push({
+      key,
+      level: "likely",
+      label: `${nameOf(cars[0])} · ${cars[0].colour || "no colour"}`,
+      because: `${cars.length} entries with the same casting, colour, assortment and series`,
+      cars,
+    });
+  }
+
+  const rank: Record<DuplicateLevel, number> = { certain: 0, likely: 1, possible: 2 };
+  return out.sort(
+    (a, b) =>
+      rank[a.level] - rank[b.level] ||
+      b.cars.length - a.cars.length ||
+      a.label.localeCompare(b.label),
+  );
+}

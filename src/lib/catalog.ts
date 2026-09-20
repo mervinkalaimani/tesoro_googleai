@@ -931,3 +931,44 @@ export function isCarMatchingCatalog(
 
   return true;
 }
+
+/** Who holds the cars a merge would move, and how many each. */
+export type MergePreview = {
+  cars: number;
+  owners: { user_id: string; cars: number }[];
+  packs: number;
+};
+
+/** Admin only: what merging these entries away would touch. */
+export async function catalogMergePreview(dropIds: string[]): Promise<MergePreview> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("catalog_merge_preview", {
+    _drop_ids: dropIds,
+  });
+  if (error) throw new Error(error.message);
+  const d = (data ?? {}) as Partial<MergePreview>;
+  return { cars: Number(d.cars) || 0, owners: d.owners ?? [], packs: Number(d.packs) || 0 };
+}
+
+/**
+ * Admin only: move every car off the listed entries onto the one being kept,
+ * then remove them. Only rows pointing at a listed entry are touched.
+ */
+export async function mergeCatalogEntries(
+  keepId: string,
+  dropIds: string[],
+): Promise<{ merged: number; cars: number; members: number; packs: number }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("merge_catalog_entries", {
+    _keep_id: keepId,
+    _drop_ids: dropIds,
+  });
+  if (error) throw new Error(error.message);
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    merged: Number(d.merged) || 0,
+    cars: Number(d.cars) || 0,
+    members: Number(d.members) || 0,
+    packs: Number(d.packs) || 0,
+  };
+}
