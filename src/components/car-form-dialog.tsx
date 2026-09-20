@@ -43,7 +43,10 @@ import {
   isPlaceholderId,
 } from "@/lib/car-id";
 import { useCatalog } from "@/lib/catalog-store";
+import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
+import { MultipackField } from "@/components/multipack-field";
+import { packBadge } from "@/lib/pack";
 import { ClearableInput, Field, FormSection, PillButton, PillRow } from "@/components/form-parts";
 import { SegmentControl } from "@/components/segment-control";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
@@ -351,7 +354,7 @@ export function CarFormDialog({
 }) {
   const { addCar, updateCar } = useCarsActions();
   const cars = useCars();
-  const { isGuest } = useAuth();
+  const { isGuest, isAdmin } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
   // A broken image is the photo field's business now — it shows the failure in
@@ -384,6 +387,23 @@ export function CarFormDialog({
    * the badge: a car entered by hand has nothing to claim credit for.
    */
   const [fromCatalogue, setFromCatalogue] = useState(false);
+
+  /**
+   * Whether the casting this row is a copy of is a box of cars, and what is in
+   * it. Not part of `form`, because none of it belongs to your copy — it is the
+   * casting's, shared with everyone who owns one, and it is written to the
+   * catalogue rather than to the car.
+   *
+   * It is here because adding a car is the other way a casting gets filed: a
+   * 2-pack nobody has catalogued yet would otherwise have to be entered once
+   * here and marked a second time on the Catalog page.
+   */
+  const [isPack, setIsPack] = useState(false);
+  const [packSize, setPackSize] = useState(0);
+  const [packList, setPackList] = useState<string[]>([]);
+  /** Until this is touched, the pack fields follow whatever casting is picked. */
+  const packTouched = useRef(false);
+  const [showPack, setShowPack] = useState(false);
 
   /**
    * An ISO row is a car you are looking for, not one you bought. There is no
@@ -793,7 +813,7 @@ export function CarFormDialog({
     ],
   );
 
-  const { catalog } = useCatalog();
+  const { catalog, addCatalogCar, updateCatalogCar, packMembers, setPackMembers } = useCatalog();
 
   // The catalogue entry this car is: the one picked on the Catalog page while
   // its details still describe it, otherwise the one with the same details.
@@ -857,6 +877,35 @@ export function CarFormDialog({
       form.subSeries,
     ],
   );
+
+  /**
+   * The casting's pack, as the catalogue currently has it. This is the baseline
+   * the save below compares against, so a car added to an existing pack writes
+   * nothing to the catalogue at all.
+   */
+  const catalogPack = useMemo(
+    () => ({
+      isPack: Boolean(existingCatalogMatch?.is_multipack),
+      size: Number(existingCatalogMatch?.pack_size) || 0,
+      members: existingCatalogMatch ? (packMembers[existingCatalogMatch.car_id] ?? []) : [],
+    }),
+    [existingCatalogMatch, packMembers],
+  );
+
+  // A fresh open starts from the catalogue again, and so does every pick from
+  // the search — until the pack fields are touched, at which point they are the
+  // person's answer and picking nothing else should overwrite them.
+  useEffect(() => {
+    if (!open) {
+      packTouched.current = false;
+      return;
+    }
+    if (packTouched.current) return;
+    setIsPack(catalogPack.isPack);
+    setPackSize(catalogPack.size);
+    setPackList(catalogPack.members);
+    setShowPack(catalogPack.isPack);
+  }, [open, catalogPack]);
 
   /**
    * The ISO entry whose status is being changed. Opening the dialog rather than
@@ -1028,7 +1077,7 @@ export function CarFormDialog({
     setCurrentStep((s) => Math.max(1, s - 1));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Nothing submits a half-walked wizard. The footer's last button is the only
     // way to catalogue a car, and it only exists on the summary — so a submit
@@ -1195,6 +1244,46 @@ export function CarFormDialog({
       );
     }
 
+    // The casting's pack, written to the catalogue rather than to this row —
+    // and written *before* the car, deliberately. Saving a car files its casting
+    // too, with an insert that ignores an id already there; going second would
+    // mean the flag lost that race silently.
+    //
+    // Nothing is written when the catalogue already says this, which is the
+    // usual case: buying a second copy of a 5-pack restates no facts.
+    if (mode === "add" && payload.catalogId) {
+      const packId = payload.catalogId;
+      const wanted = isPack ? packList : [];
+      const sizeChanged = isPack && packSize !== catalogPack.size;
+      const flagChanged = isPack !== catalogPack.isPack || sizeChanged;
+      const membersChanged =
+        wanted.length !== catalogPack.members.length ||
+        wanted.some((id, i) => id !== catalogPack.members[i]);
+
+      if (flagChanged) {
+        const packFields = {
+          is_multipack: isPack,
+          // Only a box has a size, so un-ticking clears it rather than leaving
+          // a "5" the entry carries around invisibly.
+          pack_size: isPack ? packSize || null : null,
+        };
+        if (existingCatalogMatch) {
+          // Only admins may rewrite a casting everyone shares. For anyone else
+          // the pack is recorded on the Catalog page instead, so the car still
+          // saves rather than failing on a permission it never needed.
+          if (isAdmin) await updateCatalogCar({ ...existingCatalogMatch, ...packFields });
+        } else {
+          await addCatalogCar({
+            ...diecastToCatalogCar(payload),
+            car_id: packId,
+            ...packFields,
+          });
+        }
+      }
+      // The contents are a table of their own, and an admin-only one.
+      if (membersChanged && isAdmin) await setPackMembers(packId, wanted);
+    }
+
     if (mode === "add") {
       addCar(payload);
     } else {
@@ -1290,6 +1379,44 @@ export function CarFormDialog({
           </div>
         )}
       </section>
+
+      {/* Whether the casting is a box rather than a car — the same control the
+          catalogue form has, because this is the other place a casting gets
+          filed. It is written to the catalogue, not to your copy: the box is
+          one row you own whichever way it is counted. */}
+      <FormSection
+        title="Multipack"
+        badge={packBadge(isPack, packSize, packList.length)}
+        open={showPack}
+        onToggle={() => setShowPack((v) => !v)}
+      >
+        <MultipackField
+          isPack={isPack}
+          packSize={packSize}
+          members={packList}
+          onPackChange={(v) => {
+            packTouched.current = true;
+            setIsPack(v);
+          }}
+          onSizeChange={(v) => {
+            packTouched.current = true;
+            setPackSize(v ?? 0);
+          }}
+          onMembersChange={(ids) => {
+            packTouched.current = true;
+            setPackList(ids);
+          }}
+          disabled={isEdit}
+          canEditMembers={isAdmin && !isEdit}
+          selfCarId={derivedCatalogCarId}
+        />
+        {isEdit && (
+          <p className="mt-2.5 text-[11px] text-muted-foreground">
+            The box is shared with everyone who owns one, so it is edited in the catalogue rather
+            than here.
+          </p>
+        )}
+      </FormSection>
 
       {/* The purchase. Open by default: every required field on this
                   step is in here, and shut it would be a form that looks
@@ -1798,7 +1925,10 @@ export function CarFormDialog({
               </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
+            <form
+              onSubmit={(e) => void handleSubmit(e)}
+              className="flex min-h-0 flex-1 flex-col gap-4"
+            >
               {/* The only part that scrolls. `min-h-0` is what lets it: without
                   it a flex child refuses to shrink below its content and the
                   footer is pushed off the bottom of the dialog instead. */}
@@ -1933,7 +2063,7 @@ export function CarFormDialog({
           /* The same block adding a car uses for step two, with the casting
              locked. What differs is the footer: editing can delete. */
           <form
-            onSubmit={handleSubmit}
+            onSubmit={(e) => void handleSubmit(e)}
             className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col gap-4 overflow-x-hidden"
           >
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-0.5">

@@ -76,3 +76,14 @@ export function countCars(
   for (const car of cars) total += unitsOf(car, sizes);
   return total;
 }
+
+/**
+ * What the "Multipack" section header says while it is shut, so a group nobody
+ * opens still tells you whether this casting is a box and how much of it has
+ * been listed.
+ */
+export function packBadge(isPack: boolean, size: number, listed: number): string {
+  if (!isPack) return "single car";
+  if (!size) return listed ? `${listed} listed` : "no size set";
+  return `${listed} of ${size} listed`;
+}

@@ -1,22 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Check,
-  Loader2,
-  ScanLine,
-  Sparkles,
-  Store,
-  Car,
-  IndianRupee,
-  Layers,
-  Plus,
-  Trash2,
-  X,
-} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Car, Loader2, ScanLine, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
 import { generateCatalogCarId } from "@/lib/car-id";
-import { formatDayMonthYear } from "@/lib/format";
+import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { resolveCatalogUserId } from "@/lib/catalog";
 import {
   Dialog,
@@ -26,43 +14,44 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Combobox } from "@/components/ui/combobox";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
+import { ClearableInput, Field, FormSection } from "@/components/form-parts";
+import { MultipackField } from "@/components/multipack-field";
+import { packBadge } from "@/lib/pack";
+import { ChaseMark } from "@/components/car-marks";
 import { useCars } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { carSubLine } from "@/lib/car-subline";
 import { useAuth } from "@/lib/auth-store";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { useCarImageCandidates } from "@/lib/car-image-search";
-import {
-  MAKE_SEED,
-  COLOUR_SEED,
-  TYPE_SEED,
-  BRAND_SEED,
-  ASSORTMENT_SEED,
-  SERIES_SEED,
-  SUB_SERIES_SEED,
-  SIZE_SEED,
-} from "@/lib/car-options";
-import { MODELS_BY_MAKE, VARIANTS_BY_MODEL } from "@/lib/car-taxonomy.generated";
 import { cn } from "@/lib/utils";
 
 const RARITIES = ["Normal", "Chase", "TH", "STH"] as const;
 
-/** A catalogue entry's secondary line, in the spelling carSubLine expects. */
-const subLineOf = (c: CatalogCar) =>
-  carSubLine({
-    brand: c.brand,
-    assortment: c.assortment,
-    series: c.series,
-    subSeries: c.sub_series,
-    carNumber: c.car_number,
-  });
+/** The first required field left empty, shown on the field itself. */
+type FieldKey = keyof CatalogueValues | "mrp";
+type FieldError = { field: FieldKey; message: string };
+
+/** The fields that live behind "What the casting is". */
+const IDENTITY_FIELDS = new Set<FieldKey>([
+  "make",
+  "model",
+  "variant",
+  "year",
+  "colour",
+  "type",
+  "brand",
+  "assortment",
+  "series",
+  "subSeries",
+  "carNumber",
+  "size",
+  "rarity",
+]);
 
 export function CatalogFormDialog({
   open,
@@ -135,42 +124,30 @@ export function CatalogFormDialog({
    * in another table, saved after the entry itself, once the entry is certain
    * to have an id to hang them off.
    */
-  const { catalog: fullCatalog, packMembers, setPackMembers } = useCatalog();
+  const { packMembers, setPackMembers } = useCatalog();
   const [members, setMembers] = useState<string[]>([]);
-  const [memberQuery, setMemberQuery] = useState("");
 
-  const byId = useMemo(() => {
-    const m = new Map<string, CatalogCar>();
-    for (const c of fullCatalog) m.set(c.car_id.toUpperCase(), c);
-    return m;
-  }, [fullCatalog]);
+  /**
+   * The four groups. Which casting it is and what it costs are open, because
+   * every required field is in them and a shut group would be a form that looks
+   * finished while being empty. The pack opens only when there is one, and the
+   * photo only when it is the one thing this person may change.
+   */
+  const [showIdentity, setShowIdentity] = useState(true);
+  const [showRelease, setShowRelease] = useState(true);
+  const [showPack, setShowPack] = useState(false);
+  const [showPhoto, setShowPhoto] = useState(false);
+
+  const [validationError, setValidationError] = useState<FieldError | null>(null);
+  /** Set by Save, so the field is scrolled to once its group is open. */
+  const jumpToError = useRef(false);
 
   const isPack = Boolean(form.is_multipack);
   const declaredSize = Number(form.pack_size) || 0;
 
-  /**
-   * What can go in the box: anything in the catalogue that is not this entry
-   * and is not itself a box, minus what is already in. The database refuses
-   * both, but a list that offers them and then fails is a worse way to say so.
-   */
-  const memberChoices = useMemo(() => {
-    const q = memberQuery.trim().toLowerCase();
-    if (q.length < 2) return [];
-    const chosen = new Set(members.map((id) => id.toUpperCase()));
-    const selfId = entry && entry !== "new" ? entry.car_id.toUpperCase() : "";
-    const out: CatalogCar[] = [];
-    for (const c of fullCatalog) {
-      const id = c.car_id.toUpperCase();
-      if (c.is_multipack || chosen.has(id) || id === selfId) continue;
-      const hay = `${c.name} ${c.make} ${c.model} ${c.variant ?? ""} ${c.brand} ${c.series}`;
-      if (hay.toLowerCase().includes(q)) out.push(c);
-      if (out.length >= 8) break;
-    }
-    return out;
-  }, [memberQuery, members, fullCatalog, entry]);
-
   useEffect(() => {
     if (!open) return;
+    setValidationError(null);
     if (entry && entry !== "new") {
       setForm({
         ...entry,
@@ -206,8 +183,14 @@ export function CatalogFormDialog({
         pack_size: null,
       });
     }
-    setMemberQuery("");
-    setMembers(entry && entry !== "new" ? (packMembers[entry.car_id] ?? []) : []);
+    const existing = entry && entry !== "new" ? (packMembers[entry.car_id] ?? []) : [];
+    setMembers(existing);
+    // A pack is shown open, because a shut "Multipack" header is the one thing
+    // on this form nobody thinks to look inside.
+    setShowPack(Boolean(entry && entry !== "new" && entry.is_multipack));
+    setShowIdentity(!isImageOnly);
+    setShowRelease(!isImageOnly);
+    setShowPhoto(isImageOnly);
     // packMembers is read for the entry being opened; re-running when the whole
     // map changes would throw away an edit in progress the moment any other
     // pack was saved.
@@ -236,6 +219,7 @@ export function CatalogFormDialog({
       k as string
     ];
     set((column ?? k) as keyof CatalogCar, v as never);
+    setValidationError((e) => (e && e.field === k ? null : e));
   };
 
   const set = <K extends keyof CatalogCar>(key: K, value: CatalogCar[K]) =>
@@ -250,6 +234,9 @@ export function CatalogFormDialog({
       }
       return next;
     });
+
+  const errorFor = (k: FieldKey) =>
+    validationError?.field === k ? validationError.message : undefined;
 
   // Image search suggestions
   const imageSuggestions = useCarImageCandidates({
@@ -294,29 +281,66 @@ export function CatalogFormDialog({
         prev.name ||
         `${scanned.make || prev.make || ""} ${scanned.model || prev.model || ""}`.trim(),
     }));
+    setValidationError(null);
+    setShowIdentity(true);
     toast.success("Applied card details to catalogue form");
   };
 
   const isPreOrder = form.release_status === "Pre Order";
-  const missingMake = !isImageOnly && !form.make?.trim();
-  const missingModel = !isImageOnly && !form.model?.trim();
-  const missingBrand = !isImageOnly && !form.brand?.trim();
-  const missingAssortment = !isImageOnly && !form.assortment?.trim();
-  const missingMrp = !isImageOnly && (!form.mrp || form.mrp <= 0);
 
-  const hasMissing =
-    !isImageOnly &&
-    (missingMake || missingModel || missingBrand || missingAssortment || missingMrp);
+  /** The standard secondary line, so the card reads like a car anywhere else. */
+  const identityLine = carSubLine({
+    brand: catalogueValues.brand,
+    assortment: catalogueValues.assortment,
+    series: catalogueValues.series,
+    subSeries: catalogueValues.subSeries,
+    carNumber: catalogueValues.carNumber,
+  });
+
+  /** In the order the fields appear, so the first one flagged is the first on screen. */
+  const validate = (): FieldError | null => {
+    if (isImageOnly) return null;
+    if (!form.make?.trim()) return { field: "make", message: "Enter the make." };
+    if (!form.model?.trim()) return { field: "model", message: "Enter the model." };
+    if (!form.brand?.trim()) return { field: "brand", message: "Enter the brand." };
+    if (!form.assortment?.trim()) return { field: "assortment", message: "Enter the assortment." };
+    if (!form.mrp || form.mrp <= 0) return { field: "mrp", message: "Enter the retail price." };
+    return null;
+  };
+
+  // Once the flagged field is rendered — its group may have to be opened first —
+  // bring it into view and put the caret in it.
+  useEffect(() => {
+    if (!jumpToError.current || !validationError) return;
+    jumpToError.current = false;
+    if (IDENTITY_FIELDS.has(validationError.field)) setShowIdentity(true);
+    else setShowRelease(true);
+    const frame = requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`[data-field="${validationError.field}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.querySelector<HTMLElement>("input, [role=combobox], button")?.focus({
+        preventScroll: true,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [validationError]);
+
+  /** Each section says what it holds, so a shut one still tells you something. */
+  const identityBadge = form.make?.trim()
+    ? [form.make, form.model].filter(Boolean).join(" ").trim() || "not set"
+    : "not set";
+  const releaseBadge = `${form.release_status ?? "Released"} · ${inrFull(Number(form.mrp) || 0)}`;
+  const photoBadge = form.image_url ? "photo set" : "no photo";
 
   const save = async () => {
-    if (!isImageOnly && hasMissing) {
-      if (missingBrand) toast.error("Brand is required");
-      else if (missingMake) toast.error("Make is required");
-      else if (missingModel) toast.error("Model is required");
-      else if (missingAssortment) toast.error("Assortment is required");
-      else if (missingMrp) toast.error("Valid MRP (₹) is required");
+    const error = validate();
+    if (error) {
+      jumpToError.current = true;
+      setValidationError(error);
       return;
     }
+    setValidationError(null);
 
     setSaving(true);
     const car: CatalogCar = isImageOnly
@@ -376,8 +400,7 @@ export function CatalogFormDialog({
     if (ok && !isImageOnly) {
       const wanted = isPack ? members : [];
       const had = packMembers[car.car_id] ?? [];
-      const changed =
-        wanted.length !== had.length || wanted.some((id, i) => id !== had[i]);
+      const changed = wanted.length !== had.length || wanted.some((id, i) => id !== had[i]);
       if (changed) await setPackMembers(car.car_id, wanted);
     }
 
@@ -393,20 +416,28 @@ export function CatalogFormDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && !saving && onClose()}>
-        <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl p-4 sm:p-6">
-          {/* Header */}
-          <DialogHeader>
+        {/* The same shell Add a car uses: a column with one scrolling middle, so
+            the title stays at the top and Cancel/Save stay at the bottom however
+            long the form gets, and a phone gets the whole screen rather than a
+            card it has to pinch. */}
+        <DialogContent
+          hideDragHandle
+          className={cn(
+            "flex flex-col overflow-hidden overscroll-contain touch-pan-y",
+            "w-full max-w-full sm:max-w-3xl lg:max-w-4xl",
+            "sm:top-6 sm:translate-y-0 sm:max-h-[calc(100dvh-3rem)]",
+            "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
+          )}
+        >
+          <DialogHeader className="shrink-0">
             <div className="flex items-center justify-between gap-2">
-              <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl font-bold">
-                <Store className="size-5 text-primary" />
-                {isNew ? "New catalogue casting" : "Edit catalogue casting"}
-              </DialogTitle>
+              <DialogTitle>{isNew ? "Add a casting" : "Update casting"}</DialogTitle>
               {!isImageOnly && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 gap-1.5 px-3 text-xs"
+                  className="h-8 shrink-0 gap-1.5 px-3 text-xs"
                   onClick={() => setScanOpen(true)}
                 >
                   <ScanLine className="size-3.5" />
@@ -414,322 +445,260 @@ export function CatalogFormDialog({
                 </Button>
               )}
             </div>
-            <DialogDescription className="text-xs">
+            <DialogDescription>
               {isImageOnly
                 ? "You can update or propose the photo for this catalogue casting."
                 : isNew
-                  ? "Added to the shared catalogue for everyone to browse and add to their collection."
-                  : "Changes are written into this casting in the shared catalogue for all collectors."}
+                  ? "What the casting is, and what it retails for. Everyone browses the same one."
+                  : "Changes are written into this casting for every collector who owns one."}
             </DialogDescription>
           </DialogHeader>
 
-          {/* Provenance Metadata bar if editing */}
-          {!isNew && entry && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              <div>
-                <span className="text-muted-foreground/75">Added by:</span>{" "}
-                <span className="font-semibold text-foreground">
-                  {resolveCatalogUserId(entry.created_by)}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground/75">Added on:</span>{" "}
-                <span className="font-semibold text-foreground">
-                  {formatDayMonthYear(entry.created_at) || "—"}
-                </span>
-              </div>
-              <div>
-                <span className="text-muted-foreground/75">Last updated:</span>{" "}
-                <span className="font-semibold text-foreground">
-                  {formatDayMonthYear(entry.updated_at) ||
-                    formatDayMonthYear(entry.created_at) ||
-                    "—"}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* SECTION 1: Release, Rarity & MRP */}
-          <div className="space-y-3 rounded-lg border border-border/80 bg-muted/20 p-3 sm:p-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 items-start">
-              <div className="flex flex-col space-y-1.5 w-full">
-                <Label className="text-xs font-semibold">Release Status</Label>
-                <SegmentControl<ReleaseStatus>
-                  fill
-                  disabled={isImageOnly}
-                  value={form.release_status ?? "Released"}
-                  onChange={(v) => set("release_status", v)}
-                  className="w-full h-9"
-                  options={[
-                    { value: "Released", label: "Released" },
-                    { value: "Pre Order", label: "Pre Order" },
-                  ]}
-                />
-              </div>
-
-              <div className="flex flex-col space-y-1.5 w-full">
-                <Label className="text-xs font-semibold">Rarity</Label>
-                <SegmentControl<string>
-                  fill
-                  disabled={isImageOnly}
-                  value={form.rarity || "Normal"}
-                  onChange={(v) => set("rarity", v)}
-                  className="w-full h-9"
-                  options={RARITIES.map((r) => ({ value: r, label: r }))}
-                />
-              </div>
-
-              <div className="flex flex-col space-y-1.5 w-full">
-                <Label className="text-xs font-semibold flex items-center gap-1">
-                  <IndianRupee className="size-3" /> Retail / MRP (₹) *
-                </Label>
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  disabled={isImageOnly}
-                  placeholder="179"
-                  value={form.mrp || ""}
-                  onChange={(e) => set("mrp", Number(e.target.value) || 0)}
-                  className="h-9 bg-background w-full"
-                />
-              </div>
-
-              {isPreOrder && (
-                <div className="flex flex-col space-y-1.5 w-full">
-                  <Label className="text-xs font-semibold">Expected Release Date</Label>
-                  <Input
-                    type="date"
-                    disabled={isImageOnly}
-                    value={form.expected_date || ""}
-                    onChange={(e) => set("expected_date", e.target.value || null)}
-                    className="h-9 bg-background w-full"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* MAIN 2-COLUMN SECTION: Left Image, Right Specifications */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-            {/* Image Column (4 cols) */}
-            <div className="space-y-3 lg:col-span-4">
-              <div className="rounded-lg border border-border/80 bg-muted/20 p-3">
-                <h3 className="mb-2 text-xs font-bold uppercase tracking-wider text-foreground">
-                  Casting Image
-                </h3>
-                <CarPhotoField
-                  value={form.image_url || ""}
-                  onChange={(url) => set("image_url", url)}
-                  suggestions={imageSuggestions}
-                  searchQuery={webSearchWords}
-                />
-              </div>
-            </div>
-
-            {/* Specifications Column (8 cols) */}
-            <div className="space-y-3 lg:col-span-8">
-              <div className="rounded-lg border border-border/80 bg-muted/20 p-3 sm:p-4 space-y-3">
-                <h3 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-foreground">
-                  <Car className="size-3.5 text-primary" />
-                  <span>Casting Specifications</span>
-                </h3>
-
-                {/* A box of cars rather than one casting. The cars inside are
-                    ordinary catalogue entries — the five Ferraris of a 5-pack
-                    are filed in their own right — so what this adds is only the
-                    fact that they come in one package. */}
-                <div className="space-y-2.5 rounded-lg border border-border/80 bg-muted/20 p-3">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <label className="flex cursor-pointer select-none items-center gap-2">
-                      <input
-                        type="checkbox"
-                        disabled={isImageOnly}
-                        checked={isPack}
-                        onChange={(e) => set("is_multipack", e.target.checked)}
-                        className="size-4 rounded border-input accent-primary"
-                      />
-                      <span className="text-xs font-semibold">This is a multipack</span>
-                    </label>
-                    <span className="flex-1 text-[11px] text-muted-foreground">
-                      A box of cars sold together, bought once, for one price.
-                    </span>
-                    {isPack && (
-                      <div className="flex items-center gap-2">
-                        <Label className="text-[11px] text-muted-foreground">Cars in the box</Label>
-                        <Input
-                          type="number"
-                          min={2}
-                          max={24}
-                          disabled={isImageOnly}
-                          value={declaredSize || ""}
-                          onChange={(e) => set("pack_size", Number(e.target.value) || null)}
-                          className="h-8 w-16 bg-background text-center tabular-nums"
-                          aria-label="Cars in the box"
-                        />
-                      </div>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save();
+            }}
+            className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col gap-4 overflow-x-hidden"
+          >
+            {/* The only part that scrolls. `min-h-0` is what lets it: without it
+                a flex child refuses to shrink below its content and the footer is
+                pushed off the bottom of the dialog instead. */}
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-0.5">
+              {/* What the casting is, as one line you read rather than thirteen
+                  fields you re-check. The fields are still here, one tap down. */}
+              <section className="overflow-hidden rounded-lg border border-border bg-muted/30">
+                <div className="flex items-start gap-3 p-3">
+                  <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
+                    {form.image_url ? (
+                      <img src={form.image_url} alt="" className="size-full object-cover" />
+                    ) : (
+                      <Car className="size-5 text-muted-foreground" />
                     )}
                   </div>
-
-                  {isPack && (
-                    <div className="space-y-2 border-t border-border/50 pt-2.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold">What&rsquo;s inside</span>
-                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary">
-                          {declaredSize
-                            ? `${members.length} of ${declaredSize} listed`
-                            : `${members.length} listed`}
-                        </span>
-                      </div>
-
-                      {members.map((id, i) => {
-                        const m = byId.get(id.toUpperCase());
-                        return (
-                          <div
-                            key={id}
-                            className="flex items-center gap-2 rounded-md border border-border bg-background/60 p-1.5"
-                          >
-                            <span className="w-5 shrink-0 text-center text-[11px] font-semibold tabular-nums text-muted-foreground">
-                              {i + 1}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-xs font-medium">
-                                {m?.name || id}
-                              </div>
-                              <div className="truncate text-[10px] text-muted-foreground">
-                                {m ? subLineOf(m) : "Not in the catalogue"}
-                              </div>
-                            </div>
-                            <Button
-                              type="button"
-                              size="icon"
-                              variant="ghost"
-                              disabled={isImageOnly}
-                              onClick={() => setMembers((xs) => xs.filter((x) => x !== id))}
-                              aria-label={`Remove ${m?.name || id} from the pack`}
-                              className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
-                            >
-                              <X className="size-3.5" />
-                            </Button>
-                          </div>
-                        );
-                      })}
-
-                      <div className="relative">
-                        <Input
-                          disabled={isImageOnly}
-                          value={memberQuery}
-                          onChange={(e) => setMemberQuery(e.target.value)}
-                          placeholder="Search the catalogue to add a car…"
-                          className="h-8 bg-background"
-                          aria-label="Add a car to the pack"
-                        />
-                        {memberChoices.length > 0 && (
-                          <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-lg">
-                            {memberChoices.map((c) => (
-                              <button
-                                key={c.car_id}
-                                type="button"
-                                onClick={() => {
-                                  setMembers((xs) => [...xs, c.car_id]);
-                                  setMemberQuery("");
-                                }}
-                                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-muted"
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="truncate text-xs font-medium">{c.name}</div>
-                                  <div className="truncate text-[10px] text-muted-foreground">
-                                    {subLineOf(c)}
-                                  </div>
-                                </div>
-                                <Plus className="size-3.5 shrink-0 text-muted-foreground" />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {declaredSize > 0 && members.length !== declaredSize && (
-                        <p className="text-[11px] text-muted-foreground">
-                          {members.length < declaredSize
-                            ? `${declaredSize - members.length} still to add — you can finish this later.`
-                            : `${members.length - declaredSize} more than the box holds.`}
-                        </p>
-                      )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {form.name?.trim() ||
+                          `${form.make || ""} ${form.model || ""}`.trim() ||
+                          "New casting"}
+                      </span>
+                      <ChaseMark
+                        rarity={(form.rarity as CatalogueValues["rarity"]) || "Normal"}
+                        className="size-3.5 shrink-0"
+                      />
                     </div>
-                  )}
+                    <p className="truncate text-[11px] text-muted-foreground">{identityLine}</p>
+                    {!isNew && entry && (
+                      <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/75">
+                        {entry.car_id}
+                      </p>
+                    )}
+                  </div>
                 </div>
 
+                {/* Who filed it and who last touched it — the same two pairs the
+                    details drawer shows, in the same order. */}
+                {!isNew && entry && (
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+                    <div className="truncate">
+                      Added by{" "}
+                      <span className="font-medium text-foreground">
+                        {resolveCatalogUserId(entry.created_by)}
+                      </span>
+                    </div>
+                    <div className="truncate">
+                      Added on{" "}
+                      <span className="font-medium text-foreground">
+                        {formatDayMonthYear(entry.created_at) || "—"}
+                      </span>
+                    </div>
+                    <div className="truncate">
+                      Updated by{" "}
+                      <span className="font-medium text-foreground">
+                        {entry.updated_by ? resolveCatalogUserId(entry.updated_by) : "—"}
+                      </span>
+                    </div>
+                    <div className="truncate">
+                      Updated on{" "}
+                      <span className="font-medium text-foreground">
+                        {formatDayMonthYear(entry.updated_at) || "—"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              <FormSection
+                title="What the casting is"
+                badge={identityBadge}
+                badgeTone={identityBadge === "not set" ? "warn" : "muted"}
+                open={showIdentity}
+                onToggle={() => setShowIdentity((v) => !v)}
+              >
                 {/* The same thirteen fields the car form edits, from the same
                     component — so a brand narrows its assortments here too, and
                     the labels cannot drift apart again. Rarity is omitted: this
-                    dialog keeps it upstairs beside Release Status. */}
+                    dialog keeps it beside Release Status. */}
                 <CatalogueFields
                   values={catalogueValues}
                   onChange={setCatalogueValue}
                   cars={cars}
                   omit={["rarity"]}
                   disabled={isImageOnly}
+                  errorFor={(k) => errorFor(k)}
                 />
 
-                <div className="space-y-1 pt-1 border-t border-border/50">
-                  <Label className="text-xs">Display Name (Casting Name)</Label>
-                  <Input
-                    disabled={isImageOnly}
-                    value={form.name || ""}
-                    onChange={(e) => set("name", e.target.value)}
-                    placeholder={`${form.make || "Make"} ${form.model || "Model"}`.trim()}
-                    className="h-8 bg-background"
-                  />
-                  <p className="text-[11px] text-muted-foreground">
-                    Auto-generated from Make and Model if left blank.
-                  </p>
+                <div className="mt-3 border-t border-border/50 pt-3">
+                  <Field label="Display name">
+                    <ClearableInput
+                      disabled={isImageOnly}
+                      value={form.name || ""}
+                      onChange={(e) => set("name", e.target.value)}
+                      placeholder={`${form.make || "Make"} ${form.model || "Model"}`.trim()}
+                      aria-label="Display name"
+                    />
+                    <p className="pt-1 text-[11px] text-muted-foreground">
+                      Built from make and model if you leave it blank.
+                    </p>
+                  </Field>
                 </div>
-              </div>
-            </div>
-          </div>
+              </FormSection>
 
-          {/* Footer */}
-          <DialogFooter className="mt-2 flex flex-row items-center justify-between gap-2 border-t border-border pt-3 sm:justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                disabled={saving}
-                className="text-muted-foreground hover:text-foreground"
+              <FormSection
+                title="Release & price"
+                badge={releaseBadge}
+                open={showRelease}
+                onToggle={() => setShowRelease((v) => !v)}
               >
-                Cancel
-              </Button>
-              {!isNew && effectiveCanDelete && onDelete && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <Field label="Release status">
+                    <SegmentControl<ReleaseStatus>
+                      fill
+                      disabled={isImageOnly}
+                      value={form.release_status ?? "Released"}
+                      onChange={(v) => set("release_status", v)}
+                      className="h-9 w-full"
+                      options={[
+                        { value: "Released", label: "Released" },
+                        { value: "Pre Order", label: "Pre Order" },
+                      ]}
+                    />
+                  </Field>
+
+                  <Field label="Rarity">
+                    <SegmentControl<string>
+                      fill
+                      disabled={isImageOnly}
+                      value={form.rarity || "Normal"}
+                      onChange={(v) => set("rarity", v)}
+                      className="h-9 w-full"
+                      options={RARITIES.map((r) => ({ value: r, label: r }))}
+                    />
+                  </Field>
+
+                  <Field label="Retail / MRP * (INR)" name="mrp" error={errorFor("mrp")}>
+                    <ClearableInput
+                      type="number"
+                      inputMode="decimal"
+                      min="0"
+                      step="any"
+                      disabled={isImageOnly}
+                      placeholder="e.g. 179"
+                      value={form.mrp ?? ""}
+                      onChange={(e) => {
+                        set("mrp", e.target.value === "" ? 0 : Number(e.target.value));
+                        setValidationError((x) => (x && x.field === "mrp" ? null : x));
+                      }}
+                      aria-label="Retail price"
+                    />
+                  </Field>
+
+                  {isPreOrder && (
+                    <Field label="Expected release date">
+                      <ClearableInput
+                        type="date"
+                        disabled={isImageOnly}
+                        value={form.expected_date || ""}
+                        onChange={(e) => set("expected_date", e.target.value || null)}
+                        aria-label="Expected release date"
+                      />
+                    </Field>
+                  )}
+                </div>
+              </FormSection>
+
+              <FormSection
+                title="Multipack"
+                badge={packBadge(isPack, declaredSize, members.length)}
+                open={showPack}
+                onToggle={() => setShowPack((v) => !v)}
+              >
+                <MultipackField
+                  isPack={isPack}
+                  packSize={declaredSize}
+                  members={members}
+                  onPackChange={(v) => set("is_multipack", v)}
+                  onSizeChange={(v) => set("pack_size", v)}
+                  onMembersChange={setMembers}
+                  disabled={isImageOnly}
+                  canEditMembers={isAdmin}
+                  selfCarId={entry && entry !== "new" ? entry.car_id : ""}
+                />
+              </FormSection>
+
+              <FormSection
+                title="Photo"
+                badge={photoBadge}
+                open={showPhoto}
+                onToggle={() => setShowPhoto((v) => !v)}
+              >
+                <CarPhotoField
+                  value={form.image_url || ""}
+                  onChange={(url) => set("image_url", url)}
+                  suggestions={imageSuggestions}
+                  searchQuery={webSearchWords}
+                />
+              </FormSection>
+            </div>
+
+            {/* Cancel left, Save right, at the foot of the dialog at every width —
+                outside the scroller, so they are where you left them however far
+                down the form you are. */}
+            <DialogFooter className="flex shrink-0 w-full min-w-0 flex-row items-center justify-between gap-2 border-t border-border/50 pt-3 sm:justify-between">
+              <div className="flex items-center gap-2">
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onDelete}
+                  variant="ghost"
+                  onClick={onClose}
                   disabled={saving}
-                  className="gap-1.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 border-border"
+                  className="text-muted-foreground hover:text-foreground"
                 >
-                  <Trash2 className="size-3.5" />
-                  <span>Remove</span>
+                  Cancel
                 </Button>
-              )}
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => void save()}
-              disabled={saving || hasMissing}
-              className="gap-1.5 font-semibold"
-            >
-              {saving ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Check className="size-3.5" />
-              )}
-              {isNew ? "Add to catalogue" : "Save changes"}
-            </Button>
-          </DialogFooter>
+                {!isNew && effectiveCanDelete && onDelete && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onDelete}
+                    disabled={saving}
+                    className="gap-1.5 border-border text-rose-500 hover:bg-rose-500/10 hover:text-rose-400"
+                  >
+                    <Trash2 className="size-4" />
+                    <span className="max-sm:sr-only">Remove</span>
+                  </Button>
+                )}
+              </div>
+              <Button type="submit" disabled={saving} className="gap-1.5 font-semibold">
+                {saving ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Check className="size-4" />
+                )}
+                {isNew ? "Add casting" : "Save changes"}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
 
