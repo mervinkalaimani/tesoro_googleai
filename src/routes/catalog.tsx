@@ -323,18 +323,30 @@ function CatalogPage() {
     loadUserHandles().then(() => setHandlesLoaded((n) => n + 1));
   }, []);
 
-  // A car is "owned" when one of your cars points at that catalogue entry,
-  // or matches its specifications (exact make/model/series/brand or calculated ID).
+  /**
+   * A car is owned when one of yours points at that catalogue entry.
+   *
+   * Its Catalog ID is the answer whenever it names an entry that exists, which
+   * today is every row in the database. Matching on the description is the
+   * fallback for a row whose ID names nothing — an import, or an entry that has
+   * since been renumbered — and it is offered only those rows now. Run against
+   * every car it marked a casting owned because some *other* car of yours looked
+   * like it, which is how one white Supra reported three of them.
+   */
   const owned = useMemo(() => {
+    const known = new Set(catalog.map((c) => c.car_id.toUpperCase()));
     const set = new Set<string>();
+    const unresolved: typeof mine = [];
     for (const c of mine) {
-      if (c.catalogId) set.add(c.catalogId.toUpperCase());
+      const id = (c.catalogId || "").trim().toUpperCase();
+      if (id && known.has(id)) set.add(id);
+      else unresolved.push(c);
     }
-    for (const cat of catalog) {
-      if (!set.has(cat.car_id.toUpperCase())) {
-        if (mine.some((m) => isCarMatchingCatalog(m, cat))) {
-          set.add(cat.car_id.toUpperCase());
-        }
+    if (unresolved.length > 0) {
+      for (const cat of catalog) {
+        const id = cat.car_id.toUpperCase();
+        if (set.has(id)) continue;
+        if (unresolved.some((m) => isCarMatchingCatalog(m, cat))) set.add(id);
       }
     }
     return set;

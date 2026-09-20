@@ -392,9 +392,7 @@ export async function saveCatalogCarToSupabase(
       ...(overwrite ? { updated_by: userId } : {}),
       // Only when stated, for the same reason release_status is: saving a
       // casting from Add a car must not quietly un-flag a pack.
-      ...(catalogCar.is_multipack !== undefined
-        ? { is_multipack: catalogCar.is_multipack }
-        : {}),
+      ...(catalogCar.is_multipack !== undefined ? { is_multipack: catalogCar.is_multipack } : {}),
       ...(catalogCar.pack_size !== undefined ? { pack_size: catalogCar.pack_size } : {}),
       ...(catalogCar.created_at ? { created_at: catalogCar.created_at } : {}),
       // Only when stated: saving a casting from Add a car must not reset a
@@ -877,6 +875,31 @@ export function isCarMatchingCatalog(
       catName.includes(cSeries);
     if (!userHasSeries) return false;
   }
+
+  /**
+   * Word-wise agreement, so one side may be the fuller spelling of the other.
+   * "Red" and "Spectraflame Red" are the same colour said two ways; "White"
+   * and "Yellow" are not. Compared as words rather than as substrings, because
+   * "red" is inside "predator" and that is not a colour anyone meant.
+   *
+   * A field only speaks when both sides state it: half the catalogue says
+   * nothing about a variant, and silence is not disagreement.
+   */
+  const agrees = (a: string, b: string) => {
+    if (!a || !b || a === b) return true;
+    const A = new Set(a.split(" "));
+    const B = new Set(b.split(" "));
+    const [few, many] = A.size <= B.size ? [A, B] : [B, A];
+    for (const word of few) if (!many.has(word)) return false;
+    return true;
+  };
+
+  // What actually separates one catalogue entry from another once the make,
+  // model and series agree. Without these a white Supra matched the yellow one
+  // and the catalogue marked both of them owned.
+  if (!agrees(norm(c.colour), norm(catalogCar.colour))) return false;
+  if (!agrees(norm(c.variant), norm(catalogCar.variant))) return false;
+  if (!agrees(cAssort, norm(catalogCar.assortment))) return false;
 
   return true;
 }
