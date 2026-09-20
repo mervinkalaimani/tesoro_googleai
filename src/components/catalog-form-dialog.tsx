@@ -8,7 +8,9 @@ import {
   Car,
   IndianRupee,
   Layers,
+  Plus,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,6 +34,8 @@ import { SegmentControl } from "@/components/segment-control";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { useCars } from "@/lib/cars-store";
+import { useCatalog } from "@/lib/catalog-store";
+import { carSubLine } from "@/lib/car-subline";
 import { useAuth } from "@/lib/auth-store";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { useCarImageCandidates } from "@/lib/car-image-search";
@@ -49,6 +53,16 @@ import { MODELS_BY_MAKE, VARIANTS_BY_MODEL } from "@/lib/car-taxonomy.generated"
 import { cn } from "@/lib/utils";
 
 const RARITIES = ["Normal", "Chase", "TH", "STH"] as const;
+
+/** A catalogue entry's secondary line, in the spelling carSubLine expects. */
+const subLineOf = (c: CatalogCar) =>
+  carSubLine({
+    brand: c.brand,
+    assortment: c.assortment,
+    series: c.series,
+    subSeries: c.sub_series,
+    carNumber: c.car_number,
+  });
 
 export function CatalogFormDialog({
   open,
@@ -105,12 +119,55 @@ export function CatalogFormDialog({
     release_status: "Released",
     rarity: "Normal",
     expected_date: null,
+    is_multipack: false,
+    pack_size: null,
   });
 
   const [saving, setSaving] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   /** Ranks the suggestion lists, the same way the car form ranks them. */
   const cars = useCars();
+
+  /**
+   * What is in the box, as car_ids in the order they should read.
+   *
+   * Held apart from `form` because it is not a column on the entry: it is rows
+   * in another table, saved after the entry itself, once the entry is certain
+   * to have an id to hang them off.
+   */
+  const { catalog: fullCatalog, packMembers, setPackMembers } = useCatalog();
+  const [members, setMembers] = useState<string[]>([]);
+  const [memberQuery, setMemberQuery] = useState("");
+
+  const byId = useMemo(() => {
+    const m = new Map<string, CatalogCar>();
+    for (const c of fullCatalog) m.set(c.car_id.toUpperCase(), c);
+    return m;
+  }, [fullCatalog]);
+
+  const isPack = Boolean(form.is_multipack);
+  const declaredSize = Number(form.pack_size) || 0;
+
+  /**
+   * What can go in the box: anything in the catalogue that is not this entry
+   * and is not itself a box, minus what is already in. The database refuses
+   * both, but a list that offers them and then fails is a worse way to say so.
+   */
+  const memberChoices = useMemo(() => {
+    const q = memberQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const chosen = new Set(members.map((id) => id.toUpperCase()));
+    const selfId = entry && entry !== "new" ? entry.car_id.toUpperCase() : "";
+    const out: CatalogCar[] = [];
+    for (const c of fullCatalog) {
+      const id = c.car_id.toUpperCase();
+      if (c.is_multipack || chosen.has(id) || id === selfId) continue;
+      const hay = `${c.name} ${c.make} ${c.model} ${c.variant ?? ""} ${c.brand} ${c.series}`;
+      if (hay.toLowerCase().includes(q)) out.push(c);
+      if (out.length >= 8) break;
+    }
+    return out;
+  }, [memberQuery, members, fullCatalog, entry]);
 
   useEffect(() => {
     if (!open) return;
@@ -122,6 +179,8 @@ export function CatalogFormDialog({
         rarity: entry.rarity || "Normal",
         expected_date: entry.expected_date || null,
         image_url: entry.image_url || "",
+        is_multipack: Boolean(entry.is_multipack),
+        pack_size: entry.pack_size ?? null,
       });
     } else {
       setForm({
@@ -143,8 +202,16 @@ export function CatalogFormDialog({
         release_status: "Released",
         rarity: "Normal",
         expected_date: null,
+        is_multipack: false,
+        pack_size: null,
       });
     }
+    setMemberQuery("");
+    setMembers(entry && entry !== "new" ? (packMembers[entry.car_id] ?? []) : []);
+    // packMembers is read for the entry being opened; re-running when the whole
+    // map changes would throw away an edit in progress the moment any other
+    // pack was saved.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, entry]);
 
   const catalogueValues: CatalogueValues = {
@@ -276,6 +343,10 @@ export function CatalogFormDialog({
           release_status: form.release_status ?? "Released",
           rarity: form.rarity || "Normal",
           expected_date: isPreOrder ? form.expected_date || null : null,
+          is_multipack: isPack,
+          // Only a box has a size. Clearing it alongside the flag keeps an
+          // un-ticked entry from carrying "5" around invisibly.
+          pack_size: isPack ? declaredSize || null : null,
           car_id: isNew
             ? generateCatalogCarId({
                 brand: form.brand || "Hot Wheels",
@@ -298,6 +369,18 @@ export function CatalogFormDialog({
     }
 
     const ok = await onSave(car);
+
+    // The contents go after the entry, never before: membership rows point at
+    // the pack's car_id, and on a new casting that id does not exist until the
+    // entry above has landed.
+    if (ok && !isImageOnly) {
+      const wanted = isPack ? members : [];
+      const had = packMembers[car.car_id] ?? [];
+      const changed =
+        wanted.length !== had.length || wanted.some((id, i) => id !== had[i]);
+      if (changed) await setPackMembers(car.car_id, wanted);
+    }
+
     setSaving(false);
     if (ok) {
       toast.success(isNew ? "Added to the catalogue" : "Catalogue entry updated", {
@@ -450,6 +533,131 @@ export function CatalogFormDialog({
                   <Car className="size-3.5 text-primary" />
                   <span>Casting Specifications</span>
                 </h3>
+
+                {/* A box of cars rather than one casting. The cars inside are
+                    ordinary catalogue entries — the five Ferraris of a 5-pack
+                    are filed in their own right — so what this adds is only the
+                    fact that they come in one package. */}
+                <div className="space-y-2.5 rounded-lg border border-border/80 bg-muted/20 p-3">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <label className="flex cursor-pointer select-none items-center gap-2">
+                      <input
+                        type="checkbox"
+                        disabled={isImageOnly}
+                        checked={isPack}
+                        onChange={(e) => set("is_multipack", e.target.checked)}
+                        className="size-4 rounded border-input accent-primary"
+                      />
+                      <span className="text-xs font-semibold">This is a multipack</span>
+                    </label>
+                    <span className="flex-1 text-[11px] text-muted-foreground">
+                      A box of cars sold together, bought once, for one price.
+                    </span>
+                    {isPack && (
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[11px] text-muted-foreground">Cars in the box</Label>
+                        <Input
+                          type="number"
+                          min={2}
+                          max={24}
+                          disabled={isImageOnly}
+                          value={declaredSize || ""}
+                          onChange={(e) => set("pack_size", Number(e.target.value) || null)}
+                          className="h-8 w-16 bg-background text-center tabular-nums"
+                          aria-label="Cars in the box"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {isPack && (
+                    <div className="space-y-2 border-t border-border/50 pt-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold">What&rsquo;s inside</span>
+                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary">
+                          {declaredSize
+                            ? `${members.length} of ${declaredSize} listed`
+                            : `${members.length} listed`}
+                        </span>
+                      </div>
+
+                      {members.map((id, i) => {
+                        const m = byId.get(id.toUpperCase());
+                        return (
+                          <div
+                            key={id}
+                            className="flex items-center gap-2 rounded-md border border-border bg-background/60 p-1.5"
+                          >
+                            <span className="w-5 shrink-0 text-center text-[11px] font-semibold tabular-nums text-muted-foreground">
+                              {i + 1}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-xs font-medium">
+                                {m?.name || id}
+                              </div>
+                              <div className="truncate text-[10px] text-muted-foreground">
+                                {m ? subLineOf(m) : "Not in the catalogue"}
+                              </div>
+                            </div>
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              disabled={isImageOnly}
+                              onClick={() => setMembers((xs) => xs.filter((x) => x !== id))}
+                              aria-label={`Remove ${m?.name || id} from the pack`}
+                              className="size-7 shrink-0 text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="size-3.5" />
+                            </Button>
+                          </div>
+                        );
+                      })}
+
+                      <div className="relative">
+                        <Input
+                          disabled={isImageOnly}
+                          value={memberQuery}
+                          onChange={(e) => setMemberQuery(e.target.value)}
+                          placeholder="Search the catalogue to add a car…"
+                          className="h-8 bg-background"
+                          aria-label="Add a car to the pack"
+                        />
+                        {memberChoices.length > 0 && (
+                          <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-lg">
+                            {memberChoices.map((c) => (
+                              <button
+                                key={c.car_id}
+                                type="button"
+                                onClick={() => {
+                                  setMembers((xs) => [...xs, c.car_id]);
+                                  setMemberQuery("");
+                                }}
+                                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left hover:bg-muted"
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="truncate text-xs font-medium">{c.name}</div>
+                                  <div className="truncate text-[10px] text-muted-foreground">
+                                    {subLineOf(c)}
+                                  </div>
+                                </div>
+                                <Plus className="size-3.5 shrink-0 text-muted-foreground" />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {declaredSize > 0 && members.length !== declaredSize && (
+                        <p className="text-[11px] text-muted-foreground">
+                          {members.length < declaredSize
+                            ? `${declaredSize - members.length} still to add — you can finish this later.`
+                            : `${members.length - declaredSize} more than the box holds.`}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 {/* The same thirteen fields the car form edits, from the same
                     component — so a brand narrows its assortments here too, and

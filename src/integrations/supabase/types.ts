@@ -79,6 +79,8 @@ export type Database = {
           updated_at: string;
           created_by: string | null;
           updated_by: string | null;
+          is_multipack: boolean;
+          pack_size: number | null;
         };
         Insert: {
           car_id: string;
@@ -104,6 +106,8 @@ export type Database = {
           updated_at?: string;
           created_by?: string | null;
           updated_by?: string | null;
+          is_multipack?: boolean;
+          pack_size?: number | null;
         };
         Update: {
           car_id?: string;
@@ -129,6 +133,29 @@ export type Database = {
           updated_at?: string;
           created_by?: string | null;
           updated_by?: string | null;
+          is_multipack?: boolean;
+          pack_size?: number | null;
+        };
+        Relationships: [];
+      };
+      tesoro_catalog_pack_members: {
+        Row: {
+          pack_car_id: string;
+          member_car_id: string;
+          position: number;
+          created_at: string;
+        };
+        Insert: {
+          pack_car_id: string;
+          member_car_id: string;
+          position?: number;
+          created_at?: string;
+        };
+        Update: {
+          pack_car_id?: string;
+          member_car_id?: string;
+          position?: number;
+          created_at?: string;
         };
         Relationships: [];
       };

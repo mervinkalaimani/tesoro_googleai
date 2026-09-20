@@ -39,6 +39,17 @@ export type CatalogCar = {
   created_by?: string | null;
   /** Who last corrected the entry. Null when nobody has since it was filed. */
   updated_by?: string | null;
+  /**
+   * This entry is a box of cars rather than one casting — a 5-pack, a Team
+   * Transport pair. What is in it lives in tesoro_catalog_pack_members, and the
+   * cars inside are ordinary catalogue entries in their own right.
+   */
+  is_multipack?: boolean;
+  /**
+   * How many cars the box holds as sold. Kept apart from the member count so a
+   * part-filled pack can still say "3 of 5 listed".
+   */
+  pack_size?: number | null;
 };
 
 export type ReleaseStatus = "Released" | "Pre Order";
@@ -308,6 +319,8 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         updated_at: row.updated_at,
         created_by: row.created_by,
         updated_by: row.updated_by,
+        is_multipack: Boolean(row.is_multipack),
+        pack_size: row.pack_size ?? null,
       }));
       saveLocalCatalog(formatted);
       return formatted;
@@ -377,6 +390,12 @@ export async function saveCatalogCarToSupabase(
       // it was "updated by" the person who filed it a second ago reads as a
       // change that never happened.
       ...(overwrite ? { updated_by: userId } : {}),
+      // Only when stated, for the same reason release_status is: saving a
+      // casting from Add a car must not quietly un-flag a pack.
+      ...(catalogCar.is_multipack !== undefined
+        ? { is_multipack: catalogCar.is_multipack }
+        : {}),
+      ...(catalogCar.pack_size !== undefined ? { pack_size: catalogCar.pack_size } : {}),
       ...(catalogCar.created_at ? { created_at: catalogCar.created_at } : {}),
       // Only when stated: saving a casting from Add a car must not reset a
       // pre-order back to the column's Released default.
@@ -407,6 +426,70 @@ export async function saveCatalogCarToSupabase(
         ...(overwrite ? { updated_by: userId } : {}),
       },
     };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * What is in every box, as one map from pack to its members in order.
+ *
+ * Fetched whole and separately rather than joined into the catalogue read: the
+ * catalogue is paged a thousand rows at a time and only a few dozen of its
+ * entries are packs, so a join would carry the cost on every page for nothing.
+ * Membership is small enough to arrive in one go.
+ */
+export async function fetchPackMembers(): Promise<Record<string, string[]>> {
+  try {
+    const { data, error } = await supabase
+      .from("tesoro_catalog_pack_members")
+      .select("pack_car_id, member_car_id, position")
+      .order("pack_car_id", { ascending: true })
+      .order("position", { ascending: true });
+
+    if (error) {
+      console.warn("fetchPackMembers warning:", error.message);
+      return {};
+    }
+
+    const out: Record<string, string[]> = {};
+    for (const row of data ?? []) {
+      (out[row.pack_car_id] ??= []).push(row.member_car_id);
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Replaces what is in a box.
+ *
+ * Delete-then-insert rather than a diff: a pack holds a handful of cars whose
+ * order is part of the answer, and working out which rows moved is more code
+ * than rewriting five of them. Admin only, which the database enforces.
+ */
+export async function savePackMembers(
+  packCarId: string,
+  memberCarIds: string[],
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { error: clearError } = await supabase
+      .from("tesoro_catalog_pack_members")
+      .delete()
+      .eq("pack_car_id", packCarId);
+    if (clearError) return { success: false, error: clearError.message };
+
+    const rows = memberCarIds
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .map((member_car_id, position) => ({ pack_car_id: packCarId, member_car_id, position }));
+
+    if (rows.length === 0) return { success: true };
+
+    const { error } = await supabase.from("tesoro_catalog_pack_members").insert(rows);
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   } catch (err) {
     return { success: false, error: (err as Error).message };
   }
@@ -444,22 +527,28 @@ export async function catalogEntryUsage(carId: string): Promise<number | null> {
  */
 export async function deleteCatalogCarFromSupabase(
   carId: string,
-): Promise<{ deleted: boolean; uses: number; error?: string }> {
+): Promise<{ deleted: boolean; uses: number; packs: number; error?: string }> {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any).rpc("delete_catalog_entry", {
       _car_id: carId,
     });
-    if (error) return { deleted: false, uses: 0, error: error.message };
+    if (error) return { deleted: false, uses: 0, packs: 0, error: error.message };
 
-    const res = (data ?? {}) as { deleted?: boolean; uses?: number };
+    const res = (data ?? {}) as { deleted?: boolean; uses?: number; packs?: number };
     if (res.deleted) {
       const clean = carId.trim().toUpperCase();
       saveLocalCatalog(getLocalCatalog().filter((c) => c.car_id.toUpperCase() !== clean));
     }
-    return { deleted: Boolean(res.deleted), uses: Number(res.uses) || 0 };
+    return {
+      deleted: Boolean(res.deleted),
+      uses: Number(res.uses) || 0,
+      // A casting inside a box is in use the same way a casting somebody owns
+      // is: the pack would be left claiming contents it no longer has.
+      packs: Number(res.packs) || 0,
+    };
   } catch (err) {
-    return { deleted: false, uses: 0, error: (err as Error).message };
+    return { deleted: false, uses: 0, packs: 0, error: (err as Error).message };
   }
 }
 

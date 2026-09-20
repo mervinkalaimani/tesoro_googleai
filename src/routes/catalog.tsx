@@ -5,6 +5,7 @@ import {
   Check,
   Layers,
   Loader2,
+  Package,
   Pencil,
   Plus,
   SlidersHorizontal,
@@ -191,6 +192,12 @@ function compareBy(a: CatalogCar, b: CatalogCar, sort: Sort, serials: Map<string
 const LOAD_BATCH = 60;
 
 const isPreOrder = (c: CatalogCar) => c.release_status === "Pre Order";
+
+/** How many cars a box holds, for the badge that says it is one. */
+const packLabel = (c: CatalogCar) => {
+  const n = Number(c.pack_size) || 0;
+  return n > 1 ? `${n} CARS` : "PACK";
+};
 
 /** A catalogue entry shaped as a car, for the cards and thumbnails. The price shown is the MRP. */
 function asCar(c: CatalogCar): Diecast {
@@ -840,6 +847,14 @@ function CatalogCard({
             <Check className="size-3" /> Owned
           </span>
         )}
+        {/* A box, not a casting. It earns the primary colour because it changes
+            what the card means: one of these is several cars. */}
+        {c.is_multipack && (
+          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-sm">
+            <Package className="size-3" />
+            {packLabel(c)}
+          </span>
+        )}
       </button>
       <div className="flex flex-1 flex-col p-3">
         <button
@@ -997,6 +1012,12 @@ function CatalogTable({
                           {isPreOrder(c) && (
                             <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-500">
                               PO
+                            </span>
+                          )}
+                          {c.is_multipack && (
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-1.5 text-[10px] font-bold text-primary">
+                              <Package className="size-3" />
+                              {packLabel(c)}
                             </span>
                           )}
                           {owned.has(c.car_id.toUpperCase()) && (

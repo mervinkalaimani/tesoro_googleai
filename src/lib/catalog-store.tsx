@@ -5,6 +5,8 @@ import {
   getLocalCatalog,
   saveCatalogCarToSupabase,
   deleteCatalogCarFromSupabase,
+  fetchPackMembers,
+  savePackMembers,
   diecastToCatalogCar,
 } from "@/lib/catalog";
 import { findCatalogEntry, type CarIdFields } from "@/lib/car-id";
@@ -22,7 +24,11 @@ interface CatalogContextType {
    * Owner only: removes an entry no car is linked to. `uses` says how many
    * are when it refused.
    */
-  deleteCatalogCar: (carId: string) => Promise<{ deleted: boolean; uses: number }>;
+  deleteCatalogCar: (carId: string) => Promise<{ deleted: boolean; uses: number; packs: number }>;
+  /** What is in each box: pack car_id to its members, in order. */
+  packMembers: Record<string, string[]>;
+  /** Admin only: replaces the contents of one box. */
+  setPackMembers: (packCarId: string, memberCarIds: string[]) => Promise<boolean>;
   findMatchingInCatalog: (fields: CarIdFields) => CatalogCar | undefined;
   getCatalogCarById: (carId: string) => CatalogCar | undefined;
 }
@@ -31,13 +37,21 @@ const CatalogContext = createContext<CatalogContextType | null>(null);
 
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [catalog, setCatalog] = useState<CatalogCar[]>(() => getLocalCatalog());
+  const [packMembers, setPackMembersState] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const refreshCatalog = useCallback(async () => {
     setIsLoading(true);
     try {
-      const remote = await fetchCatalogFromSupabase();
+      // Both together: what the entries are, and what is in the boxes among
+      // them. A pack rendered before its contents arrive is a pack that flashes
+      // "0 cars" on the way in.
+      const [remote, members] = await Promise.all([
+        fetchCatalogFromSupabase(),
+        fetchPackMembers(),
+      ]);
       setCatalog(remote);
+      setPackMembersState(members);
     } catch (e) {
       console.warn("Failed to refresh catalog:", e);
     } finally {
@@ -82,13 +96,30 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     const res = await deleteCatalogCarFromSupabase(carId);
     if (res.error) {
       toast.error(`Could not remove the casting: ${res.error}`);
-      return { deleted: false, uses: res.uses };
+      return { deleted: false, uses: res.uses, packs: res.packs };
     }
     if (res.deleted) {
       const clean = carId.trim().toUpperCase();
       setCatalog((prev) => prev.filter((c) => c.car_id.toUpperCase() !== clean));
+      // A removed pack takes its membership with it in the database; drop it
+      // here too so the list does not go on describing a box that is gone.
+      setPackMembersState((prev) => {
+        const next = { ...prev };
+        delete next[carId];
+        return next;
+      });
     }
-    return { deleted: res.deleted, uses: res.uses };
+    return { deleted: res.deleted, uses: res.uses, packs: res.packs };
+  }, []);
+
+  const setPackMembers = useCallback(async (packCarId: string, memberCarIds: string[]) => {
+    const res = await savePackMembers(packCarId, memberCarIds);
+    if (!res.success) {
+      toast.error(`Could not save what is in the pack: ${res.error || "Unknown error"}`);
+      return false;
+    }
+    setPackMembersState((prev) => ({ ...prev, [packCarId]: memberCarIds }));
+    return true;
   }, []);
 
   const findMatchingInCatalog = useCallback(
@@ -117,6 +148,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       addCatalogCar,
       updateCatalogCar,
       deleteCatalogCar,
+      packMembers,
+      setPackMembers,
       findMatchingInCatalog,
       getCatalogCarById,
     }),
@@ -127,6 +160,8 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       addCatalogCar,
       updateCatalogCar,
       deleteCatalogCar,
+      packMembers,
+      setPackMembers,
       findMatchingInCatalog,
       getCatalogCarById,
     ],

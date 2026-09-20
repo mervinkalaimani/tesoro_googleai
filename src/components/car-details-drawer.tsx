@@ -1059,6 +1059,10 @@ function CarPurchaseAndShippingSection({
 }) {
   return (
     <div className="space-y-4">
+      {/* A box you own lists its cars here, above what it cost: the first thing
+          to know about a 5-pack is which five. */}
+      <PackContents packCarId={car.catalogId} />
+
       {/* Purchase details */}
       <div>
         <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
@@ -2017,6 +2021,8 @@ function CatalogDetailsBody({
         <Spec label="Retail / MRP" value={car.mrp ? inrFull(Math.round(car.mrp)) : ""} />
       </SpecGrid>
 
+      <PackContents packCarId={catalogCar?.car_id} />
+
       <hr className="border-border" />
 
       {/* Read-only here: the rarity is the catalogue's, not something to tap. */}
@@ -2275,6 +2281,92 @@ export function CatalogOwnersColumn({
               </div>
             );
           })
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * What is in a box, wherever a box is shown.
+ *
+ * Takes the pack's catalogue id and resolves the rest itself, because it is
+ * wanted in two places that hold different things: the catalogue's own details
+ * view, which has the entry, and an owned car's, which has only the Catalog ID
+ * its row points at. Renders nothing at all for an entry that is not a pack,
+ * which is all but a few dozen of them.
+ */
+function PackContents({ packCarId }: { packCarId?: string | null }) {
+  const { catalog, packMembers } = useCatalog();
+
+  const pack = useMemo(() => {
+    const id = (packCarId || "").trim().toUpperCase();
+    if (!id) return null;
+    return catalog.find((c) => c.car_id.toUpperCase() === id) ?? null;
+  }, [packCarId, catalog]);
+
+  const members = useMemo(() => {
+    if (!pack?.is_multipack) return [];
+    const ids = packMembers[pack.car_id] ?? [];
+    const byId = new Map(catalog.map((c) => [c.car_id.toUpperCase(), c]));
+    return ids.map((id) => ({ id, entry: byId.get(id.toUpperCase()) ?? null }));
+  }, [pack, packMembers, catalog]);
+
+  if (!pack?.is_multipack) return null;
+
+  const declared = Number(pack.pack_size) || 0;
+  // A box whose contents nobody has listed yet still says it is a box: that is
+  // the more useful fact, and "0 cars" would read as an empty package.
+  const count = declared || members.length;
+
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 p-2.5 sm:p-3">
+      <div>
+        <div className="mb-2 flex items-baseline gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            What&rsquo;s inside
+          </h3>
+          <span className="text-xs font-medium tabular-nums text-muted-foreground">
+            {count} car{count === 1 ? "" : "s"}
+          </span>
+          {declared > 0 && members.length !== declared && (
+            <span className="text-[11px] text-muted-foreground/80">
+              {members.length} listed
+            </span>
+          )}
+        </div>
+
+        {members.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+            Nobody has listed what is in this one yet.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {members.map(({ id, entry }, i) => (
+              <div
+                key={id}
+                className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-muted/20 px-2 py-1.5"
+              >
+                <span className="w-4 shrink-0 text-center text-[11px] font-semibold tabular-nums text-muted-foreground">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-semibold">{entry?.name || id}</div>
+                  <div className="truncate text-[10px] text-muted-foreground">
+                    {entry
+                      ? carSubLine({
+                          brand: entry.brand,
+                          assortment: entry.assortment,
+                          series: entry.series,
+                          subSeries: entry.sub_series,
+                          carNumber: entry.car_number,
+                        })
+                      : "No longer in the catalogue"}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
