@@ -254,7 +254,8 @@ function toPrefill(c: CatalogCar): CatalogueCar {
  * entry — which corrects it in every collection that has the car.
  */
 function CatalogPage() {
-  const { catalog, isLoading, addCatalogCar, updateCatalogCar, deleteCatalogCar } = useCatalog();
+  const { catalog, isLoading, addCatalogCar, updateCatalogCar, deleteCatalogCar, packMembers } =
+    useCatalog();
   const { isAdmin, isOwner, isGuest } = useAuth();
   const { query } = useApp();
   const mine = useCars();
@@ -262,9 +263,24 @@ function CatalogPage() {
   const [segment, setSegment] = useState<Segment>("all");
   const [filters, setFilters] = useState<Filters>(NO_FILTERS);
   const [hideOwned, setHideOwned] = useState(false);
+  /**
+   * On by default: once a box is in the catalogue, its five cars are listed
+   * twice over — as the box and as themselves — and the box is the thing you
+   * buy. Turn it off to see the castings individually.
+   */
+  const [hideInPacks, setHideInPacks] = useState(true);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<Filters>(NO_FILTERS);
-  const [draftHideOwned, setDraftHideOwned] = useState(false);
+  const [draftHideInPacks, setDraftHideInPacks] = useState(true);
+
+  /** Every casting that sits inside some box, by car_id. */
+  const inSomePack = useMemo(() => {
+    const out = new Set<string>();
+    for (const ids of Object.values(packMembers)) {
+      for (const id of ids) out.add(id.trim().toUpperCase());
+    }
+    return out;
+  }, [packMembers]);
   const [sort, setSort] = useState<Sort>({ key: "added", dir: "desc" });
   const [group, setGroup] = useState<GroupKey>("none");
   const [view, setView] = useState<ViewMode>("grid");
@@ -351,8 +367,11 @@ function CatalogPage() {
     if (hideOwned) {
       result = result.filter((c) => !owned.has(c.car_id.toUpperCase()));
     }
+    if (hideInPacks) {
+      result = result.filter((c) => !inSomePack.has(c.car_id.toUpperCase()));
+    }
     return result.sort((a, b) => compareBy(a, b, sort, serials));
-  }, [searched, filters, hideOwned, owned, sort, serials]);
+  }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned, sort, serials]);
 
   /** Each filter's choices, narrowed by the other filters, with counts. */
   const options = useMemo(() => {
@@ -361,6 +380,7 @@ function CatalogPage() {
       const counts = new Map<string, number>();
       for (const c of searched) {
         if (hideOwned && owned.has(c.car_id.toUpperCase())) continue;
+        if (hideInPacks && inSomePack.has(c.car_id.toUpperCase())) continue;
         if (!matches(c, filters, d.key)) continue;
         const v = d.get(c).trim();
         if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
@@ -370,37 +390,41 @@ function CatalogPage() {
         .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
     }
     return out;
-  }, [searched, filters, hideOwned, owned]);
+  }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned]);
 
+  // Hide owned is a toolbar toggle of its own now, so it no longer counts
+  // towards the badge on the Filters button. Hide cars in multipacks is on by
+  // default, so it only counts when turned off.
   const activeCount =
-    Object.values(filters).filter((v) => v !== "all").length + (hideOwned ? 1 : 0);
+    Object.values(filters).filter((v) => v !== "all").length + (hideInPacks ? 0 : 1);
 
   const openFilterModal = () => {
     setDraftFilters(filters);
-    setDraftHideOwned(hideOwned);
+    setDraftHideInPacks(hideInPacks);
     setFilterModalOpen(true);
   };
 
   const handleClearFilters = () => {
     setDraftFilters(NO_FILTERS);
-    setDraftHideOwned(false);
+    setDraftHideInPacks(true);
   };
 
   const handleApplyFilters = () => {
     setFilters(draftFilters);
-    setHideOwned(draftHideOwned);
+    setHideInPacks(draftHideInPacks);
     setFilterModalOpen(false);
   };
 
   const draftActiveCount =
-    Object.values(draftFilters).filter((v) => v !== "all").length + (draftHideOwned ? 1 : 0);
+    Object.values(draftFilters).filter((v) => v !== "all").length + (draftHideInPacks ? 0 : 1);
 
   const draftOptions = useMemo(() => {
     const out = {} as Record<FilterKey, { value: string; count: number }[]>;
     for (const d of FILTERS) {
       const counts = new Map<string, number>();
       for (const c of searched) {
-        if (draftHideOwned && owned.has(c.car_id.toUpperCase())) continue;
+        if (hideOwned && owned.has(c.car_id.toUpperCase())) continue;
+        if (draftHideInPacks && inSomePack.has(c.car_id.toUpperCase())) continue;
         if (!matches(c, draftFilters, d.key)) continue;
         const v = d.get(c).trim();
         if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
@@ -410,11 +434,14 @@ function CatalogPage() {
         .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
     }
     return out;
-  }, [searched, draftFilters, draftHideOwned, owned]);
+  }, [searched, draftFilters, hideOwned, draftHideInPacks, inSomePack, owned]);
 
   // Reordering is as much a new list as refiltering is: sixty rows into a
   // different order are sixty different rows.
-  useEffect(() => setVisible(LOAD_BATCH), [segment, filters, hideOwned, query, sort, group]);
+  useEffect(
+    () => setVisible(LOAD_BATCH),
+    [segment, filters, hideOwned, hideInPacks, query, sort, group],
+  );
 
   useEffect(() => {
     const el = sentinel.current;
@@ -513,126 +540,113 @@ function CatalogPage() {
           sticky={false}
           oneLine
           left={
-            <div className="flex items-center gap-2">
-              <SegmentControl
-                value={segment}
-                onChange={setSegment}
-                className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
-                options={[
-                  { value: "all", label: "All" },
-                  { value: "released", label: "Released" },
-                  { value: "preorder", label: "PO" },
-                ]}
-              />
+            <SegmentControl
+              value={segment}
+              onChange={setSegment}
+              className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
+              options={[
+                { value: "all", label: "All" },
+                { value: "released", label: "Released" },
+                { value: "preorder", label: "PO" },
+              ]}
+            />
+          }
+          right={
+            <>
+              {/* Hide owned sits outside the filter sheet: it is the one you
+                  flip while browsing, not something you set and forget. */}
+              <label
+                title="Hide cars you already own"
+                className={cn(
+                  "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 text-xs font-medium",
+                  hideOwned
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-input text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={hideOwned}
+                  onChange={(e) => setHideOwned(e.target.checked)}
+                  className="size-3.5 rounded border-input accent-primary"
+                />
+                <span className="max-sm:sr-only">Hide owned</span>
+              </label>
+
+              {/* Sort, group and filter read as icons at every width, the way
+                  they do on the other pages. */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="size-8 shrink-0"
+                    aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${
+                      sort.dir === "asc" ? "ascending" : "descending"
+                    }`}
+                    title="Sort"
+                  >
+                    <ArrowDownUp className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+                  {SORTS.map((s) => (
+                    <DropdownMenuItem
+                      key={s.value}
+                      onSelect={() => sortBy(s.value)}
+                      className="justify-between text-xs"
+                    >
+                      {s.label}
+                      {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={group === "none" ? "outline" : "default"}
+                    className="size-8 shrink-0"
+                    aria-label={GROUPS.find((g) => g.value === group)?.label}
+                    title="Group"
+                  >
+                    <Layers className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
+                  {GROUPS.map((g) => (
+                    <DropdownMenuItem
+                      key={g.value}
+                      onSelect={() => setGroup(g.value)}
+                      className="justify-between text-xs"
+                    >
+                      {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
+                      {group === g.value && <Check className="size-3.5" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <Button
                 type="button"
+                size="icon"
                 variant={activeCount > 0 ? "default" : "outline"}
-                size="sm"
                 onClick={openFilterModal}
-                className={cn(
-                  "h-8 gap-1.5 px-2.5 text-xs font-semibold shrink-0 cursor-pointer shadow-xs max-sm:px-2 max-sm:gap-1",
-                  activeCount > 0
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                className="relative size-8 shrink-0"
                 title="Filter castings"
-                aria-label="Filter castings"
+                aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : "Filters"}
               >
-                <SlidersHorizontal className="size-3.5" />
-                <span className="hidden sm:inline">Filters</span>
+                <SlidersHorizontal className="size-4" />
                 {activeCount > 0 && (
-                  <span className="flex size-4 items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground">
+                  <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground ring-1 ring-border">
                     {activeCount}
                   </span>
                 )}
               </Button>
-            </div>
-          }
-          right={
-            <>
-              {/* A phone gets two icons and a menu each. Spelled out, sort and
-                group take the whole row between them and the view toggle — the
-                control you change most often — ends up off the edge. */}
-              <div className="flex items-center gap-2 sm:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="outline"
-                      className="size-8 shrink-0"
-                      aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${sort.dir === "asc" ? "ascending" : "descending"}`}
-                      title="Sort"
-                    >
-                      <ArrowDownUp className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44">
-                    <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
-                    {SORTS.map((s) => (
-                      <DropdownMenuItem
-                        key={s.value}
-                        onSelect={() => sortBy(s.value)}
-                        className="justify-between text-xs"
-                      >
-                        {s.label}
-                        {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant={group === "none" ? "outline" : "default"}
-                      className="size-8 shrink-0"
-                      aria-label={GROUPS.find((g) => g.value === group)?.label}
-                      title="Group"
-                    >
-                      <Layers className="size-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-44">
-                    <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
-                    {GROUPS.map((g) => (
-                      <DropdownMenuItem
-                        key={g.value}
-                        onSelect={() => setGroup(g.value)}
-                        className="justify-between text-xs"
-                      >
-                        {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
-                        {group === g.value && <Check className="size-3.5" />}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Tapping the chosen one again turns it round, so the arrow rides
-                on the label rather than sitting in a control of its own. */}
-              <SegmentControl
-                value={sort.key}
-                onChange={sortBy}
-                className="hidden h-8 w-auto sm:inline-flex"
-                options={SORTS.map((s) => ({
-                  value: s.value,
-                  label:
-                    sort.key === s.value ? `${s.label} ${sort.dir === "asc" ? "↑" : "↓"}` : s.label,
-                }))}
-              />
-              <select
-                value={group}
-                onChange={(e) => setGroup(e.target.value as GroupKey)}
-                aria-label="Group by"
-                className="hidden h-8 shrink-0 rounded-md border border-input bg-background px-2 text-xs sm:block"
-              >
-                {GROUPS.map((g) => (
-                  <option key={g.value} value={g.value}>
-                    {g.label}
-                  </option>
-                ))}
-              </select>
               <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "table"]} />
             </>
           }
@@ -750,14 +764,23 @@ function CatalogPage() {
 
           {/* Scrollable Filter List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60dvh]">
-            {/* Hide owned toggle */}
-            <label className="flex cursor-pointer items-center justify-between rounded-xl border border-border/80 bg-muted/30 p-3 hover:bg-muted/50 transition-colors">
-              <span className="text-sm font-medium text-foreground">Hide owned castings</span>
+            {/* On by default. Once a box is in the catalogue its cars appear
+                twice — as the box and as themselves — and the box is the thing
+                on the shelf. Turning it off shows the castings individually. */}
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 transition-colors hover:bg-muted/50">
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-foreground">
+                  Hide cars in multipacks
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  Show the box, not the five cars inside it.
+                </span>
+              </span>
               <input
                 type="checkbox"
-                checked={draftHideOwned}
-                onChange={(e) => setDraftHideOwned(e.target.checked)}
-                className="size-4 rounded border-input accent-primary cursor-pointer"
+                checked={draftHideInPacks}
+                onChange={(e) => setDraftHideInPacks(e.target.checked)}
+                className="size-4 shrink-0 cursor-pointer rounded border-input accent-primary"
               />
             </label>
 
