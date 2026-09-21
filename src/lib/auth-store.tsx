@@ -183,6 +183,48 @@ function isMissingSchema(code?: string, message?: string): boolean {
  */
 const GUEST_KEY = "dg.guestMode";
 
+/**
+ * Why a provider sign-in came back without a session: cancelled on Google's
+ * screen, or refused. Supabase returns to "/" with the reason in the URL, and
+ * the guard then moves a signed-out visitor to /login, which drops it — so the
+ * person landed back on the form with no idea why. It is lifted out of the URL
+ * on arrival and handed to the login page to show.
+ */
+const OAUTH_ERROR_KEY = "dg.oauthError";
+
+function captureOAuthError() {
+  if (typeof window === "undefined") return;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const code = hash.get("error") ?? query.get("error");
+  const description = hash.get("error_description") ?? query.get("error_description");
+  if (!code && !description) return;
+
+  const message =
+    code === "access_denied"
+      ? "Sign-in was cancelled before it finished. Try again, or use your password."
+      : friendlyAuthError(description || "That sign-in didn't complete. Try again.");
+  try {
+    sessionStorage.setItem(OAUTH_ERROR_KEY, message);
+  } catch {
+    // Storage unavailable; the person simply sees the form without the reason.
+  }
+  // Off the address bar, so a reload does not report the same failure twice.
+  // Only ever an error here — a successful return carries a token, not these.
+  window.history.replaceState(null, "", window.location.pathname);
+}
+
+/** The reason the last provider sign-in failed, once. */
+export function takeOAuthError(): string | null {
+  try {
+    const message = sessionStorage.getItem(OAUTH_ERROR_KEY);
+    if (message) sessionStorage.removeItem(OAUTH_ERROR_KEY);
+    return message;
+  } catch {
+    return null;
+  }
+}
+
 /** Stand-in profile so the shell has a name and handle to render. */
 const GUEST_PROFILE: Profile = {
   sno: 0,
@@ -268,6 +310,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+
+    // On mount, while the URL is still the one Supabase returned to. supabase-js
+    // leaves an error in place (it only clears a successful hash), and the guard
+    // cannot navigate away until getSession below has resolved.
+    captureOAuthError();
 
     // Register the listener before the initial getSession so a token refreshed
     // mid-flight is not missed.

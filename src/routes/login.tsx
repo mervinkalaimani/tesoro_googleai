@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAuth, handleError, type OAuthProvider } from "@/lib/auth-store";
+import { useAuth, handleError, takeOAuthError, type OAuthProvider } from "@/lib/auth-store";
 import { useOAuthProviders } from "@/lib/deployment-settings";
 import { rememberSession, setRememberSession } from "@/integrations/supabase/session-storage";
 
@@ -54,7 +54,7 @@ function AppleMark() {
 }
 
 const PROVIDERS: { id: OAuthProvider; label: string; mark: () => ReactElement }[] = [
-  { id: "google", label: "Google", mark: GoogleMark },
+  { id: "google", label: "Continue with Google", mark: GoogleMark },
   { id: "apple", label: "Apple", mark: AppleMark },
 ];
 
@@ -94,6 +94,13 @@ function LoginPage() {
   const [oauthBusy, setOauthBusy] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // A provider sign-in that was cancelled or refused comes back here by way of
+  // the guard; say why, in the same box as any other failure.
+  useEffect(() => {
+    const reason = takeOAuthError();
+    if (reason) setError(reason);
+  }, []);
 
   // A signed-in visitor has no reason to sit on the login page; the shell
   // decides whether they land on the dashboard or the pending screen.
