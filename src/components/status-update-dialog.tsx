@@ -34,6 +34,7 @@ import { deriveMonth, monthEtaToDate, toDateInputValue } from "@/lib/date-utils"
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { inrFull } from "@/lib/format";
+import { needsCarNumber } from "@/lib/duplicate";
 import type { Diecast } from "@/lib/types";
 
 const STATUS_CHOICES = [
@@ -179,6 +180,7 @@ export function StatusUpdateDialog({
   const [mrp, setMrp] = useState("");
   const [orderDate, setOrderDate] = useState("");
   const [expectedDate, setExpectedDate] = useState("");
+  const [carNumber, setCarNumber] = useState("");
   const [partner, setPartner] = useState("");
   const [tracking, setTracking] = useState("");
   const [transitInfo, setTransitInfo] = useState("");
@@ -217,6 +219,7 @@ export function StatusUpdateDialog({
     setPartner(car.deliveryPartner || "");
     setTracking(car.trackingId || "");
     setTransitInfo(car.transitInfo || "");
+    setCarNumber(car.carNumber || "");
     setPayTouched(false);
     setError("");
     setSaving(false);
@@ -264,9 +267,16 @@ export function StatusUpdateDialog({
         return;
       }
       if (!expectedDate) {
-        setError(arrived ? "When did it arrive?" : "When is it expected?");
+        setError(arrived ? "When did it arrive / become available?" : "When is it expected?");
         return;
       }
+    }
+
+    if (!isBatch && needsCarNumber(current.brand) && !carNumber.trim()) {
+      setError(
+        `${current.brand} prints a collector number on the box — enter it to update status.`,
+      );
+      return;
     }
 
     setSaving(true);
@@ -316,6 +326,7 @@ export function StatusUpdateDialog({
       const next: Diecast = {
         ...car,
         status,
+        carNumber: !isBatch && needsCarNumber(car.brand) ? carNumber.trim() : car.carNumber,
         seller: needsPurchase ? seller.trim() : car.seller,
         spent: needsPurchase ? cost : car.spent,
         mrp: mrp.trim() ? num(mrp) : car.mrp,
@@ -435,6 +446,23 @@ export function StatusUpdateDialog({
             </div>
           </div>
 
+          {!isBatch && needsCarNumber(current.brand) && (
+            <div className="space-y-1.5">
+              <Label htmlFor="status-car-number" className="text-xs">
+                Car Number *
+              </Label>
+              <Input
+                id="status-car-number"
+                value={carNumber}
+                onChange={(e) => setCarNumber(e.target.value)}
+                placeholder="e.g. 1133 or KHMG217"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {current.brand} collector number printed on the box.
+              </p>
+            </div>
+          )}
+
           {needsPurchase && (
             <>
               <div className="space-y-1.5">
@@ -496,7 +524,7 @@ export function StatusUpdateDialog({
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="iso-expected" className="text-xs">
-                    {arrived ? "Delivery date *" : "Expected date *"}
+                    {arrived ? "Expected / available date *" : "Expected date *"}
                   </Label>
                   <div className="flex items-center gap-1">
                     {(arrived ? [0] : [0, 3, 7]).map((d) => (

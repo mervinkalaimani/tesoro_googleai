@@ -35,6 +35,7 @@ export type DuplicateFields = {
   series?: string | null;
   subSeries?: string | null;
   carNumber?: string | null;
+  year?: string | null;
 };
 
 const norm = (s: string | null | undefined) =>
@@ -90,6 +91,7 @@ export function findDuplicates(
   const series = norm(fields.series);
   const subSeries = norm(fields.subSeries);
   const carNumber = norm(fields.carNumber);
+  const year = norm(fields.year);
   const numbered = brandUsesCarNumber(fields.brand) && carNumber !== "";
   const skip = excludeCarId.trim().toUpperCase();
 
@@ -98,6 +100,11 @@ export function findDuplicates(
   for (const c of catalog) {
     if (skip && c.car_id.toUpperCase() === skip) continue;
     if (brandKey(c.brand) !== brand) continue;
+
+    // For catalog duplication: consider year also as a factor. Only take it as duplicate if it's the same year.
+    const cYear = norm(c.year);
+    const sameYear = !year || !cYear || year === cYear;
+    if (!sameYear) continue;
 
     const sameAssortment = assortment === norm(c.assortment);
 
@@ -178,9 +185,10 @@ export function findDuplicateGroups(catalog: CatalogCar[]): DuplicateGroup[] {
     if (!brand) continue;
     const assortment = norm(c.assortment);
     const number = norm(c.car_number);
+    const year = norm(c.year);
 
     if (brandUsesCarNumber(c.brand) && number) {
-      const k = `n|${brand}|${assortment}|${number}`;
+      const k = `n|${brand}|${assortment}|${number}|${year}`;
       (certain.get(k) ?? certain.set(k, []).get(k)!).push(c);
       continue;
     }
@@ -195,6 +203,7 @@ export function findDuplicateGroups(catalog: CatalogCar[]): DuplicateGroup[] {
       assortment,
       norm(c.series),
       norm(c.sub_series),
+      year,
     ].join("|");
     if (!norm(c.make) || !norm(c.model)) continue;
     (likely.get(k) ?? likely.set(k, []).get(k)!).push(c);

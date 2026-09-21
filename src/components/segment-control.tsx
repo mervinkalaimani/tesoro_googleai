@@ -56,7 +56,7 @@ export function SegmentControl<T extends string>({
               "min-w-0 h-7 inline-flex items-center justify-center snap-start truncate rounded-[6px] px-2.5 text-center font-medium leading-none transition-colors",
               fill ? "flex-1 basis-0" : "shrink-0",
               active
-                ? "bg-background text-foreground shadow-xs font-semibold"
+                ? "bg-background text-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

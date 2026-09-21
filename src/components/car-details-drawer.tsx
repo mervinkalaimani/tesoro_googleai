@@ -2330,9 +2330,7 @@ function PackContents({ packCarId }: { packCarId?: string | null }) {
             {count} car{count === 1 ? "" : "s"}
           </span>
           {declared > 0 && members.length !== declared && (
-            <span className="text-[11px] text-muted-foreground/80">
-              {members.length} listed
-            </span>
+            <span className="text-[11px] text-muted-foreground/80">{members.length} listed</span>
           )}
         </div>
 

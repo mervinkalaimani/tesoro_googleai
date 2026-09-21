@@ -1338,6 +1338,7 @@ export function CarFormDialog({
               series: form.series,
               subSeries: form.subSeries,
               carNumber: form.carNumber,
+              year: form.year,
             },
             catalog,
             { excludeCarId: derivedCatalogCarId },
@@ -1356,6 +1357,7 @@ export function CarFormDialog({
       form.series,
       form.subSeries,
       form.carNumber,
+      form.year,
     ],
   );
 
@@ -1431,10 +1433,11 @@ export function CarFormDialog({
               cars={cars}
               errorFor={(k) => errorFor(k as keyof CarFormData)}
               disabled={isEdit}
+              allowCarNumberEdit={true}
             />
             <p className="mt-2.5 text-[11px] text-muted-foreground">
               {isEdit
-                ? "The casting is shared with everyone who owns one, so it is edited in the catalogue rather than here."
+                ? "The casting is shared with everyone who owns one, so it is edited in the catalogue. Only the Car Number can be updated here."
                 : "Open only when the catalogue has it wrong. Editing a coded field regenerates the Catalog ID and repoints every owner's row."}
             </p>
           </div>
@@ -1653,23 +1656,35 @@ export function CarFormDialog({
               {isPreOrder
                 ? "A pre-order has a release window, not a shipping date"
                 : hasArrived
-                  ? "It is here — only what the delivery cost is still worth recording"
+                  ? "It is here — expected / available date and delivery cost recorded"
                   : `Shown because the status is "${form.status}"`}
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {hasArrived ? (
-                <Field label="Shipping Cost (INR)">
-                  <ClearableInput
-                    type="number"
-                    min="0"
-                    step="any"
-                    value={form.shippingCost}
-                    onChange={(e) =>
-                      set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    placeholder="e.g. 50"
-                  />
-                </Field>
+                <>
+                  <Field label="Expected / available Date">
+                    <ClearableInput
+                      type="date"
+                      value={form.expectedDate}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        set("expectedDate", val);
+                      }}
+                    />
+                  </Field>
+                  <Field label="Shipping Cost (INR)">
+                    <ClearableInput
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={form.shippingCost}
+                      onChange={(e) =>
+                        set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
+                      }
+                      placeholder="e.g. 50"
+                    />
+                  </Field>
+                </>
               ) : isPreOrder ? (
                 <>
                   <Field label="Expected month">

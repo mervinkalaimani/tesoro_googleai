@@ -70,6 +70,7 @@ export function CatalogueFields({
   cars,
   errorFor,
   disabled = false,
+  allowCarNumberEdit = true,
   /**
    * Fields the caller handles itself. The catalogue form keeps rarity beside
    * release status at the top of its own dialog, for instance.
@@ -83,6 +84,8 @@ export function CatalogueFields({
   errorFor?: (key: keyof CatalogueValues) => string | undefined;
   /** Edit mode for an owned car: what the casting is stays as catalogued. */
   disabled?: boolean;
+  /** When true, carNumber remains editable even if casting fields are disabled. */
+  allowCarNumberEdit?: boolean;
   omit?: (keyof CatalogueValues)[];
 }) {
   const err = (k: keyof CatalogueValues) => errorFor?.(k);
@@ -302,7 +305,7 @@ export function CatalogueFields({
           }
         >
           <ClearableInput
-            disabled={disabled}
+            disabled={disabled && !allowCarNumberEdit}
             value={values.carNumber}
             onChange={(e) => onChange("carNumber", e.target.value)}
             placeholder={carNumberRequired ? "e.g. 1133 or KHMG217" : "e.g. 3/5 or 142/250"}

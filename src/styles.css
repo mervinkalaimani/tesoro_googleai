@@ -229,6 +229,8 @@
     /* Jumps made by the app (back to top, into view) glide instead of cutting. */
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
   @media (prefers-reduced-motion: reduce) {
     html {
@@ -246,6 +248,8 @@
     /* No grey flash on tap, and no double-tap-to-zoom wait before a tap counts. */
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   /* Scale custom fixed-pixel font utility classes with the user font size preference */

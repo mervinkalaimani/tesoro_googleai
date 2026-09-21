@@ -23,8 +23,34 @@ declare global {
   }
 }
 
+export function isModuleLoadError(error: unknown): boolean {
+  if (!error) return false;
+  const message =
+    error instanceof Response
+      ? `Response ${error.status}${error.url ? ` at ${error.url}` : ""}`
+      : error instanceof Error
+        ? error.message
+        : typeof error === "object" && "message" in error
+          ? String((error as { message: unknown }).message)
+          : String(error);
+
+  return (
+    message.includes("Importing a module script failed") ||
+    message.includes("Failed to fetch dynamically imported module") ||
+    message.includes("error loading dynamically imported module") ||
+    message.includes("Loading chunk") ||
+    message.includes("Loading CSS chunk") ||
+    message.includes("Load chunk") ||
+    message.includes("Failed to load module script")
+  );
+}
+
 export function reportLovableError(error: unknown, context: Record<string, unknown> = {}) {
   if (typeof window === "undefined") return;
+  // Module load / chunk errors are transient network or cache reload events;
+  // do not report them as application bugs.
+  if (isModuleLoadError(error)) return;
+
   window.__lovableEvents?.captureException?.(
     error,
     {

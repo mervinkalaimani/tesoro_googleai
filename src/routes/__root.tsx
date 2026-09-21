@@ -43,31 +43,28 @@ function NotFoundComponent() {
 }
 
 function isModuleLoadError(error: unknown): boolean {
-  const msg = error instanceof Error ? error.message : String(error);
+  const msg = error instanceof Error ? error.message : String(error ?? "");
   return (
     msg.includes("Importing a module script failed") ||
     msg.includes("Failed to fetch dynamically imported module") ||
     msg.includes("error loading dynamically imported module") ||
     msg.includes("Loading chunk") ||
-    msg.includes("Loading CSS chunk")
+    msg.includes("Loading CSS chunk") ||
+    msg.includes("Load chunk") ||
+    msg.includes("Failed to load module script")
   );
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
   const router = useRouter();
   const isModuleError = isModuleLoadError(error);
 
   useEffect(() => {
-    if (isModuleError && typeof window !== "undefined") {
-      const key = "vite_module_reload_ts";
-      const last = parseInt(sessionStorage.getItem(key) || "0", 10);
-      if (Date.now() - last > 4000) {
-        sessionStorage.setItem(key, String(Date.now()));
-        window.location.reload();
-        return;
-      }
+    if (isModuleError) {
+      console.warn("Module script loading error caught by boundary:", error);
+      return;
     }
+    console.error(error);
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error, isModuleError]);
 
@@ -86,7 +83,9 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           <button
             onClick={() => {
               if (isModuleError && typeof window !== "undefined") {
-                window.location.reload();
+                const url = new URL(window.location.href);
+                url.searchParams.set("_r", String(Date.now()));
+                window.location.href = url.toString();
               } else {
                 router.invalidate();
                 reset();
@@ -113,9 +112,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       // viewport-fit=cover is what makes iOS report the home indicator's space
-      // through env(safe-area-inset-bottom). Without it that value is always 0,
-      // and the bottom bar sat on top of the home line.
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      // through env(safe-area-inset-bottom). maximum-scale=1, user-scalable=no prevents mobile frame zoom-out.
+      {
+        name: "viewport",
+        content:
+          "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
+      },
       { title: "Tesoro — Collection Dashboard" },
       {
         name: "description",
@@ -200,40 +202,43 @@ try {
   else document.documentElement.dataset.fontSize = '0';
 } catch (e) { document.documentElement.classList.add('dark'); document.documentElement.dataset.fontSize = '0'; }
 
-window.addEventListener('vite:preloadError', function () {
-  window.location.reload();
-});
-window.addEventListener('unhandledrejection', function (e) {
-  var reason = e && (e.reason || e);
-  var msg = (reason && (reason.message || String(reason))) || '';
-  if (
-    msg.indexOf('Importing a module script failed') !== -1 ||
-    msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
-    msg.indexOf('error loading dynamically imported module') !== -1
-  ) {
-    var key = 'vite_module_reload_ts';
-    var last = parseInt(sessionStorage.getItem(key) || '0', 10);
-    if (Date.now() - last > 4000) {
-      sessionStorage.setItem(key, String(Date.now()));
-      window.location.reload();
-    }
+(function () {
+  function isModuleError(msg) {
+    return (
+      msg.indexOf('Importing a module script failed') !== -1 ||
+      msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
+      msg.indexOf('error loading dynamically imported module') !== -1 ||
+      msg.indexOf('Loading chunk') !== -1 ||
+      msg.indexOf('Loading CSS chunk') !== -1 ||
+      msg.indexOf('Load chunk') !== -1 ||
+      msg.indexOf('Failed to load module script') !== -1
+    );
   }
-});
-window.addEventListener('error', function (e) {
-  var msg = (e && (e.message || (e.error && e.error.message))) || '';
-  if (
-    msg.indexOf('Importing a module script failed') !== -1 ||
-    msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
-    msg.indexOf('error loading dynamically imported module') !== -1
-  ) {
-    var key = 'vite_module_reload_ts';
-    var last = parseInt(sessionStorage.getItem(key) || '0', 10);
-    if (Date.now() - last > 4000) {
-      sessionStorage.setItem(key, String(Date.now()));
-      window.location.reload();
+
+  window.addEventListener('vite:preloadError', function (e) {
+    if (e && e.preventDefault) e.preventDefault();
+    console.warn('Vite dynamic import preload failed (suppressed automatic reload)');
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (e) {
+    var reason = e && (e.reason || e);
+    var msg = (reason && (reason.message || String(reason))) || '';
+    if (isModuleError(msg)) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+      console.warn('Unhandled module load rejection suppressed:', msg);
     }
-  }
-});
+  }, true);
+
+  window.addEventListener('error', function (e) {
+    var msg = (e && (e.message || (e.error && e.error.message))) || '';
+    if (isModuleError(msg)) {
+      if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopImmediatePropagation) e.stopImmediatePropagation();
+      console.warn('Module load error suppressed:', msg);
+    }
+  }, true);
+})();
 `;
 
 function RootShell({ children }: { children: ReactNode }) {

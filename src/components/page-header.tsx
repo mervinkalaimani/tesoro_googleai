@@ -28,13 +28,19 @@ export function PageHeading({
   children?: ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between gap-2 min-w-0">
-      <div className="min-w-0 shrink-0">
+    <div className="flex items-center justify-between gap-2 min-w-0 max-w-full">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <h1 className="text-display truncate text-lg sm:text-xl font-semibold">{title}</h1>
-        {subtitle && <p className="mt-0.5 text-xs text-muted-foreground truncate">{subtitle}</p>}
+        {subtitle && (
+          <p className="mt-0.5 text-xs text-muted-foreground truncate block max-w-full">
+            {subtitle}
+          </p>
+        )}
       </div>
       {children && (
-        <div className="min-w-0 max-w-[62%] sm:max-w-none flex justify-end shrink">{children}</div>
+        <div className="min-w-0 max-w-[62%] sm:max-w-none flex justify-end shrink-0">
+          {children}
+        </div>
       )}
     </div>
   );

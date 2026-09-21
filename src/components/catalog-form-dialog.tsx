@@ -331,6 +331,7 @@ export function CatalogFormDialog({
               series: form.series,
               subSeries: form.sub_series,
               carNumber: form.car_number,
+              year: form.year,
             },
             catalog,
             { excludeCarId: entry && entry !== "new" ? entry.car_id : "" },
@@ -348,6 +349,7 @@ export function CatalogFormDialog({
       form.series,
       form.sub_series,
       form.car_number,
+      form.year,
     ],
   );
 
