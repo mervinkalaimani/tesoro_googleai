@@ -35,6 +35,7 @@ import { SegmentControl } from "@/components/segment-control";
 import { PageHeading } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { CatalogCarDetails, useCarDrawer } from "@/components/car-details-drawer";
@@ -679,12 +680,14 @@ const preorderAsCar = (c: RecentPreorder, key: string) =>
  * with the details filled in, exactly as if it had been picked from the search.
  */
 function RecentPreorders() {
-  const { isGuest } = useAuth();
+  const { isGuest, isAdmin, isOwner } = useAuth();
   const { cars: shared, loading } = useRecentPreorders(!isGuest, RECENT_DAYS);
   const mine = useCars();
-  const { catalog, findMatchingInCatalog, getCatalogCarById } = useCatalog();
+  const { catalog, findMatchingInCatalog, getCatalogCarById, updateCatalogCar, addCatalogCar } =
+    useCatalog();
   const [adding, setAdding] = useState<RecentPreorder | null>(null);
   const [viewing, setViewing] = useState<RecentPreorder | null>(null);
+  const [editingCatalog, setEditingCatalog] = useState<CatalogCar | null>(null);
   const now = new Date();
 
   const resolveCatalogCar = useCallback(
@@ -779,7 +782,36 @@ function RecentPreorders() {
             <div key={asCar.id ?? i} className="relative w-36 shrink-0 snap-start sm:w-40">
               <CompactCarCard
                 car={asCar}
-                onOpen={() => setViewing(c)}
+                onOpen={() => {
+                  if (isAdmin) {
+                    const cat = resolveCatalogCar(c);
+                    if (cat) {
+                      setEditingCatalog(cat);
+                    } else {
+                      const fallbackEntry: CatalogCar = {
+                        car_id: asCar.id || asCar.catalogId || "temp",
+                        name: c.name,
+                        make: c.make,
+                        model: c.model,
+                        brand: c.brand,
+                        series: c.series,
+                        sub_series: c.subSeries,
+                        year: c.year ? String(c.year) : undefined,
+                        colour: c.colour,
+                        tampo: c.tampo,
+                        casting_number: c.castingNumber,
+                        car_number: c.carNumber,
+                        type: c.type,
+                        size: c.size,
+                        photo_url: c.photoUrl,
+                        mrp: c.mrp,
+                      };
+                      setEditingCatalog(fallbackEntry);
+                    }
+                  } else {
+                    setViewing(c);
+                  }
+                }}
                 caption={
                   c.inMyCollection
                     ? "In your collection"
@@ -811,6 +843,16 @@ function RecentPreorders() {
         preOrder
         owned={Boolean(viewing?.inMyCollection)}
         onClose={() => setViewing(null)}
+        canEdit={isAdmin}
+        onEdit={() => {
+          if (viewingCatalogCar) {
+            setEditingCatalog(viewingCatalogCar);
+          } else if (viewing) {
+            const cat = resolveCatalogCar(viewing);
+            if (cat) setEditingCatalog(cat);
+          }
+          setViewing(null);
+        }}
         onAdd={() => {
           const target = viewing;
           setViewing(null);
@@ -823,6 +865,23 @@ function RecentPreorders() {
         mode="add"
         prefill={adding}
       />
+      {isAdmin && (
+        <CatalogFormDialog
+          open={editingCatalog !== null}
+          entry={editingCatalog}
+          catalog={catalog}
+          onClose={() => setEditingCatalog(null)}
+          canDelete={isOwner && !isGuest}
+          onSave={async (car) => {
+            const exists = catalog.some((item) => item.car_id === car.car_id);
+            if (exists) {
+              return await updateCatalogCar(car);
+            } else {
+              return await addCatalogCar(car);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -31,6 +31,7 @@ export function SortSelect<T extends string>({
   label = "Sort",
   triggerLabel,
   neutral,
+  iconOnly = false,
   iconOnlyOnMobile = true,
   className = "",
 }: {
@@ -43,6 +44,7 @@ export function SortSelect<T extends string>({
   triggerLabel?: string;
   /** The page's default order; anything else reads as a sort being applied. */
   neutral: T;
+  iconOnly?: boolean;
   iconOnlyOnMobile?: boolean;
   className?: string;
 }) {
@@ -59,7 +61,11 @@ export function SortSelect<T extends string>({
         title={`${label}: ${current?.label ?? ""} (${dirName})`}
         className={cn(
           "inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-input bg-transparent text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          iconOnlyOnMobile ? "w-8 justify-center px-0 sm:w-auto sm:px-2" : "px-2",
+          iconOnly
+            ? "w-8 justify-center px-0"
+            : iconOnlyOnMobile
+              ? "w-8 justify-center px-0 sm:w-auto sm:px-2"
+              : "px-2",
           isSet ? "border-primary/40 text-foreground font-medium" : "text-muted-foreground",
           className,
         )}
@@ -69,7 +75,12 @@ export function SortSelect<T extends string>({
         ) : (
           <ArrowUpDown className="size-3.5 shrink-0" />
         )}
-        <span className={cn("min-w-0 truncate text-xs", iconOnlyOnMobile && "max-sm:hidden")}>
+        <span
+          className={cn(
+            "min-w-0 truncate text-xs",
+            iconOnly ? "sr-only" : iconOnlyOnMobile && "max-sm:hidden",
+          )}
+        >
           {triggerLabel ?? (isSet && current ? current.label : "Sort")}
         </span>
       </DropdownMenuTrigger>
@@ -129,6 +140,7 @@ export function FilterSelect({
   /** The value that counts as "not filtering". Defaults to "all". */
   neutral = "all",
   className = "",
+  iconOnly = false,
   iconOnlyOnMobile = false,
 }: {
   value: string;
@@ -139,6 +151,7 @@ export function FilterSelect({
   label: string;
   neutral?: string;
   className?: string;
+  iconOnly?: boolean;
   iconOnlyOnMobile?: boolean;
 }) {
   const isSet = value !== neutral;
@@ -151,13 +164,15 @@ export function FilterSelect({
         title={current ? `${label}: ${current.label}` : label}
         className={cn(
           "h-8 gap-1.5",
-          iconOnlyOnMobile
-            ? "w-8 justify-center px-0 [&>svg:last-child]:hidden sm:w-auto sm:px-2 sm:justify-between sm:[&>svg:last-child]:block"
-            : "w-auto px-2",
+          iconOnly
+            ? "w-8 justify-center px-0 [&>svg:last-child]:hidden"
+            : iconOnlyOnMobile
+              ? "w-8 justify-center px-0 [&>svg:last-child]:hidden sm:w-auto sm:px-2 sm:justify-between sm:[&>svg:last-child]:block"
+              : "w-auto px-2",
           isSet
             ? cn(
                 "border-primary/40 text-foreground",
-                iconOnlyOnMobile ? "sm:max-w-[11rem]" : "max-w-[11rem]",
+                iconOnly ? "" : iconOnlyOnMobile ? "sm:max-w-[11rem]" : "max-w-[11rem]",
               )
             : "text-muted-foreground",
           className,
@@ -171,7 +186,8 @@ export function FilterSelect({
             isSet ? "min-w-0 truncate text-xs" : "sr-only",
             // sr-only rather than hidden: the trigger's own [&>span] rules set a
             // display that beat `hidden`, and a sliver of the label showed.
-            iconOnlyOnMobile && isSet && "max-sm:sr-only",
+            (iconOnly || (iconOnlyOnMobile && isSet)) && "max-sm:sr-only",
+            iconOnly && "sr-only",
           )}
         >
           <SelectValue />

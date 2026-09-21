@@ -1,29 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import {
-  ChevronDown,
-  Copy,
-  Download,
-  IndianRupee,
-  SlidersHorizontal,
-  TrendingUp,
-  ArrowLeftRight,
-} from "lucide-react";
+import { ChevronDown, Copy, Download, X } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
-import { KpiBand, KpiTile } from "@/components/kpi";
 import { ExportDialog } from "@/components/export-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { inrFull } from "@/lib/format";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarMarks } from "@/components/car-marks";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/duplicates")({
   head: () => ({
@@ -164,10 +153,8 @@ function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Dieca
 function DuplicatesPage() {
   const { query } = useApp();
   const cars = useCars();
-  const isMobile = useIsMobile();
   const { open } = useCarDrawer();
   const [active, setActive] = useState<AttrKey[]>(DEFAULT_ATTRS);
-  const [modifyOpen, setModifyOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
 
   const toggle = (key: AttrKey) =>
@@ -192,110 +179,58 @@ function DuplicatesPage() {
   const flatRows = useMemo(() => groups.flat(), [groups]);
   // "Surplus" is every copy beyond the first in each group.
   const surplusCount = groups.reduce((s, g) => s + (g.length - 1), 0);
-  const tiedUp = flatRows.reduce((s, r) => s + (r.spent || 0), 0);
-  const liquidation = flatRows.reduce((s, r) => s + (r.mrp || r.spent || 0), 0);
-  const gain = liquidation - tiedUp;
-
-  // Nine attributes across five columns is two tidy rows. At four it was three
-  // rows with three empty cells trailing off the end.
-  const AttrGrid = (
-    <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 md:grid-cols-5">
-      {ATTRS.map((a) => (
-        <label key={a.key} className="flex cursor-pointer items-center gap-2 text-xs">
-          <Checkbox checked={active.includes(a.key)} onCheckedChange={() => toggle(a.key)} />
-          <span className="truncate">{a.label}</span>
-        </label>
-      ))}
-    </div>
-  );
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <PageHeading
         title="Duplicates"
-        subtitle="Surplus castings, what they cost, and what they are worth trading."
+        subtitle={`${surplusCount} ${surplusCount === 1 ? "casting" : "castings"} across ${groups.length} ${groups.length === 1 ? "model" : "models"}`}
       />
-
-      <KpiBand>
-        <KpiTile
-          label="Surplus castings"
-          value={surplusCount.toLocaleString()}
-          sub={`Across ${groups.length} unique model${groups.length === 1 ? "" : "s"}`}
-          icon={<Copy className="size-4" />}
-          tone="amber"
-        />
-        <KpiTile
-          label="Tied-up capital"
-          value={inrFull(tiedUp)}
-          sub="Purchase cost of duplicates"
-          icon={<IndianRupee className="size-4" />}
-          tone="primary"
-        />
-        <KpiTile
-          label="Liquidation value"
-          value={inrFull(liquidation)}
-          sub="Est. market liquidation"
-          icon={<TrendingUp className="size-4" />}
-          tone="emerald"
-          valueTone="emerald"
-        />
-        <KpiTile
-          label="Potential gain"
-          value={`${gain >= 0 ? "+" : "-"}${inrFull(Math.abs(gain))}`}
-          sub="Trade & liquidation delta"
-          icon={<ArrowLeftRight className="size-4" />}
-          tone={gain >= 0 ? "sky" : "rose"}
-          valueTone={gain >= 0 ? "sky" : "rose"}
-        />
-      </KpiBand>
 
       <PageToolbar
         sticky
-        // Only buttons now that the "Match on" line is gone, so they share one
-        // row instead of sitting under an empty one on a phone.
         oneLine
+        left={
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+            {ATTRS.map((a) => {
+              const isSelected = active.includes(a.key);
+              return (
+                <button
+                  key={a.key}
+                  type="button"
+                  onClick={() => toggle(a.key)}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium transition-colors shrink-0 whitespace-nowrap",
+                    isSelected
+                      ? "border border-primary/40 bg-primary/15 text-primary hover:bg-primary/25"
+                      : "border border-border/70 bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                >
+                  <span>{a.label}</span>
+                  {isSelected && <X className="size-3 shrink-0 ml-0.5" />}
+                </button>
+              );
+            })}
+          </div>
+        }
         right={
-          <>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setExportOpen(true)}
-              title="Export the duplicates"
-              aria-label="Export the duplicates"
-              className="h-8 px-2.5"
-            >
-              <Download className="size-3.5" />
-              <span className="hidden sm:inline text-xs font-medium">Export</span>
-            </Button>
-            <Button
-              size="sm"
-              variant={modifyOpen ? "default" : "outline"}
-              onClick={() => setModifyOpen(true)}
-              title="Change what counts as a duplicate"
-              aria-label="Change what counts as a duplicate"
-              className="h-8 px-2.5 md:hidden"
-            >
-              <SlidersHorizontal className="size-3.5" />
-              <span className="text-xs font-medium">Criteria</span>
-            </Button>
-          </>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setExportOpen(true)}
+            title="Export the duplicates"
+            aria-label="Export the duplicates"
+            className="h-8 px-2.5 shrink-0"
+          >
+            <Download className="size-3.5" />
+            <span className="hidden sm:inline text-xs font-medium">Export</span>
+          </Button>
         }
       />
 
-      <div className="hidden card-elevated space-y-3 p-4 md:block">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Duplicate match attributes
-          </span>
-          <span className="font-mono text-xs text-muted-foreground">
-            {groups.length} group{groups.length === 1 ? "" : "s"} identified
-          </span>
-        </div>
-        <div>{AttrGrid}</div>
-        {active.length === 0 && (
-          <p className="text-xs text-destructive">Select at least one attribute to match on.</p>
-        )}
-      </div>
+      {active.length === 0 && (
+        <p className="text-xs text-destructive">Select at least one attribute to match on.</p>
+      )}
 
       <div className="space-y-3">
         {groups.map((arr, i) => (
@@ -307,21 +242,6 @@ function DuplicatesPage() {
           </div>
         )}
       </div>
-
-      <Sheet open={modifyOpen && isMobile} onOpenChange={setModifyOpen}>
-        <SheetContent side="bottom" className="gap-0 rounded-t-2xl p-0">
-          <div className="mx-auto mt-2 h-1.5 w-10 rounded-full bg-muted-foreground/30" />
-          <SheetHeader className="border-b border-border p-4">
-            <SheetTitle>Match on</SheetTitle>
-          </SheetHeader>
-          <div className="p-4">{AttrGrid}</div>
-          <div className="border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-            <Button className="w-full" onClick={() => setModifyOpen(false)}>
-              Done
-            </Button>
-          </div>
-        </SheetContent>
-      </Sheet>
 
       <ExportDialog
         open={exportOpen}

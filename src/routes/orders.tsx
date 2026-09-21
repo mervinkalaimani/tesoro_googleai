@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Truck, Clock, IndianRupee, Plus, Pencil, Store, ChevronDown } from "lucide-react";
+import { Truck, Plus, Pencil, Store, ChevronDown } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -12,7 +12,6 @@ import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { StatusUpdateDialog, type StatusBatch } from "@/components/status-update-dialog";
 
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
-import { KpiBand, KpiTile } from "@/components/kpi";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { PageHeading, PageToolbar } from "@/components/page-header";
@@ -447,47 +446,27 @@ function OrdersPage() {
     });
   }, [filtered, mode, dir]);
 
-  const totalCars = shipments.reduce((s, g) => s + g.items.length, 0);
+  const inShipmentOrders = useMemo(() => {
+    return shipments.filter(
+      (s) =>
+        !s.delivered &&
+        (s.status.toLowerCase() === "waiting" ||
+          s.status.toLowerCase() === "transit" ||
+          s.status.toLowerCase() === "out for delivery" ||
+          s.status.toLowerCase() === "delayed"),
+    );
+  }, [shipments]);
+
+  const inShipmentCarCount = useMemo(() => {
+    return inShipmentOrders.reduce((sum, s) => sum + s.items.length, 0);
+  }, [inShipmentOrders]);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* Heading, tiles, controls, body — the order every page follows. */}
       <PageHeading
-        title="Shipments &amp; orders"
-        subtitle={
-          <>
-            Carrier references, delivery timelines, and incoming castings — {shipments.length}{" "}
-            shipment
-            {shipments.length === 1 ? "" : "s"} · {totalCars} car{totalCars === 1 ? "" : "s"}.
-          </>
-        }
+        title="My Orders"
+        subtitle={`${inShipmentOrders.length} ${inShipmentOrders.length === 1 ? "order" : "orders"} in shipment · ${inShipmentCarCount} ${inShipmentCarCount === 1 ? "car" : "cars"}`}
       />
-
-      <KpiBand>
-        <KpiTile
-          label="In transit"
-          value={inrFull(totals.transitValue)}
-          sub={`${totals.transitCount} casting${totals.transitCount === 1 ? "" : "s"} on the move`}
-          icon={<Truck className="size-4" />}
-          tone="sky"
-        />
-        <KpiTile
-          label="Waiting"
-          value={inrFull(totals.waitingValue)}
-          sub={`${totals.waitingCount} not dispatched yet`}
-          icon={<Clock className="size-4" />}
-          tone="amber"
-          valueTone="amber"
-        />
-        <KpiTile
-          label="Balance due"
-          value={inrFull(totals.due)}
-          sub="Outstanding across open orders"
-          icon={<IndianRupee className="size-4" />}
-          tone="emerald"
-          valueTone="emerald"
-        />
-      </KpiBand>
 
       <PageToolbar
         sticky

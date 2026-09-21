@@ -81,10 +81,11 @@ export function KpiTile({
   valueTone,
   status,
   className,
+  subVisibleOnMobile = false,
 }: {
   label: string;
   value: ReactNode;
-  /** Context line. Hidden on a phone, where there is no room for it. */
+  /** Context line. Hidden on a phone by default, where there is no room for it. */
   sub?: string;
   icon: ReactNode;
   /** Colours the icon chip. */
@@ -94,6 +95,7 @@ export function KpiTile({
   /** Status this tile represents; tapping opens inventory filtered to it. */
   status?: string;
   className?: string;
+  subVisibleOnMobile?: boolean;
 }) {
   const body = (
     <>
@@ -119,7 +121,8 @@ export function KpiTile({
       {sub && (
         <div
           className={cn(
-            "mt-1 hidden truncate font-mono text-xs md:block",
+            "mt-1 truncate font-mono text-xs",
+            subVisibleOnMobile ? "block" : "hidden md:block",
             valueTone ? cn(TONE_VALUE[valueTone], "opacity-80") : "text-muted-foreground",
           )}
         >

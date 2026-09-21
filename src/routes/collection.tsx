@@ -50,12 +50,11 @@ export const Route = createFileRoute("/collection")({
 
 type GroupBy = "series" | "set" | "brand" | "assortment" | "maker" | "seller" | "size";
 
-type SortField = "name" | "count" | "value";
+type SortField = "name" | "count";
 
 const SORT_LABELS: Record<SortField, string> = {
-  name: "Name",
   count: "No. of cars",
-  value: "Value",
+  name: "Name",
 };
 
 const GROUP_KEY: Record<GroupBy, (r: Diecast) => string> = {
@@ -110,9 +109,7 @@ function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
         <p className="mt-1 truncate text-xs text-muted-foreground">
           {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
         </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {[car.status, car.type].filter(Boolean).join(" · ") || "—"}
-        </p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">{car.type || "—"}</p>
       </div>
     </article>
   );
@@ -157,7 +154,6 @@ function CollectionPage() {
       .sort((a, b) => {
         let cmp: number;
         if (sortField === "name") cmp = a.label.localeCompare(b.label);
-        else if (sortField === "value") cmp = a.value - b.value;
         else cmp = a.items.length - b.items.length;
 
         if (cmp !== 0) return dir === "asc" ? cmp : -cmp;
@@ -215,6 +211,7 @@ function CollectionPage() {
               onChange={setSelected}
               icon={<Filter className="size-3.5" />}
               label={`Which ${group}`}
+              iconOnly
               options={[
                 { value: "all", label: `All ${group}s` },
                 ...groups.map((g) => ({
@@ -232,6 +229,7 @@ function CollectionPage() {
                 setSortField(v);
                 setDir(d);
               }}
+              iconOnly
               neutral="count"
               options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
                 value: f,
@@ -272,8 +270,6 @@ function CollectionPage() {
                     <b className="text-foreground">{g.items.length}</b>{" "}
                     <span className="text-muted-foreground">cars</span>
                   </span>
-                  <span className="tabular-nums text-muted-foreground">{inr(g.value)}</span>
-                  <span className="text-muted-foreground">{g.dominant}</span>
                 </div>
               </div>
             </AccordionTrigger>
@@ -289,7 +285,7 @@ function CollectionPage() {
                   )}
                 </div>
               ) : (
-                <CarsTable rows={g.items} />
+                <CarsTable rows={g.items} variant="collection" />
               )}
             </AccordionContent>
           </AccordionItem>

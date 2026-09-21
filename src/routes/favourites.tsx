@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Award, CarFront, Flame, IndianRupee, Star, TrendingUp } from "lucide-react";
+import { Star } from "lucide-react";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -14,10 +14,8 @@ import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/compo
 import { SegmentControl } from "@/components/segment-control";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { ExportButton } from "@/components/export-button";
-import { KpiBand, KpiTile } from "@/components/kpi";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
-import { inrFull } from "@/lib/format";
 
 type Mode = "favourite" | "chase" | "th" | "sth";
 
@@ -168,60 +166,14 @@ function FavouritesPage() {
   const rows = useMemo(() => filterRows(cars, query).filter(IN_MODE[mode]), [cars, query, mode]);
   const text = MODE_TEXT[mode];
 
-  const cost = rows.reduce((s, r) => s + (r.spent || 0), 0);
-  const market = rows.reduce((s, r) => s + (r.mrp || r.spent || 0), 0);
-  const gain = market - cost;
-  const pct = cost > 0 ? (gain / cost) * 100 : 0;
-  const avg = rows.length ? Math.round(market / rows.length) : 0;
-  const chaseCount = rows.filter((r) => r.chase).length;
-
   useRegisterExportScope(mode === "favourite" ? "favourites" : mode, text.title, rows);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* The gallery banner is gone: a page of favourites does not need a card
-          at the top telling you it is a page of favourites. The counts it
-          carried are in the stats below and beside the segment control. */}
-      <PageHeading title={text.title} subtitle={text.subtitle} />
-
-      <KpiBand>
-        <KpiTile
-          label="Models"
-          value={rows.length.toLocaleString()}
-          sub={text.sub}
-          icon={<CarFront className="size-4" />}
-          tone="violet"
-        />
-        <KpiTile
-          label="Portfolio value"
-          value={inrFull(market)}
-          sub={`Cost: ${inrFull(cost)}`}
-          icon={<IndianRupee className="size-4" />}
-        />
-        <KpiTile
-          label="Unrealised gain"
-          value={`${gain >= 0 ? "+" : "-"}${inrFull(Math.abs(gain))}`}
-          sub={`${gain >= 0 ? "+" : ""}${pct.toFixed(1)}% return`}
-          icon={<TrendingUp className="size-4" />}
-          tone={gain >= 0 ? "emerald" : "rose"}
-          valueTone={gain >= 0 ? "emerald" : "rose"}
-        />
-        <KpiTile
-          label="Average / piece"
-          value={inrFull(avg)}
-          sub="Standout castings"
-          icon={<Award className="size-4" />}
-          tone="sky"
-        />
-        <KpiTile
-          label="Chase editions"
-          value={`${chaseCount}`}
-          sub="Rare pulls"
-          icon={<Flame className="size-4" />}
-          tone="amber"
-          valueTone="amber"
-        />
-      </KpiBand>
+      <PageHeading
+        title={text.title}
+        subtitle={`${rows.length} ${rows.length === 1 ? "car" : "cars"}`}
+      />
 
       <PageToolbar
         sticky

@@ -26,17 +26,15 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/inventory")({
   head: () => ({
     meta: [
-      { title: "Inventory | Tesoro" },
+      { title: "My Cars | Tesoro" },
       {
         name: "description",
-        content:
-          "Browse the full diecast inventory with filters, car details, status, seller and spend.",
+        content: "Browse your diecast cars with filters, car details, status, seller and spend.",
       },
-      { property: "og:title", content: "Inventory | Tesoro" },
+      { property: "og:title", content: "My Cars | Tesoro" },
       {
         property: "og:description",
-        content:
-          "Browse the full diecast inventory with filters, car details, status, seller and spend.",
+        content: "Browse your diecast cars with filters, car details, status, seller and spend.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -411,7 +409,7 @@ function InventoryPage() {
 
   // What the top bar's Export button acts on: exactly the filtered, sorted rows
   // on screen, not the whole collection.
-  useRegisterExportScope("inventory", "Inventory", rows);
+  useRegisterExportScope("inventory", "My Cars", rows);
 
   const setDraftFilter = (key: FilterKey, v: string) => {
     setDraft((prev) => {
@@ -467,12 +465,10 @@ function InventoryPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
-      {/* Inventory page title */}
+      {/* Page title */}
       <div className="flex items-baseline justify-between gap-2 pb-0.5">
         <div>
-          <h1 className="text-display text-xl sm:text-2xl font-semibold tracking-tight">
-            Inventory
-          </h1>
+          <h1 className="text-display text-xl sm:text-2xl font-semibold tracking-tight">My Cars</h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
             {rows.length.toLocaleString()} cars
           </p>
@@ -486,65 +482,85 @@ function InventoryPage() {
           isScrolled ? "shadow-xs" : "",
         )}
       >
-        {/* Top row: 3 buttons on the left with equal width, ViewToggle on the right */}
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap">
-            <ExportButton
-              rows={rows}
-              name="inventory"
-              label="Inventory"
-              iconOnlyOnMobile={false}
-              className="w-[84px] sm:w-28 h-8 justify-center text-xs"
-            />
-            <SortSelect
-              value={sort}
-              dir={sortDir}
-              onChange={(v, d) => {
-                setSort(v);
-                setSortDir(d);
+        {/* Main controls: Status segment control on top (web only), icon buttons beside views */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 min-w-0">
+          {/* Status segment control: on web (md:), this is on the top/left */}
+          <div className="order-2 md:order-1 flex items-center min-w-0 overflow-x-auto no-scrollbar">
+            <SegmentControl
+              value={status}
+              onChange={(newStatus) => {
+                setStatus(newStatus);
+                setOtherSubFilter("all_others");
               }}
-              label="Sort cars"
-              triggerLabel="Sort"
-              neutral="added"
-              options={SORT_OPTIONS}
-              iconOnlyOnMobile={false}
-              className="w-[84px] sm:w-28 h-8 justify-center text-xs"
+              options={statusSegmentOptions}
+              className="w-auto"
             />
-            <Button
-              size="sm"
-              variant={activeCount ? "default" : "outline"}
-              className="w-[84px] sm:w-28 h-8 justify-center gap-1 text-xs shrink-0"
-              onClick={() => {
-                setDraft(filters);
-                setFilterOpen((v) => !v);
-              }}
-              title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
-              aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
-              aria-expanded={filterOpen}
-            >
-              <SlidersHorizontal className="size-3.5 shrink-0" />
-              <span>Filter</span>
-              {activeCount ? (
-                <span className="tabular-nums text-[11px] font-semibold">({activeCount})</span>
-              ) : null}
-            </Button>
-            {(sort !== "added" || sortDir !== "desc") && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 shrink-0 text-xs text-muted-foreground hover:text-foreground hidden sm:inline-flex"
-                onClick={() => {
-                  setSort("added");
-                  setSortDir("desc");
-                }}
-              >
-                Reset sort
-              </Button>
-            )}
           </div>
 
-          <div className="shrink-0">
-            <ViewToggle value={view} onChange={setView} />
+          {/* Action icon buttons & Views: export, sort, and filter as icon buttons beside views */}
+          <div className="order-1 md:order-2 flex items-center justify-between md:justify-end gap-1.5 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="icon"
+                variant={activeCount ? "default" : "outline"}
+                className="size-8 relative shrink-0"
+                onClick={() => {
+                  setDraft(filters);
+                  setFilterOpen((v) => !v);
+                }}
+                title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
+                aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
+                aria-expanded={filterOpen}
+              >
+                <SlidersHorizontal className="size-3.5 shrink-0" />
+                {activeCount ? (
+                  <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold leading-none">
+                    {activeCount}
+                  </span>
+                ) : null}
+              </Button>
+
+              <SortSelect
+                value={sort}
+                dir={sortDir}
+                onChange={(v, d) => {
+                  setSort(v);
+                  setSortDir(d);
+                }}
+                label="Sort cars"
+                triggerLabel="Sort"
+                neutral="added"
+                options={SORT_OPTIONS}
+                iconOnly={true}
+                className="size-8 justify-center"
+              />
+
+              <ExportButton
+                rows={rows}
+                name="my-cars"
+                label="My Cars"
+                iconOnly={true}
+                className="size-8 p-0 justify-center"
+              />
+
+              {(sort !== "added" || sortDir !== "desc") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground hidden lg:inline-flex"
+                  onClick={() => {
+                    setSort("added");
+                    setSortDir("desc");
+                  }}
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
+
+            <div className="shrink-0">
+              <ViewToggle value={view} onChange={setView} />
+            </div>
           </div>
         </div>
 
@@ -628,54 +644,41 @@ function InventoryPage() {
           </div>
         )}
 
-        {/* Status segment control: All as first option, Available as default, matching height with top buttons */}
-        <div className="space-y-1.5 pt-0.5">
-          <SegmentControl
-            value={status}
-            onChange={(newStatus) => {
-              setStatus(newStatus);
-              setOtherSubFilter("all_others");
-            }}
-            options={statusSegmentOptions}
-            className="w-auto"
-          />
-
-          {/* When Others is selected: other statuses shown in groups (Wrong Item, Delayed, Lost, etc.) */}
-          {status.toLowerCase() === "others" && allOtherGroups.length > 0 && (
-            <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none sm:flex-wrap pl-1 border-t border-border/40 pt-1.5">
-              <span className="text-[11px] font-medium text-muted-foreground shrink-0 mr-1">
-                Other groups:
-              </span>
+        {/* When Others is selected: other statuses shown in groups (Wrong Item, Delayed, Lost, etc.) */}
+        {status.toLowerCase() === "others" && allOtherGroups.length > 0 && (
+          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none sm:flex-wrap pl-1 border-t border-border/40 pt-1.5">
+            <span className="text-[11px] font-medium text-muted-foreground shrink-0 mr-1">
+              Other groups:
+            </span>
+            <button
+              type="button"
+              onClick={() => setOtherSubFilter("all_others")}
+              className={cn(
+                "inline-flex h-7 items-center rounded-[6px] px-2.5 text-xs font-medium transition-colors shrink-0",
+                otherSubFilter === "all_others"
+                  ? "bg-foreground text-background font-semibold"
+                  : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted",
+              )}
+            >
+              All Others
+            </button>
+            {allOtherGroups.map((grp) => (
               <button
+                key={grp.statusName}
                 type="button"
-                onClick={() => setOtherSubFilter("all_others")}
+                onClick={() => setOtherSubFilter(grp.statusName)}
                 className={cn(
                   "inline-flex h-7 items-center rounded-[6px] px-2.5 text-xs font-medium transition-colors shrink-0",
-                  otherSubFilter === "all_others"
+                  otherSubFilter.toLowerCase() === grp.statusName.toLowerCase()
                     ? "bg-foreground text-background font-semibold"
                     : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted",
                 )}
               >
-                All Others
+                {grp.statusName}
               </button>
-              {allOtherGroups.map((grp) => (
-                <button
-                  key={grp.statusName}
-                  type="button"
-                  onClick={() => setOtherSubFilter(grp.statusName)}
-                  className={cn(
-                    "inline-flex h-7 items-center rounded-[6px] px-2.5 text-xs font-medium transition-colors shrink-0",
-                    otherSubFilter.toLowerCase() === grp.statusName.toLowerCase()
-                      ? "bg-foreground text-background font-semibold"
-                      : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted",
-                  )}
-                >
-                  {grp.statusName}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {view !== "table" ? (

@@ -33,13 +33,13 @@ import { SegmentControl } from "@/components/segment-control";
 export const Route = createFileRoute("/preorders")({
   head: () => ({
     meta: [
-      { title: "Pre-orders | Tesoro" },
+      { title: "Pre Orders | Tesoro" },
       {
         name: "description",
         content:
           "Track diecast pre-orders with seller, order date, ETA, payment status, cost, advance paid and remaining balance.",
       },
-      { property: "og:title", content: "Pre-orders | Tesoro" },
+      { property: "og:title", content: "Pre Orders | Tesoro" },
       {
         property: "og:description",
         content:
@@ -489,17 +489,8 @@ function PreOrdersPage() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <PageHeading
-        title="Pre-booked allocations"
-        subtitle={
-          <>
-            Future batches, manufacturing timelines, and remaining balances — {rows.length} casting
-            {rows.length === 1 ? "" : "s"}
-            {grouping === "order"
-              ? ` across ${groups.length} order${groups.length === 1 ? "" : "s"}`
-              : ""}
-            .
-          </>
-        }
+        title="Pre Orders"
+        subtitle={`${rows.length} ${rows.length === 1 ? "car" : "cars"} on pre-order`}
       />
 
       <KpiBand>

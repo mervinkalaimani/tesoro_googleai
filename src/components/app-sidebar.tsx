@@ -6,7 +6,7 @@ import {
   Boxes,
   Truck,
   Copy,
-  Table,
+  Car,
   Eye,
   EyeOff,
   CalendarDays,
@@ -21,6 +21,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
@@ -34,24 +35,27 @@ import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { HomeScreenMark } from "@/components/brand-mark";
 
-/**
- * Where the collection is looked at, and nothing else.
- *
- * Settings and Admin used to end this list. They are not places you browse to —
- * they are the account, and the account is behind the avatar in the top bar
- * now, where every other application on the machine keeps it. Keeping a second
- * copy here meant two doors to the same room and no way to tell which was
- * canonical.
- */
-const NAV = [
-  { title: "Home", url: "/", icon: Home },
-  { title: "Favourites", url: "/favourites", icon: Star },
-  { title: "Collection", url: "/collection", icon: Boxes },
-  { title: "My Orders", url: "/orders", icon: Truck },
-  { title: "Pre-orders", url: "/preorders", icon: ShoppingBag },
-  { title: "Habits", url: "/habits", icon: CalendarDays },
-  { title: "Duplicates", url: "/duplicates", icon: Copy },
-  { title: "Inventory", url: "/inventory", icon: Table },
+const NAV_GROUPS = [
+  {
+    title: "My Cars",
+    items: [
+      { title: "My Cars", url: "/inventory", icon: Car },
+      { title: "Favourites", url: "/favourites", icon: Star },
+      { title: "Collection", url: "/collection", icon: Boxes },
+    ],
+  },
+  {
+    title: "My Orders",
+    items: [
+      { title: "My Orders", url: "/orders", icon: Truck },
+      { title: "Pre Orders", url: "/preorders", icon: ShoppingBag },
+      { title: "Duplicates", url: "/duplicates", icon: Copy },
+    ],
+  },
+  {
+    title: "Habit",
+    items: [{ title: "Habit", url: "/habits", icon: CalendarDays }],
+  },
 ] as const;
 
 export function AppSidebar() {
@@ -91,37 +95,68 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* No "Navigate" label. One group, and every item in it is a page —
-            a heading over the only list on screen names nothing. */}
-        <SidebarGroup>
+        {/* Home at the top */}
+        <SidebarGroup className="pb-0">
           <SidebarGroupContent>
-            <SidebarMenu className="gap-1.5">
-              {NAV.map((item) => {
-                const active = item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
-                return (
-                  <SidebarMenuItem key={item.url}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={active}
-                      tooltip={item.title}
-                      className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
-                    >
-                      <Link
-                        to={item.url}
-                        onClick={() => {
-                          if (isMobile) setOpenMobile(false);
-                        }}
-                      >
-                        <item.icon className="size-4.5" />
-                        <span>{item.title}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/"}
+                  tooltip="Home"
+                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                >
+                  <Link
+                    to="/"
+                    onClick={() => {
+                      if (isMobile) setOpenMobile(false);
+                    }}
+                  >
+                    <Home className="size-4.5" />
+                    <span>Home</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Sections: My Cars, My Orders, Habit */}
+        {NAV_GROUPS.map((group) => (
+          <SidebarGroup key={group.title} className="py-1">
+            <SidebarGroupLabel className="text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">
+              {group.title}
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {group.items.map((item) => {
+                  const active =
+                    item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
+                  return (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={active}
+                        tooltip={item.title}
+                        className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                      >
+                        <Link
+                          to={item.url}
+                          onClick={() => {
+                            if (isMobile) setOpenMobile(false);
+                          }}
+                        >
+                          <item.icon className="size-4.5" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">

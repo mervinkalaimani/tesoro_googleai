@@ -8,7 +8,7 @@ import {
   Search,
   ShoppingBag,
   Star,
-  Table,
+  Car,
   Truck,
 } from "lucide-react";
 
@@ -23,22 +23,22 @@ import {
 /** Default tabs when on Home, Habits, or general root screens. */
 const DEFAULT_TABS = [
   { title: "Home", url: "/", icon: Home },
-  { title: "Inventory", url: "/inventory", icon: Table },
-  { title: "Orders", url: "/orders", icon: Truck },
+  { title: "My Cars", url: "/inventory", icon: Car },
+  { title: "My Orders", url: "/orders", icon: Truck },
   { title: "Habit", url: "/habits", icon: CalendarDays },
 ] as const;
 
-/** Sub-tabs shown when navigating into Inventory. */
+/** Sub-tabs shown when navigating into My Cars. */
 const INVENTORY_TABS = [
-  { title: "Inventory", url: "/inventory", icon: Table },
+  { title: "My Cars", url: "/inventory", icon: Car },
   { title: "Favourites", url: "/favourites", icon: Star },
-  { title: "Collections", url: "/collection", icon: Boxes },
+  { title: "Collection", url: "/collection", icon: Boxes },
 ] as const;
 
-/** Sub-tabs shown when navigating into Orders. */
+/** Sub-tabs shown when navigating into My Orders. */
 const ORDERS_TABS = [
-  { title: "Orders", url: "/orders", icon: Truck },
-  { title: "Pre-orders", url: "/preorders", icon: ShoppingBag },
+  { title: "My Orders", url: "/orders", icon: Truck },
+  { title: "Pre Orders", url: "/preorders", icon: ShoppingBag },
   { title: "Duplicates", url: "/duplicates", icon: Copy },
 ] as const;
 

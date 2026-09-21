@@ -304,6 +304,23 @@ function HabitsPage() {
     return { active: active.length, totalCars, totalSpent, best, streak, avg };
   }, [buckets]);
 
+  const daysWithoutBuying = useMemo(() => {
+    let latestDate: Date | null = null;
+    for (const car of rows) {
+      const raw = (car.orderDate || car.date || "").trim();
+      if (!raw) continue;
+      const d = parseDMY(raw);
+      if (d && (!latestDate || d.getTime() > latestDate.getTime())) {
+        latestDate = d;
+      }
+    }
+    if (!latestDate) return null;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const last = new Date(latestDate.getFullYear(), latestDate.getMonth(), latestDate.getDate());
+    return Math.max(0, Math.floor((today.getTime() - last.getTime()) / (1000 * 60 * 60 * 24)));
+  }, [rows]);
+
   const selectedBucket = buckets.find((b) => b.key === selected) ?? null;
   const insightRows = useMemo(
     () => (selectedBucket ? selectedBucket.items : buckets.flatMap((b) => b.items)),
@@ -343,10 +360,7 @@ function HabitsPage() {
 
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
-      <PageHeading
-        title="Buying habits"
-        subtitle="When you order, when cars land, and how often — by day, week, month or year."
-      >
+      <PageHeading title="Buying habits">
         <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-2.5 py-1.5 shadow-xs">
           <Switch
             id="hide-preorders"
@@ -400,7 +414,13 @@ function HabitsPage() {
         <KpiTile
           icon={<CalendarDays className="size-4" />}
           label="Current streak"
-          value={`${stats.streak} ${unit}${stats.streak === 1 ? "" : "s"}`}
+          value={
+            daysWithoutBuying !== null
+              ? `${daysWithoutBuying} ${daysWithoutBuying === 1 ? "day" : "days"}`
+              : `${stats.streak} ${unit}${stats.streak === 1 ? "" : "s"}`
+          }
+          sub="(days without buying)"
+          subVisibleOnMobile
           tone="emerald"
         />
       </section>
