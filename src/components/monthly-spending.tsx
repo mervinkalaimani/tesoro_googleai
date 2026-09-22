@@ -1,3 +1,4 @@
+import { isIso } from "@/lib/status";
 import { useEffect, useMemo, useState } from "react";
 import {
   Bar,
@@ -26,7 +27,7 @@ const PHONE_QUERY = "(max-width: 767px)";
  * bought and count nowhere.
  */
 function orderedMonthKey(r: Diecast): number | null {
-  if ((r.status || "").trim().toLowerCase() === "iso") return null;
+  if (isIso(r.status)) return null;
   return monthKey(r.orderDate) ?? monthKey(r.orderMonth);
 }
 

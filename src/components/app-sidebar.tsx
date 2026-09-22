@@ -1,3 +1,4 @@
+import { isIso } from "@/lib/status";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
@@ -64,10 +65,7 @@ export function AppSidebar() {
   const { isOwner, isGuest } = useAuth();
   const { source } = useCarsSource();
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
-  const data = useMemo(
-    () => allMatching.filter((r) => (r.status || "").trim().toLowerCase() !== "iso"),
-    [allMatching],
-  );
+  const data = useMemo(() => allMatching.filter((r) => !isIso(r.status)), [allMatching]);
   const { isMobile, setOpenMobile } = useSidebar();
   const [localReveal, setLocalReveal] = useState(false);
   const pathname = useRouterState({ select: (r) => r.location.pathname });

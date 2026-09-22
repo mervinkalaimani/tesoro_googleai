@@ -725,7 +725,7 @@ function CatalogPage() {
         onOpenChange={(v) => !v && setAdding(null)}
         mode="add"
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
-        prefillStatus={adding && isPreOrder(adding) ? "Pre Order" : "Waiting"}
+        prefillStatus={adding && isPreOrder(adding) ? "PO" : "Ordered"}
       />
       {isAdmin && (
         <MergeDuplicatesDialog

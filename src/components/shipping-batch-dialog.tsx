@@ -37,19 +37,30 @@ import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { cn } from "@/lib/utils";
+import { STATUSES, isInHand, isIso, type Status } from "@/lib/status";
+import { isLate } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { carSubLine, carSubLineParts } from "@/lib/car-subline";
 
-const STATUS_CHOICES = [
-  { value: "keep", label: "— Keep current status —" },
-  { value: "Available", label: "Available (Delivered / Received)" },
-  { value: "Out for Delivery", label: "Out for Delivery" },
-  { value: "Transit", label: "Transit (In Courier / Shipped)" },
-  { value: "Delayed", label: "Delayed" },
-  { value: "Waiting", label: "Waiting" },
-  { value: "Pre Order", label: "Pre Order" },
-  { value: "On Hold", label: "On Hold" },
-  { value: "ISO", label: "ISO (In Search Of)" },
+const STATUS_CHOICES = STATUSES.map((value) => ({ value, label: value }));
+
+/** The three moves a whole shipment usually makes, in the order it makes them. */
+const QUICK_SET: { value: Status; label: string; tone: string }[] = [
+  {
+    value: "Ordered",
+    label: "Ordered",
+    tone: "border-amber-500/60 bg-amber-500/15 font-semibold text-amber-600 dark:text-amber-400",
+  },
+  {
+    value: "In Transit",
+    label: "In Transit",
+    tone: "border-blue-500/60 bg-blue-500/15 font-semibold text-blue-600 dark:text-blue-400",
+  },
+  {
+    value: "In Hand",
+    label: "Delivered",
+    tone: "border-emerald-500/60 bg-emerald-500/15 font-semibold text-emerald-600 dark:text-emerald-400",
+  },
 ];
 
 export interface ShippingBatchDialogProps {
@@ -127,7 +138,7 @@ export function ShippingBatchDialog({
   const shippingIdStats = useMemo(() => {
     const map = new Map<string, { count: number; sellers: Set<string>; statuses: Set<string> }>();
     for (const car of cars) {
-      if (hideDelivered && (car.status || "").trim().toLowerCase() === "available") {
+      if (hideDelivered && isInHand(car.status)) {
         continue;
       }
       const id = (car[idField] || "").trim();
@@ -204,7 +215,7 @@ export function ShippingBatchDialog({
   const matchedCars = useMemo(() => {
     if (!activeShippingId) return [];
     return cars.filter((c) => {
-      if (hideDelivered && (c.status || "").trim().toLowerCase() === "available") {
+      if (hideDelivered && isInHand(c.status)) {
         return false;
       }
       return (c[idField] || "").trim().toLowerCase() === activeShippingId.toLowerCase();
@@ -251,7 +262,7 @@ export function ShippingBatchDialog({
     const q = isoQuery.trim().toLowerCase();
     const queued = new Set(pendingCars.map((c) => c.id));
     return cars
-      .filter((c) => (c.status || "").trim().toLowerCase() === "iso" && !queued.has(c.id))
+      .filter((c) => isIso(c.status) && !queued.has(c.id))
       .filter((c) => {
         if (!q) return true;
         return [c.name, c.make, c.model, c.variant, c.brand, c.series, c.carNumber]
@@ -287,7 +298,7 @@ export function ShippingBatchDialog({
       new Date().toISOString().slice(0, 10);
     // Only a delivered car has an arrival date; everything else carries the
     // estimate in expectedDate alone.
-    const arrivedOn = status === "Available" ? expected || car.date || orderDate : "";
+    const arrivedOn = isInHand(status) ? expected || car.date || orderDate : "";
 
     return {
       ...car,
@@ -309,7 +320,7 @@ export function ShippingBatchDialog({
 
   /** Seeds the add-a-car wizard with everything the order already knows. */
   const seedNewCar = (): Diecast =>
-    joinOrder({ ...makeBlankCar(), status: template?.status || "Transit" });
+    joinOrder({ ...makeBlankCar(), status: template?.status || "In Transit" });
 
   /** Everything this Apply would write: the batch, plus anything joining it. */
   const affected = matchedCars.length + pendingCars.length;
@@ -318,9 +329,6 @@ export function ShippingBatchDialog({
     const d = new Date();
     d.setDate(d.getDate() + offsetDays);
     setNewExpectedDate(d.toISOString().slice(0, 10));
-    if (newStatus === "keep" && matchedCars.some((c) => c.status === "Delayed")) {
-      setNewStatus("Waiting");
-    }
   };
 
   const handleApply = async () => {
@@ -712,66 +720,31 @@ export function ShippingBatchDialog({
                     </SelectContent>
                   </Select>
 
-                  {/* Quick status presets */}
+                  {/* Quick status presets. Four used to sit here, two of which
+                      (Out for Delivery, Delayed) no longer exist — the first
+                      is In Transit and the second is worked out from the date. */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                     <span className="text-[10px] text-muted-foreground">Quick set:</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewStatus("Out for Delivery");
-                        if (!newExpectedDate) {
-                          setNewExpectedDate(new Date().toISOString().slice(0, 10));
-                        }
-                      }}
-                      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
-                        newStatus === "Out for Delivery"
-                          ? "border-cyan-500/60 bg-cyan-500/15 font-semibold text-cyan-600 dark:text-cyan-400"
-                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      Out for Delivery
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewStatus("Delayed");
-                        setUpdateTransitInfo(true);
-                      }}
-                      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
-                        newStatus === "Delayed"
-                          ? "border-rose-500/60 bg-rose-500/15 font-semibold text-rose-600 dark:text-rose-400"
-                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      Delayed
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setNewStatus("Transit")}
-                      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
-                        newStatus === "Transit"
-                          ? "border-amber-500/60 bg-amber-500/15 font-semibold text-amber-600 dark:text-amber-400"
-                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      In Transit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setNewStatus("Available");
-                        if (!newExpectedDate) {
-                          setNewExpectedDate(new Date().toISOString().slice(0, 10));
-                        }
-                      }}
-                      className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
-                        newStatus === "Available"
-                          ? "border-emerald-500/60 bg-emerald-500/15 font-semibold text-emerald-600 dark:text-emerald-400"
-                          : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                      }`}
-                    >
-                      Delivered
-                    </button>
+                    {QUICK_SET.map(({ value, label, tone }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => {
+                          setNewStatus(value);
+                          // Arriving today, unless a day is already promised.
+                          if (isInHand(value) && !newExpectedDate) {
+                            setNewExpectedDate(new Date().toISOString().slice(0, 10));
+                          }
+                        }}
+                        className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                          newStatus === value
+                            ? tone
+                            : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -824,12 +797,8 @@ export function ShippingBatchDialog({
                     onChange={(e) => {
                       const val = e.target.value;
                       setNewExpectedDate(val);
-                      if (
-                        val &&
-                        newStatus === "keep" &&
-                        matchedCars.some((c) => c.status === "Delayed")
-                      ) {
-                        setNewStatus("Waiting");
+                      if (val && newStatus === "keep" && matchedCars.some((c) => isLate(c))) {
+                        setNewStatus("Ordered");
                       }
                     }}
                     className="border-border bg-background text-xs text-foreground"

@@ -1,48 +1,14 @@
+import { statusRank } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
 /**
- * The order cars are always listed in. Statuses earlier in this list sort
- * first; within a status, cars keep their SNO (insertion) order.
+ * The order cars are always listed in.
+ *
+ * The statuses themselves, their spellings and their ranking all live in
+ * `status.ts` now; what is left here is only how a list of cars is put in
+ * order, which is the one thing this module was ever imported for.
  */
-export const STATUS_ORDER = [
-  ["available", "wrong item"],
-  ["out for delivery"],
-  ["transit"],
-  ["waiting"],
-  ["pre order", "preorder"],
-  ["delayed"],
-  ["on hold", "onhold"],
-  ["lost"],
-  ["iso"],
-] as const;
-
-const RANK = new Map<string, number>();
-STATUS_ORDER.forEach((aliases, i) => {
-  for (const a of aliases) RANK.set(a, i);
-});
-
-/** Anything unrecognised sorts after every known status rather than first. */
-export function statusRank(status: string | undefined | null): number {
-  const key = (status || "").trim().toLowerCase();
-  const hit = RANK.get(key);
-  if (hit !== undefined) return hit;
-  // Tolerate spacing and punctuation drift, e.g. "Pre-Order" or "OnHold".
-  const squashed = key.replace(/[^a-z]/g, "");
-  for (const [alias, rank] of RANK) {
-    if (alias.replace(/[^a-z]/g, "") === squashed) return rank;
-  }
-  return STATUS_ORDER.length;
-}
-
-/** True for "Pre Order", "Pre-Order", "preorder" — however it was typed. */
-export function isPreOrder(status: string | undefined | null): boolean {
-  return (
-    (status || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[\s-]+/g, " ") === "pre order"
-  );
-}
+export { statusRank, isPreOrder } from "@/lib/status";
 
 /** SNO is absent until a locally-added car round-trips through Supabase. */
 function snoOf(car: Diecast): number {
@@ -50,9 +16,9 @@ function snoOf(car: Diecast): number {
 }
 
 /**
- * Status group first, then insertion order within the group. A car that becomes
- * Available therefore lands directly after the last Available car, which is the
- * position its SNO would give it if the table were renumbered.
+ * Status group first, then insertion order within the group. A car that arrives
+ * therefore lands directly after the last In Hand car, which is the position
+ * its SNO would give it if the table were renumbered.
  */
 export function compareCars(a: Diecast, b: Diecast): number {
   const byStatus = statusRank(a.status) - statusRank(b.status);

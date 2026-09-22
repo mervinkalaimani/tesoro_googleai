@@ -1,3 +1,4 @@
+import { STATUSES } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 import { orderIdTable } from "@/lib/order-id";
 
@@ -447,24 +448,8 @@ const TRANSIT_NOTES = [
 
 const GUEST_COURIERS = ["Blue Dart", "Delhivery", "DTDC", "India Post", "Ekart", "XpressBees"];
 
-/**
- * Every status the app recognises, written out rather than derived from
- * STATUS_ORDER: that array groups aliases together ("available" and "wrong
- * item" share a rank, as do "pre order"/"preorder"), so taking one label per
- * group silently dropped "wrong item" from the demo.
- */
-const ALL_STATUSES = [
-  "Available",
-  "Wrong Item",
-  "Out for Delivery",
-  "Transit",
-  "Waiting",
-  "Pre Order",
-  "Delayed",
-  "On Hold",
-  "Lost",
-  "ISO",
-] as const;
+/** Every status the app recognises, so the demo shows all six. */
+const ALL_STATUSES = STATUSES;
 
 function pick<T>(arr: readonly T[], rand: () => number): T {
   return arr[Math.floor(rand() * arr.length)] as T;
@@ -502,7 +487,7 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
     ...ALL_STATUSES,
     ...Array.from({ length: Math.max(0, GUEST_COUNT - ALL_STATUSES.length) }, () =>
       // Weighted towards Available so the collection reads like a real one.
-      rand() < 0.55 ? "Available" : pick(ALL_STATUSES, rand),
+      rand() < 0.55 ? "In Hand" : pick(ALL_STATUSES, rand),
     ),
   ].slice(0, GUEST_COUNT);
 
@@ -512,10 +497,10 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
   const cars = templates.map((t, i) => {
     const status = statuses[i] as string;
     const lower = status.toLowerCase();
-    const arrived = lower === "available" || lower === "wrong item";
-    const isPreOrder = lower === "pre order";
+    const arrived = lower === "in hand";
+    const isPreOrder = lower === "po";
     const isIso = lower === "iso";
-    const moving = lower === "transit" || lower === "out for delivery";
+    const moving = lower === "in transit";
 
     const daysAgo = Math.floor(rand() * 240) + 5;
     const orderDate = new Date(today);
@@ -583,8 +568,7 @@ export function makeGuestCars(rand: () => number = Math.random): Diecast[] {
       orderDate: isIso ? "" : iso(orderDate),
       orderMonth: isIso ? "" : monthLabel(orderDate),
       expectedDate: arrived || isIso ? "" : iso(isPreOrder ? releaseDate : eventDate),
-      transitInfo:
-        lower === "transit" || lower === "out for delivery" ? pick(TRANSIT_NOTES, rand) : "",
+      transitInfo: lower === "in transit" ? pick(TRANSIT_NOTES, rand) : "",
       shippingId,
       // Filled in below by the real formula rather than by a counter here:
       // order IDs rank a seller's order days within a month, which is not

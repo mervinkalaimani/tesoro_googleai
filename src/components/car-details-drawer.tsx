@@ -59,30 +59,8 @@ import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CarThumb } from "@/components/car-thumb";
 import { carSubLine } from "@/lib/car-subline";
-
-/**
- * A car moves forward one step at a time rather than jumping straight to
- * delivered, so the button always advances to the next real stage.
- */
-const STATUS_FLOW = [
-  "ISO",
-  "Pre Order",
-  "Waiting",
-  "Transit",
-  "Delayed",
-  "Out for Delivery",
-  "Available",
-];
-
-function nextStatus(current: string): string | null {
-  const now = (current || "").trim().toLowerCase();
-  const i = STATUS_FLOW.findIndex((s) => s.toLowerCase() === now);
-  // An unrecognised status has no place in the chain; treat delivery as the
-  // only sensible next move.
-  if (i < 0) return "Available";
-  if (i >= STATUS_FLOW.length - 1) return null;
-  return STATUS_FLOW[i + 1];
-}
+import { boughtOn, purchaseHistory, type Purchase } from "@/lib/copies";
+import { isInHand } from "@/lib/status";
 
 type Ctx = {
   open: (car: Diecast) => void;
@@ -524,9 +502,8 @@ function CarPopupContent({
   const spent = Math.round(car.spent ?? 0);
   const mrp = Math.round(car.mrp ?? 0);
   const delta = mrp - spent;
-  const advanceTo = nextStatus(car.status);
 
-  const hasArrived = (car.status || "").trim().toLowerCase() === "available";
+  const hasArrived = isInHand(car.status);
   const cleanTransitNotes = (car.transitInfo || "").trim();
 
   const trackable = Boolean(trackingPageFor(car.deliveryPartner, car.trackingId));
@@ -1128,7 +1105,76 @@ function CarPurchaseAndShippingSection({
             {cleanTransitNotes}
           </p>
         )}
+
+        <BoughtBefore car={car} />
       </div>
+    </div>
+  );
+}
+
+/**
+ * "You've bought this casting 6 times", and when.
+ *
+ * Shown only when there is more than one, because My Cars now collapses the
+ * copies into a single row — this is where the rest of them went. It is the
+ * answer to the question the row raises: not just that you own six, but that
+ * you bought them across four separate occasions and what each cost.
+ *
+ * One line per day *and* shipment, never per copy: five of the six Twin Tags
+ * came in one parcel on one day, and a row-per-copy list would print the same
+ * date and shipping ID five times over.
+ */
+function BoughtBefore({ car }: { car: Diecast }) {
+  const cars = useCars();
+
+  const { copies, lines } = useMemo(() => {
+    const id = (car.catalogId || "").trim().toUpperCase();
+    if (!id) return { copies: [] as Diecast[], lines: [] as Purchase[] };
+    const mine = cars.filter((c) => (c.catalogId || "").trim().toUpperCase() === id);
+    return { copies: mine, lines: purchaseHistory(mine) };
+  }, [cars, car.catalogId]);
+
+  if (copies.length < 2) return null;
+
+  const total = copies.reduce((s, c) => s + (c.spent || 0), 0);
+  const thisDay = boughtOn(car);
+  const thisShipment = (car.shippingId || "").trim();
+
+  return (
+    <div className="mt-3 rounded-lg border border-primary/25 bg-primary/5 p-2.5">
+      <p className="text-xs font-semibold text-foreground">
+        You've bought this casting {copies.length} times.
+      </p>
+
+      <div className="mt-1.5 divide-y divide-primary/15">
+        {lines.map((l) => {
+          const isThisOne = l.day === thisDay && l.shippingId === thisShipment;
+          return (
+            <div
+              key={`${l.day}|${l.shippingId}`}
+              className="flex items-baseline justify-between gap-3 py-1 text-xs"
+            >
+              <span className="min-w-0 tabular-nums">
+                {formatDayMonthYear(l.day) || l.day || "No date"}
+                {l.estimated && (
+                  <span className="ml-1 text-[10px] italic text-muted-foreground">received</span>
+                )}
+                {isThisOne && (
+                  <span className="ml-1.5 text-[10px] font-semibold text-primary">this one</span>
+                )}
+              </span>
+              <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
+                {l.shippingId || "—"}
+                {l.n > 1 && <span className="ml-1 font-sans font-bold text-primary">{l.n}×</span>}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-1.5 text-[11px] text-muted-foreground">
+        {inrFull(total)} across all {copies.length}.
+      </p>
     </div>
   );
 }

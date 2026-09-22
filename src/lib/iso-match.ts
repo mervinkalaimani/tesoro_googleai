@@ -1,3 +1,4 @@
+import { isIso } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -35,7 +36,7 @@ export type IsoMatch = {
 
 const norm = (v: string | undefined | null) => (v ?? "").trim().toLowerCase();
 
-export const isIsoStatus = (status: string | undefined | null) => norm(status) === "iso";
+export { isIso as isIsoStatus } from "@/lib/status";
 
 /**
  * Fields that describe the *casting*, ranked by how much they narrow things
@@ -78,7 +79,7 @@ export function isoMatchesFor(
 
   const out: IsoMatch[] = [];
   for (const car of cars) {
-    if (!isIsoStatus(car.status)) continue;
+    if (!isIso(car.status)) continue;
     if (excludeId && car.id === excludeId) continue;
 
     const matched: IsoMatchField[] = [];

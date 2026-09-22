@@ -14,7 +14,10 @@ import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio } from "@/lib/format";
-import { isPreOrder, sortCars, statusRank } from "@/lib/status-order";
+import { sortCars } from "@/lib/status-order";
+import { STATUSES, normaliseStatus } from "@/lib/status";
+import { groupCopies } from "@/lib/copies";
+import { CopiesBadge } from "@/components/copies-badge";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
@@ -128,9 +131,12 @@ function Metric({ label, value, className }: { label: string; value: string; cla
 }
 
 /** Spend, list price, and the gap between them. */
-function PriceStrip({ car }: { car: Diecast }) {
-  const spent = car.spent || 0;
-  const mrp = car.mrp || 0;
+function PriceStrip({ car, spentOverride }: { car: Diecast; spentOverride?: number }) {
+  // The group total when this tile stands for several copies: what six
+  // McQueens cost, not what the newest one cost. The MRP delta goes quiet with
+  // it, since one copy is MRP against six copies is spend is not a comparison.
+  const spent = spentOverride ?? car.spent ?? 0;
+  const mrp = spentOverride === undefined ? car.mrp || 0 : 0;
   const delta = priceDelta(spent, mrp);
 
   return (
@@ -158,7 +164,23 @@ function PriceStrip({ car }: { car: Diecast }) {
   );
 }
 
-function InventoryCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
+function InventoryCard({
+  car,
+  onOpen,
+  copies = 1,
+  copiesTotal,
+  expanded = false,
+  onToggleCopies,
+}: {
+  car: Diecast;
+  onOpen: () => void;
+  /** How many copies of this casting this tile stands for. 1 hides the mark. */
+  copies?: number;
+  /** What all the copies cost together, shown in place of this one is spend. */
+  copiesTotal?: number;
+  expanded?: boolean;
+  onToggleCopies?: () => void;
+}) {
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
       <div className="relative">
@@ -191,6 +213,12 @@ function InventoryCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
           {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
         </button>
 
+        {copies > 1 && (
+          <div className="mt-1">
+            <CopiesBadge n={copies} expanded={expanded} onToggle={onToggleCopies} />
+          </div>
+        )}
+
         <p className="mt-1 text-xs leading-snug text-muted-foreground">{carSubLine(car)}</p>
 
         {/* Where the chips taken off the image now live: readable, and not on
@@ -207,26 +235,10 @@ function InventoryCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
             of a page of forty put a destructive action one mis-tap from
             scrolling. */}
         <div className="mt-auto border-t border-border pt-2.5">
-          <PriceStrip car={car} />
+          <PriceStrip car={car} spentOverride={copies > 1 ? copiesTotal : undefined} />
         </div>
       </div>
     </article>
-  );
-}
-
-const OTHERS_CANONICAL_ORDER = ["wrong item", "delayed", "lost"];
-
-function getOthersRank(statusName: string): number {
-  const norm = (statusName || "").trim().toLowerCase();
-  const idx = OTHERS_CANONICAL_ORDER.indexOf(norm);
-  if (idx !== -1) return idx;
-  return OTHERS_CANONICAL_ORDER.length + statusRank(statusName);
-}
-
-function isOtherStatus(s: string | undefined | null): boolean {
-  const norm = (s || "").trim().toLowerCase();
-  return (
-    norm !== "available" && norm !== "waiting" && !isPreOrder(s) && norm !== "po" && norm !== "iso"
   );
 }
 
@@ -241,8 +253,7 @@ function InventoryPage() {
   const search = Route.useSearch();
   // Seeded from ?status= so a KPI click lands on a pre-filtered table; the
   // chips remain free to change it afterwards. Defaults to "Available".
-  const [status, setStatus] = useState(search.status ?? "Available");
-  const [otherSubFilter, setOtherSubFilter] = useState<string>("all_others");
+  const [status, setStatus] = useState(search.status ?? "In Hand");
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -289,42 +300,26 @@ function InventoryPage() {
     return out;
   }, [searched, draft]);
 
-  // Status segment control options: All is first option, Available is default
+  /**
+   * One chip per status, plus All.
+   *
+   * There used to be six, one of which was "Others" — a bucket holding Wrong
+   * Item, Delayed and Lost behind a second dropdown. All three of those are
+   * gone, so the bucket and its sub-filter went with them.
+   */
   const statusSegmentOptions = useMemo(
-    () => [
-      { value: "all", label: "All" },
-      { value: "Available", label: "Available" },
-      { value: "Waiting", label: "Waiting" },
-      { value: "PO", label: "PO" },
-      { value: "ISO", label: "ISO" },
-      { value: "others", label: "Others" },
-    ],
+    () => [{ value: "all", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: s }))],
     [],
   );
 
   const rows = useMemo(() => {
     let out = applyFilters(searched, filters);
-    const normStatus = (status || "").trim().toLowerCase();
 
-    if (normStatus === "available") {
-      out = out.filter((r) => (r.status || "").trim().toLowerCase() === "available");
-    } else if (normStatus === "waiting") {
-      out = out.filter((r) => (r.status || "").trim().toLowerCase() === "waiting");
-    } else if (normStatus === "po") {
-      out = out.filter(
-        (r) => isPreOrder(r.status) || (r.status || "").trim().toLowerCase() === "po",
-      );
-    } else if (normStatus === "iso") {
-      out = out.filter((r) => (r.status || "").trim().toLowerCase() === "iso");
-    } else if (normStatus === "others") {
-      out = out.filter((r) => isOtherStatus(r.status));
-      if (otherSubFilter !== "all_others") {
-        out = out.filter(
-          (r) => (r.status || "").trim().toLowerCase() === otherSubFilter.trim().toLowerCase(),
-        );
-      }
-    } else if (normStatus !== "all") {
-      out = out.filter((r) => (r.status || "").toLowerCase() === normStatus);
+    // A deep link from a home tile, or an old bookmark still saying
+    // `?status=Available`, both arrive here and both normalise to the same chip.
+    const want = normaliseStatus(status);
+    if (want && want.toLowerCase() !== "all") {
+      out = out.filter((r) => normaliseStatus(r.status) === want);
     }
 
     if (chaseOnly) out = out.filter((r) => r.chase);
@@ -382,30 +377,72 @@ function InventoryPage() {
         return sign === 1 ? sorted : sorted.reverse();
       }
     }
-  }, [searched, filters, status, otherSubFilter, sort, sortDir, chaseOnly, favOnly]);
+  }, [searched, filters, status, sort, sortDir, chaseOnly, favOnly]);
+
+  /**
+   * One row per casting, not per copy.
+   *
+   * 92 castings in the collection are owned more than once, 214 rows between
+   * them — six lines of Lightning McQueen reads as a filing error rather than
+   * as six real purchases. The newest copy stands for the group and carries
+   * the count; the rest open underneath when the badge is tapped.
+   *
+   * Grouping runs on `rows`, which is already filtered and sorted, so the
+   * count always describes what you are looking at and the order is whatever
+   * the lead copy sorted to.
+   */
+  const groups = useMemo(() => groupCopies(rows), [rows]);
+
+  /** Which castings are opened out. Reset whenever the list underneath changes. */
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggleExpanded = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  /**
+   * The flat list the three views render, and what each row should say about
+   * its group. Expanded copies follow their lead and carry no badge of their
+   * own — the group is already open, so a second "6×" on each of the six would
+   * be noise.
+   */
+  const display = useMemo(() => {
+    const out: { car: Diecast; n: number; total: number; lead: boolean }[] = [];
+    for (const g of groups) {
+      out.push({ car: g.lead, n: g.n, total: g.total, lead: true });
+      if (g.n > 1 && expanded.has(g.lead.id)) {
+        for (const c of g.copies.slice(1))
+          out.push({ car: c, n: 1, total: c.spent || 0, lead: false });
+      }
+    }
+    return out;
+  }, [groups, expanded]);
 
   useEffect(() => {
     setVisibleCount(LOAD_BATCH);
+    setExpanded(new Set());
     window.scrollTo({ top: 0 });
-  }, [query, filters, status, otherSubFilter, sort, sortDir, chaseOnly, favOnly]);
+  }, [query, filters, status, sort, sortDir, chaseOnly, favOnly]);
 
   /**
    * Loads the next batch when the foot of the list comes into view.
    */
   useEffect(() => {
     const el = sentinelRef.current;
-    if (!el || visibleCount >= rows.length) return;
+    if (!el || visibleCount >= display.length) return;
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setVisibleCount((count) => Math.min(count + LOAD_BATCH, rows.length));
+          setVisibleCount((count) => Math.min(count + LOAD_BATCH, display.length));
         }
       },
       { rootMargin: "600px" },
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [visibleCount, rows.length]);
+  }, [visibleCount, display.length]);
 
   // What the top bar's Export button acts on: exactly the filtered, sorted rows
   // on screen, not the whole collection.
@@ -426,42 +463,16 @@ function InventoryPage() {
   };
 
   const activeCount = Object.values(filters).filter((v) => v !== "all").length;
-  const shown = rows.slice(0, visibleCount);
 
-  // Grouped other statuses in canonical order: Wrong Item, Delayed, Lost, and any others
-  const otherGroups = useMemo(() => {
-    if (status.toLowerCase() !== "others") return [];
-    const map = new Map<string, Diecast[]>();
-    for (const r of shown) {
-      const name = (r.status || "Other").trim();
-      const existing = map.get(name) ?? [];
-      existing.push(r);
-      map.set(name, existing);
-    }
-    return [...map.entries()]
-      .map(([statusName, cars]) => ({ statusName, cars }))
-      .sort(
-        (a, b) =>
-          getOthersRank(a.statusName) - getOthersRank(b.statusName) ||
-          a.statusName.localeCompare(b.statusName),
-      );
-  }, [status, shown]);
-
-  const allOtherGroups = useMemo(() => {
-    if (status.toLowerCase() !== "others") return [];
-    const map = new Map<string, number>();
-    for (const r of rows) {
-      const name = (r.status || "Other").trim();
-      map.set(name, (map.get(name) ?? 0) + 1);
-    }
-    return [...map.entries()]
-      .map(([statusName, count]) => ({ statusName, count }))
-      .sort(
-        (a, b) =>
-          getOthersRank(a.statusName) - getOthersRank(b.statusName) ||
-          a.statusName.localeCompare(b.statusName),
-      );
-  }, [status, rows]);
+  /**
+   * Castings and cars are two different numbers once copies are collapsed, and
+   * saying only one of them makes the list look like it is hiding rows.
+   */
+  const countCaption =
+    groups.length === rows.length
+      ? `${rows.length.toLocaleString()} cars`
+      : `${groups.length.toLocaleString()} castings · ${rows.length.toLocaleString()} cars`;
+  const shown = display.slice(0, visibleCount);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
@@ -469,9 +480,7 @@ function InventoryPage() {
       <div className="flex items-baseline justify-between gap-2 pb-0.5">
         <div>
           <h1 className="text-display text-xl sm:text-2xl font-semibold tracking-tight">My Cars</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {rows.length.toLocaleString()} cars
-          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{countCaption}</p>
         </div>
       </div>
 
@@ -488,10 +497,7 @@ function InventoryPage() {
           <div className="order-2 md:order-1 flex items-center min-w-0 overflow-x-auto no-scrollbar">
             <SegmentControl
               value={status}
-              onChange={(newStatus) => {
-                setStatus(newStatus);
-                setOtherSubFilter("all_others");
-              }}
+              onChange={setStatus}
               options={statusSegmentOptions}
               className="w-auto"
             />
@@ -620,7 +626,7 @@ function InventoryPage() {
 
             <div className="flex items-center justify-between gap-2">
               <p className="min-w-0 text-xs text-muted-foreground">
-                <b className="text-foreground">{rows.length.toLocaleString()}</b> of{" "}
+                <b className="text-foreground">{groups.length.toLocaleString()}</b> of{" "}
                 {searched.length.toLocaleString()}
               </p>
               <div className="flex shrink-0 gap-2">
@@ -643,127 +649,54 @@ function InventoryPage() {
             </div>
           </div>
         )}
-
-        {/* When Others is selected: other statuses shown in groups (Wrong Item, Delayed, Lost, etc.) */}
-        {status.toLowerCase() === "others" && allOtherGroups.length > 0 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 scrollbar-none sm:flex-wrap pl-1 border-t border-border/40 pt-1.5">
-            <span className="text-[11px] font-medium text-muted-foreground shrink-0 mr-1">
-              Other groups:
-            </span>
-            <button
-              type="button"
-              onClick={() => setOtherSubFilter("all_others")}
-              className={cn(
-                "inline-flex h-7 items-center rounded-[6px] px-2.5 text-xs font-medium transition-colors shrink-0",
-                otherSubFilter === "all_others"
-                  ? "bg-foreground text-background font-semibold"
-                  : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted",
-              )}
-            >
-              All Others
-            </button>
-            {allOtherGroups.map((grp) => (
-              <button
-                key={grp.statusName}
-                type="button"
-                onClick={() => setOtherSubFilter(grp.statusName)}
-                className={cn(
-                  "inline-flex h-7 items-center rounded-[6px] px-2.5 text-xs font-medium transition-colors shrink-0",
-                  otherSubFilter.toLowerCase() === grp.statusName.toLowerCase()
-                    ? "bg-foreground text-background font-semibold"
-                    : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted",
-                )}
-              >
-                {grp.statusName}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {view !== "table" ? (
         <>
-          {status.toLowerCase() === "others" && otherSubFilter === "all_others" ? (
-            <div className="space-y-6">
-              {otherGroups.map((grp) => (
-                <div key={grp.statusName} className="space-y-2.5">
-                  <div className="flex items-center justify-between border-b border-border/60 pb-1.5 pt-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-foreground tracking-tight">
-                        {grp.statusName}
-                      </span>
-                      <span className="rounded-full bg-muted/80 px-2 py-0.5 text-[11px] font-medium tabular-nums text-muted-foreground">
-                        {grp.cars.length} {grp.cars.length === 1 ? "car" : "cars"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
-                    {grp.cars.map((r, i) =>
-                      view === "compact" ? (
-                        <CompactCarCard
-                          key={(r.id || "") + i}
-                          car={r}
-                          onOpen={() => openDrawer(r)}
-                        />
-                      ) : (
-                        <InventoryCard
-                          key={(r.id || "") + i}
-                          car={r}
-                          onOpen={() => openDrawer(r)}
-                        />
-                      ),
-                    )}
-                  </div>
-                </div>
-              ))}
-              {otherGroups.length === 0 && (
-                <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
-                  No cars match.
-                </p>
-              )}
-            </div>
-          ) : (
-            <>
-              <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
-                {shown.map((r, i) =>
-                  view === "compact" ? (
-                    <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-                  ) : (
-                    <InventoryCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-                  ),
-                )}
-              </div>
-              {shown.length === 0 && (
-                <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
-                  No cars match.
-                </p>
-              )}
-            </>
+          <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
+            {shown.map(({ car: r, n, total, lead }, i) =>
+              view === "compact" ? (
+                <CompactCarCard
+                  key={(r.id || "") + i}
+                  car={r}
+                  copies={lead ? n : 1}
+                  copiesExpanded={expanded.has(r.id)}
+                  onToggleCopies={() => toggleExpanded(r.id)}
+                  onOpen={() => openDrawer(r)}
+                />
+              ) : (
+                <InventoryCard
+                  key={(r.id || "") + i}
+                  car={r}
+                  copies={lead ? n : 1}
+                  copiesTotal={total}
+                  expanded={expanded.has(r.id)}
+                  onToggleCopies={() => toggleExpanded(r.id)}
+                  onOpen={() => openDrawer(r)}
+                />
+              ),
+            )}
+          </div>
+          {shown.length === 0 && (
+            <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
+              No cars match.
+            </p>
           )}
         </>
       ) : (
         <>
           {/* Phones get the same rows as cards */}
           <div className="space-y-2 md:hidden">
-            {status.toLowerCase() === "others" && otherSubFilter === "all_others"
-              ? otherGroups.map((grp) => (
-                  <div key={grp.statusName} className="space-y-2">
-                    <div className="flex items-center justify-between border-b border-border/60 pb-1 pt-2">
-                      <span className="font-semibold text-sm text-foreground">
-                        {grp.statusName}
-                      </span>
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        ({grp.cars.length})
-                      </span>
-                    </div>
-                    {grp.cars.map((r, i) => (
-                      <CarListCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-                    ))}
-                  </div>
-                ))
-              : shown.map((r, i) => (
-                  <CarListCard key={(r.id || "") + i} car={r} onOpen={() => openDrawer(r)} />
-                ))}
+            {shown.map(({ car: r, n, lead }, i) => (
+              <CarListCard
+                key={(r.id || "") + i}
+                car={r}
+                copies={lead ? n : 1}
+                copiesExpanded={expanded.has(r.id)}
+                onToggleCopies={() => toggleExpanded(r.id)}
+                onOpen={() => openDrawer(r)}
+              />
+            ))}
             {shown.length === 0 && (
               <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
                 No cars match those filters.
@@ -797,99 +730,57 @@ function InventoryPage() {
               </thead>
 
               <tbody>
-                {status.toLowerCase() === "others" && otherSubFilter === "all_others"
-                  ? otherGroups.map((grp) => (
-                      <Fragment key={grp.statusName}>
-                        <tr className="bg-muted/40 border-t-2 border-border/80 font-medium text-foreground">
-                          <td colSpan={8} className="px-4 py-2">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-xs uppercase tracking-wider text-foreground">
-                                {grp.statusName}
-                              </span>
-                              <span className="text-xs text-muted-foreground tabular-nums">
-                                ({grp.cars.length} {grp.cars.length === 1 ? "car" : "cars"})
-                              </span>
-                            </div>
-                          </td>
-                        </tr>
-                        {grp.cars.map((r, i) => (
-                          <tr
-                            key={r.id + i}
-                            onClick={() => openDrawer(r)}
-                            className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
-                          >
-                            <td className="px-4 py-2.5 align-top">
-                              <div className="flex min-w-0 items-center gap-2">
-                                <span className="truncate font-medium">{r.name || "—"}</span>
-                                <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
-                              </div>
-                              <div className="truncate text-xs text-muted-foreground">
-                                {carSubLine(r)}
-                              </div>
-                            </td>
-                            <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                              {r.colour || "—"}
-                            </td>
-                            <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                              {r.type || "—"}
-                            </td>
-                            <td className="px-3 py-2.5 align-top">
-                              <CostCell car={r} />
-                            </td>
-                            <td className="px-3 py-2.5 align-top">
-                              <StatusPill status={r.status} />
-                            </td>
-                            <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                              {r.seller || "—"}
-                            </td>
-                            <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
-                              {r.orderDate || "—"}
-                            </td>
-                            <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
-                              {r.date || "—"}
-                            </td>
-                          </tr>
-                        ))}
-                      </Fragment>
-                    ))
-                  : shown.map((r, i) => (
-                      <tr
-                        key={r.id + i}
-                        onClick={() => openDrawer(r)}
-                        className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
-                      >
-                        <td className="px-4 py-2.5 align-top">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span className="truncate font-medium">{r.name || "—"}</span>
-                            <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
-                          </div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {carSubLine(r)}
-                          </div>
-                        </td>
-                        <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                          {r.colour || "—"}
-                        </td>
-                        <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                          {r.type || "—"}
-                        </td>
-                        <td className="px-3 py-2.5 align-top">
-                          <CostCell car={r} />
-                        </td>
-                        <td className="px-3 py-2.5 align-top">
-                          <StatusPill status={r.status} />
-                        </td>
-                        <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
-                          {r.seller || "—"}
-                        </td>
-                        <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
-                          {r.orderDate || "—"}
-                        </td>
-                        <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
-                          {r.date || "—"}
-                        </td>
-                      </tr>
-                    ))}
+                {shown.map(({ car: r, n, total, lead }, i) => (
+                  <tr
+                    key={r.id + i}
+                    onClick={() => openDrawer(r)}
+                    className={cn(
+                      "cursor-pointer border-t border-border/60 hover:bg-muted/30",
+                      // An opened-out copy is indented under the row it belongs
+                      // to, so a group still reads as one thing.
+                      !lead && "bg-muted/20",
+                    )}
+                  >
+                    <td className={cn("px-4 py-2.5 align-top", !lead && "pl-9")}>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-medium">{r.name || "—"}</span>
+                        <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
+                        {lead && (
+                          <CopiesBadge
+                            n={n}
+                            expanded={expanded.has(r.id)}
+                            onToggle={() => toggleExpanded(r.id)}
+                          />
+                        )}
+                      </div>
+                      <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
+                    </td>
+                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                      {r.colour || "—"}
+                    </td>
+                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                      {r.type || "—"}
+                    </td>
+                    <td className="px-3 py-2.5 align-top">
+                      {/* The group's total, not the lead copy's own spend: six
+                          McQueens cost ₹3,562.58, and the newest one's ₹600 is
+                          not what this line is worth. */}
+                      <CostCell car={r} spentOverride={lead && n > 1 ? total : undefined} />
+                    </td>
+                    <td className="px-3 py-2.5 align-top">
+                      <StatusPill status={r.status} />
+                    </td>
+                    <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
+                      {r.seller || "—"}
+                    </td>
+                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
+                      {r.orderDate || "—"}
+                    </td>
+                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
+                      {r.date || "—"}
+                    </td>
+                  </tr>
+                ))}
                 {shown.length === 0 && (
                   <tr>
                     <td colSpan={8} className="p-10 text-center text-muted-foreground">

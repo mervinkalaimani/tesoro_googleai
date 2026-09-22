@@ -1,3 +1,5 @@
+import { CopiesBadge } from "@/components/copies-badge";
+import { isPreOrder } from "@/lib/status";
 import type { ReactNode } from "react";
 
 import type { Diecast } from "@/lib/types";
@@ -16,7 +18,7 @@ export { StatusPill, carSubLine };
 
 /** Payment status text — only meaningful for Pre Order rows. */
 export function paymentStatusText(r: Diecast): string | null {
-  if ((r.status || "").trim().toLowerCase().replace(/\s+/g, " ") !== "pre order") return null;
+  if (!isPreOrder(r.status)) return null;
   const payment = (r.payment || "").trim();
   const paid = r.paid || 0;
   if (!payment && !paid) return null;
@@ -28,7 +30,7 @@ export function paymentStatusText(r: Diecast): string | null {
 
 /** Short advance-payment note for Pre Order cars, shown under the spent amount. */
 export function advanceText(r: Diecast): string | null {
-  if ((r.status || "").trim().toLowerCase().replace(/\s+/g, " ") !== "pre order") return null;
+  if (!isPreOrder(r.status)) return null;
   const p = (r.payment || "").trim().toLowerCase();
   const paid = r.paid || 0;
   if (p === "paid") return "Fully paid";
@@ -42,14 +44,24 @@ export function CostCell({
   car: r,
   align = "right",
   showMrp = true,
+  spentOverride,
 }: {
   car: Diecast;
   align?: "right" | "left";
   /** Off where only the price matters, not how it compares with the MRP. */
   showMrp?: boolean;
+  /**
+   * Spend from outside this row. My Cars collapses the copies of one casting
+   * into a single line and passes the group's total, because what six Lightning
+   * McQueens cost is not what the newest one cost.
+   *
+   * The MRP comparison goes with it: one copy's MRP against six copies' spend
+   * would read as 500% over.
+   */
+  spentOverride?: number;
 }) {
-  const spent = r.spent || 0;
-  const mrp = showMrp ? r.mrp || 0 : 0;
+  const spent = spentOverride ?? r.spent ?? 0;
+  const mrp = showMrp && spentOverride === undefined ? r.mrp || 0 : 0;
   const adv = advanceText(r);
 
   let mrpLine: string | null = null;
@@ -107,6 +119,9 @@ export function CarListCard({
   badgePrimary = "favourite",
   showMrp = true,
   variant = "default",
+  copies = 1,
+  copiesExpanded = false,
+  onToggleCopies,
 }: {
   car: Diecast;
   onOpen: () => void;
@@ -115,6 +130,10 @@ export function CarListCard({
   badgePrimary?: "favourite" | "chase";
   showMrp?: boolean;
   variant?: "default" | "collection";
+  /** How many copies of this casting the row stands for. 1 hides the mark. */
+  copies?: number;
+  copiesExpanded?: boolean;
+  onToggleCopies?: () => void;
 }) {
   if (variant === "collection") {
     const subParts = [car.assortment, car.series, car.subSeries, car.carNumber || car.caseNumber]
@@ -176,6 +195,7 @@ export function CarListCard({
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
             <CarBadges car={car} primary={badgePrimary} />
+            <CopiesBadge n={copies} />
           </span>
           <span className="shrink-0 text-sm font-semibold tabular-nums">
             {spent ? inr(spent) : "—"}
@@ -204,6 +224,19 @@ export function CarListCard({
           </span>
         </div>
       </button>
+
+      {/* Its own element rather than a control inside the card-wide button,
+          which would be a button nested in a button. */}
+      {copies > 1 && onToggleCopies && (
+        <button
+          type="button"
+          aria-expanded={copiesExpanded}
+          onClick={onToggleCopies}
+          className="w-full border-t border-border/60 px-3 py-1.5 text-left text-[11px] font-medium text-primary hover:bg-muted/40"
+        >
+          {copiesExpanded ? "Hide the other copies" : `Show all ${copies} copies`}
+        </button>
+      )}
 
       {actions && (
         <div className="flex items-center justify-end gap-0.5 border-t border-border/60 px-3 py-2">

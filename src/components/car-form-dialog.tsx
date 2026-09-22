@@ -96,16 +96,16 @@ import {
   Loader2,
 } from "lucide-react";
 
-const STATUS_OPTIONS = [
-  "Available",
-  "Out for Delivery",
-  "Transit",
-  "Delayed",
-  "Pre Order",
-  "Waiting",
-  "ISO",
-  "On Hold",
-];
+const STATUS_OPTIONS = STATUSES;
+import {
+  STATUSES,
+  isInHand,
+  isIso as statusIsIso,
+  isOpenOrder,
+  isPreOrder as statusIsPreOrder,
+  normaliseStatus,
+} from "@/lib/status";
+
 const PAYMENT_OPTIONS = ["Paid", "Partial", "Pending"];
 
 const MONTH_LABELS = [
@@ -125,23 +125,6 @@ const MONTH_LABELS = [
 
 const SPENT_INFO = "The total amount you've spent to purchase the car.";
 const PAID_INFO = "The amount you've paid till now.";
-
-/** Statuses that mean the car is in hand, and so has a real arrival date. */
-const ARRIVED_STATUSES = new Set(["available", "wrong item"]);
-
-/**
- * Statuses that mean it is definitely still coming. Any received date one of
- * these is carrying describes a delivery that has not happened, so it is
- * dropped rather than kept — the estimate lives in the expected date now.
- */
-const NOT_RECEIVED_STATUSES = new Set([
-  "waiting",
-  "pre order",
-  "preorder",
-  "delayed",
-  "transit",
-  "out for delivery",
-]);
 
 interface CarFormData {
   make: string;
@@ -237,7 +220,7 @@ function getBlankForm(): CarFormData {
     seller: "",
     // Most cars are catalogued the day they are ordered, long before they
     // arrive; "Available" as the default was wrong more often than right.
-    status: "Waiting",
+    status: "Ordered",
     paid: "",
     balance: 0,
     transitInfo: "",
@@ -280,7 +263,7 @@ function formFromCar(initial: Diecast): CarFormData {
         : "",
     payment: initial.payment || "Paid",
     seller: initial.seller || "",
-    status: initial.status || "Available",
+    status: normaliseStatus(initial.status) || "In Hand",
     paid: initial.paid !== undefined && initial.paid !== null ? initial.paid : "",
     balance: initial.balance !== undefined && initial.balance !== null ? initial.balance : 0,
     transitInfo: initial.transitInfo || "",
@@ -292,7 +275,7 @@ function formFromCar(initial: Diecast): CarFormData {
     // has never had anything better ("Mar 2027" -> the 10th of that month).
     expectedDate: toDateInputValue(
       initial.expectedDate ||
-        (initial.status === "Available" ? initial.date : "") ||
+        (isInHand(initial.status) ? initial.date : "") ||
         monthEtaToDate(initial.transitInfo),
     ),
     official: Boolean(initial.official),
@@ -336,7 +319,7 @@ export function CarFormDialog({
   mode,
   onSwitchToBulk,
   prefill,
-  prefillStatus = "Pre Order",
+  prefillStatus = "PO",
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -413,16 +396,16 @@ export function CarFormDialog({
    * seller, no order, nothing spent and nothing to settle, so those four leave
    * the form and are stored as NA instead of as blanks or meaningless zeroes.
    */
-  const isIso = form.status.trim().toLowerCase() === "iso";
+  const isIso = statusIsIso(form.status);
   /** Still coming, so a courier and a tracking number can exist. */
-  const stillComing = NOT_RECEIVED_STATUSES.has(form.status.trim().toLowerCase());
+  const stillComing = isOpenOrder(form.status);
   /** A pre-order has a release month, never a shipping date. */
-  const isPreOrder = form.status.trim().toLowerCase() === "pre order";
+  const isPreOrder = statusIsPreOrder(form.status);
   /**
    * In hand. The courier and the tracking number stop mattering, but what the
    * delivery cost is still part of what the car cost, so shipping stays.
    */
-  const hasArrived = ARRIVED_STATUSES.has(form.status.trim().toLowerCase());
+  const hasArrived = isInHand(form.status);
 
   /**
    * Editing an owned car cannot change what the casting is: that entry is shared
@@ -1121,7 +1104,7 @@ export function CarFormDialog({
      * columns can actually hold "NA": spent, paid and balance are numbers, so
      * they stay at zero — which is also what every total wants them to be.
      */
-    const iso = status.toLowerCase() === "iso";
+    const iso = statusIsIso(status);
     const payment = iso ? "NA" : form.payment.trim();
     const seller = iso ? "NA" : form.seller.trim() === NO_SELLER ? "" : form.seller.trim();
     const orderDate = iso ? "" : form.orderDate.trim();
@@ -1154,10 +1137,10 @@ export function CarFormDialog({
     // column of its own it stops standing in for it. A pre-order given an
     // arrival date reads as delivered to everything downstream: the shipping ID
     // stops being numbered /PO/, and the month charts count it as bought.
-    const arrived = ARRIVED_STATUSES.has(status.toLowerCase());
+    const arrived = isInHand(status);
     const date = arrived
       ? form.expectedDate.trim() || initial?.date?.trim() || orderDate
-      : NOT_RECEIVED_STATUSES.has(status.toLowerCase())
+      : isOpenOrder(status)
         ? ""
         : initial?.date?.trim() || "";
     const month = deriveMonth(date) || orderMonth;
@@ -1735,7 +1718,6 @@ export function CarFormDialog({
                       onChange={(e) => {
                         const val = e.target.value;
                         set("expectedDate", val);
-                        if (form.status === "Delayed" && val) set("status", "Waiting");
                       }}
                     />
                   </Field>

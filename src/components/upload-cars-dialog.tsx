@@ -1,3 +1,4 @@
+import { normaliseStatus } from "@/lib/status";
 import { useState, useRef, useId, type ChangeEvent, type DragEvent } from "react";
 import {
   Upload,
@@ -141,7 +142,7 @@ export function UploadCarsDialog({
               spent: Number(item.spent || item.cost || item.price || 0),
               mrp: Number(item.mrp || 0),
               seller: item.seller || "",
-              status: item.status || "Available",
+              status: normaliseStatus(item.status) || "In Hand",
               payment: item.payment || "Paid",
               paid: Number(item.paid || item.spent || 0),
               date: item.date || "",

@@ -37,11 +37,10 @@ import { useCars, useCarsActions, useCarsRefresh } from "@/lib/cars-store";
 import { useAuth } from "@/lib/auth-store";
 import { supabase } from "@/integrations/supabase/client";
 import { daysBetween, formatDayMonthYear, inrFull, parseDMY } from "@/lib/format";
-import { isPreOrder } from "@/lib/status-order";
+import { isPreOrder, STATUSES } from "@/lib/status";
 import {
   groupDeliveries,
   isDueToday,
-  isOverdue,
   localDay,
   needsNewDate,
   type DeliveryGroup,
@@ -67,15 +66,8 @@ const SECTION = {
   launches: "preorder-launch",
 } as const;
 
-const STATUS_OPTIONS = [
-  "Waiting",
-  "Transit",
-  "Out for Delivery",
-  "Delayed",
-  "Pre Order",
-  "Available",
-  "On Hold",
-];
+/** The six, so the panel can never offer a status the rest of the app has dropped. */
+const STATUS_OPTIONS = STATUSES;
 
 /** Both are per account, so two people sharing a browser differ. */
 const collapseKey = (uid: string) => `dg.notifyCollapsed.${uid}`;
@@ -157,44 +149,6 @@ type PendingUser = {
   rejected_at?: string | null;
 };
 
-/**
- * Parcels still marked as coming whose day has gone by become Delayed.
- *
- * Only after a fresh load from the database. The first render works from the
- * cached copy, which can be hours old — a car another device marked Available
- * this morning would still read Transit there, and writing Delayed over it would
- * undo a delivery. A guest's data is entirely local, so there is nothing to wait
- * for.
- */
-function useAutoDelay() {
-  const cars = useCars();
-  const { bulkUpdateCars } = useCarsActions();
-  const { refreshing } = useCarsRefresh();
-  const { isGuest } = useAuth();
-  const sawFreshLoad = useRef(false);
-  const handled = useRef(new Set<string>());
-
-  useEffect(() => {
-    if (refreshing) sawFreshLoad.current = true;
-  }, [refreshing]);
-
-  useEffect(() => {
-    if (refreshing) return;
-    if (!isGuest && !sawFreshLoad.current) return;
-    const today = localDay();
-    const late = cars.filter((c) => isOverdue(c, today) && !handled.current.has(c.id));
-    if (!late.length) return;
-    for (const c of late) handled.current.add(c.id);
-    bulkUpdateCars(
-      late.map((c) => ({ ...c, status: "Delayed" })),
-      `marking ${plural(late.length, "car")} delayed`,
-    );
-    toast.warning(`${plural(late.length, "car")} marked Delayed`, {
-      description: "Their expected date has passed. Set a new estimate from the bell.",
-    });
-  }, [cars, refreshing, isGuest, bulkUpdateCars]);
-}
-
 /** New accounts waiting for an administrator, refreshed every couple of minutes. */
 function usePendingApprovals(enabled: boolean) {
   const [users, setUsers] = useState<PendingUser[]>([]);
@@ -268,7 +222,6 @@ export function NotificationCenter() {
   const uid = isGuest ? "guest" : (user?.id ?? "anon");
   const drawer = useCarDrawer();
 
-  useAutoDelay();
   const approvals = usePendingApprovals(isAdmin && !isGuest);
 
   const [open, setOpen] = useState(false);
@@ -380,7 +333,7 @@ export function NotificationCenter() {
       toast.error("Pick a date from today onwards");
       return;
     }
-    const status = newStatuses[g.key] ?? "Waiting";
+    const status = newStatuses[g.key] ?? "Ordered";
     bulkUpdateCars(
       g.cars.map((c) => ({
         ...c,
@@ -617,7 +570,7 @@ export function NotificationCenter() {
                         className="h-8 w-auto min-w-[125px] flex-1 text-xs"
                       />
                       <Select
-                        value={newStatuses[g.key] ?? "Waiting"}
+                        value={newStatuses[g.key] ?? "Ordered"}
                         onValueChange={(val) =>
                           setNewStatuses((prev) => ({ ...prev, [g.key]: val }))
                         }

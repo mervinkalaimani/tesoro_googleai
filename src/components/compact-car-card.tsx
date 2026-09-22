@@ -1,3 +1,4 @@
+import { CopiesBadge } from "@/components/copies-badge";
 import { ChaseMark, FavouriteMark } from "@/components/car-marks";
 import { rarityOf } from "@/lib/rarity";
 
@@ -21,6 +22,7 @@ export function CompactCarCard({
   caption,
   marksOffset = false,
   className = "",
+  copies = 1,
 }: {
   /** Moves the chase / favourite marks left, clear of a button laid over the top-right corner. */
   marksOffset?: boolean;
@@ -39,6 +41,14 @@ export function CompactCarCard({
    * one place for it to be wrong.
    */
   className?: string;
+  /**
+   * How many copies of this casting the card stands for. A dense grid cell is
+   * one big button, so this is a count and not a control: opening the car shows
+   * every purchase, and the list and table views are where a group opens out.
+   */
+  copies?: number;
+  copiesExpanded?: boolean;
+  onToggleCopies?: () => void;
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
 
@@ -60,6 +70,12 @@ export function CompactCarCard({
           their height disagrees on where the photograph ends. */}
       <div className="relative shrink-0">
         <CarThumb car={car} className="aspect-[16/10] w-full" />
+
+        {copies > 1 && (
+          <div className="pointer-events-none absolute bottom-1 left-1">
+            <CopiesBadge n={copies} className="bg-black/75 backdrop-blur-sm" />
+          </div>
+        )}
 
         {(car.chase || car.favourite) && (
           <div

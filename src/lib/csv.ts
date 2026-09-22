@@ -33,6 +33,7 @@ export function exportCsv<T>(name: string, rows: T[], columns: CsvColumn<T>[]) {
   downloadCsv(`${name}-${dateStamp()}.csv`, buildCsv(rows, columns));
 }
 
+import { normaliseStatus } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 import { monthEtaToDate } from "@/lib/date-utils";
 import { normaliseRarity } from "@/lib/rarity";
@@ -227,7 +228,7 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
       mrp: parseNum(val(row, mrpCol)),
       shippingCost: parseNum(val(row, shippingCostCol)),
       seller: val(row, sellerCol),
-      status: val(row, statusCol) || "Available",
+      status: normaliseStatus(val(row, statusCol)) || "In Hand",
       payment: val(row, paymentCol) || "Paid",
       paid: paid || spent,
       date: val(row, dateCol),

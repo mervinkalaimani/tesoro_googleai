@@ -19,9 +19,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isInHand, type Status } from "@/lib/status";
 import { SegmentControl } from "@/components/segment-control";
 
-const STATUS_CHOICES = ["Waiting", "Available", "Transit", "Pre Order"];
+// The four a second copy realistically arrives in. On Hold and ISO are not
+// among them: you do not add a copy you are still looking for.
+const STATUS_CHOICES: Status[] = ["Ordered", "In Hand", "In Transit", "PO"];
 const PAYMENT_CHOICES = ["Paid", "Partial", "Pending"];
 
 interface AddAnotherCarDialogProps {
@@ -44,7 +47,7 @@ export function AddAnotherCarDialog({
   const [spent, setSpent] = useState<string>("");
   const [mrp, setMrp] = useState<string>("");
   const [orderDate, setOrderDate] = useState("");
-  const [status, setStatus] = useState("Waiting");
+  const [status, setStatus] = useState<Status>("Ordered");
   const [payment, setPayment] = useState("Paid");
   const [receivedDate, setReceivedDate] = useState("");
   const [deliveryPartner, setDeliveryPartner] = useState("");
@@ -69,7 +72,7 @@ export function AddAnotherCarDialog({
       setSpent(car.spent != null ? String(Math.round(car.spent)) : "");
       setMrp(car.mrp != null ? String(Math.round(car.mrp)) : "");
       setOrderDate(today);
-      setStatus("Waiting");
+      setStatus("Ordered");
       setPayment("Paid");
       setReceivedDate(today);
       setDeliveryPartner("");
@@ -91,7 +94,7 @@ export function AddAnotherCarDialog({
 
     setSaving(true);
     try {
-      const isAvailable = status.toLowerCase() === "available";
+      const isAvailable = isInHand(status);
       const spentNum = Number(spent) || 0;
       const mrpNum = Number(mrp) || car.mrp || 0;
 
@@ -130,7 +133,7 @@ export function AddAnotherCarDialog({
     }
   };
 
-  const isAvailable = status.toLowerCase() === "available";
+  const isAvailable = isInHand(status);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -254,7 +257,7 @@ export function AddAnotherCarDialog({
               <SegmentControl
                 fill
                 value={status}
-                options={STATUS_CHOICES}
+                options={STATUS_CHOICES.map((s) => ({ value: s, label: s }))}
                 onChange={(v) => setStatus(v)}
               />
             </div>
@@ -264,7 +267,7 @@ export function AddAnotherCarDialog({
               <SegmentControl
                 fill
                 value={payment}
-                options={PAYMENT_CHOICES}
+                options={PAYMENT_CHOICES.map((s) => ({ value: s, label: s }))}
                 onChange={(v) => setPayment(v)}
               />
             </div>

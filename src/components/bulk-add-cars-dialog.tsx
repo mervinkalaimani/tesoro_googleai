@@ -28,6 +28,7 @@ import { downloadCsv, generateDiecastCsvTemplate } from "@/lib/csv";
 import { buildCarName } from "@/lib/car-name";
 import { deriveMonth } from "@/lib/date-utils";
 import { inrFull } from "@/lib/format";
+import { STATUSES, isInHand, isPreOrder, normaliseStatus } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
 type FieldKey =
@@ -62,17 +63,6 @@ type FieldDef = {
   /** Whether the field starts out shared across the whole batch. */
   sharedByDefault: boolean;
 };
-
-const STATUSES = [
-  "Available",
-  "Out for Delivery",
-  "Transit",
-  "Delayed",
-  "Pre Order",
-  "Waiting",
-  "ISO",
-  "On Hold",
-];
 
 /**
  * Every field a bulk row can carry. Which of them are shared across the batch
@@ -178,7 +168,7 @@ const SEEDED_SHARED: FieldKey[] = ["seller", "status", "orderDate", "cost", "mrp
 const DEFAULT_SHARED_KEYS_SEEDED = () => new Set(SEEDED_SHARED);
 
 const defaultShared = (): Values => ({
-  status: "Available",
+  status: "In Hand",
   orderDate: new Date().toISOString().slice(0, 10),
   size: "1:64",
 });
@@ -228,7 +218,7 @@ function FieldInput({
   if (def.kind === "status") {
     return (
       <select
-        value={value || "Available"}
+        value={normaliseStatus(value) || "In Hand"}
         onChange={(e) => onChange(e.target.value)}
         aria-label={def.label}
         className={`w-full rounded-md border border-input bg-background px-2 text-sm ${
@@ -530,7 +520,7 @@ export function BulkAddCarsDialog({
         const source = r.isoId ? (cars.find((c) => c.id === r.isoId) ?? null) : null;
         const cost = num(valueOf(r, "cost"));
         const mrp = num(valueOf(r, "mrp"));
-        const status = valueOf(r, "status") || "Available";
+        const status = normaliseStatus(valueOf(r, "status")) || "In Hand";
         const orderDate = valueOf(r, "orderDate") || base.orderDate;
         const month = deriveMonth(orderDate);
 
@@ -554,12 +544,12 @@ export function BulkAddCarsDialog({
           status,
           spent: cost,
           mrp,
-          paid: status === "Pre Order" ? 0 : cost,
-          balance: status === "Pre Order" ? cost : 0,
+          paid: isPreOrder(status) ? 0 : cost,
+          balance: isPreOrder(status) ? cost : 0,
           orderDate,
           orderMonth: month || base.orderMonth,
-          date: status === "Available" ? orderDate : "",
-          month: status === "Available" ? month || base.month : "",
+          date: isInHand(status) ? orderDate : "",
+          month: isInHand(status) ? month || base.month : "",
         };
         car.name = buildCarName(car);
         if (source) {

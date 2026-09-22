@@ -1,3 +1,4 @@
+import { isInHand } from "@/lib/status";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
@@ -151,7 +152,7 @@ function HabitsPage() {
     const map = new Map<string, Diecast[]>();
     for (const r of rows) {
       const src = mode === "ordered" ? r.orderDate || r.date : r.date;
-      if (mode === "delivered" && (r.status || "").trim().toLowerCase() !== "available") continue;
+      if (mode === "delivered" && !isInHand(r.status)) continue;
       const dt = parseDMY(src);
       if (!dt) continue;
       const k = dayKey(dt);

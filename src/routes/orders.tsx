@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Truck, Plus, Pencil, Store, ChevronDown } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
+import { isInHand, isOpenOrder, normaliseStatus, statusRank, type Status } from "@/lib/status";
+import { isLate } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
@@ -40,14 +42,7 @@ export const Route = createFileRoute("/orders")({
   component: OrdersPage,
 });
 
-const OPEN_STATUSES = new Set(["Transit", "Waiting", "Out for Delivery", "Delayed", "Pre Order"]);
-const STATUS_RANK: Record<string, number> = {
-  "Out for Delivery": 0,
-  Transit: 1,
-  Delayed: 2,
-  Waiting: 3,
-  "Pre Order": 4,
-};
+const isOpenStatus = (s: string | null | undefined) => isOpenOrder(s);
 
 /** Delivered batches are unbounded, so only recent ones are worth listing. */
 const DELIVERED_WINDOW_DAYS = 90;
@@ -55,56 +50,55 @@ const DELIVERED_WINDOW_DAYS = 90;
 type SortMode = "expected" | "status" | "seller" | "orderDate";
 
 /**
- * One segment per status, which is what was missing: "In transit" used to mean
- * everything that was not waiting, so a parcel out for delivery and a pre-order
- * six months out were two clicks apart with no way to see either on its own.
+ * One segment per open status, plus Late and Delivered.
  *
- * Delayed rides with Transit rather than taking a seventh segment. A delayed
- * parcel has shipped and is late — it is in transit, with a problem — and
- * giving it a tab of its own would mean a segment that is empty most weeks.
+ * There were seven, two of which no longer exist: Out for Delivery is part of
+ * In Transit, and Delayed is not a status at all — a car is late when its day
+ * has gone by, which is now worked out rather than set, so it gets a segment
+ * that cuts across the others instead of sitting beside them.
  */
-type Tab = "all" | "outForDelivery" | "transit" | "delayed" | "waiting" | "preOrder" | "delivered";
+type Tab = "all" | "transit" | "ordered" | "onHold" | "preOrder" | "late" | "delivered";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "outForDelivery", label: "Out for Delivery" },
-  { value: "transit", label: "Transit" },
-  { value: "delayed", label: "Delayed" },
-  { value: "waiting", label: "Waiting" },
-  { value: "preOrder", label: "Pre Order" },
+  { value: "transit", label: "In Transit" },
+  { value: "ordered", label: "Ordered" },
+  { value: "onHold", label: "On Hold" },
+  { value: "preOrder", label: "PO" },
+  { value: "late", label: "Late" },
   { value: "delivered", label: "Delivered" },
 ];
 
-const TAB_MATCH: Record<Exclude<Tab, "all" | "delivered">, (status: string) => boolean> = {
-  outForDelivery: (s) => s === "out for delivery",
-  transit: (s) => s === "transit",
-  delayed: (s) => s === "delayed",
-  waiting: (s) => s === "waiting",
-  preOrder: (s) => s === "pre order" || s === "preorder",
+const TAB_STATUS: Record<"transit" | "ordered" | "onHold" | "preOrder", Status> = {
+  transit: "In Transit",
+  ordered: "Ordered",
+  onHold: "On Hold",
+  preOrder: "PO",
 };
 
 function inTab(r: Diecast, tab: Tab): boolean {
-  const delivered = r.status === "Available";
+  const delivered = isInHand(r.status);
   if (tab === "delivered") return delivered;
   // "All" means all of it, delivered included. It used to quietly exclude
   // them, which made the count under the heading disagree with the tabs.
   if (tab === "all") return true;
   if (delivered) return false;
-  return TAB_MATCH[tab](
-    (r.status || "")
-      .trim()
-      .toLowerCase()
-      .replace(/[\s-]+/g, " "),
-  );
+  // Late is a fact about a car, not a status, so it crosses the other tabs
+  // rather than excluding them: a late parcel is still In Transit.
+  if (tab === "late") return isLate(r);
+  return normaliseStatus(r.status) === TAB_STATUS[tab];
 }
 
 /**
- * Nothing has left the seller yet. Pre-orders belong here rather than with the
- * shipments: an allocation waiting on a factory and a parcel waiting on a
- * courier are the same thing to anyone reading this page — not yet moving.
+ * Nothing has left the seller yet. Pre-orders and held cars belong here rather
+ * than with the shipments: an allocation waiting on a factory, a car the seller
+ * is keeping for you, and a parcel waiting on a courier are the same thing to
+ * anyone reading this page — not yet moving.
  */
-const WAITING_STATUSES = new Set(["Waiting", "Pre Order"]);
-const isWaitingSide = (status: string) => WAITING_STATUSES.has((status || "").trim());
+const isWaitingSide = (status: string) => {
+  const n = normaliseStatus(status);
+  return n === "Ordered" || n === "PO" || n === "On Hold";
+};
 
 type Shipment = {
   key: string;
@@ -131,17 +125,14 @@ function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
 /** Colour the status pill by what the shipment is actually doing. */
 function statusTone(status: string, delivered: boolean): string {
   if (delivered) return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
-  const s = status.toLowerCase();
-  if (s === "transit" || s === "out for delivery")
-    return "border-cyan-500/40 bg-cyan-500/10 text-cyan-400";
-  if (s === "delayed") return "border-destructive/40 bg-destructive/10 text-destructive";
+  if (normaliseStatus(status) === "In Transit")
+    return "border-blue-500/40 bg-blue-500/10 text-blue-400";
   return "border-amber-500/40 bg-amber-500/10 text-amber-400";
 }
 
 function statusLabel(status: string, delivered: boolean): string {
   if (delivered) return "Delivered";
-  if (status === "Transit") return "Shipped / In Transit";
-  return status;
+  return normaliseStatus(status) || status;
 }
 
 function ShipmentCard({
@@ -334,9 +325,9 @@ function OrdersPage() {
   const orderRows = useMemo(() => {
     const cutoff = Date.now() - DELIVERED_WINDOW_DAYS * 86_400_000;
     return scoped.filter((r) => {
-      if (OPEN_STATUSES.has(r.status)) return true;
+      if (isOpenStatus(r.status)) return true;
       // Recently delivered batches stay visible so they can be reviewed.
-      if (r.status === "Available" && (r.shippingId || "").trim()) {
+      if (isInHand(r.status) && (r.shippingId || "").trim()) {
         const d = parseDMY(r.date);
         return d ? d.getTime() >= cutoff : false;
       }
@@ -361,7 +352,7 @@ function OrdersPage() {
     let waitingValue = 0;
     let due = 0;
     for (const r of bySeller) {
-      if (r.status === "Available") continue;
+      if (isInHand(r.status)) continue;
       due += Math.max((r.spent || 0) - (r.paid || 0), 0);
       if (isWaitingSide(r.status)) {
         waitingCount += 1;
@@ -400,7 +391,7 @@ function OrdersPage() {
     const out: Shipment[] = [];
     for (const [key, items] of map) {
       const first = items[0];
-      const delivered = first.status === "Available";
+      const delivered = isInHand(first.status);
       out.push({
         key,
         seller: first.seller || "Unknown seller",
@@ -417,7 +408,7 @@ function OrdersPage() {
       });
     }
 
-    const rank = (s: Shipment) => (s.delivered ? 90 : (STATUS_RANK[s.status] ?? 89));
+    const rank = (s: Shipment) => (s.delivered ? 90 : statusRank(s.status));
     const t = (v: string) => parseDMY(v)?.getTime() ?? 0;
     // Each comparison is written ascending; descending flips only that one,
     // so ties still fall back the same way.
@@ -450,10 +441,7 @@ function OrdersPage() {
     return shipments.filter(
       (s) =>
         !s.delivered &&
-        (s.status.toLowerCase() === "waiting" ||
-          s.status.toLowerCase() === "transit" ||
-          s.status.toLowerCase() === "out for delivery" ||
-          s.status.toLowerCase() === "delayed"),
+        (normaliseStatus(s.status) === "In Transit" || normaliseStatus(s.status) === "Ordered"),
     );
   }, [shipments]);
 

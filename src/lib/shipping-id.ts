@@ -55,7 +55,7 @@ type Effective = { seller: string; token: string; isPo: boolean };
  * expected date is a release date that moves around, and the /PO/ run counts
  * the days orders were *placed*.
  */
-const IN_FLIGHT = new Set(["transit", "out for delivery", "waiting", "delayed"]);
+const IN_FLIGHT = new Set(["in transit", "ordered", "on hold"]);
 
 const statusKey = (status: string | undefined | null) =>
   (status || "")

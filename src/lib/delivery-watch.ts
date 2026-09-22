@@ -1,3 +1,4 @@
+import { canBeLate, normaliseStatus } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -6,16 +7,11 @@ import type { Diecast } from "@/lib/types";
  * Only a day-precise expected date counts. Rows carried over from the sheet can
  * hold "Mar 2027" in that column, and treating a month note as a promised day
  * would mark half a pre-order list late on the 2nd.
+ *
+ * That imprecision is also what makes On Hold work: "I want this one in March"
+ * is a month, never a day, so a held car can carry a plan without it ever
+ * becoming a deadline it can miss.
  */
-
-/** Statuses meaning a parcel is on its way, and so can turn up — or not. */
-const COMING = new Set(["transit", "out for delivery", "waiting"]);
-
-const statusKey = (s: string | undefined | null) =>
-  (s || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s-]+/g, " ");
 
 /** "YYYY-MM-DD" in the viewer's own time zone — the day it is where they are. */
 export function localDay(d = new Date()): string {
@@ -30,23 +26,29 @@ export function expectedDay(car: Diecast): string | null {
   return m ? m[1] : null;
 }
 
-export const isDelayed = (car: Diecast) => statusKey(car.status) === "delayed";
-
-/** Coming, or already late, and due today. */
-export function isDueToday(car: Diecast, today = localDay()): boolean {
-  const s = statusKey(car.status);
-  return (COMING.has(s) || s === "delayed") && expectedDay(car) === today;
-}
-
-/** Still marked as coming, but its day has gone by: this becomes Delayed. */
-export function isOverdue(car: Diecast, today = localDay()): boolean {
+/**
+ * Late, worked out rather than stored.
+ *
+ * Ordered or In Transit — never On Hold, where the date passing is you keeping
+ * it held — with a promised day already behind us. This used to be a status you
+ * set by hand, which meant it drifted: all three cars marked "Delayed" when the
+ * statuses were merged were in fact expecting a date in the future.
+ */
+export function isLate(car: Diecast, today = localDay()): boolean {
   const day = expectedDay(car);
-  return COMING.has(statusKey(car.status)) && day !== null && day < today;
+  return canBeLate(car.status) && day !== null && day < today;
 }
 
-/** Delayed with no date still ahead of it — it needs a new estimate. */
+/** Coming and due today. */
+export function isDueToday(car: Diecast, today = localDay()): boolean {
+  return canBeLate(car.status) && expectedDay(car) === today;
+}
+
+/** Late with no day on it at all — there is nothing left to chase it against. */
 export function needsNewDate(car: Diecast, today = localDay()): boolean {
-  if (!isDelayed(car)) return false;
+  if (normaliseStatus(car.status) !== "Ordered" && normaliseStatus(car.status) !== "In Transit") {
+    return false;
+  }
   const day = expectedDay(car);
   return day === null || day < today;
 }

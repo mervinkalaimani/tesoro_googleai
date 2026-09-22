@@ -1,3 +1,4 @@
+import { isInHand } from "@/lib/status";
 import {
   createContext,
   useCallback,
@@ -711,7 +712,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       const idField = options.idField ?? "shippingId";
       const matched = cars.filter((c) => {
         if ((c[idField] || "").trim().toLowerCase() !== cleanId.toLowerCase()) return false;
-        if (options.excludeAvailable && (c.status || "").trim().toLowerCase() === "available") {
+        if (options.excludeAvailable && isInHand(c.status)) {
           return false;
         }
         return true;
@@ -722,7 +723,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         const next: Diecast = { ...car };
         if (updates.status !== undefined && updates.status !== "" && updates.status !== "keep") {
           next.status = updates.status;
-          if (updates.status === "Available") {
+          if (isInHand(updates.status)) {
             const arrDate =
               updates.date ||
               updates.expectedDate ||
@@ -1060,7 +1061,7 @@ export function makeBlankCar(): Diecast {
     mrp: 0,
     shippingCost: 0,
     seller: "",
-    status: "Available",
+    status: "In Hand",
     payment: "Paid",
     paid: 0,
     date: yyyyMmDd,

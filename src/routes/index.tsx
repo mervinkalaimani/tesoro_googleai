@@ -17,6 +17,8 @@ import { TrackingLink } from "@/components/tracking-link";
 import { trackingPageFor } from "@/lib/tracking";
 
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
+import { isInHand, isOpenOrder, normaliseStatus, type Status } from "@/lib/status";
+import { isLate } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
@@ -177,10 +179,7 @@ function DashboardPage() {
   // What the page is actually reporting on, rather than a slogan. The counts
   // are the same ones the tiles below carry, said as a sentence.
   const subNote = useMemo(() => {
-    const open = data.filter((r) => {
-      const s = (r.status || "").trim().toLowerCase();
-      return s !== "available" && s !== "iso" && s !== "wrong item";
-    }).length;
+    const open = data.filter((r) => isOpenOrder(r.status)).length;
     if (data.length === 0) return "Nothing in the collection yet.";
     return open === 0
       ? `${data.length.toLocaleString()} cars, and nothing on its way.`
@@ -188,12 +187,16 @@ function DashboardPage() {
   }, [data]);
 
   const kpis = useMemo(() => {
-    const norm = (s: string) => (s || "").trim().toLowerCase();
-    const countOf = (match: (s: string) => boolean) =>
-      data.filter((r) => match(norm(r.status))).length;
+    const countOf = (s: Status) => data.filter((r) => normaliseStatus(r.status) === s).length;
 
-    // `status` is the exact tesoro_raw value the inventory filter expects, so a
-    // tile can deep-link to its own rows.
+    /**
+     * One tile per status, plus Late — which is not a status but is the one
+     * thing on this page you might have to act on today, so it sits with them.
+     *
+     * `status` is the value the My Cars filter expects, so a tile deep-links to
+     * its own rows. Empty tiles are dropped below, which is why there is no
+     * harm in listing all six.
+     */
     const defs: {
       key: string;
       label: string;
@@ -203,60 +206,59 @@ function DashboardPage() {
       status?: string;
     }[] = [
       {
-        key: "available",
-        label: "Available",
+        key: "inhand",
+        label: "In hand",
         tone: "emerald",
         icon: <Boxes className="size-4" />,
-        value: countOf((s) => s === "available"),
-        status: "Available",
+        value: countOf("In Hand"),
+        status: "In Hand",
       },
       {
         key: "transit",
         label: "In transit",
         tone: "blue",
         icon: <Truck className="size-4" />,
-        value: countOf((s) => s === "transit" || /out\s*for\s*delivery/.test(s)),
-        status: "Transit",
+        value: countOf("In Transit"),
+        status: "In Transit",
       },
       {
-        key: "waiting",
-        label: "Waiting",
+        key: "ordered",
+        label: "Ordered",
         tone: "orange",
         icon: <Clock3 className="size-4" />,
-        value: countOf((s) => s === "waiting"),
-        status: "Waiting",
-      },
-      {
-        key: "preorder",
-        label: "Pre-ordered",
-        tone: "violet",
-        icon: <ShoppingBag className="size-4" />,
-        value: countOf((s) => s === "pre order" || s === "preorder"),
-        status: "Pre Order",
-      },
-      {
-        key: "delayed",
-        label: "Delayed",
-        tone: "rose",
-        icon: <AlertTriangle className="size-4" />,
-        value: countOf((s) => s === "delayed"),
-        status: "Delayed",
+        value: countOf("Ordered"),
+        status: "Ordered",
       },
       {
         key: "onhold",
         label: "On hold",
         tone: "zinc",
         icon: <PauseCircle className="size-4" />,
-        value: countOf((s) => s === "on hold" || s === "onhold"),
+        value: countOf("On Hold"),
         status: "On Hold",
+      },
+      {
+        key: "po",
+        label: "Pre-ordered",
+        tone: "violet",
+        icon: <ShoppingBag className="size-4" />,
+        value: countOf("PO"),
+        status: "PO",
       },
       {
         key: "iso",
         label: "ISO",
         tone: "sky",
         icon: <Sparkles className="size-4" />,
-        value: countOf((s) => s === "iso"),
+        value: countOf("ISO"),
         status: "ISO",
+      },
+      {
+        key: "late",
+        label: "Late",
+        tone: "rose",
+        icon: <AlertTriangle className="size-4" />,
+        value: data.filter((r) => isLate(r)).length,
       },
     ];
     return defs.filter((d) => (typeof d.value === "number" ? d.value > 0 : true));
@@ -331,14 +333,14 @@ function TransitTracker({
   // Parcels that are actually moving: Transit and Out for delivery. Waiting
   // stays out — a seller sitting on an order is a thing to chase, not a thing
   // to track, and it made up most of the rows.
-  const src = useMemo(() => rows.filter((r) => isTransit(r.status)), [rows]);
+  const src = useMemo(() => rows.filter((r) => normaliseStatus(r.status) === "In Transit"), [rows]);
 
   // Active shipping IDs present strictly in this transit list (excluding Available)
   const activeShippingIds = useMemo(() => {
     const set = new Set<string>();
     for (const r of src) {
       const sid = (r.shippingId || "").trim();
-      if (sid && (r.status || "").trim().toLowerCase() !== "available") {
+      if (sid && !isInHand(r.status)) {
         set.add(sid);
       }
     }
@@ -598,7 +600,7 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
   const now = new Date();
   const recent = useMemo(() => {
     const list = rows
-      .filter((r) => r.status === "Available")
+      .filter((r) => isInHand(r.status))
       .map((r) => ({ r, dt: parseDMY(r.date) }))
       .filter((x): x is { r: Diecast; dt: Date } => {
         if (!x.dt) return false;

@@ -1,3 +1,4 @@
+import { isIso } from "@/lib/status";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ChevronRight, Eye, EyeOff, Settings, Table } from "lucide-react";
@@ -51,9 +52,7 @@ function MobileAccountMenu() {
   // ISO rows are wishlist entries, not cars owned — the same exclusion the
   // sidebar's totals make.
   const stats = useMemo(() => {
-    const rows = filterRows(allCars, query).filter(
-      (r) => (r.status || "").trim().toLowerCase() !== "iso",
-    );
+    const rows = filterRows(allCars, query).filter((r) => !isIso(r.status));
     return {
       total: rows.length,
       spent: rows.reduce((s, r) => s + (r.spent || 0), 0),

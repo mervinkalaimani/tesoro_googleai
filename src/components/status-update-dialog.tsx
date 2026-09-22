@@ -35,92 +35,27 @@ import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { inrFull } from "@/lib/format";
 import { needsCarNumber } from "@/lib/duplicate";
+import {
+  STATUSES,
+  iconFor,
+  isInHand,
+  isIso,
+  isPreOrder,
+  needsPurchase as statusNeedsPurchase,
+  needsTransit as statusNeedsTransit,
+  nextInFlow,
+  normaliseStatus,
+  toneFor,
+  type Status,
+} from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
-const STATUS_CHOICES = [
-  "Available",
-  "Out for Delivery",
-  "Transit",
-  "Delayed",
-  "Waiting",
-  "Pre Order",
-  "On Hold",
-  "ISO",
-] as const;
-type NextStatus = (typeof STATUS_CHOICES)[number];
-
-/**
- * The order a car normally travels in. Used only to preselect the likely next
- * step — every status stays one click away, because cars go backwards too.
- */
-const STATUS_FLOW: NextStatus[] = [
-  "ISO",
-  "Pre Order",
-  "Waiting",
-  "Transit",
-  "Delayed",
-  "Out for Delivery",
-  "Available",
-];
-
-function nextInFlow(current: string): NextStatus {
-  const i = STATUS_FLOW.findIndex((s) => s.toLowerCase() === (current || "").trim().toLowerCase());
-  if (i < 0 || i >= STATUS_FLOW.length - 1) return "Available";
-  return STATUS_FLOW[i + 1];
-}
-
-/** Statuses that mean the car is in hand, and so have a real arrival date. */
-const ARRIVED = new Set<NextStatus>(["Available"]);
-
-/**
- * Every one of these means the car has been bought or committed to, so the
- * purchase has to be recorded: who from, what it cost, when it was ordered and
- * when it is due. "On Hold" is included because a car put on hold is still one
- * somebody is holding *for you*, at a price. ISO is not — going back on the
- * wishlist means the purchase is off.
- */
-const NEEDS_PURCHASE = new Set<NextStatus>([
-  "Available",
-  "Out for Delivery",
-  "Transit",
-  "Delayed",
-  "Waiting",
-  "Pre Order",
-  "On Hold",
-]);
-
-/** Only a car actually moving has a courier and a consignment number. */
-const NEEDS_TRANSIT = new Set<NextStatus>(["Transit", "Delayed", "Out for Delivery"]);
+type NextStatus = Status;
 
 const num = (v: string) => {
   const n = Number(String(v).replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
 };
-
-const STATUS_ICON: Record<NextStatus, LucideIcon> = {
-  Available: PackageCheck,
-  "Out for Delivery": Truck,
-  Transit: Clock,
-  Delayed: AlertTriangle,
-  Waiting: Hourglass,
-  "Pre Order": CalendarClock,
-  "On Hold": PauseCircle,
-  ISO: Search,
-};
-
-const STATUS_TONE: Partial<Record<NextStatus, string>> = {
-  Available: "text-emerald-500",
-  "Out for Delivery": "text-cyan-500",
-  Transit: "text-amber-500",
-  Delayed: "text-rose-500",
-  Waiting: "text-violet-500",
-  "Pre Order": "text-sky-500",
-  ISO: "text-fuchsia-500",
-};
-
-/** A status outside the eight (an older spelling) gets a plain dot. */
-const iconFor = (s: string): LucideIcon => STATUS_ICON[s as NextStatus] ?? CircleDot;
-const toneFor = (s: string) => STATUS_TONE[s as NextStatus] ?? "text-muted-foreground";
 
 /**
  * Moves a car to a new status and records what that status implies.
@@ -169,12 +104,12 @@ export function StatusUpdateDialog({
    * and staying put is a choice rather than a gap.
    */
   const choices = useMemo<NextStatus[]>(() => {
-    const current = (lead?.status || "").trim();
-    const known = STATUS_CHOICES.some((s) => s.toLowerCase() === current.toLowerCase());
-    return current && !known ? [current as NextStatus, ...STATUS_CHOICES] : [...STATUS_CHOICES];
+    const current = normaliseStatus(lead?.status);
+    const known = (STATUSES as readonly string[]).includes(current);
+    return current && !known ? [current as NextStatus, ...STATUSES] : [...STATUSES];
   }, [lead?.status]);
 
-  const [status, setStatus] = useState<NextStatus>("Available");
+  const [status, setStatus] = useState<NextStatus>("In Hand");
   const [seller, setSeller] = useState("");
   const [spent, setSpent] = useState("");
   const [mrp, setMrp] = useState("");
@@ -193,7 +128,7 @@ export function StatusUpdateDialog({
 
   // Arriving or on its way usually means paid for; a pre-order usually not yet.
   useEffect(() => {
-    if (!payTouched) setPayBalance(status !== "Pre Order");
+    if (!payTouched) setPayBalance(!isPreOrder(status));
   }, [status, payTouched]);
 
   // Reseed per car. Whatever the ISO row already knows is carried in rather
@@ -229,19 +164,19 @@ export function StatusUpdateDialog({
   if (!lead) return null;
   const current = lead;
 
-  const needsPurchase = NEEDS_PURCHASE.has(status);
-  const needsTransit = NEEDS_TRANSIT.has(status);
-  const arrived = ARRIVED.has(status);
+  const needsPurchase = statusNeedsPurchase(status);
+  const needsTransit = statusNeedsTransit(status);
+  const arrived = isInHand(status);
   const title = batch
     ? batch.shippingId || batch.seller
     : current.name || `${current.make} ${current.model}`.trim() || "Unnamed car";
-  const wasIso = (current.status || "").trim().toLowerCase() === "iso";
-  const unchanged = status === current.status;
-  const statusName = status === "Available" ? "Delivered" : status;
+  const wasIso = isIso(current.status);
+  const unchanged = status === normaliseStatus(current.status);
+  const statusName = isInHand(status) ? "Delivered" : status;
 
   /** What a car has already paid towards `cost` — nothing, if it was only wished for. */
   const paidSoFar = (c: Diecast, cost: number) =>
-    (c.status || "").trim().toLowerCase() === "iso" ? 0 : Math.min(c.paid || 0, cost);
+    isIso(c.status) ? 0 : Math.min(c.paid || 0, cost);
   const outstanding = isBatch
     ? items.reduce((s, c) => s + Math.max((c.spent || 0) - paidSoFar(c, c.spent || 0), 0), 0)
     : Math.max(num(spent) - paidSoFar(current, num(spent)), 0);
@@ -434,7 +369,7 @@ export function StatusUpdateDialog({
                     }`}
                   >
                     <Icon className="size-3.5 shrink-0" />
-                    <span className="leading-tight">{s === "Available" ? "Delivered" : s}</span>
+                    <span className="leading-tight">{isInHand(s) ? "Delivered" : s}</span>
                     {isCurrent && (
                       <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-muted-foreground">
                         Current
@@ -614,13 +549,7 @@ export function StatusUpdateDialog({
                   id="iso-note"
                   value={transitInfo}
                   onChange={(e) => setTransitInfo(e.target.value)}
-                  placeholder={
-                    status === "Delayed"
-                      ? "e.g. Courier hub delay, customs hold, weather..."
-                      : status === "Out for Delivery"
-                        ? "e.g. Out with delivery agent, expected by evening..."
-                        : "e.g. Dispatched via Bluedart, awaiting tracking scan..."
-                  }
+                  placeholder={"e.g. Dispatched via Bluedart, awaiting tracking scan..."}
                 />
               </div>
             </>
