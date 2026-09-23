@@ -188,6 +188,7 @@ import {
   isIso as statusIsIso,
   isOpenOrder,
   isPreOrder as statusIsPreOrder,
+  needsTransit,
   normaliseStatus,
 } from "@/lib/status";
 
@@ -500,6 +501,12 @@ export function CarFormDialog({
    * delivery cost is still part of what the car cost, so shipping stays.
    */
   const hasArrived = isInHand(form.status);
+  /**
+   * Only a car actually moving has a courier and a consignment number.
+   * Ordered and On Hold are both waiting on somebody else to send it, so the
+   * only thing worth recording is when it is due.
+   */
+  const showTransit = needsTransit(form.status);
 
   /**
    * Editing an owned car cannot change what the casting is: that entry is shared
@@ -1925,45 +1932,54 @@ export function CarFormDialog({
                       }}
                     />
                   </Field>
-                  <Field label="Delivery Partner">
-                    <Combobox
-                      clearable
-                      value={form.deliveryPartner}
-                      onChange={(v) => set("deliveryPartner", v)}
-                      options={DELIVERY_PARTNER_NAMES}
-                      placeholder="Courier"
-                      searchPlaceholder="Search or type a courier…"
-                      ariaLabel="Delivery partner"
-                    />
-                  </Field>
-                  <Field label="Tracking ID">
-                    <ClearableInput
-                      className="font-mono"
-                      value={form.trackingId}
-                      onChange={(e) => set("trackingId", e.target.value)}
-                      placeholder="Consignment / AWB number"
-                    />
-                  </Field>
-                  {/* Shipping belongs with the shipment: you learn
+                  {/* Ordered and On Hold are both waiting on somebody else to
+                      send it: there is no courier yet, no consignment number
+                      and no shipping bill, so the date it is due is the whole
+                      of what can be said. The three fields appear the moment
+                      the status becomes In Transit. */}
+                  {showTransit && (
+                    <>
+                      <Field label="Delivery Partner">
+                        <Combobox
+                          clearable
+                          value={form.deliveryPartner}
+                          onChange={(v) => set("deliveryPartner", v)}
+                          options={DELIVERY_PARTNER_NAMES}
+                          placeholder="Courier"
+                          searchPlaceholder="Search or type a courier…"
+                          ariaLabel="Delivery partner"
+                        />
+                      </Field>
+                      <Field label="Tracking ID">
+                        <ClearableInput
+                          className="font-mono"
+                          value={form.trackingId}
+                          onChange={(e) => set("trackingId", e.target.value)}
+                          placeholder="Consignment / AWB number"
+                        />
+                      </Field>
+                      {/* Shipping belongs with the shipment: you learn
                               what it cost from the same courier line that
                               gives you the tracking number. */}
-                  <Field label="Shipping Cost (INR)">
-                    <ClearableInput
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={form.shippingCost}
-                      onChange={(e) =>
-                        set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
-                      }
-                      placeholder="e.g. 50"
-                    />
-                  </Field>
-                  <TrackingLink
-                    partner={form.deliveryPartner}
-                    trackingId={form.trackingId}
-                    className="sm:col-span-2 lg:col-span-3"
-                  />
+                      <Field label="Shipping Cost (INR)">
+                        <ClearableInput
+                          type="number"
+                          min="0"
+                          step="any"
+                          value={form.shippingCost}
+                          onChange={(e) =>
+                            set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                          placeholder="e.g. 50"
+                        />
+                      </Field>
+                      <TrackingLink
+                        partner={form.deliveryPartner}
+                        trackingId={form.trackingId}
+                        className="sm:col-span-2 lg:col-span-3"
+                      />
+                    </>
+                  )}
                 </>
               )}
             </div>
