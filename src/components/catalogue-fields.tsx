@@ -182,85 +182,6 @@ export function CatalogueFields({
         </Field>
       )}
 
-      {!skip("colour") && (
-        <Field label="Colour">
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.colour}
-            onChange={(v) => onChange("colour", v)}
-            options={colourOptions}
-            placeholder="e.g. Spectraflame Red, Blue, White"
-            searchPlaceholder="Search colours, or type a new one…"
-            ariaLabel="Colour"
-          />
-        </Field>
-      )}
-
-      {!skip("type") && (
-        <Field label="Type *" name="type" error={err("type")}>
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.type}
-            onChange={(v) => onChange("type", v)}
-            options={typeOptions}
-            placeholder="e.g. Race Car, Classic Car, Supercar"
-            searchPlaceholder="Search types, or type a new one…"
-            ariaLabel="Type"
-          />
-        </Field>
-      )}
-
-      {!skip("brand") && (
-        <Field label="Brand *" name="brand" error={err("brand")}>
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.brand}
-            onChange={(v) => onChange("brand", v)}
-            options={brandOptions}
-            placeholder="e.g. Hot Wheels, Mini GT, Matchbox"
-            searchPlaceholder="Search brands, or type a new one…"
-            ariaLabel="Brand"
-          />
-        </Field>
-      )}
-
-      {!skip("assortment") && (
-        <Field label="Assortment *" name="assortment" error={err("assortment")}>
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.assortment}
-            onChange={(v) => onChange("assortment", v)}
-            options={assortmentOptions}
-            placeholder="e.g. Mainline, Premium, Boulevard"
-            searchPlaceholder="Search assortments, or type a new one…"
-            ariaLabel="Assortment"
-          />
-        </Field>
-      )}
-
-      {/* Four options, and nearly every car is the first of them — so a row of
-          buttons rather than a dropdown: Normal is already chosen, and a rare
-          pull is one tap instead of two. The full names sit behind the ⓘ; on the
-          buttons they would truncate to nothing. */}
-      {!skip("rarity") && (
-        <Field
-          label="Rarity"
-          info="TH is a Treasure Hunt and STH a Super Treasure Hunt, both Hot Wheels'. Chase is every other brand's limited run. Normal is a regular car."
-        >
-          <SegmentControl<Rarity>
-            fill
-            disabled={disabled}
-            value={values.rarity || "Normal"}
-            onChange={(v) => onChange("rarity", v)}
-            options={RARITIES.map((r) => ({ value: r, label: r }))}
-          />
-        </Field>
-      )}
-
       {!skip("series") && (
         <Field label="Series">
           <Combobox
@@ -291,6 +212,40 @@ export function CatalogueFields({
         </Field>
       )}
 
+      {!skip("brand") && (
+        <Field label="Brand *" name="brand" error={err("brand")}>
+          <Combobox
+            clearable
+            disabled={disabled}
+            value={values.brand}
+            onChange={(v) => onChange("brand", v)}
+            options={brandOptions}
+            placeholder="e.g. Hot Wheels, Mini GT, Matchbox"
+            searchPlaceholder="Search brands, or type a new one…"
+            ariaLabel="Brand"
+          />
+        </Field>
+      )}
+
+      {/* An assortment belongs to its brand the way a model belongs to its
+          make. The add-a-car form omits this field and asks for it under
+          Seller & payment instead, where it decides the retail prices offered;
+          the catalogue form, which describes the casting itself, keeps it. */}
+      {!skip("assortment") && (
+        <Field label="Assortment *" name="assortment" error={err("assortment")}>
+          <Combobox
+            clearable
+            disabled={disabled}
+            value={values.assortment}
+            onChange={(v) => onChange("assortment", v)}
+            options={assortmentOptions}
+            placeholder="e.g. Mainline, Premium, Boulevard"
+            searchPlaceholder="Search assortments, or type a new one…"
+            ariaLabel="Assortment"
+          />
+        </Field>
+      )}
+
       {/* The catalogue's, shared by every owner of the casting. The box a
           particular copy came out of is Case / Mix, and lives on the car. */}
       {!skip("carNumber") && (
@@ -314,8 +269,38 @@ export function CatalogueFields({
         </Field>
       )}
 
+      {!skip("colour") && (
+        <Field label="Colour">
+          <Combobox
+            clearable
+            disabled={disabled}
+            value={values.colour}
+            onChange={(v) => onChange("colour", v)}
+            options={colourOptions}
+            placeholder="e.g. Spectraflame Red, Blue, White"
+            searchPlaceholder="Search colours, or type a new one…"
+            ariaLabel="Colour"
+          />
+        </Field>
+      )}
+
+      {!skip("type") && (
+        <Field label="Type *" name="type" error={err("type")}>
+          <Combobox
+            clearable
+            disabled={disabled}
+            value={values.type}
+            onChange={(v) => onChange("type", v)}
+            options={typeOptions}
+            placeholder="e.g. Race Car, Classic Car, Supercar"
+            searchPlaceholder="Search types, or type a new one…"
+            ariaLabel="Type"
+          />
+        </Field>
+      )}
+
       {!skip("size") && (
-        <Field label="Size (default 1:64)">
+        <Field label="Scale size (default 1:64)">
           <Combobox
             clearable
             disabled={disabled}
@@ -325,6 +310,25 @@ export function CatalogueFields({
             placeholder="1:64"
             searchPlaceholder="Search scales, or type a new one…"
             ariaLabel="Size"
+          />
+        </Field>
+      )}
+
+      {/* Four options, and nearly every car is the first of them — so a row of
+          buttons rather than a dropdown: Normal is already chosen, and a rare
+          pull is one tap instead of two. The full names sit behind the ⓘ; on the
+          buttons they would truncate to nothing. */}
+      {!skip("rarity") && (
+        <Field
+          label="Rarity"
+          info="TH is a Treasure Hunt and STH a Super Treasure Hunt, both Hot Wheels'. Chase is every other brand's limited run. Normal is a regular car."
+        >
+          <SegmentControl<Rarity>
+            fill
+            disabled={disabled}
+            value={values.rarity || "Normal"}
+            onChange={(v) => onChange("rarity", v)}
+            options={RARITIES.map((r) => ({ value: r, label: r }))}
           />
         </Field>
       )}

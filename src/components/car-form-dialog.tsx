@@ -14,7 +14,8 @@ import type { Diecast } from "@/lib/types";
 import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
 import { carSubLine } from "@/lib/car-subline";
-import { mrpOptionsFor, topSellers } from "@/lib/car-prices";
+import { mrpOptionsFor, topSellers, assortmentChipsFor } from "@/lib/car-prices";
+import { useSuggestionPool } from "@/lib/suggestion-pool";
 import {
   assortmentOptionsFor,
   modelOptionsFor,
@@ -97,6 +98,90 @@ import {
 } from "lucide-react";
 
 const STATUS_OPTIONS = STATUSES;
+
+/** The last segment, which is not an answer but a way to reach the rest. */
+const OTHER = "\u0000other";
+
+/**
+ * The handful of usual answers as one row, everything else behind "Other".
+ *
+ * Assortment and seller are both long lists with a very short head — Hot Wheels
+ * has fourteen assortments and you buy from four of them; the collection knows
+ * forty sellers and three of them account for most of the money. A dropdown
+ * makes you open it every time to pick the thing you almost always pick. A row
+ * of four makes the common case one tap and costs the rare case one extra.
+ *
+ * "Other" is sticky once chosen, so the search box does not vanish underneath
+ * you while you are typing into it, and it shows itself when the current value
+ * is not one of the chips — editing a car bought from someone unusual opens
+ * with that someone already in view.
+ */
+function SegmentOrOther({
+  label,
+  name,
+  error,
+  info,
+  value,
+  onChange,
+  chips,
+  options,
+  placeholder,
+  searchPlaceholder,
+  hint,
+}: {
+  label: string;
+  name?: string;
+  error?: string;
+  info?: string;
+  value: string;
+  onChange: (v: string) => void;
+  chips: string[];
+  options: string[];
+  placeholder: string;
+  searchPlaceholder: string;
+  hint?: string;
+}) {
+  const [stuck, setStuck] = useState(false);
+  const known = chips.some((c) => c.toLowerCase() === (value || "").toLowerCase());
+  const showList = stuck || (Boolean(value) && !known) || chips.length === 0;
+
+  return (
+    <Field label={label} name={name} error={error} info={info}>
+      {chips.length > 0 && (
+        <SegmentControl
+          fill
+          value={showList ? OTHER : value}
+          options={[
+            ...chips.map((c) => ({ value: c, label: c })),
+            { value: OTHER, label: "Other" },
+          ]}
+          onChange={(v) => {
+            if (v === OTHER) {
+              setStuck(true);
+              return;
+            }
+            setStuck(false);
+            onChange(v);
+          }}
+        />
+      )}
+      {showList && (
+        <div className={chips.length > 0 ? "mt-2" : undefined}>
+          <Combobox
+            clearable
+            value={value}
+            onChange={(v) => onChange(v)}
+            options={options}
+            placeholder={placeholder}
+            searchPlaceholder={searchPlaceholder}
+            ariaLabel={label}
+          />
+        </div>
+      )}
+      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+    </Field>
+  );
+}
 import {
   STATUSES,
   isInHand,
@@ -106,7 +191,7 @@ import {
   normaliseStatus,
 } from "@/lib/status";
 
-const PAYMENT_OPTIONS = ["Paid", "Partial", "Pending"];
+const PAYMENT_OPTIONS = ["Pending", "Partial", "Paid"];
 
 const MONTH_LABELS = [
   "January",
@@ -193,6 +278,9 @@ function catalogueFields(car: CatalogueCar, f: CarFormData): CarFormData {
     size: car.size || f.size,
     rarity: rarityOf(car),
     mrp: car.mrp ? car.mrp : f.mrp,
+    // What you paid starts as what it lists at — the common case, and one
+    // fewer field to fill. Typing over it is the whole point of the field.
+    spent: car.mrp ? car.mrp : f.spent,
     imageUrl: f.imageUrl || car.imageUrl || "",
   };
 }
@@ -216,7 +304,10 @@ function getBlankForm(): CarFormData {
     spent: "",
     mrp: "",
     shippingCost: "",
-    payment: "Paid",
+    // Pending, not Paid: a car is logged when it is ordered and the money
+    // usually moves afterwards. Paid was the old default and quietly recorded
+    // a settled purchase for every pre-order.
+    payment: "Pending",
     seller: "",
     // Most cars are catalogued the day they are ordered, long before they
     // arrive; "Available" as the default was wrong more often than right.
@@ -340,6 +431,9 @@ export function CarFormDialog({
 }) {
   const { addCar, updateCar } = useCarsActions();
   const cars = useCars();
+  // Option lists come from the shared catalogue as well as your own cars, so a
+  // new account is not typing into empty dropdowns. See suggestion-pool.ts.
+  const pool = useSuggestionPool();
   const { isGuest, isAdmin } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
@@ -472,8 +566,8 @@ export function CarFormDialog({
 
   /** What this brand and assortment has cost before, most used first. */
   const mrpChoices = useMemo(
-    () => mrpOptionsFor(cars, form.brand, form.assortment),
-    [cars, form.brand, form.assortment],
+    () => mrpOptionsFor(pool, form.brand, form.assortment),
+    [pool, form.brand, form.assortment],
   );
   /** Who this collection buys from most, for one tap. */
   const sellerChips = useMemo(() => topSellers(cars, 3), [cars]);
@@ -692,7 +786,7 @@ export function CarFormDialog({
       const next = catalogueFields(car, f);
       // What this brand and assortment has cost before, for the entries that
       // carry no price of their own.
-      const known = mrpOptionsFor(cars, next.brand, next.assortment);
+      const known = mrpOptionsFor(pool, next.brand, next.assortment);
       const mrp = next.mrp === "" ? (known[0] ?? "") : next.mrp;
       // Spent starts equal to MRP: you normally pay list, and a figure you can
       // correct beats an empty box you must fill. Only when it is untouched.
@@ -820,12 +914,14 @@ export function CarFormDialog({
   // An assortment belongs to its brand the way a model belongs to its make:
   // "Qube Carz" is Mini GT's, and offering it under Matchbox helped nobody.
   const assortmentOptions = useMemo(
-    () => assortmentOptionsFor(cars, form.brand),
-    [cars, form.brand],
+    () => assortmentOptionsFor(pool, form.brand),
+    [pool, form.brand],
   );
-  const sizeOptions = useMemo(() => optionsFor("size", cars), [cars]);
-  const seriesOptions = useMemo(() => optionsFor("series", cars), [cars]);
-  const subSeriesOptions = useMemo(() => optionsFor("subSeries", cars), [cars]);
+  const sizeOptions = useMemo(() => optionsFor("size", pool), [pool]);
+  const seriesOptions = useMemo(() => optionsFor("series", pool), [pool]);
+  const subSeriesOptions = useMemo(() => optionsFor("subSeries", pool), [pool]);
+  /** The four this brand uses most; the rest sit behind Other. */
+  const assortmentChips = useMemo(() => assortmentChipsFor(pool, form.brand), [pool, form.brand]);
   // Sellers are never seeded — the list is only ever the ones this collection
   // has actually bought from.
   const sellerOptions = useMemo(
@@ -1097,7 +1193,7 @@ export function CarFormDialog({
     "colour",
     "type",
     "brand",
-    "assortment",
+    // assortment is deliberately absent: it moved to Seller & payment.
     "series",
     "subSeries",
     "carNumber",
@@ -1111,6 +1207,7 @@ export function CarFormDialog({
     // Opening it first: scrolling to a field inside a shut group scrolls to
     // nothing, and the person is told to fix something they cannot see.
     if (CATALOGUE_FIELDS.has(validationError.field)) setShowIdentity(true);
+    if (!CATALOGUE_FIELDS.has(validationError.field)) setShowPurchase(true);
     const frame = requestAnimationFrame(() => {
       const el = document.querySelector<HTMLElement>(`[data-field="${validationError.field}"]`);
       if (!el) return;
@@ -1480,10 +1577,11 @@ export function CarFormDialog({
             <CatalogueFields
               values={catalogueValues}
               onChange={setCatalogueValue}
-              cars={cars}
+              cars={pool}
               errorFor={(k) => errorFor(k as keyof CarFormData)}
               disabled={isEdit}
               allowCarNumberEdit={true}
+              omit={["assortment"]}
             />
             <p className="mt-2.5 text-[11px] text-muted-foreground">
               {isEdit
@@ -1542,56 +1640,58 @@ export function CarFormDialog({
         open={showPurchase}
         onToggle={() => setShowPurchase((v) => !v)}
       >
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Status leads: it decides what the rest of this section
-                      asks for. ISO takes four fields away, a pre-order
-                      swaps the expected date for a release month. */}
+        {/* One question per row, each answered by tapping rather than typing.
+            The order is the order you know the answers in: which box it came
+            in, where it has got to, who sold it, when, what it lists at, what
+            you actually paid, and whether that money has moved. */}
+        <div className="flex flex-col gap-3">
+          {/* Assortment leads, and it is here rather than up in Which Car
+              because it is the one identity field that is really about the
+              purchase: it decides which retail prices the form can offer, and
+              a Matchbox Bronco is 179 as Mainline and 399 as Moving Parts. */}
+          <SegmentOrOther
+            label="Assortment *"
+            name="assortment"
+            error={errorFor("assortment")}
+            value={form.assortment}
+            onChange={(v) => set("assortment", v)}
+            chips={assortmentChips}
+            options={assortmentOptions}
+            placeholder={form.brand ? `Which ${form.brand} line?` : "Pick a brand first"}
+            searchPlaceholder="Search assortments, or type a new one…"
+            hint={form.brand ? undefined : "Choose a brand above and the usual four appear here."}
+          />
+
+          {/* Status decides what the rest of this section asks for. ISO takes
+              four fields away, a pre-order swaps the expected date for a
+              release month. */}
           <Field label="Status *" name="status" error={errorFor("status")}>
-            <Select value={form.status} onValueChange={(v) => set("status", v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((st) => (
-                  <SelectItem key={st} value={st}>
-                    {st}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SegmentControl
+              fill
+              value={form.status}
+              options={STATUS_OPTIONS.map((st) => ({ value: st, label: st }))}
+              onChange={(v) => set("status", v)}
+            />
           </Field>
 
           {!isIso && (
-            <Field label="Seller *" name="seller" error={errorFor("seller")}>
-              <Combobox
-                clearable
-                value={form.seller}
-                onChange={(v) => set("seller", v)}
-                // "No seller" always first: a gift or a swap is a
-                // real answer, and the field is required.
-                options={[NO_SELLER, ...sellerOptions]}
-                placeholder="Who sold it?"
-                searchPlaceholder="Search sellers, or type a new one…"
-                ariaLabel="Seller"
-              />
-              {sellerChips.length > 0 && (
-                <PillRow scroll>
-                  {sellerChips.map((name) => (
-                    <PillButton
-                      key={name}
-                      active={form.seller === name}
-                      onClick={() => set("seller", name)}
-                    >
-                      {name}
-                    </PillButton>
-                  ))}
-                </PillRow>
-              )}
-            </Field>
+            <SegmentOrOther
+              label="Seller *"
+              name="seller"
+              error={errorFor("seller")}
+              value={form.seller}
+              onChange={(v) => set("seller", v)}
+              chips={sellerChips}
+              // "No seller" always first in the list: a gift or a swap is a
+              // real answer, and the field is required.
+              options={[NO_SELLER, ...sellerOptions]}
+              placeholder="Who sold it?"
+              searchPlaceholder="Search sellers, or type a new one…"
+            />
           )}
 
           {!isIso && (
-            <Field label="Order Date *" name="orderDate" error={errorFor("orderDate")}>
+            <Field label="Order date *" name="orderDate" error={errorFor("orderDate")}>
               <ClearableInput
                 type="date"
                 value={form.orderDate}
@@ -1600,39 +1700,56 @@ export function CarFormDialog({
             </Field>
           )}
 
-          <Field label={isIso ? "MRP (INR)" : "MRP * (INR)"} name="mrp" error={errorFor("mrp")}>
-            <ClearableInput
-              type="number"
-              min="0"
-              step="any"
-              value={form.mrp}
-              onChange={(e) => set("mrp", e.target.value === "" ? "" : Number(e.target.value))}
-              placeholder="e.g. 549"
-            />
-            {/* One known price fills itself in and says nothing.
-                        Several means the form cannot guess — a Mini GT
-                        blister spans a dozen — so it offers them, and
-                        picking one is picking what you paid. */}
-            {mrpChoices.length > 1 && (
-              <PillRow>
-                {mrpChoices.map((v) => (
-                  <PillButton
-                    key={v}
-                    active={Number(form.mrp) === v}
-                    onClick={() => {
-                      set("mrp", v);
-                      handleSpentChange(v);
-                    }}
-                  >
-                    {inrFull(v)}
-                  </PillButton>
-                ))}
-              </PillRow>
+          {/* Every price this brand and assortment has gone for, and a box for
+              one it has not. Picking a price is picking what you paid too —
+              they are the same number until you say otherwise. */}
+          <Field
+            label={isIso ? "Retail price (INR)" : "Retail price * (INR)"}
+            name="mrp"
+            error={errorFor("mrp")}
+          >
+            <div className="flex flex-wrap items-center gap-1.5">
+              {mrpChoices.map((v) => (
+                <PillButton
+                  key={v}
+                  active={Number(form.mrp) === v}
+                  onClick={() => {
+                    set("mrp", v);
+                    handleSpentChange(v);
+                  }}
+                >
+                  {inrFull(v)}
+                </PillButton>
+              ))}
+              <ClearableInput
+                type="number"
+                min="0"
+                step="any"
+                value={mrpChoices.includes(Number(form.mrp)) ? "" : form.mrp}
+                onChange={(e) => {
+                  const v = e.target.value === "" ? "" : Number(e.target.value);
+                  set("mrp", v);
+                  handleSpentChange(v);
+                }}
+                placeholder={mrpChoices.length > 0 ? "Or type one" : "e.g. 549"}
+                className="h-8 w-28"
+              />
+            </div>
+            {mrpChoices.length === 0 && form.brand && form.assortment && (
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Nothing recorded for {form.brand} · {form.assortment} yet — this one sets the
+                precedent.
+              </p>
             )}
           </Field>
 
           {!isIso && (
-            <Field label="Spent * (INR)" name="spent" error={errorFor("spent")} info={SPENT_INFO}>
+            <Field
+              label="Buying price * (INR)"
+              name="spent"
+              error={errorFor("spent")}
+              info={SPENT_INFO}
+            >
               <ClearableInput
                 type="number"
                 min="0"
@@ -1643,11 +1760,14 @@ export function CarFormDialog({
                 }
                 placeholder="e.g. 549"
               />
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Follows the retail price above until you change it.
+              </p>
             </Field>
           )}
 
           {!isIso && (
-            <Field label="Payment *" name="payment" error={errorFor("payment")}>
+            <Field label="Payment status *" name="payment" error={errorFor("payment")}>
               <SegmentControl
                 fill
                 value={form.payment}

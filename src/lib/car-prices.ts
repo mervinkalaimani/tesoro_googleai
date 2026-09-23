@@ -51,26 +51,60 @@ export function mrpOptionsFor(
 }
 
 /**
- * The sellers this collection buys from most, for one-tap filling.
+ * The sellers this collection spends the most with, for one-tap filling.
+ *
+ * Ranked by money, not by car count, because those disagree and money is the
+ * better answer to "who do I buy from". Rachit Gala sold 100 cars for ₹22k;
+ * Ankush KA sold 53 for ₹63k. Counting rows puts the cheap bulk seller above
+ * the one the collection is actually built on.
  *
  * "No seller" is excluded: it is the answer for a gift or a find, always
  * available in the list, and never a shortcut worth a chip of its own.
  */
 export function topSellers(cars: Diecast[], limit = 3): string[] {
-  const names: string[] = [];
+  const spend = new Map<string, number>();
+  const label = new Map<string, string>();
   for (const c of cars) {
     const s = (c.seller || "").trim();
     if (!s || s === NO_SELLER) continue;
-    names.push(s);
-  }
-  const counts = new Map<string, number>();
-  for (const n of names) {
     // Counted case-insensitively, but shown the way it is written in the table.
-    const k = n.toLowerCase();
+    const k = s.toLowerCase();
+    if (!label.has(k)) label.set(k, s);
+    const paid = typeof c.spent === "number" ? c.spent : Number(c.spent);
+    // A row with no price still counts as one purchase from them, so a seller
+    // you have used often does not vanish for want of a figure.
+    spend.set(k, (spend.get(k) ?? 0) + (Number.isFinite(paid) && paid > 0 ? paid : 0) + 1);
+  }
+  return [...spend.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([k]) => label.get(k) as string);
+}
+
+/**
+ * The assortments this brand actually uses, most used first.
+ *
+ * Hot Wheels has fourteen. A segment control can show four before the labels
+ * stop being readable, so the caller shows these and puts the rest behind
+ * "Other" — which is why the count is capped here rather than at the call site.
+ *
+ * Brand is matched with its spaces removed, because "Hot Wheels" and
+ * "Hotwheels" are both in the table and are the same maker. Without that the
+ * fourteen split into seven and seven and neither list is right.
+ */
+export function assortmentChipsFor(cars: Diecast[], brand?: string | null, limit = 4): string[] {
+  const want = (brand || "").trim().toLowerCase().replace(/\s+/g, "");
+  if (!want) return [];
+  const counts = new Map<string, number>();
+  const label = new Map<string, string>();
+  for (const c of cars) {
+    if ((c.brand || "").trim().toLowerCase().replace(/\s+/g, "") !== want) continue;
+    const a = (c.assortment || "").trim();
+    if (!a) continue;
+    const k = a.toLowerCase();
+    if (!label.has(k)) label.set(k, a);
     counts.set(k, (counts.get(k) ?? 0) + 1);
   }
-  const label = new Map<string, string>();
-  for (const n of names) if (!label.has(n.toLowerCase())) label.set(n.toLowerCase(), n);
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit)
