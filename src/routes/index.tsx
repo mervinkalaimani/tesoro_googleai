@@ -683,7 +683,10 @@ const preorderAsCar = (c: RecentPreorder, key: string) =>
  */
 function RecentPreorders() {
   const { isGuest, isAdmin, isOwner } = useAuth();
-  const { cars: shared, loading } = useRecentPreorders(!isGuest, RECENT_DAYS);
+  // No day window any more: a pre-order's O_Date is the release it is waiting
+  // for, which is in the future, so "the last three days" excluded almost the
+  // whole list. The newest by insertion order is what "new" means here.
+  const { cars: shared, loading } = useRecentPreorders(!isGuest);
   const mine = useCars();
   const { catalog, findMatchingInCatalog, getCatalogCarById, updateCatalogCar, addCatalogCar } =
     useCatalog();
@@ -770,7 +773,7 @@ function RecentPreorders() {
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">New Pre Orders</h2>
           <p className="text-xs text-muted-foreground">
-            See what others have pre-ordered in last {RECENT_DAYS} days
+            The newest castings other collectors have pre-ordered
           </p>
         </div>
         <ShoppingBag className="size-4 text-accent" />

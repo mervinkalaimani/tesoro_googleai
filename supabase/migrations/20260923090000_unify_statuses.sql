@@ -134,6 +134,11 @@ begin
     return;
   end if;
 
+  -- 20260923140000 may have shipped this patch already, ahead of the rewrite.
+  if position('''po''' in src) > 0 then
+    return;
+  end if;
+
   if position('''pre order'', ''preorder'', ''pre-order''' in src) = 0 then
     raise exception 'recent_preorders no longer lists the pre-order spellings; check it by hand.';
   end if;

@@ -98,10 +98,14 @@ export type RecentPreorder = CatalogueCar & {
 };
 
 /**
- * Pre-orders placed by anyone in the last `days` days (today counts as one),
- * through the recent_preorders database function. Nothing for guests.
+ * The newest pre-orders anyone has placed, through the recent_preorders
+ * database function. Nothing for guests.
+ *
+ * Newest by insertion order, not by date: a pre-order's O_Date is the release
+ * it is waiting for, so any "last N days" window over it excluded the future-
+ * dated rows, which is nearly all of them.
  */
-export function useRecentPreorders(enabled: boolean, days = 3) {
+export function useRecentPreorders(enabled: boolean) {
   const [state, setState] = useState<{ cars: RecentPreorder[]; loading: boolean }>({
     cars: [],
     loading: enabled,
@@ -115,7 +119,7 @@ export function useRecentPreorders(enabled: boolean, days = 3) {
     let cancelled = false;
     void (async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc("recent_preorders", { days, lim: 24 });
+      const { data, error } = await (supabase as any).rpc("recent_preorders", { lim: 24 });
       if (cancelled) return;
       const rows = (error ? [] : (data ?? [])) as (CatalogueRow & {
         last_ordered: string | null;
@@ -133,7 +137,7 @@ export function useRecentPreorders(enabled: boolean, days = 3) {
     return () => {
       cancelled = true;
     };
-  }, [enabled, days]);
+  }, [enabled]);
 
   return state;
 }
