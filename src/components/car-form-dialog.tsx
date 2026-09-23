@@ -1586,6 +1586,7 @@ export function CarFormDialog({
               disabled={isEdit}
               allowCarNumberEdit={true}
               omit={["assortment"]}
+              chain={!isEdit && !fromCatalogue}
             />
             <p className="mt-2.5 text-[11px] text-muted-foreground">
               {isEdit

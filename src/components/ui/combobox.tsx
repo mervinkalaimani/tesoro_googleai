@@ -35,6 +35,7 @@ export function Combobox({
   ariaLabel,
   clearable = false,
   descriptions,
+  openSignal,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -52,9 +53,28 @@ export function Combobox({
   clearable?: boolean;
   /** A line of explanation under an option, keyed by its lower-cased value. */
   descriptions?: Record<string, string>;
+  /**
+   * Bump this and the list opens itself.
+   *
+   * It is a counter rather than a boolean because the same field can be asked
+   * to open twice in a row — pick a make, change your mind, pick another — and
+   * a boolean that is already true says nothing the second time.
+   */
+  openSignal?: number;
 }) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState("");
+
+  const firstSignal = React.useRef(true);
+  React.useEffect(() => {
+    // Not on mount: a form opening with three empty fields should not throw a
+    // popover at you before you have looked at it.
+    if (firstSignal.current) {
+      firstSignal.current = false;
+      return;
+    }
+    if (openSignal) setOpen(true);
+  }, [openSignal]);
 
   const trimmed = search.trim();
   const canCreate =

@@ -52,6 +52,7 @@ import {
 } from "@/lib/catalog";
 import { parseQuery, matchesQuery } from "@/lib/search";
 import { searchCarImages } from "@/lib/car-image-search";
+import { groupCastings, priceRange, type CastingGroup } from "@/lib/casting-group";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -456,6 +457,20 @@ function CatalogPage() {
     return result.sort((a, b) => compareBy(a, b, sort, serials));
   }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned, myIso, sort, serials]);
 
+  /**
+   * The same list as one card per casting. Entries that agree on brand, make,
+   * model, variant, series, sub-series and car number and differ only in
+   * assortment ride together; 75 pairs in the catalogue do.
+   */
+  const groups = useMemo(() => groupCastings(rows), [rows]);
+  /** Lead entry id to its siblings, for the chip and the picker. */
+  const siblings = useMemo(() => {
+    const m = new Map<string, CastingGroup>();
+    for (const g of groups) m.set(g.lead.car_id, g);
+    return m;
+  }, [groups]);
+  const leads = useMemo(() => groups.map((g) => g.lead), [groups]);
+
   /** Each filter's choices, narrowed by the other filters, with counts. */
   const options = useMemo(() => {
     const out = {} as Record<FilterKey, { value: string; count: number }[]>;
@@ -530,7 +545,7 @@ function CatalogPage() {
 
   useEffect(() => {
     const el = sentinel.current;
-    if (!el || visible >= rows.length) return;
+    if (!el || visible >= leads.length) return;
     const io = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) setVisible((n) => Math.min(n + LOAD_BATCH, rows.length));
@@ -539,9 +554,9 @@ function CatalogPage() {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [visible, rows.length]);
+  }, [visible, leads.length]);
 
-  const shown = rows.slice(0, visible);
+  const shown = leads.slice(0, visible);
 
   /**
    * The loaded rows broken into their groups.
@@ -616,6 +631,7 @@ function CatalogPage() {
             isIso={myIso.has(c.car_id.toUpperCase())}
             onOpen={() => setViewing(c)}
             onAdd={() => setAdding(c)}
+            group={siblings.get(c.car_id)}
           />
         ))}
       </div>
@@ -625,7 +641,7 @@ function CatalogPage() {
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <PageHeading
         title="Catalog"
-        subtitle={`${rows.length.toLocaleString()} casting${rows.length === 1 ? "" : "s"} · tap one to add it to your collection`}
+        subtitle={`${leads.length.toLocaleString()} casting${leads.length === 1 ? "" : "s"} · tap one to add it to your collection`}
       >
         {isAdmin && (
           <>
@@ -812,7 +828,7 @@ function CatalogPage() {
           ))}
         </div>
       )}
-      {visible < rows.length && <div ref={sentinel} className="h-8" />}
+      {visible < leads.length && <div ref={sentinel} className="h-8" />}
 
       <CatalogCarDetails
         car={viewing ? asCar(viewing) : null}
@@ -1086,14 +1102,19 @@ function CatalogCard({
   isIso: isCarIso,
   onOpen,
   onAdd,
+  group,
 }: {
   c: CatalogCar;
   owned: boolean;
   isIso: boolean;
   onOpen: () => void;
   onAdd: () => void;
+  /** Every box this casting was sold in, when there is more than one. */
+  group?: CastingGroup;
 }) {
   const car = asCar(c);
+  const boxes = group && group.assortments.length > 1 ? group : null;
+  const span = boxes ? priceRange(boxes.members) : null;
 
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
@@ -1119,6 +1140,18 @@ function CatalogCard({
             </span>
           )}
         </div>
+        {/* More than one box holds this same casting. Bottom-right is the one
+            corner nothing else uses, and the count is the point — which boxes
+            they are is a tap away. */}
+        {boxes && (
+          <span
+            title={`Sold as ${boxes.assortments.join(", ")}`}
+            className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-foreground ring-1 ring-white/20 backdrop-blur-sm"
+          >
+            <Layers className="size-3" />
+            {boxes.assortments.length} assortments
+          </span>
+        )}
         {/* A box, not a casting. It earns the primary colour because it changes
             what the card means: one of these is several cars. */}
         {c.is_multipack && (
@@ -1141,7 +1174,15 @@ function CatalogCard({
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
           <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-wider text-muted-foreground">MRP</div>
-            <div className="text-sm font-semibold tabular-nums">{c.mrp ? inr(c.mrp) : "—"}</div>
+            {/* A range when the boxes disagree, which is the whole reason they
+                are still separate entries underneath one card. */}
+            <div className="truncate text-sm font-semibold tabular-nums">
+              {span && span.low !== span.high
+                ? `${inr(span.low)}–${inr(span.high)}`
+                : c.mrp
+                  ? inr(c.mrp)
+                  : "—"}
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             <Button size="sm" className="gap-1.5" onClick={onAdd}>

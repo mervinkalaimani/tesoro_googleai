@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { Combobox } from "@/components/ui/combobox";
 import { SegmentControl } from "@/components/segment-control";
@@ -76,6 +76,7 @@ export function CatalogueFields({
    * release status at the top of its own dialog, for instance.
    */
   omit = [],
+  chain = false,
 }: {
   values: CatalogueValues;
   onChange: <K extends keyof CatalogueValues>(key: K, value: CatalogueValues[K]) => void;
@@ -87,8 +88,26 @@ export function CatalogueFields({
   /** When true, carNumber remains editable even if casting fields are disabled. */
   allowCarNumberEdit?: boolean;
   omit?: (keyof CatalogueValues)[];
+  /** Adding by hand: opening one field opens the next. */
+  chain?: boolean;
 }) {
   const err = (k: keyof CatalogueValues) => errorFor?.(k);
+
+  /**
+   * Answering one identity field opens the next: make, then model, then
+   * variant, then year. Entering a car by hand is four questions in a fixed
+   * order and this walks them, instead of making you find and tap each box.
+   *
+   * It only ever opens a field that is EMPTY. Going back to correct the make
+   * on a form you have already filled in should not reopen three lists behind
+   * you, and a variant you deliberately left blank stays blank.
+   */
+  const [chainAt, setChainAt] = useState({ model: 0, variant: 0, year: 0 });
+  const advance = (to: "model" | "variant" | "year") => {
+    if (!chain) return;
+    if ((values[to] || "").trim()) return;
+    setChainAt((p) => ({ ...p, [to]: p[to] + 1 }));
+  };
   const skip = (k: keyof CatalogueValues) => omit.includes(k);
   // Hot Wheels and Matchbox print a position in a series, not a number that
   // belongs to the casting, so they are the two brands that cannot be asked.
@@ -124,7 +143,10 @@ export function CatalogueFields({
             clearable
             disabled={disabled}
             value={values.make}
-            onChange={(v) => onChange("make", v)}
+            onChange={(v) => {
+              onChange("make", v);
+              if (v) advance("model");
+            }}
             options={makeOptions}
             placeholder="e.g. Porsche, Nissan, Ford"
             searchPlaceholder="Search makes, or type a new one…"
@@ -139,7 +161,11 @@ export function CatalogueFields({
             clearable
             disabled={disabled}
             value={values.model}
-            onChange={(v) => onChange("model", v)}
+            openSignal={chainAt.model}
+            onChange={(v) => {
+              onChange("model", v);
+              if (v) advance("variant");
+            }}
             options={modelOptions}
             // The base name only. The trim goes in Variant next to it, so
             // "Skyline" here and "GT-R R34" there.
@@ -156,7 +182,11 @@ export function CatalogueFields({
             clearable
             disabled={disabled}
             value={values.variant}
-            onChange={(v) => onChange("variant", v)}
+            openSignal={chainAt.variant}
+            onChange={(v) => {
+              onChange("variant", v);
+              if (v) advance("year");
+            }}
             options={variantOptions}
             placeholder="e.g. R34, KH, Custom"
             searchPlaceholder="Search variants, or type a new one…"
@@ -173,6 +203,7 @@ export function CatalogueFields({
             clearable
             disabled={disabled}
             value={values.year}
+            openSignal={chainAt.year}
             onChange={(v) => onChange("year", v)}
             options={yearOptions}
             placeholder="e.g. 2024 or '71"
