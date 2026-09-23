@@ -7,6 +7,7 @@ import {
   Layers,
   Loader2,
   Merge,
+  RefreshCw,
   Package,
   Pencil,
   Plus,
@@ -49,6 +50,7 @@ import {
   catalogCarToDiecast as asCar,
 } from "@/lib/catalog";
 import { parseQuery, matchesQuery } from "@/lib/search";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -253,6 +255,8 @@ function CatalogPage() {
   const [adding, setAdding] = useState<CatalogCar | null>(null);
   /** The entry whose details are open. */
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
+  const [pushing, setPushing] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
   const [editing, setEditing] = useState<CatalogCar | "new" | null>(null);
   const [merging, setMerging] = useState(false);
   /** Owner only: the entry being removed, with the confirm open over it. */
@@ -551,6 +555,16 @@ function CatalogPage() {
               size="sm"
               variant="outline"
               className="gap-1.5"
+              onClick={() => setPushing(true)}
+              title="Send the catalogue's details, and its photos, to every collection holding these castings"
+            >
+              <RefreshCw className="size-4" />
+              <span className="max-sm:sr-only">Push to all</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
               onClick={() => setMerging(true)}
             >
               <Merge className="size-4" />
@@ -752,6 +766,55 @@ function CatalogPage() {
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
         prefillStatus={adding && isPreOrder(adding) ? "PO" : "Ordered"}
       />
+      {/* Writing into other people's collections is not an undo-able thing, so
+          it says plainly what it will and will not touch before it runs. */}
+      <Dialog open={pushing} onOpenChange={(v) => !v && !pushBusy && setPushing(false)}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Push the catalogue to every collection?</DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                Every car in everyone&apos;s collection takes the catalogue&apos;s brand, make,
+                model, variant, colour, type, assortment, series, sub-series, car number, size, year
+                and retail price — and its photo.
+              </p>
+              <p>
+                <span className="font-medium text-foreground">Left alone:</span> each person&apos;s
+                status and what they paid, and any photograph they uploaded themselves. Only a
+                missing photo or one still pointing at the catalogue&apos;s own link is refreshed.
+              </p>
+              <p>Pre-order rows also take the catalogue&apos;s expected date.</p>
+            </div>
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPushing(false)} disabled={pushBusy}>
+              Cancel
+            </Button>
+            <Button
+              disabled={pushBusy}
+              onClick={async () => {
+                setPushBusy(true);
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { data, error } = await (supabase as any).rpc(
+                  "catalog_push_to_collections",
+                  {},
+                );
+                setPushBusy(false);
+                if (error) {
+                  toast.error(error.message || "Could not push the catalogue");
+                  return;
+                }
+                setPushing(false);
+                const n = Number(data) || 0;
+                toast.success(n === 0 ? "Everything was already up to date" : `Updated ${n} cars`);
+              }}
+            >
+              {pushBusy ? "Pushing…" : "Push to all"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {isAdmin && (
         <MergeDuplicatesDialog
           open={merging}
