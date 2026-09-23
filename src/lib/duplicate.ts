@@ -68,24 +68,33 @@ export const brandUsesCarNumber = (brand: string | null | undefined) => {
 export const needsCarNumber = (brand: string | null | undefined) => brandUsesCarNumber(brand);
 
 /**
- * Candidate duplicates for what has been typed, most certain first.
+ * Candidate duplicates for what has been typed.
  *
- * Brand always has to agree — a Mini GT Supra is not a Majorette one — and
- * everything below it is a matter of how much else does: make, model, colour,
- * assortment, series, sub-series, variant, year.
+ * Two ways in, and nothing else counts:
  *
- * **Car number is not one of them.** It used to be the strongest signal here —
- * a matching number inside one assortment returned "certain" on its own,
- * without so much as checking the make — and it was wrong often enough to be
- * worse than useless: the same number gets reused across releases, and being
- * told a Supra is certainly a duplicate of a Skyline teaches you to click
- * through the warning without reading it. Two castings sharing a number are
- * now judged on everything else, exactly as if neither had a number at all.
+ *   1. Brand and car number agree. The number names one product, so this needs
+ *      nothing else filled in yet.
+ *   2. Brand, make, model, assortment, series, sub-series and car number ALL
+ *      agree. A blank on both sides is agreement — two Hot Wheels mainlines
+ *      with no series between them are the same mainline — but a blank against
+ *      a value is not.
+ *
+ * It used to score partial matches instead, and offered anything sharing a
+ * make and a model. Typing "Porsche 911" brought back six different castings —
+ * a Carrera RS38, a GT3 R, a GT1, two mainline Carreras — each labelled as an
+ * existing car to add instead. A suggestion list that is wrong six times out
+ * of six is worse than none: it trains you to scroll past the one time it is
+ * right.
+ *
+ * There is no partial credit any more, so every hit is "certain" and the
+ * levels only survive for the Duplicates page below.
+ *
+ * Variant is deliberately absent from rule 2, because the list of fields came
+ * from the person who uses this. Two variants of one casting that both lack a
+ * car number will therefore still be offered to each other.
  *
  * needsCarNumber below is untouched: whether a brand has to state its number
- * is a question about filling the form in, not about what a duplicate is. The
- * Duplicates page (findDuplicateGroups) also still groups by number, because
- * reviewing a list of candidates is not the same as being interrupted mid-form.
+ * is a question about filling the form in, not about what a duplicate is.
  */
 export function findDuplicates(
   fields: DuplicateFields,
@@ -98,121 +107,53 @@ export function findDuplicates(
   // Too little to say anything useful.
   if (!brand || !make || !model) return [];
 
-  const variant = norm(fields.variant);
-  const colour = norm(fields.colour);
   const assortment = norm(fields.assortment);
   const series = norm(fields.series);
   const subSeries = norm(fields.subSeries);
-  const year = norm(fields.year);
+  const carNumber = norm(fields.carNumber);
   const skip = excludeCarId.trim().toUpperCase();
 
-  type ScoredHit = DuplicateHit & { score: number };
-  const hits: ScoredHit[] = [];
+  const hits: DuplicateHit[] = [];
 
   for (const c of catalog) {
     if (skip && c.car_id.toUpperCase() === skip) continue;
     if (brandKey(c.brand) !== brand) continue;
 
-    // Check year: if both specify a year and they differ by more than 1, less likely to be identical
-    const cYear = norm(c.year);
-    const sameYear = !year || !cYear || year === cYear;
-
-    const cAssortment = norm(c.assortment);
-    const sameAssortment = assortment !== "" && assortment === cAssortment;
-
-    // Match make and model
-    const cMake = norm(c.make);
-    const cModel = norm(c.model);
-    const cName = norm(c.name);
-    const targetName = norm(`${make} ${model}`);
-
-    const makeMatches = cMake === make || (!cMake && cName.includes(make));
-    const modelMatches =
-      cModel === model || cModel.includes(model) || model.includes(cModel) || cName.includes(model);
-
-    if (!makeMatches || !modelMatches) {
-      // Also check full combined name
-      if (cName !== targetName && !cName.includes(targetName)) {
-        continue;
-      }
+    // The number names one product, so brand and number agreeing is enough on
+    // its own — the rest of the fields need not be filled in yet.
+    if (carNumber && norm(c.car_number) === carNumber) {
+      hits.push({
+        car: c,
+        level: "certain",
+        because: `Same ${c.brand || "brand"} number #${c.car_number}`,
+      });
+      continue;
     }
 
-    // Match maximum fields
-    const cColour = norm(c.colour);
-    const sameColour =
-      colour !== "" &&
-      cColour !== "" &&
-      (colour === cColour || cColour.includes(colour) || colour.includes(cColour));
-
-    const cVariant = norm(c.variant);
-    const sameVariant =
-      variant !== "" && cVariant !== "" && (variant === cVariant || cVariant.includes(variant));
-
-    const cSeries = norm(c.series);
-    const sameSeries =
-      series !== "" && cSeries !== "" && (series === cSeries || cSeries.includes(series));
-
-    const cSubSeries = norm(c.sub_series);
-    const sameSubSeries = subSeries !== "" && cSubSeries !== "" && subSeries === cSubSeries;
-
-    // Calculate match score and collect matched fields for the explanation
-    let score = 10; // Base score for make & model match
-    const matchedList: string[] = ["make", "model"];
-
-    if (sameColour) {
-      score += 25;
-      matchedList.push(`colour (${c.colour})`);
-    }
-    if (sameAssortment) {
-      score += 20;
-      matchedList.push(`assortment (${c.assortment})`);
-    }
-    if (sameSeries) {
-      score += 15;
-      matchedList.push(`series (${c.series})`);
-    }
-    if (sameSubSeries) {
-      score += 10;
-      matchedList.push("sub-series");
-    }
-    if (sameVariant) {
-      score += 15;
-      matchedList.push(`variant (${c.variant})`);
-    }
-    if (year && cYear && year === cYear) {
-      score += 10;
-      matchedList.push(`year (${c.year})`);
-    }
-
-    // Determine level:
-    // Even for Hot Wheels and Matchbox mainlines without collector car number:
-    // If make, model, colour and assortment match:
-    // This is a certain/likely duplicate of that mainline release!
-    let level: DuplicateLevel = "possible";
-    if (sameColour && sameAssortment && (sameSeries || sameVariant || sameYear)) {
-      level = "certain";
-    } else if (sameColour && sameAssortment) {
-      level = "certain";
-    } else if (sameColour && (sameSeries || sameVariant || sameYear)) {
-      level = "likely";
-    } else if (sameAssortment && sameSeries) {
-      level = "likely";
-    } else if (sameColour) {
-      level = "likely";
-    }
-
-    const because = `Matches ${matchedList.join(", ")}`;
+    // Otherwise every field has to agree. A blank on both sides counts as
+    // agreement — two Hot Wheels mainlines with no series between them are
+    // still the same mainline — but a blank against a value does not.
+    if (norm(c.make) !== make) continue;
+    if (norm(c.model) !== model) continue;
+    if (norm(c.assortment) !== assortment) continue;
+    if (norm(c.series) !== series) continue;
+    if (norm(c.sub_series) !== subSeries) continue;
+    if (norm(c.car_number) !== carNumber) continue;
 
     hits.push({
       car: c,
-      level,
-      because,
-      score,
+      level: "certain",
+      because: [
+        "Same casting",
+        c.assortment && `${c.assortment}`,
+        c.series && `${c.series}`,
+        c.sub_series && `${c.sub_series}`,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     });
   }
 
-  const rank: Record<DuplicateLevel, number> = { certain: 0, likely: 1, possible: 2 };
-  hits.sort((a, b) => rank[a.level] - rank[b.level] || b.score - a.score);
   return hits.slice(0, limit);
 }
 

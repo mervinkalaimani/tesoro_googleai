@@ -1,13 +1,14 @@
 /**
- * What findDuplicates must and must not flag, as asserts.
+ * What findDuplicates must and must not offer, as asserts.
  *
  * Run it:
  *   npx esbuild src/lib/duplicate.selfcheck.ts --bundle --format=esm \
  *     --platform=node --alias:@=./src --outfile=<tmp>/dup.mjs && node <tmp>/dup.mjs
  *
- * The point of the file is the car-number rule: a shared number is no longer
- * evidence of anything, so a casting that agrees on the number and disagrees
- * on the car must come back clean.
+ * The rule under test: brand + car number, OR every one of brand, make, model,
+ * assortment, series, sub-series and car number. Sharing a make and a model is
+ * not a duplicate — that was the bug, and "Porsche 911" returning six
+ * different castings is the case that proved it.
  */
 import { findDuplicates, needsCarNumber, type DuplicateFields } from "@/lib/duplicate";
 import type { CatalogCar } from "@/lib/catalog";
@@ -21,87 +22,111 @@ function ok(cond: boolean, what: string) {
 const entry = (over: Partial<CatalogCar>): CatalogCar =>
   ({
     car_id: Math.random().toString(36).slice(2),
-    brand: "Mini GT",
-    make: "Toyota",
-    model: "Supra",
+    brand: "Hotwheels",
+    make: "Porsche",
+    model: "911",
     variant: "",
     colour: "White",
-    assortment: "Blister",
-    series: "",
-    sub_series: "",
+    assortment: "Premium",
+    series: "Car Culture",
+    sub_series: "Circuit Legends",
     car_number: "",
     year: "2023",
     ...over,
   }) as CatalogCar;
 
 const typed = (over: Partial<DuplicateFields>): DuplicateFields => ({
-  brand: "Mini GT",
-  make: "Toyota",
-  model: "Supra",
-  colour: "White",
-  assortment: "Blister",
-  year: "2023",
+  brand: "Hotwheels",
+  make: "Porsche",
+  model: "911",
+  assortment: "Premium",
+  series: "Car Culture",
+  subSeries: "Circuit Legends",
+  carNumber: "",
   ...over,
 });
 
-// ---------------------------------------------------------------- car number
+// ------------------------------------------------ the six-Porsches complaint
 
-// The whole point. Same brand, same assortment, same number — different car.
-const skyline = entry({ make: "Nissan", model: "Skyline", car_number: "1133" });
 ok(
-  findDuplicates(typed({ carNumber: "1133" }), [skyline]).length === 0,
-  "a shared car number alone must not flag a different casting",
+  findDuplicates(typed({ assortment: "Mainline", series: "", subSeries: "" }), [entry({})])
+    .length === 0,
+  "same make and model but a different assortment is not offered",
 );
 
-// And the number must not promote a match that is otherwise only possible.
-const otherColour = entry({ colour: "Black", assortment: "Box", car_number: "1133" });
-const byNumber = findDuplicates(typed({ carNumber: "1133" }), [otherColour]);
 ok(
-  byNumber.length === 0 || byNumber[0].level === "possible",
-  "car number must not raise a weak match above possible",
+  findDuplicates(typed({ series: "Fast & Furious" }), [entry({})]).length === 0,
+  "a different series is not offered",
 );
 
-// It must not appear in the explanation either, or the reason contradicts the rule.
-const sameNumberSameCar = entry({ car_number: "1133" });
-const explained = findDuplicates(typed({ carNumber: "1133" }), [sameNumberSameCar]);
-ok(explained.length === 1, "the same casting is still found when the number also matches");
 ok(
-  !explained[0].because.toLowerCase().includes("number"),
-  "the reason given must not cite the car number",
+  findDuplicates(typed({ subSeries: "LeMans Set" }), [entry({})]).length === 0,
+  "a different sub-series is not offered",
 );
 
-// Dropping the number changes nothing — that is what "judged as if it had none" means.
-const withNumber = findDuplicates(typed({ carNumber: "1133" }), [sameNumberSameCar]);
-const without = findDuplicates(typed({}), [sameNumberSameCar]);
 ok(
-  withNumber.length === without.length && withNumber[0].level === without[0].level,
-  "a car number must not change the verdict either way",
-);
-
-// ------------------------------------------------------- still catches things
-
-ok(
-  findDuplicates(typed({}), [entry({})])[0].level === "certain",
-  "same make, model, colour, assortment and year is still certain",
+  findDuplicates(typed({}), [entry({ model: "718" })]).length === 0,
+  "a different model is not offered",
 );
 
 ok(
   findDuplicates(typed({}), [entry({ brand: "Majorette" })]).length === 0,
-  "a different brand is never a duplicate",
+  "a different brand is never offered",
 );
+
+// A blank on one side against a value on the other is a difference, not a match.
+ok(
+  findDuplicates(typed({ series: "" }), [entry({ series: "Car Culture" })]).length === 0,
+  "a blank series does not match a filled one",
+);
+
+// ------------------------------------------------------------ what must match
+
+ok(findDuplicates(typed({}), [entry({})]).length === 1, "every field agreeing is offered");
+
+ok(
+  findDuplicates(typed({ series: "", subSeries: "" }), [entry({ series: "", sub_series: "" })])
+    .length === 1,
+  "blank on both sides counts as agreement",
+);
+
+// Brand + number alone, whatever the rest says.
+const numbered = entry({
+  brand: "Mini GT",
+  make: "Nissan",
+  model: "Skyline",
+  assortment: "Box",
+  series: "",
+  sub_series: "",
+  car_number: "1133",
+});
+const byNumber = findDuplicates(
+  typed({ brand: "Mini GT", make: "Toyota", model: "Supra", carNumber: "1133" }),
+  [numbered],
+);
+ok(byNumber.length === 1, "brand and car number agreeing is enough on its own");
+ok(byNumber[0].because.includes("1133"), "and the reason says which number");
+
+ok(
+  findDuplicates(typed({ brand: "Mini GT", carNumber: "1133" }), [
+    entry({ brand: "Majorette", car_number: "1133" }),
+  ]).length === 0,
+  "the same number under another brand is not offered",
+);
+
+// ------------------------------------------------------------------- guards
 
 ok(findDuplicates(typed({ make: "" }), [entry({})]).length === 0, "too little typed to judge yet");
 
-const excluded = entry({});
+const self = entry({});
 ok(
-  findDuplicates(typed({}), [excluded], { excludeCarId: excluded.car_id }).length === 0,
+  findDuplicates(typed({}), [self], { excludeCarId: self.car_id }).length === 0,
   "an entry does not duplicate itself while being edited",
 );
 
 ok(
-  findDuplicates(typed({ colour: "Black" }), [entry({ colour: "White", series: "" })])[0]?.level !==
-    "certain",
-  "a different colour is not certain",
+  findDuplicates(typed({}), [entry({}), entry({}), entry({})], { limit: 2 }).length === 2,
+  "the limit is respected",
 );
 
 // -------------------------------------------------- needsCarNumber untouched
