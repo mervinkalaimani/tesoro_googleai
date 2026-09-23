@@ -776,12 +776,13 @@ function CatalogPage() {
               <p>
                 Every car in everyone&apos;s collection takes the catalogue&apos;s brand, make,
                 model, variant, colour, type, assortment, series, sub-series, car number, size, year
-                and retail price — and its photo.
+                and retail price.
               </p>
               <p>
-                <span className="font-medium text-foreground">Left alone:</span> each person&apos;s
-                status and what they paid, and any photograph they uploaded themselves. Only a
-                missing photo or one still pointing at the catalogue&apos;s own link is refreshed.
+                <span className="font-medium text-foreground">Left alone:</span> every photograph,
+                each person&apos;s status, and what they paid. The catalogue&apos;s photos are not
+                per-casting — one Mini GT shot is filed against 63 entries — so pictures are never
+                copied down.
               </p>
               <p>Pre-order rows also take the catalogue&apos;s expected date.</p>
             </div>
