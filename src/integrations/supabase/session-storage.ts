@@ -1,5 +1,3 @@
-import { brokeredPreviewStorage } from "./previewAuthStorage";
-
 /**
  * Where the auth session is kept, decided by "Remember me".
  *
@@ -8,14 +6,17 @@ import { brokeredPreviewStorage } from "./previewAuthStorage";
  * per sign-in by swapping adapters. This wraps the real one instead and routes
  * each read and write by a flag the login form sets just before signing in.
  *
- * Ticked (the default), the session goes where it always went: localStorage, or
- * the Lovable preview broker when the app is running framed inside the editor.
- * Unticked, it goes to sessionStorage — which the browser discards when the tab
- * closes, so "don't stay signed in" is enforced by the browser rather than by
- * this app remembering to sign out.
- *
- * previewAuthStorage.ts is generated and must not be edited, hence a wrapper.
+ * Ticked (the default), the session goes to localStorage. Unticked, it goes to
+ * sessionStorage — which the browser discards when the tab closes, so "don't
+ * stay signed in" is enforced by the browser rather than by this app
+ * remembering to sign out.
  */
+
+/** Undefined during SSR, where there is no storage to write a session to. */
+function persistentStorage() {
+  if (typeof window === "undefined") return undefined;
+  return window.localStorage;
+}
 
 const REMEMBER_KEY = "dg.rememberSession";
 
@@ -67,7 +68,7 @@ const isOAuthVerifierKey = (k: string) =>
   k.includes("code-verifier") || k.includes("provider") || k.includes("flow-id");
 
 export function rememberAwareStorage() {
-  const persistent = brokeredPreviewStorage();
+  const persistent = persistentStorage();
   if (!persistent) return undefined;
 
   return {

@@ -28,6 +28,8 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as ApiCarImagesRouteImport } from './routes/api/car-images'
 import { Route as ApiCatalogOwnersRouteImport } from './routes/api/catalog-owners'
 import { Route as ApiScanCarRouteImport } from './routes/api/scan-car'
+import { Route as ApiSyncCatalogCarRouteImport } from './routes/api/sync-catalog-car'
+import { Route as ApiSyncImagesRouteImport } from './routes/api/sync-images'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPushConfigRouteImport } from './routes/api/push/config'
 import { Route as ApiPushDecideRouteImport } from './routes/api/push/decide'
@@ -131,6 +133,16 @@ const ApiScanCarRoute = ApiScanCarRouteImport.update({
   path: '/api/scan-car',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiSyncCatalogCarRoute = ApiSyncCatalogCarRouteImport.update({
+  id: '/api/sync-catalog-car',
+  path: '/api/sync-catalog-car',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiSyncImagesRoute = ApiSyncImagesRouteImport.update({
+  id: '/api/sync-images',
+  path: '/api/sync-images',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -178,6 +190,8 @@ export interface FileRoutesByFullPath {
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/catalog-owners': typeof ApiCatalogOwnersRoute
   '/api/scan-car': typeof ApiScanCarRoute
+  '/api/sync-catalog-car': typeof ApiSyncCatalogCarRoute
+  '/api/sync-images': typeof ApiSyncImagesRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
@@ -204,6 +218,8 @@ export interface FileRoutesByTo {
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/catalog-owners': typeof ApiCatalogOwnersRoute
   '/api/scan-car': typeof ApiScanCarRoute
+  '/api/sync-catalog-car': typeof ApiSyncCatalogCarRoute
+  '/api/sync-images': typeof ApiSyncImagesRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
@@ -231,6 +247,8 @@ export interface FileRoutesById {
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/catalog-owners': typeof ApiCatalogOwnersRoute
   '/api/scan-car': typeof ApiScanCarRoute
+  '/api/sync-catalog-car': typeof ApiSyncCatalogCarRoute
+  '/api/sync-images': typeof ApiSyncImagesRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
@@ -259,6 +277,8 @@ export interface FileRouteTypes {
     | '/api/car-images'
     | '/api/catalog-owners'
     | '/api/scan-car'
+    | '/api/sync-catalog-car'
+    | '/api/sync-images'
     | '/.mcp/invoke-tool/$tool'
     | '/api/push/config'
     | '/api/push/decide'
@@ -285,6 +305,8 @@ export interface FileRouteTypes {
     | '/api/car-images'
     | '/api/catalog-owners'
     | '/api/scan-car'
+    | '/api/sync-catalog-car'
+    | '/api/sync-images'
     | '/.mcp/invoke-tool/$tool'
     | '/api/push/config'
     | '/api/push/decide'
@@ -311,6 +333,8 @@ export interface FileRouteTypes {
     | '/api/car-images'
     | '/api/catalog-owners'
     | '/api/scan-car'
+    | '/api/sync-catalog-car'
+    | '/api/sync-images'
     | '/.mcp/invoke-tool/$tool'
     | '/api/push/config'
     | '/api/push/decide'
@@ -338,6 +362,8 @@ export interface RootRouteChildren {
   ApiCarImagesRoute: typeof ApiCarImagesRoute
   ApiCatalogOwnersRoute: typeof ApiCatalogOwnersRoute
   ApiScanCarRoute: typeof ApiScanCarRoute
+  ApiSyncCatalogCarRoute: typeof ApiSyncCatalogCarRoute
+  ApiSyncImagesRoute: typeof ApiSyncImagesRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPushConfigRoute: typeof ApiPushConfigRoute
   ApiPushDecideRoute: typeof ApiPushDecideRoute
@@ -480,6 +506,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiScanCarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sync-catalog-car': {
+      id: '/api/sync-catalog-car'
+      path: '/api/sync-catalog-car'
+      fullPath: '/api/sync-catalog-car'
+      preLoaderRoute: typeof ApiSyncCatalogCarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sync-images': {
+      id: '/api/sync-images'
+      path: '/api/sync-images'
+      fullPath: '/api/sync-images'
+      preLoaderRoute: typeof ApiSyncImagesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -539,6 +579,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCarImagesRoute: ApiCarImagesRoute,
   ApiCatalogOwnersRoute: ApiCatalogOwnersRoute,
   ApiScanCarRoute: ApiScanCarRoute,
+  ApiSyncCatalogCarRoute: ApiSyncCatalogCarRoute,
+  ApiSyncImagesRoute: ApiSyncImagesRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPushConfigRoute: ApiPushConfigRoute,
   ApiPushDecideRoute: ApiPushDecideRoute,

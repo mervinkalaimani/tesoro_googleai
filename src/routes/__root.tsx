@@ -10,7 +10,6 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppProvider } from "@/lib/store";
 import { CarsProvider } from "@/lib/cars-store";
 import { CatalogProvider } from "@/lib/catalog-store";
@@ -65,7 +64,6 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
       return;
     }
     console.error(error);
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error, isModuleError]);
 
   return (
