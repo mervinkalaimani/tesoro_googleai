@@ -61,37 +61,6 @@ export function daysBetween(a: Date, b: Date): number {
   return Math.floor(ms / 86400000);
 }
 
-export function relativeDay(dt: Date, now = new Date()): string {
-  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const b = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
-  const diff = Math.round((a.getTime() - b.getTime()) / 86400000);
-  if (diff === 0) return "Today";
-  if (diff === 1) return "Yesterday";
-  if (diff > 1 && diff < 7) return `${diff} days ago`;
-  return b.toLocaleDateString("en-GB");
-}
-
-export function formatDMY(dt: Date): string {
-  return dt.toLocaleDateString("en-GB");
-}
-
-/**
- * "2027-03-10" -> "10 Mar 2027". Used where a date is read rather than scanned
- * in a column of others, so the month is a word and cannot be misread as the
- * day. Returns "" when there is nothing to parse.
- */
-export function formatDayMonthYear(value: string | Date | null | undefined): string {
-  const dt = value instanceof Date ? value : parseDMY(value);
-  if (!dt) return "";
-  return dt.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-export function addDays(dt: Date, days: number): Date {
-  const d = new Date(dt);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
 export const MONTH_ORDER = [
   "Jan",
   "Feb",
@@ -106,6 +75,41 @@ export const MONTH_ORDER = [
   "Nov",
   "Dec",
 ] as const;
+
+export function relativeDay(dt: Date, now = new Date()): string {
+  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const b = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  const diff = Math.round((a.getTime() - b.getTime()) / 86400000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  if (diff > 1 && diff < 7) return `${diff} days ago`;
+  return formatDayMonthYear(b);
+}
+
+export function formatDMY(dt: Date): string {
+  const d = String(dt.getDate()).padStart(2, "0");
+  const m = MONTH_ORDER[dt.getMonth()];
+  const yy = String(dt.getFullYear()).slice(-2);
+  return `${d}, ${m} '${yy}`;
+}
+
+/**
+ * Format date as "dd, mmm 'yy" (e.g. "22, Sep '26"). Returns "" when nothing to parse.
+ */
+export function formatDayMonthYear(value: string | Date | null | undefined): string {
+  const dt = value instanceof Date ? value : parseDMY(value);
+  if (!dt) return "";
+  const d = String(dt.getDate()).padStart(2, "0");
+  const m = MONTH_ORDER[dt.getMonth()];
+  const yy = String(dt.getFullYear()).slice(-2);
+  return `${d}, ${m} '${yy}`;
+}
+
+export function addDays(dt: Date, days: number): Date {
+  const d = new Date(dt);
+  d.setDate(d.getDate() + days);
+  return d;
+}
 
 /**
  * Flexible month key converter:

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
-import { Search, X, Camera, SlidersHorizontal } from "lucide-react";
+import { Search, X, Camera, Filter } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -216,7 +216,7 @@ export function SearchBox({ className }: { className?: string }) {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
               )}
             >
-              <SlidersHorizontal className="size-4" />
+              <Filter className="size-4" />
             </button>
             <button
               type="button"

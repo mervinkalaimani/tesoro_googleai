@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentControl } from "@/components/segment-control";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
@@ -61,6 +62,7 @@ export function CatalogFormDialog({
   catalog,
   onClose,
   onSave,
+  onAddExistingCar,
   canDelete,
   onDelete,
 }: {
@@ -69,6 +71,7 @@ export function CatalogFormDialog({
   catalog: CatalogCar[];
   onClose: () => void;
   onSave: (car: CatalogCar) => Promise<boolean>;
+  onAddExistingCar?: (car: CatalogCar) => void;
   canDelete?: boolean;
   onDelete?: () => void;
 }) {
@@ -114,6 +117,7 @@ export function CatalogFormDialog({
     pack_size: null,
   });
 
+  const [confirmNotDuplicate, setConfirmNotDuplicate] = useState(false);
   const [saving, setSaving] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
   /** Ranks the suggestion lists, the same way the car form ranks them. */
@@ -150,6 +154,7 @@ export function CatalogFormDialog({
   useEffect(() => {
     if (!open) return;
     setValidationError(null);
+    setConfirmNotDuplicate(false);
     if (entry && entry !== "new") {
       setForm({
         ...entry,
@@ -387,6 +392,17 @@ export function CatalogFormDialog({
     }
     setValidationError(null);
 
+    // Prevent adding duplicate catalogue entries unless user confirms it's a different release
+    if (isNew && duplicates.length > 0 && !confirmNotDuplicate) {
+      toast.error("Duplicate casting detected in catalogue", {
+        description:
+          "Please add the existing car instead, or confirm below that this is a different release.",
+      });
+      const el = document.getElementById("duplicate-confirmation-box");
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
     setSaving(true);
     const car: CatalogCar = isImageOnly
       ? {
@@ -577,7 +593,37 @@ export function CatalogFormDialog({
               {/* Above the fields, not below them: by the time the catalogue
                   already has this casting, the useful moment is before the rest
                   of it is typed out. */}
-              <DuplicateNotice hits={duplicates} />
+              <DuplicateNotice
+                hits={duplicates}
+                onAddThisCar={(c) => {
+                  onClose();
+                  onAddExistingCar?.(c);
+                }}
+              />
+
+              {isNew && duplicates.length > 0 && (
+                <div
+                  id="duplicate-confirmation-box"
+                  className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 space-y-2.5 transition-all"
+                >
+                  <p className="text-xs font-medium text-foreground">
+                    This casting matches an existing catalogue entry. Please click{" "}
+                    <strong>Add this car</strong> above to add the existing car to your collection.
+                    Adding a duplicate entry is blocked unless confirmed below.
+                  </p>
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <Checkbox
+                      id="confirm-not-duplicate"
+                      checked={confirmNotDuplicate}
+                      onCheckedChange={(checked) => setConfirmNotDuplicate(checked === true)}
+                      className="mt-0.5"
+                    />
+                    <span className="text-xs font-semibold text-foreground leading-tight">
+                      I confirm this is not a duplicate entry and is a genuinely different release
+                    </span>
+                  </label>
+                </div>
+              )}
 
               <FormSection
                 title="What the casting is"
@@ -739,7 +785,11 @@ export function CatalogFormDialog({
                   </Button>
                 )}
               </div>
-              <Button type="submit" disabled={saving} className="gap-1.5 font-semibold">
+              <Button
+                type="submit"
+                disabled={saving || (isNew && duplicates.length > 0 && !confirmNotDuplicate)}
+                className="gap-1.5 font-semibold"
+              >
                 {saving ? (
                   <Loader2 className="size-4 animate-spin" />
                 ) : (

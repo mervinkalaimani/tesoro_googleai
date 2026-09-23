@@ -430,8 +430,35 @@ export function CarFormDialog({
     size: form.size,
     rarity: form.rarity,
   };
-  const setCatalogueValue = <K extends keyof CatalogueValues>(k: K, v: CatalogueValues[K]) =>
+  const templateOriginRef = useRef<{
+    colour?: string;
+    variant?: string;
+    make?: string;
+    model?: string;
+    imageUrl?: string;
+  }>({
+    colour: prefill?.colour,
+    variant: prefill?.variant,
+    make: prefill?.make,
+    model: prefill?.model,
+    imageUrl: prefill?.imageUrl,
+  });
+
+  const setCatalogueValue = <K extends keyof CatalogueValues>(k: K, v: CatalogueValues[K]) => {
+    if (
+      k === "colour" &&
+      templateOriginRef.current.colour &&
+      v !== templateOriginRef.current.colour
+    ) {
+      // If user changes colour away from template, clear template image so candidate search can run
+      if (form.imageUrl && form.imageUrl === templateOriginRef.current.imageUrl) {
+        setForm((f) => ({ ...f, imageUrl: "" }));
+        autoImage.current = "";
+        declinedImageKey.current = "";
+      }
+    }
     set(k as keyof CarFormData, v as CarFormData[keyof CarFormData]);
+  };
 
   /** The standard secondary line, so the summary reads like a car anywhere else. */
   const identityLine = carSubLine({
@@ -547,22 +574,30 @@ export function CarFormDialog({
       setRestored(false);
     }
     // A pre-filled open has already answered step one — the casting was chosen,
-    // off a catalogue entry or a pre-order somebody else placed — so it lands on
-    // step two the same way picking one from the search does, with the identity
-    // fields shut because they are already right. Opening on the search box and
-    // asking for a car that is sitting filled in behind it reads as a mistake.
+    // off a catalogue entry or a pre-order. Rows are filled in and identity fields
+    // are kept open so they can be reviewed and edited as needed.
     if (fromPrefill || isClone) {
       setFromCatalogue(true);
-      setShowIdentity(false);
+      setShowIdentity(true);
       setCurrentStep(2);
+      if (prefill) {
+        templateOriginRef.current = {
+          colour: prefill.colour,
+          variant: prefill.variant,
+          make: prefill.make,
+          model: prefill.model,
+          imageUrl: prefill.imageUrl,
+        };
+      }
     } else {
       // Otherwise back to how a fresh dialog starts: a previous pre-filled open
       // must not leave the next by-hand one thinking it came from the catalogue.
       setFromCatalogue(false);
       setShowIdentity(false);
+      templateOriginRef.current = {};
     }
     setDraftReady(true);
-  }, [open, baseline, draftKey, mode, fromPrefill, isClone]);
+  }, [open, baseline, draftKey, mode, fromPrefill, isClone, prefill]);
 
   // The save. Every keystroke lands here, and an untouched form clears the key
   // rather than leaving a draft that says nothing.
@@ -621,6 +656,13 @@ export function CarFormDialog({
    * cost, who sold it and when are this car's own, so they are left alone.
    */
   const applyExisting = (car: CatalogueCar) => {
+    templateOriginRef.current = {
+      colour: car.colour,
+      variant: car.variant,
+      make: car.make,
+      model: car.model,
+      imageUrl: car.imageUrl,
+    };
     setForm((f) => {
       const next = catalogueFields(car, f);
       // What this brand and assortment has cost before, for the entries that
@@ -635,8 +677,8 @@ export function CarFormDialog({
       return { ...next, mrp, spent, paid, balance };
     });
     setValidationError(null);
-    toast.success("Filled from your collection", {
-      description: car.name || `${car.make} ${car.model}`.trim(),
+    toast.success("Filled rows from catalogue", {
+      description: "You can modify any fields (colour, variant, year, etc.) for this car.",
     });
   };
 
@@ -653,13 +695,13 @@ export function CarFormDialog({
   };
 
   /**
-   * Step one, resolved: a catalogue entry fills the casting in and step two asks
-   * what your copy cost. The details stay shut, because they are already right.
+   * Step one, resolved: a catalogue entry fills the rows in as a template.
+   * Identity fields stay open and visible because fields are subjected to change.
    */
   const pickFromCatalogue = (car: CatalogueCar) => {
     applyExisting(car);
     setFromCatalogue(true);
-    setShowIdentity(false);
+    setShowIdentity(true);
     setCurrentStep(2);
   };
 
@@ -1421,7 +1463,7 @@ export function CarFormDialog({
             <p className="mt-2.5 text-[11px] text-muted-foreground">
               {isEdit
                 ? "The casting is shared with everyone who owns one, so it is edited in the catalogue. Only the Car Number can be updated here."
-                : "Open only when the catalogue has it wrong. Editing a coded field regenerates the Catalog ID and repoints every owner's row."}
+                : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalog ID will be assigned."}
             </p>
           </div>
         )}

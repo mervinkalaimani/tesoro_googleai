@@ -11,6 +11,7 @@ import {
   seedCatalogToSupabase,
   extractCatalogFromCars,
   getLocalCatalog,
+  syncUserCarImageToCatalog,
 } from "@/lib/catalog";
 
 export type TesoroRawRow = {
@@ -380,6 +381,9 @@ export async function saveCarToSupabase(
     }
     // Keep tesoro_car_catalog in sync with this car's casting specification
     void saveCatalogCarToSupabase(diecastToCatalogCar(car));
+    if (car.imageUrl) {
+      void syncUserCarImageToCatalog(car, car.imageUrl);
+    }
     return { success: true };
   } catch (err) {
     return { success: false, error: (err as Error).message };

@@ -13,12 +13,14 @@ import type { Diecast } from "@/lib/types";
 import { deriveMonth } from "@/lib/date-utils";
 import { allShippingIdFixes, resyncShippingIds, shippingInputsChanged } from "@/lib/shipping-id";
 import { allOrderIdFixes, orderInputsChanged, resyncOrderIds } from "@/lib/order-id";
-import { assignCarIds } from "@/lib/car-id";
+import { assignCarIds, catalogIdFor } from "@/lib/car-id";
 import { sortCars } from "@/lib/status-order";
 import { canonicaliseSpellings } from "@/lib/canonical-spellings";
 import { useAuth } from "@/lib/auth-store";
 import { makeGuestCars } from "@/lib/guest-seed";
 import { toast } from "sonner";
+import { syncUserCarImageToCatalog } from "@/lib/catalog";
+import { applyCatalogToCar, isCarInstanceOfCatalog, CATALOG_SYNC_EVENT } from "@/lib/catalog-sync";
 import {
   fetchCarsFromSupabase,
   saveCarToSupabase,
@@ -468,6 +470,140 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     };
   }, [loadData]);
 
+  // Real-time auto-sync of car images when catalogue or user cars update
+  useEffect(() => {
+    const handleImageSynced = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.catalogId || !detail?.imageUrl) return;
+      const cleanCatId = String(detail.catalogId).trim().toUpperCase();
+      const newUrl = String(detail.imageUrl).trim();
+
+      setBase((prev) => {
+        let changed = false;
+        const next = prev.map((c) => {
+          const cCatId = (c.catalogId || catalogIdFor(c) || "").trim().toUpperCase();
+          const matchById = cCatId === cleanCatId;
+          const matchByCasting =
+            detail.catalogCar &&
+            c.make &&
+            detail.catalogCar.make &&
+            c.make.toLowerCase() === detail.catalogCar.make.toLowerCase() &&
+            c.model.toLowerCase() === detail.catalogCar.model.toLowerCase();
+
+          if ((matchById || matchByCasting) && c.imageUrl !== newUrl) {
+            changed = true;
+            return { ...c, imageUrl: newUrl };
+          }
+          return c;
+        });
+
+        if (changed) {
+          writeCache(uid, next, Date.now());
+          return next;
+        }
+        return prev;
+      });
+
+      setOverlay((prev) => {
+        let changed = false;
+        const updatedEntries = { ...prev.updated };
+        for (const [id, car] of Object.entries(updatedEntries)) {
+          const cCatId = (car.catalogId || catalogIdFor(car) || "").trim().toUpperCase();
+          if (cCatId === cleanCatId && car.imageUrl !== newUrl) {
+            changed = true;
+            updatedEntries[id] = { ...car, imageUrl: newUrl };
+          }
+        }
+        const nextAdded = prev.added.map((car) => {
+          const cCatId = (car.catalogId || catalogIdFor(car) || "").trim().toUpperCase();
+          if (cCatId === cleanCatId && car.imageUrl !== newUrl) {
+            changed = true;
+            return { ...car, imageUrl: newUrl };
+          }
+          return car;
+        });
+        if (changed) {
+          const next = { ...prev, updated: updatedEntries, added: nextAdded };
+          writeOverlay(uid, next);
+          overlayRef.current = next;
+          return next;
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener("tesoro:image-synced", handleImageSynced);
+    return () => {
+      window.removeEventListener("tesoro:image-synced", handleImageSynced);
+    };
+  }, [uid]);
+
+  // Real-time background sync when any car is edited in the catalogue
+  // Updates all instances of that casting across user collections and pre-orders instantly
+  useEffect(() => {
+    const handleCatalogCarUpdated = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const catalogCar = detail?.catalogCar;
+      if (!catalogCar || !catalogCar.car_id) return;
+
+      setBase((prev) => {
+        let changed = false;
+        const next = prev.map((c) => {
+          if (isCarInstanceOfCatalog(c, catalogCar)) {
+            const { car: updatedCar, changed: carChanged } = applyCatalogToCar(c, catalogCar);
+            if (carChanged) {
+              changed = true;
+              return updatedCar;
+            }
+          }
+          return c;
+        });
+
+        if (changed) {
+          writeCache(uid, next, Date.now());
+          return next;
+        }
+        return prev;
+      });
+
+      setOverlay((prev) => {
+        let changed = false;
+        const updatedEntries = { ...prev.updated };
+        for (const [id, car] of Object.entries(updatedEntries)) {
+          if (isCarInstanceOfCatalog(car, catalogCar)) {
+            const { car: updatedCar, changed: carChanged } = applyCatalogToCar(car, catalogCar);
+            if (carChanged) {
+              changed = true;
+              updatedEntries[id] = updatedCar;
+            }
+          }
+        }
+        const nextAdded = prev.added.map((car) => {
+          if (isCarInstanceOfCatalog(car, catalogCar)) {
+            const { car: updatedCar, changed: carChanged } = applyCatalogToCar(car, catalogCar);
+            if (carChanged) {
+              changed = true;
+              return updatedCar;
+            }
+          }
+          return car;
+        });
+        if (changed) {
+          const next = { ...prev, updated: updatedEntries, added: nextAdded };
+          writeOverlay(uid, next);
+          overlayRef.current = next;
+          return next;
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener(CATALOG_SYNC_EVENT, handleCatalogCarUpdated);
+    return () => {
+      window.removeEventListener(CATALOG_SYNC_EVENT, handleCatalogCarUpdated);
+    };
+  }, [uid]);
+
   const cars = useMemo<Diecast[]>(() => {
     // Spellings are merged here, once, so every page groups "KA Diecast" and
     // "KA diecast" together without having to know that they might differ.
@@ -604,6 +740,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       const prev = overlayRef.current;
       commit(applyRows({ ...prev, added: [next, ...prev.added] }, written.slice(1)));
       void persist(written, "addCar");
+      if (next.imageUrl) void syncUserCarImageToCatalog(next, next.imageUrl);
       return next;
     },
     [commit, cars, persist, pushUndo],
@@ -638,6 +775,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // Previously omitted entirely, so a bulk import lived in localStorage and
       // nowhere else.
       void persist(written, "bulkAddCars");
+      for (const c of fresh) {
+        if (c.imageUrl) void syncUserCarImageToCatalog(c, c.imageUrl);
+      }
       return fresh;
     },
     [commit, persist, cars, pushUndo],
@@ -670,6 +810,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
       commit(applyRows(overlayRef.current, written));
       void persist(written, "updateCar");
+      if (car.imageUrl) void syncUserCarImageToCatalog(car, car.imageUrl);
     },
     [commit, cars, persist, pushUndo],
   );
@@ -696,6 +837,9 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       ]);
       commitCars(written);
       void persist(written, "bulkUpdate");
+      for (const c of written) {
+        if (c.imageUrl) void syncUserCarImageToCatalog(c, c.imageUrl);
+      }
     },
     [commitCars, persist, cars, pushUndo],
   );

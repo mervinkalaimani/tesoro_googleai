@@ -16,7 +16,6 @@ import {
   Car as CarIcon,
   SwitchCamera,
   Keyboard,
-  SlidersHorizontal,
   Loader2,
 } from "lucide-react";
 import {

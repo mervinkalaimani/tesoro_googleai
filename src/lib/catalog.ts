@@ -11,6 +11,7 @@ import {
   type CatalogCodeRow,
 } from "@/lib/car-id";
 import rawDiecastData from "@/data/diecast.json";
+import { syncCatalogCarToUserCars } from "@/lib/catalog-sync";
 
 export type CatalogCar = {
   car_id: string;
@@ -441,6 +442,13 @@ export async function saveCatalogCarToSupabase(
       return { success: false, error: error.message };
     }
 
+    // Auto-sync casting data to all users' cars and pre-orders
+    if (overwrite) {
+      void syncCatalogCarToUserCars(catalogCar);
+    } else if (catalogCar.image_url !== undefined) {
+      void syncCatalogImageToCars(catalogCar);
+    }
+
     // What actually landed, so the list can show the new "Updated by" without
     // waiting for the next fetch to tell it something it already knows.
     return {
@@ -454,6 +462,132 @@ export async function saveCatalogCarToSupabase(
     };
   } catch (err) {
     return { success: false, error: (err as Error).message };
+  }
+}
+
+/**
+ * Automatically syncs an image from the catalogue to all cars belonging to that casting
+ * across users' collections and the database.
+ */
+export async function syncCatalogImageToCars(catalogCar: CatalogCar): Promise<void> {
+  const imageUrl = catalogCar.image_url?.trim() || null;
+  const catalogId = catalogCar.car_id.trim();
+  if (!catalogId) return;
+
+  // 1. Notify client-side stores instantly
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("tesoro:image-synced", {
+        detail: {
+          catalogId,
+          imageUrl,
+          catalogCar,
+          source: "catalog",
+        },
+      }),
+    );
+  }
+
+  // 2. Direct Supabase update to tesoro_raw (table for user cars)
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("tesoro_raw") as any)
+      .update({ "Image URL": imageUrl })
+      .or(`"Catalog ID".ilike.${catalogId},"Car ID".ilike.${catalogId}`);
+  } catch (e) {
+    console.warn("Direct tesoro_raw sync warning:", e);
+  }
+
+  // 3. Invoke backend endpoint to ensure service-role execution across all user collections
+  try {
+    void fetch("/api/sync-images", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        catalog_id: catalogId,
+        image_url: imageUrl,
+        source: "catalog",
+        make: catalogCar.make,
+        model: catalogCar.model,
+        variant: catalogCar.variant,
+        series: catalogCar.series,
+      }),
+    }).catch(() => {});
+  } catch {
+    // Non-blocking
+  }
+}
+
+/**
+ * Automatically syncs an image from a user's car to the shared catalogue and
+ * other cars of that casting.
+ */
+export async function syncUserCarImageToCatalog(car: Diecast, imageUrl: string): Promise<void> {
+  const cleanImage = imageUrl?.trim() || null;
+  if (!cleanImage) return;
+
+  const catalogId = (car.catalogId || catalogIdFor(car) || "").trim();
+  if (!catalogId) return;
+
+  // 1. Update local catalogue cache immediately
+  const local = getLocalCatalog();
+  const idx = local.findIndex((c) => c.car_id.toUpperCase() === catalogId.toUpperCase());
+  if (idx >= 0) {
+    local[idx] = { ...local[idx], image_url: cleanImage, updated_at: new Date().toISOString() };
+    saveLocalCatalog(local);
+  }
+
+  // 2. Notify client-side stores instantly
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(
+      new CustomEvent("tesoro:image-synced", {
+        detail: {
+          catalogId,
+          imageUrl: cleanImage,
+          car,
+          source: "user_car",
+        },
+      }),
+    );
+  }
+
+  // 3. Update tesoro_car_catalog in Supabase
+  try {
+    await supabase
+      .from("tesoro_car_catalog")
+      .update({ image_url: cleanImage, updated_at: new Date().toISOString() })
+      .eq("car_id", catalogId);
+  } catch (e) {
+    console.warn("Supabase tesoro_car_catalog image update warning:", e);
+  }
+
+  // 4. Update other copies in tesoro_raw
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase.from("tesoro_raw") as any)
+      .update({ "Image URL": cleanImage })
+      .or(`"Catalog ID".ilike.${catalogId},"Car ID".ilike.${catalogId}`);
+  } catch (e) {
+    console.warn("Supabase tesoro_raw sync warning:", e);
+  }
+
+  // 5. Invoke backend endpoint for cross-user persistence
+  try {
+    void fetch("/api/sync-images", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        catalog_id: catalogId,
+        image_url: cleanImage,
+        source: "user_car",
+        make: car.make,
+        model: car.model,
+        variant: car.variant,
+        series: car.series,
+      }),
+    }).catch(() => {});
+  } catch {
+    // Non-blocking
   }
 }
 
@@ -832,16 +966,22 @@ export function isCarMatchingCatalog(
 ): boolean {
   if (!c || !catalogCar) return false;
 
-  // 1. Direct ID matches
+  // 1. Direct ID matches (unless colour or variant explicitly conflict)
   const catId = (catalogCar.car_id || "").trim().toUpperCase();
   if (catId) {
-    if ((c.catalogId || "").trim().toUpperCase() === catId) return true;
-    if ((c.id || "").trim().toUpperCase() === catId) return true;
-    if ((c.carId || "").trim().toUpperCase() === catId) return true;
-    try {
-      if (catalogIdFor(c).toUpperCase() === catId) return true;
-    } catch {
-      // ignore
+    const cCol = (c.colour || "").trim().toLowerCase();
+    const catCol = (catalogCar.colour || "").trim().toLowerCase();
+    const colorsConflict = Boolean(cCol && catCol && cCol !== catCol);
+
+    if (!colorsConflict) {
+      if ((c.catalogId || "").trim().toUpperCase() === catId) return true;
+      if ((c.id || "").trim().toUpperCase() === catId) return true;
+      if ((c.carId || "").trim().toUpperCase() === catId) return true;
+      try {
+        if (catalogIdFor(c).toUpperCase() === catId) return true;
+      } catch {
+        // ignore
+      }
     }
   }
 

@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowDownUp,
+  ArrowUpDown,
   Check,
+  Filter,
   Layers,
   Loader2,
   Merge,
   Package,
   Pencil,
   Plus,
-  SlidersHorizontal,
   Store,
   Trash2,
 } from "lucide-react";
@@ -546,7 +546,7 @@ function CatalogPage() {
         </PageHeading>
 
         <PageToolbar
-          sticky={false}
+          sticky={true}
           oneLine
           left={
             <SegmentControl
@@ -595,7 +595,7 @@ function CatalogPage() {
                     }`}
                     title="Sort"
                   >
-                    <ArrowDownUp className="size-4" />
+                    <ArrowUpDown className="size-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
@@ -649,7 +649,7 @@ function CatalogPage() {
                 title="Filter castings"
                 aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : "Filters"}
               >
-                <SlidersHorizontal className="size-4" />
+                <Filter className="size-4" />
                 {activeCount > 0 && (
                   <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground ring-1 ring-border">
                     {activeCount}
@@ -742,6 +742,10 @@ function CatalogPage() {
           entry={editing}
           catalog={catalog}
           onClose={() => setEditing(null)}
+          onAddExistingCar={(car) => {
+            setEditing(null);
+            setAdding(car);
+          }}
           canDelete={isOwner && !isGuest}
           onDelete={() => {
             if (editing && editing !== "new") {
@@ -769,7 +773,7 @@ function CatalogPage() {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border/80 px-4 py-3.5 shrink-0">
             <div className="flex items-center gap-2">
-              <SlidersHorizontal className="size-4 text-primary" />
+              <Filter className="size-4 text-primary" />
               <DialogTitle className="text-base font-bold text-foreground">Filters</DialogTitle>
               {draftActiveCount > 0 && (
                 <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
@@ -1005,7 +1009,7 @@ function CatalogTable({
       </div>
 
       {/* Desktop: clean table matching inventory */}
-      <div className="card-elevated hidden overflow-x-auto md:block">
+      <div className="card-elevated hidden overflow-x-auto md:block max-h-[calc(100vh-10.5rem)] overflow-y-auto">
         <table className="w-full min-w-[54rem] table-fixed text-sm">
           <colgroup>
             <col className="w-[4rem]" />
@@ -1017,7 +1021,7 @@ function CatalogTable({
             <col className="w-[7.5rem]" />
             <col className="w-[7rem]" />
           </colgroup>
-          <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur-xs text-left text-xs uppercase tracking-wide text-muted-foreground shadow-xs">
             <tr>
               <th className="px-3 py-2.5 text-right font-medium">S.No</th>
               <th className="px-3 py-2.5 font-medium">Casting</th>

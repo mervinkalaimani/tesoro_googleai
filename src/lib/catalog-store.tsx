@@ -8,7 +8,13 @@ import {
   fetchPackMembers,
   savePackMembers,
   diecastToCatalogCar,
+  saveLocalCatalog,
 } from "@/lib/catalog";
+import {
+  startCatalogRealtimeListener,
+  syncCatalogCarToUserCars,
+  CATALOG_SYNC_EVENT,
+} from "@/lib/catalog-sync";
 import { findCatalogEntry, type CarIdFields } from "@/lib/car-id";
 import type { Diecast } from "@/lib/types";
 import { toast } from "sonner";
@@ -60,6 +66,89 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     void refreshCatalog();
   }, [refreshCatalog]);
 
+  useEffect(() => {
+    // Start real-time Supabase subscription on tesoro_car_catalog
+    const unsubscribe = startCatalogRealtimeListener((updatedCar) => {
+      setCatalog((prev) => {
+        const cleanId = updatedCar.car_id.trim().toUpperCase();
+        const idx = prev.findIndex((c) => c.car_id.trim().toUpperCase() === cleanId);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...updatedCar };
+          saveLocalCatalog(next);
+          return next;
+        }
+        const next = [updatedCar, ...prev];
+        saveLocalCatalog(next);
+        return next;
+      });
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleCatalogCarUpdated = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const updatedCar = detail?.catalogCar as CatalogCar | undefined;
+      if (!updatedCar?.car_id) return;
+      const cleanId = updatedCar.car_id.trim().toUpperCase();
+
+      setCatalog((prev) => {
+        let changed = false;
+        const next = prev.map((c) => {
+          if (c.car_id.trim().toUpperCase() === cleanId) {
+            changed = true;
+            return { ...c, ...updatedCar };
+          }
+          return c;
+        });
+        if (changed) {
+          saveLocalCatalog(next);
+          return next;
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener(CATALOG_SYNC_EVENT, handleCatalogCarUpdated);
+    return () => {
+      window.removeEventListener(CATALOG_SYNC_EVENT, handleCatalogCarUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleImageSynced = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.catalogId || !detail?.imageUrl) return;
+      const cleanCatId = String(detail.catalogId).trim().toUpperCase();
+      const newUrl = String(detail.imageUrl).trim();
+
+      setCatalog((prev) => {
+        let changed = false;
+        const next = prev.map((c) => {
+          if (c.car_id.toUpperCase() === cleanCatId && c.image_url !== newUrl) {
+            changed = true;
+            return { ...c, image_url: newUrl, updated_at: new Date().toISOString() };
+          }
+          return c;
+        });
+        if (changed) {
+          saveLocalCatalog(next);
+          return next;
+        }
+        return prev;
+      });
+    };
+
+    window.addEventListener("tesoro:image-synced", handleImageSynced);
+    return () => {
+      window.removeEventListener("tesoro:image-synced", handleImageSynced);
+    };
+  }, []);
+
   const writeCatalogCar = useCallback(async (car: CatalogCar, overwrite: boolean) => {
     const res = await saveCatalogCarToSupabase(car, { overwrite });
     if (res.success) {
@@ -70,10 +159,19 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
         if (idx >= 0) {
           const next = [...prev];
           next[idx] = stored;
+          saveLocalCatalog(next);
           return next;
         }
-        return [stored, ...prev];
+        const next = [stored, ...prev];
+        saveLocalCatalog(next);
+        return next;
       });
+
+      // Instantly propagate catalogue edits to all user collections and pre-orders
+      if (overwrite) {
+        void syncCatalogCarToUserCars(stored);
+      }
+
       return true;
     } else {
       toast.error(`Could not save to catalog: ${res.error || "Unknown error"}`);

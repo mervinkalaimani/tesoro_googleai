@@ -135,45 +135,6 @@ export function CarListCard({
   copiesExpanded?: boolean;
   onToggleCopies?: () => void;
 }) {
-  if (variant === "collection") {
-    const subParts = [car.assortment, car.series, car.subSeries, car.carNumber || car.caseNumber]
-      .map((v) => String(v ?? "").trim())
-      .filter(Boolean);
-    const sub = subParts.length > 0 ? subParts.join(" · ") : carSubLine(car);
-
-    return (
-      <article className="card-elevated overflow-hidden">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="block w-full px-2.5 py-1.5 text-left transition-colors hover:bg-muted/30"
-        >
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate text-xs sm:text-sm font-semibold text-foreground">
-                {car.name || "—"}
-              </span>
-              <CarBadges car={car} primary={badgePrimary} />
-            </span>
-            <span className="shrink-0 text-xs font-semibold text-muted-foreground">
-              {car.brand || "—"}
-            </span>
-          </div>
-          <div className="mt-0.5 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-            <span className="truncate">{sub}</span>
-            {car.seller && <span className="shrink-0 truncate">{car.seller}</span>}
-          </div>
-        </button>
-
-        {actions && (
-          <div className="flex items-center justify-end gap-0.5 border-t border-border/60 px-2 py-1">
-            {actions}
-          </div>
-        )}
-      </article>
-    );
-  }
-
   const pay = paymentStatusText(car) ?? advanceText(car);
   const spent = car.spent || 0;
   const mrp = showMrp ? car.mrp || 0 : 0;
@@ -288,19 +249,15 @@ export function CarsTable({
         )}
       </div>
 
-      <div className="hidden h-full w-full overflow-auto md:block">
+      <div className="hidden h-full w-full overflow-auto max-h-[calc(100vh-10.5rem)] md:block">
         <table className="w-full table-fixed text-sm">
           <colgroup>
             <col />
             <col className="w-[9rem] md:w-[11rem]" />
             <col className="hidden w-[8rem] md:table-column" />
             <col className="hidden w-[9rem] md:table-column" />
-            {variant !== "collection" && (
-              <>
-                <col className="w-[7rem] md:w-[8rem]" />
-                <col className="w-[7rem] md:w-[8rem]" />
-              </>
-            )}
+            <col className="w-[7rem] md:w-[8rem]" />
+            <col className="w-[7rem] md:w-[8rem]" />
             {showBadgeCol && <col className="w-[7.5rem]" />}
           </colgroup>
           {/* z-[1], not z-10: enough to stay over the rows it heads, and below
@@ -311,12 +268,8 @@ export function CarsTable({
               <th className="px-3 py-2.5 font-medium md:px-4">Brand / Assortment</th>
               <th className="hidden px-4 py-2.5 font-medium md:table-cell">Colour</th>
               <th className="hidden px-4 py-2.5 font-medium md:table-cell">Seller</th>
-              {variant !== "collection" && (
-                <>
-                  <th className="px-3 py-2.5 text-right font-medium md:px-4">Cost</th>
-                  <th className="px-3 py-2.5 font-medium md:px-4">Status</th>
-                </>
-              )}
+              <th className="px-3 py-2.5 text-right font-medium md:px-4">Cost</th>
+              <th className="px-3 py-2.5 font-medium md:px-4">Status</th>
               {showBadgeCol && <th className="px-3 py-2.5 font-medium md:px-4"></th>}
             </tr>
           </thead>
@@ -345,21 +298,15 @@ export function CarsTable({
                   <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
                     {r.seller || "—"}
                   </td>
-                  {variant !== "collection" && (
-                    <>
-                      <td className="px-3 py-2.5 md:px-4">
-                        <CostCell car={r} showMrp={showMrp} />
-                      </td>
-                      <td className="px-3 py-2.5 md:px-4">
-                        <StatusPill status={r.status} />
-                        {pay && (
-                          <div className="mt-1 truncate text-[11px] text-muted-foreground">
-                            {pay}
-                          </div>
-                        )}
-                      </td>
-                    </>
-                  )}
+                  <td className="px-3 py-2.5 md:px-4">
+                    <CostCell car={r} showMrp={showMrp} />
+                  </td>
+                  <td className="px-3 py-2.5 md:px-4">
+                    <StatusPill status={r.status} />
+                    {pay && (
+                      <div className="mt-1 truncate text-[11px] text-muted-foreground">{pay}</div>
+                    )}
+                  </td>
                   {showBadgeCol && (
                     <td className="px-3 py-2.5 md:px-4">
                       <CarBadges car={r} primary={badgePrimary} />

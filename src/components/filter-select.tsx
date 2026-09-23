@@ -70,11 +70,7 @@ export function SortSelect<T extends string>({
           className,
         )}
       >
-        {isSet ? (
-          <Arrow className="size-3.5 shrink-0" />
-        ) : (
-          <ArrowUpDown className="size-3.5 shrink-0" />
-        )}
+        <ArrowUpDown className="size-3.5 shrink-0" />
         <span
           className={cn(
             "min-w-0 truncate text-xs",

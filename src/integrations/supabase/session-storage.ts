@@ -63,12 +63,26 @@ const session = {
   },
 };
 
+const isOAuthVerifierKey = (k: string) =>
+  k.includes("code-verifier") || k.includes("provider") || k.includes("flow-id");
+
 export function rememberAwareStorage() {
   const persistent = brokeredPreviewStorage();
   if (!persistent) return undefined;
 
   return {
     getItem: async (key: string) => {
+      // PKCE verifiers are temporary handshake keys; check localStorage first to ensure
+      // redirects across different contexts (framed/unframed, new tabs, popups) never drop them.
+      if (isOAuthVerifierKey(key) && typeof window !== "undefined") {
+        try {
+          const direct = window.localStorage.getItem(key);
+          if (direct !== null) return direct;
+        } catch {
+          /* ignore storage access restriction */
+        }
+      }
+
       // Checked first regardless of the current flag: a session written while
       // the box was unticked has to keep working for the life of the tab, even
       // if the preference is changed underneath it.
@@ -77,6 +91,16 @@ export function rememberAwareStorage() {
       return await persistent.getItem(key);
     },
     setItem: async (key: string, value: string) => {
+      // Always store OAuth PKCE verifiers in standard localStorage so full-window OAuth
+      // redirects return with the verifier intact regardless of "remember me" state.
+      if (isOAuthVerifierKey(key) && typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(key, value);
+        } catch {
+          /* ignore storage write restriction */
+        }
+      }
+
       if (rememberSession()) {
         session.remove(key);
         return await persistent.setItem(key, value);
@@ -87,6 +111,13 @@ export function rememberAwareStorage() {
       return await persistent.removeItem(key);
     },
     removeItem: async (key: string) => {
+      if (isOAuthVerifierKey(key) && typeof window !== "undefined") {
+        try {
+          window.localStorage.removeItem(key);
+        } catch {
+          /* ignore storage removal restriction */
+        }
+      }
       session.remove(key);
       return await persistent.removeItem(key);
     },

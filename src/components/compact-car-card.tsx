@@ -100,7 +100,9 @@ export function CompactCarCard({
           {title}
         </div>
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
-          <span className="truncate text-[10px] text-muted-foreground">{car.brand || "—"}</span>
+          <span className="truncate text-[10px] text-muted-foreground">
+            {[car.status, car.brand].filter(Boolean).join(" · ") || "—"}
+          </span>
           <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
             {car.spent ? inr(car.spent) : "—"}
           </span>

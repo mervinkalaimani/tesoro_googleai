@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 export function SegmentControl<T extends string>({
@@ -27,16 +28,27 @@ export function SegmentControl<T extends string>({
    */
   fill?: boolean;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const activeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // When value changes, scroll active item into view horizontally
+  useEffect(() => {
+    if (activeBtnRef.current && containerRef.current) {
+      activeBtnRef.current.scrollIntoView({
+        behavior: "smooth",
+        inline: "nearest",
+        block: "nearest",
+      });
+    }
+  }, [value]);
+
   return (
     <div
+      ref={containerRef}
       className={cn(
-        // max-w-full + overflow-x-auto keep a long set of options inside the
-        // card instead of pushing past its edge: Collection has seven, which is
-        // wider than a phone. Without `fill` the options never shrink, so the
-        // control scrolls rather than squashing its labels; with it they share
-        // the width and truncate, which is what a form field wants.
-        "min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto rounded-md border border-border bg-muted/40 p-0.5 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
-        fill ? "flex w-full" : "inline-flex",
+        // Flow strictly left and right: flex-nowrap, whitespace-nowrap, overflow-y-hidden, touch-pan-x
+        "flex flex-nowrap min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto overflow-y-hidden whitespace-nowrap touch-pan-x overscroll-x-contain rounded-md border border-border bg-muted/40 p-0.5 text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        fill ? "w-full" : "inline-flex w-auto",
         disabled && "pointer-events-none opacity-50",
         className,
       )}
@@ -46,17 +58,15 @@ export function SegmentControl<T extends string>({
         return (
           <button
             key={o.value}
+            ref={active ? activeBtnRef : undefined}
             type="button"
             disabled={disabled}
             onClick={() => onChange(clearable && active ? ("" as T) : o.value)}
             className={cn(
-              // min-w-0 + truncate keep a long label from stretching its cell:
-              // in a grid the columns are equal, so one wide option would
-              // otherwise widen every other one with it.
-              "min-w-0 h-7 inline-flex items-center justify-center snap-start truncate rounded-[6px] px-2.5 text-center font-medium leading-none transition-colors",
-              fill ? "flex-1 basis-0" : "shrink-0",
+              "h-7 shrink-0 inline-flex items-center justify-center whitespace-nowrap snap-start select-none rounded-[6px] px-2.5 text-center font-medium leading-none transition-colors",
+              fill ? "flex-1 basis-0" : "",
               active
-                ? "bg-background text-foreground shadow-xs"
+                ? "bg-background text-foreground shadow-xs font-semibold"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >

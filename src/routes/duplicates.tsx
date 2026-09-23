@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronDown, Copy, Download, X } from "lucide-react";
+import { ChevronDown, Copy, Share2, X } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -222,7 +222,7 @@ function DuplicatesPage() {
             aria-label="Export the duplicates"
             className="h-8 px-2.5 shrink-0"
           >
-            <Download className="size-3.5" />
+            <Share2 className="size-3.5" />
             <span className="hidden sm:inline text-xs font-medium">Export</span>
           </Button>
         }

@@ -155,8 +155,14 @@ function friendlyAuthError(message: string): string {
   if (m.includes("provider is not enabled") || m.includes("unsupported provider")) {
     return "That sign-in provider isn't switched on for this project yet. Enable it in Supabase → Authentication → Sign In / Providers.";
   }
-  if (m.includes("redirect") && m.includes("not allowed")) {
-    return "This address isn't on the project's allowed redirect list. Add it in Supabase → Authentication → URL Configuration.";
+  if (m.includes("redirect") && (m.includes("not allowed") || m.includes("mismatch"))) {
+    return "This address isn't on the project's allowed redirect list. Add it in Supabase → Authentication → URL Configuration (and check Google Cloud Console Authorized Redirect URIs).";
+  }
+  if (m.includes("database error saving new user") || m.includes("database error")) {
+    return "Could not complete provider sign-in: an account with this email may already exist with another sign-in method, or the new user database trigger encountered an error.";
+  }
+  if (m.includes("bad_code_verifier") || m.includes("code_verifier")) {
+    return "The sign-in code verifier expired or did not match. Please try signing in again.";
   }
   if (m.includes("invalid phone")) {
     return "That doesn't look like a valid phone number. Include the country code, e.g. +91 98765 43210.";
@@ -280,22 +286,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadProfile = useCallback(async (userId: string) => {
-    // The role lives on the profile row itself; RLS pins is_admin/is_approved
-    // so a user cannot raise their own privileges by editing it.
-    const { data, error } = await supabase
-      .from("tesoro_users")
-      .select("*")
-      .eq("auth_uid", userId)
-      .maybeSingle();
+    // A fresh OAuth signup creates the profile row via a Postgres trigger (handle_new_user).
+    // Allow up to 3 attempts with brief delays in case of slight database trigger lag.
+    let row: Profile | null = null;
+    let attempts = 0;
 
-    if (error && isMissingSchema(error.code, error.message)) {
-      setSchemaMissing(true);
-      setProfile(null);
-      setIsAdmin(false);
-      return;
+    while (attempts < 3) {
+      attempts++;
+      const { data, error } = await supabase
+        .from("tesoro_users")
+        .select("*")
+        .eq("auth_uid", userId)
+        .maybeSingle();
+
+      if (error && isMissingSchema(error.code, error.message)) {
+        setSchemaMissing(true);
+        setProfile(null);
+        setIsAdmin(false);
+        return;
+      }
+
+      if (data) {
+        row = data as Profile;
+        break;
+      }
+
+      if (attempts < 3) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
     }
 
-    const row = (data as Profile | null) ?? null;
     setSchemaMissing(false);
     setProfile(row);
     // Whose profile is now in hand, so the listener can tell a refreshed token
@@ -311,10 +331,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    // On mount, while the URL is still the one Supabase returned to. supabase-js
-    // leaves an error in place (it only clears a successful hash), and the guard
-    // cannot navigate away until getSession below has resolved.
+    // On mount, while the URL is still the one Supabase returned to.
     captureOAuthError();
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const authCode = searchParams.get("code");
+    const hasHashToken =
+      typeof window !== "undefined" && window.location.hash.includes("access_token");
+    const isOAuthPending = Boolean(authCode || hasHashToken);
+
+    // If returning from OAuth, ensure the splash/resolving state remains up
+    // so AuthGate does not instantly kick the visitor to /login before the token exchange finishes.
+    if (isOAuthPending) {
+      setResolving(true);
+    }
 
     // Register the listener before the initial getSession so a token refreshed
     // mid-flight is not missed.
@@ -325,6 +355,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
 
       if (!nextSession?.user) {
+        // If an OAuth code or hash token is waiting to be processed, do not prematurely
+        // resolve to signed-out during the initial empty storage check.
+        if (isOAuthPending && !settledOnce.current) {
+          return;
+        }
+
         setProfile(null);
         setIsAdmin(false);
         loadedFor.current = null;
@@ -361,20 +397,76 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, 0);
     });
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!active) return;
-      setSession(data.session);
-      if (!data.session?.user) {
-        settledOnce.current = true;
-        setResolving(false);
-        return;
+    (async () => {
+      // If returning with an OAuth code, explicitly exchange it for a session.
+      if (authCode) {
+        setResolving(true);
+        try {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(authCode);
+          if (!active) return;
+
+          if (data?.session?.user) {
+            setSession(data.session);
+            const cleanUrl = window.location.pathname + (window.location.hash || "");
+            window.history.replaceState(null, "", cleanUrl);
+            await loadProfile(data.session.user.id);
+            settledOnce.current = true;
+            setResolving(false);
+            return;
+          }
+
+          if (error) {
+            console.warn(
+              "exchangeCodeForSession returned an error, checking active session:",
+              error,
+            );
+            // In case Supabase client internal initialize already exchanged it concurrently:
+            const { data: sessionData } = await supabase.auth.getSession();
+            if (sessionData?.session?.user) {
+              setSession(sessionData.session);
+              const cleanUrl = window.location.pathname + (window.location.hash || "");
+              window.history.replaceState(null, "", cleanUrl);
+              await loadProfile(sessionData.session.user.id);
+              settledOnce.current = true;
+              setResolving(false);
+              return;
+            }
+
+            try {
+              sessionStorage.setItem(OAUTH_ERROR_KEY, friendlyAuthError(error.message));
+            } catch {
+              /* ignore sessionStorage restriction */
+            }
+            window.history.replaceState(null, "", window.location.pathname);
+            settledOnce.current = true;
+            setResolving(false);
+            return;
+          }
+        } catch (err: unknown) {
+          console.error("Error exchanging code for session:", err);
+        }
       }
-      loadProfile(data.session.user.id).finally(() => {
+
+      // Standard session retrieval from storage
+      try {
+        const { data } = await supabase.auth.getSession();
         if (!active) return;
-        settledOnce.current = true;
-        setResolving(false);
-      });
-    });
+        setSession(data?.session ?? null);
+        if (!data?.session?.user) {
+          settledOnce.current = true;
+          setResolving(false);
+          return;
+        }
+        await loadProfile(data.session.user.id);
+      } catch (err: unknown) {
+        console.error("Error fetching session:", err);
+      } finally {
+        if (active) {
+          settledOnce.current = true;
+          setResolving(false);
+        }
+      }
+    })();
 
     return () => {
       active = false;
@@ -460,7 +552,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithProvider = useCallback(async (provider: OAuthProvider): Promise<AuthResult> => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/` },
+      options: {
+        redirectTo: `${window.location.origin}/`,
+        queryParams:
+          provider === "google" ? { access_type: "offline", prompt: "select_account" } : undefined,
+      },
     });
     return error ? { ok: false, error: friendlyAuthError(error.message) } : { ok: true };
   }, []);

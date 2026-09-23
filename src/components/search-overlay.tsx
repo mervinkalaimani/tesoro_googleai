@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useRouterState } from "@tanstack/react-router";
-import { ArrowUpRight, Camera, Car as CarIcon, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowUpRight, Camera, Car as CarIcon, Filter, Search, X } from "lucide-react";
 
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
@@ -170,7 +170,7 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <SlidersHorizontal className="size-[18px]" />
+                <Filter className="size-[18px]" />
               </button>
               <button
                 type="button"

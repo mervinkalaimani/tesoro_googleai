@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Filter, Search, X } from "lucide-react";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
@@ -13,18 +13,27 @@ import { CarFormDialog } from "@/components/car-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { useRegisterExportScope } from "@/lib/export-scope";
-import { inr, mrpRatio } from "@/lib/format";
+import { inr, mrpRatio, formatDayMonthYear } from "@/lib/format";
 import { sortCars } from "@/lib/status-order";
 import { STATUSES, normaliseStatus } from "@/lib/status";
 import { groupCopies } from "@/lib/copies";
 import { CopiesBadge } from "@/components/copies-badge";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
-import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
+import { SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { carSubLine } from "@/lib/car-subline";
 import { toDateInputValue } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 export const Route = createFileRoute("/inventory")({
   head: () => ({
@@ -63,31 +72,185 @@ function countBy(items: Diecast[], key: (r: Diecast) => string) {
     .sort((a, b) => b.value - a.value);
 }
 
-function decadeOf(r: Diecast) {
-  const y = Number(r.year);
-  if (!Number.isFinite(y) || y < 1000) return "";
-  return `${Math.floor(y / 10) * 10}s`;
-}
-
 const FILTERS = [
-  { key: "brand", label: "Brand", get: (r: Diecast) => r.brand },
-  { key: "type", label: "Type", get: (r: Diecast) => r.type },
-  { key: "colour", label: "Colour", get: (r: Diecast) => r.colour },
-  { key: "decade", label: "Decade", get: decadeOf },
-  { key: "size", label: "Size", get: (r: Diecast) => r.size },
-  { key: "seller", label: "Seller", get: (r: Diecast) => r.seller },
+  { key: "make", label: "Make", get: (r: Diecast) => r.make || "" },
+  { key: "model", label: "Model", get: (r: Diecast) => r.model || "" },
+  { key: "brand", label: "Brand", get: (r: Diecast) => r.brand || "" },
+  { key: "assortment", label: "Assortment", get: (r: Diecast) => r.assortment || "" },
+  { key: "seller", label: "Seller", get: (r: Diecast) => r.seller || "" },
 ] as const;
 
 type FilterKey = (typeof FILTERS)[number]["key"];
 
 const EMPTY_FILTERS: Record<FilterKey, string> = {
+  make: "all",
+  model: "all",
   brand: "all",
-  type: "all",
-  colour: "all",
-  decade: "all",
-  size: "all",
+  assortment: "all",
   seller: "all",
 };
+
+function ToggleChip({
+  label,
+  active,
+  onToggle,
+  icon,
+}: {
+  label: string;
+  active: boolean;
+  onToggle: () => void;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      className={cn(
+        "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap outline-none",
+        active
+          ? "border border-primary/50 bg-primary text-primary-foreground font-semibold shadow-xs"
+          : "border border-border/80 bg-background/90 text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+      )}
+    >
+      {icon}
+      <span>{label}</span>
+      {active && (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggle();
+          }}
+          className="grid size-3.5 place-items-center rounded-full hover:bg-primary-foreground/20 text-primary-foreground ml-0.5"
+          title={`Remove ${label}`}
+        >
+          <X className="size-2.5" />
+        </span>
+      )}
+    </button>
+  );
+}
+
+function FilterChipDropdown({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { name: string; value: number }[];
+  onChange: (next: string) => void;
+}) {
+  const isSelected = value !== "all";
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase();
+    return options.filter((o) => o.name.toLowerCase().includes(q));
+  }, [options, search]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors cursor-pointer outline-none shrink-0 whitespace-nowrap",
+            isSelected
+              ? "border border-primary/50 bg-primary text-primary-foreground font-semibold shadow-xs"
+              : "border border-border/80 bg-background/90 text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+          )}
+        >
+          <span>{isSelected ? `${label}: ${value}` : label}</span>
+          {isSelected ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("all");
+              }}
+              className="grid size-3.5 place-items-center rounded-full hover:bg-primary-foreground/20 text-primary-foreground ml-0.5"
+              title={`Clear ${label} filter`}
+            >
+              <X className="size-2.5" />
+            </span>
+          ) : (
+            <ChevronDown className="size-3 text-muted-foreground/70" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-56 p-2 space-y-1.5 shadow-lg">
+        {options.length > 5 && (
+          <div className="relative">
+            <Search className="absolute left-2 top-2 size-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder={`Search ${label.toLowerCase()}...`}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-7.5 w-full rounded-md border border-input bg-muted/30 pl-7 pr-2 text-xs outline-none focus:border-primary"
+              autoFocus
+            />
+          </div>
+        )}
+        <div className="max-h-52 overflow-y-auto space-y-0.5 no-scrollbar">
+          <button
+            type="button"
+            onClick={() => {
+              onChange("all");
+              setOpen(false);
+              setSearch("");
+            }}
+            className={cn(
+              "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-left cursor-pointer transition-colors",
+              value === "all"
+                ? "bg-muted font-semibold text-foreground"
+                : "hover:bg-muted/50 text-muted-foreground",
+            )}
+          >
+            <span>All {label}s</span>
+            {value === "all" && <Check className="size-3.5 text-primary" />}
+          </button>
+          {filtered.map((opt) => {
+            const active = opt.name === value;
+            return (
+              <button
+                key={opt.name}
+                type="button"
+                onClick={() => {
+                  onChange(opt.name);
+                  setOpen(false);
+                  setSearch("");
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs text-left cursor-pointer transition-colors",
+                  active
+                    ? "bg-muted font-semibold text-foreground"
+                    : "hover:bg-muted/50 text-muted-foreground",
+                )}
+              >
+                <span className="truncate pr-2">{opt.name}</span>
+                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/70">
+                  {opt.value}
+                </span>
+              </button>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="py-3 text-center text-xs text-muted-foreground">
+              No matching {label.toLowerCase()}s
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 type SortKey = "added" | "sno" | "value" | "cost" | "model" | "brand";
 
@@ -248,8 +411,7 @@ function InventoryPage() {
   const { open: openDrawer } = useCarDrawer();
 
   const [filters, setFilters] = useState<Record<FilterKey, string>>(EMPTY_FILTERS);
-  const [draft, setDraft] = useState<Record<FilterKey, string>>(EMPTY_FILTERS);
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
   const search = Route.useSearch();
   // Seeded from ?status= so a KPI click lands on a pre-filtered table; the
   // chips remain free to change it afterwards. Defaults to "Available".
@@ -291,26 +453,29 @@ function InventoryPage() {
       FILTERS.every((d) => d.key === skip || f[d.key] === "all" || d.get(r) === f[d.key]),
     );
 
-  // Options for each dropdown reflect the other active (draft) filters
+  // Options for each dropdown reflect the other active filters
   const options = useMemo(() => {
     const out = {} as Record<FilterKey, { name: string; value: number }[]>;
     for (const d of FILTERS) {
-      out[d.key] = countBy(applyFilters(searched, draft, d.key), d.get);
+      out[d.key] = countBy(applyFilters(searched, filters, d.key), d.get);
     }
     return out;
-  }, [searched, draft]);
+  }, [searched, filters]);
 
   /**
-   * One chip per status, plus All.
-   *
-   * There used to be six, one of which was "Others" — a bucket holding Wrong
-   * Item, Delayed and Lost behind a second dropdown. All three of those are
-   * gone, so the bucket and its sub-filter went with them.
+   * Only show statuses currently held in the collection, plus All.
+   * If no cars have a particular status, it is hidden from the segment control.
    */
-  const statusSegmentOptions = useMemo(
-    () => [{ value: "all", label: "All" }, ...STATUSES.map((s) => ({ value: s, label: s }))],
-    [],
-  );
+  const statusSegmentOptions = useMemo(() => {
+    const present = new Set<string>();
+    for (const r of data) {
+      const s = normaliseStatus(r.status);
+      if (s) present.add(s);
+    }
+    const currentNorm = normaliseStatus(status);
+    const available = STATUSES.filter((s) => present.has(s) || currentNorm === s);
+    return [{ value: "all", label: "All" }, ...available.map((s) => ({ value: s, label: s }))];
+  }, [data, status]);
 
   const rows = useMemo(() => {
     let out = applyFilters(searched, filters);
@@ -402,13 +567,37 @@ function InventoryPage() {
       return next;
     });
 
+  /** Whether duplicate collapse is enabled or disabled. Persisted to localStorage. */
+  const [showCollapsed, setShowCollapsed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("tesoro_inventory_show_collapsed");
+      if (saved !== null) return saved === "true";
+      const oldSaved = localStorage.getItem("tesoro_inventory_hide_collapsed");
+      if (oldSaved !== null) return oldSaved === "true";
+    }
+    return true;
+  });
+
+  const onToggleShowCollapsed = (checked: boolean) => {
+    setShowCollapsed(checked);
+    try {
+      localStorage.setItem("tesoro_inventory_show_collapsed", String(checked));
+    } catch {
+      // ignore
+    }
+  };
+
   /**
    * The flat list the three views render, and what each row should say about
-   * its group. Expanded copies follow their lead and carry no badge of their
+   * its group. When showCollapsed is false, every car is displayed as an individual row.
+   * Expanded copies follow their lead and carry no badge of their
    * own — the group is already open, so a second "6×" on each of the six would
    * be noise.
    */
   const display = useMemo(() => {
+    if (!showCollapsed) {
+      return rows.map((car) => ({ car, n: 1, total: car.spent || 0, lead: true }));
+    }
     const out: { car: Diecast; n: number; total: number; lead: boolean }[] = [];
     for (const g of groups) {
       out.push({ car: g.lead, n: g.n, total: g.total, lead: true });
@@ -418,13 +607,13 @@ function InventoryPage() {
       }
     }
     return out;
-  }, [groups, expanded]);
+  }, [groups, expanded, showCollapsed, rows]);
 
   useEffect(() => {
     setVisibleCount(LOAD_BATCH);
     setExpanded(new Set());
     window.scrollTo({ top: 0 });
-  }, [query, filters, status, sort, sortDir, chaseOnly, favOnly]);
+  }, [query, filters, status, sort, sortDir, chaseOnly, favOnly, showCollapsed]);
 
   /**
    * Loads the next batch when the foot of the list comes into view.
@@ -448,28 +637,22 @@ function InventoryPage() {
   // on screen, not the whole collection.
   useRegisterExportScope("inventory", "My Cars", rows);
 
-  const setDraftFilter = (key: FilterKey, v: string) => {
-    setDraft((prev) => {
-      const next = { ...prev, [key]: v };
-      for (const d of FILTERS) {
-        if (d.key === key || next[d.key] === "all") continue;
-        const still = applyFilters(searched, { ...next, [d.key]: "all" }, undefined).some(
-          (r) => d.get(r) === next[d.key],
-        );
-        if (!still) next[d.key] = "all";
-      }
-      return next;
-    });
-  };
+  const activeDropdownCount = Object.values(filters).filter((v) => v !== "all").length;
+  const activeCount = activeDropdownCount + (chaseOnly ? 1 : 0) + (favOnly ? 1 : 0);
 
-  const activeCount = Object.values(filters).filter((v) => v !== "all").length;
+  const clearAllFilters = () => {
+    setFilters(EMPTY_FILTERS);
+    setChaseOnly(false);
+    setFavOnly(false);
+  };
 
   /**
    * Castings and cars are two different numbers once copies are collapsed, and
    * saying only one of them makes the list look like it is hiding rows.
    */
-  const countCaption =
-    groups.length === rows.length
+  const countCaption = !showCollapsed
+    ? `${rows.length.toLocaleString()} cars`
+    : groups.length === rows.length
       ? `${rows.length.toLocaleString()} cars`
       : `${groups.length.toLocaleString()} castings · ${rows.length.toLocaleString()} cars`;
   const shown = display.slice(0, visibleCount);
@@ -484,85 +667,80 @@ function InventoryPage() {
         </div>
       </div>
 
-      {/* Filter & Actions section below title */}
+      {/* Filter & Actions section below title - sticky below top bar */}
       <div
         className={cn(
           "sticky top-14 z-30 -mx-3 px-3 md:-mx-6 md:px-6 bg-background/95 backdrop-blur-md space-y-2 py-2 border-b border-border/40 transition-shadow",
           isScrolled ? "shadow-xs" : "",
         )}
       >
-        {/* Main controls: Status segment control on top (web only), icon buttons beside views */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 min-w-0">
-          {/* Status segment control: on web (md:), this is on the top/left */}
-          <div className="order-2 md:order-1 flex items-center min-w-0 overflow-x-auto no-scrollbar">
+        {/* Main controls row: Status segment control, actions and views */}
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          {/* Status segment control: scrollable on mobile */}
+          <div className="flex flex-nowrap items-center min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
             <SegmentControl
               value={status}
               onChange={setStatus}
               options={statusSegmentOptions}
-              className="w-auto"
+              className="w-auto flex-nowrap"
             />
           </div>
 
-          {/* Action icon buttons & Views: export, sort, and filter as icon buttons beside views */}
-          <div className="order-1 md:order-2 flex items-center justify-between md:justify-end gap-1.5 sm:gap-2 shrink-0">
-            <div className="flex items-center gap-1.5">
+          {/* Action buttons & Views */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Mobile Filter Button (opens bottom sheet modal) */}
+            <Button
+              size="icon"
+              variant={activeCount ? "default" : "outline"}
+              className="size-8 relative shrink-0 md:hidden"
+              onClick={() => setMobileFilterOpen(true)}
+              title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
+              aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
+            >
+              <Filter className="size-3.5 shrink-0" />
+              {activeCount ? (
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold leading-none">
+                  {activeCount}
+                </span>
+              ) : null}
+            </Button>
+
+            <SortSelect
+              value={sort}
+              dir={sortDir}
+              onChange={(v, d) => {
+                setSort(v);
+                setSortDir(d);
+              }}
+              label="Sort cars"
+              triggerLabel="Sort"
+              neutral="added"
+              options={SORT_OPTIONS}
+              iconOnly={true}
+              className="size-8 justify-center"
+            />
+
+            <ExportButton
+              rows={rows}
+              name="my-cars"
+              label="My Cars"
+              iconOnly={true}
+              className="size-8 p-0 justify-center"
+            />
+
+            {(sort !== "added" || sortDir !== "desc") && (
               <Button
-                size="icon"
-                variant={activeCount ? "default" : "outline"}
-                className="size-8 relative shrink-0"
+                size="sm"
+                variant="ghost"
+                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground hidden lg:inline-flex"
                 onClick={() => {
-                  setDraft(filters);
-                  setFilterOpen((v) => !v);
+                  setSort("added");
+                  setSortDir("desc");
                 }}
-                title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
-                aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
-                aria-expanded={filterOpen}
               >
-                <SlidersHorizontal className="size-3.5 shrink-0" />
-                {activeCount ? (
-                  <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold leading-none">
-                    {activeCount}
-                  </span>
-                ) : null}
+                Reset
               </Button>
-
-              <SortSelect
-                value={sort}
-                dir={sortDir}
-                onChange={(v, d) => {
-                  setSort(v);
-                  setSortDir(d);
-                }}
-                label="Sort cars"
-                triggerLabel="Sort"
-                neutral="added"
-                options={SORT_OPTIONS}
-                iconOnly={true}
-                className="size-8 justify-center"
-              />
-
-              <ExportButton
-                rows={rows}
-                name="my-cars"
-                label="My Cars"
-                iconOnly={true}
-                className="size-8 p-0 justify-center"
-              />
-
-              {(sort !== "added" || sortDir !== "desc") && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground hidden lg:inline-flex"
-                  onClick={() => {
-                    setSort("added");
-                    setSortDir("desc");
-                  }}
-                >
-                  Reset
-                </Button>
-              )}
-            </div>
+            )}
 
             <div className="shrink-0">
               <ViewToggle value={view} onChange={setView} />
@@ -570,21 +748,182 @@ function InventoryPage() {
           </div>
         </div>
 
-        {/* Expandable filter section */}
-        {filterOpen && (
-          <div className="card-elevated space-y-2.5 bg-muted/20 p-2.5 md:space-y-3 md:p-4">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6 md:gap-3">
+        {/* Row 2 on Web (md:): Chip dropdowns for Make, Model, Brand, Assortment, Seller + multi-select chips */}
+        <div className="hidden md:flex flex-wrap items-center gap-1.5">
+          {FILTERS.map((d) => (
+            <FilterChipDropdown
+              key={d.key}
+              label={d.label}
+              value={filters[d.key]}
+              options={options[d.key]}
+              onChange={(v) => setFilters((prev) => ({ ...prev, [d.key]: v }))}
+            />
+          ))}
+
+          <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
+
+          {/* Multi-select toggle chips with x mark when enabled */}
+          <ToggleChip
+            label="Chase"
+            active={chaseOnly}
+            onToggle={() => setChaseOnly((v) => !v)}
+            icon={<ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />}
+          />
+          <ToggleChip
+            label="Favourites"
+            active={favOnly}
+            onToggle={() => setFavOnly((v) => !v)}
+            icon={
+              <FavouriteMark className={favOnly ? "size-3" : "size-3 fill-none text-current"} />
+            }
+          />
+          <ToggleChip
+            label="Show collapsed"
+            active={showCollapsed}
+            onToggle={() => onToggleShowCollapsed(!showCollapsed)}
+          />
+
+          {activeCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1 cursor-pointer"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
+
+        {/* Row 2 on Mobile: Scrollable row with toggle chips and any active filter chips */}
+        <div className="flex md:hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <ToggleChip
+            label="Chase"
+            active={chaseOnly}
+            onToggle={() => setChaseOnly((v) => !v)}
+            icon={<ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />}
+          />
+          <ToggleChip
+            label="Favourites"
+            active={favOnly}
+            onToggle={() => setFavOnly((v) => !v)}
+            icon={
+              <FavouriteMark className={favOnly ? "size-3" : "size-3 fill-none text-current"} />
+            }
+          />
+          <ToggleChip
+            label="Show collapsed"
+            active={showCollapsed}
+            onToggle={() => onToggleShowCollapsed(!showCollapsed)}
+          />
+
+          {/* Active filter chips shown on phone with x mark to quickly clear */}
+          {FILTERS.map((d) => {
+            if (filters[d.key] === "all") return null;
+            return (
+              <button
+                key={d.key}
+                type="button"
+                onClick={() => setFilters((prev) => ({ ...prev, [d.key]: "all" }))}
+                className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-semibold border border-primary/50 bg-primary text-primary-foreground shadow-xs shrink-0 whitespace-nowrap cursor-pointer"
+              >
+                <span>
+                  {d.label}: {filters[d.key]}
+                </span>
+                <X className="size-2.5 ml-0.5" />
+              </button>
+            );
+          })}
+
+          {activeCount > 0 && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="text-[11px] text-muted-foreground hover:text-foreground shrink-0 underline underline-offset-2 pl-1 cursor-pointer"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Phone filter modal sliding from bottom */}
+      <Drawer open={mobileFilterOpen} onOpenChange={setMobileFilterOpen}>
+        <DrawerContent className="max-h-[85vh] p-0 flex flex-col">
+          <DrawerHeader className="px-4 py-3 border-b border-border/80 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <Filter className="size-4 text-primary" />
+              <DrawerTitle className="text-base font-semibold">Filters</DrawerTitle>
+              {activeCount > 0 && (
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                  {activeCount} active
+                </span>
+              )}
+            </div>
+            <DrawerClose asChild>
+              <button
+                type="button"
+                className="grid size-7 place-items-center rounded-full hover:bg-muted text-muted-foreground cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </DrawerClose>
+          </DrawerHeader>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* Quick multi-select toggle chips */}
+            <div className="space-y-1.5">
+              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                Toggles
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <ToggleChip
+                  label="Chase"
+                  active={chaseOnly}
+                  onToggle={() => setChaseOnly((v) => !v)}
+                  icon={
+                    <ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />
+                  }
+                />
+                <ToggleChip
+                  label="Favourites"
+                  active={favOnly}
+                  onToggle={() => setFavOnly((v) => !v)}
+                  icon={
+                    <FavouriteMark
+                      className={favOnly ? "size-3" : "size-3 fill-none text-current"}
+                    />
+                  }
+                />
+                <ToggleChip
+                  label="Show collapsed"
+                  active={showCollapsed}
+                  onToggle={() => onToggleShowCollapsed(!showCollapsed)}
+                />
+              </div>
+            </div>
+
+            {/* 5 Filters: Make, Model, Brand, Assortment, Seller */}
+            <div className="space-y-3">
               {FILTERS.map((d) => (
-                <div key={d.key} className="min-w-0">
-                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {d.label}
-                  </label>
+                <div key={d.key} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-medium text-foreground">{d.label}</label>
+                    {filters[d.key] !== "all" && (
+                      <button
+                        type="button"
+                        onClick={() => setFilters((prev) => ({ ...prev, [d.key]: "all" }))}
+                        className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
                   <select
-                    value={draft[d.key]}
-                    onChange={(e) => setDraftFilter(d.key, e.target.value)}
-                    className="mt-0.5 h-8 w-full rounded-md border border-input bg-background px-2 text-sm md:h-9"
+                    value={filters[d.key]}
+                    onChange={(e) => setFilters((prev) => ({ ...prev, [d.key]: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                   >
-                    <option value="all">All</option>
+                    <option value="all">All {d.label}s</option>
                     {options[d.key].map((o) => (
                       <option key={o.name} value={o.name}>
                         {o.name} ({o.value})
@@ -594,62 +933,26 @@ function InventoryPage() {
                 </div>
               ))}
             </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setChaseOnly((v) => !v)}
-                aria-pressed={chaseOnly}
-                className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors md:h-9 ${
-                  chaseOnly
-                    ? "border-red-500/50 bg-red-500/10 text-red-500"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <ChaseMark className={chaseOnly ? "size-4" : "size-4 fill-none text-current"} />
-                Chase only
-              </button>
-              <button
-                type="button"
-                onClick={() => setFavOnly((v) => !v)}
-                aria-pressed={favOnly}
-                className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-md border text-sm transition-colors md:h-9 ${
-                  favOnly
-                    ? "border-amber-500/50 bg-amber-500/10 text-amber-500"
-                    : "border-border text-muted-foreground hover:bg-muted/50"
-                }`}
-              >
-                <FavouriteMark className={favOnly ? "size-4" : "size-4 fill-none text-current"} />
-                Favourites only
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <p className="min-w-0 text-xs text-muted-foreground">
-                <b className="text-foreground">{groups.length.toLocaleString()}</b> of{" "}
-                {searched.length.toLocaleString()}
-              </p>
-              <div className="flex shrink-0 gap-2">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setDraft(EMPTY_FILTERS);
-                    setFilters(EMPTY_FILTERS);
-                    setChaseOnly(false);
-                    setFavOnly(false);
-                  }}
-                >
-                  Clear
-                </Button>
-                <Button size="sm" onClick={() => setFilters(draft)}>
-                  Apply
-                </Button>
-              </div>
-            </div>
           </div>
-        )}
-      </div>
+
+          <DrawerFooter className="border-t border-border/80 p-3 flex flex-row items-center justify-between gap-2 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              disabled={activeCount === 0}
+              className="text-xs"
+            >
+              Clear all
+            </Button>
+            <DrawerClose asChild>
+              <Button size="sm" className="text-xs font-semibold px-4">
+                Show {rows.length} {rows.length === 1 ? "car" : "cars"}
+              </Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
       {view !== "table" ? (
         <>
@@ -704,7 +1007,7 @@ function InventoryPage() {
             )}
           </div>
 
-          <div className="card-elevated hidden overflow-x-auto md:block">
+          <div className="card-elevated hidden overflow-x-auto md:block max-h-[calc(100vh-10.5rem)] overflow-y-auto">
             <table className="w-full min-w-[1000px] table-fixed text-sm">
               <colgroup>
                 <col className="w-[18rem]" />
@@ -716,7 +1019,7 @@ function InventoryPage() {
                 <col className="w-[7rem]" />
                 <col className="w-[7rem]" />
               </colgroup>
-              <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur-xs text-left text-xs uppercase tracking-wide text-muted-foreground shadow-xs">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Model</th>
                   <th className="px-3 py-2.5 font-medium">Colour</th>
@@ -773,11 +1076,11 @@ function InventoryPage() {
                     <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
                       {r.seller || "—"}
                     </td>
-                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
-                      {r.orderDate || "—"}
+                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground whitespace-nowrap">
+                      {formatDayMonthYear(r.orderDate) || r.orderDate || "—"}
                     </td>
-                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground">
-                      {r.date || "—"}
+                    <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground whitespace-nowrap">
+                      {formatDayMonthYear(r.date) || r.date || "—"}
                     </td>
                   </tr>
                 ))}

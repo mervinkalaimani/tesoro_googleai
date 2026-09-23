@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText } from "lucide-react";
+import { Share2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ExportDialog } from "@/components/export-dialog";
@@ -59,7 +59,7 @@ export function ExportButton({
         }
         aria-label={`Export ${label}`}
       >
-        <FileText className="size-3.5" />
+        <Share2 className="size-3.5" />
         {!iconOnly &&
           (iconOnlyOnMobile ? <span className="hidden sm:inline">Export</span> : "Export")}
       </Button>

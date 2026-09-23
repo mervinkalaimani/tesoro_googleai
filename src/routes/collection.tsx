@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Filter, Sparkles, Star } from "lucide-react";
+import { ChevronDown, ChevronUp, Filter, Sparkles, Star } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
-import { CarsTable } from "@/components/cars-table";
+import { CarsTable, StatusPill } from "@/components/cars-table";
 import { CarThumb } from "@/components/car-thumb";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
@@ -18,7 +18,7 @@ import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { Button } from "@/components/ui/button";
-import { inr } from "@/lib/format";
+import { inr, mrpRatio } from "@/lib/format";
 import {
   Accordion,
   AccordionContent,
@@ -77,6 +77,64 @@ const GROUP_LABEL: Partial<Record<GroupBy, (r: Diecast) => string>> = {
   assortment: (r) => r.assortment || "—",
 };
 
+/**
+ * What the car cost against what it lists for. Returns null when either side is
+ * missing, or when the two agree — a delta of zero is noise, not information.
+ */
+function priceDelta(spent: number, mrp: number) {
+  if (!spent || !mrp) return null;
+  const diff = Math.round(spent - mrp);
+  if (diff === 0) return null;
+  const ratio = mrpRatio(spent, mrp);
+  return {
+    text: inr(Math.abs(diff)),
+    over: diff > 0,
+    hint: ratio ? `${ratio.text} ${ratio.over ? "over" : "under"} MRP` : undefined,
+  };
+}
+
+function Metric({ label, value, className }: { label: string; value: string; className?: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-0.5 truncate text-sm font-semibold tabular-nums ${className ?? ""}`}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+/** Spend, list price, and the gap between them. */
+function PriceStrip({ car }: { car: Diecast }) {
+  const spent = car.spent || 0;
+  const mrp = car.mrp || 0;
+  const delta = priceDelta(spent, mrp);
+
+  return (
+    <div className="flex min-w-0 items-end gap-3">
+      <Metric label="Spent" value={spent ? inr(spent) : "—"} />
+      <Metric label="MRP" value={mrp ? inr(mrp) : "—"} />
+      {delta && (
+        <div className="min-w-0" title={delta.hint}>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Delta</div>
+          <div
+            className={`mt-0.5 inline-flex items-center text-sm font-semibold tabular-nums ${
+              delta.over ? "text-rose-400" : "text-emerald-500"
+            }`}
+          >
+            {delta.over ? (
+              <ChevronUp className="size-3.5 shrink-0" />
+            ) : (
+              <ChevronDown className="size-3.5 shrink-0" />
+            )}
+            {delta.text}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Mirrors the inventory card so both pages read the same way. */
 function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
   return (
@@ -88,6 +146,13 @@ function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
 
         {/* Car ID off the photograph; it belongs in the drawer and the table. */}
         <CarMarkOverlay car={car} />
+
+        {/* Status pill overlay with backdrop blur */}
+        <div className="pointer-events-none absolute bottom-2 right-2">
+          <span className="inline-block rounded-full bg-black/75 backdrop-blur-sm">
+            <StatusPill status={car.status} />
+          </span>
+        </div>
       </div>
 
       <div className="flex flex-1 flex-col p-3">
@@ -109,7 +174,13 @@ function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
         <p className="mt-1 truncate text-xs text-muted-foreground">
           {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
         </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">{car.type || "—"}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {[car.status, car.type].filter(Boolean).join(" · ") || "—"}
+        </p>
+
+        <div className="mt-auto border-t border-border pt-2.5">
+          <PriceStrip car={car} />
+        </div>
       </div>
     </article>
   );

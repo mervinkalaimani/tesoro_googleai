@@ -1,4 +1,4 @@
-import { AlertTriangle, Car } from "lucide-react";
+import { AlertTriangle, Car, Plus } from "lucide-react";
 
 import type { CatalogCar } from "@/lib/catalog";
 import type { DuplicateHit, DuplicateLevel } from "@/lib/duplicate";
@@ -9,16 +9,13 @@ import { cn } from "@/lib/utils";
 
 /**
  * What the catalogue already has that looks like what you are typing.
- *
- * Shown, never enforced. The catalogue holds real pairs that would fail any
- * automatic test — Matchbox prints the same casting every year with a new year
- * on the card — so this says what it found and leaves the call to you.
+ * Suggests existing cars with "Add this car" to prevent duplicates.
  */
 
 const HEADING: Record<DuplicateLevel, string> = {
-  certain: "This is already in the catalogue",
-  likely: "This looks like one that is already here",
-  possible: "Something similar is already here",
+  certain: "Duplicate entry found in catalogue",
+  likely: "Matches an existing catalogue entry",
+  possible: "Similar casting found in catalogue",
 };
 
 const subLineOf = (c: CatalogCar) =>
@@ -32,36 +29,42 @@ const subLineOf = (c: CatalogCar) =>
 
 export function DuplicateNotice({
   hits,
+  onAddThisCar,
   onUse,
   className,
 }: {
   hits: DuplicateHit[];
-  /** Offered when the caller can switch to the entry rather than make a new one. */
+  /** Handler to add this existing car rather than create a new duplicate */
+  onAddThisCar?: (car: CatalogCar) => void;
   onUse?: (car: CatalogCar) => void;
   className?: string;
 }) {
   if (hits.length === 0) return null;
   const worst = hits[0].level;
   const loud = worst === "certain";
+  const handleAdd = onAddThisCar || onUse;
 
   return (
     <section
       className={cn(
         "overflow-hidden rounded-lg border",
-        loud ? "border-primary/50 bg-primary/5" : "border-amber-500/40 bg-amber-500/5",
+        loud ? "border-amber-500/60 bg-amber-500/10" : "border-amber-500/40 bg-amber-500/5",
         className,
       )}
     >
       <div className="flex items-start gap-2 px-3 pt-2.5">
         <AlertTriangle
-          className={cn("mt-0.5 size-4 shrink-0", loud ? "text-primary" : "text-amber-500")}
+          className={cn(
+            "mt-0.5 size-4 shrink-0",
+            loud ? "text-amber-600 dark:text-amber-400" : "text-amber-500",
+          )}
         />
         <div className="min-w-0">
           <p className="text-xs font-semibold text-foreground">{HEADING[worst]}</p>
           <p className="text-[11px] text-muted-foreground">
-            {onUse
-              ? "Use the entry you meant, or carry on if yours is genuinely a different release."
-              : "Check before adding a second one. Carry on if yours is genuinely a different release."}
+            {handleAdd
+              ? "This casting already exists. We suggest adding the existing car below instead."
+              : "Check before adding a second one. Duplicate entries are blocked unless confirmed."}
           </p>
         </div>
       </div>
@@ -70,9 +73,9 @@ export function DuplicateNotice({
         {hits.map(({ car, because }) => (
           <div
             key={car.car_id}
-            className="flex items-center gap-2 rounded-md border border-border bg-background/70 p-1.5"
+            className="flex items-center gap-2 rounded-md border border-border bg-background/85 p-2"
           >
-            <div className="grid size-9 shrink-0 place-items-center overflow-hidden rounded bg-muted">
+            <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
               {car.image_url ? (
                 <img src={car.image_url} alt="" className="size-full object-cover" />
               ) : (
@@ -80,21 +83,21 @@ export function DuplicateNotice({
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-medium">{car.name}</div>
+              <div className="truncate text-xs font-semibold">{car.name}</div>
               <div className="truncate text-[10px] text-muted-foreground">{subLineOf(car)}</div>
-              <div className="truncate text-[10px] text-muted-foreground/80">
+              <div className="truncate text-[10px] text-amber-700 dark:text-amber-400 font-medium">
                 {because} · {inrFull(Number(car.mrp) || 0)}
               </div>
             </div>
-            {onUse && (
+            {handleAdd && (
               <Button
                 type="button"
                 size="sm"
-                variant="outline"
-                className="h-7 shrink-0 px-2 text-[11px]"
-                onClick={() => onUse(car)}
+                className="h-7 shrink-0 px-2.5 text-xs font-semibold gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => handleAdd(car)}
               >
-                Use this
+                <Plus className="size-3.5" />
+                Add this car
               </Button>
             )}
           </div>
