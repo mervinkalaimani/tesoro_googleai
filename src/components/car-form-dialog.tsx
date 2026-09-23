@@ -1649,7 +1649,7 @@ export function CarFormDialog({
             the answers in: which box it came in, where it has got to, who sold
             it, when, what it lists at, what you actually paid, and whether that
             money has moved. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {/* Assortment leads, and it is here rather than up in Which Car
               because it is the one identity field that is really about the
               purchase: it decides which retail prices the form can offer, and
