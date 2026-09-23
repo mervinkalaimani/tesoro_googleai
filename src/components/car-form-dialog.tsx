@@ -569,6 +569,10 @@ export function CarFormDialog({
     () => mrpOptionsFor(pool, form.brand, form.assortment),
     [pool, form.brand, form.assortment],
   );
+  /** At most four prices on the segment; the rest are reached through Other. */
+  const mrpSegments = useMemo(() => mrpChoices.slice(0, 4), [mrpChoices]);
+  const [mrpTyped, setMrpTyped] = useState(false);
+  const mrpIsKnown = !mrpTyped && mrpSegments.includes(Number(form.mrp));
   /** Who this collection buys from most, for one tap. */
   const sellerChips = useMemo(() => topSellers(cars, 3), [cars]);
   // The grades as the segment control wants them. The descriptions stay in the
@@ -1640,11 +1644,11 @@ export function CarFormDialog({
         open={showPurchase}
         onToggle={() => setShowPurchase((v) => !v)}
       >
-        {/* One question per row, each answered by tapping rather than typing.
-            The order is the order you know the answers in: which box it came
-            in, where it has got to, who sold it, when, what it lists at, what
-            you actually paid, and whether that money has moved. */}
-        <div className="flex flex-col gap-3">
+        {/* Each answered by tapping rather than typing, in the order you know
+            the answers in: which box it came in, where it has got to, who sold
+            it, when, what it lists at, what you actually paid, and whether that
+            money has moved. */}
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {/* Assortment leads, and it is here rather than up in Which Car
               because it is the one identity field that is really about the
               purchase: it decides which retail prices the form can offer, and
@@ -1703,39 +1707,51 @@ export function CarFormDialog({
           {/* Every price this brand and assortment has gone for, and a box for
               one it has not. Picking a price is picking what you paid too —
               they are the same number until you say otherwise. */}
+          {/* The prices this brand and assortment have gone for, as a segment
+              like everything else in this section. Four at most: a fifth label
+              inside a third of the dialog is unreadable, and "Other" opens a
+              box for a price nobody has recorded yet. */}
           <Field
             label={isIso ? "Retail price (INR)" : "Retail price * (INR)"}
             name="mrp"
             error={errorFor("mrp")}
           >
-            <div className="flex flex-wrap items-center gap-1.5">
-              {mrpChoices.map((v) => (
-                <PillButton
-                  key={v}
-                  active={Number(form.mrp) === v}
-                  onClick={() => {
+            {mrpSegments.length > 0 && (
+              <SegmentControl
+                fill
+                value={mrpIsKnown ? String(form.mrp) : OTHER}
+                options={[
+                  ...mrpSegments.map((v) => ({ value: String(v), label: inrFull(v) })),
+                  { value: OTHER, label: "Other" },
+                ]}
+                onChange={(v) => {
+                  if (v === OTHER) {
+                    setMrpTyped(true);
+                    return;
+                  }
+                  setMrpTyped(false);
+                  set("mrp", Number(v));
+                  handleSpentChange(Number(v));
+                }}
+              />
+            )}
+            {(mrpSegments.length === 0 || !mrpIsKnown) && (
+              <div className={mrpSegments.length > 0 ? "mt-2" : undefined}>
+                <ClearableInput
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={form.mrp}
+                  onChange={(e) => {
+                    const v = e.target.value === "" ? "" : Number(e.target.value);
                     set("mrp", v);
                     handleSpentChange(v);
                   }}
-                >
-                  {inrFull(v)}
-                </PillButton>
-              ))}
-              <ClearableInput
-                type="number"
-                min="0"
-                step="any"
-                value={mrpChoices.includes(Number(form.mrp)) ? "" : form.mrp}
-                onChange={(e) => {
-                  const v = e.target.value === "" ? "" : Number(e.target.value);
-                  set("mrp", v);
-                  handleSpentChange(v);
-                }}
-                placeholder={mrpChoices.length > 0 ? "Or type one" : "e.g. 549"}
-                className="h-8 w-28"
-              />
-            </div>
-            {mrpChoices.length === 0 && form.brand && form.assortment && (
+                  placeholder="e.g. 549"
+                />
+              </div>
+            )}
+            {mrpSegments.length === 0 && form.brand && form.assortment && (
               <p className="mt-1 text-[11px] text-muted-foreground">
                 Nothing recorded for {form.brand} · {form.assortment} yet — this one sets the
                 precedent.
