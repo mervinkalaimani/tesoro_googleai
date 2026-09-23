@@ -4,6 +4,7 @@ import {
   ArrowUpDown,
   Check,
   Filter,
+  Image as ImageIcon,
   Layers,
   Loader2,
   Merge,
@@ -50,6 +51,7 @@ import {
   catalogCarToDiecast as asCar,
 } from "@/lib/catalog";
 import { parseQuery, matchesQuery } from "@/lib/search";
+import { searchCarImages } from "@/lib/car-image-search";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -257,6 +259,14 @@ function CatalogPage() {
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [pushing, setPushing] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
+  /** Progress of the photo backfill, or null when it is not running. */
+  const [fill, setFill] = useState<{
+    total: number;
+    done: number;
+    filled: number;
+    running: boolean;
+  } | null>(null);
+  const fillCancel = useRef(false);
   const [editing, setEditing] = useState<CatalogCar | "new" | null>(null);
   const [merging, setMerging] = useState(false);
   /** Owner only: the entry being removed, with the confirm open over it. */
@@ -358,6 +368,74 @@ function CatalogPage() {
       return matchesQuery(asCar(c), groups);
     });
   }, [catalog, segment, query, myIso]);
+
+  /**
+   * Give every casting without a photo one of its own.
+   *
+   * The catalogue's images were, for a long time, whatever happened to be
+   * attached to a neighbouring entry — one Mini GT shot covered 63 castings.
+   * Those were cleared, which left holes, and nothing in the app fills a hole
+   * on its own: the per-car search only runs while a form is open. This walks
+   * the holes and runs it.
+   *
+   * Three at a time. The search is somebody else's server and 600 requests
+   * arriving at once is how you get blocked; three keeps it to a trickle and
+   * still finishes in a couple of minutes. Only entries with no photo are
+   * touched, so running it twice is safe and the second run is short.
+   */
+  const runPhotoFill = async () => {
+    const missing = catalog.filter((c) => !(c.image_url || "").trim());
+    if (missing.length === 0) {
+      toast.success("Every casting already has a photo");
+      return;
+    }
+    fillCancel.current = false;
+    setFill({ total: missing.length, done: 0, filled: 0, running: true });
+
+    const queue = [...missing];
+    let done = 0;
+    let filled = 0;
+
+    const worker = async () => {
+      for (;;) {
+        const c = queue.shift();
+        if (!c || fillCancel.current) return;
+        try {
+          const found = await searchCarImages({
+            make: c.make,
+            model: c.model,
+            variant: c.variant || "",
+            year: c.year || "",
+            colour: c.colour || "",
+            brand: c.brand,
+            assortment: c.assortment,
+            series: c.series || "",
+            subSeries: c.sub_series || "",
+            carNumber: c.car_number || "",
+          });
+          const best = found[0]?.url?.trim();
+          if (best) {
+            // A photo already claimed by another casting is the thing being
+            // fixed, so it must not be written back in.
+            const taken = catalog.some((o) => o.car_id !== c.car_id && o.image_url === best);
+            if (!taken && (await updateCatalogCar({ ...c, image_url: best }))) filled++;
+          }
+        } catch {
+          // One casting the search cannot answer for is not a reason to stop.
+        }
+        done++;
+        setFill((f) => (f ? { ...f, done, filled } : f));
+      }
+    };
+
+    await Promise.all([worker(), worker(), worker()]);
+    setFill({ total: missing.length, done, filled, running: false });
+    toast.success(
+      fillCancel.current
+        ? `Stopped — ${filled} photos found`
+        : `Found photos for ${filled} of ${missing.length} castings`,
+    );
+  };
 
   const matches = (c: CatalogCar, f: Filters, skip?: FilterKey) =>
     FILTERS.every((d) => d.key === skip || f[d.key] === "all" || d.get(c) === f[d.key]);
@@ -551,6 +629,16 @@ function CatalogPage() {
       >
         {isAdmin && (
           <>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => void runPhotoFill()}
+              title="Search for a photo of every casting that has none, and keep the best match"
+            >
+              <ImageIcon className="size-4" />
+              <span className="max-sm:sr-only">Find photos</span>
+            </Button>
             <Button
               size="sm"
               variant="outline"
@@ -766,6 +854,44 @@ function CatalogPage() {
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
         prefillStatus={adding && isPreOrder(adding) ? "PO" : "Ordered"}
       />
+      {/* Progress only — the work is already running by the time this shows. */}
+      <Dialog open={fill !== null} onOpenChange={() => {}}>
+        <DialogContent className="max-w-sm">
+          <DialogTitle>Finding photos</DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                Searching for a picture of each casting that has none, and keeping the best match.
+                Entries that already have one are not touched.
+              </p>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-[width] duration-200"
+                  style={{
+                    width: `${fill && fill.total ? Math.round((fill.done / fill.total) * 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <p className="tabular-nums">
+                {fill?.done ?? 0} of {fill?.total ?? 0} searched · {fill?.filled ?? 0} found
+              </p>
+            </div>
+          </DialogDescription>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                fillCancel.current = true;
+              }}
+              disabled={!fill?.running}
+            >
+              {fill?.running ? "Stop" : "Done"}
+            </Button>
+            {!fill?.running && <Button onClick={() => setFill(null)}>Close</Button>}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Writing into other people's collections is not an undo-able thing, so
           it says plainly what it will and will not touch before it runs. */}
       <Dialog open={pushing} onOpenChange={(v) => !v && !pushBusy && setPushing(false)}>
