@@ -49,6 +49,7 @@ import {
   resolveCatalogUserId,
   getCatalogCarOwners,
   isCarMatchingCatalog,
+  catalogCarToDiecast,
   type CatalogCarOwner,
 } from "@/lib/catalog";
 import { useAuth } from "@/lib/auth-store";
@@ -1610,6 +1611,100 @@ function HeroCarImage({ car }: { car: Diecast }) {
  * taken out: what the casting is, how rare, what it retails for, and — for a
  * pre-order — when it is due. One long button at the bottom adds it.
  */
+/**
+ * What else the catalogue holds near this casting, in three widening rings:
+ *
+ *   collection   this brand's run of this series — Mini GT · Fast & Furious
+ *   brand        everything else by the same maker
+ *   series       the same series whoever made it
+ *
+ * "Collection" is the intersection because that is how the boxes are actually
+ * sold and how you would go looking for the next one: Mini GT's Fast & Furious
+ * cars are a thing to complete, Mini GT on its own is a thousand cars.
+ *
+ * The two wider rings drop anything the narrower one already showed, so a
+ * casting never appears twice, and each is capped — brand alone runs to four
+ * figures and a shelf is for browsing, not for listing.
+ */
+const RELATED_CAP = 24;
+
+function CatalogRelatedShelves({
+  entry,
+  onSelect,
+  className,
+}: {
+  entry: CatalogCar;
+  onSelect: (c: CatalogCar) => void;
+  className?: string;
+}) {
+  const { catalog } = useCatalog();
+
+  const rings = useMemo(() => {
+    const norm = (v?: string | null) => (v || "").trim().toLowerCase();
+    const brand = norm(entry.brand);
+    const series = norm(entry.series);
+    const selfId = (entry.car_id || "").trim().toUpperCase();
+
+    const others = catalog.filter((c) => (c.car_id || "").trim().toUpperCase() !== selfId);
+    const collection =
+      brand && series
+        ? others.filter((c) => norm(c.brand) === brand && norm(c.series) === series)
+        : [];
+    const shown = new Set(collection.map((c) => c.car_id));
+
+    const sameBrand = brand
+      ? others.filter((c) => norm(c.brand) === brand && !shown.has(c.car_id))
+      : [];
+    for (const c of sameBrand) shown.add(c.car_id);
+
+    const sameSeries = series
+      ? others.filter((c) => norm(c.series) === series && !shown.has(c.car_id))
+      : [];
+
+    return [
+      {
+        key: "collection",
+        heading: `More from ${entry.brand} · ${entry.series}`,
+        cars: collection,
+      },
+      { key: "brand", heading: `More from ${entry.brand}`, cars: sameBrand },
+      { key: "series", heading: `More from ${entry.series}`, cars: sameSeries },
+    ].filter((r) => r.cars.length > 0);
+  }, [catalog, entry]);
+
+  // Nothing nearby: the caller renders this as a whole column, so returning
+  // null here is what makes the column go away rather than stand empty.
+  if (rings.length === 0) return null;
+
+  return (
+    <div className={cn("space-y-6", className)}>
+      {rings.map((ring, i) => (
+        <div key={ring.key} className="space-y-2.5">
+          {i > 0 && <hr className="border-border/60" />}
+          <div className="flex items-center justify-between">
+            <span
+              className="truncate text-xs font-bold uppercase tracking-wider text-muted-foreground"
+              title={ring.heading}
+            >
+              {ring.heading}
+            </span>
+            <span className="ml-1 shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
+              {ring.cars.length} {ring.cars.length === 1 ? "car" : "cars"}
+            </span>
+          </div>
+          <WebRelatedGridShelf
+            cars={ring.cars.slice(0, RELATED_CAP).map(catalogCarToDiecast)}
+            onSelectCar={(picked) => {
+              const match = ring.cars.find((c) => c.car_id === picked.id);
+              if (match) onSelect(match);
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function CatalogCarDetails({
   car,
   catalogCar,
@@ -1623,6 +1718,7 @@ export function CatalogCarDetails({
   onEdit,
   canDelete,
   onDelete,
+  onSelectCatalogCar,
 }: {
   /** The entry shaped as a car; null when closed. */
   car: Diecast | null;
@@ -1638,6 +1734,12 @@ export function CatalogCarDetails({
   /** Owner only: removing the casting from the catalogue altogether. */
   canDelete?: boolean;
   onDelete?: () => void;
+  /**
+   * Open a different catalogue entry. The related shelves are only drawn when
+   * a caller can act on a tap — a shelf of cards that do nothing is worse than
+   * no shelf.
+   */
+  onSelectCatalogCar?: (c: CatalogCar) => void;
 }) {
   const [showOwnersColumn, setShowOwnersColumn] = useState(false);
 
@@ -1667,6 +1769,7 @@ export function CatalogCarDetails({
             onEdit={onEdit}
             showOwnersColumn={showOwnersColumn}
             onToggleOwnersColumn={setShowOwnersColumn}
+            onSelectCatalogCar={onSelectCatalogCar}
           />
         )}
       </DialogContent>
@@ -1687,6 +1790,7 @@ function CatalogDetailsContent({
   onEdit,
   showOwnersColumn = false,
   onToggleOwnersColumn,
+  onSelectCatalogCar,
 }: {
   car: Diecast;
   catalogCar?: CatalogCar | null;
@@ -1700,6 +1804,7 @@ function CatalogDetailsContent({
   onEdit?: () => void;
   showOwnersColumn?: boolean;
   onToggleOwnersColumn?: (show: boolean) => void;
+  onSelectCatalogCar?: (c: CatalogCar) => void;
 }) {
   const mobile = useMobileHeroGestures(onClose);
   const { isAdmin, user, profile } = useAuth();
@@ -1786,31 +1891,25 @@ function CatalogDetailsContent({
 
       {/* Desktop layout: 3 sections in equal size, side padding, image filled above title on left, 3rd column on See All */}
       <div className="hidden w-fit md:flex md:h-[82vh] md:max-h-[82vh] md:flex-row md:items-stretch overflow-hidden px-5 xl:px-6 py-4 xl:py-5 divide-x divide-border">
-        {/* SECTION 1: Left Column - Image filled above & Title section below */}
-        <div className="w-[360px] xl:w-[390px] shrink-0 pr-5 xl:pr-6 flex flex-col h-full overflow-y-auto scrollbar-thin space-y-4">
-          <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-xs bg-muted/20 border border-border/60 shrink-0">
-            <HeroCarImage car={car} />
-          </div>
-          <CatalogCarTitleSection
-            car={car}
-            catalogCar={catalogCar}
-            owned={isActuallyOwned}
-            isIso={isActuallyIso}
-            preOrder={preOrder}
-            owners={owners}
-            ownersLoading={ownersLoading}
-            onSeeAllOwners={handleSeeAll}
-          />
-        </div>
-
-        {/* SECTION 2: Middle Column - Specifications, Provenance & Sticky Actions */}
-        <div
-          className={cn(
-            "w-[360px] xl:w-[390px] shrink-0 flex flex-col h-full overflow-hidden",
-            showOwnersColumn ? "px-5 xl:px-6" : "pl-5 xl:pl-6",
-          )}
-        >
-          <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin">
+        {/* SECTION 1: Left Column - photo, title, the entry's details, and the
+            add button pinned under them. Laid out like a car's own details
+            page, where everything about the thing you are looking at is in one
+            column and the column beside it is about something else. */}
+        <div className="w-[360px] xl:w-[390px] shrink-0 pr-5 xl:pr-6 flex flex-col h-full overflow-hidden justify-between">
+          <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin space-y-4">
+            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-xs bg-muted/20 border border-border/60 shrink-0">
+              <HeroCarImage car={car} />
+            </div>
+            <CatalogCarTitleSection
+              car={car}
+              catalogCar={catalogCar}
+              owned={isActuallyOwned}
+              isIso={isActuallyIso}
+              preOrder={preOrder}
+              owners={owners}
+              ownersLoading={ownersLoading}
+              onSeeAllOwners={handleSeeAll}
+            />
             <CatalogDetailsBody
               car={car}
               catalogCar={catalogCar}
@@ -1828,6 +1927,20 @@ function CatalogDetailsContent({
             {actionButtons}
           </div>
         </div>
+
+        {/* SECTION 2: Middle Column - what else the catalogue holds nearby.
+            Dropped entirely when there is nothing to put in it, rather than
+            standing there empty. */}
+        {catalogCar && onSelectCatalogCar && (
+          <CatalogRelatedShelves
+            entry={catalogCar}
+            onSelect={onSelectCatalogCar}
+            className={cn(
+              "w-[360px] xl:w-[390px] shrink-0 h-full overflow-y-auto scrollbar-thin",
+              showOwnersColumn ? "px-5 xl:px-6" : "pl-5 xl:pl-6",
+            )}
+          />
+        )}
 
         {/* SECTION 3: Right Column - Owners (Only when See All is clicked, do not auto scale) */}
         {showOwnersColumn && (
@@ -1882,6 +1995,13 @@ function CatalogDetailsContent({
                   ownersLoading={ownersLoading}
                   onSeeAllOwners={() => setOwnersModalOpen(true)}
                 />
+                {catalogCar && onSelectCatalogCar && (
+                  <CatalogRelatedShelves
+                    entry={catalogCar}
+                    onSelect={onSelectCatalogCar}
+                    className="pt-5"
+                  />
+                )}
               </div>
             </div>
           </div>
@@ -2077,10 +2197,10 @@ function CatalogDetailsBody({
         </>
       )}
 
+      {/* Make, model and year are deliberately absent: the title above already
+          says them, and repeating them three rows later was the spec grid's
+          least useful third. */}
       <SpecGrid>
-        <Spec label="Make" value={car.make} />
-        <Spec label="Model" value={car.model} />
-        <Spec label="Year" value={car.year} />
         <Spec label="Colour" value={car.colour} />
         <Spec label="Assortment" value={car.assortment} />
         <Spec label="Series" value={car.series} />

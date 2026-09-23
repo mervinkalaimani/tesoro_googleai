@@ -19,6 +19,7 @@ import {
   ACCENT_OPTIONS,
   THEME_OPTIONS,
   FONT_SIZE_OPTIONS,
+  ARRIVING_SOON_OPTIONS,
   useApp,
   type AccentColor,
   type FontSizePreference,
@@ -130,6 +131,8 @@ export function SettingsPage() {
     setHideInvestment,
     navAnimation,
     setNavAnimation,
+    arrivingSoon,
+    setArrivingSoon,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
   const { source } = useCarsSource();
@@ -524,6 +527,34 @@ export function SettingsPage() {
                   </div>
                 </div>
                 <Switch checked={navAnimation} onCheckedChange={setNavAnimation} />
+              </div>
+            </div>
+          </div>
+
+          {/* Home Group */}
+          <div className="space-y-1.5">
+            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Home
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-[15px] font-medium text-foreground">Arriving Soon</div>
+                  <div className="text-xs text-muted-foreground">
+                    {arrivingSoon === "auto"
+                      ? "Shown only on a week with nothing recently added and no new pre-orders."
+                      : arrivingSoon === "always"
+                        ? "Always shown, alongside Recently added and New Pre Orders."
+                        : "Hidden."}{" "}
+                    Cars due in your hands within 30 days.
+                  </div>
+                </div>
+                <SegmentControl
+                  value={arrivingSoon}
+                  onChange={setArrivingSoon}
+                  options={ARRIVING_SOON_OPTIONS}
+                  className="h-9 w-full sm:w-auto text-sm"
+                />
               </div>
             </div>
           </div>

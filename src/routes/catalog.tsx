@@ -43,7 +43,11 @@ import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { MergeDuplicatesDialog } from "@/components/merge-duplicates-dialog";
-import { isCarMatchingCatalog, catalogCarToCatalogueCar } from "@/lib/catalog";
+import {
+  isCarMatchingCatalog,
+  catalogCarToCatalogueCar,
+  catalogCarToDiecast as asCar,
+} from "@/lib/catalog";
 import { parseQuery, matchesQuery } from "@/lib/search";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -202,31 +206,6 @@ const packLabel = (c: CatalogCar) => {
   const n = Number(c.pack_size) || 0;
   return n > 1 ? `${n} CARS` : "PACK";
 };
-
-/** A catalogue entry shaped as a car, for the cards and thumbnails. The price shown is the MRP. */
-function asCar(c: CatalogCar): Diecast {
-  return {
-    id: c.car_id,
-    name: c.name || `${c.make} ${c.model}`.trim(),
-    make: c.make,
-    model: c.model,
-    variant: c.variant || "",
-    year: c.year || "",
-    colour: c.colour || "",
-    type: c.type || "",
-    brand: c.brand,
-    assortment: c.assortment,
-    series: c.series,
-    subSeries: c.sub_series,
-    carNumber: c.car_number,
-    size: c.size || "1:64",
-    mrp: c.mrp,
-    spent: c.mrp,
-    imageUrl: c.image_url || undefined,
-    rarity: c.rarity || "Normal",
-    chase: (c.rarity || "Normal") !== "Normal",
-  } as unknown as Diecast;
-}
 
 /**
  * Every casting in the shared catalogue, for anyone to browse and add to their
@@ -741,6 +720,7 @@ function CatalogPage() {
         owned={viewing ? owned.has(viewing.car_id.toUpperCase()) : false}
         isIso={viewing ? myIso.has(viewing.car_id.toUpperCase()) : false}
         onClose={() => setViewing(null)}
+        onSelectCatalogCar={setViewing}
         canEdit={!isGuest}
         onEdit={() => {
           const target = viewing;

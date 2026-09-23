@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   PauseCircle,
   Plus,
+  CalendarClock,
 } from "lucide-react";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { TrackingLink } from "@/components/tracking-link";
@@ -18,7 +19,7 @@ import { trackingPageFor } from "@/lib/tracking";
 
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import { isInHand, isOpenOrder, normaliseStatus, type Status } from "@/lib/status";
-import { isLate } from "@/lib/delivery-watch";
+import { isLate, arrivingWithin } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
@@ -164,12 +165,31 @@ function expectedLabel(eta: Date, now: Date): string {
 }
 
 function DashboardPage() {
-  const { query, transitEtaDays } = useApp();
+  const { query, transitEtaDays, arrivingSoon } = useApp();
   const cars = useCars();
-  const { profile } = useAuth();
+  const { profile, isGuest } = useAuth();
   const { refreshing } = useCarsRefresh();
   const loading = refreshing && cars.length === 0;
   const data = useMemo(() => filterRows(cars, query), [cars, query]);
+
+  // Both shelves are worked out here rather than inside themselves, because
+  // "Arriving soon" only appears when both came up empty — and a section
+  // cannot see whether its siblings rendered anything.
+  const now = useMemo(() => new Date(), []);
+  const recent = useMemo(() => recentlyAdded(data, now), [data, now]);
+
+  const { cars: sharedPreorders, loading: preordersLoading } = useRecentPreorders(!isGuest);
+  const newPreorders = useMemo(() => {
+    // Castings already on your own pre-order list are not news to you — your
+    // own recent pre-orders are in the shared list too.
+    const onMyList = new Set(cars.filter((c) => isPreOrder(c.status)).map(catalogueKey));
+    return sharedPreorders.filter((c) => !onMyList.has(catalogueKey(c)));
+  }, [sharedPreorders, cars]);
+
+  const arriving = useMemo(() => arrivingWithin(data, ARRIVING_DAYS), [data]);
+  const quiet = recent.length === 0 && newPreorders.length === 0 && !preordersLoading;
+  const showArriving =
+    arriving.length > 0 && (arrivingSoon === "always" || (arrivingSoon === "auto" && quiet));
 
   // The first name only. "Hello Mervin Kalaimani" is how a bank addresses you;
   // the app already knows which of the two it is.
@@ -296,15 +316,20 @@ function DashboardPage() {
           days and a car drops out of it for good — and it renders nothing at
           all on a quiet week, so it costs the tracker no room when there is
           nothing to show. */}
-      {!loading && <RecentlyAdded rows={data} />}
+      {!loading && <RecentlyAdded recent={recent} now={now} />}
 
       <DashboardMiddle rows={data} etaDays={transitEtaDays} loading={loading} />
+
+      {/* Stands in for the two shelves above on a week when neither has
+          anything: nothing landed, nobody pre-ordered, but there is still a
+          month of deliveries worth knowing about. */}
+      {!loading && showArriving && <ArrivingSoon arriving={arriving} now={now} />}
 
       {/* Monthly spending moved to the Habits page. */}
       <TopTenGrid rows={data} mode="count" loading={loading} />
 
       {/* Pre-orders anyone has placed in the last three days, ready to add. */}
-      {!loading && <RecentPreorders />}
+      {!loading && <RecentPreorders cars={newPreorders} loading={preordersLoading} />}
     </div>
   );
 }
@@ -317,6 +342,9 @@ const isTransit = (s: string) => {
 
 /** Today, yesterday, and the day before — the window "Recently added" covers. */
 const RECENT_DAYS = 3;
+
+/** How far ahead "Arriving soon" looks. A month of deliveries is a month worth planning. */
+const ARRIVING_DAYS = 30;
 
 function TransitTracker({
   rows,
@@ -595,24 +623,30 @@ function TransitTracker({
   );
 }
 
-function RecentlyAdded({ rows }: { rows: Diecast[] }) {
+/**
+ * In hand within the last three days, newest first.
+ *
+ * Lifted out of the component so the dashboard can ask whether this week is
+ * quiet without a second copy of what "recent" means — the one thing this page
+ * has already been caught doing once.
+ */
+function recentlyAdded(rows: Diecast[], now: Date): { r: Diecast; dt: Date }[] {
+  return rows
+    .filter((r) => isInHand(r.status))
+    .map((r) => ({ r, dt: parseDMY(r.date) }))
+    .filter((x): x is { r: Diecast; dt: Date } => {
+      if (!x.dt) return false;
+      const days = daysBetween(x.dt, now);
+      // Today, yesterday, the day before. Three days means three, and the
+      // window was counting four — a car from Monday was still "recently
+      // added" on Thursday, under a heading that said last 3 days.
+      return days >= 0 && days <= RECENT_DAYS - 1;
+    })
+    .sort((a, b) => b.dt.getTime() - a.dt.getTime());
+}
+
+function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; now: Date }) {
   const { open: openDrawer } = useCarDrawer();
-  const now = new Date();
-  const recent = useMemo(() => {
-    const list = rows
-      .filter((r) => isInHand(r.status))
-      .map((r) => ({ r, dt: parseDMY(r.date) }))
-      .filter((x): x is { r: Diecast; dt: Date } => {
-        if (!x.dt) return false;
-        const days = daysBetween(x.dt, now);
-        // Today, yesterday, the day before. Three days means three, and the
-        // window was counting four — a car from Monday was still "recently
-        // added" on Thursday, under a heading that said last 3 days.
-        return days >= 0 && days <= RECENT_DAYS - 1;
-      })
-      .sort((a, b) => b.dt.getTime() - a.dt.getTime());
-    return list;
-  }, [rows, now]);
 
   if (recent.length === 0) return null;
 
@@ -667,6 +701,45 @@ function RecentlyAdded({ rows }: { rows: Diecast[] }) {
   );
 }
 
+/**
+ * What is due in your hands over the next month, soonest first.
+ *
+ * The same shelf as Recently added, pointed the other way down the calendar —
+ * one row of the inventory's compact card, a fixed height however much is
+ * coming, and the cars that scroll off the end are the furthest away.
+ *
+ * Only day-precise dates get in (see arrivingWithin), so a pre-order that says
+ * "Mar 2027" stays out rather than claiming the 1st.
+ */
+function ArrivingSoon({ arriving, now }: { arriving: { car: Diecast; day: string }[]; now: Date }) {
+  const { open: openDrawer } = useCarDrawer();
+
+  return (
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border p-4">
+        <div className="min-w-0">
+          <h2 className="text-display text-lg font-semibold">Arriving soon</h2>
+          <p className="text-xs text-muted-foreground">
+            Next {ARRIVING_DAYS} days · {arriving.length} car{arriving.length === 1 ? "" : "s"}
+          </p>
+        </div>
+        <CalendarClock className="size-4 text-accent" />
+      </div>
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
+        {arriving.map(({ car, day }, i) => (
+          <CompactCarCard
+            key={car.id + i}
+            car={car}
+            onOpen={() => openDrawer(car)}
+            caption={relativeDay(parseDMY(day) ?? now, now)}
+            className="w-36 shrink-0 snap-start sm:w-40"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** The shared pre-order shaped as a car, for the card and the details view. */
 const preorderAsCar = (c: RecentPreorder, key: string) =>
   ({ ...c, id: key, spent: c.mrp || 0 }) as unknown as Diecast;
@@ -681,13 +754,8 @@ const preorderAsCar = (c: RecentPreorder, key: string) =>
  * and because the casting has already been chosen the form opens on step two
  * with the details filled in, exactly as if it had been picked from the search.
  */
-function RecentPreorders() {
-  const { isGuest, isAdmin, isOwner } = useAuth();
-  // No day window any more: a pre-order's O_Date is the release it is waiting
-  // for, which is in the future, so "the last three days" excluded almost the
-  // whole list. The newest by insertion order is what "new" means here.
-  const { cars: shared, loading } = useRecentPreorders(!isGuest);
-  const mine = useCars();
+function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: boolean }) {
+  const { isAdmin, isOwner, isGuest } = useAuth();
   const { catalog, findMatchingInCatalog, getCatalogCarById, updateCatalogCar, addCatalogCar } =
     useCatalog();
   const [adding, setAdding] = useState<RecentPreorder | null>(null);
@@ -749,13 +817,6 @@ function RecentPreorders() {
     },
     [resolveCatalogCar],
   );
-
-  // Castings already on your own pre-order list are not news to you — your
-  // own recent pre-orders are in the shared list too.
-  const cars = useMemo(() => {
-    const onMyList = new Set(mine.filter((c) => isPreOrder(c.status)).map(catalogueKey));
-    return shared.filter((c) => !onMyList.has(catalogueKey(c)));
-  }, [shared, mine]);
 
   const viewingCatalogCar = useMemo(() => {
     return viewing ? resolveCatalogCar(viewing) : undefined;

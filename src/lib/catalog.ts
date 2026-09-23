@@ -176,6 +176,37 @@ export function catalogCarToCatalogueCar(c: CatalogCar): CatalogueCar {
   };
 }
 
+/**
+ * A catalogue entry shaped as a car, for the components that draw cars — the
+ * thumbnail, the sub-line, the details drawer. It is not an owned row and has
+ * no id of its own beyond the catalogue's, so it must not be saved.
+ *
+ * Lived in catalog.tsx until the details drawer needed it too.
+ */
+export function catalogCarToDiecast(c: CatalogCar): Diecast {
+  return {
+    id: c.car_id,
+    name: c.name || `${c.make} ${c.model}`.trim(),
+    make: c.make,
+    model: c.model,
+    variant: c.variant || "",
+    year: c.year || "",
+    colour: c.colour || "",
+    type: c.type || "",
+    brand: c.brand,
+    assortment: c.assortment,
+    series: c.series,
+    subSeries: c.sub_series,
+    carNumber: c.car_number,
+    size: c.size || "1:64",
+    mrp: c.mrp,
+    spent: c.mrp,
+    imageUrl: c.image_url || undefined,
+    rarity: c.rarity || "Normal",
+    chase: (c.rarity || "Normal") !== "Normal",
+  } as unknown as Diecast;
+}
+
 /** Convert a Diecast item into a CatalogCar entry. */
 export function diecastToCatalogCar(car: Diecast): CatalogCar {
   const car_id = catalogIdFor(car);

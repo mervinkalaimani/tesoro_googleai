@@ -44,6 +44,26 @@ export const FONT_SIZE_OPTIONS: {
   { value: "+2", label: "+2 pt", description: "Large · 2 points larger" },
 ];
 
+/**
+ * When the home page shows "Arriving soon".
+ *
+ * "auto" is the useful one: the section is a stand-in, filling the gap left by
+ * Recently added and New Pre Orders on a quiet week rather than competing with
+ * them on a busy one. The other two are there because a preference that can
+ * only mean one thing is not a preference.
+ */
+export type ArrivingSoonPreference = "auto" | "always" | "never";
+
+export const ARRIVING_SOON_OPTIONS: { value: ArrivingSoonPreference; label: string }[] = [
+  { value: "auto", label: "When quiet" },
+  { value: "always", label: "Always" },
+  { value: "never", label: "Never" },
+];
+
+function isArrivingSoonPreference(value: unknown): value is ArrivingSoonPreference {
+  return value === "auto" || value === "always" || value === "never";
+}
+
 type AppState = {
   query: string;
   setQuery: (q: string) => void;
@@ -66,6 +86,9 @@ type AppState = {
   /** Phone only: the bottom bar shrinks while scrolling down. Per device. */
   navAnimation: boolean;
   setNavAnimation: (b: boolean) => void;
+  /** When the home page shows the "Arriving soon" shelf. */
+  arrivingSoon: ArrivingSoonPreference;
+  setArrivingSoon: (p: ArrivingSoonPreference) => void;
 };
 
 const AppCtx = createContext<AppState | null>(null);
@@ -124,6 +147,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [hideInvestment, setHideInvestmentState] = useState(true);
   const [transitEtaDays, setTransitEtaDaysState] = useState(21);
   const [navAnimation, setNavAnimationState] = useState(true);
+  const [arrivingSoon, setArrivingSoonState] = useState<ArrivingSoonPreference>("auto");
   // The server renders with the defaults above while the inline boot script in
   // __root.tsx has already painted the stored ones. Nothing is applied to the
   // document until this flips, so the first client render cannot undo it.
@@ -143,6 +167,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setHideInvestmentState(readLS<boolean>("dg.hideInvestment", true));
     setTransitEtaDaysState(readLS<number>("dg.transitEta", 21));
     setNavAnimationState(readLS<boolean>("dg.navAnimation", true));
+    const storedArriving = readLS<unknown>("dg.arrivingSoon", "auto");
+    setArrivingSoonState(isArrivingSoonPreference(storedArriving) ? storedArriving : "auto");
     setHydrated(true);
   }, []);
 
@@ -291,6 +317,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.navAnimation", b);
   }, []);
 
+  const setArrivingSoon = useCallback((p: ArrivingSoonPreference) => {
+    setArrivingSoonState(p);
+    writeLS("dg.arrivingSoon", p);
+  }, []);
+
   const setFontSize = useCallback((s: FontSizePreference) => {
     setFontSizeState(s);
     writeLS("dg.fontSize", s);
@@ -315,10 +346,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTransitEtaDays,
       navAnimation,
       setNavAnimation,
+      arrivingSoon,
+      setArrivingSoon,
     }),
     [
       navAnimation,
       setNavAnimation,
+      arrivingSoon,
+      setArrivingSoon,
       query,
       theme,
       themePreference,

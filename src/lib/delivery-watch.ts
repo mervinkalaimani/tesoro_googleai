@@ -1,4 +1,4 @@
-import { canBeLate, normaliseStatus } from "@/lib/status";
+import { canBeLate, isOpenOrder, normaliseStatus } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -51,6 +51,33 @@ export function needsNewDate(car: Diecast, today = localDay()): boolean {
   }
   const day = expectedDay(car);
   return day === null || day < today;
+}
+
+/**
+ * Bought and due in your hands within `days`, soonest first.
+ *
+ * Open orders only — In Hand has arrived and ISO was never bought — and only
+ * those carrying a day-precise date, for the same reason isLate does: half the
+ * pre-order list says "Mar 2027", and a month is not a delivery you can expect
+ * on a Tuesday.
+ */
+export function arrivingWithin(
+  cars: Diecast[],
+  days: number,
+  today = localDay(),
+): { car: Diecast; day: string }[] {
+  const horizon = new Date(`${today}T00:00:00`);
+  horizon.setDate(horizon.getDate() + days);
+  const last = localDay(horizon);
+
+  return cars
+    .flatMap((car) => {
+      if (!isOpenOrder(car.status)) return [];
+      const day = expectedDay(car);
+      if (!day || day < today || day > last) return [];
+      return [{ car, day }];
+    })
+    .sort((a, b) => a.day.localeCompare(b.day));
 }
 
 export type DeliveryGroup = {
