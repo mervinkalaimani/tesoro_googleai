@@ -71,11 +71,21 @@ export const needsCarNumber = (brand: string | null | undefined) => brandUsesCar
  * Candidate duplicates for what has been typed, most certain first.
  *
  * Brand always has to agree — a Mini GT Supra is not a Majorette one — and
- * everything below it is a matter of how much else does.
+ * everything below it is a matter of how much else does: make, model, colour,
+ * assortment, series, sub-series, variant, year.
  *
- * For brands like Hot Wheels and Matchbox mainlines where car number is not
- * available, candidates are matched against the maximum available fields
- * (make, model, colour, assortment, series, subSeries, variant, year).
+ * **Car number is not one of them.** It used to be the strongest signal here —
+ * a matching number inside one assortment returned "certain" on its own,
+ * without so much as checking the make — and it was wrong often enough to be
+ * worse than useless: the same number gets reused across releases, and being
+ * told a Supra is certainly a duplicate of a Skyline teaches you to click
+ * through the warning without reading it. Two castings sharing a number are
+ * now judged on everything else, exactly as if neither had a number at all.
+ *
+ * needsCarNumber below is untouched: whether a brand has to state its number
+ * is a question about filling the form in, not about what a duplicate is. The
+ * Duplicates page (findDuplicateGroups) also still groups by number, because
+ * reviewing a list of candidates is not the same as being interrupted mid-form.
  */
 export function findDuplicates(
   fields: DuplicateFields,
@@ -93,9 +103,7 @@ export function findDuplicates(
   const assortment = norm(fields.assortment);
   const series = norm(fields.series);
   const subSeries = norm(fields.subSeries);
-  const carNumber = norm(fields.carNumber);
   const year = norm(fields.year);
-  const numbered = brandUsesCarNumber(fields.brand) && carNumber !== "";
   const skip = excludeCarId.trim().toUpperCase();
 
   type ScoredHit = DuplicateHit & { score: number };
@@ -111,17 +119,6 @@ export function findDuplicates(
 
     const cAssortment = norm(c.assortment);
     const sameAssortment = assortment !== "" && assortment === cAssortment;
-
-    // Collector number match (for numbered brands like Mini GT, Pop Race)
-    if (numbered && sameAssortment && norm(c.car_number) === carNumber) {
-      hits.push({
-        car: c,
-        level: "certain",
-        because: `Same ${fields.brand?.trim() || "brand"} number #${fields.carNumber?.trim()} in ${c.assortment || "this assortment"}`,
-        score: 100,
-      });
-      continue;
-    }
 
     // Match make and model
     const cMake = norm(c.make);
@@ -158,9 +155,6 @@ export function findDuplicates(
     const cSubSeries = norm(c.sub_series);
     const sameSubSeries = subSeries !== "" && cSubSeries !== "" && subSeries === cSubSeries;
 
-    const cCarNum = norm(c.car_number);
-    const sameCarNum = carNumber !== "" && cCarNum !== "" && carNumber === cCarNum;
-
     // Calculate match score and collect matched fields for the explanation
     let score = 10; // Base score for make & model match
     const matchedList: string[] = ["make", "model"];
@@ -185,10 +179,6 @@ export function findDuplicates(
       score += 15;
       matchedList.push(`variant (${c.variant})`);
     }
-    if (sameCarNum) {
-      score += 20;
-      matchedList.push(`number #${c.car_number}`);
-    }
     if (year && cYear && year === cYear) {
       score += 10;
       matchedList.push(`year (${c.year})`);
@@ -199,7 +189,7 @@ export function findDuplicates(
     // If make, model, colour and assortment match:
     // This is a certain/likely duplicate of that mainline release!
     let level: DuplicateLevel = "possible";
-    if (sameColour && sameAssortment && (sameSeries || sameVariant || sameYear || sameCarNum)) {
+    if (sameColour && sameAssortment && (sameSeries || sameVariant || sameYear)) {
       level = "certain";
     } else if (sameColour && sameAssortment) {
       level = "certain";
