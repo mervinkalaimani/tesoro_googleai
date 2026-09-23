@@ -533,6 +533,27 @@ export function CarFormDialog({
           : CAR_DRAFT_KEY
       : carEditDraftKey(initial?.id ?? "");
 
+  /**
+   * What the dialog was opened for, as a value rather than an object.
+   *
+   * `initial` and `prefill` arrive as objects, and a caller is free to build
+   * one inside its own render — catalog.tsx does, inline in the JSX. Meanwhile
+   * the cars store reloads every 15 seconds and the catalogue listens for
+   * realtime pushes, so every one of those re-rendered the parent, handed this
+   * dialog a structurally identical but brand-new `prefill`, and re-ran the
+   * seed effect below: the half-filled form replaced by the blank one, mid
+   * sentence, over and over.
+   *
+   * Keyed on what the casting is rather than on which object it arrived in, it
+   * re-seeds when the dialog is opened on a different car and not otherwise.
+   */
+  const seedKey = [
+    mode,
+    initial?.id ?? "",
+    prefill ? `${prefill.catalogId ?? ""}~${catalogueKey(prefill)}` : "",
+    prefillStatus,
+  ].join("|");
+
   // Rebuilt per open rather than held in state: it is what "unchanged" means
   // for this dialog, and both the restore and the save below compare against it.
   const baseline = useMemo(
@@ -543,9 +564,9 @@ export function CarFormDialog({
           ? { ...catalogueFields(prefill, getBlankForm()), status: prefillStatus }
           : getBlankForm(),
     // A blank form stamps today's date, so it must not be rebuilt on every
-    // render — only when the dialog opens or the car being edited changes.
+    // render — only when the dialog opens or what it was opened for changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [initial, open, prefill, prefillStatus],
+    [open, seedKey],
   );
 
   useEffect(() => {
@@ -597,7 +618,11 @@ export function CarFormDialog({
       templateOriginRef.current = {};
     }
     setDraftReady(true);
-  }, [open, baseline, draftKey, mode, fromPrefill, isClone, prefill]);
+    // prefill is read above but is deliberately not a dependency: seedKey
+    // already covers a change of casting, and it is the object identity that
+    // was firing this effect on every unrelated re-render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, seedKey, baseline, draftKey, mode, fromPrefill, isClone]);
 
   // The save. Every keystroke lands here, and an untouched form clears the key
   // rather than leaving a draft that says nothing.
