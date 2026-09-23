@@ -60,7 +60,7 @@ import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CarThumb } from "@/components/car-thumb";
 import { carSubLine } from "@/lib/car-subline";
 import { boughtOn, purchaseHistory, type Purchase } from "@/lib/copies";
-import { isInHand } from "@/lib/status";
+import { isInHand, isIso } from "@/lib/status";
 
 type Ctx = {
   open: (car: Diecast) => void;
@@ -1616,6 +1616,7 @@ export function CatalogCarDetails({
   preOrder,
   expectedDate,
   owned,
+  isIso,
   onClose,
   onAdd,
   canEdit,
@@ -1629,6 +1630,7 @@ export function CatalogCarDetails({
   preOrder: boolean;
   expectedDate?: string | null;
   owned: boolean;
+  isIso?: boolean;
   onClose: () => void;
   onAdd: () => void;
   canEdit?: boolean;
@@ -1658,6 +1660,7 @@ export function CatalogCarDetails({
             preOrder={preOrder}
             expectedDate={expectedDate}
             owned={owned}
+            isIso={isIso}
             onClose={onClose}
             onAdd={onAdd}
             canEdit={canEdit}
@@ -1677,6 +1680,7 @@ function CatalogDetailsContent({
   preOrder,
   expectedDate,
   owned,
+  isIso: isIsoProp,
   onClose,
   onAdd,
   canEdit,
@@ -1689,6 +1693,7 @@ function CatalogDetailsContent({
   preOrder: boolean;
   expectedDate?: string | null;
   owned: boolean;
+  isIso?: boolean;
   onClose: () => void;
   onAdd: () => void;
   canEdit?: boolean;
@@ -1705,10 +1710,16 @@ function CatalogDetailsContent({
 
   const matchingUserCar = useMemo(() => {
     if (!catalogCar) return null;
-    return mine.find((c) => isCarMatchingCatalog(c, catalogCar)) || null;
+    return mine.find((c) => !isIso(c.status) && isCarMatchingCatalog(c, catalogCar)) || null;
+  }, [mine, catalogCar]);
+
+  const matchingIsoCar = useMemo(() => {
+    if (!catalogCar) return null;
+    return mine.find((c) => isIso(c.status) && isCarMatchingCatalog(c, catalogCar)) || null;
   }, [mine, catalogCar]);
 
   const isActuallyOwned = owned || Boolean(matchingUserCar);
+  const isActuallyIso = Boolean(isIsoProp || matchingIsoCar);
 
   useEffect(() => {
     if (!catalogCar?.car_id) {
@@ -1784,6 +1795,7 @@ function CatalogDetailsContent({
             car={car}
             catalogCar={catalogCar}
             owned={isActuallyOwned}
+            isIso={isActuallyIso}
             preOrder={preOrder}
             owners={owners}
             ownersLoading={ownersLoading}
@@ -1805,6 +1817,7 @@ function CatalogDetailsContent({
               preOrder={preOrder}
               expectedDate={expectedDate}
               owned={isActuallyOwned}
+              isIso={isActuallyIso}
               showTitle={false}
               owners={owners}
               ownersLoading={ownersLoading}
@@ -1862,7 +1875,8 @@ function CatalogDetailsContent({
                   catalogCar={catalogCar}
                   preOrder={preOrder}
                   expectedDate={expectedDate}
-                  owned={owned}
+                  owned={isActuallyOwned}
+                  isIso={isActuallyIso}
                   showTitle={true}
                   owners={owners}
                   ownersLoading={ownersLoading}
@@ -1912,6 +1926,7 @@ function CatalogDetailsBody({
   preOrder,
   expectedDate,
   owned,
+  isIso,
   showTitle = true,
   owners: externalOwners,
   ownersLoading: externalOwnersLoading,
@@ -1922,6 +1937,7 @@ function CatalogDetailsBody({
   preOrder: boolean;
   expectedDate?: string | null;
   owned: boolean;
+  isIso?: boolean;
   showTitle?: boolean;
   owners?: CatalogCarOwner[];
   ownersLoading?: boolean;
@@ -2006,6 +2022,12 @@ function CatalogDetailsBody({
                 )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                {isIso && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-400">
+                    <Search className="size-3" />
+                    <span>On your ISO list</span>
+                  </span>
+                )}
                 {owned && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
                     <CheckCircle2 className="size-3" />
@@ -2141,6 +2163,7 @@ export function CatalogCarTitleSection({
   car,
   catalogCar,
   owned,
+  isIso,
   preOrder,
   owners,
   ownersLoading,
@@ -2149,6 +2172,7 @@ export function CatalogCarTitleSection({
   car: Diecast;
   catalogCar?: CatalogCar | null;
   owned: boolean;
+  isIso?: boolean;
   preOrder: boolean;
   owners?: CatalogCarOwner[];
   ownersLoading?: boolean;
@@ -2171,6 +2195,12 @@ export function CatalogCarTitleSection({
           )}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {isIso && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-400">
+              <Search className="size-3" />
+              <span>On your ISO list</span>
+            </span>
+          )}
           {owned && (
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
               <CheckCircle2 className="size-3" />

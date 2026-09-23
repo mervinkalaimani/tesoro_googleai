@@ -10,6 +10,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Search,
   Store,
   Trash2,
 } from "lucide-react";
@@ -19,6 +20,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
+import { isIso } from "@/lib/status";
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
 import {
   catalogEntryUsage,
@@ -77,7 +79,7 @@ export const Route = createFileRoute("/catalog")({
   component: CatalogPage,
 });
 
-type Segment = "all" | "released" | "preorder";
+type Segment = "all" | "released" | "preorder" | "iso";
 
 const FILTERS = [
   { key: "make", label: "Make", get: (c: CatalogCar) => c.make },
@@ -311,51 +313,68 @@ function CatalogPage() {
 
   /**
    * A car is owned when one of yours points at that catalogue entry.
-   *
-   * Its Catalog ID is the answer whenever it names an entry that exists, which
-   * today is every row in the database. Matching on the description is the
-   * fallback for a row whose ID names nothing — an import, or an entry that has
-   * since been renumbered — and it is offered only those rows now. Run against
-   * every car it marked a casting owned because some *other* car of yours looked
-   * like it, which is how one white Supra reported three of them.
+   * ISO cars are tracked separately so they are marked and kept visible
+   * even when "Hide owned cars" is enabled.
    */
-  const owned = useMemo(() => {
+  const { owned, myIso } = useMemo(() => {
     const known = new Set(catalog.map((c) => c.car_id.toUpperCase()));
-    const set = new Set<string>();
-    const unresolved: typeof mine = [];
+    const ownedSet = new Set<string>();
+    const isoSet = new Set<string>();
+    const unresolvedOwned: typeof mine = [];
+    const unresolvedIso: typeof mine = [];
+
     for (const c of mine) {
       const id = (c.catalogId || "").trim().toUpperCase();
-      if (id && known.has(id)) set.add(id);
-      else unresolved.push(c);
-    }
-    if (unresolved.length > 0) {
-      for (const cat of catalog) {
-        const id = cat.car_id.toUpperCase();
-        if (set.has(id)) continue;
-        if (unresolved.some((m) => isCarMatchingCatalog(m, cat))) set.add(id);
+      const isCarIso = isIso(c.status);
+      if (isCarIso) {
+        if (id && known.has(id)) isoSet.add(id);
+        else unresolvedIso.push(c);
+      } else {
+        if (id && known.has(id)) ownedSet.add(id);
+        else unresolvedOwned.push(c);
       }
     }
-    return set;
+
+    if (unresolvedOwned.length > 0 || unresolvedIso.length > 0) {
+      for (const cat of catalog) {
+        const id = cat.car_id.toUpperCase();
+        if (unresolvedOwned.length > 0 && !ownedSet.has(id)) {
+          if (unresolvedOwned.some((m) => isCarMatchingCatalog(m, cat))) {
+            ownedSet.add(id);
+          }
+        }
+        if (unresolvedIso.length > 0 && !isoSet.has(id)) {
+          if (unresolvedIso.some((m) => isCarMatchingCatalog(m, cat))) {
+            isoSet.add(id);
+          }
+        }
+      }
+    }
+
+    return { owned: ownedSet, myIso: isoSet };
   }, [mine, catalog]);
 
   // Segment and the top bar's search first; the filter options come from what is left.
   const searched = useMemo(() => {
     const q = query.trim();
+    const filterBySegment = (c: CatalogCar) => {
+      const cid = c.car_id.toUpperCase();
+      if (segment === "released" && isPreOrder(c)) return false;
+      if (segment === "preorder" && !isPreOrder(c)) return false;
+      if (segment === "iso" && !myIso.has(cid)) return false;
+      return true;
+    };
+
     if (!q) {
-      return catalog.filter((c) => {
-        if (segment === "released" && isPreOrder(c)) return false;
-        if (segment === "preorder" && !isPreOrder(c)) return false;
-        return true;
-      });
+      return catalog.filter(filterBySegment);
     }
 
     const groups = parseQuery(q);
     return catalog.filter((c) => {
-      if (segment === "released" && isPreOrder(c)) return false;
-      if (segment === "preorder" && !isPreOrder(c)) return false;
+      if (!filterBySegment(c)) return false;
       return matchesQuery(asCar(c), groups);
     });
-  }, [catalog, segment, query]);
+  }, [catalog, segment, query, myIso]);
 
   const matches = (c: CatalogCar, f: Filters, skip?: FilterKey) =>
     FILTERS.every((d) => d.key === skip || f[d.key] === "all" || d.get(c) === f[d.key]);
@@ -363,13 +382,18 @@ function CatalogPage() {
   const rows = useMemo(() => {
     let result = searched.filter((c) => matches(c, filters));
     if (hideOwned) {
-      result = result.filter((c) => !owned.has(c.car_id.toUpperCase()));
+      result = result.filter((c) => {
+        const cid = c.car_id.toUpperCase();
+        // Never hide ISO cars when "Hide owned cars" is checked
+        if (myIso.has(cid)) return true;
+        return !owned.has(cid);
+      });
     }
     if (hideInPacks) {
       result = result.filter((c) => !inSomePack.has(c.car_id.toUpperCase()));
     }
     return result.sort((a, b) => compareBy(a, b, sort, serials));
-  }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned, sort, serials]);
+  }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned, myIso, sort, serials]);
 
   /** Each filter's choices, narrowed by the other filters, with counts. */
   const options = useMemo(() => {
@@ -377,8 +401,9 @@ function CatalogPage() {
     for (const d of FILTERS) {
       const counts = new Map<string, number>();
       for (const c of searched) {
-        if (hideOwned && owned.has(c.car_id.toUpperCase())) continue;
-        if (hideInPacks && inSomePack.has(c.car_id.toUpperCase())) continue;
+        const cid = c.car_id.toUpperCase();
+        if (hideOwned && owned.has(cid) && !myIso.has(cid)) continue;
+        if (hideInPacks && inSomePack.has(cid)) continue;
         if (!matches(c, filters, d.key)) continue;
         const v = d.get(c).trim();
         if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
@@ -388,7 +413,7 @@ function CatalogPage() {
         .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
     }
     return out;
-  }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned]);
+  }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned, myIso]);
 
   // Hide owned is a toolbar toggle of its own now, so it no longer counts
   // towards the badge on the Filters button. Hide cars in multipacks is on by
@@ -421,8 +446,9 @@ function CatalogPage() {
     for (const d of FILTERS) {
       const counts = new Map<string, number>();
       for (const c of searched) {
-        if (hideOwned && owned.has(c.car_id.toUpperCase())) continue;
-        if (draftHideInPacks && inSomePack.has(c.car_id.toUpperCase())) continue;
+        const cid = c.car_id.toUpperCase();
+        if (hideOwned && owned.has(cid) && !myIso.has(cid)) continue;
+        if (draftHideInPacks && inSomePack.has(cid)) continue;
         if (!matches(c, draftFilters, d.key)) continue;
         const v = d.get(c).trim();
         if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
@@ -432,7 +458,7 @@ function CatalogPage() {
         .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
     }
     return out;
-  }, [searched, draftFilters, hideOwned, draftHideInPacks, inSomePack, owned]);
+  }, [searched, draftFilters, hideOwned, draftHideInPacks, inSomePack, owned, myIso]);
 
   // Reordering is as much a new list as refiltering is: sixty rows into a
   // different order are sixty different rows.
@@ -485,20 +511,35 @@ function CatalogPage() {
     view === "compact" ? (
       // Three across on a phone rather than the shared two.
       <div className={cn(COMPACT_GRID_COLS, "max-sm:grid-cols-3")}>
-        {list.map((c) => (
-          <CompactCarCard
-            key={c.car_id}
-            car={asCar(c)}
-            onOpen={() => setViewing(c)}
-            caption={owned.has(c.car_id.toUpperCase()) ? "Owned" : isPreOrder(c) ? "PO" : undefined}
-          />
-        ))}
+        {list.map((c) => {
+          const cid = c.car_id.toUpperCase();
+          const isCarIso = myIso.has(cid);
+          const isCarOwned = owned.has(cid);
+          const caption = isCarIso
+            ? isCarOwned
+              ? "Owned · ISO"
+              : "ISO"
+            : isCarOwned
+              ? "Owned"
+              : isPreOrder(c)
+                ? "PO"
+                : undefined;
+          return (
+            <CompactCarCard
+              key={c.car_id}
+              car={asCar(c)}
+              onOpen={() => setViewing(c)}
+              caption={caption}
+            />
+          );
+        })}
       </div>
     ) : view === "table" ? (
       <CatalogTable
         rows={list}
         serials={serials}
         owned={owned}
+        isIso={myIso}
         onOpen={setViewing}
         onAdd={setAdding}
         onEdit={isAdmin ? setEditing : undefined}
@@ -511,6 +552,7 @@ function CatalogPage() {
             key={c.car_id}
             c={c}
             owned={owned.has(c.car_id.toUpperCase())}
+            isIso={myIso.has(c.car_id.toUpperCase())}
             onOpen={() => setViewing(c)}
             onAdd={() => setAdding(c)}
           />
@@ -520,147 +562,145 @@ function CatalogPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* Sticky header section: keeps title, count, actions, toolbar pinned to top while scrolling */}
-      <div className="sticky top-14 z-30 -mx-3 -mt-3 border-b border-border/70 bg-background/95 px-3 py-3 backdrop-blur-xl md:-mx-6 md:-mt-6 md:px-6 shadow-xs space-y-2.5">
-        <PageHeading
-          title="Catalog"
-          subtitle={`${rows.length.toLocaleString()} casting${rows.length === 1 ? "" : "s"} · tap one to add it to your collection`}
-        >
-          {isAdmin && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-1.5"
-                onClick={() => setMerging(true)}
-              >
-                <Merge className="size-4" />
-                <span className="max-sm:sr-only">Duplicates</span>
-              </Button>
-              <Button size="sm" className="gap-1.5" onClick={() => setEditing("new")}>
-                <Plus className="size-4" />
-                New casting
-              </Button>
-            </>
-          )}
-        </PageHeading>
+      <PageHeading
+        title="Catalog"
+        subtitle={`${rows.length.toLocaleString()} casting${rows.length === 1 ? "" : "s"} · tap one to add it to your collection`}
+      >
+        {isAdmin && (
+          <>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5"
+              onClick={() => setMerging(true)}
+            >
+              <Merge className="size-4" />
+              <span className="max-sm:sr-only">Duplicates</span>
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={() => setEditing("new")}>
+              <Plus className="size-4" />
+              New casting
+            </Button>
+          </>
+        )}
+      </PageHeading>
 
-        <PageToolbar
-          sticky={true}
-          oneLine
-          left={
-            <SegmentControl
-              value={segment}
-              onChange={setSegment}
-              className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
-              options={[
-                { value: "all", label: "All" },
-                { value: "released", label: "Released" },
-                { value: "preorder", label: "PO" },
-              ]}
-            />
-          }
-          right={
-            <>
-              {/* Hide owned sits outside the filter sheet: it is the one you
-                  flip while browsing, not something you set and forget. */}
-              <label
-                title="Hide cars you already own"
-                className={cn(
-                  "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 text-xs font-medium",
-                  hideOwned
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-input text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  checked={hideOwned}
-                  onChange={(e) => setHideOwned(e.target.checked)}
-                  className="size-3.5 rounded border-input accent-primary"
-                />
-                <span className="max-sm:sr-only">Hide owned</span>
-              </label>
+      <PageToolbar
+        sticky={true}
+        oneLine
+        left={
+          <SegmentControl
+            value={segment}
+            onChange={setSegment}
+            className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
+            options={[
+              { value: "all", label: "All" },
+              { value: "released", label: "Released" },
+              { value: "preorder", label: "PO" },
+              { value: "iso", label: "My ISO" },
+            ]}
+          />
+        }
+        right={
+          <>
+            {/* Hide owned sits outside the filter sheet: it is the one you
+                flip while browsing, not something you set and forget. */}
+            <label
+              title="Hide cars you already own"
+              className={cn(
+                "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 text-xs font-medium",
+                hideOwned
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-input text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={hideOwned}
+                onChange={(e) => setHideOwned(e.target.checked)}
+                className="size-3.5 rounded border-input accent-primary"
+              />
+              <span className="max-sm:sr-only">Hide owned</span>
+            </label>
 
-              {/* Sort, group and filter read as icons at every width, the way
-                  they do on the other pages. */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="size-8 shrink-0"
-                    aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${
-                      sort.dir === "asc" ? "ascending" : "descending"
-                    }`}
-                    title="Sort"
+            {/* Sort, group and filter read as icons at every width, the way
+                they do on the other pages. */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="size-8 shrink-0"
+                  aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${
+                    sort.dir === "asc" ? "ascending" : "descending"
+                  }`}
+                  title="Sort"
+                >
+                  <ArrowUpDown className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+                {SORTS.map((s) => (
+                  <DropdownMenuItem
+                    key={s.value}
+                    onSelect={() => sortBy(s.value)}
+                    className="justify-between text-xs"
                   >
-                    <ArrowUpDown className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
-                  {SORTS.map((s) => (
-                    <DropdownMenuItem
-                      key={s.value}
-                      onSelect={() => sortBy(s.value)}
-                      className="justify-between text-xs"
-                    >
-                      {s.label}
-                      {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {s.label}
+                    {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant={group === "none" ? "outline" : "default"}
-                    className="size-8 shrink-0"
-                    aria-label={GROUPS.find((g) => g.value === group)?.label}
-                    title="Group"
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant={group === "none" ? "outline" : "default"}
+                  className="size-8 shrink-0"
+                  aria-label={GROUPS.find((g) => g.value === group)?.label}
+                  title="Group"
+                >
+                  <Layers className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
+                {GROUPS.map((g) => (
+                  <DropdownMenuItem
+                    key={g.value}
+                    onSelect={() => setGroup(g.value)}
+                    className="justify-between text-xs"
                   >
-                    <Layers className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
-                  {GROUPS.map((g) => (
-                    <DropdownMenuItem
-                      key={g.value}
-                      onSelect={() => setGroup(g.value)}
-                      className="justify-between text-xs"
-                    >
-                      {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
-                      {group === g.value && <Check className="size-3.5" />}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
+                    {group === g.value && <Check className="size-3.5" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-              <Button
-                type="button"
-                size="icon"
-                variant={activeCount > 0 ? "default" : "outline"}
-                onClick={openFilterModal}
-                className="relative size-8 shrink-0"
-                title="Filter castings"
-                aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : "Filters"}
-              >
-                <Filter className="size-4" />
-                {activeCount > 0 && (
-                  <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground ring-1 ring-border">
-                    {activeCount}
-                  </span>
-                )}
-              </Button>
-              <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "table"]} />
-            </>
-          }
-        />
-      </div>
+            <Button
+              type="button"
+              size="icon"
+              variant={activeCount > 0 ? "default" : "outline"}
+              onClick={openFilterModal}
+              className="relative size-8 shrink-0"
+              title="Filter castings"
+              aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : "Filters"}
+            >
+              <Filter className="size-4" />
+              {activeCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground ring-1 ring-border">
+                  {activeCount}
+                </span>
+              )}
+            </Button>
+            <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "table"]} />
+          </>
+        }
+      />
 
       {isLoading && catalog.length === 0 ? (
         <div className="grid place-items-center py-16 text-muted-foreground">
@@ -668,7 +708,11 @@ function CatalogPage() {
         </div>
       ) : rows.length === 0 ? (
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
-          {segment === "preorder" ? "Nothing open to pre-order matches." : "No castings match."}
+          {segment === "iso"
+            ? "No ISO cars found in the catalog."
+            : segment === "preorder"
+              ? "Nothing open to pre-order matches."
+              : "No castings match."}
         </div>
       ) : (
         <div className="space-y-5">
@@ -695,6 +739,7 @@ function CatalogPage() {
         preOrder={viewing ? isPreOrder(viewing) : false}
         expectedDate={viewing?.expected_date}
         owned={viewing ? owned.has(viewing.car_id.toUpperCase()) : false}
+        isIso={viewing ? myIso.has(viewing.car_id.toUpperCase()) : false}
         onClose={() => setViewing(null)}
         canEdit={!isGuest}
         onEdit={() => {
@@ -868,11 +913,13 @@ function CatalogPage() {
 function CatalogCard({
   c,
   owned,
+  isIso: isCarIso,
   onOpen,
   onAdd,
 }: {
   c: CatalogCar;
   owned: boolean;
+  isIso: boolean;
   onOpen: () => void;
   onAdd: () => void;
 }) {
@@ -887,11 +934,21 @@ function CatalogCard({
             PO
           </span>
         )}
-        {owned && (
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 backdrop-blur-sm">
-            <Check className="size-3" /> Owned
-          </span>
-        )}
+        <div className="absolute right-2 top-2 flex items-center gap-1">
+          {isCarIso && (
+            <span
+              title="On your ISO list"
+              className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-sky-400 backdrop-blur-sm ring-1 ring-sky-500/40"
+            >
+              <Search className="size-3" /> ISO
+            </span>
+          )}
+          {owned && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 backdrop-blur-sm">
+              <Check className="size-3" /> Owned
+            </span>
+          )}
+        </div>
         {/* A box, not a casting. It earns the primary colour because it changes
             what the card means: one of these is several cars. */}
         {c.is_multipack && (
@@ -940,6 +997,7 @@ function CatalogTable({
   rows,
   serials,
   owned,
+  isIso: isoSet,
   onOpen,
   onAdd,
   onEdit,
@@ -947,6 +1005,7 @@ function CatalogTable({
   rows: CatalogCar[];
   serials: Map<string, number>;
   owned: Set<string>;
+  isIso: Set<string>;
   onOpen: (c: CatalogCar) => void;
   onAdd: (c: CatalogCar) => void;
   onEdit?: (c: CatalogCar) => void;
@@ -957,6 +1016,7 @@ function CatalogTable({
       <div className="space-y-2 md:hidden">
         {rows.map((c) => {
           const car = asCar(c);
+          const cid = c.car_id.toUpperCase();
           return (
             <article key={c.car_id} className="card-elevated overflow-hidden">
               <button
@@ -973,7 +1033,13 @@ function CatalogTable({
                         PO
                       </span>
                     )}
-                    {owned.has(c.car_id.toUpperCase()) && (
+                    {isoSet.has(cid) && (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.2 text-[10px] font-semibold text-sky-500">
+                        <Search className="size-3" />
+                        <span>ISO</span>
+                      </span>
+                    )}
+                    {owned.has(cid) && (
                       <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-500">
                         <Check className="size-3" />
                         <span>Owned</span>
@@ -1036,6 +1102,7 @@ function CatalogTable({
           <tbody>
             {rows.map((c) => {
               const car = asCar(c);
+              const cid = c.car_id.toUpperCase();
               return (
                 <tr
                   key={c.car_id}
@@ -1065,9 +1132,16 @@ function CatalogTable({
                               {packLabel(c)}
                             </span>
                           )}
-                          {owned.has(c.car_id.toUpperCase()) && (
-                            <Check className="size-3 shrink-0 text-emerald-500" />
+                          {isoSet.has(cid) && (
+                            <span
+                              title="On your ISO list"
+                              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 text-[10px] font-semibold text-sky-500"
+                            >
+                              <Search className="size-3" />
+                              ISO
+                            </span>
                           )}
+                          {owned.has(cid) && <Check className="size-3 shrink-0 text-emerald-500" />}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">
                           {carSubLine(car)}

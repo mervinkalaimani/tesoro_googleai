@@ -118,8 +118,8 @@ export function PageToolbar({
     // The negative margins let the band reach the edges of the page's padding
     // rather than stopping where the content column does — a translucent strip
     // with a gap either side reads as a floating box, not as part of the
-    // chrome. z-20 keeps it over table headers (z-10) and under the top bar (z-40).
-    <div className="sticky top-14 z-20 -mx-3 border-b border-border/60 bg-background/80 px-3 py-2 backdrop-blur-xl md:-mx-6 md:px-6">
+    // chrome. z-30 keeps it over table headers (z-10/20) and under the top bar (z-40).
+    <div className="sticky top-14 z-30 -mx-3 border-b border-border/60 bg-background/95 px-3 py-2 backdrop-blur-md shadow-xs md:-mx-6 md:px-6">
       {inner}
     </div>
   );

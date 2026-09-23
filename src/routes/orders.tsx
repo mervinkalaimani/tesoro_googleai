@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Truck, Plus, Pencil, Store, ChevronDown } from "lucide-react";
+import { Truck, Plus, Pencil, Store, ChevronDown, Filter } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import { isInHand, isOpenOrder, normaliseStatus, statusRank, type Status } from "@/lib/status";
 import { isLate } from "@/lib/delivery-watch";
@@ -473,9 +473,9 @@ function OrdersPage() {
             <FilterSelect
               value={seller}
               onChange={setSeller}
-              icon={<Store className="size-3.5" />}
+              icon={<Filter className="size-3.5" />}
               label="Seller"
-              iconOnlyOnMobile
+              iconOnly
               options={[
                 { value: "all", label: "All sellers" },
                 ...sellerOpts.map((s) => ({ value: s, label: s })),
@@ -488,6 +488,7 @@ function OrdersPage() {
                 setMode(v);
                 setDir(d);
               }}
+              iconOnly
               neutral="expected"
               options={[
                 { value: "expected", label: "Expected", dir: "asc" },

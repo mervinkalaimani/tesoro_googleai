@@ -147,11 +147,9 @@ function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
         {/* Car ID off the photograph; it belongs in the drawer and the table. */}
         <CarMarkOverlay car={car} />
 
-        {/* Status pill overlay with backdrop blur */}
+        {/* Status pill overlay */}
         <div className="pointer-events-none absolute bottom-2 right-2">
-          <span className="inline-block rounded-full bg-black/75 backdrop-blur-sm">
-            <StatusPill status={car.status} />
-          </span>
+          <StatusPill status={car.status} className="shadow-xs" />
         </div>
       </div>
 

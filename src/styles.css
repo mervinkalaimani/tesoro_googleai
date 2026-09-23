@@ -230,7 +230,7 @@
     scroll-behavior: smooth;
     -webkit-text-size-adjust: 100%;
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
   @media (prefers-reduced-motion: reduce) {
     html {
@@ -249,7 +249,7 @@
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* Scale custom fixed-pixel font utility classes with the user font size preference */

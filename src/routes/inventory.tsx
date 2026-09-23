@@ -295,34 +295,45 @@ function Metric({ label, value, className }: { label: string; value: string; cla
 
 /** Spend, list price, and the gap between them. */
 function PriceStrip({ car, spentOverride }: { car: Diecast; spentOverride?: number }) {
-  // The group total when this tile stands for several copies: what six
-  // McQueens cost, not what the newest one cost. The MRP delta goes quiet with
-  // it, since one copy is MRP against six copies is spend is not a comparison.
   const spent = spentOverride ?? car.spent ?? 0;
   const mrp = spentOverride === undefined ? car.mrp || 0 : 0;
-  const delta = priceDelta(spent, mrp);
+  const diff = spent > 0 && mrp > 0 ? Math.round(spent - mrp) : null;
+  let deltaDisplay = "—";
+  if (diff !== null) {
+    if (diff > 0) deltaDisplay = `+${inr(diff)}`;
+    else if (diff < 0) deltaDisplay = `-${inr(Math.abs(diff))}`;
+    else deltaDisplay = "₹0";
+  }
 
   return (
-    <div className="flex min-w-0 items-end gap-3">
-      <Metric label="Spent" value={spent ? inr(spent) : "—"} />
-      <Metric label="MRP" value={mrp ? inr(mrp) : "—"} />
-      {delta && (
-        <div className="min-w-0" title={delta.hint}>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Delta</div>
-          <div
-            className={`mt-0.5 inline-flex items-center text-sm font-semibold tabular-nums ${
-              delta.over ? "text-rose-400" : "text-emerald-500"
-            }`}
-          >
-            {delta.over ? (
-              <ChevronUp className="size-3.5 shrink-0" />
-            ) : (
-              <ChevronDown className="size-3.5 shrink-0" />
-            )}
-            {delta.text}
-          </div>
+    <div className="grid grid-cols-3 gap-2 text-left">
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">spent</div>
+        <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-foreground">
+          {spent ? inr(spent) : "—"}
         </div>
-      )}
+      </div>
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">MRP</div>
+        <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-foreground">
+          {mrp ? inr(mrp) : "—"}
+        </div>
+      </div>
+      <div className="min-w-0">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">delta</div>
+        <div
+          className={cn(
+            "mt-0.5 truncate text-xs font-semibold tabular-nums",
+            diff === null || diff === 0
+              ? "text-muted-foreground"
+              : diff > 0
+                ? "text-rose-600 dark:text-rose-400"
+                : "text-emerald-600 dark:text-emerald-400",
+          )}
+        >
+          {deltaDisplay}
+        </div>
+      </div>
     </div>
   );
 }
@@ -351,53 +362,61 @@ function InventoryCard({
           <CarThumb car={car} className="aspect-[16/10] w-full" />
         </button>
 
-        {/* The car ID, size, assortment and type used to be pinned over the
-            photograph. They are catalogue detail, not identity: four chips
-            covering the car you are trying to look at, to tell you things the
-            text below already says. Only chase and favourite stay — they are
-            what you scan a whole page for. */}
         <CarMarkOverlay car={car} />
 
-        {/* The pill's own colours are translucent, so it sits on an opaque
-            backdrop rather than directly on the photograph. */}
+        {/* Status pill overlay with proper dark/light mode and no artificial black backdrop or blur */}
         <div className="pointer-events-none absolute bottom-2 right-2">
-          <span className="inline-block rounded-full bg-black/75 backdrop-blur-sm">
-            <StatusPill status={car.status} />
-          </span>
+          <StatusPill status={car.status} className="shadow-xs" />
         </div>
       </div>
 
       <div className="flex flex-1 flex-col p-3">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="text-left text-sm font-bold leading-snug hover:text-primary"
-        >
-          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-        </button>
+        {/* Car Name (regular size) */}
+        <div className="flex items-start justify-between gap-1.5">
+          <button
+            type="button"
+            onClick={onOpen}
+            className="text-left text-sm font-semibold leading-snug hover:text-primary line-clamp-1 min-w-0"
+            title={car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+          >
+            {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+          </button>
+          {copies > 1 && (
+            <div className="shrink-0">
+              <CopiesBadge n={copies} expanded={expanded} onToggle={onToggleCopies} />
+            </div>
+          )}
+        </div>
 
-        {copies > 1 && (
-          <div className="mt-1">
-            <CopiesBadge n={copies} expanded={expanded} onToggle={onToggleCopies} />
-          </div>
-        )}
+        {/* brand (left) and assortment (right) (smaller size) */}
+        <div className="mt-1 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+          <span className="truncate" title={car.brand || undefined}>
+            {car.brand || "—"}
+          </span>
+          <span
+            className="truncate text-right shrink-0 max-w-[50%]"
+            title={car.assortment || undefined}
+          >
+            {car.assortment || "—"}
+          </span>
+        </div>
 
-        <p className="mt-1 text-xs leading-snug text-muted-foreground">{carSubLine(car)}</p>
+        {/* series (left) and sub series (right) (even smaller) */}
+        <div className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground/80">
+          <span className="truncate" title={car.series || undefined}>
+            {car.series || "—"}
+          </span>
+          <span
+            className="truncate text-right shrink-0 max-w-[50%]"
+            title={car.subSeries || undefined}
+          >
+            {car.subSeries || "—"}
+          </span>
+        </div>
 
-        {/* Where the chips taken off the image now live: readable, and not on
-            top of the photograph. */}
-        {[car.assortment, car.type, car.size].some(Boolean) && (
-          <p className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
-            {[car.assortment, car.type, car.size].filter(Boolean).join(" · ")}
-          </p>
-        )}
-
-        {/* Edit and Delete used to sit here. Editing a car is something you do
-            after looking at it, so it lives on the car itself; deleting one is
-            behind that, inside the edit form. A pencil and a bin on every tile
-            of a page of forty put a destructive action one mis-tap from
-            scrolling. */}
+        {/* Divider */}
         <div className="mt-auto border-t border-border pt-2.5">
+          {/* spent, MRP, delta */}
           <PriceStrip car={car} spentOverride={copies > 1 ? copiesTotal : undefined} />
         </div>
       </div>
@@ -794,47 +813,26 @@ function InventoryPage() {
           )}
         </div>
 
-        {/* Row 2 on Mobile: Scrollable row with toggle chips and any active filter chips */}
-        <div className="flex md:hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
-          <ToggleChip
-            label="Chase"
-            active={chaseOnly}
-            onToggle={() => setChaseOnly((v) => !v)}
-            icon={<ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />}
-          />
-          <ToggleChip
-            label="Favourites"
-            active={favOnly}
-            onToggle={() => setFavOnly((v) => !v)}
-            icon={
-              <FavouriteMark className={favOnly ? "size-3" : "size-3 fill-none text-current"} />
-            }
-          />
-          <ToggleChip
-            label="Show collapsed"
-            active={showCollapsed}
-            onToggle={() => onToggleShowCollapsed(!showCollapsed)}
-          />
+        {/* Row 2 on Mobile: Active filter chips and clear button if any filters applied */}
+        {activeCount > 0 && (
+          <div className="flex md:hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {FILTERS.map((d) => {
+              if (filters[d.key] === "all") return null;
+              return (
+                <button
+                  key={d.key}
+                  type="button"
+                  onClick={() => setFilters((prev) => ({ ...prev, [d.key]: "all" }))}
+                  className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-semibold border border-primary/50 bg-primary text-primary-foreground shadow-xs shrink-0 whitespace-nowrap cursor-pointer"
+                >
+                  <span>
+                    {d.label}: {filters[d.key]}
+                  </span>
+                  <X className="size-2.5 ml-0.5" />
+                </button>
+              );
+            })}
 
-          {/* Active filter chips shown on phone with x mark to quickly clear */}
-          {FILTERS.map((d) => {
-            if (filters[d.key] === "all") return null;
-            return (
-              <button
-                key={d.key}
-                type="button"
-                onClick={() => setFilters((prev) => ({ ...prev, [d.key]: "all" }))}
-                className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-semibold border border-primary/50 bg-primary text-primary-foreground shadow-xs shrink-0 whitespace-nowrap cursor-pointer"
-              >
-                <span>
-                  {d.label}: {filters[d.key]}
-                </span>
-                <X className="size-2.5 ml-0.5" />
-              </button>
-            );
-          })}
-
-          {activeCount > 0 && (
             <button
               type="button"
               onClick={clearAllFilters}
@@ -842,8 +840,8 @@ function InventoryPage() {
             >
               Clear
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Phone filter modal sliding from bottom */}

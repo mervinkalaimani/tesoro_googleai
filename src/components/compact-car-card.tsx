@@ -1,5 +1,6 @@
 import { CopiesBadge } from "@/components/copies-badge";
 import { ChaseMark, FavouriteMark } from "@/components/car-marks";
+import { StatusPill } from "@/components/status-pill";
 import { rarityOf } from "@/lib/rarity";
 
 import type { Diecast } from "@/lib/types";
@@ -100,8 +101,14 @@ export function CompactCarCard({
           {title}
         </div>
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
-          <span className="truncate text-[10px] text-muted-foreground">
-            {[car.status, car.brand].filter(Boolean).join(" · ") || "—"}
+          <span className="flex items-center gap-1 min-w-0 truncate text-[10px]">
+            {car.status && (
+              <StatusPill
+                status={car.status}
+                className="text-[9px] px-1.5 py-0 leading-tight shrink-0"
+              />
+            )}
+            <span className="truncate text-muted-foreground">{car.brand || "—"}</span>
           </span>
           <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
             {car.spent ? inr(car.spent) : "—"}

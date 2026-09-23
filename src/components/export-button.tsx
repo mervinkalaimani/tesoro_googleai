@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ExportDialog } from "@/components/export-dialog";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { useAuth, fullName } from "@/lib/auth-store";
+import { cn } from "@/lib/utils";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -20,9 +21,9 @@ export function ExportButton({
   rows,
   name,
   label,
-  iconOnly = false,
+  iconOnly = true,
   iconOnlyOnMobile = false,
-  size = "sm",
+  size = "icon",
   variant = "outline",
   className = "",
 }: {
@@ -49,7 +50,7 @@ export function ExportButton({
         type="button"
         variant={variant}
         size={size}
-        className={`gap-1.5 ${className}`}
+        className={cn("size-8 shrink-0 p-0 justify-center", className)}
         disabled={empty}
         onClick={() => setOpen(true)}
         title={

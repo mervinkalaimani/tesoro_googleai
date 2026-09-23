@@ -15,7 +15,7 @@ export function StatusPill({ status, className = "" }: { status: string; classNa
   const label = normaliseStatus(status);
   return (
     <span
-      className={`inline-block rounded-full border px-2 py-0.5 text-xs ${styleFor(status)} ${className}`}
+      className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium shadow-none ${styleFor(status)} ${className}`}
     >
       {label || "—"}
     </span>

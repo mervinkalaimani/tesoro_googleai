@@ -173,18 +173,23 @@ export function nextInFlow(current: string | null | undefined): Status {
   return FLOW[i + 1];
 }
 
-/** Pill colours, in the same shape the pill has always used. */
+/** Pill colours with proper contrast and support for light and dark modes. */
 export const STATUS_STYLES: Record<Status, string> = {
-  "In Hand": "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30",
-  "In Transit": "bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/30",
-  Ordered: "bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/30",
-  "On Hold": "bg-orange-500/15 text-orange-600 dark:text-orange-300 border-orange-500/30",
-  PO: "bg-violet-500/15 text-violet-600 dark:text-violet-300 border-violet-500/30",
-  ISO: "bg-zinc-500/20 text-zinc-600 dark:text-zinc-300 border-zinc-500/30",
+  "In Hand":
+    "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800/60",
+  "In Transit":
+    "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-950/70 dark:text-blue-300 dark:border-blue-800/60",
+  Ordered:
+    "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800/60",
+  "On Hold":
+    "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-950/70 dark:text-orange-300 dark:border-orange-800/60",
+  PO: "bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-950/70 dark:text-violet-300 dark:border-violet-800/60",
+  ISO: "bg-zinc-100 text-zinc-800 border-zinc-300 dark:bg-zinc-800/70 dark:text-zinc-300 dark:border-zinc-700/60",
 };
 
 /** The Late badge is not a status, so it keeps its colour here beside them. */
-export const LATE_STYLE = "bg-rose-500/15 text-rose-600 dark:text-rose-300 border-rose-500/30";
+export const LATE_STYLE =
+  "bg-rose-100 text-rose-800 border-rose-300 dark:bg-rose-950/70 dark:text-rose-300 dark:border-rose-800/60";
 
 export const STATUS_ICON: Record<Status, LucideIcon> = {
   "In Hand": PackageCheck,

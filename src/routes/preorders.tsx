@@ -9,6 +9,7 @@ import {
   Plus,
   Store,
   Truck,
+  Filter,
 } from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
@@ -547,9 +548,9 @@ function PreOrdersPage() {
             <FilterSelect
               value={seller}
               onChange={setSeller}
-              icon={<Store className="size-3.5" />}
+              icon={<Filter className="size-3.5" />}
               label="Seller"
-              iconOnlyOnMobile
+              iconOnly
               options={[
                 { value: "all", label: "All sellers" },
                 ...sellerOpts.map((s) => ({ value: s, label: s })),
@@ -562,6 +563,7 @@ function PreOrdersPage() {
                 setSort(v);
                 setDir(d);
               }}
+              iconOnly
               neutral="balance"
               options={[
                 { value: "balance", label: "Balance", dir: "desc" },

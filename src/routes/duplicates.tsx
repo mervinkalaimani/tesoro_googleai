@@ -215,15 +215,14 @@ function DuplicatesPage() {
         }
         right={
           <Button
-            size="sm"
+            size="icon"
             variant="outline"
             onClick={() => setExportOpen(true)}
             title="Export the duplicates"
             aria-label="Export the duplicates"
-            className="h-8 px-2.5 shrink-0"
+            className="size-8 shrink-0 justify-center p-0"
           >
             <Share2 className="size-3.5" />
-            <span className="hidden sm:inline text-xs font-medium">Export</span>
           </Button>
         }
       />
