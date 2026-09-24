@@ -69,7 +69,17 @@ export function CataloguePhotos() {
       if (filter === "missing" && url) return false;
       if (filter === "shared" && !sharedPhotos.has(url)) return false;
       if (!needle) return true;
-      return [c.name, c.make, c.model, c.variant, c.brand, c.assortment, c.series, c.car_id]
+      return [
+        c.name,
+        c.make,
+        c.model,
+        c.variant,
+        c.colour,
+        c.brand,
+        c.assortment,
+        c.series,
+        c.car_id,
+      ]
         .map((v) => (v || "").toLowerCase())
         .some((v) => v.includes(needle));
     });
@@ -168,6 +178,21 @@ export function CataloguePhotos() {
                   <div className="flex items-center gap-1.5">
                     <span className="truncate text-sm font-medium text-foreground">
                       {c.name || `${c.make} ${c.model}`.trim()}
+                    </span>
+                    {/* Colour rides beside the name rather than in the sub-line,
+                        because it is what tells two otherwise identical castings
+                        apart — and picking the right photo is the whole job
+                        here. A casting with none says so, since that is a gap
+                        worth noticing while you are already looking. */}
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+                        clean(c.colour)
+                          ? "border-border bg-muted/50 text-foreground"
+                          : "border-dashed border-border/70 text-muted-foreground/70",
+                      )}
+                    >
+                      {clean(c.colour) || "no colour"}
                     </span>
                     {isShared && (
                       <span
