@@ -1,4 +1,12 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+} from "react";
 import {
   CatalogCar,
   fetchCatalogFromSupabase,
@@ -41,13 +49,20 @@ interface CatalogContextType {
 
 const CatalogContext = createContext<CatalogContextType | null>(null);
 
+/** Shortest gap between two visibility-triggered catalogue reads. */
+const VISIBILITY_REFETCH_GAP_MS = 30_000;
+
 export function CatalogProvider({ children }: { children: React.ReactNode }) {
   const [catalog, setCatalog] = useState<CatalogCar[]>(() => getLocalCatalog());
   const [packMembers, setPackMembersState] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  /** When the catalogue was last read, so returning to the tab cannot loop. */
+  const lastFetchRef = useRef(0);
+
   const refreshCatalog = useCallback(async () => {
     setIsLoading(true);
+    lastFetchRef.current = Date.now();
     try {
       // Both together: what the entries are, and what is in the boxes among
       // them. A pack rendered before its contents arrive is a pack that flashes
@@ -64,6 +79,31 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     void refreshCatalog();
+  }, [refreshCatalog]);
+
+  /**
+   * Fetch it again when you come back to the tab.
+   *
+   * The catalogue used to be read once, on mount, and then left — on the
+   * strength of the realtime subscription below. That subscription has never
+   * delivered anything: tesoro_car_catalog is not in the supabase_realtime
+   * publication, so the channel opens, subscribes and stays silent. Cars
+   * re-read every 15 seconds and so looked fine; the catalogue a desktop tab
+   * had been holding since the morning did not, and photos added from a phone
+   * were invisible on the other machine until it was reloaded by hand.
+   *
+   * On visibility rather than on a timer because that is when it matters —
+   * you pick the machine up — and 1,400 rows is not something to fetch every
+   * fifteen seconds. The gate keeps alt-tabbing from becoming a fetch loop.
+   */
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (Date.now() - lastFetchRef.current < VISIBILITY_REFETCH_GAP_MS) return;
+      void refreshCatalog();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [refreshCatalog]);
 
   useEffect(() => {

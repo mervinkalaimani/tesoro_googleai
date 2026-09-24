@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plus, Store, Undo2 } from "lucide-react";
+import { Plus, RefreshCw, Store, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import { useCarsUndo } from "@/lib/cars-store";
+import { cn } from "@/lib/utils";
+import { useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
+import { useCatalog } from "@/lib/catalog-store";
 import type { Diecast } from "@/lib/types";
 import { HomeScreenMark } from "@/components/brand-mark";
 import { SearchBox } from "@/components/search-box";
@@ -19,6 +21,12 @@ const UNDO_WINDOW_MS = 30_000;
 
 export function TopBar() {
   const { undo, undoLabel, undoAt } = useCarsUndo();
+  const { refresh, refreshing } = useCarsRefresh();
+  const { refreshCatalog, isLoading: catalogLoading } = useCatalog();
+  // Both, because "it is not showing my photo" can be either of them: the row
+  // carries its own picture and falls back to its casting's.
+  const refreshAll = () => Promise.all([refresh(), refreshCatalog()]);
+  const syncing = refreshing || catalogLoading;
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkSeed, setBulkSeed] = useState<Diecast[] | undefined>(undefined);
@@ -71,9 +79,6 @@ export function TopBar() {
       </Link>
       {/* Desktop searches here, live. A phone searches from the bottom bar. */}
       <SearchBox className="hidden md:block" />
-      {/* No Refresh button or "Updated …" stamp: CarsProvider re-reads Supabase
-          every 15s on its own, and local edits are applied optimistically, so
-          there was never anything for a manual refresh to reveal. */}
       <div className="ml-auto flex items-center gap-1.5">
         {/* Only while it means something: it shows itself when there is
             something to reverse and withdraws half a minute later. */}
@@ -89,6 +94,27 @@ export function TopBar() {
             <Undo2 className="size-4" /> <span className="hidden sm:inline">Undo</span>
           </Button>
         )}
+
+        {/* Desktop only, because a phone is where the change is usually made
+            and the other machine is the one holding a stale copy.
+
+            There used to be a comment here explaining why no such button was
+            needed: cars re-read every 15 seconds, so a manual refresh could
+            reveal nothing. True of cars, and wrong about the catalogue, which
+            was read once on mount and then trusted to a realtime subscription
+            that has never delivered a row. Coming back to the tab now refetches
+            it on its own; this is for when you are already looking at it. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => void refreshAll()}
+          disabled={syncing}
+          title="Refresh cars and catalogue from the database"
+          aria-label="Refresh from the database"
+          className="hidden size-9 rounded-full shrink-0 md:inline-flex"
+        >
+          <RefreshCw className={cn("size-4.5", syncing && "animate-spin")} />
+        </Button>
 
         <NotificationCenter />
         {/* Reading right to left from the corner: who you are, then the thing
