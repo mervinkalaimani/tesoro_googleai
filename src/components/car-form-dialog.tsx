@@ -460,6 +460,8 @@ export function CarFormDialog({
    * by hand, or when one of them fails validation and has to be shown.
    */
   const [showIdentity, setShowIdentity] = useState(false);
+  /** Whether the photos found for this car are open under the identity card. */
+  const [pickingPhoto, setPickingPhoto] = useState(false);
   const [showPurchase, setShowPurchase] = useState(true);
   const [showCondition, setShowCondition] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
@@ -722,6 +724,7 @@ export function CarFormDialog({
       setShowIdentity(false);
       templateOriginRef.current = {};
     }
+    setPickingPhoto(false);
     setDraftReady(true);
     // prefill is read above but is deliberately not a dependency: seedKey
     // already covers a change of casting, and it is the object identity that
@@ -1543,13 +1546,31 @@ export function CarFormDialog({
         )}
       >
         <div className="flex items-start gap-3 bg-muted/30 p-3">
-          <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
+          {/* The thumbnail is the button for fixing it. A wrong or missing
+              photo is noticed here — it is the only picture on screen — and
+              the fix used to be three sections down under Photo & notes. The
+              search has already run by the time this card is drawn, so the
+              right one is usually a tap away. */}
+          <button
+            type="button"
+            onClick={() => setPickingPhoto((v) => !v)}
+            aria-expanded={pickingPhoto}
+            title="Pick a different photo"
+            className={cn(
+              "group relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted transition",
+              "ring-offset-2 ring-offset-background hover:ring-2 hover:ring-primary/60",
+              pickingPhoto && "ring-2 ring-primary",
+            )}
+          >
             {form.imageUrl ? (
               <img src={form.imageUrl} alt="" className="size-full object-cover" />
             ) : (
               <Car className="size-5 text-muted-foreground" />
             )}
-          </div>
+            <span className="absolute inset-0 grid place-items-center bg-black/55 opacity-0 transition group-hover:opacity-100">
+              <Sparkles className="size-4 text-white" />
+            </span>
+          </button>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
               <TruncatedName
@@ -1582,6 +1603,73 @@ export function CarFormDialog({
             </Button>
           )}
         </div>
+
+        {/* What the search turned up for this car, as a row you scroll. The
+            same candidates Photo & notes shows further down — this is the
+            shortcut, not a second search. Choosing one closes the row, because
+            the picture in the card above is the answer. */}
+        {pickingPhoto && (
+          <div className="space-y-1.5 border-t border-border bg-background px-3 py-2.5">
+            <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+              {imageSearch.loading ? (
+                <Loader2 className="size-3 animate-spin" />
+              ) : (
+                <Sparkles className="size-3 text-primary" />
+              )}
+              {imageSearch.loading
+                ? "Looking for this car…"
+                : imageSearch.candidates.length > 0
+                  ? "Tap the one that is this car"
+                  : "Nothing found — Photo & notes below takes a file or a link"}
+            </p>
+            {imageSearch.candidates.length > 0 && (
+              // w-0 min-w-full so the row scrolls inside the card rather than
+              // reporting its full length upwards and widening the dialog.
+              <div className="flex w-0 min-w-full snap-x gap-2 overflow-x-auto pb-1">
+                {imageSearch.candidates.map((c) => {
+                  const active = c.url === form.imageUrl;
+                  return (
+                    <button
+                      key={c.url}
+                      type="button"
+                      onClick={() => {
+                        setImage(c.url);
+                        setPickingPhoto(false);
+                      }}
+                      title={`${c.title} — ${c.source}`}
+                      aria-label={`Use this photo: ${c.title}`}
+                      aria-pressed={active}
+                      className={cn(
+                        "relative h-20 w-16 shrink-0 snap-start overflow-hidden rounded-md border bg-muted/40 transition",
+                        active
+                          ? "border-primary ring-2 ring-primary"
+                          : "border-border hover:border-primary/60",
+                      )}
+                    >
+                      <img
+                        src={c.thumb}
+                        alt=""
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        className="size-full object-contain"
+                      />
+                      {c.kind === "card" && (
+                        <span className="absolute inset-x-0 bottom-0 bg-black/60 text-center text-[9px] font-medium text-white">
+                          Card
+                        </span>
+                      )}
+                      {active && (
+                        <span className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
+                          <Check className="size-2.5" />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         <button
           type="button"
