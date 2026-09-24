@@ -639,7 +639,13 @@ async function handler({ request }: { request: Request }) {
     .filter((c) => (seen.has(c.url) ? false : (seen.add(c.url), true)))
     .sort((a, b) => scoreFile(b.title, q).score - scoreFile(a.title, q).score);
 
-  return json({ candidates: ranked.slice(0, 16) });
+  // The sources between them turn up far more than a strip can show, and the
+  // ranking is already done by this point — the old cap of 16 threw the rest
+  // away and left "none of these is my car" with nowhere to go. Sending the
+  // tail costs a few KB of JSON and no extra upstream work, so the picker can
+  // reveal more as you scroll without a second round trip. Callers that want
+  // only the head slice it themselves.
+  return json({ candidates: ranked.slice(0, 48) });
 }
 
 export const Route = createFileRoute("/api/car-images")({

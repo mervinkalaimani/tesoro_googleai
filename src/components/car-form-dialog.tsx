@@ -102,6 +102,9 @@ const STATUS_OPTIONS = STATUSES;
 /** The last segment, which is not an answer but a way to reach the rest. */
 const OTHER = "\u0000other";
 
+/** Photos drawn in the identity card's picker before you scroll for more. */
+const PHOTO_PAGE = 16;
+
 /**
  * The handful of usual answers as one row, everything else behind "Other".
  *
@@ -462,6 +465,8 @@ export function CarFormDialog({
   const [showIdentity, setShowIdentity] = useState(false);
   /** Whether the photos found for this car are open under the identity card. */
   const [pickingPhoto, setPickingPhoto] = useState(false);
+  /** How many of them are drawn; the rest arrive as you reach the end. */
+  const [photoPage, setPhotoPage] = useState(PHOTO_PAGE);
   const [showPurchase, setShowPurchase] = useState(true);
   const [showCondition, setShowCondition] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
@@ -725,6 +730,7 @@ export function CarFormDialog({
       templateOriginRef.current = {};
     }
     setPickingPhoto(false);
+    setPhotoPage(PHOTO_PAGE);
     setDraftReady(true);
     // prefill is read above but is deliberately not a dependency: seedKey
     // already covers a change of casting, and it is the object identity that
@@ -1104,6 +1110,12 @@ export function CarFormDialog({
     },
     open && (mode === "edit" || currentStep >= 2),
   );
+
+  // A different car means a different list, so the picker starts at the top of
+  // it rather than deep into a page that belonged to the last one.
+  useEffect(() => {
+    setPhotoPage(PHOTO_PAGE);
+  }, [imageSearch.key]);
 
   /** The car in words, for the "Search the web" button under the photo. */
   const webSearchWords = [
@@ -1553,7 +1565,10 @@ export function CarFormDialog({
               right one is usually a tap away. */}
           <button
             type="button"
-            onClick={() => setPickingPhoto((v) => !v)}
+            onClick={() => {
+              setPhotoPage(PHOTO_PAGE);
+              setPickingPhoto((v) => !v);
+            }}
             aria-expanded={pickingPhoto}
             title="Pick a different photo"
             className={cn(
@@ -1625,8 +1640,22 @@ export function CarFormDialog({
             {imageSearch.candidates.length > 0 && (
               // w-0 min-w-full so the row scrolls inside the card rather than
               // reporting its full length upwards and widening the dialog.
-              <div className="flex w-0 min-w-full snap-x gap-2 overflow-x-auto pb-1">
-                {imageSearch.candidates.map((c) => {
+              //
+              // Reaching the right-hand end reveals the next page rather than
+              // stopping at sixteen. The whole ranked list is already in hand —
+              // the endpoint sends its tail — so this costs no round trip and
+              // the thumbnails are simply there as you keep flicking.
+              <div
+                className="flex w-0 min-w-full snap-x gap-2 overflow-x-auto pb-1"
+                onScroll={(e) => {
+                  const el = e.currentTarget;
+                  if (el.scrollLeft + el.clientWidth < el.scrollWidth - 48) return;
+                  setPhotoPage((n) =>
+                    n >= imageSearch.candidates.length ? n : n + PHOTO_PAGE,
+                  );
+                }}
+              >
+                {imageSearch.candidates.slice(0, photoPage).map((c) => {
                   const active = c.url === form.imageUrl;
                   return (
                     <button

@@ -124,7 +124,10 @@ export function CarPhotoField({
     setLinkOpen(false);
   };
 
-  const found = suggestions?.candidates ?? [];
+  // The endpoint now sends its whole ranked tail so the identity card's picker
+  // can page through it. This block lays them all out side by side on a wide
+  // screen, so it keeps to the head it has always shown.
+  const found = (suggestions?.candidates ?? []).slice(0, 16);
   const chosen = found.find((c) => c.url === value);
 
   return (
