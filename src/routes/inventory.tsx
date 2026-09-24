@@ -72,21 +72,44 @@ function countBy(items: Diecast[], key: (r: Diecast) => string) {
     .sort((a, b) => b.value - a.value);
 }
 
+/**
+ * Series sits next to Brand because it belongs to one — "Car Culture" is a Hot
+ * Wheels idea and means nothing under Mini GT. It needs no special wiring to
+ * follow the brand: every dropdown's options are counted from the rows the
+ * *other* filters leave behind, so picking a brand narrows Series to that
+ * brand's own, and picking a series narrows Brand to the one that prints it.
+ *
+ * Assortment is gone. It is the field the catalogue keys a casting's ID on and
+ * the one already shown on every card, so filtering by it repeated what the
+ * list was telling you while costing a slot in a row that had run out of them.
+ */
 const FILTERS = [
   { key: "make", label: "Make", get: (r: Diecast) => r.make || "" },
   { key: "model", label: "Model", get: (r: Diecast) => r.model || "" },
   { key: "brand", label: "Brand", get: (r: Diecast) => r.brand || "" },
-  { key: "assortment", label: "Assortment", get: (r: Diecast) => r.assortment || "" },
+  { key: "series", label: "Series", get: (r: Diecast) => r.series || "" },
   { key: "seller", label: "Seller", get: (r: Diecast) => r.seller || "" },
 ] as const;
 
 type FilterKey = (typeof FILTERS)[number]["key"];
 
+/**
+ * Pairs where the narrowing runs one way only: the key is the dropdown, the
+ * value is the filter it ignores when counting its own options.
+ *
+ * Brand ignores Series. Series belongs to a brand, so a brand narrows it — but
+ * going the other way collapsed Brand to the single brand that prints whatever
+ * series was picked, and you could no longer see, let alone reach, the others.
+ * The car list is still filtered by both; this is only about what the dropdown
+ * offers you next.
+ */
+const ONE_WAY: Partial<Record<FilterKey, FilterKey>> = { brand: "series" };
+
 const EMPTY_FILTERS: Record<FilterKey, string> = {
   make: "all",
   model: "all",
   brand: "all",
-  assortment: "all",
+  series: "all",
   seller: "all",
 };
 
@@ -213,7 +236,8 @@ function FilterChipDropdown({
                 : "hover:bg-muted/50 text-muted-foreground",
             )}
           >
-            <span>All {label}s</span>
+            {/* Series is already plural, so the blanket "s" read "All Seriess". */}
+            <span>All {/s$/i.test(label) ? label : `${label}s`}</span>
             {value === "all" && <Check className="size-3.5 text-primary" />}
           </button>
           {filtered.map((opt) => {
@@ -467,16 +491,20 @@ function InventoryPage() {
 
   const searched = useMemo(() => filterRows(data, query), [data, query]);
 
-  const applyFilters = (rows: Diecast[], f: Record<FilterKey, string>, skip?: FilterKey) =>
+  const applyFilters = (
+    rows: Diecast[],
+    f: Record<FilterKey, string>,
+    ...skip: (FilterKey | undefined)[]
+  ) =>
     rows.filter((r) =>
-      FILTERS.every((d) => d.key === skip || f[d.key] === "all" || d.get(r) === f[d.key]),
+      FILTERS.every((d) => skip.includes(d.key) || f[d.key] === "all" || d.get(r) === f[d.key]),
     );
 
   // Options for each dropdown reflect the other active filters
   const options = useMemo(() => {
     const out = {} as Record<FilterKey, { name: string; value: number }[]>;
     for (const d of FILTERS) {
-      out[d.key] = countBy(applyFilters(searched, filters, d.key), d.get);
+      out[d.key] = countBy(applyFilters(searched, filters, d.key, ONE_WAY[d.key]), d.get);
     }
     return out;
   }, [searched, filters]);
@@ -693,16 +721,86 @@ function InventoryPage() {
           isScrolled ? "shadow-xs" : "",
         )}
       >
-        {/* Main controls row: Status segment control, actions and views */}
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          {/* Status segment control: scrollable on mobile */}
-          <div className="flex flex-nowrap items-center min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-            <SegmentControl
-              value={status}
-              onChange={setStatus}
-              options={statusSegmentOptions}
-              className="w-auto flex-nowrap"
-            />
+        {/* Main controls row: Status segment control, filter chips, actions and
+            views. items-start so the actions stay level with the segment
+            control on a narrower screen, where the chips wrap beneath it. */}
+        <div className="flex items-start justify-between gap-2 min-w-0">
+          {/* The status segments and the filter chips read as one control —
+              status is a filter too — so they share a line wherever there is
+              room for them. Below that width the chips wrap underneath, which
+              is the two-row toolbar this used to be at every size. Nothing is
+              ever scrolled out of reach on the way. */}
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+            {/* Status segment control: scrollable on mobile */}
+            <div className="flex flex-nowrap items-center min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
+              <SegmentControl
+                value={status}
+                onChange={setStatus}
+                options={statusSegmentOptions}
+                className="w-auto flex-nowrap"
+              />
+            </div>
+
+            {/* The same rule the chips already use among themselves: a hairline
+                where one kind of control ends and another begins. It always has
+                something on both sides of it, because the chips beside it shrink
+                and wrap internally rather than dropping below. */}
+            <div className="hidden h-4 w-px shrink-0 bg-border/60 md:block" />
+
+            {/* Chip dropdowns for Make, Model, Brand, Series, Seller +
+                multi-select chips. Hidden on mobile, where they live in the
+                filter sheet behind the button to the right.
+
+                min-w-0 flex-1 so that when the line runs short it is the last
+                chip that wraps, not the whole block: without it this is one
+                indivisible flex item wide enough to be pushed under the segment
+                control entirely, which is the two-row toolbar again. */}
+            <div className="hidden min-w-0 flex-1 md:flex flex-wrap items-center gap-1.5">
+              {FILTERS.map((d) => (
+                <FilterChipDropdown
+                  key={d.key}
+                  label={d.label}
+                  value={filters[d.key]}
+                  options={options[d.key]}
+                  onChange={(v) => setFilters((prev) => ({ ...prev, [d.key]: v }))}
+                />
+              ))}
+
+              <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
+
+              {/* Multi-select toggle chips with x mark when enabled */}
+              <ToggleChip
+                label="Chase"
+                active={chaseOnly}
+                onToggle={() => setChaseOnly((v) => !v)}
+                icon={
+                  <ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />
+                }
+              />
+              <ToggleChip
+                label="Favourites"
+                active={favOnly}
+                onToggle={() => setFavOnly((v) => !v)}
+                icon={
+                  <FavouriteMark className={favOnly ? "size-3" : "size-3 fill-none text-current"} />
+                }
+              />
+              <ToggleChip
+                label="Show collapsed"
+                active={showCollapsed}
+                onToggle={() => onToggleShowCollapsed(!showCollapsed)}
+              />
+
+              {activeCount > 0 && (
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1 cursor-pointer"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Action buttons & Views */}
@@ -765,52 +863,6 @@ function InventoryPage() {
               <ViewToggle value={view} onChange={setView} />
             </div>
           </div>
-        </div>
-
-        {/* Row 2 on Web (md:): Chip dropdowns for Make, Model, Brand, Assortment, Seller + multi-select chips */}
-        <div className="hidden md:flex flex-wrap items-center gap-1.5">
-          {FILTERS.map((d) => (
-            <FilterChipDropdown
-              key={d.key}
-              label={d.label}
-              value={filters[d.key]}
-              options={options[d.key]}
-              onChange={(v) => setFilters((prev) => ({ ...prev, [d.key]: v }))}
-            />
-          ))}
-
-          <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
-
-          {/* Multi-select toggle chips with x mark when enabled */}
-          <ToggleChip
-            label="Chase"
-            active={chaseOnly}
-            onToggle={() => setChaseOnly((v) => !v)}
-            icon={<ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />}
-          />
-          <ToggleChip
-            label="Favourites"
-            active={favOnly}
-            onToggle={() => setFavOnly((v) => !v)}
-            icon={
-              <FavouriteMark className={favOnly ? "size-3" : "size-3 fill-none text-current"} />
-            }
-          />
-          <ToggleChip
-            label="Show collapsed"
-            active={showCollapsed}
-            onToggle={() => onToggleShowCollapsed(!showCollapsed)}
-          />
-
-          {activeCount > 0 && (
-            <button
-              type="button"
-              onClick={clearAllFilters}
-              className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1 cursor-pointer"
-            >
-              Clear all
-            </button>
-          )}
         </div>
 
         {/* Row 2 on Mobile: Active filter chips and clear button if any filters applied */}
