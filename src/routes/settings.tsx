@@ -16,6 +16,10 @@ import {
   Home,
   PackageCheck,
   Sparkles,
+  LifeBuoy,
+  FileText,
+  Scale,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -38,6 +42,8 @@ import {
 } from "@/lib/car-image-search";
 import { SegmentControl } from "@/components/segment-control";
 import { CataloguePhotos } from "@/components/catalogue-photos";
+import { HelpDoc } from "@/components/help-doc";
+import { HELP_BLURBS, HELP_TITLES } from "@/lib/help-content";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -93,7 +99,11 @@ type SettingsView =
   | "search_engine"
   | "catalogue_photos"
   | "homepage"
-  | "advanced";
+  | "advanced"
+  | "help"
+  | "help_privacy"
+  | "help_terms"
+  | "help_contact";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.8.0 (alpha)";
 
@@ -109,6 +119,10 @@ function parseTab(tab?: string): SettingsView {
   if (t === "catalogue_photos" || t === "photos") return "catalogue_photos";
   if (t === "homepage" || t === "home") return "homepage";
   if (t === "advanced") return "advanced";
+  if (t === "help" || t === "support") return "help";
+  if (t === "help_privacy" || t === "privacy") return "help_privacy";
+  if (t === "help_terms" || t === "terms") return "help_terms";
+  if (t === "help_contact" || t === "contact") return "help_contact";
   return "root";
 }
 
@@ -382,6 +396,28 @@ export function SettingsPage() {
               </button>
             </div>
           )}
+
+          {/* HELP — everybody's, unlike Advanced. The policy has to be
+              readable by the people it is about, and the phone number is no
+              use to the one person who already knows it. */}
+          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <button
+              type="button"
+              onClick={() => changeView("help")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-cyan-500 to-sky-600 text-white shadow-xs">
+                <LifeBuoy className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Help</span>
+                <p className="text-xs text-muted-foreground">
+                  Privacy policy, terms &amp; conditions and how to reach us
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </button>
+          </div>
 
           {/* Sign Out Card (Moved here from the main menu, Apple style) */}
           <div className="space-y-1.5 pt-2">
@@ -768,6 +804,69 @@ export function SettingsPage() {
         </div>
       )}
       {/* ========================================================================= */}
+      {/* SUBPAGE: HELP                                                             */}
+      {/* ========================================================================= */}
+      {view === "help" && (
+        <div className="space-y-6">
+          <SubpageHeader title="Help" onBack={() => changeView("root")} />
+          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            {(
+              [
+                ["help_privacy", "privacy", FileText, "from-indigo-500 to-violet-600"],
+                ["help_terms", "terms", Scale, "from-amber-500 to-orange-600"],
+                ["help_contact", "contact", MessageCircle, "from-emerald-500 to-teal-600"],
+              ] as const
+            ).map(([target, key, Icon, tint]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => changeView(target)}
+                className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+              >
+                <div
+                  className={`flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b ${tint} text-white shadow-xs`}
+                >
+                  <Icon className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">
+                    {HELP_TITLES[key]}
+                  </span>
+                  <p className="text-xs text-muted-foreground">{HELP_BLURBS[key]}</p>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </button>
+            ))}
+          </div>
+          <p className="px-1 text-[11px] text-muted-foreground">
+            Tesoro {APP_VERSION} · a personal project, not a company.
+          </p>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBPAGE: HELP DOCUMENTS                                                   */}
+      {/* ========================================================================= */}
+      {(view === "help_privacy" || view === "help_terms" || view === "help_contact") && (
+        <div className="space-y-6">
+          <SubpageHeader
+            title={
+              HELP_TITLES[
+                view === "help_privacy" ? "privacy" : view === "help_terms" ? "terms" : "contact"
+              ]
+            }
+            onBack={() => changeView("help")}
+            backLabel="Help"
+          />
+          <HelpDoc
+            docKey={
+              view === "help_privacy" ? "privacy" : view === "help_terms" ? "terms" : "contact"
+            }
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* SUBPAGE 3: NOTIFICATIONS                                                  */}
       {/* ========================================================================= */}
       {view === "notifications" && (
@@ -1084,7 +1183,16 @@ export function SettingsPage() {
 }
 
 /** Apple-style subpage navigation bar with back arrow */
-function SubpageHeader({ title, onBack }: { title: string; onBack: () => void }) {
+function SubpageHeader({
+  title,
+  onBack,
+  backLabel = "Settings",
+}: {
+  title: string;
+  onBack: () => void;
+  /** Where Back actually goes, for the pages that are two levels down. */
+  backLabel?: string;
+}) {
   return (
     <div className="flex items-center justify-between border-b border-border/60 pb-3">
       <button
@@ -1093,7 +1201,7 @@ function SubpageHeader({ title, onBack }: { title: string; onBack: () => void })
         className="inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50"
       >
         <ChevronLeft className="size-5 -ml-1" />
-        <span>Settings</span>
+        <span>{backLabel}</span>
       </button>
 
       <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
