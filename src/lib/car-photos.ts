@@ -161,14 +161,19 @@ export function pathFromPublicUrl(url: string, bucket = CAR_PHOTOS_BUCKET): stri
 }
 
 /**
- * Removes a photo we host. A link to someone else's image is not ours to
- * delete, so clearing the field is all that happens in that case.
+ * There is deliberately no deleteCarPhoto.
+ *
+ * A car photo does not belong to the row it was uploaded from: saving the car
+ * copies its URL onto the catalogue entry and onto every other row of that
+ * casting, across every collection. So the uploader is not the only holder and
+ * cannot know who else is pointing at the file. Deleting one on replace left
+ * fifteen rows and two catalogue entries showing a 400 — invisible to the
+ * browser that did it, which still had the bytes cached, and blank everywhere
+ * else.
+ *
+ * Reclaiming an orphan needs to count references across both tables first, and
+ * nothing counts them today. Until something does, the bucket keeps them.
  */
-export async function deleteCarPhoto(url: string): Promise<void> {
-  const path = pathFromPublicUrl(url);
-  if (!path) return;
-  await supabase.storage.from(CAR_PHOTOS_BUCKET).remove([path]);
-}
 
 export async function deleteAvatar(url: string): Promise<void> {
   const path = pathFromPublicUrl(url, AVATARS_BUCKET);

@@ -14,7 +14,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ACCEPT_ATTR, deleteCarPhoto, uploadCarPhoto } from "@/lib/car-photos";
+import { ACCEPT_ATTR, uploadCarPhoto } from "@/lib/car-photos";
 import type { CarImageCandidate } from "@/lib/car-image-search";
 import { WebImageSearchDialog } from "@/components/web-image-search-dialog";
 import { cn } from "@/lib/utils";
@@ -88,16 +88,20 @@ export function CarPhotoField({
       toast.error("Could not add that photo", { description: res.error });
       return;
     }
-    // Replacing: the old one is ours and nothing else points at it.
-    if (value) void deleteCarPhoto(value);
+    // The old file is deliberately left in the bucket. It used to be deleted
+    // here, on the assumption that a photo you uploaded is yours alone — but
+    // saving a car runs syncUserCarImageToCatalog, which copies the URL onto
+    // the catalogue entry and from there onto every row of that casting, in
+    // every collection. Replacing your photo then deleted a file fifteen other
+    // rows were pointing at, and the browser that uploaded it went on drawing
+    // it from its own cache while every other device got a 400. An orphaned
+    // JPEG costs nothing; a dead URL costs a picture on someone else's shelf.
     onChange(res.url);
   };
 
   const remove = () => {
-    const old = value;
     onChange("");
     setLink("");
-    void deleteCarPhoto(old);
   };
 
   const onDrop = (e: React.DragEvent) => {
