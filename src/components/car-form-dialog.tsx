@@ -47,6 +47,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import { catalogCarToCatalogueCar } from "@/lib/catalog";
 import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
+import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker";
 import { MultipackField } from "@/components/multipack-field";
 import { DuplicateNotice } from "@/components/duplicate-notice";
 import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
@@ -81,7 +82,6 @@ import {
   Car,
   IndianRupee,
   Calendar,
-  Sparkles,
   ChevronRight,
   ChevronLeft,
   Check,
@@ -101,9 +101,6 @@ const STATUS_OPTIONS = STATUSES;
 
 /** The last segment, which is not an answer but a way to reach the rest. */
 const OTHER = "\u0000other";
-
-/** Photos drawn in the identity card's picker before you scroll for more. */
-const PHOTO_PAGE = 16;
 
 /**
  * The handful of usual answers as one row, everything else behind "Other".
@@ -250,6 +247,26 @@ interface CarFormData {
   cardRating: number;
   favourite: boolean;
   imageUrl: string;
+  /**
+   * What you call this copy, when the assembled name is not what you call it.
+   *
+   * Blank means "whatever make and model say", which is the usual answer. It is
+   * written to your row and nowhere else — the catalogue keeps its own name, and
+   * so does every other collection that owns the same casting.
+   */
+  displayName: string;
+}
+
+/** The name a car assembles from its own fields, before anyone types over it. */
+function derivedName(f: {
+  make?: string;
+  model?: string;
+  variant?: string;
+  year?: string;
+  type?: string;
+  series?: string;
+}): string {
+  return buildCarName(f) || `${f.make || ""} ${f.model || ""}`.trim();
 }
 
 /**
@@ -331,6 +348,7 @@ function getBlankForm(): CarFormData {
     cardRating: 0,
     favourite: false,
     imageUrl: "",
+    displayName: "",
   };
 }
 
@@ -381,6 +399,10 @@ function formFromCar(initial: Diecast): CarFormData {
     cardRating: initial.cardRating || 0,
     favourite: Boolean(initial.favourite),
     imageUrl: initial.imageUrl || "",
+    // Only a name that is not the assembled one counts as an override. Seeding
+    // the field with the derived name would make every car look renamed, and
+    // would freeze that spelling the next time make or model changed.
+    displayName: initial.name && initial.name !== derivedName(initial) ? initial.name : "",
   };
 }
 
@@ -415,6 +437,8 @@ export function CarFormDialog({
   onSwitchToBulk,
   prefill,
   prefillStatus = "PO",
+  onSaved,
+  draftScope,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -432,6 +456,17 @@ export function CarFormDialog({
   prefill?: CatalogueCar | null;
   /** The status a prefilled form starts on. Pre Order unless the caller knows better. */
   prefillStatus?: string;
+  /**
+   * The row as it was saved, with the IDs the store assigned it. A caller that
+   * opened this dialog to get a casting on file — the pack member picker — needs
+   * to know which catalogue entry came out of it.
+   */
+  onSaved?: (car: Diecast) => void;
+  /**
+   * Keeps this wizard's half-finished draft apart from another's. Only a
+   * dialog opened over the top of another needs one.
+   */
+  draftScope?: string;
 }) {
   const { addCar, updateCar } = useCarsActions();
   const cars = useCars();
@@ -465,8 +500,8 @@ export function CarFormDialog({
   const [showIdentity, setShowIdentity] = useState(false);
   /** Whether the photos found for this car are open under the identity card. */
   const [pickingPhoto, setPickingPhoto] = useState(false);
-  /** How many of them are drawn; the rest arrive as you reach the end. */
-  const [photoPage, setPhotoPage] = useState(PHOTO_PAGE);
+  /** Whether a second wizard is open over this one, filing a pack member. */
+  const [addingMember, setAddingMember] = useState(false);
   const [showPurchase, setShowPurchase] = useState(true);
   const [showCondition, setShowCondition] = useState(false);
   const [showExtras, setShowExtras] = useState(false);
@@ -636,14 +671,17 @@ export function CarFormDialog({
   const isClone = mode === "add" && Boolean(initial);
   // A pre-filled form keeps its draft apart, so opening one never overwrites
   // (or clears) an unfinished car the person was adding by hand.
+  // The scope keeps a wizard opened *from inside another wizard* off the outer
+  // one's draft: they would otherwise share a key, so the inner form would open
+  // pre-filled with the outer car and then overwrite it keystroke by keystroke.
   const draftKey =
-    mode === "add"
+    (mode === "add"
       ? fromPrefill
         ? `${CAR_DRAFT_KEY}:prefill`
         : isClone
           ? `${CAR_DRAFT_KEY}:clone`
           : CAR_DRAFT_KEY
-      : carEditDraftKey(initial?.id ?? "");
+      : carEditDraftKey(initial?.id ?? "")) + (draftScope ? `:${draftScope}` : "");
 
   /**
    * What the dialog was opened for, as a value rather than an object.
@@ -730,7 +768,6 @@ export function CarFormDialog({
       templateOriginRef.current = {};
     }
     setPickingPhoto(false);
-    setPhotoPage(PHOTO_PAGE);
     setDraftReady(true);
     // prefill is read above but is deliberately not a dependency: seedKey
     // already covers a change of casting, and it is the object identity that
@@ -1111,12 +1148,6 @@ export function CarFormDialog({
     open && (mode === "edit" || currentStep >= 2),
   );
 
-  // A different car means a different list, so the picker starts at the top of
-  // it rather than deep into a page that belonged to the last one.
-  useEffect(() => {
-    setPhotoPage(PHOTO_PAGE);
-  }, [imageSearch.key]);
-
   /** The car in words, for the "Search the web" button under the photo. */
   const webSearchWords = [
     form.brand,
@@ -1162,6 +1193,7 @@ export function CarFormDialog({
 
   const previewName = useMemo(() => {
     return (
+      form.displayName.trim() ||
       buildCarName({
         make: form.make,
         model: form.model,
@@ -1169,9 +1201,10 @@ export function CarFormDialog({
         year: form.year,
         type: form.type,
         series: form.series,
-      }) || `${form.make || "Make"} ${form.model || "Model"}`.trim()
+      }) ||
+      `${form.make || "Make"} ${form.model || "Model"}`.trim()
     );
-  }, [form.make, form.model, form.variant, form.year, form.type, form.series]);
+  }, [form.displayName, form.make, form.model, form.variant, form.year, form.type, form.series]);
 
   // Validation per step
   const validateStep = (step: number): FieldError | null => {
@@ -1312,15 +1345,18 @@ export function CarFormDialog({
     // Automated balance guarantee
     const balance = Math.max(0, spent - paid);
 
+    // What you call it wins over what the fields assemble. It is written to
+    // this row only — nothing here touches the catalogue's own name.
     const name =
-      buildCarName({
+      form.displayName.trim() ||
+      derivedName({
         make,
         model,
         variant: form.variant,
         year: form.year,
         type,
         series: form.series,
-      }) || `${make} ${model}`.trim();
+      });
 
     const orderMonth = deriveMonth(orderDate);
     // `date` is the day the car *arrived*, and now that expectedDate has a
@@ -1410,7 +1446,8 @@ export function CarFormDialog({
         size: entry.size || payload.size,
         mrp: Number(entry.mrp) || 0,
         year: entry.year || "",
-        name: entry.name || payload.name,
+        // The catalogue's name, unless you typed one of your own for this copy.
+        name: form.displayName.trim() || entry.name || payload.name,
       });
     }
 
@@ -1435,7 +1472,11 @@ export function CarFormDialog({
     //
     // Nothing is written when the catalogue already says this, which is the
     // usual case: buying a second copy of a 5-pack restates no facts.
-    if (mode === "add" && payload.catalogId) {
+    //
+    // Editing counts as well as adding. It used to be adds only, so opening a
+    // pack you already own and listing what is in it saved nothing at all — the
+    // contents went back to what they were the moment the dialog closed.
+    if (payload.catalogId) {
       const packId = payload.catalogId;
       const wanted = isPack ? packList : [];
       const sizeChanged = isPack && packSize !== catalogPack.size;
@@ -1468,11 +1509,10 @@ export function CarFormDialog({
       if (membersChanged && isAdmin) await setPackMembers(packId, wanted);
     }
 
-    if (mode === "add") {
-      addCar(payload);
-    } else {
-      updateCar(payload);
-    }
+    // The store's copy, not the payload: it carries the IDs that were assigned
+    // on the way in, which is what a caller waiting on the casting needs.
+    const saved = mode === "add" ? addCar(payload) : (updateCar(payload), payload);
+    onSaved?.(saved);
 
     // The car is saved; the draft has nothing left to protect.
     clearDraft(draftKey);
@@ -1558,34 +1598,13 @@ export function CarFormDialog({
         )}
       >
         <div className="flex items-start gap-3 bg-muted/30 p-3">
-          {/* The thumbnail is the button for fixing it. A wrong or missing
-              photo is noticed here — it is the only picture on screen — and
-              the fix used to be three sections down under Photo & notes. The
-              search has already run by the time this card is drawn, so the
-              right one is usually a tap away. */}
-          <button
-            type="button"
-            onClick={() => {
-              setPhotoPage(PHOTO_PAGE);
-              setPickingPhoto((v) => !v);
-            }}
-            aria-expanded={pickingPhoto}
-            title="Pick a different photo"
-            className={cn(
-              "group relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted transition",
-              "ring-offset-2 ring-offset-background hover:ring-2 hover:ring-primary/60",
-              pickingPhoto && "ring-2 ring-primary",
-            )}
-          >
-            {form.imageUrl ? (
-              <img src={form.imageUrl} alt="" className="size-full object-cover" />
-            ) : (
-              <Car className="size-5 text-muted-foreground" />
-            )}
-            <span className="absolute inset-0 grid place-items-center bg-black/55 opacity-0 transition group-hover:opacity-100">
-              <Sparkles className="size-4 text-white" />
-            </span>
-          </button>
+          {/* The thumbnail is the button for fixing it — see photo-picker.tsx,
+              which the catalogue's own dialog shares. */}
+          <PhotoThumbButton
+            url={form.imageUrl}
+            picking={pickingPhoto}
+            onClick={() => setPickingPhoto((v) => !v)}
+          />
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
               <TruncatedName
@@ -1624,80 +1643,14 @@ export function CarFormDialog({
             shortcut, not a second search. Choosing one closes the row, because
             the picture in the card above is the answer. */}
         {pickingPhoto && (
-          <div className="space-y-1.5 border-t border-border bg-background px-3 py-2.5">
-            <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-              {imageSearch.loading ? (
-                <Loader2 className="size-3 animate-spin" />
-              ) : (
-                <Sparkles className="size-3 text-primary" />
-              )}
-              {imageSearch.loading
-                ? "Looking for this car…"
-                : imageSearch.candidates.length > 0
-                  ? "Tap the one that is this car"
-                  : "Nothing found — Photo & notes below takes a file or a link"}
-            </p>
-            {imageSearch.candidates.length > 0 && (
-              // w-0 min-w-full so the row scrolls inside the card rather than
-              // reporting its full length upwards and widening the dialog.
-              //
-              // Reaching the right-hand end reveals the next page rather than
-              // stopping at sixteen. The whole ranked list is already in hand —
-              // the endpoint sends its tail — so this costs no round trip and
-              // the thumbnails are simply there as you keep flicking.
-              <div
-                className="flex w-0 min-w-full snap-x gap-2 overflow-x-auto pb-1"
-                onScroll={(e) => {
-                  const el = e.currentTarget;
-                  if (el.scrollLeft + el.clientWidth < el.scrollWidth - 48) return;
-                  setPhotoPage((n) =>
-                    n >= imageSearch.candidates.length ? n : n + PHOTO_PAGE,
-                  );
-                }}
-              >
-                {imageSearch.candidates.slice(0, photoPage).map((c) => {
-                  const active = c.url === form.imageUrl;
-                  return (
-                    <button
-                      key={c.url}
-                      type="button"
-                      onClick={() => {
-                        setImage(c.url);
-                        setPickingPhoto(false);
-                      }}
-                      title={`${c.title} — ${c.source}`}
-                      aria-label={`Use this photo: ${c.title}`}
-                      aria-pressed={active}
-                      className={cn(
-                        "relative h-20 w-16 shrink-0 snap-start overflow-hidden rounded-md border bg-muted/40 transition",
-                        active
-                          ? "border-primary ring-2 ring-primary"
-                          : "border-border hover:border-primary/60",
-                      )}
-                    >
-                      <img
-                        src={c.thumb}
-                        alt=""
-                        loading="lazy"
-                        referrerPolicy="no-referrer"
-                        className="size-full object-contain"
-                      />
-                      {c.kind === "card" && (
-                        <span className="absolute inset-x-0 bottom-0 bg-black/60 text-center text-[9px] font-medium text-white">
-                          Card
-                        </span>
-                      )}
-                      {active && (
-                        <span className="absolute right-0.5 top-0.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
-                          <Check className="size-2.5" />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <PhotoCandidateStrip
+            search={imageSearch}
+            value={form.imageUrl}
+            onPick={(url) => {
+              setImage(url);
+              setPickingPhoto(false);
+            }}
+          />
         )}
 
         <button
@@ -1723,9 +1676,27 @@ export function CarFormDialog({
               omit={["assortment"]}
               chain={!isEdit && !fromCatalogue}
             />
+            {/* Not disabled on an edit, unlike everything above it. The name is
+                the one thing here that is yours rather than the casting's: it is
+                written to your row and to nothing else, so the catalogue and
+                everyone else's copy keep whatever they already say. */}
+            <div className="mt-3 border-t border-border/50 pt-3">
+              <Field label="Display name">
+                <ClearableInput
+                  value={form.displayName}
+                  onChange={(e) => set("displayName", e.target.value)}
+                  placeholder={derivedName(form) || "Make Model"}
+                  aria-label="Display name"
+                />
+                <p className="pt-1 text-[11px] text-muted-foreground">
+                  What you call this one. Blank builds it from make and model. Yours only — the
+                  catalogue and other collections are not touched.
+                </p>
+              </Field>
+            </div>
             <p className="mt-2.5 text-[11px] text-muted-foreground">
               {isEdit
-                ? "The casting is shared with everyone who owns one, so it is edited in the catalogue. Only the Car Number can be updated here."
+                ? "The casting is shared with everyone who owns one, so it is edited in the catalogue. Only the Car Number and the display name can be updated here."
                 : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalog ID will be assigned."}
             </p>
           </div>
@@ -1758,16 +1729,16 @@ export function CarFormDialog({
             packTouched.current = true;
             setPackList(ids);
           }}
-          disabled={isEdit}
-          canEditMembers={isAdmin && !isEdit}
+          disabled={!isAdmin}
+          canEditMembers={isAdmin}
+          onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
           selfCarId={derivedCatalogCarId}
         />
-        {isEdit && (
-          <p className="mt-2.5 text-[11px] text-muted-foreground">
-            The box is shared with everyone who owns one, so it is edited in the catalogue rather
-            than here.
-          </p>
-        )}
+        <p className="mt-2.5 text-[11px] text-muted-foreground">
+          {isAdmin
+            ? "The box and what is in it are part of the shared catalogue, so this is what everyone who owns one sees. The cars inside stop being listed on their own."
+            : "The box is shared with everyone who owns one, so it is edited in the catalogue rather than here."}
+        </p>
       </FormSection>
 
       {/* The purchase. Open by default: every required field on this
@@ -2526,6 +2497,28 @@ export function CarFormDialog({
       {/* Stacked over the form, in both modes. Cancelling out of it leaves
           everything typed so far untouched. */}
       <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={applyScan} />
+
+      {/* Filing a car that goes inside the pack you are describing. Searching
+          the catalogue is no help when the car in the box has never been
+          entered, so this is the whole Add-a-car wizard over the top of this
+          one; the casting it files is added to the list on save. */}
+      {addingMember && (
+        <CarFormDialog
+          open
+          mode="add"
+          draftScope="pack-member"
+          onOpenChange={(v) => {
+            if (!v) setAddingMember(false);
+          }}
+          onSaved={(car) => {
+            if (car.catalogId) {
+              packTouched.current = true;
+              setPackList((ids) => (ids.includes(car.catalogId!) ? ids : [...ids, car.catalogId!]));
+            }
+            setAddingMember(false);
+          }}
+        />
+      )}
 
       {/* Stacked over the wizard rather than replacing it: cancelling out of a
           status change should leave the half-typed car exactly where it was. */}

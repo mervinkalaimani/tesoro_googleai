@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Car, Loader2, ScanLine, Trash2 } from "lucide-react";
+import { Check, Loader2, ScanLine, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentControl } from "@/components/segment-control";
 import { CarPhotoField } from "@/components/car-photo-field";
+import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { ClearableInput, Field, FormSection } from "@/components/form-parts";
 import { MultipackField } from "@/components/multipack-field";
@@ -143,6 +144,10 @@ export function CatalogFormDialog({
   const [showRelease, setShowRelease] = useState(true);
   const [showPack, setShowPack] = useState(false);
   const [showPhoto, setShowPhoto] = useState(false);
+  /** Whether the photos found for this casting are open under the header card. */
+  const [pickingPhoto, setPickingPhoto] = useState(false);
+  /** Whether a second copy of this dialog is open, filing a pack member. */
+  const [addingMember, setAddingMember] = useState(false);
 
   const [validationError, setValidationError] = useState<FieldError | null>(null);
   /** Set by Save, so the field is scrolled to once its group is open. */
@@ -198,6 +203,7 @@ export function CatalogFormDialog({
     setShowIdentity(!isImageOnly);
     setShowRelease(!isImageOnly);
     setShowPhoto(isImageOnly);
+    setPickingPhoto(false);
     // packMembers is read for the entry being opened; re-running when the whole
     // map changes would throw away an edit in progress the moment any other
     // pack was saved.
@@ -530,13 +536,13 @@ export function CatalogFormDialog({
                   fields you re-check. The fields are still here, one tap down. */}
               <section className="overflow-hidden rounded-lg border border-border bg-muted/30">
                 <div className="flex items-start gap-3 p-3">
-                  <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
-                    {form.image_url ? (
-                      <img src={form.image_url} alt="" className="size-full object-cover" />
-                    ) : (
-                      <Car className="size-5 text-muted-foreground" />
-                    )}
-                  </div>
+                  {/* Same tap-the-photo-to-fix-it as the car form. The search
+                      has already run by the time this card is drawn. */}
+                  <PhotoThumbButton
+                    url={form.image_url || ""}
+                    picking={pickingPhoto}
+                    onClick={() => setPickingPhoto((v) => !v)}
+                  />
                   <div className="min-w-0 flex-1">
                     <div className="flex min-w-0 items-center gap-1.5">
                       <span className="truncate text-sm font-semibold text-foreground">
@@ -557,6 +563,18 @@ export function CatalogFormDialog({
                     )}
                   </div>
                 </div>
+
+                {pickingPhoto && (
+                  <PhotoCandidateStrip
+                    search={imageSuggestions}
+                    value={form.image_url || ""}
+                    onPick={(url) => {
+                      set("image_url", url);
+                      setPickingPhoto(false);
+                    }}
+                    emptyHint="Nothing found — Photo below takes a file or a link"
+                  />
+                )}
 
                 {/* Who filed it and who last touched it — the same two pairs the
                     details drawer shows, in the same order. */}
@@ -740,6 +758,8 @@ export function CatalogFormDialog({
                   disabled={isImageOnly}
                   canEditMembers={isAdmin}
                   selfCarId={entry && entry !== "new" ? entry.car_id : ""}
+                  onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
+                  addNewLabel="New casting"
                 />
               </FormSection>
 
@@ -803,6 +823,28 @@ export function CatalogFormDialog({
       </Dialog>
 
       <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={onApplyScan} />
+
+      {/* Filing a member that the catalogue has never heard of, without losing
+          the pack you are in the middle of describing. It is this same dialog
+          stacked over itself: a pack member is an ordinary casting, so there is
+          no second form to keep in step. Saving adds it to the list, which is
+          the reason you opened it. */}
+      {addingMember && (
+        <CatalogFormDialog
+          open
+          entry="new"
+          catalog={catalog}
+          onClose={() => setAddingMember(false)}
+          onSave={async (car) => {
+            const ok = await onSave(car);
+            if (ok) {
+              setMembers((m) => (m.includes(car.car_id) ? m : [...m, car.car_id]));
+              setAddingMember(false);
+            }
+            return ok;
+          }}
+        />
+      )}
     </>
   );
 }

@@ -42,6 +42,8 @@ export function MultipackField({
   disabled = false,
   canEditMembers = true,
   selfCarId = "",
+  onAddNew,
+  addNewLabel = "Add a car",
 }: {
   isPack: boolean;
   /** The declared unit count, so "3 of 5 listed" can be said while part-filled. */
@@ -60,6 +62,14 @@ export function MultipackField({
   canEditMembers?: boolean;
   /** The entry being edited, which cannot be inside itself. */
   selfCarId?: string;
+  /**
+   * File a casting that is not in the catalogue yet. Searching is no help when
+   * the car you are holding has never been entered, and a pack of five with one
+   * unknown member could not be finished at all.
+   */
+  onAddNew?: () => void;
+  /** What that button says — each form opens its own way of filing one. */
+  addNewLabel?: string;
 }) {
   const { catalog } = useCatalog();
   const [query, setQuery] = useState("");
@@ -171,14 +181,29 @@ export function MultipackField({
 
           {canEditMembers ? (
             <div className="space-y-1">
-              <Input
-                disabled={disabled}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search the catalogue to add a car…"
-                className="h-8 bg-background"
-                aria-label="Add a car to the pack"
-              />
+              <div className="flex items-center gap-1.5">
+                <Input
+                  disabled={disabled}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search the catalogue to add a car…"
+                  className="h-8 flex-1 bg-background"
+                  aria-label="Add a car to the pack"
+                />
+                {onAddNew && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={disabled}
+                    onClick={onAddNew}
+                    className="h-8 shrink-0 gap-1 px-2 text-[11px]"
+                  >
+                    <Plus className="size-3" />
+                    {addNewLabel}
+                  </Button>
+                )}
+              </div>
               {/* In the flow rather than floating over it. Floating, the list
                   was clipped away to nothing: this sits inside a section with
                   `overflow-hidden` and inside the dialog's own scroller, and
@@ -206,6 +231,12 @@ export function MultipackField({
                     </button>
                   ))}
                 </div>
+              )}
+              {query.trim().length >= 2 && choices.length === 0 && (
+                <p className="px-1 text-[11px] text-muted-foreground">
+                  Nothing in the catalogue matches that
+                  {onAddNew ? ` — ${addNewLabel.toLowerCase()} to file it.` : "."}
+                </p>
               )}
             </div>
           ) : (

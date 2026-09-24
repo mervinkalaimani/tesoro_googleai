@@ -32,6 +32,15 @@ export type CatalogCar = {
   image_url?: string | null;
   /** Out in shops, or only open to pre-order so far. Absent reads as Released. */
   release_status?: ReleaseStatus;
+  /**
+   * When this casting stopped being a pre-order — set by the database the first
+   * time anybody moves their copy off PO.
+   *
+   * Null for everything released before that existed, which is why "Recently
+   * released" reads this rather than release_status on its own: the status says
+   * a casting is out, only the timestamp says it is news.
+   */
+  released_at?: string | null;
   /** Normal, TH, STH or Chase. Absent reads as Normal. */
   rarity?: string;
   /** For a pre-order: when it is expected, "YYYY-MM-DD". */
@@ -373,6 +382,10 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         size: row.size || "1:64",
         image_url: row.image_url || null,
         release_status: row.release_status === "Pre Order" ? "Pre Order" : "Released",
+        // Cast because the generated Supabase types predate this column. The
+        // select is `*`, so the value is there; regenerating the whole types
+        // file for one field would be a far bigger diff than the field.
+        released_at: (row as { released_at?: string | null }).released_at ?? null,
         rarity: row.rarity || "Normal",
         expected_date: row.expected_date || null,
         created_at: row.created_at,
@@ -560,9 +573,14 @@ export async function syncUserCarImageToCatalog(car: Diecast, imageUrl: string):
   const catalogId = (car.catalogId || catalogIdFor(car) || "").trim();
   if (!catalogId) return;
 
-  // 1. Update local catalogue cache immediately
+  // 1. Update local catalogue cache immediately — but only when the casting has
+  //    no picture at all. This runs on *every* car save, so writing it
+  //    unconditionally meant the last person to photograph their copy decided
+  //    what the casting looks like for everyone.
   const local = getLocalCatalog();
   const idx = local.findIndex((c) => c.car_id.toUpperCase() === catalogId.toUpperCase());
+  const entryHadPhoto = idx >= 0 && Boolean((local[idx].image_url || "").trim());
+  if (entryHadPhoto) return;
   if (idx >= 0) {
     local[idx] = { ...local[idx], image_url: cleanImage, updated_at: new Date().toISOString() };
     saveLocalCatalog(local);
@@ -582,25 +600,24 @@ export async function syncUserCarImageToCatalog(car: Diecast, imageUrl: string):
     );
   }
 
-  // 3. Update tesoro_car_catalog in Supabase
+  // 3. Update tesoro_car_catalog in Supabase, and only where it is still blank.
+  //    `is` rather than a read-then-write: two people photographing the same
+  //    casting at once would both read null and both write, and the second would
+  //    win for no reason.
   try {
     await supabase
       .from("tesoro_car_catalog")
       .update({ image_url: cleanImage, updated_at: new Date().toISOString() })
-      .eq("car_id", catalogId);
+      .eq("car_id", catalogId)
+      .or("image_url.is.null,image_url.eq.");
   } catch (e) {
     console.warn("Supabase tesoro_car_catalog image update warning:", e);
   }
 
-  // 4. Update other copies in tesoro_raw
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from("tesoro_raw") as any)
-      .update({ "Image URL": cleanImage })
-      .or(`"Catalog ID".ilike.${catalogId},"Car ID".ilike.${catalogId}`);
-  } catch (e) {
-    console.warn("Supabase tesoro_raw sync warning:", e);
-  }
+  // Step 4 used to write this photo over the "Image URL" of every row sharing
+  // the casting — yours and, where RLS allowed, other people's. It is gone. A
+  // row's photo belongs to the row; a row with none reads the catalogue's at
+  // display time (tesoroRawToDiecast), so nothing needs copying into it.
 
   // 5. Invoke backend endpoint for cross-user persistence
   try {

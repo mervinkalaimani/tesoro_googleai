@@ -41,6 +41,8 @@ import { STATUSES, isInHand, isIso, type Status } from "@/lib/status";
 import { isLate } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { carSubLine, carSubLineParts } from "@/lib/car-subline";
+import { useCatalog } from "@/lib/catalog-store";
+import { catalogCarToCatalogueCar, type CatalogCar } from "@/lib/catalog";
 
 const STATUS_CHOICES = STATUSES.map((value) => ({ value, label: value }));
 
@@ -95,6 +97,7 @@ export function ShippingBatchDialog({
   idField = "shippingId",
 }: ShippingBatchDialogProps) {
   const cars = useCars();
+  const { catalog } = useCatalog();
   const { updateCarsByShippingId, bulkUpdateCars } = useCarsActions();
   const idLabel = idField === "orderId" ? "Order ID" : "Shipping ID";
 
@@ -119,8 +122,8 @@ export function ShippingBatchDialog({
   // Cars queued to join this order — ISO rows picked below, held until Apply so
   // they take the same expected date and courier as everything else in it.
   const [pendingCars, setPendingCars] = useState<Diecast[]>([]);
-  const [isoPickerOpen, setIsoPickerOpen] = useState(false);
-  const [isoQuery, setIsoQuery] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerQuery, setPickerQuery] = useState("");
   // The seed is built once, when the wizard opens, and held: rebuilding it per
   // render would hand the form a new blank car — and a new id — every keystroke.
   const [newCarSeed, setNewCarSeed] = useState<Diecast | null>(null);
@@ -247,8 +250,8 @@ export function ShippingBatchDialog({
   // meant to go.
   useEffect(() => {
     setPendingCars([]);
-    setIsoPickerOpen(false);
-    setIsoQuery("");
+    setPickerOpen(false);
+    setPickerQuery("");
     setNewCarSeed(null);
     setCarsAccordionOpen(false);
   }, [activeShippingId, open]);
@@ -258,8 +261,18 @@ export function ShippingBatchDialog({
   /** The row the order's own details are read from when filling gaps. */
   const template = matchedCars[0] as Diecast | undefined;
 
+  /**
+   * What you can put in the order: your own ISO entries first, then the rest of
+   * the catalogue.
+   *
+   * The ISO list used to be the only way in, which meant a car you had simply
+   * forgotten to log could not be added without retyping the batch ID by hand.
+   * The two are one list because from here they are the same question — which
+   * car — and they differ only in what happens next: an ISO row already exists
+   * and joins the order, a catalogue entry has to be bought first.
+   */
   const isoCandidates = useMemo(() => {
-    const q = isoQuery.trim().toLowerCase();
+    const q = pickerQuery.trim().toLowerCase();
     const queued = new Set(pendingCars.map((c) => c.id));
     return cars
       .filter((c) => isIso(c.status) && !queued.has(c.id))
@@ -272,7 +285,24 @@ export function ShippingBatchDialog({
           .includes(q);
       })
       .slice(0, 50);
-  }, [cars, isoQuery, pendingCars]);
+  }, [cars, pickerQuery, pendingCars]);
+
+  const catalogCandidates = useMemo(() => {
+    const q = pickerQuery.trim().toLowerCase();
+    // Unfiltered, the whole catalogue is 1,400 rows of nothing you asked for.
+    if (q.length < 2) return [];
+    const already = new Set(
+      isoCandidates.map((c) => (c.catalogId || "").toUpperCase()).filter(Boolean),
+    );
+    const out: CatalogCar[] = [];
+    for (const c of catalog) {
+      if (already.has(c.car_id.toUpperCase())) continue;
+      const hay = `${c.name} ${c.make} ${c.model} ${c.variant ?? ""} ${c.brand} ${c.series} ${c.car_number}`;
+      if (hay.toLowerCase().includes(q)) out.push(c);
+      if (out.length >= 25) break;
+    }
+    return out;
+  }, [catalog, pickerQuery, isoCandidates]);
 
   /**
    * What a car joining this order inherits: the batch ID, the status the order
@@ -321,6 +351,22 @@ export function ShippingBatchDialog({
   /** Seeds the add-a-car wizard with everything the order already knows. */
   const seedNewCar = (): Diecast =>
     joinOrder({ ...makeBlankCar(), status: template?.status || "In Transit" });
+
+  /**
+   * The same seed with a casting already chosen, so the wizard opens on step two
+   * with nothing left to answer but what this copy cost. What you paid starts at
+   * the retail price, the way picking a catalogue entry does everywhere else.
+   */
+  const seedFromCatalog = (c: CatalogCar): Diecast => {
+    const fields = catalogCarToCatalogueCar(c);
+    return joinOrder({
+      ...makeBlankCar(),
+      ...fields,
+      mrp: Number(fields.mrp) || 0,
+      spent: Number(fields.mrp) || 0,
+      status: template?.status || "In Transit",
+    });
+  };
 
   /** Everything this Apply would write: the batch, plus anything joining it. */
   const affected = matchedCars.length + pendingCars.length;
@@ -548,10 +594,10 @@ export function ShippingBatchDialog({
                       size="sm"
                       variant="outline"
                       className="h-7 gap-1 px-2 text-[11px]"
-                      onClick={() => setIsoPickerOpen((v) => !v)}
+                      onClick={() => setPickerOpen((v) => !v)}
                     >
                       <Sparkles className="size-3" />
-                      From ISO
+                      From Catalogue
                     </Button>
                     <Button
                       type="button"
@@ -561,23 +607,27 @@ export function ShippingBatchDialog({
                       onClick={() => setNewCarSeed(seedNewCar())}
                     >
                       <Plus className="size-3" />
-                      New car
+                      Add New
                     </Button>
                   </div>
 
-                  {isoPickerOpen && (
+                  {pickerOpen && (
                     <div className="space-y-1.5 rounded-lg border border-border bg-background p-2">
                       <div className="relative">
                         <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
                         <Input
-                          value={isoQuery}
-                          onChange={(e) => setIsoQuery(e.target.value)}
-                          placeholder="Search your ISO list…"
+                          value={pickerQuery}
+                          onChange={(e) => setPickerQuery(e.target.value)}
+                          placeholder="Search the catalogue…"
                           className="h-8 pl-7 text-xs"
                           autoComplete="off"
                         />
                       </div>
                       <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                        {/* Your own ISO entries lead, because one of them being
+                          the car you just bought is the likeliest reason you
+                          opened this — and because picking one updates the row
+                          you already have instead of filing a second. */}
                         {isoCandidates.map((car) => (
                           <button
                             key={car.id}
@@ -598,14 +648,38 @@ export function ShippingBatchDialog({
                                 </span>
                               )}
                             </span>
+                            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+                              ISO
+                            </span>
                             <Plus className="size-3 shrink-0 text-muted-foreground" />
                           </button>
                         ))}
-                        {isoCandidates.length === 0 && (
+                        {/* Everything else. Picking one opens the wizard rather
+                          than queueing a row: the catalogue says what the car
+                          is, not what you paid for it. */}
+                        {catalogCandidates.map((c) => (
+                          <button
+                            key={c.car_id}
+                            type="button"
+                            onClick={() => setNewCarSeed(seedFromCatalog(c))}
+                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-[11px] hover:bg-muted"
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium text-foreground">
+                                {c.name || `${c.make} ${c.model}`.trim() || "Unnamed casting"}
+                              </span>
+                              <span className="block truncate text-[10px] text-muted-foreground">
+                                {carSubLine(catalogCarToCatalogueCar(c))}
+                              </span>
+                            </span>
+                            <Plus className="size-3 shrink-0 text-muted-foreground" />
+                          </button>
+                        ))}
+                        {isoCandidates.length === 0 && catalogCandidates.length === 0 && (
                           <p className="px-1 py-2 text-center text-[11px] text-muted-foreground">
-                            {isoQuery.trim()
-                              ? "Nothing on your ISO list matches that."
-                              : "Your ISO list is empty."}
+                            {pickerQuery.trim().length >= 2
+                              ? "Nothing on your ISO list or in the catalogue matches that."
+                              : "Type a name to search — your ISO list shows first."}
                           </p>
                         )}
                       </div>

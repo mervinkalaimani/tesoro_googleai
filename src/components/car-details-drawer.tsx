@@ -1714,6 +1714,7 @@ export function CatalogCarDetails({
   isIso,
   onClose,
   onAdd,
+  onAddIso,
   canEdit,
   onEdit,
   canDelete,
@@ -1729,6 +1730,11 @@ export function CatalogCarDetails({
   isIso?: boolean;
   onClose: () => void;
   onAdd: () => void;
+  /**
+   * Put this casting on your ISO list — the wishlist, not the collection.
+   * Absent when the caller has nowhere to put it.
+   */
+  onAddIso?: () => void;
   canEdit?: boolean;
   onEdit?: () => void;
   /** Owner only: removing the casting from the catalogue altogether. */
@@ -1765,6 +1771,7 @@ export function CatalogCarDetails({
             isIso={isIso}
             onClose={onClose}
             onAdd={onAdd}
+            onAddIso={onAddIso}
             canEdit={canEdit}
             onEdit={onEdit}
             showOwnersColumn={showOwnersColumn}
@@ -1786,6 +1793,7 @@ function CatalogDetailsContent({
   isIso: isIsoProp,
   onClose,
   onAdd,
+  onAddIso,
   canEdit,
   onEdit,
   showOwnersColumn = false,
@@ -1800,6 +1808,7 @@ function CatalogDetailsContent({
   isIso?: boolean;
   onClose: () => void;
   onAdd: () => void;
+  onAddIso?: () => void;
   canEdit?: boolean;
   onEdit?: () => void;
   showOwnersColumn?: boolean;
@@ -1873,6 +1882,20 @@ function CatalogDetailsContent({
         >
           <Pencil className="size-4" />
           Edit
+        </Button>
+      )}
+      {/* Only while it is not already on the list — "Add to ISO" on a car you
+          are already looking for is an offer to file the same wish twice. Your
+          list, not the catalogue's: nobody else's is touched. */}
+      {onAddIso && !isActuallyIso && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onAddIso}
+          className="h-11 shrink-0 gap-1.5 px-4 text-sm font-semibold cursor-pointer border-border hover:bg-muted"
+        >
+          <Search className="size-4" />
+          Add to ISO
         </Button>
       )}
       <Button onClick={onAdd} className="h-11 flex-1 gap-2 text-sm font-semibold">

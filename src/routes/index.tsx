@@ -12,6 +12,7 @@ import {
   PauseCircle,
   Plus,
   CalendarClock,
+  PackageCheck,
 } from "lucide-react";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { TrackingLink } from "@/components/tracking-link";
@@ -60,7 +61,13 @@ import { catalogueKey, useRecentPreorders, type RecentPreorder } from "@/lib/cat
 import { isPreOrder } from "@/lib/status-order";
 import { carSubLine } from "@/lib/car-subline";
 import { useCatalog } from "@/lib/catalog-store";
-import { isCarMatchingCatalog, type CatalogCar } from "@/lib/catalog";
+import {
+  isCarMatchingCatalog,
+  catalogCarToCatalogueCar,
+  catalogCarToDiecast as asCar,
+  type CatalogCar,
+} from "@/lib/catalog";
+import { recentReleases, releasedLabel } from "@/lib/released";
 import { catalogIdFor } from "@/lib/car-id";
 
 export const Route = createFileRoute("/")({
@@ -192,9 +199,7 @@ function DashboardPage() {
   const quiet = recent.length === 0 && newPreorders.length === 0 && !preordersLoading;
   const showArriving =
     arriving.length > 0 &&
-    (arrivingSoon === "always" ||
-      arrivingSoon === "custom" ||
-      (arrivingSoon === "auto" && quiet));
+    (arrivingSoon === "always" || arrivingSoon === "custom" || (arrivingSoon === "auto" && quiet));
 
   // The first name only. "Hello Mervin Kalaimani" is how a bank addresses you;
   // the app already knows which of the two it is.
@@ -335,6 +340,11 @@ function DashboardPage() {
 
       {/* Pre-orders anyone has placed in the last three days, ready to add. */}
       {!loading && <RecentPreorders cars={newPreorders} loading={preordersLoading} />}
+
+      {/* And the other end of it: pre-orders that have started arriving. Below
+          the new ones deliberately — what is coming out is news for everyone,
+          but what is newly up for pre-order is the thing you can act on. */}
+      {!loading && <RecentlyReleased />}
     </div>
   );
 }
@@ -773,6 +783,8 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
   const { catalog, findMatchingInCatalog, getCatalogCarById, updateCatalogCar, addCatalogCar } =
     useCatalog();
   const [adding, setAdding] = useState<RecentPreorder | null>(null);
+  /** Whether the add dialog was opened to file a wish rather than a purchase. */
+  const [addingIso, setAddingIso] = useState(false);
   const [viewing, setViewing] = useState<RecentPreorder | null>(null);
   const [editingCatalog, setEditingCatalog] = useState<CatalogCar | null>(null);
   const now = new Date();
@@ -936,14 +948,31 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
         onAdd={() => {
           const target = viewing;
           setViewing(null);
+          setAddingIso(false);
           setAdding(target);
         }}
+        onAddIso={
+          isGuest
+            ? undefined
+            : () => {
+                const target = viewing;
+                setViewing(null);
+                setAddingIso(true);
+                setAdding(target);
+              }
+        }
       />
       <CarFormDialog
         open={adding !== null}
-        onOpenChange={(v) => !v && setAdding(null)}
+        onOpenChange={(v) => {
+          if (!v) {
+            setAdding(null);
+            setAddingIso(false);
+          }
+        }}
         mode="add"
         prefill={adding}
+        prefillStatus={addingIso ? "ISO" : "PO"}
       />
       {isAdmin && (
         <CatalogFormDialog
@@ -1241,5 +1270,98 @@ function TopDetailDialog({
         </ul>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/**
+ * Castings that have just come out.
+ *
+ * The other shelf on this page is "New Pre Orders" — what people have started
+ * waiting for. This is the other end of that: what the waiting was for. It
+ * fills itself in, because the database marks a casting released the first time
+ * anybody's copy of it arrives, so the first person to receive one tells
+ * everybody else without doing anything.
+ *
+ * Your own pre-order of one of these is a stronger piece of news than a shelf
+ * can carry — there is a seller to contact and usually a balance to settle — so
+ * that lives in the bell, not here. This shelf is for everyone.
+ */
+function RecentlyReleased() {
+  const { catalog, isLoading } = useCatalog();
+  const { isAdmin } = useAuth();
+  const cars = useCars();
+  const [viewing, setViewing] = useState<CatalogCar | null>(null);
+  const [adding, setAdding] = useState<CatalogCar | null>(null);
+
+  const releases = useMemo(() => recentReleases(catalog).slice(0, 20), [catalog]);
+
+  /** Castings you already have a row for, so the card can say so. */
+  const ownedIds = useMemo(() => {
+    const out = new Set<string>();
+    for (const c of cars) {
+      const id = (c.catalogId || "").trim().toUpperCase();
+      if (id) out.add(id);
+    }
+    return out;
+  }, [cars]);
+
+  if (isLoading || releases.length === 0) return null;
+
+  return (
+    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border p-4">
+        <div className="min-w-0">
+          <h2 className="text-display text-lg font-semibold">Recently Released</h2>
+          <p className="text-xs text-muted-foreground">Pre-orders that have started arriving</p>
+        </div>
+        <PackageCheck className="size-4 text-emerald-500" />
+      </div>
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
+        {releases.map((r) => {
+          const owned = ownedIds.has(r.entry.car_id.trim().toUpperCase());
+          return (
+            <div key={r.entry.car_id} className="relative w-36 shrink-0 snap-start sm:w-40">
+              <CompactCarCard
+                car={asCar(r.entry)}
+                onOpen={() => setViewing(r.entry)}
+                caption={releasedLabel(r.daysAgo)}
+                marksOffset
+                className="w-full"
+              />
+              <button
+                type="button"
+                onClick={() => setAdding(r.entry)}
+                aria-label={`${owned ? "Add another" : "Add to collection"}: ${r.entry.name}`}
+                title={owned ? "Add another" : "Add to collection"}
+                className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-90"
+              >
+                <Plus className="size-4" />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+
+      <CatalogCarDetails
+        car={viewing ? asCar(viewing) : null}
+        catalogCar={viewing}
+        preOrder={false}
+        owned={Boolean(viewing && ownedIds.has(viewing.car_id.trim().toUpperCase()))}
+        onClose={() => setViewing(null)}
+        canEdit={isAdmin}
+        onAdd={() => {
+          const target = viewing;
+          setViewing(null);
+          setAdding(target);
+        }}
+      />
+      <CarFormDialog
+        open={adding !== null}
+        onOpenChange={(v) => !v && setAdding(null)}
+        mode="add"
+        prefill={adding ? catalogCarToCatalogueCar(adding) : null}
+        prefillStatus="Ordered"
+      />
+    </div>
   );
 }

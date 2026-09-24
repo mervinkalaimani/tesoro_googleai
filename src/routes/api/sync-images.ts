@@ -61,18 +61,13 @@ async function handler({ request }: { request: Request }) {
     // first, so it filed the photo against an arbitrary one of them. Without a
     // catalogue id there is no right answer, so nothing is written.
 
-    // 2. Update tesoro_raw (users' cars)
-    if (cleanCatalogId) {
-      // Update any row where Catalog ID or Car ID matches
-      const { error: rawErr, count } = await client
-        .from("tesoro_raw")
-        .update({ "Image URL": cleanImage })
-        .or(`"Catalog ID".ilike.${cleanCatalogId},"Car ID".ilike.${cleanCatalogId}`);
-
-      if (!rawErr && count !== null) {
-        updatedRaw = count;
-      }
-    }
+    // 2. Nothing is written to tesoro_raw any more.
+    //
+    // This step used to stamp the photo onto every row of the casting, using the
+    // service-role key — which bypasses RLS, so one person replacing their own
+    // photo rewrote strangers' rows. A row with no photo of its own already
+    // falls back to the catalogue entry when it is read, so the copy was never
+    // needed; all it ever did was overwrite photos people had chosen.
 
     // A second write used to follow this one, labelled a fallback but running
     // unconditionally whenever make and model were sent — which both callers

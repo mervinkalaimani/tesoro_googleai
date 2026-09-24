@@ -217,9 +217,12 @@ export async function syncCatalogCarToUserCars(
         Chase: catalogCar.rarity ? catalogCar.rarity !== "Normal" : false,
       };
 
-      if (catalogCar.image_url) {
-        updatePayload["Image URL"] = catalogCar.image_url;
-      }
+      // "Image URL" is deliberately not in this payload. Propagating the
+      // catalogue's descriptive columns is this function's job — they describe
+      // the casting, so they are the same for everyone who owns one. The photo
+      // is not: people upload their own, and stamping the catalogue's over the
+      // top of them wiped work they had done. A row without one falls back to
+      // the catalogue when it is read, so nothing is lost by leaving it out.
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (supabase.from("tesoro_raw") as any)

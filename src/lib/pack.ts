@@ -48,6 +48,27 @@ export function packSizes(
   return out;
 }
 
+/**
+ * Every casting that sits inside some box, by car_id.
+ *
+ * A car sold only as part of a set is not a thing you buy on its own, so the
+ * lists that are about *what you can buy* leave it out and show the box
+ * instead. The casting still exists, still has its own page, and is still
+ * reachable through the pack that contains it — it simply does not stand in the
+ * open pretending to be a separate purchase.
+ */
+export function packMemberIds(members: Record<string, string[]>): Set<string> {
+  const out = new Set<string>();
+  for (const ids of Object.values(members)) {
+    for (const id of ids) out.add(id.trim().toUpperCase());
+  }
+  return out;
+}
+
+/** Whether this row is a car that only comes inside a box. */
+export const isPackMember = (car: Pick<Diecast, "catalogId">, memberIds: Set<string>) =>
+  memberIds.has((car.catalogId || "").trim().toUpperCase());
+
 /** What one owned row counts as: the cars in the box, or 1 for a single car. */
 export function unitsOf(car: Pick<Diecast, "catalogId">, sizes: Map<string, number>): number {
   const id = (car.catalogId || "").trim().toUpperCase();

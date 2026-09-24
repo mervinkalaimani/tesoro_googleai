@@ -44,6 +44,8 @@ import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
+import { packMemberIds } from "@/lib/pack";
+import { FilterChipDropdown, ToggleChip, plural } from "@/components/filter-chips";
 import { MergeDuplicatesDialog } from "@/components/merge-duplicates-dialog";
 import {
   isCarMatchingCatalog,
@@ -90,33 +92,47 @@ export const Route = createFileRoute("/catalog")({
 
 type Segment = "all" | "released" | "preorder" | "iso";
 
+/**
+ * Brand leads, the way it does on My Cars: it is the coarsest cut and the one
+ * people reach for first.
+ */
 const FILTERS = [
+  { key: "brand", label: "Brand", get: (c: CatalogCar) => c.brand },
   { key: "make", label: "Make", get: (c: CatalogCar) => c.make },
   { key: "model", label: "Model", get: (c: CatalogCar) => c.model },
-  { key: "variant", label: "Variant", get: (c: CatalogCar) => c.variant || "" },
-  { key: "year", label: "Year", get: (c: CatalogCar) => (c.year || "").replace(/\.0+$/, "") },
-  { key: "colour", label: "Colour", get: (c: CatalogCar) => c.colour || "" },
-  { key: "brand", label: "Brand", get: (c: CatalogCar) => c.brand },
-  { key: "assortment", label: "Assortment", get: (c: CatalogCar) => c.assortment },
   { key: "series", label: "Series", get: (c: CatalogCar) => c.series || "" },
-  { key: "subSeries", label: "Sub-series", get: (c: CatalogCar) => c.sub_series || "" },
-  { key: "rarity", label: "Rarity", get: (c: CatalogCar) => c.rarity || "Normal" },
+  // Who filed the casting. The catalogue is shared, so "what have I added" and
+  // "what did someone else add" are real questions — grouping could already
+  // answer them, and now the chips can too.
+  {
+    key: "addedBy",
+    label: "Added by",
+    get: (c: CatalogCar) => resolveCatalogUserFirstName(c.created_by) || "",
+  },
 ] as const;
 
 type FilterKey = (typeof FILTERS)[number]["key"];
 type Filters = Record<FilterKey, string>;
 
+/**
+ * Every dropdown counts its options from the rows the *other* filters leave
+ * behind, so picking a brand narrows Make, Model and Series to that brand's own.
+ * This is the one pair where the narrowing runs in a single direction.
+ *
+ * Brand ignores Series. A series belongs to a brand, so a brand narrows it — but
+ * going the other way collapsed Brand to the one brand that prints whatever
+ * series was picked, and the others were no longer visible, let alone
+ * reachable. The list is still filtered by both; this only decides what the
+ * dropdown offers you next. Same rule as My Cars.
+ */
+const ONE_WAY: Partial<Record<FilterKey, FilterKey>> = { brand: "series" };
+
 const NO_FILTERS: Filters = {
+  brand: "all",
   make: "all",
   model: "all",
-  variant: "all",
-  year: "all",
-  colour: "all",
-  brand: "all",
-  assortment: "all",
   series: "all",
-  subSeries: "all",
-  rarity: "all",
+  addedBy: "all",
 };
 
 /**
@@ -243,19 +259,20 @@ function CatalogPage() {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<Filters>(NO_FILTERS);
   const [draftHideInPacks, setDraftHideInPacks] = useState(true);
+  /** Hide owned is a chip on the desktop; on a phone it lives in the sheet. */
+  const [draftHideOwned, setDraftHideOwned] = useState(false);
 
   /** Every casting that sits inside some box, by car_id. */
-  const inSomePack = useMemo(() => {
-    const out = new Set<string>();
-    for (const ids of Object.values(packMembers)) {
-      for (const id of ids) out.add(id.trim().toUpperCase());
-    }
-    return out;
-  }, [packMembers]);
+  const inSomePack = useMemo(() => packMemberIds(packMembers), [packMembers]);
   const [sort, setSort] = useState<Sort>({ key: "added", dir: "desc" });
   const [group, setGroup] = useState<GroupKey>("none");
   const [view, setView] = useState<ViewMode>("grid");
   const [adding, setAdding] = useState<CatalogCar | null>(null);
+  /**
+   * Whether the add dialog was opened to file a wish rather than a purchase.
+   * Same dialog either way: an ISO row is a car with a status, not a second form.
+   */
+  const [addingIso, setAddingIso] = useState(false);
   /** The entry whose details are open. */
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [pushing, setPushing] = useState(false);
@@ -438,8 +455,8 @@ function CatalogPage() {
     );
   };
 
-  const matches = (c: CatalogCar, f: Filters, skip?: FilterKey) =>
-    FILTERS.every((d) => d.key === skip || f[d.key] === "all" || d.get(c) === f[d.key]);
+  const matches = (c: CatalogCar, f: Filters, ...skip: (FilterKey | undefined)[]) =>
+    FILTERS.every((d) => skip.includes(d.key) || f[d.key] === "all" || d.get(c) === f[d.key]);
 
   const rows = useMemo(() => {
     let result = searched.filter((c) => matches(c, filters));
@@ -480,13 +497,20 @@ function CatalogPage() {
         const cid = c.car_id.toUpperCase();
         if (hideOwned && owned.has(cid) && !myIso.has(cid)) continue;
         if (hideInPacks && inSomePack.has(cid)) continue;
-        if (!matches(c, filters, d.key)) continue;
+        if (!matches(c, filters, d.key, ONE_WAY[d.key])) continue;
         const v = d.get(c).trim();
         if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
       }
       out[d.key] = [...counts.entries()]
         .map(([value, count]) => ({ value, count }))
-        .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
+        // Commonest first, the way My Cars orders its dropdowns: the answer you
+        // want is usually the one with the most castings behind it, and an
+        // alphabetical list buried it halfway down. Ties fall back to the name
+        // so the order is stable rather than whatever the map happened to hold.
+        .sort(
+          (a, b) =>
+            b.count - a.count || a.value.localeCompare(b.value, undefined, { numeric: true }),
+        );
     }
     return out;
   }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned, myIso]);
@@ -500,22 +524,27 @@ function CatalogPage() {
   const openFilterModal = () => {
     setDraftFilters(filters);
     setDraftHideInPacks(hideInPacks);
+    setDraftHideOwned(hideOwned);
     setFilterModalOpen(true);
   };
 
   const handleClearFilters = () => {
     setDraftFilters(NO_FILTERS);
     setDraftHideInPacks(true);
+    setDraftHideOwned(false);
   };
 
   const handleApplyFilters = () => {
     setFilters(draftFilters);
     setHideInPacks(draftHideInPacks);
+    setHideOwned(draftHideOwned);
     setFilterModalOpen(false);
   };
 
   const draftActiveCount =
-    Object.values(draftFilters).filter((v) => v !== "all").length + (draftHideInPacks ? 0 : 1);
+    Object.values(draftFilters).filter((v) => v !== "all").length +
+    (draftHideInPacks ? 0 : 1) +
+    (draftHideOwned ? 1 : 0);
 
   const draftOptions = useMemo(() => {
     const out = {} as Record<FilterKey, { value: string; count: number }[]>;
@@ -525,13 +554,17 @@ function CatalogPage() {
         const cid = c.car_id.toUpperCase();
         if (hideOwned && owned.has(cid) && !myIso.has(cid)) continue;
         if (draftHideInPacks && inSomePack.has(cid)) continue;
-        if (!matches(c, draftFilters, d.key)) continue;
+        if (!matches(c, draftFilters, d.key, ONE_WAY[d.key])) continue;
         const v = d.get(c).trim();
         if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
       }
       out[d.key] = [...counts.entries()]
         .map(([value, count]) => ({ value, count }))
-        .sort((a, b) => a.value.localeCompare(b.value, undefined, { numeric: true }));
+        // Commonest first, matching the live dropdowns above.
+        .sort(
+          (a, b) =>
+            b.count - a.count || a.value.localeCompare(b.value, undefined, { numeric: true }),
+        );
     }
     return out;
   }, [searched, draftFilters, hideOwned, draftHideInPacks, inSomePack, owned, myIso]);
@@ -686,42 +719,73 @@ function CatalogPage() {
         sticky={true}
         oneLine
         left={
-          <SegmentControl
-            value={segment}
-            onChange={setSegment}
-            className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
-            options={[
-              { value: "all", label: "All" },
-              { value: "released", label: "Released" },
-              { value: "preorder", label: "PO" },
-              { value: "iso", label: "My ISO" },
-            ]}
-          />
+          // One row on the desktop, the way My Cars reads: what you are looking
+          // at on the left, how it is narrowed beside it. The chips are hidden
+          // on a phone, where they would be a wall — the funnel opens the same
+          // filters there instead.
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+            <SegmentControl
+              value={segment}
+              onChange={setSegment}
+              className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
+              options={[
+                { value: "all", label: "All" },
+                { value: "released", label: "Released" },
+                { value: "preorder", label: "PO" },
+                { value: "iso", label: "My ISO" },
+              ]}
+            />
+
+            <div className="hidden h-4 w-px shrink-0 bg-border/60 md:block" />
+
+            <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
+              {FILTERS.map((d) => (
+                <FilterChipDropdown
+                  key={d.key}
+                  label={d.label}
+                  value={filters[d.key]}
+                  options={options[d.key].map((o) => ({ name: o.value, value: o.count }))}
+                  onChange={(next) => setFilters((f) => ({ ...f, [d.key]: next }))}
+                />
+              ))}
+              {/* The two toggles read as chips beside the rest, because they
+                  narrow the list exactly like the others do — but they answer a
+                  different question. The five above ask what the casting *is*;
+                  these two ask what you already have. Hence the rule. */}
+              <div className="h-4 w-px shrink-0 bg-border/60" />
+              <ToggleChip
+                label="Hide owned"
+                active={hideOwned}
+                onToggle={() => setHideOwned((v) => !v)}
+              />
+              <ToggleChip
+                label="Cars inside packs"
+                active={!hideInPacks}
+                onToggle={() => setHideInPacks((v) => !v)}
+              />
+              {activeCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilters(NO_FILTERS);
+                    setHideInPacks(true);
+                  }}
+                  className="ml-1 cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+          </div>
         }
         right={
           <>
-            {/* Hide owned sits outside the filter sheet: it is the one you
-                flip while browsing, not something you set and forget. */}
-            <label
-              title="Hide cars you already own"
-              className={cn(
-                "flex h-8 shrink-0 cursor-pointer select-none items-center gap-1.5 rounded-md border px-2 text-xs font-medium",
-                hideOwned
-                  ? "border-primary bg-primary/10 text-foreground"
-                  : "border-input text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={hideOwned}
-                onChange={(e) => setHideOwned(e.target.checked)}
-                className="size-3.5 rounded border-input accent-primary"
-              />
-              <span className="max-sm:sr-only">Hide owned</span>
-            </label>
+            {/* Hide owned used to be a checkbox out here. It is a chip beside
+                the other filters now — it narrows the list the same way they
+                do, so it reads the same way they do. */}
 
-            {/* Sort, group and filter read as icons at every width, the way
-                they do on the other pages. */}
+            {/* Sort and group read as icons at every width, the way they do on
+                the other pages. */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -778,12 +842,15 @@ function CatalogPage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {/* Phone only. On the desktop every filter is a chip in the row
+                above, so a funnel that opened the same list again was a second
+                door to one room. */}
             <Button
               type="button"
               size="icon"
               variant={activeCount > 0 ? "default" : "outline"}
               onClick={openFilterModal}
-              className="relative size-8 shrink-0"
+              className="relative size-8 shrink-0 md:hidden"
               title="Filter castings"
               aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : "Filters"}
             >
@@ -846,9 +913,19 @@ function CatalogPage() {
           setEditing(target);
         }}
         onAdd={() => {
+          setAddingIso(false);
           setAdding(viewing);
           setViewing(null);
         }}
+        onAddIso={
+          isGuest
+            ? undefined
+            : () => {
+                setAddingIso(true);
+                setAdding(viewing);
+                setViewing(null);
+              }
+        }
       />
 
       <DeleteCastingDialog
@@ -865,10 +942,15 @@ function CatalogPage() {
       />
       <CarFormDialog
         open={adding !== null}
-        onOpenChange={(v) => !v && setAdding(null)}
+        onOpenChange={(v) => {
+          if (!v) {
+            setAdding(null);
+            setAddingIso(false);
+          }
+        }}
         mode="add"
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
-        prefillStatus={adding && isPreOrder(adding) ? "PO" : "Ordered"}
+        prefillStatus={addingIso ? "ISO" : adding && isPreOrder(adding) ? "PO" : "Ordered"}
       />
       {/* Progress only — the work is already running by the time this shows. */}
       <Dialog open={fill !== null} onOpenChange={() => {}}>
@@ -1037,6 +1119,24 @@ function CatalogPage() {
               />
             </label>
 
+            {/* On the desktop this is a chip in the toolbar. There is no room
+                for the chip row on a phone, so it comes in here with the rest
+                rather than disappearing. */}
+            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 transition-colors hover:bg-muted/50">
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-foreground">Hide owned</span>
+                <span className="block text-[11px] text-muted-foreground">
+                  Leave out castings already in your collection.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                checked={draftHideOwned}
+                onChange={(e) => setDraftHideOwned(e.target.checked)}
+                className="size-4 shrink-0 cursor-pointer rounded border-input accent-primary"
+              />
+            </label>
+
             {/* All filter dropdowns arranged in 2 columns */}
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
               {FILTERS.map((d) => {
@@ -1058,7 +1158,7 @@ function CatalogPage() {
                           : "border-input text-muted-foreground",
                       )}
                     >
-                      <option value="all">All {d.label}s</option>
+                      <option value="all">All {plural(d.label)}</option>
                       {filterOpts.map((o) => (
                         <option key={o.value} value={o.value}>
                           {o.value} ({o.count})

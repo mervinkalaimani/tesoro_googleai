@@ -80,9 +80,11 @@ async function handler({ request }: { request: Request }) {
     if (catalog_car.mrp !== undefined && Number(catalog_car.mrp) > 0) {
       rawUpdate["MRP"] = Number(catalog_car.mrp);
     }
-    if (catalog_car.image_url !== undefined) {
-      rawUpdate["Image URL"] = catalog_car.image_url;
-    }
+    // "Image URL" is deliberately absent. This endpoint holds the service-role
+    // key, so RLS does not stop it: writing the catalogue's photo here replaced
+    // the photo on every owner's row, in every collection, with no way back. A
+    // row with no photo reads the catalogue's at display time, so propagating it
+    // bought nothing and cost people the pictures they had uploaded.
     if (catalog_car.rarity !== undefined) {
       rawUpdate["Rarity"] = catalog_car.rarity;
       rawUpdate["Chase"] = catalog_car.rarity !== "Normal";

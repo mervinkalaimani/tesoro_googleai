@@ -34,6 +34,8 @@ import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useCars, useCarsActions, useCarsRefresh } from "@/lib/cars-store";
+import { useCatalog } from "@/lib/catalog-store";
+import { releasedLabel, releasesYouAreWaitingOn, type WaitingRelease } from "@/lib/released";
 import { useAuth } from "@/lib/auth-store";
 import { supabase } from "@/integrations/supabase/client";
 import { daysBetween, formatDayMonthYear, inrFull, parseDMY } from "@/lib/format";
@@ -64,6 +66,7 @@ const SECTION = {
   today: "deliveries-today",
   delayed: "deliveries-delayed",
   launches: "preorder-launch",
+  released: "preorder-released",
 } as const;
 
 /** The six, so the panel can never offer a status the rest of the app has dropped. */
@@ -124,6 +127,8 @@ type Launch = { car: Diecast; due: Date; days: number };
  * again when the promise changes.
  */
 const launchKey = (l: Launch) => `${l.car.id}@${l.due.toISOString().slice(0, 10)}`;
+/** Carries the casting, so a re-release after a correction speaks up again. */
+const releasedKey = (w: WaitingRelease) => `released:${w.car.id}@${w.entry.car_id}`;
 const todayKey = (g: DeliveryGroup) => `today:${g.key}@${g.day}`;
 const delayedKey = (g: DeliveryGroup) => `delayed:${g.key}@${g.day ?? "none"}`;
 const approvalKey = (u: PendingUser) => `approve:${u.sno}`;
@@ -217,6 +222,7 @@ function usePendingApprovals(enabled: boolean) {
  */
 export function NotificationCenter() {
   const cars = useCars();
+  const { catalog } = useCatalog();
   const { bulkUpdateCars } = useCarsActions();
   const { user, isGuest, isAdmin } = useAuth();
   const uid = isGuest ? "guest" : (user?.id ?? "anon");
@@ -277,13 +283,28 @@ export function NotificationCenter() {
   const visibleLate = late.filter((g) => !dismissed[delayedKey(g)]);
   const visibleLaunches = launches.filter((l) => !dismissed[launchKey(l)]);
 
+  /**
+   * Pre-orders of yours whose casting somebody has now received.
+   *
+   * The strongest notice in this panel: the shop has the car, so the balance is
+   * about to be asked for and the status is about to change. It is derived, not
+   * delivered — see released.ts — so it cannot be missed by a failed send.
+   */
+  const released = useMemo(() => releasesYouAreWaitingOn(cars, catalog), [cars, catalog]);
+  const visibleReleased = released.filter((w) => !dismissed[releasedKey(w)]);
+
   const count =
-    visibleApprovals.length + visibleArriving.length + visibleLate.length + visibleLaunches.length;
+    visibleApprovals.length +
+    visibleArriving.length +
+    visibleLate.length +
+    visibleReleased.length +
+    visibleLaunches.length;
 
   const allKeys = [
     ...visibleApprovals.map(approvalKey),
     ...visibleArriving.map(todayKey),
     ...visibleLate.map(delayedKey),
+    ...visibleReleased.map(releasedKey),
     ...visibleLaunches.map(launchKey),
   ];
 
@@ -600,6 +621,78 @@ export function NotificationCenter() {
                   }
                 />
               ))}
+            </Section>
+          )}
+
+          {/* PRE-ORDERS THAT HAVE NOW SHIPPED FOR SOMEBODY */}
+          {visibleReleased.length > 0 && (
+            <Section
+              id={SECTION.released}
+              icon={<PackageCheck className="size-3" />}
+              tone="emerald"
+              title={
+                visibleReleased.length === 1
+                  ? "Your pre-order has been released"
+                  : `${visibleReleased.length} of your pre-orders have been released`
+              }
+              collapsed={collapsed.includes(SECTION.released)}
+              onToggle={toggleSection}
+              link={{ to: "/preorders", onClick: () => setOpen(false) }}
+            >
+              {visibleReleased.map((w) => {
+                const balance = Math.max((w.car.spent || 0) - (w.car.paid || 0), 0);
+                return (
+                  <ShipmentItem
+                    key={releasedKey(w)}
+                    car={w.car}
+                    thumb
+                    onOpen={() => act(() => drawer.open(w.car))}
+                    meta={
+                      <>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1">
+                            <Wallet className="size-3" />
+                            {w.car.seller
+                              ? `Contact ${w.car.seller}`
+                              : "No seller recorded — check where you ordered it"}
+                          </span>
+                          {balance > 0 && (
+                            <>
+                              <span>·</span>
+                              <span className="tabular-nums text-amber-500">
+                                {inrFull(balance)} due
+                              </span>
+                            </>
+                          )}
+                        </div>
+                        <div className="mt-0.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                          {releasedLabel(w.daysAgo)} · {formatDayMonthYear(w.at)}
+                        </div>
+                      </>
+                    }
+                    actions={
+                      <>
+                        {balance > 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => act(() => setPayFor(w.car))}
+                            className="gap-1.5 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
+                          >
+                            <IndianRupee className="size-3.5" />
+                            Pay balance
+                          </Button>
+                        )}
+                        <UpdateStatusButton onClick={() => act(() => setStatusFor(w.car))} />
+                        <DismissButton
+                          label={w.car.name || w.car.model}
+                          onClick={() => clear([releasedKey(w)])}
+                        />
+                      </>
+                    }
+                  />
+                );
+              })}
             </Section>
           )}
 

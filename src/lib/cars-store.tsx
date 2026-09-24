@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth-store";
 import { makeGuestCars } from "@/lib/guest-seed";
 import { toast } from "sonner";
 import { syncUserCarImageToCatalog } from "@/lib/catalog";
+import { takesSyncedPhoto } from "@/lib/photo-sync";
 import { applyCatalogToCar, isCarInstanceOfCatalog, CATALOG_SYNC_EVENT } from "@/lib/catalog-sync";
 import {
   fetchCarsFromSupabase,
@@ -478,19 +479,20 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       const cleanCatId = String(detail.catalogId).trim().toUpperCase();
       const newUrl = String(detail.imageUrl).trim();
 
+      // Who this photo may touch is decided in one place, photo-sync.ts, which
+      // has a self-check beside it. It used to be decided here, inline, with a
+      // second test that matched on make and model alone — so photographing one
+      // Charger repainted every Charger on screen until the page was reloaded.
+      const takes = (c: Diecast) =>
+        takesSyncedPhoto(
+          { catalogId: c.catalogId || catalogIdFor(c), imageUrl: c.imageUrl },
+          cleanCatId,
+        );
+
       setBase((prev) => {
         let changed = false;
         const next = prev.map((c) => {
-          const cCatId = (c.catalogId || catalogIdFor(c) || "").trim().toUpperCase();
-          const matchById = cCatId === cleanCatId;
-          const matchByCasting =
-            detail.catalogCar &&
-            c.make &&
-            detail.catalogCar.make &&
-            c.make.toLowerCase() === detail.catalogCar.make.toLowerCase() &&
-            c.model.toLowerCase() === detail.catalogCar.model.toLowerCase();
-
-          if ((matchById || matchByCasting) && c.imageUrl !== newUrl) {
+          if (takes(c) && c.imageUrl !== newUrl) {
             changed = true;
             return { ...c, imageUrl: newUrl };
           }
@@ -508,15 +510,13 @@ export function CarsProvider({ children }: { children: ReactNode }) {
         let changed = false;
         const updatedEntries = { ...prev.updated };
         for (const [id, car] of Object.entries(updatedEntries)) {
-          const cCatId = (car.catalogId || catalogIdFor(car) || "").trim().toUpperCase();
-          if (cCatId === cleanCatId && car.imageUrl !== newUrl) {
+          if (takes(car) && car.imageUrl !== newUrl) {
             changed = true;
             updatedEntries[id] = { ...car, imageUrl: newUrl };
           }
         }
         const nextAdded = prev.added.map((car) => {
-          const cCatId = (car.catalogId || catalogIdFor(car) || "").trim().toUpperCase();
-          if (cCatId === cleanCatId && car.imageUrl !== newUrl) {
+          if (takes(car) && car.imageUrl !== newUrl) {
             changed = true;
             return { ...car, imageUrl: newUrl };
           }
