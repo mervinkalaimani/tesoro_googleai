@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useCatalog } from "@/lib/catalog-store";
 import { catalogCarToDiecast, type CatalogCar } from "@/lib/catalog";
 import { carSubLine } from "@/lib/car-subline";
+import { parseQuery, matchesQuery } from "@/lib/search";
 import { CarThumb } from "@/components/car-thumb";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,14 +28,16 @@ const clean = (v: string | null | undefined) => (v || "").trim();
 /**
  * The casting as a line of plain text, for pasting into an image search.
  *
- * Name, brand, car number, assortment, series, sub-series, in that order and
- * separated by spaces. Colour is deliberately absent: it is already in the
- * name on most entries, and where it is not, the search reads better without a
- * loose colour word dangling off the end.
+ * Name, colour, brand, car number, assortment, series, sub-series, in that
+ * order and separated by spaces. Colour sits straight after the name because
+ * that is how the listing you are hunting for is titled — "Skyline GT-R R34
+ * Bayside Blue", not "Skyline GT-R R34 … Bayside Blue" with four fields in
+ * between.
  */
 function searchWords(c: CatalogCar): string {
   return [
     c.name || `${c.make} ${c.model}`.trim(),
+    c.colour,
     c.brand,
     c.car_number,
     c.assortment,
@@ -99,26 +102,23 @@ export function CataloguePhotos() {
     return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([u]) => u));
   }, [catalog]);
 
+  /**
+   * The same parser the main search box uses, so "brand: mini gt, colour: red"
+   * means here what it means everywhere else. Free text still works on its own.
+   */
+  const groups = useMemo(() => parseQuery(q), [q]);
+
   const rows = useMemo(() => {
     const needle = q.trim().toLowerCase();
     const out = catalog.filter((c) => {
       const url = clean(c.image_url);
       if (filter === "missing" && url) return false;
       if (filter === "shared" && !sharedPhotos.has(url)) return false;
-      if (!needle) return true;
-      return [
-        c.name,
-        c.make,
-        c.model,
-        c.variant,
-        c.colour,
-        c.brand,
-        c.assortment,
-        c.series,
-        c.car_id,
-      ]
-        .map((v) => (v || "").toLowerCase())
-        .some((v) => v.includes(needle));
+      if (!groups.length) return true;
+      // The catalogue id is not one of the fields the shared search knows, and
+      // it is the one thing you would paste in here, so it is matched beside it.
+      if (needle && c.car_id.toLowerCase().includes(needle)) return true;
+      return matchesQuery(catalogCarToDiecast(c), groups);
     });
     // Alphabetical by what you would search for, so the list is stable while
     // you work down it and a saved row does not jump.
@@ -132,7 +132,7 @@ export function CataloguePhotos() {
         },
       ),
     );
-  }, [catalog, filter, q, sharedPhotos]);
+  }, [catalog, filter, q, groups, sharedPhotos]);
 
   const missingCount = useMemo(() => catalog.filter((c) => !clean(c.image_url)).length, [catalog]);
 
@@ -175,7 +175,7 @@ export function CataloguePhotos() {
               setQ(e.target.value);
               setVisible(PAGE);
             }}
-            placeholder="Search casting, brand, series or ID"
+            placeholder="Search, or brand: mini gt, colour: red"
             className="pl-9"
             aria-label="Search castings"
           />
