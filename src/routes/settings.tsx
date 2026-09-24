@@ -21,6 +21,7 @@ import {
   THEME_OPTIONS,
   FONT_SIZE_OPTIONS,
   ARRIVING_SOON_OPTIONS,
+  ARRIVING_WINDOW_OPTIONS,
   useApp,
   type AccentColor,
   type FontSizePreference,
@@ -143,6 +144,8 @@ export function SettingsPage() {
     setNavAnimation,
     arrivingSoon,
     setArrivingSoon,
+    arrivingDays,
+    setArrivingDays,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
   const { source } = useCarsSource();
@@ -508,7 +511,8 @@ export function SettingsPage() {
                   value={themePreference}
                   onChange={setThemePreference}
                   options={THEME_OPTIONS}
-                  className="h-9 w-full sm:w-auto text-sm"
+                  fill
+                  className="h-9 text-sm sm:w-auto"
                 />
               </div>
 
@@ -573,17 +577,36 @@ export function SettingsPage() {
                       ? "Shown only on a week with nothing recently added and no new pre-orders."
                       : arrivingSoon === "always"
                         ? "Always shown, alongside Recently added and New Pre Orders."
-                        : "Hidden."}{" "}
-                    Cars due in your hands within 30 days.
+                        : arrivingSoon === "custom"
+                          ? "Always shown, over the window you pick below."
+                          : "Hidden."}{" "}
+                    Cars due in your hands within{" "}
+                    {arrivingSoon === "custom" ? arrivingDays : 30} days.
                   </div>
                 </div>
                 <SegmentControl
                   value={arrivingSoon}
                   onChange={setArrivingSoon}
                   options={ARRIVING_SOON_OPTIONS}
-                  className="h-9 w-full sm:w-auto text-sm"
+                  fill
+                  className="h-9 text-sm sm:w-auto"
                 />
               </div>
+
+              {/* The window only exists under Custom, so it appears under it
+                  rather than sitting greyed out beside the other three. */}
+              {arrivingSoon === "custom" && (
+                <div className="flex flex-col gap-2 border-t border-border/60 px-4 pb-4 pt-3">
+                  <div className="text-xs font-medium text-muted-foreground">How far ahead</div>
+                  <SegmentControl
+                    value={String(arrivingDays)}
+                    onChange={(v) => setArrivingDays(Number(v))}
+                    options={ARRIVING_WINDOW_OPTIONS}
+                    fill
+                    className="h-9 text-sm"
+                  />
+                </div>
+              )}
             </div>
           </div>
 

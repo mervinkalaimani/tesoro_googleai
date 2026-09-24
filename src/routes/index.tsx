@@ -165,7 +165,7 @@ function expectedLabel(eta: Date, now: Date): string {
 }
 
 function DashboardPage() {
-  const { query, transitEtaDays, arrivingSoon } = useApp();
+  const { query, transitEtaDays, arrivingSoon, arrivingDays } = useApp();
   const cars = useCars();
   const { profile, isGuest } = useAuth();
   const { refreshing } = useCarsRefresh();
@@ -186,10 +186,15 @@ function DashboardPage() {
     return sharedPreorders.filter((c) => !onMyList.has(catalogueKey(c)));
   }, [sharedPreorders, cars]);
 
-  const arriving = useMemo(() => arrivingWithin(data, ARRIVING_DAYS), [data]);
+  // Auto and Always look a month ahead; Custom looks however far you said.
+  const windowDays = arrivingSoon === "custom" ? arrivingDays : ARRIVING_DAYS;
+  const arriving = useMemo(() => arrivingWithin(data, windowDays), [data, windowDays]);
   const quiet = recent.length === 0 && newPreorders.length === 0 && !preordersLoading;
   const showArriving =
-    arriving.length > 0 && (arrivingSoon === "always" || (arrivingSoon === "auto" && quiet));
+    arriving.length > 0 &&
+    (arrivingSoon === "always" ||
+      arrivingSoon === "custom" ||
+      (arrivingSoon === "auto" && quiet));
 
   // The first name only. "Hello Mervin Kalaimani" is how a bank addresses you;
   // the app already knows which of the two it is.
@@ -323,7 +328,7 @@ function DashboardPage() {
       {/* Stands in for the two shelves above on a week when neither has
           anything: nothing landed, nobody pre-ordered, but there is still a
           month of deliveries worth knowing about. */}
-      {!loading && showArriving && <ArrivingSoon arriving={arriving} now={now} />}
+      {!loading && showArriving && <ArrivingSoon arriving={arriving} now={now} days={windowDays} />}
 
       {/* Monthly spending moved to the Habits page. */}
       <TopTenGrid rows={data} mode="count" loading={loading} />
@@ -711,7 +716,16 @@ function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; no
  * Only day-precise dates get in (see arrivingWithin), so a pre-order that says
  * "Mar 2027" stays out rather than claiming the 1st.
  */
-function ArrivingSoon({ arriving, now }: { arriving: { car: Diecast; day: string }[]; now: Date }) {
+function ArrivingSoon({
+  arriving,
+  now,
+  days,
+}: {
+  arriving: { car: Diecast; day: string }[];
+  now: Date;
+  /** The window actually used, so the caption cannot drift from the list. */
+  days: number;
+}) {
   const { open: openDrawer } = useCarDrawer();
 
   return (
@@ -720,7 +734,7 @@ function ArrivingSoon({ arriving, now }: { arriving: { car: Diecast; day: string
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Arriving soon</h2>
           <p className="text-xs text-muted-foreground">
-            Next {ARRIVING_DAYS} days · {arriving.length} car{arriving.length === 1 ? "" : "s"}
+            Next {days} days · {arriving.length} car{arriving.length === 1 ? "" : "s"}
           </p>
         </div>
         <CalendarClock className="size-4 text-accent" />

@@ -52,16 +52,37 @@ export const FONT_SIZE_OPTIONS: {
  * them on a busy one. The other two are there because a preference that can
  * only mean one thing is not a preference.
  */
-export type ArrivingSoonPreference = "auto" | "always" | "never";
+export type ArrivingSoonPreference = "auto" | "always" | "never" | "custom";
 
 export const ARRIVING_SOON_OPTIONS: { value: ArrivingSoonPreference; label: string }[] = [
-  { value: "auto", label: "When quiet" },
+  { value: "auto", label: "Auto" },
   { value: "always", label: "Always" },
   { value: "never", label: "Never" },
+  { value: "custom", label: "Custom" },
 ];
 
 function isArrivingSoonPreference(value: unknown): value is ArrivingSoonPreference {
-  return value === "auto" || value === "always" || value === "never";
+  return value === "auto" || value === "always" || value === "never" || value === "custom";
+}
+
+/**
+ * How far ahead "Arriving soon" looks when the preference is "custom".
+ *
+ * Auto and Always use a month, which is the horizon a pre-order lives on. The
+ * custom window is for the other way of reading the section — not "what is
+ * coming" but "what lands this week" — so it starts at three days.
+ */
+export const ARRIVING_WINDOW_OPTIONS: { value: string; label: string }[] = [
+  { value: "3", label: "3 days" },
+  { value: "7", label: "1 week" },
+  { value: "14", label: "2 weeks" },
+  { value: "30", label: "1 month" },
+];
+
+export const ARRIVING_WINDOW_DEFAULT = 3;
+
+function isArrivingWindow(value: unknown): value is number {
+  return ARRIVING_WINDOW_OPTIONS.some((o) => Number(o.value) === value);
 }
 
 type AppState = {
@@ -89,6 +110,9 @@ type AppState = {
   /** When the home page shows the "Arriving soon" shelf. */
   arrivingSoon: ArrivingSoonPreference;
   setArrivingSoon: (p: ArrivingSoonPreference) => void;
+  /** How many days ahead it looks, once the preference is "custom". */
+  arrivingDays: number;
+  setArrivingDays: (n: number) => void;
 };
 
 const AppCtx = createContext<AppState | null>(null);
@@ -148,6 +172,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [transitEtaDays, setTransitEtaDaysState] = useState(21);
   const [navAnimation, setNavAnimationState] = useState(true);
   const [arrivingSoon, setArrivingSoonState] = useState<ArrivingSoonPreference>("auto");
+  const [arrivingDays, setArrivingDaysState] = useState(ARRIVING_WINDOW_DEFAULT);
   // The server renders with the defaults above while the inline boot script in
   // __root.tsx has already painted the stored ones. Nothing is applied to the
   // document until this flips, so the first client render cannot undo it.
@@ -169,6 +194,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setNavAnimationState(readLS<boolean>("dg.navAnimation", true));
     const storedArriving = readLS<unknown>("dg.arrivingSoon", "auto");
     setArrivingSoonState(isArrivingSoonPreference(storedArriving) ? storedArriving : "auto");
+    const storedDays = readLS<unknown>("dg.arrivingDays", ARRIVING_WINDOW_DEFAULT);
+    setArrivingDaysState(isArrivingWindow(storedDays) ? storedDays : ARRIVING_WINDOW_DEFAULT);
     setHydrated(true);
   }, []);
 
@@ -322,6 +349,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.arrivingSoon", p);
   }, []);
 
+  const setArrivingDays = useCallback((n: number) => {
+    setArrivingDaysState(n);
+    writeLS("dg.arrivingDays", n);
+  }, []);
+
   const setFontSize = useCallback((s: FontSizePreference) => {
     setFontSizeState(s);
     writeLS("dg.fontSize", s);
@@ -348,12 +380,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setNavAnimation,
       arrivingSoon,
       setArrivingSoon,
+      arrivingDays,
+      setArrivingDays,
     }),
     [
       navAnimation,
       setNavAnimation,
       arrivingSoon,
       setArrivingSoon,
+      arrivingDays,
+      setArrivingDays,
       query,
       theme,
       themePreference,
