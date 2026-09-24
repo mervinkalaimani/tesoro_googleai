@@ -12,6 +12,7 @@ import {
   RotateCcw,
   Check,
   Search,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ import {
   type SearchEngine,
 } from "@/lib/car-image-search";
 import { SegmentControl } from "@/components/segment-control";
+import { CataloguePhotos } from "@/components/catalogue-photos";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -77,7 +79,14 @@ export const Route = createFileRoute("/settings")({
 });
 
 type SettingsView =
-  "root" | "account" | "display" | "notifications" | "diagnostics" | "database" | "search_engine";
+  | "root"
+  | "account"
+  | "display"
+  | "notifications"
+  | "diagnostics"
+  | "database"
+  | "search_engine"
+  | "catalogue_photos";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.8.0 (alpha)";
 
@@ -90,6 +99,7 @@ function parseTab(tab?: string): SettingsView {
   if (t === "diagnostics" || t === "diag") return "diagnostics";
   if (t === "database" || t === "supabase" || t === "db") return "database";
   if (t === "search_engine" || t === "search-engine" || t === "search") return "search_engine";
+  if (t === "catalogue_photos" || t === "photos") return "catalogue_photos";
   return "root";
 }
 
@@ -373,6 +383,24 @@ export function SettingsPage() {
                   </div>
                 </Link>
               )}
+
+              {/* CATALOGUE PHOTOS */}
+              <button
+                type="button"
+                onClick={() => changeView("catalogue_photos")}
+                className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-xs">
+                  <ImageIcon className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">Catalogue Photos</span>
+                  <p className="text-xs text-muted-foreground">
+                    Every casting with a box for its picture, for filling in a run of them
+                  </p>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </button>
 
               {/* DB CONNECTION (Moved into Admin) */}
               <button
@@ -751,6 +779,19 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE 5: DB CONNECTION                                                  */}
       {/* ========================================================================= */}
+      {view === "catalogue_photos" && (
+        <div className="space-y-6">
+          <SubpageHeader title="Catalogue Photos" onBack={() => changeView("root")} />
+          {isAdmin ? (
+            <CataloguePhotos />
+          ) : (
+            <p className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground shadow-xs">
+              The catalogue is shared, so only an admin can change its photos.
+            </p>
+          )}
+        </div>
+      )}
+
       {view === "database" && (
         <div className="space-y-6">
           <SubpageHeader title="DB Connection" onBack={() => changeView("root")} />
