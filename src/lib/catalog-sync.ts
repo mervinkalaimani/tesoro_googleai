@@ -40,7 +40,10 @@ export function applyCatalogToCar(
   const newCarNumber = cat.car_number !== undefined ? cat.car_number : car.carNumber;
   const newAssortment = cat.assortment || car.assortment;
   const newSize = cat.size || car.size || "1:64";
-  const newMrp = Number(cat.mrp) || car.mrp || 0;
+  // The catalogue's MRP is the reference price, for somebody meeting this
+  // casting for the first time. A row that already carries one carries the
+  // owner's, which an edit to the shared entry has no business rewriting.
+  const newMrp = car.mrp || Number(cat.mrp) || 0;
   const newImageUrl =
     cat.image_url !== undefined && cat.image_url !== null ? cat.image_url : car.imageUrl;
   const newRarity = cat.rarity || car.rarity || "Normal";
