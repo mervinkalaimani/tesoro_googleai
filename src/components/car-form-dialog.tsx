@@ -1530,8 +1530,19 @@ export function CarFormDialog({
       />
       {/* What the car is, as one line you confirm rather than sixteen
                   fields you fill. The fields are still here, one tap down. */}
-      <section className="overflow-hidden rounded-lg border border-border bg-muted/30">
-        <div className="flex items-start gap-3 p-3">
+      {/* Pinned to the top of the scroller: which car this is, is the one thing
+          you need while filling in everything below it. The tint moved off the
+          section and onto its rows because a sticky box must be opaque —
+          bg-muted/30 let the fields scroll through it. */}
+      <section
+        className={cn(
+          "overflow-hidden rounded-lg border border-border bg-background",
+          // Opened, the fields make it taller than the scroller, and a sticky
+          // box that tall pins over everything below it instead of yielding.
+          !showIdentity && "sticky top-0 z-20 shadow-sm",
+        )}
+      >
+        <div className="flex items-start gap-3 bg-muted/30 p-3">
           <div className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-muted">
             {form.imageUrl ? (
               <img src={form.imageUrl} alt="" className="size-full object-cover" />
@@ -1576,7 +1587,7 @@ export function CarFormDialog({
           type="button"
           onClick={() => setShowIdentity((v) => !v)}
           aria-expanded={showIdentity}
-          className="flex w-full items-center gap-2 border-t border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+          className="flex w-full items-center gap-2 border-t border-border bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
           {isEdit ? "What the car is" : "Edit these details"}
           <ChevronRight
