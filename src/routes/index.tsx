@@ -22,7 +22,7 @@ import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import { isInHand, isOpenOrder, normaliseStatus, type Status } from "@/lib/status";
 import { isLate, arrivingWithin } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
-import { useApp } from "@/lib/store";
+import { useApp, type ReleasedPreference } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import {
   inr,
@@ -172,7 +172,15 @@ function expectedLabel(eta: Date, now: Date): string {
 }
 
 function DashboardPage() {
-  const { query, transitEtaDays, arrivingSoon, arrivingDays } = useApp();
+  const {
+    query,
+    transitEtaDays,
+    arrivingSoon,
+    arrivingDays,
+    releasedShelf,
+    showRecentlyAdded,
+    showNewPreorders,
+  } = useApp();
   const cars = useCars();
   const { profile, isGuest } = useAuth();
   const { refreshing } = useCarsRefresh();
@@ -196,7 +204,12 @@ function DashboardPage() {
   // Auto and Always look a month ahead; Custom looks however far you said.
   const windowDays = arrivingSoon === "custom" ? arrivingDays : ARRIVING_DAYS;
   const arriving = useMemo(() => arrivingWithin(data, windowDays), [data, windowDays]);
-  const quiet = recent.length === 0 && newPreorders.length === 0 && !preordersLoading;
+  // A shelf you have switched off counts as empty here. "Auto" means "stand in
+  // for the other two when they have nothing to say", and a hidden shelf has
+  // nothing to say by definition.
+  const quiet =
+    (!showRecentlyAdded || recent.length === 0) &&
+    (!showNewPreorders || (newPreorders.length === 0 && !preordersLoading));
   const showArriving =
     arriving.length > 0 &&
     (arrivingSoon === "always" || arrivingSoon === "custom" || (arrivingSoon === "auto" && quiet));
@@ -326,7 +339,7 @@ function DashboardPage() {
           days and a car drops out of it for good — and it renders nothing at
           all on a quiet week, so it costs the tracker no room when there is
           nothing to show. */}
-      {!loading && <RecentlyAdded recent={recent} now={now} />}
+      {!loading && showRecentlyAdded && <RecentlyAdded recent={recent} now={now} />}
 
       <DashboardMiddle rows={data} etaDays={transitEtaDays} loading={loading} />
 
@@ -339,12 +352,14 @@ function DashboardPage() {
       <TopTenGrid rows={data} mode="count" loading={loading} />
 
       {/* Pre-orders anyone has placed in the last three days, ready to add. */}
-      {!loading && <RecentPreorders cars={newPreorders} loading={preordersLoading} />}
+      {!loading && showNewPreorders && (
+        <RecentPreorders cars={newPreorders} loading={preordersLoading} />
+      )}
 
       {/* And the other end of it: pre-orders that have started arriving. Below
           the new ones deliberately — what is coming out is news for everyone,
           but what is newly up for pre-order is the thing you can act on. */}
-      {!loading && <RecentlyReleased />}
+      {!loading && releasedShelf !== "none" && <RecentlyReleased scope={releasedShelf} />}
     </div>
   );
 }
@@ -1286,14 +1301,32 @@ function TopDetailDialog({
  * can carry — there is a seller to contact and usually a balance to settle — so
  * that lives in the bell, not here. This shelf is for everyone.
  */
-function RecentlyReleased() {
+function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   const { catalog, isLoading } = useCatalog();
   const { isAdmin } = useAuth();
   const cars = useCars();
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<CatalogCar | null>(null);
 
-  const releases = useMemo(() => recentReleases(catalog).slice(0, 20), [catalog]);
+  /** Castings you are waiting on, so "My PO" has something to narrow against. */
+  const myPreorderIds = useMemo(() => {
+    const out = new Set<string>();
+    for (const c of cars) {
+      if (!isPreOrder(c.status)) continue;
+      const id = (c.catalogId || "").trim().toUpperCase();
+      if (id) out.add(id);
+    }
+    return out;
+  }, [cars]);
+
+  const releases = useMemo(() => {
+    const all = recentReleases(catalog);
+    const kept =
+      scope === "mine"
+        ? all.filter((r) => myPreorderIds.has(r.entry.car_id.trim().toUpperCase()))
+        : all;
+    return kept.slice(0, 20);
+  }, [catalog, scope, myPreorderIds]);
 
   /** Castings you already have a row for, so the card can say so. */
   const ownedIds = useMemo(() => {
@@ -1312,7 +1345,11 @@ function RecentlyReleased() {
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Recently Released</h2>
-          <p className="text-xs text-muted-foreground">Pre-orders that have started arriving</p>
+          <p className="text-xs text-muted-foreground">
+            {scope === "mine"
+              ? "Your pre-orders that have started arriving"
+              : "Pre-orders that have started arriving"}
+          </p>
         </div>
         <PackageCheck className="size-4 text-emerald-500" />
       </div>

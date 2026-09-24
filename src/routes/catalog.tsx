@@ -30,7 +30,7 @@ import {
   resolveCatalogUserFirstName,
   loadUserHandles,
 } from "@/lib/catalog";
-import type { CatalogueCar } from "@/lib/catalogue-search";
+import { catalogueKey, type CatalogueCar } from "@/lib/catalogue-search";
 import { carSubLine } from "@/lib/car-subline";
 import { inr, formatDayMonthYear } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
@@ -333,31 +333,47 @@ function CatalogPage() {
     const isoSet = new Set<string>();
     const unresolvedOwned: typeof mine = [];
     const unresolvedIso: typeof mine = [];
+    /** What you own and what you are hunting, by description rather than by id. */
+    const ownedKeys = new Set<string>();
+    const isoKeys = new Set<string>();
 
     for (const c of mine) {
       const id = (c.catalogId || "").trim().toUpperCase();
       const isCarIso = isIso(c.status);
       if (isCarIso) {
+        isoKeys.add(catalogueKey(c));
         if (id && known.has(id)) isoSet.add(id);
         else unresolvedIso.push(c);
       } else {
+        ownedKeys.add(catalogueKey(c));
         if (id && known.has(id)) ownedSet.add(id);
         else unresolvedOwned.push(c);
       }
     }
 
-    if (unresolvedOwned.length > 0 || unresolvedIso.length > 0) {
-      for (const cat of catalog) {
-        const id = cat.car_id.toUpperCase();
-        if (unresolvedOwned.length > 0 && !ownedSet.has(id)) {
-          if (unresolvedOwned.some((m) => isCarMatchingCatalog(m, cat))) {
-            ownedSet.add(id);
-          }
+    // The catalogue holds the same casting more than once — fifteen groups of
+    // it at the last count, usually one entry filed under Pre Order and another
+    // under Released. A row points at one of them, so the *other* card showed
+    // no Owned badge while the details drawer, which matches on description
+    // rather than on id, said "In your collection". Two views of one question
+    // disagreeing is worse than either answer.
+    //
+    // So a card is also owned when its description matches a car you own. The
+    // keys are built once and looked up, rather than comparing every car
+    // against every entry: 1,500 cars against 1,400 entries is two million
+    // comparisons on every render, which is why this used to run only for the
+    // handful of rows whose catalogue id was unrecognised.
+    for (const cat of catalog) {
+      const id = cat.car_id.toUpperCase();
+      const key = catalogueKey(catalogCarToCatalogueCar(cat));
+      if (!ownedSet.has(id)) {
+        if (ownedKeys.has(key) || unresolvedOwned.some((m) => isCarMatchingCatalog(m, cat))) {
+          ownedSet.add(id);
         }
-        if (unresolvedIso.length > 0 && !isoSet.has(id)) {
-          if (unresolvedIso.some((m) => isCarMatchingCatalog(m, cat))) {
-            isoSet.add(id);
-          }
+      }
+      if (!isoSet.has(id)) {
+        if (isoKeys.has(key) || unresolvedIso.some((m) => isCarMatchingCatalog(m, cat))) {
+          isoSet.add(id);
         }
       }
     }

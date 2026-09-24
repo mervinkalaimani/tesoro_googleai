@@ -85,6 +85,27 @@ function isArrivingWindow(value: unknown): value is number {
   return ARRIVING_WINDOW_OPTIONS.some((o) => Number(o.value) === value);
 }
 
+/**
+ * Whose released pre-orders the home page bothers you about.
+ *
+ * "All" is the shelf as news — anything the catalogue says has started
+ * arriving, whoever ordered it. "Mine" narrows it to castings you are actually
+ * waiting on, which is the only version that ever asks something of you. The
+ * bell is unaffected either way: a pre-order of yours that has shipped is your
+ * business whatever this says.
+ */
+export type ReleasedPreference = "all" | "mine" | "none";
+
+export const RELEASED_OPTIONS: { value: ReleasedPreference; label: string }[] = [
+  { value: "all", label: "All PO" },
+  { value: "mine", label: "My PO" },
+  { value: "none", label: "None" },
+];
+
+function isReleasedPreference(value: unknown): value is ReleasedPreference {
+  return value === "all" || value === "mine" || value === "none";
+}
+
 type AppState = {
   query: string;
   setQuery: (q: string) => void;
@@ -113,6 +134,15 @@ type AppState = {
   /** How many days ahead it looks, once the preference is "custom". */
   arrivingDays: number;
   setArrivingDays: (n: number) => void;
+  /** Whose newly released pre-orders the "Recently Released" shelf shows. */
+  releasedShelf: ReleasedPreference;
+  setReleasedShelf: (p: ReleasedPreference) => void;
+  /** Whether the home page shows what you added in the last few days. */
+  showRecentlyAdded: boolean;
+  setShowRecentlyAdded: (b: boolean) => void;
+  /** Whether it shows what other collectors have just pre-ordered. */
+  showNewPreorders: boolean;
+  setShowNewPreorders: (b: boolean) => void;
 };
 
 const AppCtx = createContext<AppState | null>(null);
@@ -173,6 +203,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [navAnimation, setNavAnimationState] = useState(true);
   const [arrivingSoon, setArrivingSoonState] = useState<ArrivingSoonPreference>("auto");
   const [arrivingDays, setArrivingDaysState] = useState(ARRIVING_WINDOW_DEFAULT);
+  const [releasedShelf, setReleasedShelfState] = useState<ReleasedPreference>("all");
+  const [showRecentlyAdded, setShowRecentlyAddedState] = useState(true);
+  const [showNewPreorders, setShowNewPreordersState] = useState(true);
   // The server renders with the defaults above while the inline boot script in
   // __root.tsx has already painted the stored ones. Nothing is applied to the
   // document until this flips, so the first client render cannot undo it.
@@ -196,6 +229,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setArrivingSoonState(isArrivingSoonPreference(storedArriving) ? storedArriving : "auto");
     const storedDays = readLS<unknown>("dg.arrivingDays", ARRIVING_WINDOW_DEFAULT);
     setArrivingDaysState(isArrivingWindow(storedDays) ? storedDays : ARRIVING_WINDOW_DEFAULT);
+    const storedReleased = readLS<unknown>("dg.releasedShelf", "all");
+    setReleasedShelfState(isReleasedPreference(storedReleased) ? storedReleased : "all");
+    setShowRecentlyAddedState(readLS<boolean>("dg.showRecentlyAdded", true));
+    setShowNewPreordersState(readLS<boolean>("dg.showNewPreorders", true));
     setHydrated(true);
   }, []);
 
@@ -354,6 +391,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.arrivingDays", n);
   }, []);
 
+  const setReleasedShelf = useCallback((p: ReleasedPreference) => {
+    setReleasedShelfState(p);
+    writeLS("dg.releasedShelf", p);
+  }, []);
+
+  const setShowRecentlyAdded = useCallback((b: boolean) => {
+    setShowRecentlyAddedState(b);
+    writeLS("dg.showRecentlyAdded", b);
+  }, []);
+
+  const setShowNewPreorders = useCallback((b: boolean) => {
+    setShowNewPreordersState(b);
+    writeLS("dg.showNewPreorders", b);
+  }, []);
+
   const setFontSize = useCallback((s: FontSizePreference) => {
     setFontSizeState(s);
     writeLS("dg.fontSize", s);
@@ -382,6 +434,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setArrivingSoon,
       arrivingDays,
       setArrivingDays,
+      releasedShelf,
+      setReleasedShelf,
+      showRecentlyAdded,
+      setShowRecentlyAdded,
+      showNewPreorders,
+      setShowNewPreorders,
     }),
     [
       navAnimation,
@@ -390,6 +448,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setArrivingSoon,
       arrivingDays,
       setArrivingDays,
+      releasedShelf,
+      setReleasedShelf,
+      showRecentlyAdded,
+      setShowRecentlyAdded,
+      showNewPreorders,
+      setShowNewPreorders,
       query,
       theme,
       themePreference,

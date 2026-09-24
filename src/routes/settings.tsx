@@ -13,6 +13,9 @@ import {
   Check,
   Search,
   Image as ImageIcon,
+  Home,
+  PackageCheck,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -22,6 +25,7 @@ import {
   FONT_SIZE_OPTIONS,
   ARRIVING_SOON_OPTIONS,
   ARRIVING_WINDOW_OPTIONS,
+  RELEASED_OPTIONS,
   useApp,
   type AccentColor,
   type FontSizePreference,
@@ -87,7 +91,9 @@ type SettingsView =
   | "diagnostics"
   | "database"
   | "search_engine"
-  | "catalogue_photos";
+  | "catalogue_photos"
+  | "homepage"
+  | "advanced";
 
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.8.0 (alpha)";
 
@@ -101,6 +107,8 @@ function parseTab(tab?: string): SettingsView {
   if (t === "database" || t === "supabase" || t === "db") return "database";
   if (t === "search_engine" || t === "search-engine" || t === "search") return "search_engine";
   if (t === "catalogue_photos" || t === "photos") return "catalogue_photos";
+  if (t === "homepage" || t === "home") return "homepage";
+  if (t === "advanced") return "advanced";
   return "root";
 }
 
@@ -146,6 +154,12 @@ export function SettingsPage() {
     setArrivingSoon,
     arrivingDays,
     setArrivingDays,
+    releasedShelf,
+    setReleasedShelf,
+    showRecentlyAdded,
+    setShowRecentlyAdded,
+    showNewPreorders,
+    setShowNewPreorders,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
   const { source } = useCarsSource();
@@ -282,6 +296,27 @@ export function SettingsPage() {
 
           {/* Grouped General Settings Card */}
           <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            {/* HOMEPAGE — above Display, because it is about what you see
+                first rather than how the whole app looks. */}
+            <button
+              type="button"
+              onClick={() => changeView("homepage")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-xs">
+                <Home className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Homepage</span>
+                <p className="text-xs text-muted-foreground">
+                  Which shelves the home page shows &amp; how far ahead it looks
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </button>
+
             {/* DISPLAY */}
             <button
               type="button"
@@ -321,118 +356,29 @@ export function SettingsPage() {
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </button>
-
-            {/* SEARCH ENGINE */}
-            <button
-              type="button"
-              onClick={() => changeView("search_engine")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-sky-500 to-blue-600 text-white shadow-xs">
-                <Search className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Search Engine</span>
-                <p className="text-xs text-muted-foreground">
-                  Web image lookup provider for car photos &amp; casting specs
-                </p>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
-
-            {/* DIAGNOSTICS */}
-            <button
-              type="button"
-              onClick={() => changeView("diagnostics")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-indigo-500 to-purple-600 text-white shadow-xs">
-                <Wrench className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Diagnostics</span>
-                <p className="text-xs text-muted-foreground">
-                  Shipping ID consistency, order dates &amp; duplicate checker
-                </p>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
           </div>
 
-          {/* Admin Card (Separate card from General) */}
-          {(isAdmin || isOwner) && (
+          {/* ADVANCED — the owner's card. Search engine, diagnostics, users,
+              catalogue photos and the database connection all used to sit in
+              the general list or an admin card beside it, which put five
+              things nobody else can act on in front of everybody. */}
+          {isOwner && (
             <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-              {/* ADMIN PANEL */}
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
-                >
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-amber-500 to-amber-600 text-white shadow-xs">
-                    <ShieldCheck className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[15px] font-medium text-foreground">Users</span>
-                    <p className="text-xs text-muted-foreground">
-                      Account approvals, access &amp; roles
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-                  </div>
-                </Link>
-              )}
-
-              {/* CATALOGUE PHOTOS */}
               <button
                 type="button"
-                onClick={() => changeView("catalogue_photos")}
+                onClick={() => changeView("advanced")}
                 className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
               >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-xs">
-                  <ImageIcon className="size-4" />
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-slate-500 to-slate-700 text-white shadow-xs">
+                  <Wrench className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[15px] font-medium text-foreground">Catalogue Photos</span>
+                  <span className="text-[15px] font-medium text-foreground">Advanced</span>
                   <p className="text-xs text-muted-foreground">
-                    Every casting with a box for its picture, for filling in a run of them
+                    Search engine, diagnostics, users, catalogue photos &amp; database
                   </p>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </button>
-
-              {/* DB CONNECTION (Moved into Admin) */}
-              <button
-                type="button"
-                onClick={() => changeView("database")}
-                className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
-              >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-xs">
-                  <Database className="size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="text-[15px] font-medium text-foreground">DB Connection</span>
-                  <p className="text-xs text-muted-foreground">
-                    Cloud Supabase synchronization, credentials &amp; login providers
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <span
-                      className={`inline-block size-2 rounded-full ${
-                        source === "supabase"
-                          ? "bg-emerald-500 shadow-xs shadow-emerald-500/50"
-                          : "bg-primary"
-                      }`}
-                    />
-                    {source === "supabase" ? "Synced" : "Local"}
-                  </span>
-                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-                </div>
               </button>
             </div>
           )}
@@ -563,53 +509,6 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {/* Home Group */}
-          <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Home
-            </div>
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">Arriving Soon</div>
-                  <div className="text-xs text-muted-foreground">
-                    {arrivingSoon === "auto"
-                      ? "Shown only on a week with nothing recently added and no new pre-orders."
-                      : arrivingSoon === "always"
-                        ? "Always shown, alongside Recently added and New Pre Orders."
-                        : arrivingSoon === "custom"
-                          ? "Always shown, over the window you pick below."
-                          : "Hidden."}{" "}
-                    Cars due in your hands within{" "}
-                    {arrivingSoon === "custom" ? arrivingDays : 30} days.
-                  </div>
-                </div>
-                <SegmentControl
-                  value={arrivingSoon}
-                  onChange={setArrivingSoon}
-                  options={ARRIVING_SOON_OPTIONS}
-                  fill
-                  className="h-9 text-sm sm:w-auto"
-                />
-              </div>
-
-              {/* The window only exists under Custom, so it appears under it
-                  rather than sitting greyed out beside the other three. */}
-              {arrivingSoon === "custom" && (
-                <div className="flex flex-col gap-2 border-t border-border/60 px-4 pb-4 pt-3">
-                  <div className="text-xs font-medium text-muted-foreground">How far ahead</div>
-                  <SegmentControl
-                    value={String(arrivingDays)}
-                    onChange={(v) => setArrivingDays(Number(v))}
-                    options={ARRIVING_WINDOW_OPTIONS}
-                    fill
-                    className="h-9 text-sm"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Privacy Group */}
           <div className="space-y-1.5">
             <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -633,6 +532,241 @@ export function SettingsPage() {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* SUBPAGE: HOMEPAGE                                                         */}
+      {/* ========================================================================= */}
+      {view === "homepage" && (
+        <div className="space-y-6">
+          <SubpageHeader title="Homepage" onBack={() => changeView("root")} />
+
+          {/* Released pre-orders */}
+          <div className="space-y-1.5">
+            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Released PO
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+              <div className="flex flex-col gap-3">
+                <div>
+                  <div className="text-[15px] font-medium text-foreground">
+                    Pre-orders that have been released
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    A casting is marked released the first time anybody&rsquo;s copy of it arrives.{" "}
+                    {releasedShelf === "all"
+                      ? "Every casting that has started arriving, whoever ordered it."
+                      : releasedShelf === "mine"
+                        ? "Only castings you are waiting on yourself."
+                        : "The shelf is hidden."}{" "}
+                    Either way, a pre-order of yours that ships still reaches the notification bell
+                    — that one has a seller to contact and usually a balance to settle.
+                  </div>
+                </div>
+                <SegmentControl
+                  value={releasedShelf}
+                  onChange={setReleasedShelf}
+                  options={RELEASED_OPTIONS}
+                  fill
+                  className="h-9 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Arriving soon — moved here from Display, where it sat under a
+              "Home" heading inside a page about theme and text size. */}
+          <div className="space-y-1.5">
+            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Arriving Soon
+            </div>
+            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-[15px] font-medium text-foreground">Arriving Soon</div>
+                  <div className="text-xs text-muted-foreground">
+                    {arrivingSoon === "auto"
+                      ? "Shown only on a week with nothing recently added and no new pre-orders."
+                      : arrivingSoon === "always"
+                        ? "Always shown, alongside Recently added and New Pre Orders."
+                        : arrivingSoon === "custom"
+                          ? "Always shown, over the window you pick below."
+                          : "Hidden."}{" "}
+                    Cars due in your hands within {arrivingSoon === "custom" ? arrivingDays : 30}{" "}
+                    days.
+                  </div>
+                </div>
+                <SegmentControl
+                  value={arrivingSoon}
+                  onChange={setArrivingSoon}
+                  options={ARRIVING_SOON_OPTIONS}
+                  fill
+                  className="h-9 text-sm sm:w-auto"
+                />
+              </div>
+
+              {arrivingSoon === "custom" && (
+                <div className="flex flex-col gap-2 border-t border-border/60 px-4 pb-4 pt-3">
+                  <div className="text-xs font-medium text-muted-foreground">How far ahead</div>
+                  <SegmentControl
+                    value={String(arrivingDays)}
+                    onChange={(v) => setArrivingDays(Number(v))}
+                    options={ARRIVING_WINDOW_OPTIONS}
+                    fill
+                    className="h-9 text-sm"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* The other two shelves. Switches rather than a segment each,
+              because there is nothing to choose: they are on or they are not. */}
+          <div className="space-y-1.5">
+            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Other shelves
+            </div>
+            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+              <div className="flex items-center justify-between gap-4 p-4">
+                <div className="min-w-0">
+                  <div className="text-[15px] font-medium text-foreground">Recently added</div>
+                  <div className="text-xs text-muted-foreground">
+                    Cars you logged in the last few days, above the transit tracker.
+                  </div>
+                </div>
+                <Switch checked={showRecentlyAdded} onCheckedChange={setShowRecentlyAdded} />
+              </div>
+
+              <div className="flex items-center justify-between gap-4 p-4">
+                <div className="min-w-0">
+                  <div className="text-[15px] font-medium text-foreground">New Pre Orders</div>
+                  <div className="text-xs text-muted-foreground">
+                    What other collectors have pre-ordered in the last three days, ready to add.
+                  </div>
+                </div>
+                <Switch checked={showNewPreorders} onCheckedChange={setShowNewPreorders} />
+              </div>
+            </div>
+            <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+              Switching one off also makes Arriving Soon&rsquo;s &ldquo;Auto&rdquo; treat it as
+              empty, so the shelf still stands in on a quiet week.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBPAGE: ADVANCED (owner only)                                            */}
+      {/* ========================================================================= */}
+      {view === "advanced" && isOwner && (
+        <div className="space-y-6">
+          <SubpageHeader title="Advanced" onBack={() => changeView("root")} />
+          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            {/* SEARCH ENGINE */}
+            <button
+              type="button"
+              onClick={() => changeView("search_engine")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-sky-500 to-blue-600 text-white shadow-xs">
+                <Search className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Search Engine</span>
+                <p className="text-xs text-muted-foreground">
+                  Web image lookup provider for car photos &amp; casting specs
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </button>
+
+            {/* DIAGNOSTICS */}
+            <button
+              type="button"
+              onClick={() => changeView("diagnostics")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-indigo-500 to-purple-600 text-white shadow-xs">
+                <Wrench className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Diagnostics</span>
+                <p className="text-xs text-muted-foreground">
+                  Shipping ID consistency, order dates &amp; duplicate checker
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </button>
+            {/* USERS */}
+            <Link
+              to="/admin"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-amber-500 to-amber-600 text-white shadow-xs">
+                <ShieldCheck className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Users</span>
+                <p className="text-xs text-muted-foreground">
+                  Account approvals, access &amp; roles
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </Link>
+            {/* CATALOGUE PHOTOS */}
+            <button
+              type="button"
+              onClick={() => changeView("catalogue_photos")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-xs">
+                <ImageIcon className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Catalogue Photos</span>
+                <p className="text-xs text-muted-foreground">
+                  Every casting with a box for its picture, for filling in a run of them
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </button>
+
+            {/* DB CONNECTION (Moved into Admin) */}
+            <button
+              type="button"
+              onClick={() => changeView("database")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-xs">
+                <Database className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">DB Connection</span>
+                <p className="text-xs text-muted-foreground">
+                  Cloud Supabase synchronization, credentials &amp; login providers
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <span
+                    className={`inline-block size-2 rounded-full ${
+                      source === "supabase"
+                        ? "bg-emerald-500 shadow-xs shadow-emerald-500/50"
+                        : "bg-primary"
+                    }`}
+                  />
+                  {source === "supabase" ? "Synced" : "Local"}
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
       {/* ========================================================================= */}
       {/* SUBPAGE 3: NOTIFICATIONS                                                  */}
       {/* ========================================================================= */}

@@ -1705,6 +1705,19 @@ function CatalogRelatedShelves({
   );
 }
 
+/**
+ * How many people have this casting, in the past tense.
+ *
+ * It read "n people add this to their collection", which is a habit rather than
+ * a fact — they added it, once, and it is there now.
+ */
+function ownersLine(loading: boolean, count: number): string {
+  if (loading) return "Loading collection stats…";
+  if (count === 0) return "Nobody has added this to their collection yet.";
+  if (count === 1) return "1 person added this to their collection.";
+  return `${count} people added this to their collection.`;
+}
+
 export function CatalogCarDetails({
   car,
   catalogCar,
@@ -1871,6 +1884,10 @@ function CatalogDetailsContent({
     }
   };
 
+  // All three share the width rather than Add taking whatever the other two
+  // leave. "Add to collection" spelled out was the widest thing in the row and
+  // said nothing the button's position did not: this is the catalogue, and the
+  // only place to add to is your collection.
   const actionButtons = (
     <div className="flex w-full items-center gap-2.5">
       {canEdit && onEdit && (
@@ -1878,7 +1895,7 @@ function CatalogDetailsContent({
           type="button"
           variant="outline"
           onClick={onEdit}
-          className="h-11 shrink-0 gap-1.5 px-4 text-sm font-semibold cursor-pointer border-border hover:bg-muted"
+          className="h-11 flex-1 gap-1.5 px-3 text-sm font-semibold cursor-pointer border-border hover:bg-muted"
         >
           <Pencil className="size-4" />
           Edit
@@ -1892,15 +1909,15 @@ function CatalogDetailsContent({
           type="button"
           variant="outline"
           onClick={onAddIso}
-          className="h-11 shrink-0 gap-1.5 px-4 text-sm font-semibold cursor-pointer border-border hover:bg-muted"
+          className="h-11 flex-1 gap-1.5 px-3 text-sm font-semibold cursor-pointer border-border hover:bg-muted"
         >
           <Search className="size-4" />
           Add to ISO
         </Button>
       )}
-      <Button onClick={onAdd} className="h-11 flex-1 gap-2 text-sm font-semibold">
+      <Button onClick={onAdd} className="h-11 flex-1 gap-2 px-3 text-sm font-semibold">
         <Plus className="size-4" />
-        {isActuallyOwned ? "Add another to collection" : "Add to collection"}
+        {isActuallyOwned ? "Add another" : "Add"}
       </Button>
     </div>
   );
@@ -2192,28 +2209,24 @@ function CatalogDetailsBody({
             <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
               {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
             </h2>
-            {isAdmin && onSeeAllOwners ? (
-              <button
-                type="button"
-                onClick={onSeeAllOwners}
-                className="mt-1 inline-flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left"
-                title="Click to view people who own this"
-              >
-                {ownersLoading
-                  ? "Loading collection stats..."
-                  : owners.length === 1
-                    ? "1 person add this to their collection."
-                    : `${owners.length} people add this to their collection.`}
-              </button>
-            ) : (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {ownersLoading
-                  ? "Loading collection stats..."
-                  : owners.length === 1
-                    ? "1 person add this to their collection."
-                    : `${owners.length} people add this to their collection.`}
+            {/* The count is a statement, not a control. It used to be the
+                clickable thing, which meant the only way to discover the owner
+                list was to try tapping a sentence. "View all" beside it is the
+                button, and only an admin has one — the list is people. */}
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <p className="text-xs text-muted-foreground">
+                {ownersLine(ownersLoading, owners.length)}
               </p>
-            )}
+              {isAdmin && onSeeAllOwners && !ownersLoading && owners.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onSeeAllOwners}
+                  className="text-xs font-medium text-primary transition-colors hover:text-primary/80 cursor-pointer"
+                >
+                  View all
+                </button>
+              )}
+            </div>
           </div>
 
           <hr className="border-border" />
@@ -2368,29 +2381,21 @@ export function CatalogCarTitleSection({
         {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
       </h2>
 
-      {/* Replaced catalog ID with single line: "n people add this to their collection." */}
-      {isAdmin && onSeeAllOwners ? (
-        <button
-          type="button"
-          onClick={onSeeAllOwners}
-          className="inline-flex items-center text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer text-left"
-          title="Click to view people who own this"
-        >
-          {ownersLoading
-            ? "Loading collection stats..."
-            : ownersList.length === 1
-              ? "1 person add this to their collection."
-              : `${ownersList.length} people add this to their collection.`}
-        </button>
-      ) : (
+      {/* Same rule as the desktop layout: the count states, "View all" acts. */}
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <p className="text-xs text-muted-foreground">
-          {ownersLoading
-            ? "Loading collection stats..."
-            : ownersList.length === 1
-              ? "1 person add this to their collection."
-              : `${ownersList.length} people add this to their collection.`}
+          {ownersLine(Boolean(ownersLoading), ownersList.length)}
         </p>
-      )}
+        {isAdmin && onSeeAllOwners && !ownersLoading && ownersList.length > 0 && (
+          <button
+            type="button"
+            onClick={onSeeAllOwners}
+            className="text-xs font-medium text-primary transition-colors hover:text-primary/80 cursor-pointer"
+          >
+            View all
+          </button>
+        )}
+      </div>
     </div>
   );
 }
