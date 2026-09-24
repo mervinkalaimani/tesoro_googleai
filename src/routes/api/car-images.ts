@@ -85,8 +85,28 @@ const SKU = /\b[A-Z]{3}\d{2}\b/;
 const CARDED = /\b(card|carded|blister|package|packaged|box|boxed|moc)\b/i;
 
 function scoreFile(file: string, q: Query): { score: number; kind: "card" | "car" } {
-  const name = file.replace(/^File:/, "").replace(/\.[a-z]+$/i, "");
-  if (!/\.(jpe?g|png|webp)$/i.test(file)) return { score: -99, kind: "car" };
+  const named = file.replace(/^File:/, "");
+  const name = named.replace(/\.[a-z]+$/i, "");
+
+  /**
+   * Only a wiki title can be judged by its extension.
+   *
+   * This gate used to read `!/\.(jpe?g|png|webp)$/.test(file)` and return -99,
+   * which is right for a wiki, where the title IS the filename and a .svg or
+   * .ogg is not a photo. But a web-search result's title is a page heading —
+   * "Lamley Daily: Majorette Renault Clio 16S" — with the extension, if there
+   * is one, off in the URL. Every one of them scored -99 and sank below every
+   * wiki file, however well it matched.
+   *
+   * That is what made colour useless for Hot Wheels, Matchbox and Mini GT:
+   * their wikis name files by SKU (KHMG001.jpg), so all nine releases of a
+   * casting scored 0 on every field and the tie fell to fetch order, while the
+   * web results that did name the colour were pinned to the bottom at -99.
+   */
+  const looksLikeAFilename = /\.[a-z0-9]{2,5}$/i.test(named);
+  if (looksLikeAFilename && !/\.(jpe?g|png|webp)$/i.test(named)) {
+    return { score: -99, kind: "car" };
+  }
   if (JUNK.test(name)) return { score: -99, kind: "car" };
 
   const have = new Set(words(name));

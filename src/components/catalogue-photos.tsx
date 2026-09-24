@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Loader2, Search, TriangleAlert } from "lucide-react";
+import { Check, Copy, Loader2, Search, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { useCatalog } from "@/lib/catalog-store";
@@ -25,6 +25,28 @@ const FILTERS: { value: Filter; label: string }[] = [
 const clean = (v: string | null | undefined) => (v || "").trim();
 
 /**
+ * The casting as a line of plain text, for pasting into an image search.
+ *
+ * Name, brand, car number, assortment, series, sub-series, in that order and
+ * separated by spaces. Colour is deliberately absent: it is already in the
+ * name on most entries, and where it is not, the search reads better without a
+ * loose colour word dangling off the end.
+ */
+function searchWords(c: CatalogCar): string {
+  return [
+    c.name || `${c.make} ${c.model}`.trim(),
+    c.brand,
+    c.car_number,
+    c.assortment,
+    c.series,
+    c.sub_series,
+  ]
+    .map((v) => clean(v))
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
  * Every casting with a box for its photo, so a hundred of them can be filled
  * in during one sitting.
  *
@@ -47,6 +69,21 @@ export function CataloguePhotos() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<Record<string, boolean>>({});
   const [saved, setSaved] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState<Record<string, boolean>>({});
+
+  const copy = async (c: CatalogCar) => {
+    const text = searchWords(c);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // Clipboard access is refused outside a secure context and in some
+      // embedded browsers; the words are short enough to read off the toast.
+      toast.error("Could not copy", { description: text });
+      return;
+    }
+    setCopied((s) => ({ ...s, [c.car_id]: true }));
+    window.setTimeout(() => setCopied((s) => ({ ...s, [c.car_id]: false })), 1400);
+  };
 
   /**
    * Photos used by more than one casting. Two entries wearing one picture is
@@ -213,6 +250,25 @@ export function CataloguePhotos() {
                 </div>
 
                 <div className="flex items-center gap-2">
+                  {/* The casting in words, ready to paste into an image search.
+                      Name, brand, number, assortment, series, sub-series —
+                      what a listing's own title is written from, which is what
+                      makes it findable. */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 gap-1.5 px-2"
+                    title={searchWords(c)}
+                    onClick={() => void copy(c)}
+                  >
+                    {copied[c.car_id] ? (
+                      <Check className="size-3.5 text-emerald-500" />
+                    ) : (
+                      <Copy className="size-3.5" />
+                    )}
+                    <span className="sr-only">Copy search words for {c.name || c.car_id}</span>
+                  </Button>
                   <Input
                     value={value}
                     onChange={(e) => setDrafts((d) => ({ ...d, [c.car_id]: e.target.value }))}
