@@ -423,17 +423,35 @@ async function fromWebSearch(
       }
     };
 
-    // Primary detailed query using all requested fields
+    // Primary detailed query using all requested fields.
+    //
+    // Colour belongs here, right after the variant, and its absence was a real
+    // fault: it is the only field that separates two otherwise identical
+    // castings, and without it a red Skyline and a blue one sent byte-identical
+    // queries, got the same results in the same order, and — since the form
+    // takes candidates[0] — ended up wearing the same photograph.
+    //
+    // It used to appear only in broaderQuery below, which is selected with
+    // `||` and so could never run: primaryQuery is non-empty whenever a brand,
+    // make or model exists, and the endpoint refuses the request when none
+    // does. scoreFile() meanwhile weights colour higher than any other field,
+    // which it could not act on for results fetched without it.
+    //
+    // The order is what names the product, first: make, model, brand, car
+    // number, series, sub-series. Leading words carry the most weight with
+    // every engine here, and those six are what a listing's own title is
+    // written from. Variant, colour, year and assortment follow to narrow it.
     const primaryQuery = [
-      q.brand,
       q.make,
       q.model,
-      q.variant,
-      q.year,
-      q.assortment,
+      q.brand,
+      q.carNumber,
       q.series,
       q.subSeries,
-      q.carNumber,
+      q.variant,
+      q.colour,
+      q.year,
+      q.assortment,
       "diecast",
     ]
       .filter(Boolean)
