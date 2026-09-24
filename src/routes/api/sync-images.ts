@@ -33,7 +33,10 @@ async function handler({ request }: { request: Request }) {
     const client = createClient(SUPABASE_URL, supabaseKey);
 
     const body: SyncPayload = await request.json();
-    const { catalog_id, image_url, source, make, model } = body;
+    // make and model are still accepted so older callers do not break, and are
+    // deliberately unread: they are what caused this endpoint to overwrite
+    // every row of a model.
+    const { catalog_id, image_url, source } = body;
 
     const cleanImage = image_url?.trim() || null;
     const cleanCatalogId = catalog_id?.trim() || "";
@@ -51,23 +54,12 @@ async function handler({ request }: { request: Request }) {
       if (!catErr && count !== null) {
         updatedCatalog = count;
       }
-    } else if (make && model) {
-      // Find matching catalog ID by make and model
-      const { data: matchedCats } = await client
-        .from("tesoro_car_catalog")
-        .select("car_id")
-        .ilike("make", make)
-        .ilike("model", model)
-        .limit(1);
-
-      if (matchedCats && matchedCats.length > 0) {
-        const foundId = matchedCats[0].car_id;
-        await client
-          .from("tesoro_car_catalog")
-          .update({ image_url: cleanImage, updated_at: new Date().toISOString() })
-          .eq("car_id", foundId);
-      }
     }
+    // There used to be an "else" here that looked the casting up by make and
+    // model and wrote the image to the first row that came back. "Porsche 911"
+    // matches thirty entries and .limit(1) picks whichever the planner returns
+    // first, so it filed the photo against an arbitrary one of them. Without a
+    // catalogue id there is no right answer, so nothing is written.
 
     // 2. Update tesoro_raw (users' cars)
     if (cleanCatalogId) {
@@ -82,18 +74,18 @@ async function handler({ request }: { request: Request }) {
       }
     }
 
-    // Fallback: Also update matching Make and Model in tesoro_raw if provided
-    if (make && model) {
-      const { error: makeModelErr } = await client
-        .from("tesoro_raw")
-        .update({ "Image URL": cleanImage })
-        .ilike("Make", make)
-        .ilike("Model", model);
-
-      if (makeModelErr) {
-        console.warn("tesoro_raw make/model sync warning:", makeModelErr.message);
-      }
-    }
+    // A second write used to follow this one, labelled a fallback but running
+    // unconditionally whenever make and model were sent — which both callers
+    // always do:
+    //
+    //   .update({ "Image URL": cleanImage }).ilike("Make", make).ilike("Model", model)
+    //
+    // Make and model are not an identity. One photo uploaded against one
+    // Porsche 911 therefore overwrote the image on every Porsche 911 row in
+    // the table, in everyone's collection — 56 of them — because this endpoint
+    // holds the service-role key and RLS does not apply to it. The Catalog ID
+    // update above is the whole job; a row with no catalogue id is not this
+    // casting and must not be touched.
 
     return json({
       success: true,
