@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Truck, Plus, Pencil, Store, ChevronDown, Filter } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import { isInHand, isOpenOrder, normaliseStatus, statusRank, type Status } from "@/lib/status";
@@ -39,6 +39,12 @@ export const Route = createFileRoute("/orders")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
+  // Lets the dashboard open this page on one segment — Late above all, which is
+  // not a status and so has nowhere in the inventory to deep-link to.
+  validateSearch: (search: Record<string, unknown>): { tab?: Tab } => {
+    const tab = search.tab;
+    return typeof tab === "string" && TABS.some((t) => t.value === tab) ? { tab: tab as Tab } : {};
+  },
   component: OrdersPage,
 });
 
@@ -313,13 +319,21 @@ function OrdersPage() {
   const { query } = useApp();
   const cars = useCars();
   const drawer = useCarDrawer();
+  const search = Route.useSearch();
   const [mode, setMode] = useState<SortMode>("expected");
   const [dir, setDir] = useState<SortDir>("asc");
-  const [tab, setTab] = useState<Tab>("all");
+  // Seeded from ?tab= so a dashboard tile lands on the right segment; the
+  // segments stay free to change it afterwards.
+  const [tab, setTab] = useState<Tab>(search.tab ?? "all");
   const [seller, setSeller] = useState("all");
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
   const [reconcileFor, setReconcileFor] = useState<StatusBatch | null>(null);
+
+  // Arriving from the dashboard a second time, with the page already mounted.
+  useEffect(() => {
+    if (search.tab) setTab(search.tab);
+  }, [search.tab]);
 
   const scoped = useMemo(() => filterRows(cars, query), [cars, query]);
 

@@ -85,6 +85,7 @@ export function KpiTile({
   tone = "primary",
   valueTone,
   status,
+  ordersTab,
   className,
   subVisibleOnMobile = false,
 }: {
@@ -99,6 +100,11 @@ export function KpiTile({
   valueTone?: string;
   /** Status this tile represents; tapping opens inventory filtered to it. */
   status?: string;
+  /**
+   * A segment of My Orders instead, for a tile that is not a status: Late is
+   * worked out from the expected date, so the inventory has no filter for it.
+   */
+  ordersTab?: "late";
   className?: string;
   subVisibleOnMobile?: boolean;
 }) {
@@ -141,6 +147,22 @@ export function KpiTile({
     "card-elevated flex min-w-0 flex-col overflow-hidden p-2 text-left md:p-4",
     className,
   );
+
+  // Late is not a status, so there is no filtered inventory to send it to — the
+  // Late segment of My Orders is where those cars are listed, and a tile you
+  // cannot click is a number you cannot act on.
+  if (ordersTab) {
+    return (
+      <Link
+        to="/orders"
+        search={{ tab: ordersTab }}
+        className={cn(shell, "transition-colors hover:border-primary/40 hover:bg-muted/40")}
+        title={`Show ${label.toLowerCase()} orders`}
+      >
+        {body}
+      </Link>
+    );
+  }
 
   if (!status) return <div className={shell}>{body}</div>;
 

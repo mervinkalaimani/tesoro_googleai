@@ -259,6 +259,7 @@ function DashboardPage() {
       icon: React.ReactNode;
       value: number | string;
       status?: string;
+      ordersTab?: "late";
     }[] = [
       {
         key: "inhand",
@@ -314,6 +315,9 @@ function DashboardPage() {
         tone: "rose",
         icon: <AlertTriangle className="size-4" />,
         value: data.filter((r) => isLate(r)).length,
+        // The one tile that is not a status, and so the one that used to be a
+        // dead number: My Orders has a Late segment, worked out the same way.
+        ordersTab: "late",
       },
     ];
     return defs.filter((d) => (typeof d.value === "number" ? d.value > 0 : true));
@@ -348,6 +352,7 @@ function DashboardPage() {
               value={typeof k.value === "number" ? k.value.toLocaleString() : k.value}
               tone={k.tone}
               status={k.status}
+              ordersTab={k.ordersTab}
             />
           ))}
         </KpiBand>
