@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type FormEvent, type ReactElement } from "react";
 import { ArrowLeft, Check, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -558,15 +558,27 @@ function LoginPage() {
         )}
       </div>
 
-      {/* Deliberately faint: a way in for anyone who wants to look around, not
-          a call to action competing with signing in. */}
-      <button
-        type="button"
-        onClick={enterGuest}
-        className="absolute bottom-4 right-5 text-[11px] text-muted-foreground/35 underline underline-offset-2 transition-colors hover:text-muted-foreground"
-      >
-        Guest Mode
-      </button>
+      {/* The small print, and beside it the way in for anyone who wants to look
+          around before signing up. All three are deliberately faint: none of
+          them competes with the form above. Both documents are readable without
+          an account, which is the point of asking somebody to accept them. */}
+      <div className="absolute inset-x-0 bottom-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 text-[11px] text-muted-foreground/45">
+        <Link to="/privacy" className="underline underline-offset-2 hover:text-muted-foreground">
+          Privacy Policy
+        </Link>
+        <span aria-hidden>·</span>
+        <Link to="/terms" className="underline underline-offset-2 hover:text-muted-foreground">
+          Terms &amp; Conditions
+        </Link>
+        <span aria-hidden>·</span>
+        <button
+          type="button"
+          onClick={enterGuest}
+          className="underline underline-offset-2 transition-colors hover:text-muted-foreground"
+        >
+          Guest Mode
+        </button>
+      </div>
     </div>
   );
 }

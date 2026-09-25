@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Mail, Pencil, Phone } from "lucide-react";
+import { ArrowLeft, Mail, Pencil, Phone } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,34 @@ function DocBody({ text }: { text: string }) {
           </p>
         );
       })}
+    </div>
+  );
+}
+
+/**
+ * One Help document on a page of its own, reachable without signing in.
+ *
+ * Both stores want a privacy policy at a plain URL, and somebody being asked
+ * to accept terms should be able to read them before they have an account.
+ * The text is the same row the Settings page edits, which is world-readable
+ * for exactly this reason.
+ */
+export function LegalPage({ docKey }: { docKey: HelpDocKey }) {
+  return (
+    <div className="min-h-[100dvh] bg-background px-4 py-8 sm:py-12">
+      <div className="mx-auto w-full max-w-2xl space-y-5">
+        <Link
+          to="/login"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back to sign in
+        </Link>
+        <h1 className="text-display text-2xl font-semibold tracking-tight">
+          {HELP_TITLES[docKey]}
+        </h1>
+        <HelpDoc docKey={docKey} />
+      </div>
     </div>
   );
 }

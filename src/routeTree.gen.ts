@@ -21,8 +21,10 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PreordersRouteImport } from './routes/preorders'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiCarImagesRouteImport } from './routes/api/car-images'
@@ -96,6 +98,11 @@ const PreordersRoute = PreordersRouteImport.update({
   path: '/preorders',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -104,6 +111,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotmcpChar93ListToolsRoute =
@@ -183,8 +195,10 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/orders': typeof OrdersRoute
   '/preorders': typeof PreordersRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/car-images': typeof ApiCarImagesRoute
@@ -211,8 +225,10 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/orders': typeof OrdersRoute
   '/preorders': typeof PreordersRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/car-images': typeof ApiCarImagesRoute
@@ -240,8 +256,10 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/orders': typeof OrdersRoute
   '/preorders': typeof PreordersRoute
+  '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/car-images': typeof ApiCarImagesRoute
@@ -270,8 +288,10 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/orders'
     | '/preorders'
+    | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/api/car-images'
@@ -298,8 +318,10 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/orders'
     | '/preorders'
+    | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/api/car-images'
@@ -326,8 +348,10 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/orders'
     | '/preorders'
+    | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/api/car-images'
@@ -355,8 +379,10 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   OrdersRoute: typeof OrdersRoute
   PreordersRoute: typeof PreordersRoute
+  PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
+  TermsRoute: typeof TermsRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiCarImagesRoute: typeof ApiCarImagesRoute
@@ -457,6 +483,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PreordersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -469,6 +502,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.mcp/list-tools': {
@@ -571,8 +611,10 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   OrdersRoute: OrdersRoute,
   PreordersRoute: PreordersRoute,
+  PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
+  TermsRoute: TermsRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,

@@ -122,9 +122,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const { status } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  // Both render bare. The recovery link signs the visitor in on arrival, so
-  // without the exemption the reset page would appear inside the app shell.
-  const isBareRoute = pathname === "/login" || pathname === "/reset-password";
+  // All of these render bare. The recovery link signs the visitor in on
+  // arrival, so without the exemption the reset page would appear inside the
+  // app shell; the policy and the terms have to be readable by somebody who
+  // has not signed in, which is the whole point of them.
+  const BARE = ["/login", "/reset-password", "/privacy", "/terms"];
+  const isBareRoute = BARE.includes(pathname);
 
   useEffect(() => {
     if (status === "signed-out" && !isBareRoute) {
