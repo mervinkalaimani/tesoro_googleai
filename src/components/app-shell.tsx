@@ -3,7 +3,6 @@ import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { ExportScopeProvider } from "@/lib/export-scope";
 import { AppSidebar } from "./app-sidebar";
 import { TopBar } from "./top-bar";
-import { EdgeSwipe } from "./edge-swipe";
 import { MobileNav } from "./mobile-nav";
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -12,8 +11,11 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Wraps both halves: the page publishes the rows it is showing, the top
           bar's Export button reads them. */}
       <ExportScopeProvider>
-        {/* Swipe in from either edge to reach the navigation. */}
-        <EdgeSwipe />
+        {/* No edge-swipe gesture. The bar at the bottom is the navigation on a
+            phone, and the sidebar's trigger is hidden below md, so a swipe in
+            from the edge was the one remaining door to a drawer that is not
+            meant to be there — and it sat on top of every horizontal shelf on
+            the page. */}
         <div className="flex min-h-screen w-full">
           <AppSidebar />
           <SidebarInset className="min-w-0 flex-1">
