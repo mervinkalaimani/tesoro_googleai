@@ -44,6 +44,7 @@ import {
 import { SegmentControl } from "@/components/segment-control";
 import { CataloguePhotos } from "@/components/catalogue-photos";
 import { HelpDoc } from "@/components/help-doc";
+import { SplashMark } from "@/components/brand-mark";
 import { HELP_BLURBS, HELP_TITLES } from "@/lib/help-content";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -106,7 +107,12 @@ type SettingsView =
   | "help_terms"
   | "help_contact";
 
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || "0.8.0 (alpha)";
+/**
+ * The release, and only the release. Anything a build stamps on after the
+ * version — a commit, a run number, a timestamp — is for whoever is reading
+ * the logs, not for the person looking at Settings.
+ */
+const APP_VERSION = (import.meta.env.VITE_APP_VERSION || "0.8.0 (alpha)").split("+")[0].trim();
 
 function parseTab(tab?: string): SettingsView {
   if (!tab) return "root";
@@ -434,11 +440,16 @@ export function SettingsPage() {
             </div>
           </div>
 
-          {/* Footer Info */}
-          <footer className="space-y-1 pt-4 text-center text-xs text-muted-foreground">
-            <p className="font-medium text-foreground/70">Tesoro Diecast Tracker</p>
-            <p>Crafted with love in Chennai</p>
-            <p>Version {APP_VERSION}</p>
+          {/* The mark the app opens on, at the end of the page it closes on.
+              Well clear of Log Out: a signature under a destructive button is
+              a thing to mis-tap, and the space is what says the page is over. */}
+          <footer className="flex flex-col items-center gap-3 pb-2 pt-14 text-center text-xs text-muted-foreground">
+            <SplashMark className="w-40 opacity-80" />
+            <div className="space-y-1">
+              <p>© Mervin K</p>
+              <p>Crafted with love from Chennai</p>
+              <p>Version {APP_VERSION}</p>
+            </div>
           </footer>
         </div>
       )}
