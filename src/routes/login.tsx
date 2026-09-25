@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth, handleError, takeOAuthError, type OAuthProvider } from "@/lib/auth-store";
 import { useOAuthProviders } from "@/lib/deployment-settings";
 import { rememberSession, setRememberSession } from "@/integrations/supabase/session-storage";
+import { HomeScreenMark } from "@/components/brand-mark";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -259,16 +260,29 @@ function LoginPage() {
   ) : null;
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background px-4 py-10">
+    // 100dvh, not 100vh. On a phone 100vh is the viewport with the browser's
+    // chrome *retracted*, which is taller than what you are looking at — so the
+    // page centred itself against a box bigger than the screen, pushing the
+    // middle of it down and putting Guest Mode, which hangs off the bottom,
+    // below the fold. Nothing on this page needs scrolling; it only looked as
+    // though it did.
+    // Not overflow-hidden: on a short phone with both provider buttons showing,
+    // clipping would take the Sign in button off the screen instead of the
+    // scrollbar. Scrolling stays possible and stops being necessary.
+    <div className="relative flex min-h-[100dvh] items-center justify-center bg-background px-4 py-6 sm:py-10">
       <div className="w-full max-w-sm">
-        <div className="mb-8 flex flex-col items-center text-center">
-          {/* The same mark, at the same size, on the same ground as the loading
-              screen this page arrives from — a signed-out visit renders the
-              splash and then redirects here, so anything different would read
-              as two applications handing off to each other. */}
-          <img src="/tesoro_app_icon_dark.svg" alt="" className="size-16" />
-          <h1 className="text-display mt-4 text-2xl font-semibold tracking-tight">Tesoro</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="mb-6 flex flex-col items-center text-center sm:mb-8">
+          {/* The same mark, on the same ground as the loading screen this page
+              arrives from — a signed-out visit renders the splash and then
+              redirects here, so anything different would read as two
+              applications handing off to each other. */}
+          <img src="/tesoro_app_icon_dark.svg" alt="" className="size-20 sm:size-24" />
+          {/* The wordmark itself rather than the word set in the UI typeface,
+              which is the one place the brand was spelled out in Inter. */}
+          <h1 className="mt-4 w-40 sm:w-48">
+            <HomeScreenMark />
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
             {view === "reset"
               ? "We'll email you a link to set a new one."
               : view === "signup-details"
