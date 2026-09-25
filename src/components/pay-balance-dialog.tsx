@@ -22,25 +22,45 @@ const num = (v: string) => {
 };
 
 /**
- * Records a payment against a pre-order. The entered amount is *added* to what
- * has already been paid, and the balance is recomputed from cost minus paid.
+ * Records a payment against a pre-order, or against every car on one order.
+ *
+ * The entered amount is *added* to what has already been paid, and the balance
+ * is recomputed from cost minus paid. Across several cars it fills them in
+ * order — the first car's balance, then the next — because an order is paid off
+ * as a sum and the rows have to add up to it either way.
  */
-export function PayBalanceDialog({ car, onClose }: { car: Diecast | null; onClose: () => void }) {
-  const { updateCar } = useCarsActions();
+export function PayBalanceDialog({
+  car = null,
+  cars = null,
+  label,
+  onClose,
+}: {
+  /** One car… */
+  car?: Diecast | null;
+  /** …or every car on one order, settled together. */
+  cars?: Diecast[] | null;
+  /** What the order is called, when this is one: its shipment or order ID. */
+  label?: string;
+  onClose: () => void;
+}) {
+  const { updateCar, bulkUpdateCars } = useCarsActions();
   const [mode, setMode] = useState<"full" | "custom">("full");
   const [amount, setAmount] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const cost = car?.spent ?? 0;
-  const alreadyPaid = car?.paid ?? 0;
-  const due = Math.max(cost - alreadyPaid, 0);
+  const items = cars?.length ? cars : car ? [car] : [];
+  const cost = items.reduce((n, c) => n + (c.spent || 0), 0);
+  const alreadyPaid = items.reduce((n, c) => n + (c.paid || 0), 0);
+  // Summed per car, so one overpaid row cannot quietly cancel another's debt.
+  const due = items.reduce((n, c) => n + Math.max((c.spent || 0) - (c.paid || 0), 0), 0);
+  const key = items.map((c) => c.id).join(",");
 
   useEffect(() => {
     setMode("full");
     setAmount("");
-  }, [car?.id]);
+  }, [key]);
 
-  if (!car) return null;
+  if (items.length === 0) return null;
 
   const entered = mode === "full" ? due : num(amount);
   // Never let a payment push paid past the cost.
@@ -52,12 +72,24 @@ export function PayBalanceDialog({ car, onClose }: { car: Diecast | null; onClos
   const save = async () => {
     setSaving(true);
     try {
-      updateCar({
-        ...car,
-        paid: newPaid,
-        balance: newBalance,
-        payment: newBalance === 0 ? "Paid" : car.payment || "Partial",
-      });
+      let left = applied;
+      const touched: Diecast[] = [];
+      for (const c of items) {
+        const owed = Math.max((c.spent || 0) - (c.paid || 0), 0);
+        if (owed <= 0 || left <= 0) continue;
+        const pay = Math.min(owed, left);
+        left -= pay;
+        const paid = (c.paid || 0) + pay;
+        const balance = Math.max((c.spent || 0) - paid, 0);
+        touched.push({
+          ...c,
+          paid,
+          balance,
+          payment: balance === 0 ? "Paid" : c.payment || "Partial",
+        });
+      }
+      if (touched.length === 1) updateCar(touched[0]);
+      else if (touched.length > 1) bulkUpdateCars(touched, "Recorded a payment");
       toast.success(`Recorded ${inrFull(applied)}`, {
         description:
           newBalance === 0 ? "Balance fully settled." : `${inrFull(newBalance)} still outstanding.`,
@@ -70,7 +102,7 @@ export function PayBalanceDialog({ car, onClose }: { car: Diecast | null; onClos
 
   return (
     <Dialog
-      open={Boolean(car)}
+      open={items.length > 0}
       onOpenChange={(v) => {
         if (!v) onClose();
       }}
@@ -79,7 +111,9 @@ export function PayBalanceDialog({ car, onClose }: { car: Diecast | null; onClos
         <DialogHeader>
           <DialogTitle>Pay balance</DialogTitle>
           <DialogDescription className="truncate">
-            {car.name || `${car.make} ${car.model}`}
+            {items.length > 1
+              ? `${items.length} cars${label ? ` · ${label}` : ""}`
+              : items[0].name || `${items[0].make} ${items[0].model}`}
           </DialogDescription>
         </DialogHeader>
 

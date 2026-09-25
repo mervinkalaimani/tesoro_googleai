@@ -17,9 +17,8 @@ export function ShipmentItem({
   meta,
   actions,
   thumb = false,
-  brand,
-  idLabel,
-  detail,
+  identity,
+  title,
   amount,
 }: {
   car: Diecast;
@@ -30,24 +29,23 @@ export function ShipmentItem({
   /** Buttons for this car, laid out on their own row underneath. */
   actions?: ReactNode;
   thumb?: boolean;
-  /** The brand, when it is not this car's — empty for a group of several brands. */
-  brand?: string;
-  /** Stands in for the car number: the order ID, when the row is a whole order. */
-  idLabel?: string;
-  /** Stands in for the series: how many cars, when the row is a whole order. */
-  detail?: string;
-  /** Stands in for what this car cost: the order's total. */
+  /**
+   * The small line above the name, in place of this car's own. A row standing
+   * for a whole order says how many cars and whose they are, where one car says
+   * what it is.
+   */
+  identity?: string[];
+  /** In place of the car's name: the shipment a row of several stands for. */
+  title?: string;
+  /** In place of what this car cost: the order's total. */
   amount?: number;
 }) {
-  const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
-  // Brand, then what identifies it, then what it belongs to. A row standing for
-  // a whole order says the order's ID and how many cars are in it, in the two
-  // places a single car says its number and its series.
-  const identity = [
-    brand ?? car.brand,
-    idLabel || car.carNumber || car.id,
-    detail ?? car.series,
-  ].filter(Boolean) as string[];
+  const heading = title || car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
+  // Brand, then the series it belongs to, then the number that tells it from
+  // its near-twins — widest to narrowest, so the line reads down to the car.
+  const bits = (identity ?? [car.brand, car.series, car.carNumber || car.id]).filter(
+    Boolean,
+  ) as string[];
 
   return (
     <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
@@ -55,7 +53,7 @@ export function ShipmentItem({
         {thumb && <CarThumb car={car} className="size-11 shrink-0 overflow-hidden rounded-md" />}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 truncate font-mono text-[11px] text-muted-foreground">
-            {identity.map((bit, i) => (
+            {bits.map((bit, i) => (
               <span key={i} className="truncate last:min-w-0">
                 {i > 0 && <span className="mr-1.5">·</span>}
                 {bit}
@@ -68,10 +66,10 @@ export function ShipmentItem({
               onClick={onOpen}
               className="block max-w-full truncate text-left text-sm font-semibold hover:text-primary"
             >
-              {title}
+              {heading}
             </button>
           ) : (
-            <div className="truncate text-sm font-semibold">{title}</div>
+            <div className="truncate text-sm font-semibold">{heading}</div>
           )}
           {meta}
         </div>

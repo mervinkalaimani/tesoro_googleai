@@ -241,6 +241,7 @@ export function NotificationCenter() {
   const [collapsed, setCollapsed] = useState<string[]>([]);
   const [dismissed, setDismissed] = useState<Record<string, number>>({});
   const [payFor, setPayFor] = useState<Diecast | null>(null);
+  const [payForOrder, setPayForOrder] = useState<{ cars: Diecast[]; label: string } | null>(null);
   const [statusFor, setStatusFor] = useState<Diecast | null>(null);
   const [statusBatch, setStatusBatch] = useState<StatusBatch | null>(null);
   const [batchFor, setBatchFor] = useState<string | null>(null);
@@ -395,7 +396,8 @@ export function NotificationCenter() {
   // No bell at all when there is nothing behind it. It stays while the panel is
   // open (so clearing the last notice does not yank it out from under the
   // cursor) and while a dialog it raised is still on screen.
-  if (count === 0 && !open && !payFor && !statusFor && !statusBatch && !batchFor) return null;
+  if (count === 0 && !open && !payFor && !payForOrder && !statusFor && !statusBatch && !batchFor)
+    return null;
 
   return (
     <>
@@ -737,26 +739,31 @@ export function NotificationCenter() {
                   (n, c) => n + Math.max((c.spent || 0) - (c.paid || 0), 0),
                   0,
                 );
-                const brand = l.cars.every((c) => c.brand === first.brand) ? first.brand : "";
+                // Two brands at most: an order of six from one shop is bought
+                // from a couple of ranges, and the sixth name would push the
+                // count off the line it belongs to.
+                const brands = [...new Set(l.cars.map((c) => c.brand).filter(Boolean))].slice(0, 2);
+                // What the order is called. Its shipment, when the cars agree on
+                // one — that is the number you quote at the seller — and the
+                // order it was bought on otherwise.
+                const shipId = l.cars.every(
+                  (c) => (c.shippingId || "") === (first.shippingId || ""),
+                )
+                  ? first.shippingId || ""
+                  : "";
                 const when = whenLabel(l.days);
                 return (
                   <ShipmentItem
                     key={launchKey(l)}
                     car={first}
                     thumb
-                    brand={many ? brand : undefined}
-                    idLabel={many ? l.orderId : undefined}
-                    detail={many ? plural(l.cars.length, "car") : undefined}
+                    identity={many ? [plural(l.cars.length, "car"), ...brands] : undefined}
+                    title={many ? shipId || l.orderId : undefined}
                     amount={many ? spent : undefined}
                     onOpen={() => act(() => drawer.open(first))}
                     meta={
                       <>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-                          {many && (
-                            <span className="font-medium text-foreground">
-                              + {plural(l.cars.length - 1, "more car")}
-                            </span>
-                          )}
                           <span className="inline-flex items-center gap-1">
                             <Wallet className="size-3" />
                             {first.seller || "Seller not recorded"}
@@ -781,14 +788,22 @@ export function NotificationCenter() {
                     }
                     actions={
                       <>
-                        {/* One car's balance can be settled from here. A whole
-                            order's cannot: paying takes an amount against a
-                            single row, so an order opens where its cars are. */}
-                        {!many && balance > 0 && (
+                        {/* Only when something is owed. An order settles its
+                            cars together, filling one balance then the next. */}
+                        {balance > 0 && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => act(() => setPayFor(first))}
+                            onClick={() =>
+                              act(() =>
+                                many
+                                  ? setPayForOrder({
+                                      cars: l.cars,
+                                      label: shipId || l.orderId,
+                                    })
+                                  : setPayFor(first),
+                              )
+                            }
                             className="gap-1.5 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
                           >
                             <IndianRupee className="size-3.5" />
@@ -822,7 +837,15 @@ export function NotificationCenter() {
         </PopoverContent>
       </Popover>
 
-      <PayBalanceDialog car={payFor} onClose={() => setPayFor(null)} />
+      <PayBalanceDialog
+        car={payFor}
+        cars={payForOrder?.cars}
+        label={payForOrder?.label}
+        onClose={() => {
+          setPayFor(null);
+          setPayForOrder(null);
+        }}
+      />
       <StatusUpdateDialog
         car={statusFor}
         batch={statusBatch}
