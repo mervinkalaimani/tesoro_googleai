@@ -16,8 +16,6 @@ import {
   Calendar,
   Car,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   Flame,
   Layers,
   Loader2,
@@ -558,18 +556,22 @@ function CarPopupContent({
       {/* =====================================================================
           1. DESKTOP & TABLET LAYOUT (Screen >= md: 2 or 3 columns based on hasMoreToShow)
           ===================================================================== */}
-      <div className="hidden md:flex md:flex-row md:items-stretch md:h-[84vh] md:max-h-[84vh] w-fit overflow-hidden px-5 xl:px-6 py-4 xl:py-5 divide-x divide-border">
-        {/* LEFT COLUMN: Photo, Title, Specs, Rarity, 3 Action Buttons */}
-        <div className="w-[360px] xl:w-[390px] shrink-0 pr-5 xl:pr-6 flex flex-col h-full overflow-hidden justify-between">
-          <div
-            id="car-details-left-col"
-            className="flex-1 overflow-y-auto pr-1 scrollbar-thin space-y-3.5"
-          >
-            {/* Main Car Photo Area */}
-            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-xs bg-muted/20 border border-border/60 shrink-0">
+      {/* The padding moved off this row and onto the columns, so the photograph
+          can run to the edges of its own. */}
+      <div className="hidden md:flex md:flex-row md:items-stretch md:h-[84vh] md:max-h-[84vh] w-fit overflow-hidden divide-x divide-border">
+        {/* LEFT COLUMN: Photo, Title, Specs, Rarity, purchase, buttons */}
+        <div className="w-[360px] xl:w-[390px] shrink-0 flex flex-col h-full overflow-hidden justify-between">
+          <div id="car-details-left-col" className="flex-1 overflow-y-auto scrollbar-thin">
+            {/* Main Car Photo Area. Full width of the column, no frame of its
+                own: the picture was sitting in a bordered box inside a padded
+                column inside a padded row, three rectangles deep. Sixteen
+                pixels shorter than the 4:3 it used to hold, so the name under
+                it clears the fold. */}
+            <div className="relative h-[254px] w-full shrink-0 overflow-hidden bg-muted/20 xl:h-[277px]">
               <HeroCarImage car={car} />
             </div>
 
+            <div className="space-y-3.5 px-5 py-4 xl:px-6 xl:py-5">
             {/* Car title section */}
             <CarTitleSection car={car} />
 
@@ -588,22 +590,13 @@ function CarPopupContent({
               onToggleFavourite={onToggleFavourite}
               exactCount={exactCount}
             />
-          </div>
 
-          {/* Action Buttons on the left side: View in Catalogue | Add Another */}
-          <div className="sticky bottom-0 z-10 bg-background/95 backdrop-blur-xs pt-3 pb-1 border-t border-border/60">
-            <CarActionButtons onViewInCatalog={onViewInCatalog} onAddAnother={onAddAnother} />
-          </div>
-        </div>
+            <hr className="border-border" />
 
-        {/* MIDDLE/RIGHT COLUMN: Purchase details, Logistics & Shipping, and Update button */}
-        <div
-          className={cn(
-            "w-[360px] xl:w-[390px] shrink-0 flex flex-col h-full overflow-hidden justify-between",
-            hasMoreToShow ? "px-5 xl:px-6" : "pl-5 xl:pl-6",
-          )}
-        >
-          <div id="car-details-middle-col" className="flex-1 overflow-y-auto pr-1 scrollbar-thin">
+            {/* What it cost and where it came from. This was a column of its
+                own, which meant the two halves of one purchase — the money and
+                the parcel — sat either side of a divider from the car they
+                belong to. */}
             <CarPurchaseAndShippingSection
               car={car}
               spent={spent}
@@ -614,10 +607,13 @@ function CarPopupContent({
               trackable={trackable}
               onOpenBatch={onOpenBatch}
             />
+            </div>
           </div>
 
-          {/* Sticky bottom bar for right section: Update button */}
-          <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/95 backdrop-blur-xs pt-3 pb-1">
+          {/* Every action on one side: View in Catalogue | Add Another, then
+              Update under them. */}
+          <div className="sticky bottom-0 z-10 space-y-2 bg-background/95 backdrop-blur-xs px-5 pt-3 pb-4 xl:px-6 border-t border-border/60">
+            <CarActionButtons onViewInCatalog={onViewInCatalog} onAddAnother={onAddAnother} />
             <Button
               onClick={onEdit}
               className="w-full h-10 font-semibold gap-2 cursor-pointer shadow-xs"
@@ -631,7 +627,7 @@ function CarPopupContent({
 
         {/* RIGHT COLUMN: More from series & set (ONLY RENDERED IF hasMoreToShow) */}
         {hasMoreToShow && (
-          <div className="w-[360px] xl:w-[390px] shrink-0 pl-5 xl:pl-6 flex flex-col h-full overflow-y-auto space-y-6 scrollbar-thin">
+          <div className="w-[360px] xl:w-[390px] shrink-0 px-5 py-4 xl:px-6 xl:py-5 flex flex-col h-full overflow-y-auto space-y-6 scrollbar-thin">
             {/* Series Section */}
             {otherSeriesCars.length > 0 && (
               <div className="space-y-2.5">
@@ -1070,11 +1066,10 @@ function CarPurchaseAndShippingSection({
           to know about a 5-pack is which five. */}
       <PackContents packCarId={car.catalogId} />
 
-      {/* Purchase details */}
+      {/* One grid, no headings. What a car cost and where it came from were two
+          bordered blocks with two titles, which is a lot of furniture around
+          nine short facts that are all answers to "what is this purchase". */}
       <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-          Purchase
-        </h3>
         <SpecGrid>
           <Spec label="Spent" value={inrFull(spent)} />
           <Spec label="Retail / MRP" value={inrFull(mrp)} />
@@ -1083,17 +1078,6 @@ function CarPurchaseAndShippingSection({
             className={delta >= 0 ? "text-emerald-600 dark:text-[#00E599]" : "text-rose-400"}
             value={delta >= 0 ? `+${inrFull(delta)}` : `-${inrFull(Math.abs(delta))}`}
           />
-        </SpecGrid>
-      </div>
-
-      <hr className="border-border" />
-
-      {/* Shipping / Logistics details */}
-      <div>
-        <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-          Logistics & Shipping
-        </h3>
-        <SpecGrid>
           <Spec label="Seller" value={car.seller} />
           <Spec label="Order date" value={formatDayMonthYear(car.orderDate) || car.orderDate} />
           <Spec
@@ -1220,15 +1204,7 @@ function WebRelatedGridShelf({
   onSelectCar?: (car: Diecast) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: "left" | "right") => {
-    if (!containerRef.current) return;
-    const scrollAmount = containerRef.current.clientWidth * 0.85;
-    containerRef.current.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-  };
+  useScrollHint(containerRef);
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     if (!containerRef.current) return;
@@ -1247,7 +1223,12 @@ function WebRelatedGridShelf({
       <div
         ref={containerRef}
         onWheel={handleWheel}
-        className="grid grid-flow-col grid-rows-2 auto-cols-[calc((100%-1rem)/3)] gap-2 overflow-x-auto pb-2 scrollbar-thin snap-x scroll-px-0.5 scroll-smooth"
+        // Three columns and a sliver of the fourth. They used to divide the
+        // width exactly three ways, so the next column began precisely where
+        // the shelf ended and a row of eight looked identical to a row of
+        // three. 42px buys the two gaps back and leaves about 18px of the
+        // fourth card showing, which is the part that says keep going.
+        className="grid grid-flow-col grid-rows-2 auto-cols-[calc((100%-2.625rem)/3)] gap-2 overflow-x-auto pb-2 scrollbar-thin snap-x scroll-px-0.5 scroll-smooth"
       >
         {cars.map((relatedCar) => (
           <RelatedCarCard
@@ -1259,30 +1240,55 @@ function WebRelatedGridShelf({
           />
         ))}
       </div>
-      {cars.length > 6 && (
-        <div className="mt-1 flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => scroll("left")}
-            aria-label="Scroll left"
-            title="Scroll left"
-            className="flex size-6 cursor-pointer items-center justify-center rounded-md border border-border/80 bg-background/90 text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95 shadow-2xs"
-          >
-            <ChevronLeft className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => scroll("right")}
-            aria-label="Scroll right"
-            title="Scroll right"
-            className="flex size-6 cursor-pointer items-center justify-center rounded-md border border-border/80 bg-background/90 text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95 shadow-2xs"
-          >
-            <ChevronRight className="size-3.5" />
-          </button>
-        </div>
-      )}
     </div>
   );
+}
+
+/**
+ * Nudges a scrolling shelf twenty pixels and lets it fall back, once, when it
+ * has more in it than fits.
+ *
+ * The scrollbar is hidden until you touch the row, so a shelf with eight cars
+ * in it looked exactly like a shelf with six. Two arrow buttons said so
+ * instead, which is a pair of controls for something every trackpad and phone
+ * already does — the movement says it without taking any room.
+ */
+function useScrollHint(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    let back = 0;
+    let settle = 0;
+    // Measured when the hint plays, not when the effect runs: at mount the
+    // cards have no width yet, so scrollWidth and clientWidth agree and the
+    // shelf looks like it fits when it does not.
+    const out = window.setTimeout(() => {
+      // Nothing to hint at when it all fits, or when the person has already
+      // moved it themselves.
+      if (el.scrollWidth <= el.clientWidth + 8 || el.scrollLeft > 0) return;
+      // Moved, not scrolled. The row carries scroll snapping, which pulls a
+      // ten-pixel scroll straight back to the snap point it started on — the
+      // hint played and nothing appeared to happen.
+      el.style.transition = "transform 200ms ease-out";
+      el.style.transform = "translateX(-20px)";
+      back = window.setTimeout(() => {
+        el.style.transform = "";
+        settle = window.setTimeout(() => {
+          el.style.transition = "";
+        }, 240);
+      }, 240);
+    }, 500);
+
+    return () => {
+      window.clearTimeout(out);
+      window.clearTimeout(back);
+      window.clearTimeout(settle);
+      el.style.transform = "";
+      el.style.transition = "";
+    };
+  }, [ref]);
 }
 
 /** Single-row horizontal shelf for tablet layout at bottom */
@@ -1296,15 +1302,7 @@ function TabRelatedShelf({
   onSelectCar?: (car: Diecast) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const scroll = (direction: "left" | "right") => {
-    if (!containerRef.current) return;
-    const scrollAmount = containerRef.current.clientWidth * 0.75;
-    containerRef.current.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-  };
+  useScrollHint(containerRef);
 
   return (
     <div className="relative">
@@ -1322,28 +1320,6 @@ function TabRelatedShelf({
           />
         ))}
       </div>
-      {cars.length > 4 && (
-        <div className="mt-1 flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={() => scroll("left")}
-            aria-label="Scroll left"
-            title="Scroll left"
-            className="flex size-6 cursor-pointer items-center justify-center rounded-md border border-border/80 bg-background/90 text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95 shadow-2xs"
-          >
-            <ChevronLeft className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => scroll("right")}
-            aria-label="Scroll right"
-            title="Scroll right"
-            className="flex size-6 cursor-pointer items-center justify-center rounded-md border border-border/80 bg-background/90 text-muted-foreground transition-all hover:bg-accent hover:text-foreground active:scale-95 shadow-2xs"
-          >
-            <ChevronRight className="size-3.5" />
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -2592,7 +2568,10 @@ function PackContents({ packCarId }: { packCarId?: string | null }) {
             Nobody has listed what is in this one yet.
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+          // One column, one car per line. Two columns split names that are
+          // already long enough to truncate, and a sideways row hid the last
+          // two of a five-pack behind a scroll.
+          <div className="flex flex-col gap-1.5">
             {members.map(({ id, entry }, i) => (
               <div
                 key={id}

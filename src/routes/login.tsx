@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth, handleError, takeOAuthError, type OAuthProvider } from "@/lib/auth-store";
 import { useOAuthProviders } from "@/lib/deployment-settings";
 import { rememberSession, setRememberSession } from "@/integrations/supabase/session-storage";
-import { HomeScreenMark } from "@/components/brand-mark";
+import { SplashMark } from "@/components/brand-mark";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -272,15 +272,13 @@ function LoginPage() {
     <div className="relative flex min-h-[100dvh] items-center justify-center bg-background px-4 py-6 sm:py-10">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center sm:mb-8">
-          {/* The same mark, on the same ground as the loading screen this page
-              arrives from — a signed-out visit renders the splash and then
-              redirects here, so anything different would read as two
-              applications handing off to each other. */}
-          <img src="/tesoro_app_icon_dark.svg" alt="" className="size-20 sm:size-24" />
-          {/* The wordmark itself rather than the word set in the UI typeface,
-              which is the one place the brand was spelled out in Inter. */}
-          <h1 className="-mt-4 w-40 sm:w-48">
-            <HomeScreenMark />
+          {/* The splash mark, whole: diamond and lettering drawn together and
+              spaced by whoever drew them. A signed-out visit renders the splash
+              and then redirects here, so this page now shows the same thing the
+              page before it did rather than a rebuilt copy of it — an icon
+              stacked over a wordmark, with the gap between them guessed at. */}
+          <h1 className="w-60 sm:w-72">
+            <SplashMark />
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
             {view === "reset"

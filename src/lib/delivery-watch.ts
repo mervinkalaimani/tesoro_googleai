@@ -1,4 +1,4 @@
-import { canBeLate, isOpenOrder, normaliseStatus } from "@/lib/status";
+import { canBeLate, isOpenOrder, normaliseStatus, statusRank } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -77,7 +77,11 @@ export function arrivingWithin(
       if (!day || day < today || day > last) return [];
       return [{ car, day }];
     })
-    .sort((a, b) => a.day.localeCompare(b.day));
+    // Closest to your hands first, then soonest. A parcel already with a
+    // courier belongs at the head of the shelf even when a pre-order two days
+    // further out has the earlier date: one is arriving, the other is a guess
+    // at a release. Within a status the day still decides.
+    .sort((a, b) => statusRank(a.car.status) - statusRank(b.car.status) || a.day.localeCompare(b.day));
 }
 
 export type DeliveryGroup = {

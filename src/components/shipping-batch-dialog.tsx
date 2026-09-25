@@ -37,7 +37,7 @@ import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { cn } from "@/lib/utils";
-import { STATUSES, isInHand, isIso, type Status } from "@/lib/status";
+import { STATUSES, STATUS_STYLES, isInHand, isIso, type Status } from "@/lib/status";
 import { isLate } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { carSubLine, carSubLineParts } from "@/lib/car-subline";
@@ -46,23 +46,23 @@ import { catalogCarToCatalogueCar, type CatalogCar } from "@/lib/catalog";
 
 const STATUS_CHOICES = STATUSES.map((value) => ({ value, label: value }));
 
-/** The three moves a whole shipment usually makes, in the order it makes them. */
-const QUICK_SET: { value: Status; label: string; tone: string }[] = [
-  {
-    value: "Ordered",
-    label: "Ordered",
-    tone: "border-amber-500/60 bg-amber-500/15 font-semibold text-amber-600 dark:text-amber-400",
-  },
-  {
-    value: "In Transit",
-    label: "In Transit",
-    tone: "border-blue-500/60 bg-blue-500/15 font-semibold text-blue-600 dark:text-blue-400",
-  },
-  {
-    value: "In Hand",
-    label: "Delivered",
-    tone: "border-emerald-500/60 bg-emerald-500/15 font-semibold text-emerald-600 dark:text-emerald-400",
-  },
+/**
+ * Every status a shipment can be moved to, in the order it moves through them.
+ *
+ * There were three — Ordered, In Transit, Delivered — which left On Hold and PO
+ * reachable only through the dropdown above, although they are two of the four
+ * the orders page is built around. ISO is not here: a wishlist entry is not
+ * something a shipment becomes.
+ *
+ * The colours come from STATUS_STYLES, so a chip and the pill it sets are the
+ * same colour rather than two hand-written guesses at it.
+ */
+const QUICK_SET: { value: Status; label: string }[] = [
+  { value: "PO", label: "Pre-order" },
+  { value: "Ordered", label: "Ordered" },
+  { value: "On Hold", label: "On Hold" },
+  { value: "In Transit", label: "In Transit" },
+  { value: "In Hand", label: "Delivered" },
 ];
 
 export interface ShippingBatchDialogProps {
@@ -794,12 +794,10 @@ export function ShippingBatchDialog({
                     </SelectContent>
                   </Select>
 
-                  {/* Quick status presets. Four used to sit here, two of which
-                      (Out for Delivery, Delayed) no longer exist — the first
-                      is In Transit and the second is worked out from the date. */}
+                  {/* Quick status presets, one per status a shipment can take. */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                     <span className="text-[10px] text-muted-foreground">Quick set:</span>
-                    {QUICK_SET.map(({ value, label, tone }) => (
+                    {QUICK_SET.map(({ value, label }) => (
                       <button
                         key={value}
                         type="button"
@@ -812,7 +810,7 @@ export function ShippingBatchDialog({
                         }}
                         className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
                           newStatus === value
-                            ? tone
+                            ? `font-semibold ${STATUS_STYLES[value]}`
                             : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
                         }`}
                       >
