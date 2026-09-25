@@ -17,6 +17,10 @@ export function ShipmentItem({
   meta,
   actions,
   thumb = false,
+  brand,
+  idLabel,
+  detail,
+  amount,
 }: {
   car: Diecast;
   /** Makes the name a button — used where opening the car makes sense. */
@@ -26,8 +30,24 @@ export function ShipmentItem({
   /** Buttons for this car, laid out on their own row underneath. */
   actions?: ReactNode;
   thumb?: boolean;
+  /** The brand, when it is not this car's — empty for a group of several brands. */
+  brand?: string;
+  /** Stands in for the car number: the order ID, when the row is a whole order. */
+  idLabel?: string;
+  /** Stands in for the series: how many cars, when the row is a whole order. */
+  detail?: string;
+  /** Stands in for what this car cost: the order's total. */
+  amount?: number;
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
+  // Brand, then what identifies it, then what it belongs to. A row standing for
+  // a whole order says the order's ID and how many cars are in it, in the two
+  // places a single car says its number and its series.
+  const identity = [
+    brand ?? car.brand,
+    idLabel || car.carNumber || car.id,
+    detail ?? car.series,
+  ].filter(Boolean) as string[];
 
   return (
     <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
@@ -35,13 +55,12 @@ export function ShipmentItem({
         {thumb && <CarThumb car={car} className="size-11 shrink-0 overflow-hidden rounded-md" />}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 truncate font-mono text-[11px] text-muted-foreground">
-            <span>{car.carNumber || car.id}</span>
-            {car.series ? (
-              <>
-                <span>·</span>
-                <span className="truncate">{car.series}</span>
-              </>
-            ) : null}
+            {identity.map((bit, i) => (
+              <span key={i} className="truncate last:min-w-0">
+                {i > 0 && <span className="mr-1.5">·</span>}
+                {bit}
+              </span>
+            ))}
           </div>
           {onOpen ? (
             <button
@@ -57,7 +76,7 @@ export function ShipmentItem({
           {meta}
         </div>
         <span className="shrink-0 text-sm tabular-nums text-muted-foreground">
-          {inr(car.spent || 0)}
+          {inr(amount ?? car.spent ?? 0)}
         </span>
       </div>
       {actions ? (

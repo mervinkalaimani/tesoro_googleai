@@ -30,7 +30,7 @@ import {
 import { ShipmentItem } from "@/components/shipment-item";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { PayBalanceDialog } from "@/components/pay-balance-dialog";
-import { StatusUpdateDialog } from "@/components/status-update-dialog";
+import { StatusUpdateDialog, type StatusBatch } from "@/components/status-update-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useCars, useCarsActions, useCarsRefresh } from "@/lib/cars-store";
@@ -119,14 +119,21 @@ function readDismissed(uid: string): Record<string, number> {
   return out;
 }
 
-type Launch = { car: Diecast; due: Date; days: number };
+/**
+ * A launch: one pre-order, or a whole order of them landing on the same day.
+ *
+ * Six cars bought together on one order line used to be six notices saying the
+ * same date, and closing them was six clicks. They travel as one thing, so they
+ * are announced as one thing — and a car ordered on its own is still a car.
+ */
+type Launch = { key: string; cars: Diecast[]; orderId: string; due: Date; days: number };
 
 /**
  * Keys carry the date the notice is about: moving a delivery or a release makes
  * it a different piece of news, and one closed as "yes, I know" should speak up
  * again when the promise changes.
  */
-const launchKey = (l: Launch) => `${l.car.id}@${l.due.toISOString().slice(0, 10)}`;
+const launchKey = (l: Launch) => l.key;
 /** Carries the casting, so a re-release after a correction speaks up again. */
 const releasedKey = (w: WaitingRelease) => `released:${w.car.id}@${w.entry.car_id}`;
 const todayKey = (g: DeliveryGroup) => `today:${g.key}@${g.day}`;
@@ -235,6 +242,7 @@ export function NotificationCenter() {
   const [dismissed, setDismissed] = useState<Record<string, number>>({});
   const [payFor, setPayFor] = useState<Diecast | null>(null);
   const [statusFor, setStatusFor] = useState<Diecast | null>(null);
+  const [statusBatch, setStatusBatch] = useState<StatusBatch | null>(null);
   const [batchFor, setBatchFor] = useState<string | null>(null);
   const [newDates, setNewDates] = useState<Record<string, string>>({});
   const [newStatuses, setNewStatuses] = useState<Record<string, string>>({});
@@ -257,16 +265,24 @@ export function NotificationCenter() {
 
   const launches = useMemo<Launch[]>(() => {
     const now = new Date();
-    const out: Launch[] = [];
+    const groups = new Map<string, Launch>();
     for (const car of cars) {
       if (!isPreOrder(car.status)) continue;
       const due = parseDMY(car.expectedDate);
       if (!due) continue;
       const days = daysBetween(now, due);
       if (days > LEAD_DAYS || days < -OVERDUE_DAYS) continue;
-      out.push({ car, due, days });
+      // Same order, same day, one notice. The day is part of the key because
+      // two cars on one order can be promised for different weeks, and those
+      // are two pieces of news.
+      const day = localDay(due);
+      const orderId = (car.orderId || "").trim();
+      const key = orderId ? `order:${orderId.toLowerCase()}@${day}` : `car:${car.id}@${day}`;
+      const g = groups.get(key);
+      if (g) g.cars.push(car);
+      else groups.set(key, { key, cars: [car], orderId, due, days });
     }
-    return out.sort((a, b) => a.due.getTime() - b.due.getTime());
+    return [...groups.values()].sort((a, b) => a.due.getTime() - b.due.getTime());
   }, [cars]);
 
   const arriving = useMemo(
@@ -379,7 +395,7 @@ export function NotificationCenter() {
   // No bell at all when there is nothing behind it. It stays while the panel is
   // open (so clearing the last notice does not yank it out from under the
   // cursor) and while a dialog it raised is still on screen.
-  if (count === 0 && !open && !payFor && !statusFor && !batchFor) return null;
+  if (count === 0 && !open && !payFor && !statusFor && !statusBatch && !batchFor) return null;
 
   return (
     <>
@@ -712,20 +728,38 @@ export function NotificationCenter() {
               link={{ to: "/preorders", onClick: () => setOpen(false) }}
             >
               {visibleLaunches.map((l) => {
-                const balance = Math.max((l.car.spent || 0) - (l.car.paid || 0), 0);
+                const [first] = l.cars;
+                // An order of several stands for all of them: their total, their
+                // balance, and the brand only while they agree on one.
+                const many = l.cars.length > 1;
+                const spent = l.cars.reduce((n, c) => n + (c.spent || 0), 0);
+                const balance = l.cars.reduce(
+                  (n, c) => n + Math.max((c.spent || 0) - (c.paid || 0), 0),
+                  0,
+                );
+                const brand = l.cars.every((c) => c.brand === first.brand) ? first.brand : "";
                 const when = whenLabel(l.days);
                 return (
                   <ShipmentItem
                     key={launchKey(l)}
-                    car={l.car}
+                    car={first}
                     thumb
-                    onOpen={() => act(() => drawer.open(l.car))}
+                    brand={many ? brand : undefined}
+                    idLabel={many ? l.orderId : undefined}
+                    detail={many ? plural(l.cars.length, "car") : undefined}
+                    amount={many ? spent : undefined}
+                    onOpen={() => act(() => drawer.open(first))}
                     meta={
                       <>
                         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                          {many && (
+                            <span className="font-medium text-foreground">
+                              + {plural(l.cars.length - 1, "more car")}
+                            </span>
+                          )}
                           <span className="inline-flex items-center gap-1">
                             <Wallet className="size-3" />
-                            {l.car.seller || "Seller not recorded"}
+                            {first.seller || "Seller not recorded"}
                           </span>
                           {balance > 0 && (
                             <>
@@ -747,20 +781,35 @@ export function NotificationCenter() {
                     }
                     actions={
                       <>
-                        {balance > 0 && (
+                        {/* One car's balance can be settled from here. A whole
+                            order's cannot: paying takes an amount against a
+                            single row, so an order opens where its cars are. */}
+                        {!many && balance > 0 && (
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => act(() => setPayFor(l.car))}
+                            onClick={() => act(() => setPayFor(first))}
                             className="gap-1.5 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
                           >
                             <IndianRupee className="size-3.5" />
                             Pay balance
                           </Button>
                         )}
-                        <UpdateStatusButton onClick={() => act(() => setStatusFor(l.car))} />
+                        <UpdateStatusButton
+                          onClick={() =>
+                            act(() =>
+                              many
+                                ? setStatusBatch({
+                                    shippingId: l.orderId,
+                                    seller: first.seller || "",
+                                    items: l.cars,
+                                  })
+                                : setStatusFor(first),
+                            )
+                          }
+                        />
                         <DismissButton
-                          label={l.car.name || l.car.model}
+                          label={many ? l.orderId : first.name || first.model}
                           onClick={() => clear([launchKey(l)])}
                         />
                       </>
@@ -774,7 +823,14 @@ export function NotificationCenter() {
       </Popover>
 
       <PayBalanceDialog car={payFor} onClose={() => setPayFor(null)} />
-      <StatusUpdateDialog car={statusFor} onClose={() => setStatusFor(null)} />
+      <StatusUpdateDialog
+        car={statusFor}
+        batch={statusBatch}
+        onClose={() => {
+          setStatusFor(null);
+          setStatusBatch(null);
+        }}
+      />
       <ShippingBatchDialog
         open={batchFor !== null}
         onOpenChange={(v) => !v && setBatchFor(null)}
