@@ -195,3 +195,21 @@ export function shortMonthLabel(label: string): string {
   if (!mon || !yr) return label;
   return `${mon} ${yr.slice(-2)}`;
 }
+
+/**
+ * How long ago, and never anything else: "Today", "Yesterday", "5 days ago".
+ *
+ * relativeDay reads forward as well, and falls back to a date after a week,
+ * which is right for something you are waiting for. A shelf of what was just
+ * added only ever looks back — and a pre-order somebody filed with tomorrow's
+ * date is a typo, not news from the future, so anything today or later reads
+ * as Today.
+ */
+export function daysAgo(dt: Date, now = new Date()): string {
+  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const b = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  const diff = Math.round((a.getTime() - b.getTime()) / 86400000);
+  if (diff <= 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return `${diff} days ago`;
+}

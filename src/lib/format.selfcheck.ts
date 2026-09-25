@@ -8,7 +8,7 @@
  */
 import assert from "node:assert";
 
-import { relativeDay } from "@/lib/format";
+import { daysAgo, relativeDay } from "@/lib/format";
 
 /** Late on a Wednesday, so "tomorrow" is only just over an hour away. */
 const now = new Date(2026, 8, 23, 22, 45);
@@ -28,3 +28,14 @@ assert.equal(relativeDay(at(61), now), "23, Nov '26");
 assert.equal(relativeDay(at(-7), now), "16, Sep '26");
 
 console.log("format: relativeDay reads forward and back across the day boundary.");
+
+// daysAgo only ever looks back: a shelf of what was just added has no use for
+// "In 2 days", and a date typed a day ahead is a typo rather than news.
+assert.equal(daysAgo(at(0), now), "Today");
+assert.equal(daysAgo(at(1, 0), now), "Today", "a day ahead is not news from the future");
+assert.equal(daysAgo(at(-1), now), "Yesterday");
+assert.equal(daysAgo(at(-1, 23), now), "Yesterday", "late yesterday is still yesterday");
+assert.equal(daysAgo(at(-5), now), "5 days ago");
+assert.equal(daysAgo(at(-40), now), "40 days ago", "never falls back to a date");
+
+console.log("format: daysAgo counts backwards only.");

@@ -33,6 +33,7 @@ import {
   formatDMY,
   formatDayMonthYear,
   relativeDay,
+  daysAgo,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
@@ -337,9 +338,7 @@ function DashboardPage() {
         // room the shelves would have had rather than sitting in a thin strip
         // above nothing.
         <KpiBand
-          className={
-            quiet ? "[&>*]:min-h-20 [&>*]:justify-between md:[&>*]:min-h-32" : undefined
-          }
+          className={quiet ? "[&>*]:min-h-20 [&>*]:justify-between md:[&>*]:min-h-32" : undefined}
         >
           {kpis.map((k) => (
             <KpiTile
@@ -918,6 +917,20 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
     return viewing ? toCarWithCatalogId(viewing, "preorder-car") : null;
   }, [viewing, toCarWithCatalogId]);
 
+  // Newest first, by the day the pre-order was placed, which is what the card
+  // says about it. The list arrives in the order the rows were filed, and that
+  // is close but not the same thing.
+  //
+  // Some of those days are ahead of today — an order dated for the drop it is
+  // waiting on. They count as today rather than sorting above everything that
+  // really is today, and ties keep the order they arrived in, newest row first.
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const shelf = cars
+    .map((c) => ({ c, added: parseDMY(c.lastOrdered) }))
+    .sort(
+      (a, b) => Math.min(b.added?.getTime() ?? 0, today) - Math.min(a.added?.getTime() ?? 0, today),
+    );
+
   if (loading || cars.length === 0) return null;
 
   return (
@@ -932,10 +945,9 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
         <ShoppingBag className="size-4 text-accent" />
       </div>
       <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
-        {cars.map((c, i) => {
+        {shelf.map(({ c, added }, i) => {
           // Shaped as a car for the card pointing to the actual car in the catalogue
           const asCar = toCarWithCatalogId(c, `preorder-${i}`);
-          const ordered = parseDMY(c.lastOrdered);
           return (
             <div key={asCar.id ?? i} className="relative w-36 shrink-0 snap-start sm:w-40">
               <CompactCarCard
@@ -946,11 +958,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
                 // the car, and the details view carries an Edit button.
                 onOpen={() => setViewing(c)}
                 caption={
-                  c.inMyCollection
-                    ? "In your collection"
-                    : ordered
-                      ? relativeDay(ordered, now)
-                      : undefined
+                  c.inMyCollection ? "In your collection" : added ? daysAgo(added, now) : undefined
                 }
                 marksOffset
                 className="w-full"
