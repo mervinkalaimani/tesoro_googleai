@@ -321,7 +321,15 @@ function DashboardPage() {
           with the rest of what expires — it followed you off the dashboard
           rather than waiting there to be noticed. */}
       {kpis.length > 0 && (
-        <KpiBand>
+        // A quiet week — nothing landed, nobody pre-ordered — leaves the page
+        // short, and the numbers are what is left to look at. They take the
+        // room the shelves would have had rather than sitting in a thin strip
+        // above nothing.
+        <KpiBand
+          className={
+            quiet ? "[&>*]:min-h-20 [&>*]:justify-between md:[&>*]:min-h-32" : undefined
+          }
+        >
           {kpis.map((k) => (
             <KpiTile
               key={k.key}
@@ -859,6 +867,35 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
     [resolveCatalogCar],
   );
 
+  /**
+   * The entry an admin edits. A shared pre-order for a casting nobody has filed
+   * yet has no entry to open, so one is built from the pre-order itself and the
+   * form saves it as new — which is the whole point of the Edit button being
+   * there on a casting that is missing.
+   */
+  const catalogEntryFor = useCallback(
+    (p: RecentPreorder): CatalogCar =>
+      resolveCatalogCar(p) ?? {
+        car_id: toCarWithCatalogId(p, "preorder-car").catalogId || "temp",
+        name: p.name,
+        make: p.make,
+        model: p.model,
+        brand: p.brand,
+        assortment: p.assortment,
+        series: p.series,
+        sub_series: p.subSeries,
+        year: p.year ? String(p.year) : "",
+        colour: p.colour,
+        variant: p.variant,
+        car_number: p.carNumber,
+        type: p.type,
+        size: p.size,
+        image_url: p.imageUrl,
+        mrp: p.mrp,
+      },
+    [resolveCatalogCar, toCarWithCatalogId],
+  );
+
   const viewingCatalogCar = useMemo(() => {
     return viewing ? resolveCatalogCar(viewing) : undefined;
   }, [viewing, resolveCatalogCar]);
@@ -889,36 +926,11 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
             <div key={asCar.id ?? i} className="relative w-36 shrink-0 snap-start sm:w-40">
               <CompactCarCard
                 car={asCar}
-                onOpen={() => {
-                  if (isAdmin) {
-                    const cat = resolveCatalogCar(c);
-                    if (cat) {
-                      setEditingCatalog(cat);
-                    } else {
-                      const fallbackEntry: CatalogCar = {
-                        car_id: asCar.id || asCar.catalogId || "temp",
-                        name: c.name,
-                        make: c.make,
-                        model: c.model,
-                        brand: c.brand,
-                        series: c.series,
-                        sub_series: c.subSeries,
-                        year: c.year ? String(c.year) : undefined,
-                        colour: c.colour,
-                        tampo: c.tampo,
-                        casting_number: c.castingNumber,
-                        car_number: c.carNumber,
-                        type: c.type,
-                        size: c.size,
-                        photo_url: c.photoUrl,
-                        mrp: c.mrp,
-                      };
-                      setEditingCatalog(fallbackEntry);
-                    }
-                  } else {
-                    setViewing(c);
-                  }
-                }}
+                // What the casting is, for everybody. An admin used to be sent
+                // straight into the catalogue form instead, which is an odd
+                // answer to tapping a card: the first thing you want is to see
+                // the car, and the details view carries an Edit button.
+                onOpen={() => setViewing(c)}
                 caption={
                   c.inMyCollection
                     ? "In your collection"
@@ -929,16 +941,8 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
                 marksOffset
                 className="w-full"
               />
-              {/* A sibling over the card, not inside it: the card is a button. */}
-              <button
-                type="button"
-                onClick={() => setAdding(c)}
-                aria-label={`${c.inMyCollection ? "Add another" : "Add to collection"}: ${c.name}`}
-                title={c.inMyCollection ? "Add another" : "Add to collection"}
-                className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-90"
-              >
-                <Plus className="size-4" />
-              </button>
+              {/* No + over the photo. Adding it is a button in the details view,
+                  one tap further in and beside the thing it describes. */}
             </div>
           );
         })}
@@ -952,12 +956,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
         onClose={() => setViewing(null)}
         canEdit={isAdmin}
         onEdit={() => {
-          if (viewingCatalogCar) {
-            setEditingCatalog(viewingCatalogCar);
-          } else if (viewing) {
-            const cat = resolveCatalogCar(viewing);
-            if (cat) setEditingCatalog(cat);
-          }
+          if (viewing) setEditingCatalog(catalogEntryFor(viewing));
           setViewing(null);
         }}
         onAdd={() => {
@@ -1302,11 +1301,12 @@ function TopDetailDialog({
  * that lives in the bell, not here. This shelf is for everyone.
  */
 function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
-  const { catalog, isLoading } = useCatalog();
-  const { isAdmin } = useAuth();
+  const { catalog, isLoading, updateCatalogCar } = useCatalog();
+  const { isAdmin, isOwner, isGuest } = useAuth();
   const cars = useCars();
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<CatalogCar | null>(null);
+  const [editingCatalog, setEditingCatalog] = useState<CatalogCar | null>(null);
 
   /** Castings you are waiting on, so "My PO" has something to narrow against. */
   const myPreorderIds = useMemo(() => {
@@ -1355,7 +1355,6 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
       </div>
       <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
         {releases.map((r) => {
-          const owned = ownedIds.has(r.entry.car_id.trim().toUpperCase());
           return (
             <div key={r.entry.car_id} className="relative w-36 shrink-0 snap-start sm:w-40">
               <CompactCarCard
@@ -1365,15 +1364,6 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
                 marksOffset
                 className="w-full"
               />
-              <button
-                type="button"
-                onClick={() => setAdding(r.entry)}
-                aria-label={`${owned ? "Add another" : "Add to collection"}: ${r.entry.name}`}
-                title={owned ? "Add another" : "Add to collection"}
-                className="absolute right-1 top-1 grid size-7 place-items-center rounded-full bg-primary text-primary-foreground shadow-md transition-transform active:scale-90"
-              >
-                <Plus className="size-4" />
-              </button>
             </div>
           );
         })}
@@ -1386,6 +1376,12 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         owned={Boolean(viewing && ownedIds.has(viewing.car_id.trim().toUpperCase()))}
         onClose={() => setViewing(null)}
         canEdit={isAdmin}
+        // The Edit button was drawn for admins here but had nothing behind it:
+        // canEdit without onEdit renders nothing at all.
+        onEdit={() => {
+          setEditingCatalog(viewing);
+          setViewing(null);
+        }}
         onAdd={() => {
           const target = viewing;
           setViewing(null);
@@ -1399,6 +1395,16 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
         prefillStatus="Ordered"
       />
+      {isAdmin && (
+        <CatalogFormDialog
+          open={editingCatalog !== null}
+          entry={editingCatalog}
+          catalog={catalog}
+          onClose={() => setEditingCatalog(null)}
+          canDelete={isOwner && !isGuest}
+          onSave={updateCatalogCar}
+        />
+      )}
     </div>
   );
 }

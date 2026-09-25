@@ -56,6 +56,7 @@ import { useAuth } from "@/lib/auth-store";
 import { CatalogOwnersDialog, parseDateVal } from "@/components/catalog-owners-dialog";
 import { StatusPill } from "@/components/status-pill";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CarThumb } from "@/components/car-thumb";
@@ -87,12 +88,14 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
 
   const cars = useCars();
   const { updateCar } = useCarsActions();
-  const { catalog } = useCatalog();
+  const { catalog, updateCatalogCar } = useCatalog();
+  const { isAdmin } = useAuth();
 
   const [viewCatalogCar, setViewCatalogCar] = useState<{
     car: Diecast;
     catalogCar: CatalogCar | null;
   } | null>(null);
+  const [editCatalogEntry, setEditCatalogEntry] = useState<CatalogCar | null>(null);
   const [addAnotherCar, setAddAnotherCar] = useState<Diecast | null>(null);
 
   // Find latest car state by ID
@@ -221,13 +224,39 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
         />
       )}
 
-      {/* View in Catalog dialog */}
+      {/* View in Catalog dialog. An admin gets the same Edit button here as on
+          the Catalog page — the casting is the same shared entry whichever door
+          you came through, and finding a mistake while looking at your own car
+          is the likeliest way to find one at all. */}
       {viewCatalogCar && (
         <CatalogCarDetails
           car={viewCatalogCar.car}
           catalogCar={viewCatalogCar.catalogCar}
-          open={Boolean(viewCatalogCar)}
+          // You arrived here from a car you own, so the view says so, and Add
+          // means another one of the same casting.
+          preOrder={false}
+          owned
+          onAdd={() => {
+            setAddAnotherCar(viewCatalogCar.car);
+            setViewCatalogCar(null);
+          }}
           onClose={() => setViewCatalogCar(null)}
+          canEdit={isAdmin}
+          onEdit={() => {
+            setEditCatalogEntry(viewCatalogCar.catalogCar);
+            setViewCatalogCar(null);
+          }}
+        />
+      )}
+
+      {isAdmin && (
+        <CatalogFormDialog
+          open={editCatalogEntry !== null}
+          entry={editCatalogEntry}
+          catalog={catalog}
+          onClose={() => setEditCatalogEntry(null)}
+          canDelete={false}
+          onSave={updateCatalogCar}
         />
       )}
 

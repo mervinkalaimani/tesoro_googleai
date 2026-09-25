@@ -6,15 +6,20 @@ import { cn } from "@/lib/utils";
 /**
  * Where tile `i` of `total` sits on the phone's six-column grid.
  *
- * Three to a row while there is a full row left; the one or two that remain
- * share the last row between them, so a set of five or seven fills its space
- * instead of leaving a tile-shaped hole at the bottom.
+ * Three to a row, and the one or two tiles that cannot make a full row take the
+ * extra width at the *front* rather than the back. Seven tiles put the first
+ * across the whole width and then two rows of three; five give the first two
+ * half a row each and then a row of three. Either way the grid fills with no
+ * tile-shaped hole at the bottom, and the widest tile is never the last one.
+ *
+ * Which matters because the first two tiles are In hand and In transit: what
+ * you have and what is coming. The old rule handed the spare width to whatever
+ * happened to be at the end of the list, so a set of five drew Late wider than
+ * either of them.
  */
 export function bentoSpan(i: number, total: number): string {
-  if (total === 4) return "col-span-3";
-  const fullRows = Math.floor(total / 3) * 3;
-  if (i < fullRows) return "col-span-2";
-  const rest = total - fullRows;
+  const rest = total % 3;
+  if (rest === 0 || i >= rest) return "col-span-2";
   return rest === 1 ? "col-span-6" : "col-span-3";
 }
 
