@@ -15,6 +15,7 @@ import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
 import { carSubLine } from "@/lib/car-subline";
 import { mrpOptionsFor, topSellers, assortmentChipsFor } from "@/lib/car-prices";
+import { catalogueFill } from "@/lib/catalogue-fill";
 import { useSuggestionPool } from "@/lib/suggestion-pool";
 import {
   assortmentOptionsFor,
@@ -94,7 +95,7 @@ import {
   X,
   ClipboardCheck,
   Search,
-  Loader2,
+  Loader2,  BookOpen,
 } from "lucide-react";
 
 const STATUS_OPTIONS = STATUSES;
@@ -1058,6 +1059,47 @@ export function CarFormDialog({
     form.colour,
   ]);
 
+  /**
+   * The entry to copy from when you ask for it: this row's own catalogue id
+   * first, and only then a match on what is currently typed — an edit that has
+   * drifted from the casting still belongs to the casting it was filed under.
+   */
+  const catalogueSource = useMemo(() => {
+    const id = (initial?.catalogId || "").trim().toUpperCase();
+    const byId = id ? catalog.find((c) => c.car_id.toUpperCase() === id) : undefined;
+    return byId ?? existingCatalogMatch ?? null;
+  }, [catalog, initial?.catalogId, existingCatalogMatch]);
+
+  /**
+   * Fill the casting's fields from the catalogue, on purpose.
+   *
+   * Adding a car takes the catalogue's description automatically; an edit never
+   * did, so a row filed before the entry was corrected kept the old spelling
+   * for good. This is that correction, asked for rather than applied.
+   *
+   * It clears your own name and price rather than working around them, which
+   * is the point of pressing it: the row goes back to saying exactly what the
+   * catalogue says, and because the propagate trigger only skips a row whose
+   * name and price have drifted from the entry, this row starts receiving
+   * corrections again instead of having opted out of them for good.
+   *
+   * Untouched: what you paid, who you bought it from, and every date.
+   */
+  const fillFromCatalogue = () => {
+    const entry = catalogueSource;
+    if (!entry) {
+      toast.error("Nothing to copy", {
+        description: "This casting has no catalogue entry yet.",
+      });
+      return;
+    }
+    setForm((f) => catalogueFill(f, entry));
+    setValidationError(null);
+    toast.success("Filled from the catalogue", {
+      description: "Name, price and photo now match the entry. What you paid is untouched.",
+    });
+  };
+
   const derivedCatalogCarId = useMemo(
     () =>
       existingCatalogMatch?.car_id ??
@@ -1620,9 +1662,27 @@ export function CarFormDialog({
               </span>
             )}
           </div>
-          {/* Adding, you can go back and pick a different casting.
-                      Editing, the car is the car. */}
-          {!isEdit && (
+          {/* Adding, you can go back and pick a different casting. Editing, the
+              car is the car — so the button here copies what the catalogue says
+              about it instead of changing which casting it is. */}
+          {isEdit ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0 gap-1.5"
+              onClick={fillFromCatalogue}
+              disabled={!catalogueSource}
+              title={
+                catalogueSource
+                  ? "Copy this casting's details from the catalogue"
+                  : "This casting has no catalogue entry yet"
+              }
+            >
+              <BookOpen className="size-3.5 shrink-0" />
+              <span className="truncate">Get from Catalogue</span>
+            </Button>
+          ) : (
             <Button
               type="button"
               variant="outline"
