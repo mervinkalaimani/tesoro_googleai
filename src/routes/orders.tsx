@@ -60,7 +60,7 @@ type SortMode = "expected" | "status" | "seller" | "orderDate";
 type Tab = "all" | "transit" | "ordered" | "onHold" | "preOrder" | "late" | "delivered";
 
 const TABS: { value: Tab; label: string }[] = [
-  { value: "all", label: "All" },
+  { value: "all", label: "All Active" },
   { value: "transit", label: "In Transit" },
   { value: "ordered", label: "Ordered" },
   { value: "onHold", label: "On Hold" },
@@ -79,10 +79,11 @@ const TAB_STATUS: Record<"transit" | "ordered" | "onHold" | "preOrder", Status> 
 function inTab(r: Diecast, tab: Tab): boolean {
   const delivered = isInHand(r.status);
   if (tab === "delivered") return delivered;
-  // "All" means all of it, delivered included. It used to quietly exclude
-  // them, which made the count under the heading disagree with the tabs.
-  if (tab === "all") return true;
+  // All Active: everything still owed to you. A delivered order is finished
+  // business and has a tab of its own — mixing the two meant the first screen
+  // of this page was mostly parcels that had already arrived.
   if (delivered) return false;
+  if (tab === "all") return true;
   // Late is a fact about a car, not a status, so it crosses the other tabs
   // rather than excluding them: a late parcel is still In Transit.
   if (tab === "late") return isLate(r);
@@ -414,6 +415,19 @@ function OrdersPage() {
     // so ties still fall back the same way.
     const sign = dir === "asc" ? 1 : -1;
     return out.sort((a, b) => {
+      // What is closest to your hands leads, whatever the dates say: In
+      // Transit, then Ordered, then On Hold, then PO. A pre-order with an
+      // earlier expected date is not more urgent than a parcel that is out
+      // for delivery — it is a guess at a release, months out, against a
+      // courier who has your box today.
+      //
+      // Sorting by seller or by order date is an explicit ask for a different
+      // shape, so those two are left to do what they say.
+      if (mode === "expected" || mode === "status") {
+        const byStatus = (rank(a) - rank(b)) * (mode === "status" ? sign : 1);
+        if (byStatus !== 0) return byStatus;
+      }
+
       if (mode === "expected") {
         // Delivered orders, and ones with no date to go by, stay at the bottom
         // whichever way the dates run.

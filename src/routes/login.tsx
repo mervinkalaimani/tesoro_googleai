@@ -279,7 +279,7 @@ function LoginPage() {
           <img src="/tesoro_app_icon_dark.svg" alt="" className="size-20 sm:size-24" />
           {/* The wordmark itself rather than the word set in the UI typeface,
               which is the one place the brand was spelled out in Inter. */}
-          <h1 className="mt-4 w-40 sm:w-48">
+          <h1 className="-mt-4 w-40 sm:w-48">
             <HomeScreenMark />
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
