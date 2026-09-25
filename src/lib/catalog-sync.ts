@@ -27,7 +27,11 @@ export function applyCatalogToCar(
 ): { car: Diecast; changed: boolean } {
   let changed = false;
 
-  const newName = cat.name || `${cat.make} ${cat.model}`.trim() || car.name;
+  // Your name for your copy. Same rule the database keeps for it: the catalogue
+  // fills a blank and never rewrites what is already there. A correction to the
+  // shared entry reaches untouched rows through tesoro_catalog_propagate, which
+  // is the one writer that knows whether you have made the row yours.
+  const newName = car.name || cat.name || `${cat.make} ${cat.model}`.trim();
   const newMake = cat.make || car.make;
   const newModel = cat.model || car.model;
   const newVariant = cat.variant !== undefined ? cat.variant : car.variant;
