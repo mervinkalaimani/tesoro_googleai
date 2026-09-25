@@ -29,6 +29,7 @@ import {
   FONT_SIZE_OPTIONS,
   ARRIVING_SOON_OPTIONS,
   ARRIVING_WINDOW_OPTIONS,
+  ARRIVING_WINDOW_DEFAULT,
   RELEASED_OPTIONS,
   useApp,
   type AccentColor,
@@ -626,8 +627,8 @@ export function SettingsPage() {
                         : arrivingSoon === "custom"
                           ? "Always shown, over the window you pick below."
                           : "Hidden."}{" "}
-                    Cars due in your hands within {arrivingSoon === "custom" ? arrivingDays : 30}{" "}
-                    days.
+                    Cars due in your hands within{" "}
+                    {arrivingSoon === "custom" ? arrivingDays : ARRIVING_WINDOW_DEFAULT} days.
                   </div>
                 </div>
                 <SegmentControl

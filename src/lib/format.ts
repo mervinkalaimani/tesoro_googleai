@@ -83,6 +83,12 @@ export function relativeDay(dt: Date, now = new Date()): string {
   if (diff === 0) return "Today";
   if (diff === 1) return "Yesterday";
   if (diff > 1 && diff < 7) return `${diff} days ago`;
+  // Forward as well as back. A shelf of what is coming said "28, Sep '26",
+  // which you have to compare against today's date to make sense of; the
+  // reason to look at it is how long the wait is. Past two months a date
+  // reads better than "In 74 days".
+  if (diff === -1) return "Tomorrow";
+  if (diff < -1 && diff >= -60) return `In ${-diff} days`;
   return formatDayMonthYear(b);
 }
 

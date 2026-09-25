@@ -21,6 +21,8 @@ export function CompactCarCard({
   car,
   onOpen,
   caption,
+  detail,
+  statusInPhoto = false,
   marksOffset = false,
   className = "",
   copies = 1,
@@ -35,6 +37,18 @@ export function CompactCarCard({
    * on some cards and not others is what makes a row of them ragged.
    */
   caption?: string;
+  /**
+   * The third line, in place of the assortment. A shelf where every card is
+   * the same kind of thing has better uses for that line — who it is coming
+   * from, on the cars that are on their way.
+   */
+  detail?: string;
+  /**
+   * Put the status on the photograph instead of beside the brand. Frees the
+   * second line where the pill is the same on every card in the row, and the
+   * corner of the picture is empty anyway.
+   */
+  statusInPhoto?: boolean;
   /**
    * Sizing, from whoever is laying these out. A grid sets its own column width
    * and passes nothing; a single scrolling row passes a fixed width here rather
@@ -78,6 +92,15 @@ export function CompactCarCard({
           </div>
         )}
 
+        {statusInPhoto && car.status && (
+          <div className="pointer-events-none absolute bottom-1 right-1">
+            <StatusPill
+              status={car.status}
+              className="text-[9px] px-1.5 py-0 leading-tight shadow-sm backdrop-blur-sm"
+            />
+          </div>
+        )}
+
         {(car.chase || car.favourite) && (
           <div
             className={`pointer-events-none absolute top-1 flex items-center gap-1 ${marksOffset ? "right-9" : "right-1"}`}
@@ -102,7 +125,7 @@ export function CompactCarCard({
         </div>
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
           <span className="flex items-center gap-1 min-w-0 truncate text-[10px]">
-            {car.status && (
+            {!statusInPhoto && car.status && (
               <StatusPill
                 status={car.status}
                 className="text-[9px] px-1.5 py-0 leading-tight shrink-0"
@@ -114,11 +137,12 @@ export function CompactCarCard({
             {car.spent ? inr(car.spent) : "—"}
           </span>
         </div>
-        {/* Third line: the assortment, and when there is one, the day on the
-            right — lined up under the price the way the brand is under the name. */}
+        {/* Third line: the assortment unless the caller has something better to
+            say there, and when there is one, the day on the right — lined up
+            under the price the way the brand is under the name. */}
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
           <span className="truncate text-[10px] text-muted-foreground">
-            {car.assortment || "—"}
+            {detail || car.assortment || "—"}
           </span>
           {caption && (
             <span className="shrink-0 text-[10px] text-muted-foreground/80">{caption}</span>

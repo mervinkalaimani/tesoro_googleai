@@ -22,7 +22,7 @@ import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import { isInHand, isOpenOrder, normaliseStatus, type Status } from "@/lib/status";
 import { isLate, arrivingWithin } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
-import { useApp, type ReleasedPreference } from "@/lib/store";
+import { ARRIVING_WINDOW_DEFAULT, useApp, type ReleasedPreference } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import {
   inr,
@@ -201,8 +201,10 @@ function DashboardPage() {
     return sharedPreorders.filter((c) => !onMyList.has(catalogueKey(c)));
   }, [sharedPreorders, cars]);
 
-  // Auto and Always look a month ahead; Custom looks however far you said.
-  const windowDays = arrivingSoon === "custom" ? arrivingDays : ARRIVING_DAYS;
+  // Auto and Always look three days ahead, the same window Recently added
+  // looks back over; Custom looks however far you said. A month of deliveries
+  // is a month of scrolling to find the one arriving tomorrow.
+  const windowDays = arrivingSoon === "custom" ? arrivingDays : ARRIVING_WINDOW_DEFAULT;
   const arriving = useMemo(() => arrivingWithin(data, windowDays), [data, windowDays]);
   // A shelf you have switched off counts as empty here. "Auto" means "stand in
   // for the other two when they have nothing to say", and a hidden shelf has
@@ -380,9 +382,6 @@ const isTransit = (s: string) => {
 
 /** Today, yesterday, and the day before — the window "Recently added" covers. */
 const RECENT_DAYS = 3;
-
-/** How far ahead "Arriving soon" looks. A month of deliveries is a month worth planning. */
-const ARRIVING_DAYS = 30;
 
 function TransitTracker({
   rows,
@@ -779,6 +778,12 @@ function ArrivingSoon({
             car={car}
             onOpen={() => openDrawer(car)}
             caption={relativeDay(parseDMY(day) ?? now, now)}
+            // Everything in this row is on its way, so the pill saying which
+            // kind of on-its-way goes on the photograph, and the line it used
+            // to share carries who you are waiting on instead of a series name
+            // you can read off the card above it.
+            statusInPhoto
+            detail={car.seller || "—"}
             className="w-36 shrink-0 snap-start sm:w-40"
           />
         ))}
