@@ -918,18 +918,12 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
   }, [viewing, toCarWithCatalogId]);
 
   // Newest first, by the day the pre-order was placed, which is what the card
-  // says about it. The list arrives in the order the rows were filed, and that
-  // is close but not the same thing.
-  //
-  // Some of those days are ahead of today — an order dated for the drop it is
-  // waiting on. They count as today rather than sorting above everything that
-  // really is today, and ties keep the order they arrived in, newest row first.
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  // says about it. Ties keep the order they arrived in, newest row first. The
+  // window and the "not dated after today" rule are the query's, so every day
+  // here is a day that has happened.
   const shelf = cars
     .map((c) => ({ c, added: parseDMY(c.lastOrdered) }))
-    .sort(
-      (a, b) => Math.min(b.added?.getTime() ?? 0, today) - Math.min(a.added?.getTime() ?? 0, today),
-    );
+    .sort((a, b) => (b.added?.getTime() ?? 0) - (a.added?.getTime() ?? 0));
 
   if (loading || cars.length === 0) return null;
 
