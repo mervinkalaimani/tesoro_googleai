@@ -61,6 +61,7 @@ import { catalogueKey, useRecentPreorders, type RecentPreorder } from "@/lib/cat
 import { isPreOrder } from "@/lib/status-order";
 import { carSubLine } from "@/lib/car-subline";
 import { useCatalog } from "@/lib/catalog-store";
+import { isPackMember, packMemberIds } from "@/lib/pack";
 import {
   isCarMatchingCatalog,
   catalogCarToCatalogueCar,
@@ -182,10 +183,18 @@ function DashboardPage() {
     showNewPreorders,
   } = useApp();
   const cars = useCars();
+  const { packMembers } = useCatalog();
   const { profile, isGuest } = useAuth();
   const { refreshing } = useCarsRefresh();
   const loading = refreshing && cars.length === 0;
-  const data = useMemo(() => filterRows(cars, query), [cars, query]);
+  // Cars that only come inside a box are left out of every figure on this
+  // page: the box is the purchase, and counting what is in it as well doubles
+  // both the count and the spend.
+  const memberIds = useMemo(() => packMemberIds(packMembers), [packMembers]);
+  const data = useMemo(() => {
+    const rows = filterRows(cars, query);
+    return memberIds.size === 0 ? rows : rows.filter((c) => !isPackMember(c, memberIds));
+  }, [cars, query, memberIds]);
 
   // Both shelves are worked out here rather than inside themselves, because
   // "Arriving soon" only appears when both came up empty — and a section

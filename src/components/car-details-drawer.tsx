@@ -496,36 +496,58 @@ function CarPopupContent({
     return cars.filter((c) => isExactMatch(c, car)).length;
   }, [cars, car]);
 
-  const seriesCars = useMemo(() => {
-    if (!seriesName) return [];
-    const targetSeries = seriesName.toLowerCase();
-    return cars.filter((c) => (c.series || "").trim().toLowerCase() === targetSeries);
-  }, [cars, seriesName]);
+  const { pack } = usePack(car.catalogId);
+  const hasPack = Boolean(pack?.is_multipack);
 
-  const setCars = useMemo(() => {
-    if (!setName) return [];
-    const targetSet = setName.toLowerCase();
-    return cars.filter((c) => {
-      const cSet = ((c as unknown as { set?: string }).set || c.subSeries || "")
-        .trim()
-        .toLowerCase();
-      return cSet === targetSet;
-    });
-  }, [cars, setName]);
+  /**
+   * What else there is to look at, narrowest first.
+   *
+   * Three readings of "more like this", each a tighter ring than the last:
+   * the series, the set inside it, and the assortment the whole lot came from.
+   * Every one of them is scoped to the brand — Car Culture is a Hot Wheels
+   * idea, and a Matchbox car sharing the word was never the same series.
+   *
+   * Only the first one or two are drawn. A shelf of shelves is a second page
+   * stapled to this one, and the panel has a box's contents to carry first.
+   */
+  const shelves = useMemo(() => {
+    const norm = (v?: string | null) => (v || "").trim().toLowerCase();
+    const setOf = (c: Diecast) => (c as unknown as { set?: string }).set || c.subSeries;
 
-  // Cars other than the current car
-  const otherSeriesCars = useMemo(() => {
-    return seriesCars.filter((c) => c.id !== car.id);
-  }, [seriesCars, car.id]);
+    const brand = norm(car.brand);
+    const series = norm(car.series);
+    const sub = norm(setOf(car));
+    const assortment = norm(car.assortment);
 
-  const otherSetCars = useMemo(() => {
-    return setCars.filter((c) => c.id !== car.id);
-  }, [setCars, car.id]);
+    const kin = cars.filter((c) => c.id !== car.id && norm(c.brand) === brand);
+    const out: { key: string; heading: string; cars: Diecast[] }[] = [];
 
-  const hasMoreToShow = otherSeriesCars.length > 0 || otherSetCars.length > 0;
+    if (series) {
+      const list = kin.filter((c) => norm(c.series) === series);
+      if (list.length) out.push({ key: "series", heading: seriesHeading, cars: list });
+    }
+    if (series && sub) {
+      const list = kin.filter((c) => norm(c.series) === series && norm(setOf(c)) === sub);
+      if (list.length) out.push({ key: "set", heading: setHeading, cars: list });
+    }
+    if (assortment) {
+      const list = kin.filter((c) => norm(c.assortment) === assortment);
+      if (list.length)
+        out.push({
+          key: "assortment",
+          heading: `More from ${(car.assortment || "").trim()}`,
+          cars: list,
+        });
+    }
+    return out;
+  }, [cars, car, seriesHeading, setHeading]);
 
-  // A set that holds only this car has nothing to show beside it.
-  const showSet = setCars.length > 1;
+  const visibleShelves = useMemo(
+    () => shelves.slice(0, hasPack ? 1 : 2),
+    [shelves, hasPack],
+  );
+
+  const hasMoreToShow = hasPack || visibleShelves.length > 0;
 
   const spent = Math.round(car.spent ?? 0);
   const mrp = Math.round(car.mrp ?? 0);
@@ -625,57 +647,33 @@ function CarPopupContent({
           </div>
         </div>
 
-        {/* RIGHT COLUMN: More from series & set (ONLY RENDERED IF hasMoreToShow) */}
+        {/* RIGHT COLUMN: what is in the box, then what else is like it. */}
         {hasMoreToShow && (
           <div className="w-[360px] xl:w-[390px] shrink-0 px-5 py-4 xl:px-6 xl:py-5 flex flex-col h-full overflow-y-auto space-y-6 scrollbar-thin">
-            {/* Series Section */}
-            {otherSeriesCars.length > 0 && (
-              <div className="space-y-2.5">
+            {hasPack && <PackContents packCarId={car.catalogId} />}
+
+            {visibleShelves.map((shelf, i) => (
+              <div key={shelf.key} className="space-y-2.5">
+                {i > 0 && <hr className="border-border/60" />}
                 <div className="flex items-center justify-between">
                   <span
                     className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
-                    title={seriesHeading}
+                    title={shelf.heading}
                   >
-                    {seriesHeading}
+                    {shelf.heading}
                   </span>
                   <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
-                    {otherSeriesCars.length} {otherSeriesCars.length === 1 ? "car" : "cars"}
+                    {shelf.cars.length} {shelf.cars.length === 1 ? "car" : "cars"}
                   </span>
                 </div>
 
                 <WebRelatedGridShelf
-                  cars={seriesCars}
+                  cars={shelf.cars}
                   currentCarId={car.id}
                   onSelectCar={onSelectCar}
                 />
               </div>
-            )}
-
-            {/* Set Section */}
-            {otherSetCars.length > 0 && (
-              <>
-                {otherSeriesCars.length > 0 && <hr className="border-border/60" />}
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground truncate"
-                      title={setHeading}
-                    >
-                      {setHeading}
-                    </span>
-                    <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0 ml-1">
-                      {otherSetCars.length} {otherSetCars.length === 1 ? "car" : "cars"}
-                    </span>
-                  </div>
-
-                  <WebRelatedGridShelf
-                    cars={setCars}
-                    currentCarId={car.id}
-                    onSelectCar={onSelectCar}
-                  />
-                </div>
-              </>
-            )}
+            ))}
           </div>
         )}
       </div>
@@ -744,6 +742,10 @@ function CarPopupContent({
 
                   <hr className="border-border" />
 
+                  {/* What is in the box, on the phone where there is only one
+                      column for it to be in. */}
+                  {hasPack && <PackContents packCarId={car.catalogId} />}
+
                   {/* Purchase & Shipping */}
                   <CarPurchaseAndShippingSection
                     car={car}
@@ -756,23 +758,24 @@ function CarPopupContent({
                     onOpenBatch={onOpenBatch}
                   />
 
-                  {/* More from series shelf */}
-                  {otherSeriesCars.length > 0 && (
-                    <div className="pt-2">
+                  {/* What else is like this one: the same one or two shelves
+                      the wide layout picks, in a row you swipe. */}
+                  {visibleShelves.map((shelf) => (
+                    <div key={shelf.key} className="pt-2">
                       <hr className="my-3.5 border-border" />
                       <div className="mb-2.5 flex items-center justify-between">
                         <span
                           className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate"
-                          title={seriesHeading}
+                          title={shelf.heading}
                         >
-                          {seriesHeading}
+                          {shelf.heading}
                         </span>
                         <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
-                          {otherSeriesCars.length} {otherSeriesCars.length === 1 ? "car" : "cars"}
+                          {shelf.cars.length} {shelf.cars.length === 1 ? "car" : "cars"}
                         </span>
                       </div>
                       <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
-                        {seriesCars.map((relatedCar) => (
+                        {shelf.cars.map((relatedCar) => (
                           <RelatedCarCard
                             key={relatedCar.id}
                             car={relatedCar}
@@ -783,36 +786,7 @@ function CarPopupContent({
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {/* More from set shelf */}
-                  {otherSetCars.length > 0 && (
-                    <div className="pt-2">
-                      <hr className="my-3.5 border-border" />
-                      <div className="mb-2.5 flex items-center justify-between">
-                        <span
-                          className="text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate"
-                          title={setHeading}
-                        >
-                          {setHeading}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground tabular-nums shrink-0 ml-1">
-                          {otherSetCars.length} {otherSetCars.length === 1 ? "car" : "cars"}
-                        </span>
-                      </div>
-                      <div className="-mx-4 flex snap-x scroll-px-4 items-stretch gap-2.5 overflow-x-auto px-4 pb-2 scrollbar-none">
-                        {setCars.map((relatedCar) => (
-                          <RelatedCarCard
-                            key={relatedCar.id}
-                            car={relatedCar}
-                            isCurrent={relatedCar.id === car.id}
-                            className="w-28 sm:w-32 shrink-0 snap-start"
-                            onSelect={() => onSelectCar?.(relatedCar)}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
             </div>
@@ -1062,9 +1036,8 @@ function CarPurchaseAndShippingSection({
 }) {
   return (
     <div className="space-y-4">
-      {/* A box you own lists its cars here, above what it cost: the first thing
-          to know about a 5-pack is which five. */}
-      <PackContents packCarId={car.catalogId} />
+      {/* What is in the box is drawn beside this rather than above it now, in
+          the panel that carries the shelves. */}
 
       {/* One grid, no headings. What a car cost and where it came from were two
           bordered blocks with two titles, which is a lot of furniture around
@@ -1633,14 +1606,28 @@ function HeroCarImage({ car }: { car: Diecast }) {
  */
 const RELATED_CAP = 24;
 
+/**
+ * What else the catalogue holds near this entry, narrowest ring first.
+ *
+ * The series it belongs to, the set inside that series, and the assortment the
+ * whole thing was packed in — each scoped to the brand, because a series name
+ * belongs to the maker that coined it. Two are drawn, or one when the panel is
+ * also carrying the contents of a box.
+ */
 function CatalogRelatedShelves({
   entry,
   onSelect,
   className,
+  limit = 2,
+  header,
 }: {
   entry: CatalogCar;
   onSelect: (c: CatalogCar) => void;
   className?: string;
+  /** How many rings to draw. */
+  limit?: number;
+  /** Drawn above the shelves, and keeps the column alive when there are none. */
+  header?: React.ReactNode;
 }) {
   const { catalog } = useCatalog();
 
@@ -1648,41 +1635,39 @@ function CatalogRelatedShelves({
     const norm = (v?: string | null) => (v || "").trim().toLowerCase();
     const brand = norm(entry.brand);
     const series = norm(entry.series);
+    const sub = norm(entry.sub_series);
+    const assortment = norm(entry.assortment);
     const selfId = (entry.car_id || "").trim().toUpperCase();
 
-    const others = catalog.filter((c) => (c.car_id || "").trim().toUpperCase() !== selfId);
-    const collection =
-      brand && series
-        ? others.filter((c) => norm(c.brand) === brand && norm(c.series) === series)
-        : [];
-    const shown = new Set(collection.map((c) => c.car_id));
+    const kin = catalog.filter(
+      (c) => (c.car_id || "").trim().toUpperCase() !== selfId && norm(c.brand) === brand,
+    );
 
-    const sameBrand = brand
-      ? others.filter((c) => norm(c.brand) === brand && !shown.has(c.car_id))
-      : [];
-    for (const c of sameBrand) shown.add(c.car_id);
+    const out: { key: string; heading: string; cars: CatalogCar[] }[] = [];
+    if (brand && series) {
+      const cars = kin.filter((c) => norm(c.series) === series);
+      if (cars.length) out.push({ key: "collection", heading: `More from ${entry.series}`, cars });
+    }
+    if (brand && series && sub) {
+      const cars = kin.filter((c) => norm(c.series) === series && norm(c.sub_series) === sub);
+      if (cars.length) out.push({ key: "set", heading: `More from ${entry.sub_series} set`, cars });
+    }
+    if (brand && assortment) {
+      const cars = kin.filter((c) => norm(c.assortment) === assortment);
+      if (cars.length)
+        out.push({ key: "assortment", heading: `More from ${entry.assortment}`, cars });
+    }
+    return out.slice(0, Math.max(0, limit));
+  }, [catalog, entry, limit]);
 
-    const sameSeries = series
-      ? others.filter((c) => norm(c.series) === series && !shown.has(c.car_id))
-      : [];
-
-    return [
-      {
-        key: "collection",
-        heading: `More from ${entry.brand} · ${entry.series}`,
-        cars: collection,
-      },
-      { key: "brand", heading: `More from ${entry.brand}`, cars: sameBrand },
-      { key: "series", heading: `More from ${entry.series}`, cars: sameSeries },
-    ].filter((r) => r.cars.length > 0);
-  }, [catalog, entry]);
-
-  // Nothing nearby: the caller renders this as a whole column, so returning
-  // null here is what makes the column go away rather than stand empty.
-  if (rings.length === 0) return null;
+  // Nothing nearby and nothing to head the column with: the caller renders this
+  // as a whole column, so returning null is what makes it go away rather than
+  // stand there empty.
+  if (rings.length === 0 && !header) return null;
 
   return (
     <div className={cn("space-y-6", className)}>
+      {header}
       {rings.map((ring, i) => (
         <div key={ring.key} className="space-y-2.5">
           {i > 0 && <hr className="border-border/60" />}
@@ -1853,6 +1838,10 @@ function CatalogDetailsContent({
   const isActuallyOwned = owned || Boolean(matchingUserCar);
   const isActuallyIso = Boolean(isIsoProp || matchingIsoCar);
 
+  // A box's contents head the shelf column, and cost it one of its two shelves.
+  const { pack: catalogPack } = usePack(catalogCar?.car_id);
+  const catalogHasPack = Boolean(catalogPack?.is_multipack);
+
   useEffect(() => {
     if (!catalogCar?.car_id) {
       setOwners([]);
@@ -1980,6 +1969,8 @@ function CatalogDetailsContent({
           <CatalogRelatedShelves
             entry={catalogCar}
             onSelect={onSelectCatalogCar}
+            header={catalogHasPack ? <PackContents packCarId={catalogCar.car_id} /> : null}
+            limit={catalogHasPack ? 1 : 2}
             className={cn(
               "w-[360px] xl:w-[390px] shrink-0 h-full overflow-y-auto scrollbar-thin",
               showOwnersColumn ? "px-5 xl:px-6" : "pl-5 xl:pl-6",
@@ -2044,6 +2035,8 @@ function CatalogDetailsContent({
                   <CatalogRelatedShelves
                     entry={catalogCar}
                     onSelect={onSelectCatalogCar}
+                    header={catalogHasPack ? <PackContents packCarId={catalogCar.car_id} /> : null}
+                    limit={catalogHasPack ? 1 : 2}
                     className="pt-5"
                   />
                 )}
@@ -2249,8 +2242,6 @@ function CatalogDetailsBody({
         <Spec label="Car number" value={car.carNumber} />
         <Spec label="Retail / MRP" value={car.mrp ? inrFull(Math.round(car.mrp)) : ""} />
       </SpecGrid>
-
-      <PackContents packCarId={catalogCar?.car_id} />
 
       <hr className="border-border" />
 
@@ -2525,7 +2516,14 @@ export function CatalogOwnersColumn({
  * its row points at. Renders nothing at all for an entry that is not a pack,
  * which is all but a few dozen of them.
  */
-function PackContents({ packCarId }: { packCarId?: string | null }) {
+/**
+ * The catalogue entry behind a car, and what is in it when it is a box.
+ *
+ * Shared, because the panel that draws the contents is no longer the only
+ * thing that needs to know: the layout decides how many "More from" shelves
+ * fit beside them.
+ */
+function usePack(packCarId?: string | null) {
   const { catalog, packMembers } = useCatalog();
 
   const pack = useMemo(() => {
@@ -2540,6 +2538,12 @@ function PackContents({ packCarId }: { packCarId?: string | null }) {
     const byId = new Map(catalog.map((c) => [c.car_id.toUpperCase(), c]));
     return ids.map((id) => ({ id, entry: byId.get(id.toUpperCase()) ?? null }));
   }, [pack, packMembers, catalog]);
+
+  return { pack, members };
+}
+
+function PackContents({ packCarId }: { packCarId?: string | null }) {
+  const { pack, members } = usePack(packCarId);
 
   if (!pack?.is_multipack) return null;
 
@@ -2568,10 +2572,9 @@ function PackContents({ packCarId }: { packCarId?: string | null }) {
             Nobody has listed what is in this one yet.
           </p>
         ) : (
-          // One column, one car per line. Two columns split names that are
-          // already long enough to truncate, and a sideways row hid the last
-          // two of a five-pack behind a scroll.
-          <div className="flex flex-col gap-1.5">
+          // One column, one car per line, five of them before it scrolls. A ten
+          // -car box otherwise pushed the shelves under it off the panel.
+          <div className="flex max-h-[16.25rem] flex-col gap-1.5 overflow-y-auto pr-0.5 scrollbar-thin">
             {members.map(({ id, entry }, i) => (
               <div
                 key={id}

@@ -30,6 +30,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useCars, useCarsSource } from "@/lib/cars-store";
+import { useCatalog } from "@/lib/catalog-store";
+import { isPackMember, packMemberIds } from "@/lib/pack";
 import { inrFull } from "@/lib/format";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
@@ -65,7 +67,15 @@ export function AppSidebar() {
   const { isOwner, isGuest } = useAuth();
   const { source } = useCarsSource();
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
-  const data = useMemo(() => allMatching.filter((r) => !isIso(r.status)), [allMatching]);
+  const { packMembers } = useCatalog();
+  const memberIds = useMemo(() => packMemberIds(packMembers), [packMembers]);
+  // A car that only comes inside a box is not a separate thing you bought. The
+  // box carries the count and the money; counting its five castings as well
+  // would say you own six things and spent the price twice.
+  const data = useMemo(
+    () => allMatching.filter((r) => !isIso(r.status) && !isPackMember(r, memberIds)),
+    [allMatching, memberIds],
+  );
   const { isMobile, setOpenMobile } = useSidebar();
   const [localReveal, setLocalReveal] = useState(false);
   const pathname = useRouterState({ select: (r) => r.location.pathname });
