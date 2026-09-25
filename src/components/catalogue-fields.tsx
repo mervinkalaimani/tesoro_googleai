@@ -301,7 +301,7 @@ export function CatalogueFields({
       )}
 
       {!skip("colour") && (
-        <Field label="Colour">
+        <Field label="Colour" name="colour" error={err("colour")}>
           <Combobox
             clearable
             disabled={disabled}

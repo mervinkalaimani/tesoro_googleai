@@ -162,6 +162,46 @@ export function extractCatalogFromCars(cars: Diecast[]): CatalogCar[] {
  * A catalogue entry as the Add a car form wants it: camelCase, and carrying the
  * entry's id so the car it fills in is pointed at the right casting.
  */
+/**
+ * Everything about a catalogue entry that somebody might search it by, as one
+ * lowercase string.
+ *
+ * The pickers used to look at six fields — name, make, model, variant, brand,
+ * series — which is fine until the car you are hunting for is the red one, or
+ * #23, or the only 1:43 in the pack. Every field a person can read off the card
+ * is in here, and the ID, because pasting one in is the fastest way to find an
+ * exact entry. What is left out is what nobody searches by: the photograph's
+ * URL, the timestamps, who edited it.
+ */
+export function catalogSearchText(c: CatalogCar): string {
+  return [
+    c.car_id,
+    c.name,
+    c.make,
+    c.model,
+    c.variant,
+    c.year,
+    c.colour,
+    c.type,
+    c.brand,
+    c.assortment,
+    c.series,
+    c.sub_series,
+    c.car_number,
+    c.size,
+    c.rarity,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+/** Every word has to be in there somewhere, in any order: "red skyline". */
+export function catalogMatches(c: CatalogCar, words: string[]): boolean {
+  const hay = catalogSearchText(c);
+  return words.every((w) => hay.includes(w));
+}
+
 export function catalogCarToCatalogueCar(c: CatalogCar): CatalogueCar {
   return {
     name: c.name || `${c.make} ${c.model}`.trim(),

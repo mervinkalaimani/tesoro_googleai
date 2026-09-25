@@ -52,6 +52,7 @@ import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker
 import { MultipackField } from "@/components/multipack-field";
 import { DuplicateNotice } from "@/components/duplicate-notice";
 import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
+import { looksLikeColour } from "@/lib/colour-words";
 import { packBadge } from "@/lib/pack";
 import { ClearableInput, Field, FormSection, PillButton, PillRow } from "@/components/form-parts";
 import { SegmentControl } from "@/components/segment-control";
@@ -95,7 +96,8 @@ import {
   X,
   ClipboardCheck,
   Search,
-  Loader2,  BookOpen,
+  Loader2,
+  BookOpen,
 } from "lucide-react";
 
 const STATUS_OPTIONS = STATUSES;
@@ -1248,6 +1250,12 @@ export function CarFormDialog({
     );
   }, [form.displayName, form.make, form.model, form.variant, form.year, form.type, form.series]);
 
+  /** A colour somebody has already filed, spelling and all. */
+  const knownColour = (v: string) => {
+    const c = v.trim().toLowerCase();
+    return c.length > 0 && colourOptions.some((o) => o.trim().toLowerCase() === c);
+  };
+
   // Validation per step
   const validateStep = (step: number): FieldError | null => {
     const need = (field: keyof CarFormData, message: string): FieldError => ({ field, message });
@@ -1259,6 +1267,17 @@ export function CarFormDialog({
       if (!form.model.trim()) return need("model", "Enter the model.");
     } else if (step === 2) {
       // The catalogue fields first: they sit above the purchase on this step.
+      //
+      // Colour takes free text because a casting's colour is "Spectraflame Red"
+      // rather than a word from a list, and it is the box a model name or a
+      // series ends up in by accident. A colour word anywhere in the value is
+      // enough, in any language; a colour already in the collection is enough
+      // too, so whatever has been used before stays usable.
+      if (!looksLikeColour(form.colour) && !knownColour(form.colour))
+        return need(
+          "colour",
+          `“${form.colour.trim()}” is not a colour. Anything with a colour in it is fine — “Spectraflame Red”, “Rosso Corsa”, “Off-White” — but not the name of the car.`,
+        );
       if (!form.type.trim()) return need("type", "Enter the type.");
       if (!form.brand.trim()) return need("brand", "Enter the brand.");
       if (!form.assortment.trim()) return need("assortment", "Enter the assortment.");

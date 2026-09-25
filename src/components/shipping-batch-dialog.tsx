@@ -42,7 +42,7 @@ import { isLate } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { carSubLine, carSubLineParts } from "@/lib/car-subline";
 import { useCatalog } from "@/lib/catalog-store";
-import { catalogCarToCatalogueCar, type CatalogCar } from "@/lib/catalog";
+import { catalogCarToCatalogueCar, catalogMatches, type CatalogCar } from "@/lib/catalog";
 
 const STATUS_CHOICES = STATUSES.map((value) => ({ value, label: value }));
 
@@ -291,14 +291,16 @@ export function ShippingBatchDialog({
     const q = pickerQuery.trim().toLowerCase();
     // Unfiltered, the whole catalogue is 1,400 rows of nothing you asked for.
     if (q.length < 2) return [];
+    // Any field, every word of the query: the colour, the year, the car number
+    // and the ID find a casting as readily as its name does.
+    const words = q.split(/\s+/).filter(Boolean);
     const already = new Set(
       isoCandidates.map((c) => (c.catalogId || "").toUpperCase()).filter(Boolean),
     );
     const out: CatalogCar[] = [];
     for (const c of catalog) {
       if (already.has(c.car_id.toUpperCase())) continue;
-      const hay = `${c.name} ${c.make} ${c.model} ${c.variant ?? ""} ${c.brand} ${c.series} ${c.car_number}`;
-      if (hay.toLowerCase().includes(q)) out.push(c);
+      if (catalogMatches(c, words)) out.push(c);
       if (out.length >= 25) break;
     }
     return out;

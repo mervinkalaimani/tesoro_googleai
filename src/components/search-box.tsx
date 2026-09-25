@@ -10,6 +10,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import type { Diecast } from "@/lib/types";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { ImageSearchDialog } from "@/components/image-search-dialog";
+import { useRecentSearches } from "@/lib/recent-searches";
 import { SearchSuggestionsTray } from "@/components/search-suggestions-tray";
 
 /**
@@ -105,6 +106,7 @@ export function SearchBox({ className }: { className?: string }) {
 
   const activeCars = onCatalog ? catalogCars : cars;
 
+  const { recent, remember } = useRecentSearches();
   const [scanOpen, setScanOpen] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
@@ -138,7 +140,11 @@ export function SearchBox({ className }: { className?: string }) {
     return () => document.removeEventListener("mousedown", onMouseDown);
   }, []);
 
-  const showTray = !onUsers && (advancedOpen || (isFocused && query.trim().length > 0));
+  // An empty box used to show nothing until you typed. It still shows nothing
+  // on a first visit — but once there is a history, clicking into the box is
+  // exactly when you want to see it.
+  const showTray =
+    !onUsers && (advancedOpen || (isFocused && (query.trim().length > 0 || recent.length > 0)));
 
   return (
     <div ref={containerRef} className={cn("relative max-w-2xl flex-1 md:ml-2", className)}>
@@ -147,11 +153,17 @@ export function SearchBox({ className }: { className?: string }) {
         ref={inputRef}
         value={query}
         onFocus={() => setIsFocused(true)}
+        // What gets kept is the search you settled on, not every keystroke on
+        // the way to it: pressing Enter, or leaving the field with something in
+        // it. Clicking inside the tray does not blur, so choosing a suggestion
+        // does not file the half-typed word behind it.
+        onBlur={() => remember(query)}
         onChange={(e) => {
           setQuery(e.target.value);
           setIsFocused(true);
         }}
         onKeyDown={(e) => {
+          if (e.key === "Enter") remember(query);
           if (e.key === "Escape") {
             inputRef.current?.blur();
             setAdvancedOpen(false);

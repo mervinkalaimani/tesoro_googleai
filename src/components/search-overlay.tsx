@@ -9,6 +9,8 @@ import { filterRows, groupedSuggestions, parseQuery } from "@/lib/search";
 import { carSubLine } from "@/lib/car-subline";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { ImageSearchDialog } from "@/components/image-search-dialog";
+import { RecentSearches } from "@/components/recent-searches";
+import { useRecentSearches } from "@/lib/recent-searches";
 import { inrFull } from "@/lib/format";
 
 const SEARCH_TIPS: [string, string][] = [
@@ -79,6 +81,7 @@ const MORPH = "cubic-bezier(0.3, 1.15, 0.45, 1)";
 export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: boolean) => void }) {
   const open = useSearchOpen();
   const { query, setQuery } = useApp();
+  const { recent, remember } = useRecentSearches();
   const onUsers = useRouterState({ select: (r) => r.location.pathname === "/admin" });
   const ref = useRef<HTMLInputElement>(null);
   const [scanOpen, setScanOpen] = useState(false);
@@ -97,7 +100,10 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
 
   useEffect(() => {
     if (!open) setDrawerOpen(false);
-  }, [open]);
+    // Opening the bar with nothing typed and a history to show: the list of what
+    // you searched before is the reason you tapped search, often enough.
+    else if (!query.trim() && recent.length > 0) setDrawerOpen(true);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => onDrawerChange?.(drawerOpen), [drawerOpen, onDrawerChange]);
 
   // Leaving the page (a link, the Home button) puts the bar away; the filter stays.
@@ -110,6 +116,7 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
         role="search"
         onSubmit={(e) => {
           e.preventDefault();
+          remember(query);
           closeSearch();
         }}
         aria-hidden={!open}
@@ -190,6 +197,10 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
             tabIndex={open ? 0 : -1}
             aria-label="Cancel search"
             onClick={() => {
+              // Kept even on the way out: the search happened, the page filtered
+              // as it was typed, and wanting it again tomorrow is why this list
+              // exists.
+              remember(query);
               setQuery("");
               closeSearch();
             }}
@@ -338,9 +349,12 @@ export function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: (
               </p>
             )}
             {!trimmed && (
-              <p className="px-1 text-sm text-muted-foreground">
-                Start typing to see matching cars and values.
-              </p>
+              <>
+                <RecentSearches onPick={(q) => setQuery(q)} />
+                <p className="px-1 text-sm text-muted-foreground">
+                  Start typing to see matching cars and values.
+                </p>
+              </>
             )}
 
             {/* The syntax, taught rather than offered as things to tap. */}

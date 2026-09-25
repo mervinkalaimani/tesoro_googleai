@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Package, Plus, X } from "lucide-react";
 
-import type { CatalogCar } from "@/lib/catalog";
+import { catalogMatches, type CatalogCar } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-store";
 import { carSubLine } from "@/lib/car-subline";
 import { Input } from "@/components/ui/input";
@@ -88,14 +88,17 @@ export function MultipackField({
   const choices = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
+    // Any field, and every word of the query somewhere in them: the car you are
+    // putting in the box is the red one, or #23, or the 1:43, as often as it is
+    // a name you can spell.
+    const words = q.split(/\s+/).filter(Boolean);
     const chosen = new Set(members.map((id) => id.toUpperCase()));
     const self = selfCarId.toUpperCase();
     const out: CatalogCar[] = [];
     for (const c of catalog) {
       const id = c.car_id.toUpperCase();
       if (c.is_multipack || chosen.has(id) || (self && id === self)) continue;
-      const hay = `${c.name} ${c.make} ${c.model} ${c.variant ?? ""} ${c.brand} ${c.series}`;
-      if (hay.toLowerCase().includes(q)) out.push(c);
+      if (catalogMatches(c, words)) out.push(c);
       if (out.length >= 8) break;
     }
     return out;

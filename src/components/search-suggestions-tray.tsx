@@ -5,6 +5,7 @@ import { filterRows, groupedSuggestions, parseQuery } from "@/lib/search";
 import { carSubLine } from "@/lib/car-subline";
 import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { RecentSearches } from "@/components/recent-searches";
 
 const SEARCH_TIPS: [string, string][] = [
   ["make = toyota", "to search one field"],
@@ -159,6 +160,8 @@ export function SearchSuggestionsTray({
         {/* Quick filters when query is empty or short */}
         {!trimmed && (
           <div className="space-y-3">
+            <RecentSearches onPick={onSelectQuery} />
+
             <section>
               <div className="mb-1.5 flex items-center gap-1 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <Sparkles className="size-3 text-primary" />
