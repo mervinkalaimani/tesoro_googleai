@@ -23,6 +23,7 @@ export function CompactCarCard({
   caption,
   detail,
   statusInPhoto = false,
+  hideStatus = false,
   marksOffset = false,
   className = "",
   copies = 1,
@@ -49,6 +50,12 @@ export function CompactCarCard({
    * corner of the picture is empty anyway.
    */
   statusInPhoto?: boolean;
+  /**
+   * No status at all. A shelf where the status is not the point — everything on
+   * it landed, or everything on it is coming — spends that line on something
+   * that tells one card from the next instead.
+   */
+  hideStatus?: boolean;
   /**
    * Sizing, from whoever is laying these out. A grid sets its own column width
    * and passes nothing; a single scrolling row passes a fixed width here rather
@@ -125,7 +132,7 @@ export function CompactCarCard({
         </div>
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
           <span className="flex items-center gap-1 min-w-0 truncate text-[10px]">
-            {!statusInPhoto && car.status && (
+            {!statusInPhoto && !hideStatus && car.status && (
               <StatusPill
                 status={car.status}
                 className="text-[9px] px-1.5 py-0 leading-tight shrink-0"

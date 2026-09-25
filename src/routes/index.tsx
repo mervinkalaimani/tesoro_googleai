@@ -738,6 +738,12 @@ function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; no
             car={r}
             onOpen={() => openDrawer(r)}
             caption={relativeDay(dt, now)}
+            // Everything on this shelf is a car you have just added, so the
+            // status pill said the same thing on every card. The line it was
+            // sharing carries who you bought it from instead, beside the
+            // assortment.
+            hideStatus
+            detail={[r.assortment, r.seller].filter(Boolean).join(" · ")}
             className="w-36 shrink-0 snap-start sm:w-40"
           />
         ))}
