@@ -1,5 +1,5 @@
 import { normaliseStatus } from "@/lib/status";
-import { useState, useRef, useId, type ChangeEvent, type DragEvent } from "react";
+import { useState, useRef, useId, useMemo, type ChangeEvent, type DragEvent } from "react";
 import {
   Upload,
   FileSpreadsheet,
@@ -25,7 +25,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { importDelta, parseCsvToDiecast } from "@/lib/csv";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
-import { useCars, useCarsActions, useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
+import { assignCarIds, findCatalogEntry } from "@/lib/car-id";
+import {
+  useCars,
+  useCarsActions,
+  useCarsRefresh,
+  useCarsUndo,
+  withRenumbering,
+} from "@/lib/cars-store";
 import { tesoroRawToDiecast } from "@/lib/supabase-cars";
 import type { Diecast } from "@/lib/types";
 
@@ -106,8 +113,39 @@ export function UploadCarsDialog({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  /** What an import of `parsedCars` would add, and what it would replace. */
-  const importEffect = () => importDelta(parsedCars, cars);
+  /**
+   * The rows as they will actually be written.
+   *
+   * A file carries what somebody typed; the three IDs are the app's to derive —
+   * the Car ID from the casting, the shipping and order IDs from the seller and
+   * the dates, counted against the collection the rows are joining. Deriving
+   * them here rather than on the way in means the preview shows the numbers the
+   * import will use, not blanks and a placeholder.
+   */
+  const previewCars = useMemo(() => {
+    if (!parsedCars.length) return [];
+    const identified = assignCarIds(parsedCars, cars);
+    const numbered = withRenumbering(identified, cars);
+    const byId = new Map(numbered.map((c) => [c.id, c]));
+    // Only the imported rows; withRenumbering also returns neighbours whose own
+    // numbers shift to make room, and those are not part of this file.
+    return identified.map((c) => byId.get(c.id) ?? c);
+  }, [parsedCars, cars]);
+
+  /**
+   * Which rows land on a casting the catalogue already holds.
+   *
+   * Every row gets a catalogue ID either way; the difference is whether it joins
+   * an entry that exists or files a new one, and that is worth seeing before an
+   * import of a hundred rows quietly adds forty castings.
+   */
+  const linkedIds = useMemo(
+    () => new Set(previewCars.filter((c) => findCatalogEntry(c)).map((c) => c.id)),
+    [previewCars],
+  );
+
+  /** What an import of these rows would add, and what it would replace. */
+  const importEffect = () => importDelta(previewCars, cars);
 
   const handleFile = (file: File) => {
     resetState();
@@ -238,11 +276,11 @@ export function UploadCarsDialog({
   };
 
   const handleImportLocal = () => {
-    if (parsedCars.length === 0) return;
+    if (previewCars.length === 0) return;
     setUndoable({ mode: "local", ...importEffect() });
-    bulkAddCars(parsedCars);
+    bulkAddCars(previewCars);
     setSuccessMessage(
-      `Added ${parsedCars.length.toLocaleString()} ${parsedCars.length === 1 ? "car" : "cars"} to your collection.`,
+      `Added ${previewCars.length.toLocaleString()} ${previewCars.length === 1 ? "car" : "cars"} to your collection.`,
     );
   };
 
@@ -285,14 +323,14 @@ export function UploadCarsDialog({
   };
 
   const handleUploadToSupabase = async () => {
-    if (parsedCars.length === 0) return;
+    if (previewCars.length === 0) return;
     setUploading(true);
-    setProgress({ current: 0, total: parsedCars.length });
+    setProgress({ current: 0, total: previewCars.length });
     const effect = importEffect();
 
     try {
       const { seedCarsToSupabase } = await import("@/lib/supabase-cars");
-      const res = await seedCarsToSupabase(parsedCars, (curr, tot) => {
+      const res = await seedCarsToSupabase(previewCars, (curr, tot) => {
         setProgress({ current: curr, total: tot });
       });
 
@@ -324,8 +362,11 @@ export function UploadCarsDialog({
       }}
     >
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="max-w-[min(1100px,95vw)] overflow-hidden p-0 sm:max-w-[min(1100px,95vw)]">
-        <DialogHeader className="border-b border-border bg-muted/20 px-6 py-4">
+      {/* A column, not the default grid: the body scrolls and the footer stays
+          put, so the import buttons are reachable however many rows the file
+          brought. `gap-0` because the three bands carry their own borders. */}
+      <DialogContent className="flex max-h-[92svh] flex-col gap-0 overflow-hidden p-0 max-w-[min(1100px,95vw)] sm:max-h-[90svh] sm:max-w-[min(1100px,95vw)] sm:p-0">
+        <DialogHeader className="shrink-0 border-b border-border bg-muted/20 px-6 py-4">
           <div className="flex items-center gap-2">
             <div className="grid size-8 place-items-center rounded-md bg-primary/10 text-primary">
               <Upload className="size-4" />
@@ -340,7 +381,7 @@ export function UploadCarsDialog({
           </div>
         </DialogHeader>
 
-        <div className="space-y-4 px-6 py-4">
+        <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-y-auto px-6 py-4">
           {/* Dropzone */}
           <div
             onDragOver={handleDragOver}
@@ -437,23 +478,27 @@ export function UploadCarsDialog({
           {/* Every field the import will write, not a chosen handful: a column
               left blank here is a column the file did not carry, which is the
               thing worth seeing before importing. */}
-          {parsedCars.length > 0 && !uploading && !successMessage && (
+          {previewCars.length > 0 && !uploading && !successMessage && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Preview ({parsedCars.length.toLocaleString()}{" "}
-                  {parsedCars.length === 1 ? "car" : "cars"} · {CAR_CSV_COLUMNS.length} fields)
+                  Preview ({previewCars.length.toLocaleString()}{" "}
+                  {previewCars.length === 1 ? "car" : "cars"} · {CAR_CSV_COLUMNS.length} fields)
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  {rowsShown >= parsedCars.length
-                    ? "All rows"
-                    : `First ${rowsShown.toLocaleString()} rows`}
+                  {linkedIds.size.toLocaleString()} linked to the catalogue ·{" "}
+                  {(previewCars.length - linkedIds.size).toLocaleString()} new{" "}
+                  {previewCars.length - linkedIds.size === 1 ? "casting" : "castings"} ·{" "}
+                  {rowsShown >= previewCars.length
+                    ? "all rows"
+                    : `first ${rowsShown.toLocaleString()} rows`}
                 </span>
               </div>
-              <div className="max-h-[45vh] overflow-auto rounded-lg border border-border bg-muted/10 text-xs">
+              <div className="max-h-[55vh] w-full min-w-0 overflow-auto rounded-lg border border-border bg-muted/10 text-xs">
                 <table className="text-left">
                   <thead className="sticky top-0 bg-muted text-[11px] font-medium text-muted-foreground border-b border-border">
                     <tr>
+                      <th className="whitespace-nowrap px-2.5 py-1.5">Catalogue ID</th>
                       {CAR_CSV_COLUMNS.map((col) => (
                         <th key={col.key} className="whitespace-nowrap px-2.5 py-1.5">
                           {col.label}
@@ -462,8 +507,21 @@ export function UploadCarsDialog({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
-                    {parsedCars.slice(0, rowsShown).map((car, i) => (
+                    {previewCars.slice(0, rowsShown).map((car, i) => (
                       <tr key={`${car.id}-${i}`} className="hover:bg-muted/30">
+                        <td className="whitespace-nowrap px-2.5 py-1.5">
+                          <span className="font-mono text-[11px] text-foreground">
+                            {car.catalogId || "—"}
+                          </span>
+                          {!linkedIds.has(car.id) && (
+                            <Badge
+                              variant="outline"
+                              className="ml-1.5 px-1 py-0 text-[10px] font-normal"
+                            >
+                              New
+                            </Badge>
+                          )}
+                        </td>
                         {CAR_CSV_COLUMNS.map((col) => {
                           const value = String(col.get(car) ?? "");
                           return (
@@ -481,22 +539,22 @@ export function UploadCarsDialog({
                   </tbody>
                 </table>
               </div>
-              {rowsShown < parsedCars.length && (
+              {rowsShown < previewCars.length && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setRowsShown(parsedCars.length)}
+                  onClick={() => setRowsShown(previewCars.length)}
                   className="w-full text-xs"
                 >
-                  Show all {parsedCars.length.toLocaleString()} rows
+                  Show all {previewCars.length.toLocaleString()} rows
                 </Button>
               )}
             </div>
           )}
         </div>
 
-        <DialogFooter className="border-t border-border bg-muted/20 px-6 py-3 sm:justify-between">
+        <DialogFooter className="shrink-0 border-t border-border bg-muted/20 px-6 py-3 sm:justify-between">
           {!undoable && (
             <Button
               type="button"
@@ -544,7 +602,7 @@ export function UploadCarsDialog({
                 </Button>
               </>
             )}
-            {parsedCars.length > 0 && !successMessage && (
+            {previewCars.length > 0 && !successMessage && (
               <>
                 <Button
                   type="button"
@@ -568,7 +626,7 @@ export function UploadCarsDialog({
                   ) : (
                     <Database className="size-3.5" />
                   )}
-                  Upload {parsedCars.length.toLocaleString()} to Supabase
+                  Upload {previewCars.length.toLocaleString()} to Supabase
                   <ArrowRight className="size-3" />
                 </Button>
               </>

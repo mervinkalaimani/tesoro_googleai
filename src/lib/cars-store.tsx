@@ -212,7 +212,12 @@ function resyncIds(all: Diecast[], touched: Diecast[]): Diecast[] {
  * order arrives already carrying the batch's shipping ID and must keep it, but
  * it still belongs to an order and still needs numbering.
  */
-function withRenumbering(
+/*
+ * Exported so an import can show the IDs it is about to write. The preview and
+ * the write then come from the same function, which is the only way the numbers
+ * on screen can be trusted.
+ */
+export function withRenumbering(
   changed: Diecast[],
   all: Diecast[],
   before: Diecast[] = [],
