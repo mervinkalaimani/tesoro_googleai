@@ -48,6 +48,7 @@ import {
   getCatalogCarOwners,
   getCastingOwners,
   castingSiblings,
+  siblingLabels,
   ownerCount,
   isCarMatchingCatalog,
   catalogCarToDiecast,
@@ -2135,17 +2136,7 @@ function CatalogDetailsBody({
   }, [catalogCar?.car_id]);
   const shown = siblings.find((s) => s.car_id === shownId) ?? catalogCar;
 
-  // Two entries can carry the same assortment and differ elsewhere, so a label
-  // that repeats takes the car number to tell it from its twin.
-  const siblingOptions = useMemo(
-    () =>
-      siblings.map((s) => {
-        const name = s.assortment || "—";
-        const twin = siblings.some((o) => o.car_id !== s.car_id && (o.assortment || "—") === name);
-        return { value: s.car_id, label: twin && s.car_number ? `${name} #${s.car_number}` : name };
-      }),
-    [siblings],
-  );
+  const siblingOptions = useMemo(() => siblingLabels(siblings), [siblings]);
 
   const addedBy = resolveCatalogUserId(shown?.created_by);
   const addedOn = formatDayMonthYear(shown?.created_at) || "—";

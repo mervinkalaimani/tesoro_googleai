@@ -875,11 +875,30 @@ export type CatalogCarOwner = {
   assortment?: string;
 };
 
-/** Same casting, different box: brand, make, model, variant, colour and year. */
-const castingKey = (c: CatalogCar) =>
-  [c.brand, c.make, c.model, c.variant, c.colour, c.year]
-    .map((v) => (v || "").trim().toLowerCase())
-    .join("|");
+/** Brand, make, model, colour, year — as far as two entries must agree. */
+const castingBase = (c: CatalogCar) =>
+  [c.brand, c.make, c.model, c.colour, c.year].map((v) => (v || "").trim().toLowerCase()).join("|");
+
+const norm = (v?: string | null) => (v || "").trim().toLowerCase();
+
+/**
+ * Whether two entries are the same casting in different packaging.
+ *
+ * The variant settles it when both carry one, and the collector number settles
+ * it when they do not agree about the variant: "Cadillac V-Series R #40 Dex"
+ * and "Cadillac V-Series" are the same car filed twice, and both are #1372.
+ *
+ * The number is what keeps this honest. Matching on a blank variant alone would
+ * club a Defender 90 with a Defender 110, a Countach with a Countach 500s and a
+ * Huracan with a Huracan GT3 EVO2 — each a different casting whose twin was
+ * filed without its variant. None of those pairs shares a number.
+ */
+const sameCasting = (a: CatalogCar, b: CatalogCar): boolean => {
+  if (castingBase(a) !== castingBase(b)) return false;
+  if (norm(a.variant) === norm(b.variant)) return true;
+  const n = norm(a.car_number);
+  return n.length > 0 && n === norm(b.car_number);
+};
 
 /**
  * Every catalogue entry for the casting this one is, its own first.
@@ -889,8 +908,7 @@ const castingKey = (c: CatalogCar) =>
  * ID, its own filing date and its own owners.
  */
 export function castingSiblings(entry: CatalogCar, catalog: CatalogCar[]): CatalogCar[] {
-  const key = castingKey(entry);
-  const rest = catalog.filter((c) => c.car_id !== entry.car_id && castingKey(c) === key);
+  const rest = catalog.filter((c) => c.car_id !== entry.car_id && sameCasting(entry, c));
   if (rest.length === 0) return [entry];
   rest.sort((a, b) => (a.assortment || "").localeCompare(b.assortment || ""));
   return [entry, ...rest];
@@ -924,6 +942,26 @@ export async function getCastingOwners(
     out.push(owner);
   }
   return out;
+}
+
+/**
+ * Names for a casting's entries that tell them apart.
+ *
+ * The assortment is what you want to read — "Blister", "Qube Carz" — and it is
+ * enough almost always. When two entries share it the collector number is added,
+ * and when that repeats too (the same casting filed twice in the same box) the
+ * ID's own middle block is, because it is the only thing guaranteed to differ.
+ */
+export function siblingLabels(siblings: CatalogCar[]): { value: string; label: string }[] {
+  const namings: ((c: CatalogCar) => string)[] = [
+    (c) => c.assortment || "—",
+    (c) => [c.assortment || "—", c.car_number && `#${c.car_number}`].filter(Boolean).join(" "),
+    (c) => [c.assortment || "—", c.car_id.split("-")[2] || c.car_id].filter(Boolean).join(" · "),
+  ];
+  const distinct = (name: (c: CatalogCar) => string) =>
+    new Set(siblings.map(name)).size === siblings.length;
+  const name = namings.find(distinct) ?? namings[namings.length - 1];
+  return siblings.map((c) => ({ value: c.car_id, label: name(c) }));
 }
 
 /** How many people, however many boxes they own it in. */
