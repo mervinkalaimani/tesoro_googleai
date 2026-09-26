@@ -13,6 +13,8 @@ import {
   releasesYouAreWaitingOn,
   releasedLabel,
   RELEASED_WINDOW_DAYS,
+  releasedOnInput,
+  releasedOnStamp,
 } from "@/lib/released";
 
 const NOW = new Date("2026-09-24T12:00:00Z");
@@ -88,3 +90,15 @@ assert.equal(releasedLabel(1), "Released yesterday");
 assert.equal(releasedLabel(6), "Released 6 days ago");
 
 console.log("released: all checks passed");
+
+// The form's date field and the stored moment, both ways. A stamp late in the
+// evening still belongs to the day it was here, not the UTC one.
+const evening = new Date(2026, 8, 10, 23, 30).toISOString();
+assert.equal(releasedOnInput(evening), "2026-09-10");
+assert.equal(releasedOnInput(null), "");
+assert.equal(releasedOnInput("not a date"), "");
+assert.equal(releasedOnInput(releasedOnStamp("2026-06-28")), "2026-06-28", "round trip");
+assert.equal(releasedOnStamp(""), null);
+assert.equal(releasedOnStamp(null), null);
+// What the field holds while it is being typed is a bare day, and it stays put.
+assert.equal(releasedOnInput("2026-06-28"), "2026-06-28");

@@ -101,6 +101,32 @@ export function releasesYouAreWaitingOn(
   return out.sort((a, b) => b.at.getTime() - a.at.getTime());
 }
 
+/**
+ * released_at is a moment; the form's date field is a day. The two have to
+ * agree about which day a moment falls on — here, not in UTC, or a release
+ * stamped late in the evening reads as the day before.
+ */
+export function releasedOnInput(stamp?: string | null): string {
+  if (!stamp) return "";
+  // A bare day is already what the field wants. Parsing it would read it as UTC
+  // midnight, which is the day before west of Greenwich — so the date somebody
+  // had just typed would jump back one as they typed it.
+  const bare = /^\d{4}-\d{2}-\d{2}$/.exec(stamp.trim());
+  if (bare) return bare[0];
+  const d = new Date(stamp);
+  if (Number.isNaN(d.getTime())) return "";
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
+
+/** A typed day back the other way, as the moment that day began here. */
+export function releasedOnStamp(day?: string | null): string | null {
+  if (!day) return null;
+  const d = new Date(`${day}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 /** "Released today" / "Released yesterday" / "Released 6 days ago". */
 export function releasedLabel(daysAgo: number): string {
   if (daysAgo <= 0) return "Released today";

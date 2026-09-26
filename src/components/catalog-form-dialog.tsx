@@ -6,6 +6,8 @@ import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
 import { generateCatalogCarId } from "@/lib/car-id";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { resolveCatalogUserId } from "@/lib/catalog";
+import { localDay } from "@/lib/delivery-watch";
+import { releasedOnInput, releasedOnStamp } from "@/lib/released";
 import {
   Dialog,
   DialogContent,
@@ -434,6 +436,11 @@ export function CatalogFormDialog({
           release_status: form.release_status ?? "Released",
           rarity: form.rarity || "Normal",
           expected_date: isPreOrder ? form.expected_date || null : null,
+          // A pre-order has not been released, so it carries no date — the same
+          // clearing the database does when a casting goes back to Pre Order.
+          // A released one keeps what is typed, or nothing, and the trigger
+          // fills nothing in from the first copy anybody received.
+          released_at: isPreOrder ? null : releasedOnStamp(form.released_at),
           is_multipack: isPack,
           // Only a box has a size. Clearing it alongside the flag keeps an
           // un-ticked entry from carrying "5" around invisibly.
@@ -728,7 +735,7 @@ export function CatalogFormDialog({
                     />
                   </Field>
 
-                  {isPreOrder && (
+                  {isPreOrder ? (
                     <Field label="Expected release date">
                       <ClearableInput
                         type="date"
@@ -737,6 +744,21 @@ export function CatalogFormDialog({
                         onChange={(e) => set("expected_date", e.target.value || null)}
                         aria-label="Expected release date"
                       />
+                    </Field>
+                  ) : (
+                    <Field label="Released on">
+                      <ClearableInput
+                        type="date"
+                        disabled={isImageOnly}
+                        max={localDay()}
+                        value={releasedOnInput(form.released_at)}
+                        onChange={(e) => set("released_at", e.target.value || null)}
+                        aria-label="Released on"
+                      />
+                      <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                        What Recently Released dates this by. Left empty, the day the first
+                        collector receives one fills it in.
+                      </p>
                     </Field>
                   )}
                 </div>

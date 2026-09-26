@@ -515,6 +515,10 @@ export async function saveCatalogCarToSupabase(
       ...(catalogCar.expected_date !== undefined
         ? { expected_date: catalogCar.expected_date }
         : {}),
+      // Same rule again: only when stated. The database sets this itself the
+      // first time a casting is marked Released, and Add a car saving an entry
+      // it did not change must not wipe that.
+      ...(catalogCar.released_at !== undefined ? { released_at: catalogCar.released_at } : {}),
     };
 
     const { error } = await supabase
