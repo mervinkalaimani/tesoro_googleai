@@ -1639,10 +1639,15 @@ function CatalogRelatedShelves({
     const series = norm(entry.series);
     const sub = norm(entry.sub_series);
     const assortment = norm(entry.assortment);
-    const selfId = (entry.car_id || "").trim().toUpperCase();
+    // This entry and its other boxes. The Blister of the car you are looking at
+    // is not "more from" anything — it is the same car, and it is already named
+    // in the control above.
+    const self = new Set(
+      castingSiblings(entry, catalog).map((c) => (c.car_id || "").trim().toUpperCase()),
+    );
 
     const kin = catalog.filter(
-      (c) => (c.car_id || "").trim().toUpperCase() !== selfId && norm(c.brand) === brand,
+      (c) => !self.has((c.car_id || "").trim().toUpperCase()) && norm(c.brand) === brand,
     );
 
     const out: { key: string; heading: string; cars: CatalogCar[] }[] = [];

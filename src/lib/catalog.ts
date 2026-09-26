@@ -10,6 +10,7 @@ import {
   type CatalogCodeKind,
   type CatalogCodeRow,
 } from "@/lib/car-id";
+import { brandUsesCarNumber } from "@/lib/duplicate";
 import rawDiecastData from "@/data/diecast.json";
 import { syncCatalogCarToUserCars } from "@/lib/catalog-sync";
 
@@ -875,29 +876,38 @@ export type CatalogCarOwner = {
   assortment?: string;
 };
 
-/** Brand, make, model, colour, year — as far as two entries must agree. */
 const castingBase = (c: CatalogCar) =>
-  [c.brand, c.make, c.model, c.colour, c.year].map((v) => (v || "").trim().toLowerCase()).join("|");
+  [c.brand, c.make, c.model, c.year].map((v) => (v || "").trim().toLowerCase()).join("|");
 
 const norm = (v?: string | null) => (v || "").trim().toLowerCase();
 
 /**
+ * The number printed on the box, where that number names the product.
+ *
+ * Hot Wheels and Matchbox print a position in a series — "2/10" is the second
+ * of ten, and this year's second of ten is a Mach-E where last year's was a
+ * Shelby GT500. Everywhere else the number belongs to the casting, and Mini
+ * GT's #1372 is #1372 whichever box it is sold in.
+ */
+const collectorNumber = (c: CatalogCar) => (brandUsesCarNumber(c.brand) ? norm(c.car_number) : "");
+
+/**
  * Whether two entries are the same casting in different packaging.
  *
- * The variant settles it when both carry one, and the collector number settles
- * it when they do not agree about the variant: "Cadillac V-Series R #40 Dex"
- * and "Cadillac V-Series" are the same car filed twice, and both are #1372.
+ * The collector number settles it outright. The Blister and the Box of the
+ * Cadillac are both #1372, and they disagree about the colour ("Silver"
+ * against "Grey") and the variant ("R #40 Dex" against nothing) only because
+ * two people typed them in on different days.
  *
- * The number is what keeps this honest. Matching on a blank variant alone would
- * club a Defender 90 with a Defender 110, a Countach with a Countach 500s and a
- * Huracan with a Huracan GT3 EVO2 — each a different casting whose twin was
- * filed without its variant. None of those pairs shares a number.
+ * With no number to go on, the colour and the variant have to match, or a
+ * Defender 90 clubs with a Defender 110 and a Countach with a Countach 500s —
+ * different castings whose twin was filed without its variant.
  */
 const sameCasting = (a: CatalogCar, b: CatalogCar): boolean => {
   if (castingBase(a) !== castingBase(b)) return false;
-  if (norm(a.variant) === norm(b.variant)) return true;
-  const n = norm(a.car_number);
-  return n.length > 0 && n === norm(b.car_number);
+  const n = collectorNumber(a);
+  if (n.length > 0 && n === collectorNumber(b)) return true;
+  return norm(a.variant) === norm(b.variant) && norm(a.colour) === norm(b.colour);
 };
 
 /**

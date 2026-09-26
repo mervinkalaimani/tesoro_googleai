@@ -78,10 +78,40 @@ const countach = car({ car_id: "C1", make: "Lamborghini", model: "Countach", var
 const countach500s = car({ car_id: "C2", make: "Lamborghini", model: "Countach", variant: "500s" });
 assert.deepEqual(clubbed(countach, [countach, countach500s]), ["C1"]);
 
-// A shared number cannot reach across colours.
-const greyOne = car({ car_id: "G", colour: "Grey", car_number: "999" });
-const redOne = car({ car_id: "R", colour: "Red", car_number: "999" });
+// The real Cadillac: the Blister and the Box carry the same number and
+// disagree about both the colour and the variant, because two people typed
+// them in. The number is the product; the rest is data entry.
+const cadillacBlister = car({
+  car_id: "0F1S07-01-0B02-1",
+  assortment: "Blister",
+  colour: "Silver",
+  variant: "",
+  car_number: "1372",
+});
+const cadillacBox = car({
+  car_id: "0F1S07-0G-0B02-1",
+  assortment: "Box",
+  colour: "Grey",
+  variant: "R #40 Dex",
+  car_number: "1372",
+});
+assert.deepEqual(clubbed(cadillacBlister, [cadillacBlister, cadillacBox]), [
+  "0F1S07-01-0B02-1",
+  "0F1S07-0G-0B02-1",
+]);
+
+// Colour alone still separates two entries with nothing else to go on.
+const greyOne = car({ car_id: "G", colour: "Grey" });
+const redOne = car({ car_id: "R", colour: "Red" });
 assert.deepEqual(clubbed(greyOne, [greyOne, redOne]), ["G"]);
+
+// A Hot Wheels number is a position in a series, not a product: "2/10" was a
+// Shelby last year and a Mach-E this one, and they must not club.
+const hw = (p: Partial<CatalogCar> & { car_id: string }) =>
+  car({ brand: "Hot Wheels", make: "Ford", model: "Mustang", assortment: "Mainline", ...p });
+const shelby = hw({ car_id: "H1", variant: "Shelby GT500", colour: "Blue", car_number: "2/10" });
+const mache = hw({ car_id: "H2", variant: "Mach E 1400", colour: "Black", car_number: "2/10" });
+assert.deepEqual(clubbed(shelby, [shelby, mache]), ["H1"]);
 
 // The entry itself comes first, whatever the rest sort to.
 const [first] = castingSiblings(cadillacB, [cadillacA, cadillacB]);
