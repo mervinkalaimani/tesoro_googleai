@@ -138,3 +138,38 @@ const twoQube = [
   car({ car_id: "Q2", assortment: "Qube Carz", car_number: "QZ008" }),
 ];
 assert.deepEqual(labels(twoQube), ["Qube Carz #QZ009", "Qube Carz #QZ008"]);
+
+// The Ionic 5: one entry has the year, the other does not, and both are #1345.
+// The number is the product, so the year cannot be what keeps them apart.
+const ionicBlister = car({
+  car_id: "I1",
+  make: "Hyundai",
+  model: "Ionic 5",
+  variant: "N Performance",
+  colour: "Blue",
+  year: "",
+  car_number: "1345",
+  assortment: "Blister",
+});
+const ionicBox = car({
+  car_id: "I2",
+  make: "Hyundai",
+  model: "Ionic 5",
+  variant: "N Performance",
+  colour: "Blue",
+  year: "2024",
+  car_number: "1345",
+  assortment: "Box",
+});
+assert.deepEqual(clubbed(ionicBlister, [ionicBlister, ionicBox]), ["I1", "I2"]);
+
+// A mistyped number is all that links these two, and the model is what stops it:
+// an M4 GT3 EVO and an M5 GT3 EVO both filed as #1247.
+const m4 = car({ make: "BMW", model: "M4", car_id: "B4", variant: "GT3 EVO", car_number: "1247" });
+const m5 = car({ make: "BMW", model: "M5", car_id: "B5", variant: "GT3 EVO", car_number: "1247" });
+assert.deepEqual(clubbed(m4, [m4, m5]), ["B4"]);
+
+// Without a number the year still separates two entries.
+const older = car({ car_id: "Y1", year: "2023", car_number: "" });
+const newer = car({ car_id: "Y2", year: "2024", car_number: "" });
+assert.deepEqual(clubbed(older, [older, newer]), ["Y1"]);

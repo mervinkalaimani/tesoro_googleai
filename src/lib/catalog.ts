@@ -876,9 +876,6 @@ export type CatalogCarOwner = {
   assortment?: string;
 };
 
-const castingBase = (c: CatalogCar) =>
-  [c.brand, c.make, c.model, c.year].map((v) => (v || "").trim().toLowerCase()).join("|");
-
 const norm = (v?: string | null) => (v || "").trim().toLowerCase();
 
 /**
@@ -904,10 +901,22 @@ const collectorNumber = (c: CatalogCar) => (brandUsesCarNumber(c.brand) ? norm(c
  * different castings whose twin was filed without its variant.
  */
 const sameCasting = (a: CatalogCar, b: CatalogCar): boolean => {
-  if (castingBase(a) !== castingBase(b)) return false;
+  if (norm(a.brand) !== norm(b.brand)) return false;
+  if (norm(a.make) !== norm(b.make) || norm(a.model) !== norm(b.model)) return false;
+
+  // The number is the product, so the year adds nothing to it — and one of the
+  // two entries usually has it blank, which is how the Blister and the Box of
+  // the Ionic 5 N #1345 came to be two castings. Make and model still have to
+  // agree, because a number gets mistyped now and then and that is all there is
+  // to stop a BMW M4 joining an M5.
   const n = collectorNumber(a);
   if (n.length > 0 && n === collectorNumber(b)) return true;
-  return norm(a.variant) === norm(b.variant) && norm(a.colour) === norm(b.colour);
+
+  return (
+    norm(a.year) === norm(b.year) &&
+    norm(a.variant) === norm(b.variant) &&
+    norm(a.colour) === norm(b.colour)
+  );
 };
 
 /**
