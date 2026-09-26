@@ -37,6 +37,7 @@ import { normaliseStatus } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 import { monthEtaToDate } from "@/lib/date-utils";
 import { normaliseRarity } from "@/lib/rarity";
+import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 
 /**
  * Robust RFC 4180 CSV parser supporting quotes, commas, and newlines inside fields.
@@ -265,13 +266,98 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
   return { cars, errors };
 }
 
+/**
+ * Two cars, one of each kind: one in your hands and graded, one still on
+ * pre-order with a balance. Between them every column carries a value at least
+ * once, so the template shows what belongs in each rather than a row of commas.
+ */
+const TEMPLATE_CARS: Diecast[] = [
+  {
+    id: "CAR-001",
+    name: "1971 Nissan Datsun 240Z Custom",
+    make: "Nissan",
+    model: "Datsun 240Z",
+    variant: "Custom",
+    year: "1971",
+    brand: "Hot Wheels",
+    assortment: "Premium",
+    series: "Car Culture",
+    subSeries: "Japan Historics",
+    carNumber: "3/5",
+    colour: "Spectraflame Red",
+    type: "Sports Car",
+    size: "1:64",
+    spent: 499,
+    mrp: 549,
+    payment: "Paid",
+    paid: 499,
+    status: "In Hand",
+    seller: "Amazon",
+    transitInfo: "",
+    deliveryPartner: "Delhivery",
+    trackingId: "1234567890",
+    shippingId: "AMAZ/01",
+    orderId: "AMAN-2026-06-001",
+    orderDate: "2026-06-10",
+    expectedDate: "2026-06-15",
+    date: "2026-06-15",
+    chase: false,
+    rarity: "Normal",
+    carCondition: "Mint",
+    carRating: 5,
+    cardCondition: "Good",
+    cardRating: 4,
+    favourite: true,
+  } as Diecast,
+  {
+    id: "CAR-002",
+    name: "2023 Porsche 911 GT3 RS",
+    make: "Porsche",
+    model: "911",
+    variant: "GT3 RS",
+    year: "2023",
+    brand: "Mini GT",
+    assortment: "Premium",
+    series: "Exclusive",
+    subSeries: "",
+    carNumber: "742",
+    colour: "Shark Blue",
+    type: "Sports Car",
+    size: "1:64",
+    spent: 1299,
+    mrp: 1499,
+    payment: "Partial",
+    paid: 500,
+    status: "PO",
+    seller: "KarzandDolls",
+    transitInfo: "Ships March 2027",
+    deliveryPartner: "",
+    trackingId: "",
+    shippingId: "KARZ/PO/01",
+    orderId: "KARS-2026-06-001",
+    orderDate: "2026-06-12",
+    expectedDate: "2027-03-10",
+    date: "",
+    chase: true,
+    rarity: "Chase",
+    carCondition: "",
+    carRating: 0,
+    cardCondition: "",
+    cardRating: 0,
+    favourite: true,
+  } as Diecast,
+];
+
+/**
+ * The importer's template, written from the columns the exporter uses.
+ *
+ * It used to be two hand-typed lines, and hand-typed lines drift: the list was
+ * eleven columns behind — no colour, no car number, no sub series, no condition
+ * or ratings, no shipping or order ID — and an earlier row had one column
+ * missing, which slid every value after it one place left. Sharing the export's
+ * column list means a file downloaded here, filled in and imported back comes
+ * home to the same fields, and a new column appears in all three at once.
+ */
 export function generateDiecastCsvTemplate(): string {
-  return [
-    "Car ID,Name,Make,Model,Variant,Year,Brand,Series,Assortment,Size,Spent,MRP,Seller,Status,Payment,Paid,Received Date,Month,Order Date,Expected Date,Delivery Partner,Tracking ID,Transit Info / ETA,Favourite,Chase",
-    "CAR-001,1971 Datsun 240Z,Nissan,Datsun 240Z,Custom,1971,Hot Wheels,Car Culture,Premium,1/64,499,549,Amazon,Available,Paid,499,15/06/2026,Jun 2026,10/06/2026,15/06/2026,Delhivery,1234567890,Delivered,true,false",
-    // Every row carries all 25 columns. The second one used to omit Assortment,
-    // which slid Size and everything after it one column to the left — so a
-    // template meant to show the format demonstrated the wrong one.
-    "CAR-002,Porsche 911 GT3 RS,Porsche,911 GT3 RS,Shark Blue,2023,Mini GT,Exclusive,Premium,1/64,1299,1499,KarzandDolls,Pre Order,Partial,500,,,12/06/2026,10/03/2027,,,Mar 2027,true,true",
-  ].join("\n");
+  return buildCsv(TEMPLATE_CARS, CAR_CSV_COLUMNS);
 }
