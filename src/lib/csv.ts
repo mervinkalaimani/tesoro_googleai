@@ -281,3 +281,30 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
 export function generateDiecastCsvTemplate(): string {
   return buildCsv([], CAR_CSV_COLUMNS);
 }
+
+/**
+ * What importing `parsed` would do to a collection that already holds `existing`.
+ *
+ * An import upserts on car ID, so it does two different things at once: rows
+ * with a new ID are added, and rows carrying an ID already in the collection
+ * replace what is there. Undoing it has to remove the first kind and put the
+ * second kind back, which is why both halves are named here rather than
+ * assuming every imported row is new.
+ */
+export function importDelta(
+  parsed: Diecast[],
+  existing: Diecast[],
+): { created: string[]; overwritten: Diecast[] } {
+  const byId = new Map(existing.map((c) => [c.id, c]));
+  const seen = new Set<string>();
+  const created: string[] = [];
+  const overwritten: Diecast[] = [];
+  for (const row of parsed) {
+    if (seen.has(row.id)) continue;
+    seen.add(row.id);
+    const was = byId.get(row.id);
+    if (was) overwritten.push(was);
+    else created.push(row.id);
+  }
+  return { created, overwritten };
+}

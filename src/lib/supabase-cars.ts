@@ -472,3 +472,33 @@ export async function seedCarsToSupabase(
     return { success: false, count: 0, error: (err as Error).message };
   }
 }
+
+/**
+ * Remove many rows in one go, for undoing an import.
+ *
+ * Chunked because a `Car ID in (...)` list of 1,500 makes a URL no proxy wants
+ * to forward.
+ */
+export async function deleteCarsFromSupabase(
+  carIds: string[],
+): Promise<{ success: boolean; error?: string }> {
+  if (!carIds.length) return { success: true };
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return { success: false, error: "Not signed in" };
+
+    const tableName = getSupabaseTableName();
+    for (let i = 0; i < carIds.length; i += 100) {
+      const { error } = await supabase
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .from(tableName as any)
+        .delete()
+        .eq("user_id", userId)
+        .in("Car ID", carIds.slice(i, i + 100));
+      if (error) return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+}

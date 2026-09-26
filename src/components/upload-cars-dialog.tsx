@@ -9,6 +9,7 @@ import {
   Loader2,
   Database,
   ArrowRight,
+  RotateCcw,
 } from "lucide-react";
 import {
   Dialog,
@@ -22,11 +23,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { parseCsvToDiecast } from "@/lib/csv";
-import { useCarsActions, useCarsRefresh, useCarsSource } from "@/lib/cars-store";
+import { importDelta, parseCsvToDiecast } from "@/lib/csv";
+import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
+import { useCars, useCarsActions, useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
 import { tesoroRawToDiecast } from "@/lib/supabase-cars";
 import type { Diecast } from "@/lib/types";
-import { inr } from "@/lib/format";
+
+/**
+ * Rows drawn before the "show all" button appears.
+ *
+ * ponytail: plain rows, no virtualisation. A 1,500-car file is 1,500 × 35 cells
+ * if you ask for all of it, which is a visible pause. Reach for a windowed list
+ * only if that pause starts to matter.
+ */
+const PREVIEW_CHUNK = 100;
 
 interface UploadCarsDialogProps {
   trigger?: React.ReactNode;
@@ -63,9 +73,24 @@ export function UploadCarsDialog({
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  /**
+   * How to put the collection back. `created` are ids the file brought that were
+   * not there before; `overwritten` are the cars it replaced, as they were — an
+   * import upserts on Car ID, so a re-import of an edited export changes rows
+   * rather than adding them, and removing those would be the wrong reversal.
+   */
+  const [undoable, setUndoable] = useState<{
+    mode: "local" | "remote";
+    created: string[];
+    overwritten: Diecast[];
+  } | null>(null);
+  const [undoing, setUndoing] = useState(false);
+  /** How much of the preview is on screen; the rest is a click away. */
+  const [rowsShown, setRowsShown] = useState(PREVIEW_CHUNK);
 
+  const cars = useCars();
   const { bulkAddCars } = useCarsActions();
-  const { syncAllToSupabase } = useCarsSource();
+  const { undo } = useCarsUndo();
   const { refresh } = useCarsRefresh();
 
   const resetState = () => {
@@ -75,8 +100,14 @@ export function UploadCarsDialog({
     setUploading(false);
     setProgress(null);
     setSuccessMessage(null);
+    setUndoable(null);
+    setUndoing(false);
+    setRowsShown(PREVIEW_CHUNK);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  /** What an import of `parsedCars` would add, and what it would replace. */
+  const importEffect = () => importDelta(parsedCars, cars);
 
   const handleFile = (file: File) => {
     resetState();
@@ -208,20 +239,56 @@ export function UploadCarsDialog({
 
   const handleImportLocal = () => {
     if (parsedCars.length === 0) return;
+    setUndoable({ mode: "local", ...importEffect() });
     bulkAddCars(parsedCars);
     setSuccessMessage(
-      `Successfully added ${parsedCars.length.toLocaleString()} cars to your collection.`,
+      `Added ${parsedCars.length.toLocaleString()} ${parsedCars.length === 1 ? "car" : "cars"} to your collection.`,
     );
-    setTimeout(() => {
+  };
+
+  /**
+   * Put the collection back where the import found it.
+   *
+   * The offline import goes through the store, which already recorded how to
+   * reverse itself, and undoing there is what the rest of the app uses. The
+   * database upload writes past the store, so that one is reversed by hand.
+   */
+  const handleUndo = async () => {
+    if (!undoable) return;
+    setUndoing(true);
+    try {
+      if (undoable.mode === "local") {
+        undo();
+      } else {
+        const { deleteCarsFromSupabase, seedCarsToSupabase } = await import("@/lib/supabase-cars");
+        const removed = await deleteCarsFromSupabase(undoable.created);
+        if (!removed.success) {
+          setParseErrors([`Undo failed: ${removed.error || "Unknown error"}`]);
+          return;
+        }
+        if (undoable.overwritten.length) {
+          const restored = await seedCarsToSupabase(undoable.overwritten);
+          if (!restored.success) {
+            setParseErrors([`Undo restored nothing: ${restored.error || "Unknown error"}`]);
+            return;
+          }
+        }
+        await refresh();
+      }
+      setUndoable(null);
+      setSuccessMessage(null);
       setOpen(false);
       resetState();
-    }, 1500);
+    } finally {
+      setUndoing(false);
+    }
   };
 
   const handleUploadToSupabase = async () => {
     if (parsedCars.length === 0) return;
     setUploading(true);
     setProgress({ current: 0, total: parsedCars.length });
+    const effect = importEffect();
 
     try {
       const { seedCarsToSupabase } = await import("@/lib/supabase-cars");
@@ -235,15 +302,10 @@ export function UploadCarsDialog({
         return;
       }
 
-      setSuccessMessage(
-        `Successfully uploaded ${res.count.toLocaleString()} cars to Supabase database!`,
-      );
+      setUndoable({ mode: "remote", ...effect });
+      setSuccessMessage(`Uploaded ${res.count.toLocaleString()} cars to the database.`);
       // Refresh live collection store
       await refresh();
-      setTimeout(() => {
-        setOpen(false);
-        resetState();
-      }, 1800);
     } catch (err) {
       setParseErrors([`Upload error: ${(err as Error).message}`]);
     } finally {
@@ -262,7 +324,7 @@ export function UploadCarsDialog({
       }}
     >
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="max-w-2xl overflow-hidden p-0 sm:max-w-2xl">
+      <DialogContent className="max-w-[min(1100px,95vw)] overflow-hidden p-0 sm:max-w-[min(1100px,95vw)]">
         <DialogHeader className="border-b border-border bg-muted/20 px-6 py-4">
           <div className="flex items-center gap-2">
             <div className="grid size-8 place-items-center rounded-md bg-primary/10 text-primary">
@@ -372,66 +434,116 @@ export function UploadCarsDialog({
             </div>
           )}
 
-          {/* Parsed Preview */}
+          {/* Every field the import will write, not a chosen handful: a column
+              left blank here is a column the file did not carry, which is the
+              thing worth seeing before importing. */}
           {parsedCars.length > 0 && !uploading && !successMessage && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Data Preview ({parsedCars.length.toLocaleString()} cars parsed)
+                  Preview ({parsedCars.length.toLocaleString()}{" "}
+                  {parsedCars.length === 1 ? "car" : "cars"} · {CAR_CSV_COLUMNS.length} fields)
                 </span>
-                <span className="text-[11px] text-muted-foreground">Showing first 5 rows</span>
+                <span className="text-[11px] text-muted-foreground">
+                  {rowsShown >= parsedCars.length
+                    ? "All rows"
+                    : `First ${rowsShown.toLocaleString()} rows`}
+                </span>
               </div>
-              <div className="max-h-48 overflow-auto rounded-lg border border-border bg-muted/10 text-xs">
-                <table className="w-full text-left">
-                  <thead className="sticky top-0 bg-muted/80 text-[11px] font-medium text-muted-foreground border-b border-border">
+              <div className="max-h-[45vh] overflow-auto rounded-lg border border-border bg-muted/10 text-xs">
+                <table className="text-left">
+                  <thead className="sticky top-0 bg-muted text-[11px] font-medium text-muted-foreground border-b border-border">
                     <tr>
-                      <th className="px-2.5 py-1.5">ID</th>
-                      <th className="px-2.5 py-1.5">Name</th>
-                      <th className="px-2.5 py-1.5">Brand</th>
-                      <th className="px-2.5 py-1.5">Cost</th>
-                      <th className="px-2.5 py-1.5">Status</th>
-                      <th className="px-2.5 py-1.5">Received date</th>
+                      {CAR_CSV_COLUMNS.map((col) => (
+                        <th key={col.key} className="whitespace-nowrap px-2.5 py-1.5">
+                          {col.label}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
-                    {parsedCars.slice(0, 5).map((car) => (
-                      <tr key={car.id} className="hover:bg-muted/30">
-                        <td className="px-2.5 py-1.5 font-mono text-[11px] text-muted-foreground">
-                          {car.id}
-                        </td>
-                        <td className="px-2.5 py-1.5 font-medium text-foreground truncate max-w-[180px]">
-                          {car.name}
-                        </td>
-                        <td className="px-2.5 py-1.5 text-muted-foreground">{car.brand}</td>
-                        <td className="px-2.5 py-1.5 tabular-nums">{inr(car.spent)}</td>
-                        <td className="px-2.5 py-1.5">
-                          <span className="inline-block rounded px-1.5 py-0.5 text-[10px] font-medium bg-muted text-foreground">
-                            {car.status}
-                          </span>
-                        </td>
-                        <td className="px-2.5 py-1.5 text-muted-foreground">{car.date || "—"}</td>
+                    {parsedCars.slice(0, rowsShown).map((car, i) => (
+                      <tr key={`${car.id}-${i}`} className="hover:bg-muted/30">
+                        {CAR_CSV_COLUMNS.map((col) => {
+                          const value = String(col.get(car) ?? "");
+                          return (
+                            <td
+                              key={col.key}
+                              className="max-w-[220px] truncate whitespace-nowrap px-2.5 py-1.5 text-muted-foreground"
+                              title={value}
+                            >
+                              {value || "—"}
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+              {rowsShown < parsedCars.length && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setRowsShown(parsedCars.length)}
+                  className="w-full text-xs"
+                >
+                  Show all {parsedCars.length.toLocaleString()} rows
+                </Button>
+              )}
             </div>
           )}
         </div>
 
         <DialogFooter className="border-t border-border bg-muted/20 px-6 py-3 sm:justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setOpen(false)}
-            disabled={uploading}
-            className="text-xs"
-          >
-            Cancel
-          </Button>
+          {!undoable && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setOpen(false)}
+              disabled={uploading}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+          )}
 
           <div className="flex items-center gap-2">
+            {/* The import stays reversible until this dialog is closed, which is
+                why it no longer closes itself on success. */}
+            {undoable && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUndo}
+                  disabled={undoing}
+                  className="text-xs gap-1.5"
+                >
+                  {undoing ? (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  ) : (
+                    <RotateCcw className="size-3.5" />
+                  )}
+                  Undo import
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setOpen(false);
+                    resetState();
+                  }}
+                  disabled={undoing}
+                  className="text-xs"
+                >
+                  Done
+                </Button>
+              </>
+            )}
             {parsedCars.length > 0 && !successMessage && (
               <>
                 <Button
