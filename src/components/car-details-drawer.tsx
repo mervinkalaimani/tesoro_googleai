@@ -46,6 +46,9 @@ import type { CatalogCar } from "@/lib/catalog";
 import {
   resolveCatalogUserId,
   getCatalogCarOwners,
+  getCastingOwners,
+  castingSiblings,
+  ownerCount,
   isCarMatchingCatalog,
   catalogCarToDiecast,
   type CatalogCarOwner,
@@ -53,6 +56,7 @@ import {
 import { useAuth } from "@/lib/auth-store";
 import { CatalogOwnersDialog, parseDateVal } from "@/components/catalog-owners-dialog";
 import { StatusPill } from "@/components/status-pill";
+import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
@@ -542,10 +546,7 @@ function CarPopupContent({
     return out;
   }, [cars, car, seriesHeading, setHeading]);
 
-  const visibleShelves = useMemo(
-    () => shelves.slice(0, hasPack ? 1 : 2),
-    [shelves, hasPack],
-  );
+  const visibleShelves = useMemo(() => shelves.slice(0, hasPack ? 1 : 2), [shelves, hasPack]);
 
   const hasMoreToShow = hasPack || visibleShelves.length > 0;
 
@@ -594,41 +595,41 @@ function CarPopupContent({
             </div>
 
             <div className="space-y-3.5 px-5 py-4 xl:px-6 xl:py-5">
-            {/* Car title section */}
-            <CarTitleSection car={car} />
+              {/* Car title section */}
+              <CarTitleSection car={car} />
 
-            <hr className="border-border" />
+              <hr className="border-border" />
 
-            {/* Car details section (specs) */}
-            <CarSpecsSection car={car} hasCondition={hasCondition} />
+              {/* Car details section (specs) */}
+              <CarSpecsSection car={car} hasCondition={hasCondition} />
 
-            <hr className="border-border" />
+              <hr className="border-border" />
 
-            {/* Rarity & Favourite section */}
-            <CarRaritySection
-              car={car}
-              rarity={rarity}
-              onToggleChase={onToggleChase}
-              onToggleFavourite={onToggleFavourite}
-              exactCount={exactCount}
-            />
+              {/* Rarity & Favourite section */}
+              <CarRaritySection
+                car={car}
+                rarity={rarity}
+                onToggleChase={onToggleChase}
+                onToggleFavourite={onToggleFavourite}
+                exactCount={exactCount}
+              />
 
-            <hr className="border-border" />
+              <hr className="border-border" />
 
-            {/* What it cost and where it came from. This was a column of its
+              {/* What it cost and where it came from. This was a column of its
                 own, which meant the two halves of one purchase — the money and
                 the parcel — sat either side of a divider from the car they
                 belong to. */}
-            <CarPurchaseAndShippingSection
-              car={car}
-              spent={spent}
-              mrp={mrp}
-              delta={delta}
-              hasArrived={hasArrived}
-              cleanTransitNotes={cleanTransitNotes}
-              trackable={trackable}
-              onOpenBatch={onOpenBatch}
-            />
+              <CarPurchaseAndShippingSection
+                car={car}
+                spent={spent}
+                mrp={mrp}
+                delta={delta}
+                hasArrived={hasArrived}
+                cleanTransitNotes={cleanTransitNotes}
+                trackable={trackable}
+                onOpenBatch={onOpenBatch}
+              />
             </div>
           </div>
 
@@ -1838,6 +1839,13 @@ function CatalogDetailsContent({
   const isActuallyOwned = owned || Boolean(matchingUserCar);
   const isActuallyIso = Boolean(isIsoProp || matchingIsoCar);
 
+  /** Every entry for this casting, so the owner count covers all its boxes. */
+  const { catalog } = useCatalog();
+  const ownerEntries = useMemo(
+    () => (catalogCar ? castingSiblings(catalogCar, catalog) : []),
+    [catalogCar, catalog],
+  );
+
   // A box's contents head the shelf column, and cost it one of its two shelves.
   const { pack: catalogPack } = usePack(catalogCar?.car_id);
   const catalogHasPack = Boolean(catalogPack?.is_multipack);
@@ -1849,16 +1857,17 @@ function CatalogDetailsContent({
     }
     let cancelled = false;
     setOwnersLoading(true);
-    getCatalogCarOwners(catalogCar.car_id, {
-      catalogCar,
-      isOwned: isActuallyOwned,
+    // Across every box the casting is catalogued in — see getCastingOwners.
+    getCastingOwners(ownerEntries, (entry) => ({
+      catalogCar: entry,
+      isOwned: isActuallyOwned && entry.car_id === catalogCar.car_id,
       currentUser: user
         ? { uid: user.id, email: user.email, profile }
         : profile
           ? { uid: profile.user_id || "current-user", email: null, profile }
           : { uid: "current-user", email: null, profile: null },
-      userCar: matchingUserCar,
-    })
+      userCar: entry.car_id === catalogCar.car_id ? matchingUserCar : null,
+    }))
       .then((data) => {
         if (!cancelled) setOwners(data);
       })
@@ -1868,7 +1877,15 @@ function CatalogDetailsContent({
     return () => {
       cancelled = true;
     };
-  }, [catalogCar?.car_id, catalogCar, isActuallyOwned, user, profile, matchingUserCar]);
+  }, [
+    catalogCar?.car_id,
+    catalogCar,
+    ownerEntries,
+    isActuallyOwned,
+    user,
+    profile,
+    matchingUserCar,
+  ]);
 
   const handleSeeAll = () => {
     if (typeof window !== "undefined" && window.innerWidth >= 768 && onToggleOwnersColumn) {
@@ -2102,14 +2119,42 @@ function CatalogDetailsBody({
   onSeeAllOwners?: () => void;
 }) {
   const rarity = rarityOf(car);
-  const addedBy = resolveCatalogUserId(catalogCar?.created_by);
-  const addedOn = formatDayMonthYear(catalogCar?.created_at) || "—";
+  const { catalog } = useCatalog();
+
+  /**
+   * The same casting in every box the catalogue knows it in. One entry is the
+   * ordinary case and shows no control at all.
+   */
+  const siblings = useMemo(
+    () => (catalogCar ? castingSiblings(catalogCar, catalog) : []),
+    [catalogCar, catalog],
+  );
+  const [shownId, setShownId] = useState(catalogCar?.car_id ?? "");
+  useEffect(() => {
+    setShownId(catalogCar?.car_id ?? "");
+  }, [catalogCar?.car_id]);
+  const shown = siblings.find((s) => s.car_id === shownId) ?? catalogCar;
+
+  // Two entries can carry the same assortment and differ elsewhere, so a label
+  // that repeats takes the car number to tell it from its twin.
+  const siblingOptions = useMemo(
+    () =>
+      siblings.map((s) => {
+        const name = s.assortment || "—";
+        const twin = siblings.some((o) => o.car_id !== s.car_id && (o.assortment || "—") === name);
+        return { value: s.car_id, label: twin && s.car_number ? `${name} #${s.car_number}` : name };
+      }),
+    [siblings],
+  );
+
+  const addedBy = resolveCatalogUserId(shown?.created_by);
+  const addedOn = formatDayMonthYear(shown?.created_at) || "—";
   // An entry nobody has corrected has no editor and no edit date. Falling back
   // to the creator and the filing date, as this used to, described an edit that
   // never happened — and now that the column exists it can say so instead.
-  const edited = Boolean(catalogCar?.updated_by);
-  const updatedBy = edited ? resolveCatalogUserId(catalogCar?.updated_by) : "—";
-  const updatedOn = edited ? formatDayMonthYear(catalogCar?.updated_at) || "—" : "—";
+  const edited = Boolean(shown?.updated_by);
+  const updatedBy = edited ? resolveCatalogUserId(shown?.updated_by) : "—";
+  const updatedOn = edited ? formatDayMonthYear(shown?.updated_at) || "—" : "—";
 
   const { isAdmin, user, profile } = useAuth();
   const mine = useCars();
@@ -2147,12 +2192,15 @@ function CatalogDetailsBody({
     }
     let cancelled = false;
     setInternalOwnersLoading(true);
-    getCatalogCarOwners(catalogCar.car_id, {
-      catalogCar,
-      isOwned: owned,
+    // Every box this casting comes in, so the count is the casting's and not
+    // one package's. Only the entry actually open can claim the viewer's own
+    // copy; the others are answered from the database alone.
+    getCastingOwners(siblings.length ? siblings : [catalogCar], (entry) => ({
+      catalogCar: entry,
+      isOwned: owned && entry.car_id === catalogCar.car_id,
       currentUser: user ? { uid: user.id, email: user.email, profile } : null,
-      userCar: matchingUserCar,
-    })
+      userCar: entry.car_id === catalogCar.car_id ? matchingUserCar : null,
+    }))
       .then((data) => {
         if (!cancelled) setInternalOwners(data);
       })
@@ -2162,7 +2210,16 @@ function CatalogDetailsBody({
     return () => {
       cancelled = true;
     };
-  }, [externalOwners, catalogCar?.car_id, catalogCar, owned, user, profile, matchingUserCar]);
+  }, [
+    externalOwners,
+    catalogCar?.car_id,
+    catalogCar,
+    siblings,
+    owned,
+    user,
+    profile,
+    matchingUserCar,
+  ]);
 
   return (
     <div className="space-y-4">
@@ -2213,7 +2270,7 @@ function CatalogDetailsBody({
                 button, and only an admin has one — the list is people. */}
             <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
               <p className="text-xs text-muted-foreground">
-                {ownersLine(ownersLoading, owners.length)}
+                {ownersLine(ownersLoading, ownerCount(owners))}
               </p>
               {isAdmin && onSeeAllOwners && !ownersLoading && owners.length > 0 && (
                 <button
@@ -2276,8 +2333,21 @@ function CatalogDetailsBody({
           <div className="col-span-2">
             <Spec
               label="Catalogue ID"
-              value={catalogCar?.car_id || car.catalogId || car.carId || car.id || "—"}
+              value={shown?.car_id || car.catalogId || car.carId || car.id || "—"}
             />
+            {siblings.length > 1 && (
+              <div className="mt-1.5">
+                {/* Which box's entry the four lines below are about. The casting
+                    is the same one either way; who filed it, and when, is not. */}
+                <SegmentControl<string>
+                  fill
+                  value={shownId}
+                  onChange={setShownId}
+                  className="h-8 w-full"
+                  options={siblingOptions}
+                />
+              </div>
+            )}
           </div>
           {preOrder && expectedDate && (
             <div className="col-span-2">
@@ -2380,7 +2450,7 @@ export function CatalogCarTitleSection({
       {/* Same rule as the desktop layout: the count states, "View all" acts. */}
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         <p className="text-xs text-muted-foreground">
-          {ownersLine(Boolean(ownersLoading), ownersList.length)}
+          {ownersLine(Boolean(ownersLoading), ownerCount(ownersList))}
         </p>
         {isAdmin && onSeeAllOwners && !ownersLoading && ownersList.length > 0 && (
           <button

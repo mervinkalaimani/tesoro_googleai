@@ -867,7 +867,69 @@ export type CatalogCarOwner = {
   last_name?: string | null;
   display_name: string;
   date_added: string;
+  /**
+   * Which box theirs came in. The same casting is often catalogued twice — a
+   * Blister and a Qube Carz, a Mainline and a 5 Pack — and "who owns this" is
+   * a different answer for each, so an owner carries the one they bought.
+   */
+  assortment?: string;
 };
+
+/** Same casting, different box: brand, make, model, variant, colour and year. */
+const castingKey = (c: CatalogCar) =>
+  [c.brand, c.make, c.model, c.variant, c.colour, c.year]
+    .map((v) => (v || "").trim().toLowerCase())
+    .join("|");
+
+/**
+ * Every catalogue entry for the casting this one is, its own first.
+ *
+ * Two entries that differ only by assortment are one casting sold in two
+ * packages, and the details page has to be able to say so: each carries its own
+ * ID, its own filing date and its own owners.
+ */
+export function castingSiblings(entry: CatalogCar, catalog: CatalogCar[]): CatalogCar[] {
+  const key = castingKey(entry);
+  const rest = catalog.filter((c) => c.car_id !== entry.car_id && castingKey(c) === key);
+  if (rest.length === 0) return [entry];
+  rest.sort((a, b) => (a.assortment || "").localeCompare(b.assortment || ""));
+  return [entry, ...rest];
+}
+
+/**
+ * Who owns any of these entries, each row carrying the one they own.
+ *
+ * Somebody with both the Blister and the Qube Carz is two rows and one person,
+ * which is what the list and the count respectively want to say.
+ */
+export async function getCastingOwners(
+  entries: CatalogCar[],
+  optionsFor: (entry: CatalogCar) => CatalogCarOwnerOptions,
+): Promise<CatalogCarOwner[]> {
+  const lists = await Promise.all(
+    entries.map(async (entry) =>
+      (await getCatalogCarOwners(entry.car_id, optionsFor(entry))).map((owner) => ({
+        ...owner,
+        assortment: entry.assortment || "",
+      })),
+    ),
+  );
+
+  const seen = new Set<string>();
+  const out: CatalogCarOwner[] = [];
+  for (const owner of lists.flat()) {
+    const key = `${owner.auth_uid}@${owner.assortment}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(owner);
+  }
+  return out;
+}
+
+/** How many people, however many boxes they own it in. */
+export function ownerCount(owners: CatalogCarOwner[]): number {
+  return new Set(owners.map((o) => o.auth_uid)).size;
+}
 
 export type CatalogCarOwnerOptions = {
   catalogCar?: CatalogCar | null;

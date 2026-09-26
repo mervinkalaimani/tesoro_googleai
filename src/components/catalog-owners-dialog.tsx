@@ -70,6 +70,15 @@ export function CatalogOwnersDialog({
     }
   };
 
+  /** People, not rows: somebody with two boxes of it is one collector. */
+  const people = useMemo(() => new Set(owners.map((o) => o.auth_uid)).size, [owners]);
+
+  /** Whether the casting is owned in more than one box between these people. */
+  const mixedAssortments = useMemo(
+    () => new Set(owners.map((o) => o.assortment || "")).size > 1,
+    [owners],
+  );
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return owners;
@@ -77,6 +86,7 @@ export function CatalogOwnersDialog({
       (o) =>
         o.display_name.toLowerCase().includes(q) ||
         o.user_id.toLowerCase().includes(q) ||
+        (o.assortment || "").toLowerCase().includes(q) ||
         o.date_added.toLowerCase().includes(q),
     );
   }, [owners, search]);
@@ -118,8 +128,8 @@ export function CatalogOwnersDialog({
             {carName || "Casting Owners"}
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            {owners.length} {owners.length === 1 ? "collector has" : "collectors have"} added this
-            car to their collection.
+            {people} {people === 1 ? "collector has" : "collectors have"} added this car to their
+            collection.
           </DialogDescription>
 
           {owners.length > 5 && (
@@ -205,7 +215,7 @@ export function CatalogOwnersDialog({
           ) : (
             sorted.map((u) => (
               <div
-                key={u.auth_uid}
+                key={`${u.auth_uid}@${u.assortment ?? ""}`}
                 className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/30 transition-colors"
               >
                 <div className="min-w-0 flex items-center gap-2.5">
@@ -224,9 +234,19 @@ export function CatalogOwnersDialog({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 font-medium">
-                  <Calendar className="size-3.5 text-muted-foreground/60" />
-                  <span>{displayDate(u.date_added)}</span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 font-medium">
+                  {/* Which box theirs came in, when the casting is catalogued in
+                      more than one. Everybody owning the same one says nothing,
+                      so it only appears where the answers differ. */}
+                  {mixedAssortments && u.assortment && (
+                    <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[11px]">
+                      {u.assortment}
+                    </span>
+                  )}
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className="size-3.5 text-muted-foreground/60" />
+                    {displayDate(u.date_added)}
+                  </span>
                 </div>
               </div>
             ))
