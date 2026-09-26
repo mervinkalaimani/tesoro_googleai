@@ -8,13 +8,29 @@ import assert from "node:assert/strict";
 
 import type { CatalogCar } from "@/lib/catalog";
 import type { Diecast } from "@/lib/types";
-import { recentReleases, releasesYouAreWaitingOn, releasedLabel } from "@/lib/released";
+import {
+  recentReleases,
+  releasesYouAreWaitingOn,
+  releasedLabel,
+  RELEASED_WINDOW_DAYS,
+} from "@/lib/released";
 
 const NOW = new Date("2026-09-24T12:00:00Z");
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86_400_000).toISOString();
 
 const entry = (p: Partial<CatalogCar> & { car_id: string }): CatalogCar =>
-  ({ brand: "Hot Wheels", make: "Nissan", model: "Skyline", assortment: "Mainline", series: "", sub_series: "", car_number: "", mrp: 179, name: "Skyline", ...p }) as CatalogCar;
+  ({
+    brand: "Hot Wheels",
+    make: "Nissan",
+    model: "Skyline",
+    assortment: "Mainline",
+    series: "",
+    sub_series: "",
+    car_number: "",
+    mrp: 179,
+    name: "Skyline",
+    ...p,
+  }) as CatalogCar;
 
 const car = (p: Partial<Diecast>): Diecast => ({ id: "c1", status: "PO", ...p }) as Diecast;
 
@@ -59,8 +75,16 @@ assert.deepEqual(
 // Nothing released means nothing to say, and no wasted pass over the collection.
 assert.deepEqual(releasesYouAreWaitingOn(mine, [], 21, NOW), []);
 
-assert.equal(releasedLabel(0), "released today");
-assert.equal(releasedLabel(1), "released yesterday");
-assert.equal(releasedLabel(6), "released 6 days ago");
+// A week by default, so B — ten days old, and inside the window the calls above
+// pass explicitly — drops out when nobody names one.
+assert.equal(RELEASED_WINDOW_DAYS, 7);
+assert.deepEqual(
+  recentReleases(catalog, undefined, NOW).map((r) => r.entry.car_id),
+  ["A"],
+);
+
+assert.equal(releasedLabel(0), "Released today");
+assert.equal(releasedLabel(1), "Released yesterday");
+assert.equal(releasedLabel(6), "Released 6 days ago");
 
 console.log("released: all checks passed");

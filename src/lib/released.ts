@@ -16,8 +16,14 @@ import { isPreOrder } from "@/lib/status";
  * For "your pre-order shipped" that is soon enough.
  */
 
-/** How long a release stays news. Past this it is just a car in the catalogue. */
-export const RELEASED_WINDOW_DAYS = 21;
+/**
+ * How long a release stays news. Past this it is just a car in the catalogue.
+ *
+ * A week. Three weeks kept castings on the shelf that collectors had already
+ * bought, unboxed and shelved, which is the opposite of what a shelf called
+ * "Recently Released" is for.
+ */
+export const RELEASED_WINDOW_DAYS = 7;
 
 export type Release = {
   entry: CatalogCar;
@@ -95,9 +101,9 @@ export function releasesYouAreWaitingOn(
   return out.sort((a, b) => b.at.getTime() - a.at.getTime());
 }
 
-/** "today" / "yesterday" / "6 days ago" — how fresh the news is. */
+/** "Released today" / "Released yesterday" / "Released 6 days ago". */
 export function releasedLabel(daysAgo: number): string {
-  if (daysAgo <= 0) return "released today";
-  if (daysAgo === 1) return "released yesterday";
-  return `released ${daysAgo} days ago`;
+  if (daysAgo <= 0) return "Released today";
+  if (daysAgo === 1) return "Released yesterday";
+  return `Released ${daysAgo} days ago`;
 }
