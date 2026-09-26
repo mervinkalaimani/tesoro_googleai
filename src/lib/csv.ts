@@ -267,97 +267,17 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
 }
 
 /**
- * Two cars, one of each kind: one in your hands and graded, one still on
- * pre-order with a balance. Between them every column carries a value at least
- * once, so the template shows what belongs in each rather than a row of commas.
- */
-const TEMPLATE_CARS: Diecast[] = [
-  {
-    id: "CAR-001",
-    name: "1971 Nissan Datsun 240Z Custom",
-    make: "Nissan",
-    model: "Datsun 240Z",
-    variant: "Custom",
-    year: "1971",
-    brand: "Hot Wheels",
-    assortment: "Premium",
-    series: "Car Culture",
-    subSeries: "Japan Historics",
-    carNumber: "3/5",
-    colour: "Spectraflame Red",
-    type: "Sports Car",
-    size: "1:64",
-    spent: 499,
-    mrp: 549,
-    payment: "Paid",
-    paid: 499,
-    status: "In Hand",
-    seller: "Amazon",
-    transitInfo: "",
-    deliveryPartner: "Delhivery",
-    trackingId: "1234567890",
-    shippingId: "AMAZ/01",
-    orderId: "AMAN-2026-06-001",
-    orderDate: "2026-06-10",
-    expectedDate: "2026-06-15",
-    date: "2026-06-15",
-    chase: false,
-    rarity: "Normal",
-    carCondition: "Mint",
-    carRating: 5,
-    cardCondition: "Good",
-    cardRating: 4,
-    favourite: true,
-  } as Diecast,
-  {
-    id: "CAR-002",
-    name: "2023 Porsche 911 GT3 RS",
-    make: "Porsche",
-    model: "911",
-    variant: "GT3 RS",
-    year: "2023",
-    brand: "Mini GT",
-    assortment: "Premium",
-    series: "Exclusive",
-    subSeries: "",
-    carNumber: "742",
-    colour: "Shark Blue",
-    type: "Sports Car",
-    size: "1:64",
-    spent: 1299,
-    mrp: 1499,
-    payment: "Partial",
-    paid: 500,
-    status: "PO",
-    seller: "KarzandDolls",
-    transitInfo: "Ships March 2027",
-    deliveryPartner: "",
-    trackingId: "",
-    shippingId: "KARZ/PO/01",
-    orderId: "KARS-2026-06-001",
-    orderDate: "2026-06-12",
-    expectedDate: "2027-03-10",
-    date: "",
-    chase: true,
-    rarity: "Chase",
-    carCondition: "",
-    carRating: 0,
-    cardCondition: "",
-    cardRating: 0,
-    favourite: true,
-  } as Diecast,
-];
-
-/**
- * The importer's template, written from the columns the exporter uses.
+ * The importer's template: the column row and nothing under it.
  *
- * It used to be two hand-typed lines, and hand-typed lines drift: the list was
- * eleven columns behind — no colour, no car number, no sub series, no condition
- * or ratings, no shipping or order ID — and an earlier row had one column
- * missing, which slid every value after it one place left. Sharing the export's
- * column list means a file downloaded here, filled in and imported back comes
- * home to the same fields, and a new column appears in all three at once.
+ * Written from CAR_CSV_COLUMNS, the list the export uses, so a file downloaded
+ * here, filled in and imported comes home to the fields it left from, and a
+ * column added later appears in all three places at once. It used to be two
+ * hand-typed lines that had drifted eleven columns behind the importer.
+ *
+ * No sample rows. A template is a blank form — rows in it are rows somebody has
+ * to delete before their own, and a car that was never bought is a strange
+ * thing to hand someone as an example of their collection.
  */
 export function generateDiecastCsvTemplate(): string {
-  return buildCsv(TEMPLATE_CARS, CAR_CSV_COLUMNS);
+  return buildCsv([], CAR_CSV_COLUMNS);
 }
