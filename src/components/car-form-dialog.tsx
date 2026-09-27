@@ -13,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import type { Diecast } from "@/lib/types";
 import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
+import { carDraftHasContent } from "@/lib/draft-content";
 import { carSubLine } from "@/lib/car-subline";
 import { mrpOptionsFor, topSellers, assortmentChipsFor } from "@/lib/car-prices";
 import { catalogueFill } from "@/lib/catalogue-fill";
@@ -792,7 +793,10 @@ export function CarFormDialog({
   // draft it had just read.
   useEffect(() => {
     if (!open || !draftReady) return;
-    if (sameForm(form, baseline)) {
+    // Equality with the blank form is not enough: the blank form carries
+    // today’s date, so a draft saved yesterday can never match it again and
+    // would keep a badge lit all week over nothing typed.
+    if (sameForm(form, baseline) || !carDraftHasContent({ form })) {
       clearDraft(draftKey);
       return;
     }

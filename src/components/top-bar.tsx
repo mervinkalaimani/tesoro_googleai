@@ -14,7 +14,8 @@ import { AccountButton } from "@/components/account-button";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
-import { BULK_DRAFT_KEY, CAR_DRAFT_KEY, hasDraft } from "@/lib/form-draft";
+import { BULK_DRAFT_KEY, CAR_DRAFT_KEY, readDraft } from "@/lib/form-draft";
+import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 
 /** How long the undo button stays on screen after the edit it would reverse. */
 const UNDO_WINDOW_MS = 30_000;
@@ -31,7 +32,8 @@ export function TopBar() {
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkSeed, setBulkSeed] = useState<Diecast[] | undefined>(undefined);
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [pendingDraft, setPendingDraft] = useState(false);
+  /** Which unfinished thing is waiting: a single car, a bulk table, or neither. */
+  const [pendingDraft, setPendingDraft] = useState<"car" | "bulk" | null>(null);
   const [fresh, setFresh] = useState(false);
 
   // A tab that was evicted mid-form comes back to the inventory, not to the
@@ -39,7 +41,13 @@ export function TopBar() {
   // invisible, and the person concludes their typing was lost after all.
   // Re-read after each dialog closes and whenever the tab is looked at again.
   useEffect(() => {
-    const check = () => setPendingDraft(hasDraft(CAR_DRAFT_KEY) || hasDraft(BULK_DRAFT_KEY));
+    // Which door the badge points at, if either. A draft with nothing typed in
+    // it does not count -- see draft-content.ts for why one can exist at all.
+    const check = () => {
+      const car = carDraftHasContent(readDraft(CAR_DRAFT_KEY));
+      const bulk = bulkDraftHasContent(readDraft(BULK_DRAFT_KEY));
+      setPendingDraft(car ? "car" : bulk ? "bulk" : null);
+    };
     check();
     window.addEventListener("focus", check);
     document.addEventListener("visibilitychange", check);
@@ -122,11 +130,19 @@ export function TopBar() {
         <div className="flex items-center gap-1.5 md:gap-2.5">
           <Button
             size="icon"
-            onClick={() => setAddOpen(true)}
+            // The badge says "pick up where you left off", so the button has to
+            // go where the work is: a bulk table is not reachable from the
+            // single-car form, and clicking + used to open a blank one and
+            // leave the badge lit for ever.
+            onClick={() => (pendingDraft === "bulk" ? setBulkOpen(true) : setAddOpen(true))}
             aria-label="Add car"
             className="relative size-9 rounded-full shrink-0 flex items-center justify-center p-0"
             title={
-              pendingDraft ? "You have an unfinished car — pick up where you left off" : "Add car"
+              pendingDraft === "bulk"
+                ? "You have an unfinished table of cars — pick up where you left off"
+                : pendingDraft === "car"
+                  ? "You have an unfinished car — pick up where you left off"
+                  : "Add car"
             }
           >
             <Plus className="size-4.5" />

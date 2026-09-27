@@ -24,6 +24,7 @@ import {
   type OptionField,
 } from "@/lib/car-options";
 import { BULK_DRAFT_KEY, clearDraft, readDraft, writeDraft } from "@/lib/form-draft";
+import { bulkDraftHasContent } from "@/lib/draft-content";
 import { downloadCsv, generateDiecastCsvTemplate } from "@/lib/csv";
 import { buildCarName } from "@/lib/car-name";
 import { deriveMonth } from "@/lib/date-utils";
@@ -174,11 +175,6 @@ const defaultShared = (): Values => ({
 });
 
 /** A row nobody has typed into is not worth keeping or restoring. */
-function rowHasContent(row: Row): boolean {
-  return Object.entries(row).some(
-    ([k, v]) => k !== "key" && k !== "isoId" && String(v ?? "").trim() !== "",
-  );
-}
 
 const num = (v: string | undefined) => {
   const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
@@ -349,7 +345,7 @@ export function BulkAddCarsDialog({
     const keysTouched =
       sharedKeys.size !== defaultKeys.size || [...sharedKeys].some((k) => !defaultKeys.has(k));
 
-    if (!rows.some(rowHasContent) && !sharedTouched && !keysTouched) {
+    if (!bulkDraftHasContent({ rows, shared }) && !sharedTouched && !keysTouched) {
       clearDraft(BULK_DRAFT_KEY);
       return;
     }
