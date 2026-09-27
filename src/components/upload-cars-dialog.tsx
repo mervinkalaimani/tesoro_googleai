@@ -11,7 +11,6 @@ import {
   ArrowRight,
   RotateCcw,
   Link2,
-  Download,
 } from "lucide-react";
 import {
   Dialog,
@@ -25,7 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { buildCsv, downloadCsv, importDelta, parseCsvToDiecast } from "@/lib/csv";
+import { importDelta, parseCsvToDiecast } from "@/lib/csv";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { assignCarIds } from "@/lib/car-id";
 import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
@@ -323,15 +322,6 @@ export function UploadCarsDialog({
     if (e.target.files && e.target.files[0]) {
       handleFile(e.target.files[0]);
     }
-  };
-
-  /** Save the edited rows back out, IDs and catalogue matches filled in. */
-  const handleSaveAs = () => {
-    if (previewCars.length === 0) return;
-    downloadCsv(
-      fileInfo?.name?.replace(/.(csv|json)$/i, "") || "cars",
-      buildCsv(previewCars, CAR_CSV_COLUMNS),
-    );
   };
 
   /**
@@ -709,18 +699,6 @@ export function UploadCarsDialog({
               <>
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSaveAs}
-                  disabled={uploading}
-                  className="gap-1.5 text-xs"
-                  title="Download these rows as a CSV, with the IDs and catalogue matches filled in"
-                >
-                  <Download className="size-3.5" />
-                  Save as…
-                </Button>
-                <Button
-                  type="button"
                   size="sm"
                   onClick={handleUploadToSupabase}
                   disabled={uploading}
@@ -731,7 +709,8 @@ export function UploadCarsDialog({
                   ) : (
                     <Database className="size-3.5" />
                   )}
-                  Save {previewCars.length.toLocaleString()} to Supabase
+                  Save {previewCars.length.toLocaleString()}{" "}
+                  {previewCars.length === 1 ? "car" : "cars"}
                   <ArrowRight className="size-3" />
                 </Button>
               </>

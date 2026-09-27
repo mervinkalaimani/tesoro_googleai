@@ -11,6 +11,7 @@ import {
   Loader2,
   PackageCheck,
   PartyPopper,
+  Hourglass,
   UserPlus,
   Wallet,
   X,
@@ -36,6 +37,7 @@ import { useCarDrawer } from "@/components/car-details-drawer";
 import { useCars, useCarsActions, useCarsRefresh } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { releasedLabel, releasesYouAreWaitingOn, type WaitingRelease } from "@/lib/released";
+import { heldCars, heldClosing, heldLabel } from "@/lib/held";
 import { useAuth } from "@/lib/auth-store";
 import { supabase } from "@/integrations/supabase/client";
 import { daysBetween, formatDayMonthYear, inrFull, parseDMY } from "@/lib/format";
@@ -67,6 +69,7 @@ const SECTION = {
   delayed: "deliveries-delayed",
   launches: "preorder-launch",
   released: "preorder-released",
+  held: "catalogue-hold",
 } as const;
 
 /** The six, so the panel can never offer a status the rest of the app has dropped. */
@@ -76,6 +79,8 @@ const STATUS_OPTIONS = STATUSES;
 const collapseKey = (uid: string) => `dg.notifyCollapsed.${uid}`;
 const dismissKey = (uid: string) => `dg.notifyDismissed.${uid}`;
 const toastKey = (uid: string) => `dg.deliveryToastDay.${uid}`;
+/** The last-hour warning about held cars, so it is said once a day, not every open. */
+const holdToastKey = (uid: string) => `dg.holdToastDay.${uid}`;
 
 function readJson(key: string): unknown {
   if (typeof window === "undefined") return null;
@@ -310,12 +315,24 @@ export function NotificationCenter() {
   const released = useMemo(() => releasesYouAreWaitingOn(cars, catalog), [cars, catalog]);
   const visibleReleased = released.filter((w) => !dismissed[releasedKey(w)]);
 
+  /**
+   * Cars whose casting has not reached the shared catalogue yet.
+   *
+   * Not dismissible, unlike everything else here. The others are news you can
+   * decide to ignore; this one is a window that closes, and after it closes the
+   * casting is everybody's and the owner can no longer change what it says.
+   */
+  const held = useMemo(() => heldCars(cars), [cars]);
+  const closing = useMemo(() => heldClosing(cars), [cars]);
+
   const count =
     visibleApprovals.length +
     visibleArriving.length +
     visibleLate.length +
     visibleReleased.length +
-    visibleLaunches.length;
+    visibleLaunches.length +
+    // The hold is not dismissible, so it always counts while it lasts.
+    held.length;
 
   const allKeys = [
     ...visibleApprovals.map(approvalKey),
@@ -341,6 +358,25 @@ export function NotificationCenter() {
       },
     );
   }, [visibleArriving.length, uid, today]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The last hour of the hold. After it the casting is filed for everybody and
+  // the details stop being the owner's to change, so this is the one notice in
+  // this panel that is worth interrupting for.
+  useEffect(() => {
+    if (!closing.length) return;
+    if (readJson(holdToastKey(uid)) === today) return;
+    writeJson(holdToastKey(uid), today);
+    toast.warning(
+      closing.length === 1
+        ? "A car joins the shared catalogue within the hour"
+        : `${closing.length} cars join the shared catalogue within the hour`,
+      {
+        description: "Last chance to correct the details or link them to a casting that exists.",
+        duration: 12000,
+        action: { label: "Review", onClick: () => setOpen(true) },
+      },
+    );
+  }, [closing.length, uid, today]);
 
   const toggleSection = (id: string) => {
     const next = collapsed.includes(id) ? collapsed.filter((s) => s !== id) : [...collapsed, id];
@@ -714,6 +750,44 @@ export function NotificationCenter() {
             </Section>
           )}
 
+          {/* HELD FROM THE CATALOGUE */}
+          {held.length > 0 && (
+            <Section
+              id={SECTION.held}
+              icon={<Hourglass className="size-3" />}
+              tone={closing.length > 0 ? "rose" : "sky"}
+              title={
+                closing.length > 0
+                  ? `Last chance — ${plural(closing.length, "car")} joining the catalogue`
+                  : `${plural(held.length, "car")} not in the shared catalogue yet`
+              }
+              collapsed={collapsed.includes(SECTION.held)}
+              onToggle={toggleSection}
+              link={{ to: "/inventory", onClick: () => setOpen(false) }}
+            >
+              {held.slice(0, 8).map((c) => (
+                <ShipmentItem
+                  key={`held-${c.id}`}
+                  car={c}
+                  thumb
+                  onOpen={() => act(() => drawer.open(c))}
+                  meta={
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                      <span>Its casting is filed {heldLabel(c)}</span>
+                      <span>·</span>
+                      <span>editable until then</span>
+                    </div>
+                  }
+                />
+              ))}
+              {held.length > 8 && (
+                <p className="px-1 text-[11px] text-muted-foreground">
+                  and {held.length - 8} more waiting.
+                </p>
+              )}
+            </Section>
+          )}
+
           {/* PRE-ORDERS LAUNCHING */}
           {visibleLaunches.length > 0 && (
             <Section
@@ -889,7 +963,7 @@ function Section({
   title: string;
   collapsed: boolean;
   onToggle: (id: string) => void;
-  link: { to: "/admin" | "/orders" | "/preorders"; onClick: () => void };
+  link: { to: "/admin" | "/orders" | "/preorders" | "/inventory"; onClick: () => void };
   children: React.ReactNode;
 }) {
   return (
