@@ -26,6 +26,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { importDelta, parseCsvToDiecast } from "@/lib/csv";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
+import { REQUIRED_KEYS, missingRequired } from "@/lib/car-required";
+import { assortmentOptionsFor } from "@/lib/car-options";
 import { assignCarIds } from "@/lib/car-id";
 import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
 import { useCatalog } from "@/lib/catalog-store";
@@ -194,6 +196,20 @@ export function UploadCarsDialog({
         previewCars.filter((c) => c.catalogId && catalogIds.has(c.catalogId)).map((c) => c.id),
       ),
     [previewCars, catalogIds],
+  );
+
+  /**
+   * What each row is still missing, by row index.
+   *
+   * The same fields the add-a-car form insists on. A spreadsheet is where a
+   * required field goes missing quietly — a column nobody filled in, a row
+   * pasted short — and the cost of finding out later is two hundred half-made
+   * cars in the collection rather than one dialog refusing to close.
+   */
+  const missingByRow = useMemo(() => previewCars.map((c) => missingRequired(c)), [previewCars]);
+  const rowsIncomplete = useMemo(
+    () => missingByRow.filter((m) => m.length > 0).length,
+    [missingByRow],
   );
 
   /** What an import of these rows would add, and what it would replace. */
@@ -536,6 +552,12 @@ export function UploadCarsDialog({
                   {previewCars.length === 1 ? "car" : "cars"} · {CAR_CSV_COLUMNS.length} fields)
                 </span>
                 <span className="text-[11px] text-muted-foreground">
+                  {rowsIncomplete > 0 && (
+                    <span className="font-medium text-destructive">
+                      {rowsIncomplete} {rowsIncomplete === 1 ? "row is" : "rows are"} incomplete
+                      ·{" "}
+                    </span>
+                  )}
                   Click a cell to fix it · {linkedIds.size.toLocaleString()} linked to the catalogue
                   · {(previewCars.length - linkedIds.size).toLocaleString()} new{" "}
                   {previewCars.length - linkedIds.size === 1 ? "casting" : "castings"} ·{" "}
@@ -552,6 +574,13 @@ export function UploadCarsDialog({
                       {CAR_CSV_COLUMNS.map((col) => (
                         <th key={col.key} className="whitespace-nowrap px-2.5 py-1.5">
                           {col.label}
+                          {/* The same star the form puts on a field it will not
+                              let you leave blank. */}
+                          {REQUIRED_KEYS.has(col.key) && (
+                            <span className="ml-0.5 text-destructive" title="Required">
+                              *
+                            </span>
+                          )}
                         </th>
                       ))}
                     </tr>
@@ -594,7 +623,35 @@ export function UploadCarsDialog({
                           const value = String(col.get(car) ?? "");
                           const readOnly = READ_ONLY_FIELDS.has(col.key);
                           const isEditing = editing?.row === i && editing.key === col.key;
+                          const missing = missingByRow[i]?.some((m) => m.key === col.key);
                           if (isEditing) {
+                            // Assortment is a kept list, so the cell offers that
+                            // list rather than a box: an import is exactly where
+                            // a fourth spelling of "Acrylic case" gets in.
+                            if (col.key === "assortment") {
+                              const options = assortmentOptionsFor(cars, car.brand || "");
+                              return (
+                                <td key={col.key} className="px-1 py-0.5">
+                                  <select
+                                    autoFocus
+                                    defaultValue={car.assortment || ""}
+                                    onChange={(e) => {
+                                      editRow(i, col.key, e.target.value);
+                                      setEditing(null);
+                                    }}
+                                    onBlur={() => setEditing(null)}
+                                    className="w-[180px] rounded border border-primary bg-background px-1.5 py-0.5 text-xs outline-none"
+                                  >
+                                    <option value="">—</option>
+                                    {options.map((o) => (
+                                      <option key={o} value={o}>
+                                        {o}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+                              );
+                            }
                             return (
                               <td key={col.key} className="px-1 py-0.5">
                                 <input
@@ -622,12 +679,20 @@ export function UploadCarsDialog({
                             <td
                               key={col.key}
                               onClick={() => !readOnly && setEditing({ row: i, key: col.key })}
-                              className={`max-w-[220px] truncate whitespace-nowrap px-2.5 py-1.5 text-muted-foreground ${
-                                readOnly ? "" : "cursor-text hover:bg-primary/5"
-                              }`}
-                              title={readOnly ? `${value} (derived)` : value}
+                              className={`max-w-[220px] truncate whitespace-nowrap px-2.5 py-1.5 ${
+                                missing
+                                  ? "bg-destructive/10 font-medium text-destructive"
+                                  : "text-muted-foreground"
+                              } ${readOnly ? "" : "cursor-text hover:bg-primary/5"}`}
+                              title={
+                                missing
+                                  ? `${col.label} is required`
+                                  : readOnly
+                                    ? `${value} (derived)`
+                                    : value
+                              }
                             >
-                              {value || "—"}
+                              {value || (missing ? "Required" : "—")}
                             </td>
                           );
                         })}
@@ -705,7 +770,12 @@ export function UploadCarsDialog({
                   type="button"
                   size="sm"
                   onClick={handleUploadToSupabase}
-                  disabled={uploading}
+                  disabled={uploading || rowsIncomplete > 0}
+                  title={
+                    rowsIncomplete > 0
+                      ? `${rowsIncomplete} ${rowsIncomplete === 1 ? "row is" : "rows are"} missing a required field`
+                      : undefined
+                  }
                   className="gap-1.5 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
                 >
                   {uploading ? (

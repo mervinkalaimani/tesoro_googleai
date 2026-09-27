@@ -6,7 +6,14 @@
  */
 import assert from "node:assert/strict";
 
-import { generateDiecastCsvTemplate, importDelta, parseCsvRows, parseCsvToDiecast } from "@/lib/csv";
+import {
+  buildCsv,
+  generateDiecastCsvTemplate,
+  importDelta,
+  parseCsvRows,
+  parseCsvToDiecast,
+} from "@/lib/csv";
+import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import type { Diecast } from "@/lib/types";
 
 const car = (id: string, name = id) => ({ id, name }) as Diecast;
@@ -37,8 +44,27 @@ const parsed = parseCsvToDiecast(template);
 assert.equal(parsed.cars.length, 0, "a template imports as no cars at all");
 assert.equal(parsed.samples, 10, "and says how many examples it ignored");
 
-// A real row beside them survives.
-const withReal = `${template}\n,,Honda,Civic,,1990,Hot Wheels,Mainline,,,12/250,Red,Coupe,1/64,120,110,Paid,120,In Hand,Roy J&R Kicks,,,,,,,,,,Normal,,,,,`;
+// A real row beside them survives. Written through the column list rather than
+// typed out, so reordering the columns cannot quietly move Honda into Model.
+const ownRow = {
+  make: "Honda",
+  model: "Civic",
+  year: "1990",
+  brand: "Hot Wheels",
+  assortment: "Mainline",
+  carNumber: "12/250",
+  colour: "Red",
+  type: "Coupe",
+  size: "1/64",
+  spent: 120,
+  mrp: 110,
+  payment: "Paid",
+  paid: 120,
+  status: "In Hand",
+  seller: "Roy J&R Kicks",
+  rarity: "Normal",
+} as unknown as Diecast;
+const withReal = `${template}\n${buildCsv([ownRow], CAR_CSV_COLUMNS).split("\n")[1]}`;
 const mixed = parseCsvToDiecast(withReal);
 assert.equal(mixed.samples, 10);
 assert.deepEqual(
@@ -49,7 +75,8 @@ assert.deepEqual(
 // The examples cover the shapes people get wrong: the three kinds of pack, a
 // chase, a treasure hunt, a pre-order with money owed.
 const rows = parseCsvRows(template).slice(1);
-const assortments = rows.map((r) => r[7]);
+const at = CAR_CSV_COLUMNS.findIndex((c) => c.key === "assortment");
+const assortments = rows.map((r) => r[at]);
 for (const kind of ["2 Pack", "5 Pack", "Team Transport"]) {
   assert.ok(assortments.includes(kind), `template shows a ${kind}`);
 }

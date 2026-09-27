@@ -131,7 +131,7 @@ export function parseCsvToDiecast(text: string): {
   };
 
   const idCol = findCol("carid", "id", "car_id");
-  const nameCol = findCol("name", "carname", "title");
+  const nameCol = findCol("displayname", "name", "carname", "title");
   const makeCol = findCol("make");
   const modelCol = findCol("model");
   const varCol = findCol("variant", "var");
@@ -148,20 +148,20 @@ export function parseCsvToDiecast(text: string): {
   const shippingCostCol = findCol("shippingcost", "shipping", "delivery");
   const asstCol = findCol("assortment", "asst");
   const sizeCol = findCol("size", "scale");
-  const spentCol = findCol("spent", "cost", "total", "price", "amount");
+  const spentCol = findCol("totalspent", "spent", "cost", "total", "price", "amount");
   const mrpCol = findCol("mrp");
   const sellerCol = findCol("seller", "vendor", "store");
   const statusCol = findCol("status");
   const paymentCol = findCol("payment", "paymentstatus");
-  const paidCol = findCol("paid", "advpaid", "advancepaid");
+  const paidCol = findCol("paidasoftoday", "paid", "advpaid", "advancepaid");
   // "Received date" is what exports and the template call it now; "Date" still
   // reads, so a file saved before the rename imports unchanged.
   const dateCol = findCol("receiveddate", "date", "arrivaldate");
   const monthCol = findCol("month");
   const oDateCol = findCol("odate", "orderdate");
   const oMonthCol = findCol("omonth", "ordermonth");
-  const expectedCol = findCol("expecteddate", "expected", "targetrelease");
-  const transitCol = findCol("transitinfoeta", "transitinfo", "eta");
+  const expectedCol = findCol("expectedinhanddate", "expecteddate", "expected", "targetrelease");
+  const transitCol = findCol("notes", "transitinfoeta", "transitinfo", "eta");
   // These used to be one lookup, so a "Tracking ID" column landed in the
   // shipping ID — which is a batch reference this app derives itself, not a
   // consignment number.
@@ -180,6 +180,10 @@ export function parseCsvToDiecast(text: string): {
   const cardRatingCol = findCol("cardrating");
   const favCol = findCol("favourite", "favorite", "fav");
   const officialCol = findCol("official");
+  // Columns the form has no input for, so the template stopped carrying them.
+  // Still read, so a file exported before they went keeps its values.
+  const caseCol = findCol("casemix", "casenumber", "case", "mix");
+  const imageCol = findCol("photo", "imageurl", "image");
 
   const val = (row: string[], colIdx: number): string =>
     colIdx >= 0 && row[colIdx] ? row[colIdx] : "";
@@ -259,6 +263,8 @@ export function parseCsvToDiecast(text: string): {
       chase:
         (normaliseRarity(val(row, rarityCol)) ?? "Normal") !== "Normal" ||
         parseBool(val(row, chaseCol)),
+      caseNumber: val(row, caseCol) || undefined,
+      imageUrl: val(row, imageCol) || undefined,
       carCondition: val(row, carConditionCol),
       cardCondition: val(row, cardConditionCol),
       carRating: Math.min(5, Math.max(0, Math.round(parseNum(val(row, carRatingCol))))),
@@ -302,6 +308,49 @@ export function isSampleRow(car: { seller?: string }): boolean {
  * guesses. The prices are plausible and the dates are relative to nothing, so
  * they read as illustrations rather than records.
  */
+/** Every field the CSV writes, so a sample row is a whole row. */
+const BLANK_SAMPLE = {
+  id: "",
+  catalogId: "",
+  name: "",
+  make: "",
+  model: "",
+  variant: "",
+  year: "",
+  series: "",
+  subSeries: "",
+  carNumber: "",
+  colour: "",
+  type: "",
+  brand: "",
+  assortment: "",
+  size: "1/64",
+  spent: 0,
+  mrp: 0,
+  shippingCost: 0,
+  seller: "",
+  status: "In Hand",
+  payment: "Paid",
+  paid: 0,
+  date: "",
+  month: "",
+  orderDate: "",
+  orderMonth: "",
+  expectedDate: "",
+  transitInfo: "",
+  shippingId: "",
+  orderId: "",
+  balance: 0,
+  chase: false,
+  rarity: "Normal",
+  carCondition: "",
+  cardCondition: "",
+  carRating: 0,
+  cardRating: 0,
+  favourite: false,
+  official: false,
+} as unknown as Diecast;
+
 const SAMPLE_ROWS: Diecast[] = [
   {
     name: "'70 Dodge Charger R/T",
@@ -460,49 +509,6 @@ const SAMPLE_ROWS: Diecast[] = [
     favourite: true,
   },
 ].map((row) => ({ ...BLANK_SAMPLE, ...row, seller: SAMPLE_SELLER }) as Diecast);
-
-/** Every field the CSV writes, so a sample row is a whole row. */
-const BLANK_SAMPLE = {
-  id: "",
-  catalogId: "",
-  name: "",
-  make: "",
-  model: "",
-  variant: "",
-  year: "",
-  series: "",
-  subSeries: "",
-  carNumber: "",
-  colour: "",
-  type: "",
-  brand: "",
-  assortment: "",
-  size: "1/64",
-  spent: 0,
-  mrp: 0,
-  shippingCost: 0,
-  seller: "",
-  status: "In Hand",
-  payment: "Paid",
-  paid: 0,
-  date: "",
-  month: "",
-  orderDate: "",
-  orderMonth: "",
-  expectedDate: "",
-  transitInfo: "",
-  shippingId: "",
-  orderId: "",
-  balance: 0,
-  chase: false,
-  rarity: "Normal",
-  carCondition: "",
-  cardCondition: "",
-  carRating: 0,
-  cardRating: 0,
-  favourite: false,
-  official: false,
-} as unknown as Diecast;
 
 /**
  * The importer's template: the column row, and ten examples under it.

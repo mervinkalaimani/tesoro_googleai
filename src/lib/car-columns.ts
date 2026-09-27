@@ -2,42 +2,68 @@ import type { Diecast } from "@/lib/types";
 import type { CsvColumn } from "@/lib/csv";
 import { rarityOf } from "@/lib/rarity";
 
+/**
+ * The CSV's columns: the fields somebody types into the form, in the order the
+ * form asks for them.
+ *
+ * It used to carry whatever the app happened to store, which meant four columns
+ * nobody can fill in — the car's own ID, its shipping ID, its order ID, the
+ * month — and left out five that are typed every day: the display name, the
+ * balance, the shipping cost, the case a copy came from, its photo. A template
+ * is a form on paper, so it holds the same fields in the same order.
+ *
+ * Car ID is the one derived column that stays. It is how a re-imported export
+ * finds the row it belongs to: without it every row of your own file reads as a
+ * new car, and importing your collection back would double it. Leave it blank
+ * for a car you are adding and the app mints one.
+ *
+ * Shipping ID, Order ID, Received date, Month and Name are gone. The first two
+ * are derived from the seller and the dates; the received date is stamped when
+ * a car is marked In Hand; the name assembles itself from make, model, variant
+ * and year unless Display name says otherwise.
+ */
 export const CAR_CSV_COLUMNS: CsvColumn<Diecast>[] = [
+  // The identity of the car, as the form asks for it.
   { key: "id", label: "Car ID", get: (r) => r.id },
-  { key: "name", label: "Name", get: (r) => r.name },
   { key: "make", label: "Make", get: (r) => r.make },
   { key: "model", label: "Model", get: (r) => r.model },
   { key: "variant", label: "Variant", get: (r) => r.variant },
   { key: "year", label: "Year", get: (r) => r.year },
-  { key: "brand", label: "Brand", get: (r) => r.brand },
-  { key: "assortment", label: "Assortment", get: (r) => r.assortment },
   { key: "series", label: "Series", get: (r) => r.series },
   { key: "subSeries", label: "Sub series", get: (r) => r.subSeries },
+  { key: "brand", label: "Brand", get: (r) => r.brand },
   { key: "carNumber", label: "Car number", get: (r) => r.carNumber },
   { key: "colour", label: "Colour", get: (r) => r.colour },
   { key: "type", label: "Type", get: (r) => r.type },
   { key: "size", label: "Size", get: (r) => r.size },
-  { key: "spent", label: "Spent", get: (r) => r.spent || 0 },
-  { key: "mrp", label: "MRP", get: (r) => r.mrp || 0 },
-  { key: "payment", label: "Payment", get: (r) => r.payment },
-  { key: "paid", label: "Paid", get: (r) => r.paid || 0 },
+  { key: "rarity", label: "Rarity", get: (r) => rarityOf(r) },
+  // Chase follows from Rarity, and stays because a sheet is often sorted and
+  // filtered on it.
+  { key: "chase", label: "Chase", get: (r) => (r.chase ? "TRUE" : "") },
+  { key: "name", label: "Display name", get: (r) => r.name },
+
+  // The purchase.
+  { key: "assortment", label: "Assortment", get: (r) => r.assortment },
   { key: "status", label: "Status", get: (r) => r.status },
   { key: "seller", label: "Seller", get: (r) => r.seller },
-  { key: "transitInfo", label: "Transit info", get: (r) => r.transitInfo },
+  { key: "orderDate", label: "Order date", get: (r) => r.orderDate },
+  { key: "mrp", label: "MRP", get: (r) => r.mrp || 0 },
+  { key: "spent", label: "Total Spent", get: (r) => r.spent || 0 },
+  { key: "payment", label: "Payment Status", get: (r) => r.payment },
+  { key: "paid", label: "Paid as of today", get: (r) => r.paid || 0 },
+  { key: "balance", label: "Balance", get: (r) => r.balance || 0 },
+  // One column for both halves of a car's life: the day it is due while it is
+  // coming, the day it landed once it is here.
+  { key: "expectedDate", label: "Expected / In Hand Date", get: (r) => r.expectedDate },
+  { key: "shippingCost", label: "Shipping cost", get: (r) => r.shippingCost ?? 0 },
   { key: "deliveryPartner", label: "Delivery partner", get: (r) => r.deliveryPartner ?? "" },
   { key: "trackingId", label: "Tracking ID", get: (r) => r.trackingId ?? "" },
-  { key: "shippingId", label: "Shipping ID", get: (r) => r.shippingId },
-  { key: "orderId", label: "Order ID", get: (r) => r.orderId },
-  { key: "orderDate", label: "Order date", get: (r) => r.orderDate },
-  { key: "expectedDate", label: "Expected date", get: (r) => r.expectedDate },
-  // "Date" on its own said nothing next to Order date and Expected date. This
-  // one is the day the car actually turned up.
-  { key: "date", label: "Received date", get: (r) => r.date },
-  { key: "chase", label: "Chase", get: (r) => (r.chase ? "TRUE" : "") },
-  { key: "rarity", label: "Rarity", get: (r) => rarityOf(r) },
+
+  // The copy itself.
   { key: "carCondition", label: "Car condition", get: (r) => r.carCondition ?? "" },
-  { key: "carRating", label: "Car rating", get: (r) => r.carRating || "" },
   { key: "cardCondition", label: "Card condition", get: (r) => r.cardCondition ?? "" },
-  { key: "cardRating", label: "Card rating", get: (r) => r.cardRating || "" },
+  { key: "caseNumber", label: "Case / Mix", get: (r) => r.caseNumber ?? "" },
+  { key: "transitInfo", label: "Notes", get: (r) => r.transitInfo },
   { key: "favourite", label: "Favourite", get: (r) => (r.favourite ? "TRUE" : "") },
+  { key: "imageUrl", label: "Photo", get: (r) => r.imageUrl ?? "" },
 ];
