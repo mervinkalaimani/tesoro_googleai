@@ -81,6 +81,36 @@ export function CarMarks({
 }
 
 /**
+ * Whether somebody else has changed this car since its owner last looked.
+ *
+ * An admin correcting a catalogue entry rewrites the casting's details on every
+ * car filed under it, in collections that are not theirs. The change is almost
+ * always an improvement and it is still somebody else's hand in your shelf, so
+ * it is worth one dot until you have seen it.
+ */
+export function hasUnseenAdminChange(car: Diecast): boolean {
+  if (!car.adminChangedAt) return false;
+  if (!car.ownerSeenAt) return true;
+  return new Date(car.adminChangedAt) > new Date(car.ownerSeenAt);
+}
+
+/**
+ * That dot. Deliberately not a badge or a word: it sits beside a car's name in
+ * a list of forty, where anything larger would be read as part of the name.
+ */
+export function ChangedDot({ car, className }: { car: Diecast; className?: string }) {
+  if (!hasUnseenAdminChange(car)) return null;
+  return (
+    <span
+      role="img"
+      aria-label="Changed by an admin since you last looked"
+      title="An admin changed this car's details. Open it to clear this."
+      className={cn("inline-block size-2 shrink-0 rounded-full bg-orange-500", className)}
+    />
+  );
+}
+
+/**
  * The same marks over a photograph, where the card's own colours are not behind
  * them. An opaque disc rather than a drop shadow: a red flame on a red car is
  * invisible either way, and a disc is the only one of the two that fixes it.

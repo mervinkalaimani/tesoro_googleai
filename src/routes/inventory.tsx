@@ -9,7 +9,13 @@ import { isPackMember, packMemberIds } from "@/lib/pack";
 import { FilterChipDropdown, ToggleChip } from "@/components/filter-chips";
 import { filterRows } from "@/lib/search";
 import { StatusPill, CostCell, CarListCard } from "@/components/cars-table";
-import { CarMarkOverlay, CarMarks, ChaseMark, FavouriteMark } from "@/components/car-marks";
+import {
+  CarMarkOverlay,
+  CarMarks,
+  ChaseMark,
+  FavouriteMark,
+  ChangedDot,
+} from "@/components/car-marks";
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -244,6 +250,7 @@ function InventoryCard({
             title={car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
           >
             {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+            <ChangedDot car={car} className="ml-1.5 align-middle" />
           </button>
           {copies > 1 && (
             <div className="shrink-0">
@@ -974,6 +981,7 @@ function InventoryPage() {
                     <td className={cn("px-4 py-2.5 align-top", !lead && "pl-9")}>
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="truncate font-medium">{r.name || "—"}</span>
+                        <ChangedDot car={r} />
                         <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
                         {lead && (
                           <CopiesBadge

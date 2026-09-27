@@ -38,7 +38,12 @@ import { findCarImage } from "@/lib/car-image";
 import { formatDayMonthYear, inr, inrFull } from "@/lib/format";
 import { trackingPageFor } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
-import { FAVOURITE_COLOUR, ChaseMark, FavouriteMark } from "@/components/car-marks";
+import {
+  FAVOURITE_COLOUR,
+  ChaseMark,
+  FavouriteMark,
+  hasUnseenAdminChange,
+} from "@/components/car-marks";
 import { StarRating } from "@/components/star-rating";
 import { RARITY_FLAME, RARITY_LABEL, nextRarity, rarityOf, withRarity } from "@/lib/rarity";
 import { Button } from "@/components/ui/button";
@@ -471,6 +476,19 @@ function CarPopupContent({
 }: CarPopupContentProps) {
   const cars = useCars();
   const mobile = useMobileHeroGestures(onClose);
+
+  // Opening the car is seeing it: the dot beside its name has done its job and
+  // goes. The database checks the caller owns the row, so this is safe to fire
+  // for any car the drawer happens to be showing.
+  const carId = car?.id;
+  const unseen = car ? hasUnseenAdminChange(car) : false;
+  useEffect(() => {
+    if (!unseen || !carId) return;
+    void (async () => {
+      const { markCarSeen } = await import("@/lib/supabase-cars");
+      await markCarSeen(carId);
+    })();
+  }, [unseen, carId]);
 
   useEffect(() => {
     document.getElementById("car-details-mobile-scroll")?.scrollTo({ top: 0, behavior: "smooth" });

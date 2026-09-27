@@ -59,6 +59,7 @@ import { SegmentControl } from "@/components/segment-control";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
+import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
 import {
   Dialog,
   DialogContent,
@@ -98,6 +99,7 @@ import {
   Search,
   Loader2,
   BookOpen,
+  Link2,
 } from "lucide-react";
 
 const STATUS_OPTIONS = STATUSES;
@@ -1062,15 +1064,24 @@ export function CarFormDialog({
   ]);
 
   /**
+   * A casting chosen by hand, which beats both the row's own entry and anything
+   * matched from the fields. This is the answer to "it was filed as the wrong
+   * car": the details stay as they are and only the link moves, because the
+   * details are usually the thing that was right.
+   */
+  const [relinkedTo, setRelinkedTo] = useState<string | null>(null);
+  const [relinkOpen, setRelinkOpen] = useState(false);
+
+  /**
    * The entry to copy from when you ask for it: this row's own catalogue id
    * first, and only then a match on what is currently typed — an edit that has
    * drifted from the casting still belongs to the casting it was filed under.
    */
   const catalogueSource = useMemo(() => {
-    const id = (initial?.catalogId || "").trim().toUpperCase();
+    const id = (relinkedTo || initial?.catalogId || "").trim().toUpperCase();
     const byId = id ? catalog.find((c) => c.car_id.toUpperCase() === id) : undefined;
     return byId ?? existingCatalogMatch ?? null;
-  }, [catalog, initial?.catalogId, existingCatalogMatch]);
+  }, [catalog, relinkedTo, initial?.catalogId, existingCatalogMatch]);
 
   /**
    * Fill the casting's fields from the catalogue, on purpose.
@@ -1438,7 +1449,7 @@ export function CarFormDialog({
 
     const payload: Diecast = {
       id: carId,
-      catalogId: derivedCatalogCarId || initial?.catalogId,
+      catalogId: relinkedTo || derivedCatalogCarId || initial?.catalogId,
       sno: isEdit ? initial?.sno : undefined,
       name,
       make,
@@ -1685,22 +1696,39 @@ export function CarFormDialog({
               car is the car — so the button here copies what the catalogue says
               about it instead of changing which casting it is. */}
           {isEdit ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-1.5"
-              onClick={fillFromCatalogue}
-              disabled={!catalogueSource}
-              title={
-                catalogueSource
-                  ? "Copy this casting's details from the catalogue"
-                  : "This casting has no catalogue entry yet"
-              }
-            >
-              <BookOpen className="size-3.5 shrink-0" />
-              <span className="truncate">Get from Catalogue</span>
-            </Button>
+            <>
+              {/* Which casting this is, as against what the catalogue says about
+                  it. Filed against the wrong entry is a different problem from
+                  filed against the right one with the wrong details, and until
+                  now only the second had a button. */}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                onClick={() => setRelinkOpen(true)}
+                title="Point this car at a different catalogue entry"
+              >
+                <Link2 className="size-3.5 shrink-0" />
+                <span className="truncate">Link to catalogue</span>
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-1.5"
+                onClick={fillFromCatalogue}
+                disabled={!catalogueSource}
+                title={
+                  catalogueSource
+                    ? "Copy this casting's details from the catalogue"
+                    : "This casting has no catalogue entry yet"
+                }
+              >
+                <BookOpen className="size-3.5 shrink-0" />
+                <span className="truncate">Get from Catalogue</span>
+              </Button>
+            </>
           ) : (
             <Button
               type="button"
@@ -2611,6 +2639,21 @@ export function CarFormDialog({
           setRestored(false);
           onOpenChange(false);
         }}
+      />
+
+      {/* Which casting this car is. The details are left exactly as typed —
+          "Get from Catalogue" is right there if they should follow the link. */}
+      <CatalogueLinkDialog
+        open={relinkOpen}
+        onClose={() => setRelinkOpen(false)}
+        car={initial ?? null}
+        onPick={(entry) => {
+          setRelinkedTo(entry.car_id);
+          toast.success(`Linked to ${entry.name || entry.car_id}`, {
+            description: "Save to keep it. The details here are unchanged.",
+          });
+        }}
+        title="Which casting is this car?"
       />
     </Dialog>
   );

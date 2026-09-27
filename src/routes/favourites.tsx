@@ -6,7 +6,7 @@ import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
-import { ChaseMark, FAVOURITE_COLOUR } from "@/components/car-marks";
+import { ChaseMark, FAVOURITE_COLOUR, ChangedDot } from "@/components/car-marks";
 import { rarityOf } from "@/lib/rarity";
 import { CarThumb } from "@/components/car-thumb";
 import { CompactCarCard } from "@/components/compact-car-card";
@@ -131,6 +131,7 @@ function GalleryCard({
           className="text-left text-base font-bold tracking-tight hover:text-primary"
         >
           {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+          <ChangedDot car={car} className="ml-1.5 align-middle" />
         </button>
         <p className="mt-1 truncate text-xs text-muted-foreground">
           {[car.series, car.subSeries, car.assortment].filter(Boolean).join(" · ") || "—"}

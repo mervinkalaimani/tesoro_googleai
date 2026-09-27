@@ -533,3 +533,21 @@ export async function deleteCarsFromSupabase(
     return { success: false, error: (err as Error).message };
   }
 }
+
+/**
+ * Record that the owner has looked at a car an admin changed.
+ *
+ * Fire and forget by design: the dot is a courtesy, and a failed call costs one
+ * extra dot on the next load rather than anything the owner has to deal with.
+ * The database scopes the write to the caller's own rows.
+ */
+export async function markCarSeen(carId: string): Promise<void> {
+  if (!carId) return;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("tesoro_mark_car_seen", { _car_id: carId });
+    if (error) console.warn("markCarSeen failed:", error.message);
+  } catch (err) {
+    console.warn("markCarSeen failed:", (err as Error).message);
+  }
+}

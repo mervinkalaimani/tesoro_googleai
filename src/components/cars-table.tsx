@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import type { Diecast } from "@/lib/types";
 import { inr } from "@/lib/format";
 
-import { CarMarks } from "@/components/car-marks";
+import { CarMarks, ChangedDot } from "@/components/car-marks";
 import { useCarDrawer } from "@/components/car-details-drawer";
 // Lives in its own module: the details drawer shows one too, and it imports
 // this file — reading it from here would close a cycle between them.
@@ -155,6 +155,7 @@ export function CarListCard({
         <div className="flex items-start justify-between gap-3">
           <span className="flex min-w-0 items-center gap-1.5">
             <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
+            <ChangedDot car={car} />
             <CarBadges car={car} primary={badgePrimary} />
             <CopiesBadge n={copies} />
           </span>
@@ -283,7 +284,10 @@ export function CarsTable({
                   className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
                 >
                   <td className="px-3 py-2.5 md:px-4">
-                    <div className="truncate font-medium">{r.name || "—"}</div>
+                    <div className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate font-medium">{r.name || "—"}</span>
+                      <ChangedDot car={r} />
+                    </div>
                     <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
                   </td>
                   <td className="px-3 py-2.5 md:px-4">

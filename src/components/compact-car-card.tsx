@@ -1,5 +1,5 @@
 import { CopiesBadge } from "@/components/copies-badge";
-import { ChaseMark, FavouriteMark } from "@/components/car-marks";
+import { ChaseMark, FavouriteMark, ChangedDot } from "@/components/car-marks";
 import { StatusPill } from "@/components/status-pill";
 import { rarityOf } from "@/lib/rarity";
 
@@ -127,8 +127,11 @@ export function CompactCarCard({
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col p-2">
-        <div className="truncate text-xs font-semibold leading-tight group-hover:text-primary">
-          {title}
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate text-xs font-semibold leading-tight group-hover:text-primary">
+            {title}
+          </span>
+          <ChangedDot car={car} />
         </div>
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
           <span className="flex items-center gap-1 min-w-0 truncate text-[10px]">

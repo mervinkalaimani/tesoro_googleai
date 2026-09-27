@@ -13,7 +13,7 @@ import { CarFormDialog } from "@/components/car-form-dialog";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { SegmentControl } from "@/components/segment-control";
-import { CarMarkOverlay } from "@/components/car-marks";
+import { CarMarkOverlay, ChangedDot } from "@/components/car-marks";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
@@ -167,6 +167,7 @@ function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
           className="mt-1 text-left text-sm font-bold leading-snug hover:text-primary"
         >
           {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+          <ChangedDot car={car} className="ml-1.5 align-middle" />
         </button>
 
         <p className="mt-1 truncate text-xs text-muted-foreground">
