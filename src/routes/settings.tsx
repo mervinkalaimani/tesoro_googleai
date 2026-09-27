@@ -779,9 +779,9 @@ export function SettingsPage() {
                 <ImageIcon className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Catalogue Photos</span>
+                <span className="text-[15px] font-medium text-foreground">Catalogue Entries</span>
                 <p className="text-xs text-muted-foreground">
-                  Every casting with a box for its picture, for filling in a run of them
+                  Every casting: paste a run of photos, or open one and change any detail
                 </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -1071,12 +1071,12 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {view === "catalogue_photos" && (
         <div className="space-y-6">
-          <SubpageHeader title="Catalogue Photos" onBack={() => changeView("root")} />
+          <SubpageHeader title="Catalogue Entries" onBack={() => changeView("root")} />
           {isAdmin ? (
             <CataloguePhotos />
           ) : (
             <p className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground shadow-xs">
-              The catalogue is shared, so only an admin can change its photos.
+              The catalogue is shared, so only an admin can change it.
             </p>
           )}
         </div>

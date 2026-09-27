@@ -100,12 +100,17 @@ export function parseCsvRows(text: string): string[][] {
 /**
  * Convert parsed CSV rows or JSON records into Diecast array.
  */
-export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: string[] } {
+export function parseCsvToDiecast(text: string): {
+  cars: Diecast[];
+  errors: string[];
+  /** Template examples left in the file and ignored. */
+  samples: number;
+} {
   const errors: string[] = [];
   const rawRows = parseCsvRows(text);
 
   if (rawRows.length < 2) {
-    return { cars: [], errors: ["CSV file is empty or missing data rows."] };
+    return { cars: [], errors: ["CSV file is empty or missing data rows."], samples: 0 };
   }
 
   const header = rawRows[0].map((h) =>
@@ -263,23 +268,254 @@ export function parseCsvToDiecast(text: string): { cars: Diecast[]; errors: stri
     });
   });
 
-  return { cars, errors };
+  // The template ships filled in, and a file built from it usually still has
+  // the examples in it. They are not anybody's cars.
+  const real = cars.filter((c) => !isSampleRow(c));
+  return { cars: real, errors, samples: cars.length - real.length };
 }
 
 /**
- * The importer's template: the column row and nothing under it.
+ * The seller that marks a row as an example rather than a car.
  *
- * Written from CAR_CSV_COLUMNS, the list the export uses, so a file downloaded
- * here, filled in and imported comes home to the fields it left from, and a
- * column added later appears in all three places at once. It used to be two
- * hand-typed lines that had drifted eleven columns behind the importer.
+ * The template ships with ten filled-in rows, because a bare header row taught
+ * nobody what belongs in \"Rarity\" or how a five-pack is written, and every
+ * one of them carries this seller. The importer drops them, so a file that is
+ * filled in around the examples imports cleanly without anybody having to
+ * delete them first.
  *
- * No sample rows. A template is a blank form — rows in it are rows somebody has
- * to delete before their own, and a car that was never bought is a strange
- * thing to hand someone as an example of their collection.
+ * ponytail: a real row sold by a seller of this name would vanish silently.
+ * Switch to an explicit Sample column if that ever happens to anybody.
+ */
+export const SAMPLE_SELLER = "TESORO SAMPLE";
+
+export function isSampleRow(car: { seller?: string }): boolean {
+  return (car.seller || "").trim().toLowerCase() === SAMPLE_SELLER.toLowerCase();
+}
+
+/**
+ * Ten cars that are not cars: one of each shape the importer understands.
+ *
+ * A single mainline, a chase, a treasure hunt, a pre-order with money still
+ * owed, a car still in transit, and the three ways a box of cars is written --
+ * a 2 Pack, a 5 Pack and a Team Transport pair -- because a pack is an
+ * assortment here, not a special kind of row, and that is the thing nobody
+ * guesses. The prices are plausible and the dates are relative to nothing, so
+ * they read as illustrations rather than records.
+ */
+const SAMPLE_ROWS: Diecast[] = [
+  {
+    name: "'70 Dodge Charger R/T",
+    make: "Dodge",
+    model: "Charger",
+    variant: "R/T",
+    year: "1970",
+    brand: "Hot Wheels",
+    assortment: "Mainline",
+    series: "HW Flames",
+    carNumber: "12/250",
+    colour: "Purple",
+    type: "Muscle",
+    spent: 120,
+    mrp: 110,
+    status: "In Hand",
+    rarity: "Normal",
+  },
+  {
+    name: "'55 Chevy Bel Air Gasser",
+    make: "Chevrolet",
+    model: "Bel Air Gasser",
+    year: "1955",
+    brand: "Hot Wheels",
+    assortment: "Mainline",
+    series: "HW Gassers",
+    carNumber: "84/250",
+    colour: "Green",
+    type: "Muscle",
+    spent: 150,
+    mrp: 110,
+    status: "In Hand",
+    rarity: "Chase",
+  },
+  {
+    name: "Datsun 510 Wagon",
+    make: "Datsun",
+    model: "510 Wagon",
+    year: "1971",
+    brand: "Hot Wheels",
+    assortment: "Mainline",
+    series: "HW Wagons",
+    carNumber: "03/250",
+    colour: "Blue",
+    type: "Wagon",
+    spent: 850,
+    mrp: 110,
+    status: "In Hand",
+    rarity: "STH",
+  },
+  {
+    name: "Porsche 911 GT3 RS",
+    make: "Porsche",
+    model: "911 GT3 RS",
+    year: "2023",
+    brand: "Mini GT",
+    assortment: "Blister",
+    carNumber: "1301",
+    colour: "White",
+    type: "Sports",
+    spent: 1799,
+    mrp: 1799,
+    status: "PO",
+    payment: "Partial",
+    paid: 500,
+    balance: 1299,
+  },
+  {
+    name: "Lamborghini Huracan STO",
+    make: "Lamborghini",
+    model: "Huracan STO",
+    year: "2022",
+    brand: "Mini GT",
+    assortment: "Box",
+    carNumber: "779",
+    colour: "Arancio Borealis",
+    type: "Sports",
+    spent: 1650,
+    mrp: 1650,
+    status: "In Transit",
+    deliveryPartner: "Delhivery",
+    trackingId: "SAMPLE123456",
+  },
+  {
+    name: "Nissan Skyline GT-R R34",
+    make: "Nissan",
+    model: "Skyline GT-R",
+    variant: "R34",
+    year: "1999",
+    brand: "Tomica",
+    assortment: "Box",
+    colour: "Silver",
+    type: "Sports",
+    spent: 799,
+    mrp: 799,
+    status: "In Hand",
+  },
+  {
+    name: "Fast & Furious 2 Pack",
+    make: "Assorted",
+    model: "2 Pack",
+    brand: "Hot Wheels",
+    assortment: "2 Pack",
+    series: "Fast & Furious",
+    colour: "Assorted",
+    type: "Set",
+    spent: 499,
+    mrp: 499,
+    status: "In Hand",
+  },
+  {
+    name: "Ferrari 5 Pack",
+    make: "Ferrari",
+    model: "5 Pack",
+    brand: "Hot Wheels",
+    assortment: "5 Pack",
+    series: "Ferrari",
+    colour: "Assorted",
+    type: "Set",
+    spent: 899,
+    mrp: 1350,
+    status: "In Hand",
+  },
+  {
+    name: "Team Transport Nissan Skyline & Ramp Truck",
+    make: "Nissan",
+    model: "Skyline & Ramp Truck",
+    brand: "Hot Wheels",
+    assortment: "Team Transport",
+    series: "Team Transport",
+    carNumber: "84",
+    colour: "Assorted",
+    type: "Set",
+    spent: 1400,
+    mrp: 1400,
+    status: "In Hand",
+  },
+  {
+    name: "Porsche 963 Penske",
+    make: "Porsche",
+    model: "963",
+    variant: "Penske 2025",
+    year: "2025",
+    brand: "Mini GT",
+    assortment: "Acrylic Case",
+    carNumber: "1224",
+    colour: "White & Red",
+    type: "Race",
+    spent: 2499,
+    mrp: 2499,
+    status: "In Hand",
+    carCondition: "Mint",
+    carRating: 5,
+    cardCondition: "Mint",
+    cardRating: 5,
+    favourite: true,
+  },
+].map((row) => ({ ...BLANK_SAMPLE, ...row, seller: SAMPLE_SELLER }) as Diecast);
+
+/** Every field the CSV writes, so a sample row is a whole row. */
+const BLANK_SAMPLE = {
+  id: "",
+  catalogId: "",
+  name: "",
+  make: "",
+  model: "",
+  variant: "",
+  year: "",
+  series: "",
+  subSeries: "",
+  carNumber: "",
+  colour: "",
+  type: "",
+  brand: "",
+  assortment: "",
+  size: "1/64",
+  spent: 0,
+  mrp: 0,
+  shippingCost: 0,
+  seller: "",
+  status: "In Hand",
+  payment: "Paid",
+  paid: 0,
+  date: "",
+  month: "",
+  orderDate: "",
+  orderMonth: "",
+  expectedDate: "",
+  transitInfo: "",
+  shippingId: "",
+  orderId: "",
+  balance: 0,
+  chase: false,
+  rarity: "Normal",
+  carCondition: "",
+  cardCondition: "",
+  carRating: 0,
+  cardRating: 0,
+  favourite: false,
+  official: false,
+} as unknown as Diecast;
+
+/**
+ * The importer's template: the column row, and ten examples under it.
+ *
+ * It used to be a blank form, on the argument that rows in a template are rows
+ * somebody has to delete. That argument loses to the other one: a header row
+ * alone says nothing about how a five-pack is written or what goes in Rarity,
+ * and those are exactly the columns people get wrong. The examples all carry
+ * the sample seller, so the importer drops them and nobody has to delete
+ * anything.
  */
 export function generateDiecastCsvTemplate(): string {
-  return buildCsv([], CAR_CSV_COLUMNS);
+  return buildCsv(SAMPLE_ROWS, CAR_CSV_COLUMNS);
 }
 
 /**

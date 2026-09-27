@@ -109,6 +109,8 @@ export function UploadCarsDialog({
    * clicked and goes back to text when it is left.
    */
   const [editing, setEditing] = useState<{ row: number; key: string } | null>(null);
+  /** Template examples the file still had in it, ignored. */
+  const [samplesIgnored, setSamplesIgnored] = useState(0);
   /** Which row is picking a catalogue entry, by index. */
   const [linking, setLinking] = useState<number | null>(null);
 
@@ -130,6 +132,7 @@ export function UploadCarsDialog({
     setRowsShown(PREVIEW_CHUNK);
     setEditing(null);
     setLinking(null);
+    setSamplesIgnored(0);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -289,6 +292,7 @@ export function UploadCarsDialog({
         if (res.errors.length > 0) {
           setParseErrors(res.errors);
         }
+        setSamplesIgnored(res.samples);
         setParsedCars(res.cars);
       }
     };

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Check, Copy, Loader2, Search, TriangleAlert } from "lucide-react";
+import { Check, Copy, Loader2, Pencil, Search, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { useCatalog } from "@/lib/catalog-store";
@@ -10,6 +10,7 @@ import { CarThumb } from "@/components/car-thumb";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
+import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { cn } from "@/lib/utils";
 
 /** How many rows are drawn at once; the rest arrive on Show more. */
@@ -65,6 +66,8 @@ function searchWords(c: CatalogCar): string {
  */
 export function CataloguePhotos() {
   const { catalog, updateCatalogCar } = useCatalog();
+  /** The entry whose full details are open, if any. */
+  const [editing, setEditing] = useState<CatalogCar | null>(null);
   const [filter, setFilter] = useState<Filter>("missing");
   const [q, setQ] = useState("");
   const [visible, setVisible] = useState(PAGE);
@@ -269,6 +272,21 @@ export function CataloguePhotos() {
                     )}
                     <span className="sr-only">Copy search words for {c.name || c.car_id}</span>
                   </Button>
+                  {/* Everything else about the casting. The box beside it
+                      is the fast path for the one field this page exists for;
+                      this is the rest of them, in the dialog that already
+                      knows how to save a catalogue entry. */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 gap-1.5 px-2"
+                    title={`Edit every detail of ${c.name || c.car_id}`}
+                    onClick={() => setEditing(c)}
+                  >
+                    <Pencil className="size-3.5" />
+                    <span className="sr-only">Edit {c.name || c.car_id}</span>
+                  </Button>
                   <Input
                     value={value}
                     onChange={(e) => setDrafts((d) => ({ ...d, [c.car_id]: e.target.value }))}
@@ -308,6 +326,20 @@ export function CataloguePhotos() {
           Show {Math.min(PAGE, rows.length - visible)} more
         </Button>
       )}
+
+      {/* Saving here overwrites the shared entry and propagates to every car
+          filed under it, which is what an admin opening this page is for. */}
+      <CatalogFormDialog
+        open={editing !== null}
+        entry={editing}
+        catalog={catalog}
+        onClose={() => setEditing(null)}
+        onSave={async (car) => {
+          const ok = await updateCatalogCar(car);
+          if (ok) setEditing(null);
+          return ok;
+        }}
+      />
     </div>
   );
 }
