@@ -27,7 +27,7 @@ import { Progress } from "@/components/ui/progress";
 import { importDelta, parseCsvToDiecast } from "@/lib/csv";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { REQUIRED_KEYS, missingRequired } from "@/lib/car-required";
-import { assortmentOptionsFor } from "@/lib/car-options";
+import { DATE_FIELDS, columnChoices } from "@/lib/column-options";
 import { assignCarIds } from "@/lib/car-id";
 import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
 import { useCatalog } from "@/lib/catalog-store";
@@ -625,16 +625,19 @@ export function UploadCarsDialog({
                           const isEditing = editing?.row === i && editing.key === col.key;
                           const missing = missingByRow[i]?.some((m) => m.key === col.key);
                           if (isEditing) {
-                            // Assortment is a kept list, so the cell offers that
-                            // list rather than a box: an import is exactly where
-                            // a fourth spelling of "Acrylic case" gets in.
-                            if (col.key === "assortment") {
-                              const options = assortmentOptionsFor(cars, car.brand || "");
+                            const { options, closed } = columnChoices(col.key, car, cars);
+                            const current = String(
+                              (parsedCars[i] as unknown as Record<string, unknown>)[col.key] ?? "",
+                            );
+                            // A vocabulary the app owns is a dropdown: an import
+                            // is exactly where a fourth spelling of "Acrylic
+                            // case" gets in, or a status nothing filters on.
+                            if (closed) {
                               return (
                                 <td key={col.key} className="px-1 py-0.5">
                                   <select
                                     autoFocus
-                                    defaultValue={car.assortment || ""}
+                                    defaultValue={current}
                                     onChange={(e) => {
                                       editRow(i, col.key, e.target.value);
                                       setEditing(null);
@@ -652,15 +655,19 @@ export function UploadCarsDialog({
                                 </td>
                               );
                             }
+                            // Everything else is a box that suggests. A make or
+                            // a colour nobody has filed yet has to be typeable,
+                            // so the list is an offer rather than a fence —
+                            // which is what a datalist is, and it costs one
+                            // attribute rather than a component.
+                            const listId = options.length ? `opts-${col.key}-${i}` : undefined;
                             return (
                               <td key={col.key} className="px-1 py-0.5">
                                 <input
                                   autoFocus
-                                  defaultValue={String(
-                                    (parsedCars[i] as unknown as Record<string, unknown>)[
-                                      col.key
-                                    ] ?? "",
-                                  )}
+                                  list={listId}
+                                  type={DATE_FIELDS.has(col.key) ? "date" : "text"}
+                                  defaultValue={current}
                                   inputMode={NUMBER_FIELDS.has(col.key) ? "decimal" : undefined}
                                   onBlur={(e) => {
                                     editRow(i, col.key, e.target.value);
@@ -672,6 +679,13 @@ export function UploadCarsDialog({
                                   }}
                                   className="w-[160px] rounded border border-primary bg-background px-1.5 py-0.5 text-xs outline-none"
                                 />
+                                {listId && (
+                                  <datalist id={listId}>
+                                    {options.slice(0, 200).map((o) => (
+                                      <option key={o} value={o} />
+                                    ))}
+                                  </datalist>
+                                )}
                               </td>
                             );
                           }

@@ -7,13 +7,17 @@ const norm = (v?: string | null) =>
     .trim()
     .toLowerCase();
 
-/** The seven fields that decide whether two entries describe the same car. */
+/** The eight fields that decide whether two entries describe the same car. */
 const FIELDS: { of: (c: CatalogCar) => string; on: (c: Diecast) => string; weight: number }[] = [
   { of: (c) => norm(c.brand), on: (c) => norm(c.brand), weight: 3 },
   { of: (c) => norm(c.make), on: (c) => norm(c.make), weight: 3 },
   { of: (c) => norm(c.model), on: (c) => norm(c.model), weight: 3 },
   { of: (c) => norm(c.car_number), on: (c) => norm(c.carNumber), weight: 3 },
   { of: (c) => norm(c.colour), on: (c) => norm(c.colour), weight: 2 },
+  // A variant is what tells two of the same casting apart — "Le Mans 24H 2024
+  // #91" from "DTM 2025 #90" — so an entry that agrees on it is much more
+  // likely to be the one, and two entries that differ on it rarely are.
+  { of: (c) => norm(c.variant), on: (c) => norm(c.variant), weight: 2 },
   { of: (c) => norm(c.series), on: (c) => norm(c.series), weight: 1 },
   { of: (c) => norm(c.sub_series), on: (c) => norm(c.subSeries), weight: 1 },
 ];

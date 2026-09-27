@@ -29,10 +29,13 @@ export const CAR_CSV_COLUMNS: CsvColumn<Diecast>[] = [
   { key: "model", label: "Model", get: (r) => r.model },
   { key: "variant", label: "Variant", get: (r) => r.variant },
   { key: "year", label: "Year", get: (r) => r.year },
-  { key: "series", label: "Series", get: (r) => r.series },
-  { key: "subSeries", label: "Sub series", get: (r) => r.subSeries },
+  // Brand before the number and the series, because all three depend on it: a
+  // car number means one thing for Hot Wheels and another for Mini GT, and a
+  // series belongs to a brand's range.
   { key: "brand", label: "Brand", get: (r) => r.brand },
   { key: "carNumber", label: "Car number", get: (r) => r.carNumber },
+  { key: "series", label: "Series", get: (r) => r.series },
+  { key: "subSeries", label: "Sub series", get: (r) => r.subSeries },
   { key: "colour", label: "Colour", get: (r) => r.colour },
   { key: "type", label: "Type", get: (r) => r.type },
   { key: "size", label: "Size", get: (r) => r.size },

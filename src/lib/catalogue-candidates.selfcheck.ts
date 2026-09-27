@@ -80,3 +80,12 @@ assert.deepEqual(ids(catalogueCandidates(car(), [gt3r, unrelated], { query: "tom
 assert.deepEqual(ids(catalogueCandidates(car(), [gt3r, unrelated], { query: "lamborghini" })), []);
 
 console.log("catalogue-candidates: a car is offered the entries it might be, best first.");
+
+// Variant is what tells two copies of one casting apart, so an entry that
+// agrees on it outranks one that does not.
+const dtm = entry({ car_id: "V1", variant: "DTM 2025 #90", colour: "Green" });
+const leMans = entry({ car_id: "V2", variant: "Le Mans 24H 2024 #91", colour: "Green" });
+const mine2 = car({ variant: "Le Mans 24H 2024 #91", colour: "Green" });
+assert.deepEqual(ids(catalogueCandidates(mine2, [dtm, leMans])), ["V2", "V1"]);
+
+console.log("catalogue-candidates: the variant decides between two of one casting.");
