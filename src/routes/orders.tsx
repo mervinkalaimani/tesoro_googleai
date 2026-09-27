@@ -107,8 +107,13 @@ const isWaitingSide = (status: string) => {
   return n === "Ordered" || n === "PO" || n === "On Hold";
 };
 
+/** Where the grouping choice is remembered. */
+const GROUP_BY_KEY = "dg.ordersGroupBy";
+
 type Shipment = {
   key: string;
+  /** The ID this group is gathered under — a parcel or a purchase. */
+  groupId: string;
   seller: string;
   status: string;
   shippingId: string;
@@ -161,7 +166,7 @@ function ShipmentCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="truncate font-mono text-base font-bold tracking-tight">
-              {s.shippingId || "Unassigned"}
+              {s.groupId || "Unassigned"}
             </h2>
             <p className="truncate text-sm font-semibold text-muted-foreground">{s.seller}</p>
           </div>
@@ -222,8 +227,8 @@ function ShipmentCard({
         {/* This parcel, not the page it is on. */}
         <ExportButton
           rows={s.items}
-          name={`order-${s.shippingId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
-          label={s.shippingId ? `Order ${s.shippingId}` : `${s.seller} order`}
+          name={`order-${s.groupId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+          label={s.groupId ? `Order ${s.groupId}` : `${s.seller} order`}
           iconOnly
           size="icon"
           className="size-8 shrink-0"
@@ -326,6 +331,30 @@ function OrdersPage() {
   // segments stay free to change it afterwards.
   const [tab, setTab] = useState<Tab>(search.tab ?? "all");
   const [seller, setSeller] = useState("all");
+  /**
+   * Which ID gathers the cards: the parcel they arrive in, or the purchase they
+   * came from. They are different questions — one order is often split across
+   * three parcels, and one parcel as often carries cars bought weeks apart —
+   * and which one you want depends on whether you are chasing a delivery or
+   * reconciling what you paid.
+   *
+   * Remembered, because it is a way of working rather than a one-off filter.
+   */
+  const [groupBy, setGroupBy] = useState<"shipping" | "order">(() => {
+    try {
+      return localStorage.getItem(GROUP_BY_KEY) === "order" ? "order" : "shipping";
+    } catch {
+      return "shipping";
+    }
+  });
+  const changeGroupBy = (v: "shipping" | "order") => {
+    setGroupBy(v);
+    try {
+      localStorage.setItem(GROUP_BY_KEY, v);
+    } catch {
+      // A browser refusing storage costs the preference, not the page.
+    }
+  };
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
   const [reconcileFor, setReconcileFor] = useState<StatusBatch | null>(null);
@@ -396,8 +425,10 @@ function OrdersPage() {
   const shipments = useMemo<Shipment[]>(() => {
     const map = new Map<string, Diecast[]>();
     for (const r of filtered) {
-      const shipId = (r.shippingId || "").trim();
-      const key = shipId || `${r.seller || "Unknown"}|${r.orderDate || "—"}|${r.status}`;
+      const id = ((groupBy === "order" ? r.orderId : r.shippingId) || "").trim();
+      // A car with no ID to group by still has to appear, so it falls back to
+      // the three things that make it one purchase: who, when, and what state.
+      const key = id || `${r.seller || "Unknown"}|${r.orderDate || "—"}|${r.status}`;
       const arr = map.get(key) ?? [];
       arr.push(r);
       map.set(key, arr);
@@ -407,11 +438,17 @@ function OrdersPage() {
     for (const [key, items] of map) {
       const first = items[0];
       const delivered = isInHand(first.status);
+      // The shipping ID of the group, and only when the whole group shares one.
+      // Grouped by order, a purchase can arrive in two parcels, and the actions
+      // in the card's footer act on a parcel — so they hide rather than act on
+      // the wrong one. Grouped by parcel this is always the group's own ID.
+      const ships = new Set(items.map((r) => (r.shippingId || "").trim()));
       out.push({
         key,
+        groupId: ((groupBy === "order" ? first.orderId : first.shippingId) || "").trim(),
         seller: first.seller || "Unknown seller",
         status: first.status,
-        shippingId: (first.shippingId || "").trim(),
+        shippingId: ships.size === 1 ? [...ships][0] : "",
         items,
         value: items.reduce((s, r) => s + (r.spent || 0), 0),
         orderDate: first.orderDate || "",
@@ -463,7 +500,7 @@ function OrdersPage() {
       if (r !== 0) return r;
       return t(b.orderDate) - t(a.orderDate);
     });
-  }, [filtered, mode, dir]);
+  }, [filtered, mode, dir, groupBy]);
 
   const inShipmentOrders = useMemo(() => {
     return shipments.filter(
@@ -498,6 +535,17 @@ function OrdersPage() {
         }
         right={
           <>
+            {/* Which ID gathers the cards. Short labels: on a phone this shares
+                one line with the tabs and two filters. */}
+            <SegmentControl
+              value={groupBy}
+              onChange={changeGroupBy}
+              options={[
+                { value: "shipping", label: "Parcel" },
+                { value: "order", label: "Order" },
+              ]}
+              className="w-auto shrink-0 max-sm:text-[11px] max-sm:[&>button]:px-2"
+            />
             <FilterSelect
               value={seller}
               onChange={setSeller}
