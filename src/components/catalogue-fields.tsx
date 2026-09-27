@@ -12,6 +12,7 @@ import {
 } from "@/lib/car-options";
 import { RARITIES, type Rarity } from "@/lib/rarity";
 import { needsCarNumber } from "@/lib/duplicate";
+import { useAuth } from "@/lib/auth-store";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -102,6 +103,7 @@ export function CatalogueFields({
    * on a form you have already filled in should not reopen three lists behind
    * you, and a variant you deliberately left blank stays blank.
    */
+  const { isAdmin } = useAuth();
   const [chainAt, setChainAt] = useState({ model: 0, variant: 0, year: 0 });
   const advance = (to: "model" | "variant" | "year") => {
     if (!chain) return;
@@ -264,14 +266,21 @@ export function CatalogueFields({
           the catalogue form, which describes the casting itself, keeps it. */}
       {!skip("assortment") && (
         <Field label="Assortment *" name="assortment" error={err("assortment")}>
+          {/* A kept list, not a free field: two spellings of one
+              assortment are two lines in every dropdown for ever, and the
+              names are maintained in Settings. Admins keep free entry -- a
+              genuinely new line has to start somewhere. */}
           <Combobox
             clearable
+            allowCustom={isAdmin}
             disabled={disabled}
             value={values.assortment}
             onChange={(v) => onChange("assortment", v)}
             options={assortmentOptions}
             placeholder="e.g. Mainline, Premium, Boulevard"
-            searchPlaceholder="Search assortments, or type a new one…"
+            searchPlaceholder={
+              isAdmin ? "Search assortments, or type a new one…" : "Search assortments…"
+            }
             ariaLabel="Assortment"
           />
         </Field>

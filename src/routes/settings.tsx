@@ -20,6 +20,7 @@ import {
   FileText,
   Scale,
   MessageCircle,
+  Layers,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -43,6 +44,7 @@ import {
 } from "@/lib/car-image-search";
 import { SegmentControl } from "@/components/segment-control";
 import { CataloguePhotos } from "@/components/catalogue-photos";
+import { AssortmentManager } from "@/components/assortment-manager";
 import { HelpDoc } from "@/components/help-doc";
 import { SplashMark } from "@/components/brand-mark";
 import { HELP_BLURBS, HELP_TITLES } from "@/lib/help-content";
@@ -100,6 +102,7 @@ type SettingsView =
   | "database"
   | "search_engine"
   | "catalogue_photos"
+  | "assortments"
   | "homepage"
   | "advanced"
   | "help"
@@ -124,6 +127,7 @@ function parseTab(tab?: string): SettingsView {
   if (t === "database" || t === "supabase" || t === "db") return "database";
   if (t === "search_engine" || t === "search-engine" || t === "search") return "search_engine";
   if (t === "catalogue_photos" || t === "photos") return "catalogue_photos";
+  if (t === "assortments" || t === "assortment") return "assortments";
   if (t === "homepage" || t === "home") return "homepage";
   if (t === "advanced") return "advanced";
   if (t === "help" || t === "support") return "help";
@@ -783,6 +787,24 @@ export function SettingsPage() {
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
 
+            {/* ASSORTMENTS */}
+            <button
+              type="button"
+              onClick={() => changeView("assortments")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-amber-500 to-orange-600 text-white shadow-xs">
+                <Layers className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Assortments</span>
+                <p className="text-xs text-muted-foreground">
+                  The list every picker offers — add one, or rename one to merge two spellings
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </button>
+
             {/* DB CONNECTION (Moved into Admin) */}
             <button
               type="button"
@@ -1055,6 +1077,19 @@ export function SettingsPage() {
           ) : (
             <p className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground shadow-xs">
               The catalogue is shared, so only an admin can change its photos.
+            </p>
+          )}
+        </div>
+      )}
+
+      {view === "assortments" && (
+        <div className="space-y-6">
+          <SubpageHeader title="Assortments" onBack={() => changeView("root")} />
+          {isAdmin ? (
+            <AssortmentManager />
+          ) : (
+            <p className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground shadow-xs">
+              The list is shared by everybody, so only an admin can change it.
             </p>
           )}
         </div>

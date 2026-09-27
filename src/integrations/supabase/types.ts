@@ -162,6 +162,33 @@ export type Database = {
         };
         Relationships: [];
       };
+      tesoro_assortments: {
+        Row: {
+          id: string;
+          name: string;
+          brand: string;
+          sort: number;
+          retired: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          brand?: string;
+          sort?: number;
+          retired?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          brand?: string;
+          sort?: number;
+          retired?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       tesoro_users: {
         Row: {
           sno: number;

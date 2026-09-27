@@ -1,4 +1,5 @@
 import type { Diecast } from "@/lib/types";
+import { assortmentNames, hasAssortments } from "@/lib/assortments";
 import {
   ASSORTMENTS,
   BRANDS,
@@ -217,6 +218,16 @@ export function variantOptionsFor(cars: Diecast[], make: string, model: string):
  */
 export function assortmentOptionsFor(cars: Diecast[], brand: string): string[] {
   const wanted = norm(brand);
+
+  // The kept list wins when there is one. It is the same vocabulary an admin
+  // maintains in Settings, so a spelling corrected there is corrected in every
+  // picker at once — which is the point of keeping it rather than deriving it
+  // from whatever the cars happen to say.
+  if (hasAssortments()) {
+    const kept = assortmentNames(brand);
+    if (kept.length) return kept;
+  }
+
   if (!wanted) return optionsFor("assortment", cars);
 
   const sameBrand = cars.filter((c) => norm(c.brand) === wanted);

@@ -18,6 +18,7 @@ import {
   diecastToCatalogCar,
   saveLocalCatalog,
 } from "@/lib/catalog";
+import { fetchAssortments } from "@/lib/assortments";
 import {
   startCatalogRealtimeListener,
   syncCatalogCarToUserCars,
@@ -67,7 +68,15 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
       // Both together: what the entries are, and what is in the boxes among
       // them. A pack rendered before its contents arrive is a pack that flashes
       // "0 cars" on the way in.
-      const [remote, members] = await Promise.all([fetchCatalogFromSupabase(), fetchPackMembers()]);
+      // Three together. The assortment list is the vocabulary every picker
+      // offers, and it loads here because this is already the one place the
+      // shared reference data arrives — it lands in a module cache the option
+      // helpers read, the way the catalogue's ID codes do.
+      const [remote, members] = await Promise.all([
+        fetchCatalogFromSupabase(),
+        fetchPackMembers(),
+        fetchAssortments(),
+      ]);
       setCatalog(remote);
       setPackMembersState(members);
     } catch (e) {

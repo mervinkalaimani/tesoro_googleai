@@ -133,6 +133,7 @@ function SegmentOrOther({
   placeholder,
   searchPlaceholder,
   hint,
+  allowCustom = true,
 }: {
   label: string;
   name?: string;
@@ -145,6 +146,8 @@ function SegmentOrOther({
   placeholder: string;
   searchPlaceholder: string;
   hint?: string;
+  /** False makes this a closed list: the options are the only answers. */
+  allowCustom?: boolean;
 }) {
   const [stuck, setStuck] = useState(false);
   const known = chips.some((c) => c.toLowerCase() === (value || "").toLowerCase());
@@ -174,6 +177,7 @@ function SegmentOrOther({
         <div className={chips.length > 0 ? "mt-2" : undefined}>
           <Combobox
             clearable
+            allowCustom={allowCustom}
             value={value}
             onChange={(v) => onChange(v)}
             options={options}
@@ -1875,8 +1879,16 @@ export function CarFormDialog({
             onChange={(v) => set("assortment", v)}
             chips={assortmentChips}
             options={assortmentOptions}
+            // The list is kept in Settings, not invented here: a new
+            // spelling typed into a car is how the catalogue ended up with
+            // "Acrylic case" and "Acrylic Case" as two different things. An
+            // admin can still type one, because somebody has to be able to add
+            // the first Qube Carz.
+            allowCustom={isAdmin}
             placeholder={form.brand ? `Which ${form.brand} line?` : "Pick a brand first"}
-            searchPlaceholder="Search assortments, or type a new one…"
+            searchPlaceholder={
+              isAdmin ? "Search assortments, or type a new one…" : "Search assortments…"
+            }
             hint={form.brand ? undefined : "Choose a brand above and the usual four appear here."}
           />
 
