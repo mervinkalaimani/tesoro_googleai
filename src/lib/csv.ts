@@ -9,6 +9,34 @@ function escape(v: string | number): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
+/**
+ * A value Excel would otherwise read as a date, kept as the text it is.
+ *
+ * "1:64" opens as 1:64 in the morning and "2/10" as the second of October —
+ * a scale and a collector number, both silently turned into something else
+ * before anybody sees the file. Quoting does not help: Excel converts quoted
+ * values too. A leading apostrophe is the one marker it honours, and Google
+ * Sheets reads it the same way.
+ *
+ * `excelSafe` strips it again on the way in, so a file this app wrote comes
+ * home unchanged. Only the two columns that need it are marked — a blanket
+ * strip would eat the apostrophe off "'70 Dodge Charger", which is a real
+ * name and not a marker.
+ */
+export function excelText(v: string | number | undefined | null): string {
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  // Anything with a slash or a colon between digits is a date or a time to
+  // Excel. Plain words and plain numbers are safe and stay unmarked.
+  return /^\d+\s*[:/]\s*\d+$/.test(s) ? `'${s}` : s;
+}
+
+/** The same value read back: the marker is ours, not part of the value. */
+export function excelSafe(v: string): string {
+  const s = (v ?? "").trim();
+  return s.startsWith("'") && /^'\d+\s*[:/]\s*\d+$/.test(s) ? s.slice(1) : s;
+}
+
 export function buildCsv<T>(rows: T[], columns: CsvColumn<T>[]): string {
   const head = columns.map((c) => escape(c.label)).join(",");
   const body = rows.map((r) => columns.map((c) => escape(c.get(r))).join(",")).join("\n");
@@ -229,11 +257,11 @@ export function parseCsvToDiecast(text: string): {
       brand,
       series: val(row, seriesCol),
       subSeries: val(row, subSeriesCol),
-      carNumber: val(row, carNumberCol),
+      carNumber: excelSafe(val(row, carNumberCol)),
       colour: val(row, colourCol),
       type: val(row, typeCol),
       assortment: val(row, asstCol),
-      size: val(row, sizeCol) || "1/64",
+      size: excelSafe(val(row, sizeCol)) || "1/64",
       spent,
       mrp: parseNum(val(row, mrpCol)),
       shippingCost: parseNum(val(row, shippingCostCol)),

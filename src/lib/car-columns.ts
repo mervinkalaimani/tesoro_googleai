@@ -1,5 +1,5 @@
 import type { Diecast } from "@/lib/types";
-import type { CsvColumn } from "@/lib/csv";
+import { excelText, type CsvColumn } from "@/lib/csv";
 import { rarityOf } from "@/lib/rarity";
 
 /**
@@ -33,12 +33,14 @@ export const CAR_CSV_COLUMNS: CsvColumn<Diecast>[] = [
   // car number means one thing for Hot Wheels and another for Mini GT, and a
   // series belongs to a brand's range.
   { key: "brand", label: "Brand", get: (r) => r.brand },
-  { key: "carNumber", label: "Car number", get: (r) => r.carNumber },
+  // Marked as text: Excel reads "2/10" as the second of October.
+  { key: "carNumber", label: "Car number", get: (r) => excelText(r.carNumber) },
   { key: "series", label: "Series", get: (r) => r.series },
   { key: "subSeries", label: "Sub series", get: (r) => r.subSeries },
   { key: "colour", label: "Colour", get: (r) => r.colour },
   { key: "type", label: "Type", get: (r) => r.type },
-  { key: "size", label: "Size", get: (r) => r.size },
+  // Same again: "1:64" opens as a time.
+  { key: "size", label: "Size", get: (r) => excelText(r.size) },
   { key: "rarity", label: "Rarity", get: (r) => rarityOf(r) },
   // Chase follows from Rarity, and stays because a sheet is often sorted and
   // filtered on it.

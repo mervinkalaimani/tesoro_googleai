@@ -8,6 +8,8 @@ import assert from "node:assert/strict";
 
 import {
   buildCsv,
+  excelSafe,
+  excelText,
   generateDiecastCsvTemplate,
   importDelta,
   parseCsvRows,
@@ -82,3 +84,22 @@ for (const kind of ["2 Pack", "5 Pack", "Team Transport"]) {
 }
 
 console.log("csv: the template teaches, and the importer ignores what it taught with.");
+
+// Excel reads "1:64" as a time and "2/10" as a date, so both leave marked as
+// text and come back unmarked. Everything else is left alone — an apostrophe
+// belongs to "'70 Dodge Charger" and is not a marker.
+assert.equal(excelText("1:64"), "'1:64");
+assert.equal(excelText("2/10"), "'2/10");
+assert.equal(excelText("1372"), "1372");
+assert.equal(excelText("KHMG319"), "KHMG319");
+assert.equal(excelText(""), "");
+assert.equal(excelSafe("'1:64"), "1:64");
+assert.equal(excelSafe("'70 Dodge Charger"), "'70 Dodge Charger");
+
+const marked = parseCsvToDiecast(
+  `${template}\n${buildCsv([{ ...ownRow, size: "1:64", carNumber: "2/10" } as Diecast], CAR_CSV_COLUMNS).split("\n")[1]}`,
+);
+assert.equal(marked.cars[0].size, "1:64", "the marker is ours, not part of the size");
+assert.equal(marked.cars[0].carNumber, "2/10");
+
+console.log("csv: a scale and a collector number survive Excel.");
