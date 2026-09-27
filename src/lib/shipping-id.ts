@@ -1,25 +1,22 @@
 import type { Diecast } from "@/lib/types";
 import { parseDMY } from "@/lib/format";
-import { isPreOrder } from "@/lib/status-order";
 
 /**
- * Shipping IDs, ported from the sheet formula:
+ * Shipping IDs — which parcel a car turned up in:
  *
  *   prefix   = UPPER(LEFT(seller_without_spaces, 3) & RIGHT(seller_without_spaces, 1))
- *   eff_date = arrival date, or the order date when the car has not arrived
- *   is_po    = the car is a pre-order
- *   rank     = COUNTUNIQUE(eff_dates for the same seller and same is_po, up to eff_date)
- *   id       = prefix & IF(is_po, "/PO/", "/") & TEXT(rank, "00")
+ *   eff_date = arrival date; for a car in flight the expected date; else ordered
+ *   rank     = COUNTUNIQUE(eff_dates for the same seller, up to eff_date)
+ *   id       = prefix & "/" & TEXT(rank, "00")
  *
- * So every car a seller shipped on one day shares an ID, and the number counts
- * that seller's distinct shipping days — pre-orders counted separately.
+ * So every car a seller shipped on one day shares an ID, whatever order each of
+ * them was bought in, and the number counts that seller's distinct shipping
+ * days. ANIH/07 is Aniruddh's seventh.
  *
- * One departure from the sheet, and it is deliberate. There `is_po` was
- * `(date="") * (o_date<>"")` — no arrival date yet — which is true of every car
- * that has not turned up, not just the pre-ordered ones. A parcel in transit and
- * a car waiting at a seller both came out tagged /PO/, which is what the transit
- * tracker was showing. The tag means what it says here: a pre-order is a car
- * paid for before it existed, and the status column is what records that.
+ * Pre-orders used to be a run of their own, tagged /PO/, which meant a seller
+ * could ship one parcel and have it read as two. The tag now lives on the order
+ * ID, where the fact belongs: being a pre-order is something about the purchase,
+ * not about the box it eventually came in.
  *
  * The rank is a property of the whole collection, not of one car: a car dated
  * between two existing orders takes a number that every later order of that
@@ -37,7 +34,7 @@ function dayToken(value: string | undefined | null): string | null {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-type Effective = { seller: string; token: string; isPo: boolean };
+type Effective = { seller: string; token: string };
 
 /**
  * Statuses meaning the car is on its way, with a delivery date to be grouped by.
@@ -76,7 +73,7 @@ const statusKey = (status: string | undefined | null) =>
  */
 const isDayPrecise = (value: string) => /^\d{4}-\d{2}-\d{2}/.test(value.trim());
 
-/** The seller, effective date and pre-order flag a car contributes. */
+/** The seller and the day a car turns up. */
 function effectiveOf(car: Diecast): Effective | null {
   const seller = (car.seller || "").trim();
   if (!seller) return null;
@@ -84,27 +81,32 @@ function effectiveOf(car: Diecast): Effective | null {
   const arrival = (car.date || "").trim();
   const ordered = (car.orderDate || "").trim();
   const expected = (car.expectedDate || "").trim();
-  // A car that has arrived is not a pre-order whatever its status still says,
-  // which is what keeps an order moving out of the /PO/ run when it lands.
-  const isPo = isPreOrder(car.status) && !arrival;
 
-  // An arrival date always wins: the car is here, and the day it came is the
-  // day its shipment landed. Failing that, an in-flight car is dated by when it
-  // is due, and everything else by when it was ordered.
+  // The day it arrived, else — for a car in flight — the day it is due, else
+  // the day it was bought. A pre-order stays on its order date: its expected
+  // date is a release date that moves, and renumbering a shipment every time a
+  // maker slips a month is worse than not grouping it.
   const inFlight = IN_FLIGHT.has(statusKey(car.status)) && isDayPrecise(expected);
   const token = dayToken(arrival || (inFlight ? expected : ordered));
   if (!token) return null;
 
-  return { seller, token, isPo };
+  return { seller, token };
 }
 
 /**
- * The numbering sequence a car belongs to. Two cars share a sequence when they
- * share a seller and are both pre-orders or both not — which is exactly the
- * FILTER in the formula.
+ * The numbering sequence a car belongs to: the seller, and nothing else.
+ *
+ * Pre-orders used to be counted in a run of their own, tagged /PO/. They are
+ * not any more — what a shipping ID answers is "which parcel", and a parcel of
+ * a seller's cars is one parcel whether the cars in it were reserved before
+ * release or bought off a shelf. The pre-order fact moved to the order ID,
+ * where it belongs, because it is a fact about the purchase.
+ *
+ * So two cars share a shipping ID when they share a seller and a day, whatever
+ * order either of them was bought in.
  */
 function groupKey(e: Effective): string {
-  return `${e.seller.toLowerCase()}|${e.isPo ? "1" : "0"}`;
+  return e.seller.toLowerCase();
 }
 
 /** The sequence key for a car, or null when it contributes to none. */
@@ -163,10 +165,7 @@ export function shippingIdTable(all: Diecast[]): Map<string, string> {
       continue;
     }
     const rank = rankByGroup.get(groupKey(e))?.get(e.token) ?? 1;
-    out.set(
-      car.id,
-      `${sellerPrefix(e.seller)}${e.isPo ? "/PO/" : "/"}${String(rank).padStart(2, "0")}`,
-    );
+    out.set(car.id, `${sellerPrefix(e.seller)}/${String(rank).padStart(2, "0")}`);
   }
   return out;
 }

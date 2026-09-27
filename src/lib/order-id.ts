@@ -1,12 +1,18 @@
 import type { Diecast } from "@/lib/types";
 import { parseDMY } from "@/lib/format";
 import { sellerPrefix } from "@/lib/shipping-id";
+import { isPreOrder } from "@/lib/status-order";
 
 /**
  * Order IDs: which order a car was bought in.
  *
  *   prefix = UPPER(LEFT(seller_without_spaces, 3) & RIGHT(seller_without_spaces, 1))
- *   id     = prefix & "-" & YYYY & "-" & MM & "-" & TEXT(rank, "000")
+ *   id     = prefix & "/" & YY & "/" & MM & IF(is_po, "/PO", "") & "/" & TEXT(rank, "00")
+ *
+ * ANIH/26/07/04 is Aniruddh's fourth order of July 2026; ANIH/26/07/PO/01 is
+ * the first thing pre-ordered from him that month. The pre-order tag lives here
+ * rather than on the shipping ID, because being a pre-order is a fact about the
+ * purchase and not about the parcel it eventually arrives in.
  *
  * The shipping ID answers "which parcel did this turn up in". This answers the
  * other half — "which time I bought from them did this come from" — and the two
@@ -42,7 +48,7 @@ function dayToken(value: string | undefined | null): string | null {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-type Effective = { seller: string; token: string; month: string };
+type Effective = { seller: string; token: string; month: string; isPo: boolean };
 
 /** The seller and order day a car contributes, or null when it contributes none. */
 function effectiveOf(car: Diecast): Effective | null {
@@ -50,13 +56,20 @@ function effectiveOf(car: Diecast): Effective | null {
   if (!seller) return null;
   const token = dayToken(car.orderDate);
   if (!token) return null;
+  // A car that has arrived is not a pre-order whatever its status still says.
+  const isPo = isPreOrder(car.status) && !(car.date || "").trim();
   // "2026-06-14" -> "2026-06". The ID's own month, and the reset boundary.
-  return { seller, token, month: token.slice(0, 7) };
+  return { seller, token, month: token.slice(0, 7), isPo };
 }
 
-/** Two cars share a numbering run when they share a seller and a month. */
+/**
+ * Two cars share a numbering run when they share a seller, a month, and whether
+ * they were pre-ordered. Pre-orders count separately because they are labelled
+ * separately: without their own run, ANIH/26/07/02 and ANIH/26/07/PO/02 would
+ * be two different purchases wearing what looks like the same number.
+ */
 function groupKey(e: Effective): string {
-  return `${e.seller.toLowerCase()}|${e.month}`;
+  return `${e.seller.toLowerCase()}|${e.month}|${e.isPo ? "1" : "0"}`;
 }
 
 /** The run a car belongs to, or null when it belongs to none. */
@@ -104,7 +117,13 @@ export function orderIdTable(all: Diecast[]): Map<string, string> {
       continue;
     }
     const rank = rankByGroup.get(groupKey(e))?.get(e.token) ?? 1;
-    out.set(car.id, `${sellerPrefix(e.seller)}-${e.month}-${String(rank).padStart(3, "0")}`);
+    // "2026-07" -> "26/07". The century is not worth four characters in an ID
+    // somebody reads off a screen and quotes at a seller.
+    const yymm = `${e.month.slice(2, 4)}/${e.month.slice(5, 7)}`;
+    out.set(
+      car.id,
+      `${sellerPrefix(e.seller)}/${yymm}${e.isPo ? "/PO" : ""}/${String(rank).padStart(2, "0")}`,
+    );
   }
   return out;
 }
