@@ -10,6 +10,8 @@ import {
   Database,
   ArrowRight,
   RotateCcw,
+  Link2,
+  Download,
 } from "lucide-react";
 import {
   Dialog,
@@ -23,9 +25,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { importDelta, parseCsvToDiecast } from "@/lib/csv";
+import { buildCsv, downloadCsv, importDelta, parseCsvToDiecast } from "@/lib/csv";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
-import { assignCarIds, findCatalogEntry } from "@/lib/car-id";
+import { assignCarIds } from "@/lib/car-id";
+import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
+import { useCatalog } from "@/lib/catalog-store";
 import {
   useCars,
   useCarsActions,
@@ -44,6 +48,12 @@ import type { Diecast } from "@/lib/types";
  * only if that pause starts to matter.
  */
 const PREVIEW_CHUNK = 100;
+
+/** Cells the file does not get to decide: the app derives all four. */
+const READ_ONLY_FIELDS = new Set(["id", "shippingId", "orderId", "chase"]);
+
+/** Cells that are money or a count, and are read back as a number. */
+const NUMBER_FIELDS = new Set(["spent", "mrp", "paid", "shippingCost", "carRating", "cardRating"]);
 
 interface UploadCarsDialogProps {
   trigger?: React.ReactNode;
@@ -94,8 +104,17 @@ export function UploadCarsDialog({
   const [undoing, setUndoing] = useState(false);
   /** How much of the preview is on screen; the rest is a click away. */
   const [rowsShown, setRowsShown] = useState(PREVIEW_CHUNK);
+  /**
+   * The one cell being typed into. A row of 35 inputs times a hundred rows is
+   * three and a half thousand form controls; a cell becomes an input when it is
+   * clicked and goes back to text when it is left.
+   */
+  const [editing, setEditing] = useState<{ row: number; key: string } | null>(null);
+  /** Which row is picking a catalogue entry, by index. */
+  const [linking, setLinking] = useState<number | null>(null);
 
   const cars = useCars();
+  const { catalog } = useCatalog();
   const { bulkAddCars } = useCarsActions();
   const { undo } = useCarsUndo();
   const { refresh } = useCarsRefresh();
@@ -110,7 +129,30 @@ export function UploadCarsDialog({
     setUndoable(null);
     setUndoing(false);
     setRowsShown(PREVIEW_CHUNK);
+    setEditing(null);
+    setLinking(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  /**
+   * Change one field of one row before it is saved.
+   *
+   * The edit lands on the parsed row, not the previewed one, so everything
+   * derived from it — the three IDs, the catalogue match — is recomputed rather
+   * than patched. Index alignment holds because the preview maps the parsed
+   * rows one to one.
+   */
+  const editRow = (row: number, key: string, value: string) => {
+    setParsedCars((prev) =>
+      prev.map((c, i) =>
+        i === row ? { ...c, [key]: NUMBER_FIELDS.has(key) ? Number(value) || 0 : value } : c,
+      ),
+    );
+  };
+
+  /** Point a row at a casting that already exists, instead of filing a new one. */
+  const linkRow = (row: number, catalogId: string) => {
+    setParsedCars((prev) => prev.map((c, i) => (i === row ? { ...c, catalogId } : c)));
   };
 
   /**
@@ -138,10 +180,18 @@ export function UploadCarsDialog({
    * Every row gets a catalogue ID either way; the difference is whether it joins
    * an entry that exists or files a new one, and that is worth seeing before an
    * import of a hundred rows quietly adds forty castings.
+   *
+   * The question is asked of the ID the row ended up with, not of its details:
+   * a row linked by hand carries an entry its own fields may well disagree
+   * with, and that is the whole point of linking it.
    */
+  const catalogIds = useMemo(() => new Set(catalog.map((c) => c.car_id)), [catalog]);
   const linkedIds = useMemo(
-    () => new Set(previewCars.filter((c) => findCatalogEntry(c)).map((c) => c.id)),
-    [previewCars],
+    () =>
+      new Set(
+        previewCars.filter((c) => c.catalogId && catalogIds.has(c.catalogId)).map((c) => c.id),
+      ),
+    [previewCars, catalogIds],
   );
 
   /** What an import of these rows would add, and what it would replace. */
@@ -275,12 +325,12 @@ export function UploadCarsDialog({
     }
   };
 
-  const handleImportLocal = () => {
+  /** Save the edited rows back out, IDs and catalogue matches filled in. */
+  const handleSaveAs = () => {
     if (previewCars.length === 0) return;
-    setUndoable({ mode: "local", ...importEffect() });
-    bulkAddCars(previewCars);
-    setSuccessMessage(
-      `Added ${previewCars.length.toLocaleString()} ${previewCars.length === 1 ? "car" : "cars"} to your collection.`,
+    downloadCsv(
+      fileInfo?.name?.replace(/.(csv|json)$/i, "") || "cars",
+      buildCsv(previewCars, CAR_CSV_COLUMNS),
     );
   };
 
@@ -330,9 +380,13 @@ export function UploadCarsDialog({
 
     try {
       const { seedCarsToSupabase } = await import("@/lib/supabase-cars");
-      const res = await seedCarsToSupabase(previewCars, (curr, tot) => {
-        setProgress({ current: curr, total: tot });
-      });
+      // Held: the cars are yours at once, their castings reach the shared
+      // catalogue a day from now, and until then every row here can be fixed.
+      const res = await seedCarsToSupabase(
+        previewCars,
+        (curr, tot) => setProgress({ current: curr, total: tot }),
+        { hold: true },
+      );
 
       if (!res.success) {
         setParseErrors([`Supabase upload failed: ${res.error || "Unknown error"}`]);
@@ -341,7 +395,9 @@ export function UploadCarsDialog({
       }
 
       setUndoable({ mode: "remote", ...effect });
-      setSuccessMessage(`Uploaded ${res.count.toLocaleString()} cars to the database.`);
+      setSuccessMessage(
+        `Saved ${res.count.toLocaleString()} ${res.count === 1 ? "car" : "cars"}. They are in your collection now; their castings reach the shared catalogue in 24 hours, and you can edit or re-link them until then.`,
+      );
       // Refresh live collection store
       await refresh();
     } catch (err) {
@@ -486,8 +542,8 @@ export function UploadCarsDialog({
                   {previewCars.length === 1 ? "car" : "cars"} · {CAR_CSV_COLUMNS.length} fields)
                 </span>
                 <span className="text-[11px] text-muted-foreground">
-                  {linkedIds.size.toLocaleString()} linked to the catalogue ·{" "}
-                  {(previewCars.length - linkedIds.size).toLocaleString()} new{" "}
+                  Click a cell to fix it · {linkedIds.size.toLocaleString()} linked to the catalogue
+                  · {(previewCars.length - linkedIds.size).toLocaleString()} new{" "}
                   {previewCars.length - linkedIds.size === 1 ? "casting" : "castings"} ·{" "}
                   {rowsShown >= previewCars.length
                     ? "all rows"
@@ -498,7 +554,7 @@ export function UploadCarsDialog({
                 <table className="text-left">
                   <thead className="sticky top-0 bg-muted text-[11px] font-medium text-muted-foreground border-b border-border">
                     <tr>
-                      <th className="whitespace-nowrap px-2.5 py-1.5">Catalogue ID</th>
+                      <th className="whitespace-nowrap px-2.5 py-1.5">Catalogue</th>
                       {CAR_CSV_COLUMNS.map((col) => (
                         <th key={col.key} className="whitespace-nowrap px-2.5 py-1.5">
                           {col.label}
@@ -510,25 +566,72 @@ export function UploadCarsDialog({
                     {previewCars.slice(0, rowsShown).map((car, i) => (
                       <tr key={`${car.id}-${i}`} className="hover:bg-muted/30">
                         <td className="whitespace-nowrap px-2.5 py-1.5">
+                          {/* Only a real entry gets an ID here. An unmatched row
+                              is filed a day after it is saved and is given its
+                              ID then, so printing a guess now would be both
+                              wrong and unstable — it moves as the row is
+                              edited. */}
                           <span className="font-mono text-[11px] text-foreground">
-                            {car.catalogId || "—"}
+                            {linkedIds.has(car.id) ? car.catalogId : "—"}
                           </span>
                           {!linkedIds.has(car.id) && (
-                            <Badge
-                              variant="outline"
-                              className="ml-1.5 px-1 py-0 text-[10px] font-normal"
-                            >
-                              New
-                            </Badge>
+                            <>
+                              <Badge
+                                variant="outline"
+                                className="ml-1.5 px-1 py-0 text-[10px] font-normal"
+                              >
+                                New
+                              </Badge>
+                              {/* A new casting is the expensive kind of import
+                                  mistake: it is filed for everybody. Offer the
+                                  entries it might already be. */}
+                              <button
+                                type="button"
+                                onClick={() => setLinking(i)}
+                                className="ml-1.5 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                <Link2 className="size-3" />
+                                Match
+                              </button>
+                            </>
                           )}
                         </td>
                         {CAR_CSV_COLUMNS.map((col) => {
                           const value = String(col.get(car) ?? "");
+                          const readOnly = READ_ONLY_FIELDS.has(col.key);
+                          const isEditing = editing?.row === i && editing.key === col.key;
+                          if (isEditing) {
+                            return (
+                              <td key={col.key} className="px-1 py-0.5">
+                                <input
+                                  autoFocus
+                                  defaultValue={String(
+                                    (parsedCars[i] as unknown as Record<string, unknown>)[
+                                      col.key
+                                    ] ?? "",
+                                  )}
+                                  inputMode={NUMBER_FIELDS.has(col.key) ? "decimal" : undefined}
+                                  onBlur={(e) => {
+                                    editRow(i, col.key, e.target.value);
+                                    setEditing(null);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") e.currentTarget.blur();
+                                    if (e.key === "Escape") setEditing(null);
+                                  }}
+                                  className="w-[160px] rounded border border-primary bg-background px-1.5 py-0.5 text-xs outline-none"
+                                />
+                              </td>
+                            );
+                          }
                           return (
                             <td
                               key={col.key}
-                              className="max-w-[220px] truncate whitespace-nowrap px-2.5 py-1.5 text-muted-foreground"
-                              title={value}
+                              onClick={() => !readOnly && setEditing({ row: i, key: col.key })}
+                              className={`max-w-[220px] truncate whitespace-nowrap px-2.5 py-1.5 text-muted-foreground ${
+                                readOnly ? "" : "cursor-text hover:bg-primary/5"
+                              }`}
+                              title={readOnly ? `${value} (derived)` : value}
                             >
                               {value || "—"}
                             </td>
@@ -608,25 +711,27 @@ export function UploadCarsDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={handleImportLocal}
+                  onClick={handleSaveAs}
                   disabled={uploading}
-                  className="text-xs gap-1.5"
+                  className="gap-1.5 text-xs"
+                  title="Download these rows as a CSV, with the IDs and catalogue matches filled in"
                 >
-                  Import Offline
+                  <Download className="size-3.5" />
+                  Save as…
                 </Button>
                 <Button
                   type="button"
                   size="sm"
                   onClick={handleUploadToSupabase}
                   disabled={uploading}
-                  className="text-xs gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="gap-1.5 bg-primary text-xs text-primary-foreground hover:bg-primary/90"
                 >
                   {uploading ? (
                     <Loader2 className="size-3.5 animate-spin" />
                   ) : (
                     <Database className="size-3.5" />
                   )}
-                  Upload {previewCars.length.toLocaleString()} to Supabase
+                  Save {previewCars.length.toLocaleString()} to Supabase
                   <ArrowRight className="size-3" />
                 </Button>
               </>
@@ -634,6 +739,18 @@ export function UploadCarsDialog({
           </div>
         </DialogFooter>
       </DialogContent>
+
+      {/* Which casting a row is, decided before it is saved rather than after
+          it has been filed for everybody. */}
+      <CatalogueLinkDialog
+        open={linking !== null}
+        onClose={() => setLinking(null)}
+        car={linking === null ? null : (previewCars[linking] ?? null)}
+        onPick={(entry) => {
+          if (linking !== null) linkRow(linking, entry.car_id);
+        }}
+        title="Which casting is this?"
+      />
     </Dialog>
   );
 }

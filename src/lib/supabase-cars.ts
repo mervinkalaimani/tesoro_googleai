@@ -63,6 +63,12 @@ export type TesoroRawRow = {
   "Image URL"?: string | null;
   image_url?: string | null;
   Image?: string | null;
+  /** Set by the database. Read here, never written. */
+  created_at?: string | null;
+  /** While set, this car's casting is held back from the shared catalogue. */
+  catalog_pending_at?: string | null;
+  admin_changed_at?: string | null;
+  owner_seen_at?: string | null;
   [key: string]: unknown;
 };
 
@@ -135,6 +141,12 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
   };
   if (car.imageUrl) {
     row["Image URL"] = car.imageUrl;
+  }
+  // Only sent when the car is being held. Absent leaves whatever the row has,
+  // which matters because the promotion sweep clears this column in the
+  // database and an ordinary save must not put it back.
+  if (car.catalogPendingAt) {
+    row.catalog_pending_at = car.catalogPendingAt;
   }
   // "SNO" is NOT NULL. PostgREST upserts are INSERT ... ON CONFLICT, so the
   // proposed row is checked against every NOT NULL constraint *before* the
@@ -254,6 +266,10 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
     favourite: Boolean(row.Favourite),
     official: Boolean(row.Official),
     imageUrl,
+    createdAt: String(row.created_at || "").trim() || undefined,
+    catalogPendingAt: String(row.catalog_pending_at || "").trim() || undefined,
+    adminChangedAt: String(row.admin_changed_at || "").trim() || undefined,
+    ownerSeenAt: String(row.owner_seen_at || "").trim() || undefined,
   };
 }
 
@@ -262,6 +278,7 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
  * reached. Dropped and retried rather than allowed to fail a save.
  */
 const OPTIONAL_COLUMNS = [
+  "catalog_pending_at",
   "Image URL",
   "Expected Date",
   "Delivery Partner",
@@ -379,8 +396,12 @@ export async function saveCarToSupabase(
     if (error) {
       return { success: false, error: error.message };
     }
-    // Keep tesoro_car_catalog in sync with this car's casting specification
-    void saveCatalogCarToSupabase(diecastToCatalogCar(car));
+    // Keep tesoro_car_catalog in sync with this car's casting specification —
+    // unless the car is still being held, when the whole point is that its
+    // casting has not been filed yet and editing it must not file it early.
+    if (!car.catalogPendingAt) {
+      void saveCatalogCarToSupabase(diecastToCatalogCar(car));
+    }
     if (car.imageUrl) {
       void syncUserCarImageToCatalog(car, car.imageUrl);
     }
@@ -423,8 +444,14 @@ export async function deleteCarFromSupabase(
 export async function seedCarsToSupabase(
   cars: Diecast[],
   onProgress?: (inserted: number, total: number) => void,
+  options: { hold?: boolean } = {},
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
+    // A held import stamps every row, and the trigger that would otherwise mint
+    // a catalogue entry reads that stamp and mints nothing. The rows are still
+    // the owner's cars from this moment; it is the casting that waits.
+    const heldAt = options.hold ? new Date().toISOString() : "";
+    if (heldAt) cars = cars.map((c) => ({ ...c, catalogPendingAt: heldAt }));
     const userId = await getCurrentUserId();
     if (!userId) return { success: false, count: 0, error: "Not signed in" };
 
@@ -463,9 +490,13 @@ export async function seedCarsToSupabase(
       }
     }
 
-    // Seed unique casting specifications to tesoro_car_catalog
-    const catalogEntries = extractCatalogFromCars(cars);
-    void seedCatalogToSupabase(catalogEntries);
+    // Seed unique casting specifications to tesoro_car_catalog. Skipped for a
+    // held import: filing the castings here is the exact thing the hold exists
+    // to delay, and promote_staged_cars does it a day later from the same rows.
+    if (!heldAt) {
+      const catalogEntries = extractCatalogFromCars(cars);
+      void seedCatalogToSupabase(catalogEntries);
+    }
 
     return { success: true, count };
   } catch (err) {

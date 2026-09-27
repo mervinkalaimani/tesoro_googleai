@@ -6,6 +6,19 @@ export type Diecast = {
   /** tesoro_raw identity column: the order the row was added. Absent on cars
    *  created locally that have not been round-tripped through Supabase yet. */
   sno?: number;
+  /** When the car reached the collection. Read-only: the database sets it. */
+  createdAt?: string;
+  /**
+   * Set while an imported car is held back from the shared catalogue. The car
+   * is yours and visible from the moment it is saved; what waits is the
+   * *casting* being filed for everybody, so a bad import can be corrected
+   * before it spreads. Cleared by the promotion sweep a day later.
+   */
+  catalogPendingAt?: string;
+  /** When an admin last edited this car on the owner's behalf. */
+  adminChangedAt?: string;
+  /** When the owner last opened it. Older than adminChangedAt means unseen. */
+  ownerSeenAt?: string;
   name: string;
   make: string;
   model: string;
