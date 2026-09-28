@@ -17,7 +17,7 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCars } from "@/lib/cars-store";
 import { isIso } from "@/lib/status";
-import { PublicShell } from "@/components/public-shell";
+import { PageHeading } from "@/components/page-header";
 import { castingName } from "@/lib/casting-page";
 import type { CatalogCar } from "@/lib/catalog";
 
@@ -124,21 +124,32 @@ function ReleasesPage() {
   );
 
   return (
-    <PublicShell>
-      <h1 className="text-display text-2xl font-semibold tracking-tight text-foreground">
-        Coming soon
-      </h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {total === 0
-          ? "Nothing in the catalogue is dated further ahead than today."
-          : `${total} castings with a release date, soonest first.`}
-        {mine > 0 ? ` ${mine} of them are on your list.` : ""}
-      </p>
+    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
+      <PageHeading
+        title="Coming soon"
+        subtitle={
+          <>
+            {total === 0
+              ? "Nothing in the catalogue is dated further ahead than today."
+              : `${total} castings with a release date, soonest first.`}
+            {mine > 0 ? ` ${mine} of them are on your list.` : ""}
+          </>
+        }
+      />
 
+      {/* One card a month, the same card every other page in the app is made
+          of — a month is the unit a collector plans in. */}
       {months.map(([key, list]) => (
-        <section key={key} className="mt-7">
-          <h2 className="text-sm font-semibold text-foreground">{monthLabel(`${key}-01`)}</h2>
-          <ul className="mt-2 divide-y divide-border/60 border-y border-border/60">
+        <section key={key} className="card-elevated overflow-hidden">
+          <header className="flex items-baseline justify-between gap-2 border-b border-border px-4 py-3">
+            <h2 className="text-display text-base font-semibold tracking-tight">
+              {monthLabel(`${key}-01`)}
+            </h2>
+            <span className="text-[11px] text-muted-foreground">
+              {list.length} {list.length === 1 ? "casting" : "castings"}
+            </span>
+          </header>
+          <ul className="divide-y divide-border">
             {list.map((row) => {
               const isWanted = wanted.has(row.car_id.toUpperCase());
               return (
@@ -146,13 +157,13 @@ function ReleasesPage() {
                   <Link
                     to="/catalog/$carId"
                     params={{ carId: row.car_id }}
-                    className="flex items-baseline gap-3 py-2.5 hover:bg-muted/30"
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40"
                   >
-                    <span className="w-14 shrink-0 text-[11px] tabular-nums text-muted-foreground">
+                    <span className="w-14 shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
                       {dayLabel(String(row.expected_date))}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm text-foreground">
+                      <span className="block truncate text-sm font-medium text-foreground">
                         {castingName(row as CatalogCar)}
                       </span>
                       <span className="block truncate text-[11px] text-muted-foreground">
@@ -160,7 +171,7 @@ function ReleasesPage() {
                       </span>
                     </span>
                     {isWanted ? (
-                      <span className="shrink-0 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                      <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
                         On your list
                       </span>
                     ) : null}
@@ -171,6 +182,6 @@ function ReleasesPage() {
           </ul>
         </section>
       ))}
-    </PublicShell>
+    </div>
   );
 }

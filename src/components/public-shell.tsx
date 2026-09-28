@@ -40,8 +40,10 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-4xl px-4 py-8">{children}</main>
-      <footer className="mx-auto max-w-4xl px-4 pb-10 text-[11px] text-muted-foreground">
+      {/* No width of its own: each page sets the one it wants, the same way it
+          does inside the app shell, so a page looks the same signed in as out. */}
+      <main>{children}</main>
+      <footer className="mx-auto max-w-[1600px] px-3 pb-10 md:px-6 text-[11px] text-muted-foreground">
         Tesoro is a collection tracker. Catalogue entries are contributed by its collectors.
       </footer>
     </div>

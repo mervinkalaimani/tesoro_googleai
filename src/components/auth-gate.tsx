@@ -4,6 +4,7 @@ import { Ban, Clock, Database, LogOut, RefreshCw } from "lucide-react";
 import { SplashMark, dismissSplash } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/app-shell";
+import { PublicShell } from "@/components/public-shell";
 import { useAuth } from "@/lib/auth-store";
 import { announceNewUser } from "@/lib/push-client";
 
@@ -126,12 +127,21 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // arrival, so without the exemption the reset page would appear inside the
   // app shell; the policy and the terms have to be readable by somebody who
   // has not signed in, which is the whole point of them.
-  const BARE = ["/login", "/reset-password", "/privacy", "/terms", "/releases"];
-  // A single casting is public; the catalogue that lists them is not. One is a
-  // page about an object, the other is a working tool over everyone's rows, so
-  // the prefix matters: /catalog/<id> renders, /catalog still sends you to sign
-  // in.
-  const isBareRoute = BARE.includes(pathname) || pathname.startsWith("/catalog/");
+  const BARE = ["/login", "/reset-password", "/privacy", "/terms"];
+  /**
+   * Readable signed out, and part of the app signed in.
+   *
+   * A single casting is public; the catalogue that lists them is not. One is a
+   * page about an object, the other is a working tool over everyone's rows, so
+   * the prefix matters: /catalog/<id> renders, /catalog still sends you to sign
+   * in.
+   *
+   * These get the public chrome only while there is nobody to show the app to.
+   * A signed-in collector who opens the calendar is still inside Tesoro and
+   * should keep the sidebar they were using a second ago.
+   */
+  const isPublicRoute = pathname === "/releases" || pathname.startsWith("/catalog/");
+  const isBareRoute = BARE.includes(pathname) || isPublicRoute;
 
   useEffect(() => {
     if (status === "signed-out" && !isBareRoute) {
@@ -145,6 +155,12 @@ export function AuthGate({ children }: { children: ReactNode }) {
     if (settled) dismissSplash();
   }, [settled]);
 
+  // A public route falls through to the switch below when the session is
+  // ready, so it lands in the app shell like any other page.
+  if (isPublicRoute && status === "ready") {
+    return <AppShell>{children}</AppShell>;
+  }
+  if (isPublicRoute) return <PublicShell>{children}</PublicShell>;
   if (isBareRoute) return <>{children}</>;
 
   switch (status) {

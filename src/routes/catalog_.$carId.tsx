@@ -32,7 +32,6 @@ import {
 import { carSubLine } from "@/lib/car-subline";
 import { inrFull } from "@/lib/format";
 import { RARITY_LABEL, rarityOf } from "@/lib/rarity";
-import { PublicShell } from "@/components/public-shell";
 
 type Sibling = Pick<CatalogCar, "car_id" | "name" | "make" | "model" | "variant" | "car_number">;
 
@@ -170,12 +169,12 @@ function CastingPage() {
 
   if (!car) {
     return (
-      <PublicShell>
+      <div className="mx-auto max-w-4xl space-y-4 p-3 md:p-6">
         <h1 className="text-display text-xl font-semibold">No such casting</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Nothing in the catalogue carries that ID. It may have been merged into another entry.
         </p>
-      </PublicShell>
+      </div>
     );
   }
 
@@ -216,7 +215,7 @@ function CastingPage() {
   };
 
   return (
-    <PublicShell>
+    <div className="mx-auto max-w-4xl space-y-4 p-3 md:p-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -321,6 +320,6 @@ function CastingPage() {
         cars={inSeries}
       />
       <SiblingList title={`More ${car.brand}`} cars={inBrand} />
-    </PublicShell>
+    </div>
   );
 }
