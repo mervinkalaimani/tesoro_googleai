@@ -73,8 +73,9 @@ export function CatalogueFields({
   disabled = false,
   allowCarNumberEdit = true,
   /**
-   * Fields the caller handles itself. The catalogue form keeps rarity beside
-   * release status at the top of its own dialog, for instance.
+   * Fields the caller handles itself. The catalogue form keeps the assortment
+   * out, for instance: a casting can be sold in several boxes, so it gets a
+   * section of its own with a price against each one.
    */
   omit = [],
   chain = false,
@@ -150,7 +151,7 @@ export function CatalogueFields({
               if (v) advance("model");
             }}
             options={makeOptions}
-            placeholder="e.g. Porsche, Nissan, Ford"
+            placeholder="e.g. Porsche"
             searchPlaceholder="Search makes, or type a new one…"
             ariaLabel="Make"
           />
@@ -171,7 +172,7 @@ export function CatalogueFields({
             options={modelOptions}
             // The base name only. The trim goes in Variant next to it, so
             // "Skyline" here and "GT-R R34" there.
-            placeholder="e.g. Skyline, Supra, 911"
+            placeholder="e.g. Skyline"
             searchPlaceholder="Search models, or type a new one…"
             ariaLabel="Model"
           />
@@ -190,7 +191,7 @@ export function CatalogueFields({
               if (v) advance("year");
             }}
             options={variantOptions}
-            placeholder="e.g. R34, KH, Custom"
+            placeholder="e.g. R34"
             searchPlaceholder="Search variants, or type a new one…"
             ariaLabel="Variant"
           />
@@ -208,7 +209,7 @@ export function CatalogueFields({
             openSignal={chainAt.year}
             onChange={(v) => onChange("year", v)}
             options={yearOptions}
-            placeholder="e.g. 2024 or '71"
+            placeholder="e.g. 2024"
             searchPlaceholder="Search years, or type one…"
             ariaLabel="Year"
           />
@@ -223,7 +224,7 @@ export function CatalogueFields({
             value={values.series}
             onChange={(v) => onChange("series", v)}
             options={seriesOptions}
-            placeholder="e.g. Circuit Legends, HW Exotics"
+            placeholder="e.g. Circuit Legends"
             searchPlaceholder="Search series, or type a new one…"
             ariaLabel="Series"
           />
@@ -238,7 +239,7 @@ export function CatalogueFields({
             value={values.subSeries}
             onChange={(v) => onChange("subSeries", v)}
             options={subSeriesOptions}
-            placeholder="e.g. Factory Fresh, Then and Now"
+            placeholder="e.g. Factory Fresh"
             searchPlaceholder="Search sub series, or type a new one…"
             ariaLabel="Sub series"
           />
@@ -253,7 +254,7 @@ export function CatalogueFields({
             value={values.brand}
             onChange={(v) => onChange("brand", v)}
             options={brandOptions}
-            placeholder="e.g. Hot Wheels, Mini GT, Matchbox"
+            placeholder="e.g. Hot Wheels"
             searchPlaceholder="Search brands, or type a new one…"
             ariaLabel="Brand"
           />
@@ -277,7 +278,7 @@ export function CatalogueFields({
             value={values.assortment}
             onChange={(v) => onChange("assortment", v)}
             options={assortmentOptions}
-            placeholder="e.g. Mainline, Premium, Boulevard"
+            placeholder="e.g. Mainline"
             searchPlaceholder={
               isAdmin ? "Search assortments, or type a new one…" : "Search assortments…"
             }
@@ -317,7 +318,7 @@ export function CatalogueFields({
             value={values.colour}
             onChange={(v) => onChange("colour", v)}
             options={colourOptions}
-            placeholder="e.g. Spectraflame Red, Blue, White"
+            placeholder="e.g. Spectraflame Red"
             searchPlaceholder="Search colours, or type a new one…"
             ariaLabel="Colour"
           />
@@ -332,7 +333,7 @@ export function CatalogueFields({
             value={values.type}
             onChange={(v) => onChange("type", v)}
             options={typeOptions}
-            placeholder="e.g. Race Car, Classic Car, Supercar"
+            placeholder="e.g. Race Car"
             searchPlaceholder="Search types, or type a new one…"
             ariaLabel="Type"
           />

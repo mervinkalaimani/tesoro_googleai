@@ -2273,7 +2273,7 @@ export function CarFormDialog({
               value={form.caseNumber}
               onChange={(v) => set("caseNumber", v)}
               options={caseOptions}
-              placeholder="e.g. 2026 K Case, 2026 Mix 3"
+              placeholder="e.g. 2026 K Case"
               searchPlaceholder="Search cases, or type a new one…"
               ariaLabel="Case or mix"
             />
