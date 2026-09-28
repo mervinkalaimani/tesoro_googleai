@@ -38,3 +38,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Bundles built on demand from scripts/ and the *.selfcheck.ts files. They are
+# compiled output, not source, and one of them is run with a service-role key.
+/.*.mjs
