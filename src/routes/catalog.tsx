@@ -966,7 +966,7 @@ function CatalogPage() {
         }}
         mode="add"
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
-        prefillStatus={addingIso ? "ISO" : adding && isPreOrder(adding) ? "PO" : "Ordered"}
+        prefillStatus={addingIso ? "ISO" : adding && isPreOrder(adding) ? "PO" : ""}
       />
       {/* Progress only — the work is already running by the time this shows. */}
       <Dialog open={fill !== null} onOpenChange={() => {}}>

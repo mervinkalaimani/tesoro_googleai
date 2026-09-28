@@ -16,7 +16,7 @@ import { buildCarName } from "@/lib/car-name";
 import { carDraftHasContent } from "@/lib/draft-content";
 import { heldLabel } from "@/lib/held";
 import { carSubLine } from "@/lib/car-subline";
-import { mrpOptionsFor, topSellers, assortmentChipsFor } from "@/lib/car-prices";
+import { mrpOptionsFor, topSellers } from "@/lib/car-prices";
 import { catalogueFill } from "@/lib/catalogue-fill";
 import { useSuggestionPool } from "@/lib/suggestion-pool";
 import {
@@ -53,6 +53,9 @@ import {
   isPlaceholderId,
 } from "@/lib/car-id";
 import { useCatalog } from "@/lib/catalog-store";
+import { AssortmentHeader, AssortmentRow } from "@/components/assortment-rows";
+import { remainingAssortments } from "@/lib/assortments";
+import { castingKey } from "@/lib/casting-group";
 import { catalogCarToCatalogueCar } from "@/lib/catalog";
 import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
@@ -108,6 +111,7 @@ import {
   Loader2,
   BookOpen,
   Link2,
+  Plus,
 } from "lucide-react";
 
 const STATUS_OPTIONS = STATUSES;
@@ -210,9 +214,6 @@ import {
 } from "@/lib/status";
 
 const PAYMENT_OPTIONS = ["Pending", "Partial", "Paid"];
-
-const SPENT_INFO = "The total amount you've spent to purchase the car.";
-const PAID_INFO = "The amount you've paid till now.";
 
 interface CarFormData {
   make: string;
@@ -327,14 +328,15 @@ function getBlankForm(): CarFormData {
     spent: "",
     mrp: "",
     shippingCost: "",
-    // Pending, not Paid: a car is logged when it is ordered and the money
-    // usually moves afterwards. Paid was the old default and quietly recorded
-    // a settled purchase for every pre-order.
-    payment: "Pending",
+    // Nothing. Pending was the default, and a default on a money field is a
+    // value nobody looks at twice -- it was recording "Pending" on cars that
+    // were paid for in full at the counter. The form asks for it.
+    payment: "",
     seller: "",
-    // Most cars are catalogued the day they are ordered, long before they
-    // arrive; "Available" as the default was wrong more often than right.
-    status: "Ordered",
+    // Nothing, for the same reason as payment: which of the five this car is
+    // is the one thing the form cannot guess, and Ordered filled itself in on
+    // cars that were already on the shelf.
+    status: "",
     paid: "",
     balance: 0,
     transitInfo: "",
@@ -438,7 +440,10 @@ export function CarFormDialog({
   mode,
   onSwitchToBulk,
   prefill,
-  prefillStatus = "PO",
+  // Nothing unless the caller knows: "Add to ISO" knows, and a pre-order
+  // casting knows. Everything else is a guess, and a guessed status is the one
+  // people forget to correct.
+  prefillStatus = "",
   onSaved,
   draftScope,
 }: {
@@ -475,6 +480,16 @@ export function CarFormDialog({
   // Option lists come from the shared catalogue as well as your own cars, so a
   // new account is not typing into empty dropdowns. See suggestion-pool.ts.
   const pool = useSuggestionPool();
+  // Read here rather than beside the pack fields below: the assortment options
+  // narrow by what the catalogue holds, and those memos run before that point.
+  const {
+    catalog,
+    addCatalogCar,
+    updateCatalogCar,
+    deleteCatalogCar,
+    packMembers,
+    setPackMembers,
+  } = useCatalog();
   const { isGuest, isAdmin } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
@@ -529,6 +544,19 @@ export function CarFormDialog({
   /** Until this is touched, the pack fields follow whatever casting is picked. */
   const packTouched = useRef(false);
   const [showPack, setShowPack] = useState(false);
+  const [showAssortments, setShowAssortments] = useState(true);
+  /**
+   * The other boxes this casting is sold in, one row each.
+   *
+   * The first box is form.assortment -- the one your copy came out of, and the
+   * only row that carries money. These are the rest: the same casting, another
+   * box, another price, each its own catalogue entry. A row that came from the
+   * catalogue carries its car_id; a row typed here is filed on save.
+   */
+  const [extras, setExtras] = useState<{ assortment: string; mrp: number; car_id?: string }[]>([]);
+  /** A box of cars and a car sold in several boxes cannot be the same entry. */
+  const [packConfirm, setPackConfirm] = useState(false);
+  const [packBusy, setPackBusy] = useState(false);
 
   /**
    * An ISO row is a car you are looking for, not one you bought. There is no
@@ -657,11 +685,11 @@ export function CarFormDialog({
   const etaOptions = useMemo(() => expectedByOptions(form.expectedDate), [form.expectedDate]);
 
   /** Each section says what it holds, so it can stay shut and still be read. */
+  // Neither half is filled in for you any more, so the badge is whichever of
+  // them there is, rather than a dangling separator over an empty form.
   const purchaseBadge = isIso
     ? "NA — still looking"
-    : form.seller.trim()
-      ? `${form.payment} · ${form.seller.trim()}`
-      : `${form.payment} · seller needed`;
+    : [form.payment.trim(), form.seller.trim() || "seller needed"].filter(Boolean).join(" · ");
   const purchaseBadgeTone: "muted" | "warn" = !isIso && !form.seller.trim() ? "warn" : "muted";
   const conditionBadge =
     [form.carCondition, form.cardCondition].filter(Boolean).length > 0
@@ -798,6 +826,34 @@ export function CarFormDialog({
     }
     writeDraft<CarDraft>(draftKey, { form, step: currentStep });
   }, [open, draftReady, form, currentStep, baseline, draftKey]);
+
+  /**
+   * The other boxes the catalogue already knows this casting in.
+   *
+   * Read once per opening rather than on every catalogue refresh: the list
+   * re-reads itself every time you come back to the tab, and a refresh landing
+   * mid-edit would throw away a row being typed.
+   */
+  useEffect(() => {
+    if (!open) return;
+    setPackConfirm(false);
+    setPackBusy(false);
+    const id = (initial?.catalogId || "").trim().toUpperCase();
+    const self = id ? catalog.find((c) => c.car_id.toUpperCase() === id) : undefined;
+    setExtras(
+      self
+        ? catalog
+            .filter((c) => c.car_id !== self.car_id && castingKey(c) === castingKey(self))
+            .sort((a, b) => (Number(a.mrp) || 0) - (Number(b.mrp) || 0))
+            .map((c) => ({
+              assortment: c.assortment || "",
+              mrp: Number(c.mrp) || 0,
+              car_id: c.car_id,
+            }))
+        : [],
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial?.catalogId]);
 
   const discard = () => {
     clearDraft(draftKey);
@@ -979,15 +1035,81 @@ export function CarFormDialog({
   const brandOptions = useMemo(() => optionsFor("brand", cars), [cars]);
   // An assortment belongs to its brand the way a model belongs to its make:
   // "Qube Carz" is Mini GT's, and offering it under Matchbox helped nobody.
-  const assortmentOptions = useMemo(
-    () => assortmentOptionsFor(pool, form.brand),
-    [pool, form.brand],
+  // The catalogue joins the pool so a brand you own nothing of still narrows.
+  const assortmentPool = useMemo(
+    () =>
+      [...pool, ...catalog.map((c) => ({ brand: c.brand, assortment: c.assortment }))] as never[],
+    [pool, catalog],
   );
+  const brandAssortments = useMemo(
+    () => assortmentOptionsFor(assortmentPool, form.brand),
+    [assortmentPool, form.brand],
+  );
+  /** The boxes actually named -- a blank row is not a second assortment. */
+  const namedExtras = extras.filter((x) => x.assortment.trim());
+  /** Of those, the ones already in the catalogue. The rest are only on screen. */
+  const filedExtras = namedExtras.filter((x) => x.car_id);
+
+  /**
+   * Ticking Multipack when this casting is filed in other boxes too. Those
+   * entries are the shared catalogue, so nothing happens until it is confirmed;
+   * an entry somebody owns a copy from refuses to be deleted, and then the tick
+   * does not happen either.
+   */
+  const onPackChange = (v: boolean) => {
+    if (v && namedExtras.length > 0) {
+      setPackConfirm(true);
+      return;
+    }
+    packTouched.current = true;
+    setIsPack(v);
+  };
+
+  const confirmPack = async () => {
+    setPackBusy(true);
+    const kept: typeof extras = [];
+    for (const box of extras) {
+      if (!box.assortment.trim()) continue;
+      // A row typed here and never saved is nothing to delete.
+      if (!box.car_id) continue;
+      const res = await deleteCatalogCar(box.car_id);
+      if (!res.deleted) kept.push(box);
+    }
+    setExtras(kept);
+    setPackBusy(false);
+    setPackConfirm(false);
+    if (kept.length > 0) {
+      toast.error(`${kept.length} of them could not be removed`, {
+        description: "Somebody owns a copy filed under that entry. Multipack is left off.",
+      });
+      return;
+    }
+    packTouched.current = true;
+    setIsPack(true);
+  };
+
+  /** What is left to choose once the other rows have taken theirs. */
+  const assortmentChoices = (current: string) =>
+    remainingAssortments(
+      brandAssortments,
+      [form.assortment, ...extras.map((x) => x.assortment)],
+      current,
+    );
   const sizeOptions = useMemo(() => optionsFor("size", pool), [pool]);
   const seriesOptions = useMemo(() => optionsFor("series", pool), [pool]);
   const subSeriesOptions = useMemo(() => optionsFor("subSeries", pool), [pool]);
-  /** The four this brand uses most; the rest sit behind Other. */
-  const assortmentChips = useMemo(() => assortmentChipsFor(pool, form.brand), [pool, form.brand]);
+  /** Every box this casting is sold in, including the one your copy came in. */
+  const assortmentsBadge = (() => {
+    const boxes = [
+      { assortment: form.assortment.trim(), mrp: Number(form.mrp) || 0 },
+      ...namedExtras,
+    ];
+    if (boxes.length > 1) {
+      const prices = boxes.map((b) => b.mrp);
+      return `${boxes.length} boxes · ${inrFull(Math.min(...prices))} – ${inrFull(Math.max(...prices))}`;
+    }
+    return `${boxes[0].assortment || "not set"} · ${inrFull(boxes[0].mrp)}`;
+  })();
   // Sellers are never seeded — the list is only ever the ones this collection
   // has actually bought from.
   const sellerOptions = useMemo(
@@ -1027,8 +1149,6 @@ export function CarFormDialog({
       form.assortment,
     ],
   );
-
-  const { catalog, addCatalogCar, updateCatalogCar, packMembers, setPackMembers } = useCatalog();
 
   // The catalogue entry this car is: the one picked on the Catalog page while
   // its details still describe it, otherwise the one with the same details.
@@ -1585,6 +1705,36 @@ export function CarFormDialog({
       if (membersChanged && isAdmin) await setPackMembers(packId, wanted);
     }
 
+    // The other boxes this casting is sold in. Each is a catalogue entry of its
+    // own -- the same casting, another box, another price -- and none of them is
+    // a car you own, so nothing is added to the collection for them. A row that
+    // arrived with an id is already filed and is left alone.
+    if (!isPack) {
+      const handedOut: { id: string; car: Parameters<typeof generateCatalogCarId>[0] }[] = [];
+      for (const box of extras) {
+        const boxName = box.assortment.trim();
+        if (!boxName || box.car_id || !(box.mrp > 0)) continue;
+        const fields = {
+          brand: payload.brand,
+          make: payload.make,
+          model: payload.model,
+          assortment: boxName,
+          series: payload.series,
+          subSeries: payload.subSeries,
+        };
+        const id = generateCatalogCarId(fields, handedOut);
+        handedOut.push({ id, car: fields });
+        await addCatalogCar({
+          ...diecastToCatalogCar(payload),
+          car_id: id,
+          assortment: boxName,
+          mrp: box.mrp,
+          is_multipack: false,
+          pack_size: null,
+        });
+      }
+    }
+
     // The store's copy, not the payload: it carries the IDs that were assigned
     // on the way in, which is what a caller waiting on the casting needs.
     const saved = mode === "add" ? addCar(payload) : (updateCar(payload), payload);
@@ -1822,6 +1972,88 @@ export function CarFormDialog({
           catalogue form has, because this is the other place a casting gets
           filed. It is written to the catalogue, not to your copy: the box is
           one row you own whichever way it is counted. */}
+      {/* Which boxes this casting is sold in, and which of them yours came
+          out of. Above Multipack because the two are alternatives: a multipack
+          is the product, so it is one box by definition. */}
+      <FormSection
+        title="Assortments"
+        badge={assortmentsBadge}
+        badgeTone={form.assortment.trim() ? "muted" : "warn"}
+        open={showAssortments}
+        onToggle={() => setShowAssortments((v) => !v)}
+      >
+        <AssortmentHeader money={!isIso} />
+        <div className="space-y-2">
+          <AssortmentRow
+            assortment={form.assortment}
+            mrp={Number(form.mrp) || 0}
+            options={assortmentChoices(form.assortment)}
+            cars={pool}
+            brand={form.brand}
+            allowCustom={isAdmin}
+            disabled={!form.brand}
+            assortmentError={errorFor("assortment")}
+            money={!isIso}
+            spent={form.spent}
+            spentError={errorFor("spent")}
+            paid={form.paid}
+            onAssortment={(v) => set("assortment", v)}
+            onMrp={(v) => {
+              set("mrp", v);
+              // The buying price follows the retail price until it is changed,
+              // the same as when the two sat in Seller & payment.
+              handleSpentChange(v);
+            }}
+            onSpent={isIso ? undefined : handleSpentChange}
+            onPaid={isIso ? undefined : handlePaidChange}
+          />
+          {!isPack &&
+            extras.map((x, i) => (
+              <AssortmentRow
+                key={x.car_id ?? `new-${i}`}
+                assortment={x.assortment}
+                mrp={x.mrp}
+                options={assortmentChoices(x.assortment)}
+                cars={pool}
+                brand={form.brand}
+                allowCustom={isAdmin}
+                disabled={!form.brand}
+                filedAs={x.car_id}
+                money={!isIso}
+                onAssortment={(v) =>
+                  setExtras((rows) => rows.map((r, j) => (j === i ? { ...r, assortment: v } : r)))
+                }
+                onMrp={(v) =>
+                  setExtras((rows) => rows.map((r, j) => (j === i ? { ...r, mrp: v } : r)))
+                }
+                // A row already on file is a catalogue entry other people may
+                // own a copy from, so this form does not throw it away.
+                onRemove={
+                  x.car_id ? undefined : () => setExtras((rows) => rows.filter((_, j) => j !== i))
+                }
+              />
+            ))}
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-2.5 gap-1.5"
+          disabled={isPack || !form.brand}
+          onClick={() => setExtras((rows) => [...rows, { assortment: "", mrp: 0 }])}
+        >
+          <Plus className="size-4" />
+          Add an assortment
+        </Button>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          {!form.brand
+            ? "Pick a brand first — an assortment is one maker's own range."
+            : isPack
+              ? "A multipack is the product, so it has one assortment and one price. Untick Multipack below to file this casting in more than one box."
+              : "The first row is the box your copy came out of, and the only one that carries money. Each of the others is its own catalogue entry, and they read as one casting."}
+        </p>
+      </FormSection>
+
       <FormSection
         title="Multipack"
         badge={packBadge(isPack, packSize, packList.length)}
@@ -1832,10 +2064,7 @@ export function CarFormDialog({
           isPack={isPack}
           packSize={packSize}
           members={packList}
-          onPackChange={(v) => {
-            packTouched.current = true;
-            setIsPack(v);
-          }}
+          onPackChange={onPackChange}
           onSizeChange={(v) => {
             packTouched.current = true;
             setPackSize(v ?? 0);
@@ -1871,31 +2100,6 @@ export function CarFormDialog({
             it, when, what it lists at, what you actually paid, and whether that
             money has moved. */}
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* Assortment leads, and it is here rather than up in Which Car
-              because it is the one identity field that is really about the
-              purchase: it decides which retail prices the form can offer, and
-              a Matchbox Bronco is 179 as Mainline and 399 as Moving Parts. */}
-          <SegmentOrOther
-            label="Assortment *"
-            name="assortment"
-            error={errorFor("assortment")}
-            value={form.assortment}
-            onChange={(v) => set("assortment", v)}
-            chips={assortmentChips}
-            options={assortmentOptions}
-            // The list is kept in Settings, not invented here: a new
-            // spelling typed into a car is how the catalogue ended up with
-            // "Acrylic case" and "Acrylic Case" as two different things. An
-            // admin can still type one, because somebody has to be able to add
-            // the first Qube Carz.
-            allowCustom={isAdmin}
-            placeholder={form.brand ? `Which ${form.brand} line?` : "Pick a brand first"}
-            searchPlaceholder={
-              isAdmin ? "Search assortments, or type a new one…" : "Search assortments…"
-            }
-            hint={form.brand ? undefined : "Choose a brand above and the usual four appear here."}
-          />
-
           {/* Status decides what the rest of this section asks for. ISO takes
               four fields away, a pre-order swaps the expected date for a
               release month. */}
@@ -1934,84 +2138,6 @@ export function CarFormDialog({
             </Field>
           )}
 
-          {/* Every price this brand and assortment has gone for, and a box for
-              one it has not. Picking a price is picking what you paid too —
-              they are the same number until you say otherwise. */}
-          {/* The prices this brand and assortment have gone for, as a segment
-              like everything else in this section. Four at most: a fifth label
-              inside a third of the dialog is unreadable, and "Other" opens a
-              box for a price nobody has recorded yet. */}
-          <Field
-            label={isIso ? "Retail price (INR)" : "Retail price * (INR)"}
-            name="mrp"
-            error={errorFor("mrp")}
-          >
-            {mrpSegments.length > 0 && (
-              <SegmentControl
-                fill
-                value={mrpIsKnown ? String(form.mrp) : OTHER}
-                options={[
-                  ...mrpSegments.map((v) => ({ value: String(v), label: inrFull(v) })),
-                  { value: OTHER, label: "Other" },
-                ]}
-                onChange={(v) => {
-                  if (v === OTHER) {
-                    setMrpTyped(true);
-                    return;
-                  }
-                  setMrpTyped(false);
-                  set("mrp", Number(v));
-                  handleSpentChange(Number(v));
-                }}
-              />
-            )}
-            {(mrpSegments.length === 0 || !mrpIsKnown) && (
-              <div className={mrpSegments.length > 0 ? "mt-2" : undefined}>
-                <ClearableInput
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={form.mrp}
-                  onChange={(e) => {
-                    const v = e.target.value === "" ? "" : Number(e.target.value);
-                    set("mrp", v);
-                    handleSpentChange(v);
-                  }}
-                  placeholder="e.g. 549"
-                />
-              </div>
-            )}
-            {mrpSegments.length === 0 && form.brand && form.assortment && (
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Nothing recorded for {form.brand} · {form.assortment} yet — this one sets the
-                precedent.
-              </p>
-            )}
-          </Field>
-
-          {!isIso && (
-            <Field
-              label="Buying price * (INR)"
-              name="spent"
-              error={errorFor("spent")}
-              info={SPENT_INFO}
-            >
-              <ClearableInput
-                type="number"
-                min="0"
-                step="any"
-                value={form.spent}
-                onChange={(e) =>
-                  handleSpentChange(e.target.value === "" ? "" : Number(e.target.value))
-                }
-                placeholder="e.g. 549"
-              />
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Follows the retail price above until you change it.
-              </p>
-            </Field>
-          )}
-
           {!isIso && (
             <Field label="Payment status *" name="payment" error={errorFor("payment")}>
               <SegmentControl
@@ -2034,24 +2160,15 @@ export function CarFormDialog({
 
         {/* Paid only when there is something left to settle, and
                     Balance is worked out rather than asked for. */}
-        {!isIso && form.payment !== "Paid" && (
+        {/* Nothing to settle until there is a payment status to settle against:
+            with the field blank this used to show "Shown because payment is not
+            Paid" over an empty balance, before anybody had said anything. */}
+        {!isIso && form.payment.trim() !== "" && form.payment !== "Paid" && (
           <div className="mt-3 border-l-2 border-amber-500/60 pl-3">
             <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
               Shown because payment is not Paid
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Paid (INR)" info={PAID_INFO}>
-                <ClearableInput
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={form.paid}
-                  onChange={(e) =>
-                    handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
-                  }
-                  placeholder="0"
-                />
-              </Field>
               <Field label="Balance (INR)">
                 <div className="flex h-9 items-center rounded-md border border-dashed border-input px-3 text-sm font-semibold tabular-nums">
                   {inrFull(Number(form.balance) || 0)}
@@ -2597,6 +2714,66 @@ export function CarFormDialog({
       {/* Stacked over the form, in both modes. Cancelling out of it leaves
           everything typed so far untouched. */}
       <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={applyScan} />
+
+      {/* Removing a catalogue entry is removing it for everybody, so it says
+          which ones and does not do it until it is told to. */}
+      <Dialog open={packConfirm} onOpenChange={(v) => !v && !packBusy && setPackConfirm(false)}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Make this a multipack?</DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                A multipack is the product itself, so it has one assortment and one price. This
+                casting is filed in {namedExtras.length + 1}{" "}
+                {namedExtras.length + 1 === 1 ? "box" : "boxes"}.
+              </p>
+              <p>
+                <span className="font-medium text-foreground">
+                  {form.assortment || "The first box"}
+                </span>{" "}
+                is kept.{" "}
+                {filedExtras.length > 0
+                  ? "These are removed from the catalogue for everybody, and that cannot be undone:"
+                  : "These have not been filed yet, so they are only dropped from this form:"}
+              </p>
+              <ul className="space-y-1">
+                {namedExtras.map((x) => (
+                  <li key={x.car_id ?? x.assortment} className="text-foreground">
+                    {x.assortment} · {inrFull(x.mrp)}
+                    {x.car_id ? (
+                      <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">
+                        {x.car_id}
+                      </span>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+              {filedExtras.length > 0 ? (
+                <p>An entry somebody already owns a copy from is refused, and nothing changes.</p>
+              ) : null}
+            </div>
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPackConfirm(false)} disabled={packBusy}>
+              Cancel
+            </Button>
+            <Button onClick={() => void confirmPack()} disabled={packBusy} className="gap-1.5">
+              {packBusy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : filedExtras.length > 0 ? (
+                <Trash2 className="size-4" />
+              ) : (
+                <ClipboardCheck className="size-4" />
+              )}
+              {packBusy
+                ? "Removing…"
+                : filedExtras.length > 0
+                  ? "Remove and make it a pack"
+                  : "Make it a pack"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Filing a car that goes inside the pack you are describing. Searching
           the catalogue is no help when the car in the box has never been

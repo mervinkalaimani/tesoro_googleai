@@ -31,6 +31,7 @@ import {
 import { CarPhotoField } from "@/components/car-photo-field";
 import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
+import { AssortmentHeader, AssortmentRow } from "@/components/assortment-rows";
 import { Combobox } from "@/components/ui/combobox";
 import { assortmentOptionsFor } from "@/lib/car-options";
 import { mrpOptionsFor } from "@/lib/car-prices";
@@ -51,152 +52,6 @@ import { useAuth } from "@/lib/auth-store";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import { cn } from "@/lib/utils";
-
-/** The value that means "not one of these — let me type it". */
-const OTHER_MRP = "__other__";
-
-/**
- * One box this casting is sold in: which assortment, and what it lists at.
- *
- * Deliberately not a Field each -- two labels repeated down a list of boxes is
- * the list reading as a form rather than as a table. The labels sit once, above.
- *
- * The price is the same control the car form uses: what this brand and this
- * assortment have cost before, most used first, and Other for anything else.
- * A brand-and-box nobody has bought yet offers nothing, and the box is all
- * there is.
- */
-function AssortmentRow({
-  assortment,
-  mrp,
-  options,
-  cars,
-  brand,
-  allowCustom,
-  disabled,
-  assortmentError,
-  filedAs,
-  onAssortment,
-  onMrp,
-  onRemove,
-}: {
-  assortment: string;
-  mrp: number;
-  options: string[];
-  /** Ranks the prices, the same pool the rest of the form suggests from. */
-  cars: Diecast[];
-  brand: string;
-  allowCustom: boolean;
-  disabled?: boolean;
-  assortmentError?: string;
-  /** The catalogue ID this box is already filed under, when it is. */
-  filedAs?: string;
-  onAssortment: (v: string) => void;
-  onMrp: (v: number) => void;
-  onRemove?: () => void;
-}) {
-  const priced = useMemo(
-    () => mrpOptionsFor(cars, brand, assortment, 3),
-    [cars, brand, assortment],
-  );
-  const [typed, setTyped] = useState(false);
-  const known = !typed && mrp > 0 && priced.includes(mrp);
-  const showInput = priced.length === 0 || !known;
-
-  // The commonest price for this box, taken as read. Every Hot Wheels Mainline
-  // is 179; asking for it again on each one is a question with one answer. Only
-  // while nothing is set and nobody has asked to type their own.
-  useEffect(() => {
-    if (!typed && !mrp && priced.length > 0) onMrp(priced[0]);
-    // onMrp is rebuilt every render by the form above; depending on it would
-    // re-run this on every keystroke.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [priced, mrp, typed]);
-
-  return (
-    <div data-field="assortment" className="scroll-mt-24">
-      {/* A grid, not a flex row: ClearableInput wraps its input in a w-full
-          div, so a width class on the input alone left the wrapper growing and
-          the two controls sitting on top of each other. The columns carry the
-          widths now, and nothing inside has to know about them. */}
-      <div className="grid grid-cols-[minmax(0,1fr)_2.25rem] items-center gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_2.25rem]">
-        <Combobox
-          clearable
-          allowCustom={allowCustom}
-          disabled={disabled}
-          value={assortment}
-          onChange={onAssortment}
-          options={options}
-          placeholder="e.g. Mainline"
-          searchPlaceholder={
-            allowCustom ? "Search assortments, or type a new one…" : "Search assortments…"
-          }
-          ariaLabel="Assortment"
-        />
-        {/* Other sits beside the prices rather than under them: there are three
-            of them, so the row has the width for it and the list does not grow
-            a second line every time somebody types a price. */}
-        <div className="col-span-2 flex min-w-0 items-center gap-2 sm:col-span-1">
-          {priced.length > 0 && (
-            <SegmentControl
-              fill
-              className="min-w-0 flex-1"
-              value={known ? String(mrp) : OTHER_MRP}
-              options={[
-                ...priced.map((v) => ({ value: String(v), label: inrFull(v) })),
-                { value: OTHER_MRP, label: "Other" },
-              ]}
-              onChange={(v) => {
-                if (v === OTHER_MRP) {
-                  setTyped(true);
-                  return;
-                }
-                setTyped(false);
-                onMrp(Number(v));
-              }}
-            />
-          )}
-          {showInput && (
-            <div className={priced.length > 0 ? "w-24 shrink-0" : "min-w-0 flex-1"}>
-              <ClearableInput
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="any"
-                disabled={disabled}
-                placeholder="179"
-                className="tabular-nums"
-                value={mrp || ""}
-                onChange={(e) => onMrp(e.target.value === "" ? 0 : Number(e.target.value))}
-                aria-label="Retail price"
-              />
-            </div>
-          )}
-        </div>
-        {onRemove ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onRemove}
-            className="size-9 text-muted-foreground hover:text-destructive"
-            aria-label="Remove this assortment"
-          >
-            <X className="size-4" />
-          </Button>
-        ) : (
-          <span aria-hidden />
-        )}
-      </div>
-      {filedAs ? (
-        <p className="pl-1 pt-1 font-mono text-[10px] text-muted-foreground">{filedAs}</p>
-      ) : null}
-      {assortmentError ? (
-        <p className="pl-1 pt-1 text-[11px] text-destructive">{assortmentError}</p>
-      ) : null}
-    </div>
-  );
-}
 
 /** The first required field left empty, shown on the field itself. */
 type FieldKey = keyof CatalogueValues | "mrp";
@@ -1109,11 +964,7 @@ export function CatalogFormDialog({
                 open={showAssortments}
                 onToggle={() => setShowAssortments((v) => !v)}
               >
-                <div className="hidden gap-2 pb-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)_2.25rem]">
-                  <span>Assortment *</span>
-                  <span>Retail / MRP *</span>
-                  <span aria-hidden />
-                </div>
+                <AssortmentHeader />
                 <div className="space-y-2">
                   <AssortmentRow
                     assortment={form.assortment || ""}
@@ -1412,7 +1263,8 @@ export function CatalogFormDialog({
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>
                 A multipack is the product itself, so it has one assortment and one price. This
-                casting is filed in {namedExtras.length + 1} boxes.
+                casting is filed in {namedExtras.length + 1}{" "}
+                {namedExtras.length + 1 === 1 ? "box" : "boxes"}.
               </p>
               <p>
                 <span className="font-medium text-foreground">

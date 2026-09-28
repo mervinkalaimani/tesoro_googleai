@@ -1420,7 +1420,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         onOpenChange={(v) => !v && setAdding(null)}
         mode="add"
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
-        prefillStatus="Ordered"
+        prefillStatus=""
       />
       {isAdmin && (
         <CatalogFormDialog
