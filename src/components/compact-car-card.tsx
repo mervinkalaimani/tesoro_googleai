@@ -133,6 +133,7 @@ export function CompactCarCard({
           </span>
           <ChangedDot car={car} />
         </div>
+        {/* Second line: who made it, and which box it came in. */}
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
           <span className="flex items-center gap-1 min-w-0 truncate text-[10px]">
             {!statusInPhoto && !hideStatus && car.status && (
@@ -143,20 +144,21 @@ export function CompactCarCard({
             )}
             <span className="truncate text-muted-foreground">{car.brand || "—"}</span>
           </span>
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-            {car.spent ? inr(car.spent) : "—"}
+          <span className="shrink-0 truncate text-[10px] text-muted-foreground/80">
+            {car.assortment || ""}
           </span>
         </div>
-        {/* Third line: the assortment unless the caller has something better to
-            say there, and when there is one, the day on the right — lined up
-            under the price the way the brand is under the name. */}
+        {/* Third line: which series, and what it cost. A caller with something
+            better to say on either side says it -- a shelf of one assortment
+            has no use for the name of it, and a catalogue card has no price of
+            its own, so the day or the Owned badge goes there instead. */}
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
           <span className="truncate text-[10px] text-muted-foreground">
-            {detail || car.assortment || "—"}
+            {detail || car.series || "—"}
           </span>
-          {caption && (
-            <span className="shrink-0 text-[10px] text-muted-foreground/80">{caption}</span>
-          )}
+          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/80">
+            {caption || (car.spent ? inr(car.spent) : "—")}
+          </span>
         </div>
       </div>
     </button>

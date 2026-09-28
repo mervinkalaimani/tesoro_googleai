@@ -896,6 +896,10 @@ function InventoryPage() {
                 <CompactCarCard
                   key={(r.id || "") + i}
                   car={r}
+                  // The status belongs on the picture here: every card on this
+                  // shelf has one, and the line it used to share now carries
+                  // the series and what the car cost.
+                  statusInPhoto
                   copies={lead ? n : 1}
                   copiesExpanded={expanded.has(r.id)}
                   onToggleCopies={() => toggleExpanded(r.id)}

@@ -399,7 +399,10 @@ function ReleasesPage() {
       </PageHeading>
 
       {view === "calendar" ? (
-        <div className="space-y-4">
+        // Three months abreast once there is room for them: a release date is
+        // only useful next to the ones around it, and a full-width column of
+        // one month at a time is a year of scrolling.
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {months.map(([key, list]) => (
             <MonthGrid
               key={key}

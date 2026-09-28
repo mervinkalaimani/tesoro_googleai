@@ -120,3 +120,17 @@ export async function deleteAssortment(id: string): Promise<{ success: boolean; 
   await fetchAssortments();
   return { success: true };
 }
+
+/**
+ * The assortments still free to pick, for a form filing one casting in several
+ * boxes: everything the brand sells, less the boxes already named on other rows.
+ *
+ * `current` is this row's own value, which stays in its own list — a dropdown
+ * that dropped the option it is showing would read as empty.
+ */
+export function remainingAssortments(all: string[], taken: string[], current: string): string[] {
+  const key = (v: string) => v.trim().toLowerCase();
+  const used = new Set(taken.map(key).filter(Boolean));
+  used.delete(key(current));
+  return all.filter((a) => !used.has(key(a)));
+}

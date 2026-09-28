@@ -53,7 +53,6 @@ import {
   getCatalogCarOwners,
   getCastingOwners,
   castingSiblings,
-  siblingLabels,
   ownerCount,
   isCarMatchingCatalog,
   catalogCarToDiecast,
@@ -525,8 +524,8 @@ function CarPopupContent({
   /**
    * What else there is to look at, narrowest first.
    *
-   * Three readings of "more like this", each a tighter ring than the last:
-   * the series, the set inside it, and the assortment the whole lot came from.
+   * Three readings of "more like this", widening as they go: the series, the
+   * set inside it, and the kind of vehicle it is -- the brand and the type.
    * Every one of them is scoped to the brand — Car Culture is a Hot Wheels
    * idea, and a Matchbox car sharing the word was never the same series.
    *
@@ -540,7 +539,7 @@ function CarPopupContent({
     const brand = norm(car.brand);
     const series = norm(car.series);
     const sub = norm(setOf(car));
-    const assortment = norm(car.assortment);
+    const kind = norm(car.type);
 
     const kin = cars.filter((c) => c.id !== car.id && norm(c.brand) === brand);
     const out: { key: string; heading: string; cars: Diecast[] }[] = [];
@@ -553,12 +552,15 @@ function CarPopupContent({
       const list = kin.filter((c) => norm(c.series) === series && norm(setOf(c)) === sub);
       if (list.length) out.push({ key: "set", heading: setHeading, cars: list });
     }
-    if (assortment) {
-      const list = kin.filter((c) => norm(c.assortment) === assortment);
+    // The widest ring is the kind of vehicle, not the box it came in: every
+    // Mainline card said "More from Mainline", which is most of the catalogue
+    // and tells you nothing. "More Mini GT Vans" is a shelf worth having.
+    if (kind) {
+      const list = kin.filter((c) => norm(c.type) === kind);
       if (list.length)
         out.push({
-          key: "assortment",
-          heading: `More from ${(car.assortment || "").trim()}`,
+          key: "type",
+          heading: `More ${[(car.brand || "").trim(), (car.type || "").trim()].filter(Boolean).join(" ")}`,
           cars: list,
         });
     }
@@ -1629,10 +1631,10 @@ const RELATED_CAP = 24;
 /**
  * What else the catalogue holds near this entry, narrowest ring first.
  *
- * The series it belongs to, the set inside that series, and the assortment the
- * whole thing was packed in — each scoped to the brand, because a series name
- * belongs to the maker that coined it. Two are drawn, or one when the panel is
- * also carrying the contents of a box.
+ * The series it belongs to, the set inside that series, and the kind of vehicle
+ * it is — each scoped to the brand, because a series name belongs to the maker
+ * that coined it. Two are drawn, or one when the panel is also carrying the
+ * contents of a box.
  */
 function CatalogRelatedShelves({
   entry,
@@ -1656,7 +1658,7 @@ function CatalogRelatedShelves({
     const brand = norm(entry.brand);
     const series = norm(entry.series);
     const sub = norm(entry.sub_series);
-    const assortment = norm(entry.assortment);
+    const kind = norm(entry.type);
     // This entry and its other boxes. The Blister of the car you are looking at
     // is not "more from" anything — it is the same car, and it is already named
     // in the control above.
@@ -1677,10 +1679,14 @@ function CatalogRelatedShelves({
       const cars = kin.filter((c) => norm(c.series) === series && norm(c.sub_series) === sub);
       if (cars.length) out.push({ key: "set", heading: `More from ${entry.sub_series} set`, cars });
     }
-    if (brand && assortment) {
-      const cars = kin.filter((c) => norm(c.assortment) === assortment);
+    if (brand && kind) {
+      const cars = kin.filter((c) => norm(c.type) === kind);
       if (cars.length)
-        out.push({ key: "assortment", heading: `More from ${entry.assortment}`, cars });
+        out.push({
+          key: "type",
+          heading: `More ${[(entry.brand || "").trim(), (entry.type || "").trim()].filter(Boolean).join(" ")}`,
+          cars,
+        });
     }
     return out.slice(0, Math.max(0, limit));
   }, [catalog, entry, limit]);
@@ -2159,8 +2165,6 @@ function CatalogDetailsBody({
   }, [catalogCar?.car_id]);
   const shown = siblings.find((s) => s.car_id === shownId) ?? catalogCar;
 
-  const siblingOptions = useMemo(() => siblingLabels(siblings), [siblings]);
-
   const addedBy = resolveCatalogUserId(shown?.created_by);
   const addedOn = formatDayMonthYear(shown?.created_at) || "—";
   // An entry nobody has corrected has no editor and no edit date. Falling back
@@ -2345,22 +2349,45 @@ function CatalogDetailsBody({
       <div>
         <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
           <div className="col-span-2">
-            <Spec
-              label="Catalogue ID"
-              value={shown?.car_id || car.catalogId || car.carId || car.id || "—"}
-            />
-            {siblings.length > 1 && (
-              <div className="mt-1.5">
-                {/* Which box's entry the four lines below are about. The casting
-                    is the same one either way; who filed it, and when, is not. */}
-                <SegmentControl<string>
-                  fill
-                  value={shownId}
-                  onChange={setShownId}
-                  className="h-8 w-full"
-                  options={siblingOptions}
-                />
+            {siblings.length > 1 ? (
+              /* Sold in more than one box, so there is more than one entry and
+                 more than one price. A segment control used to pick between
+                 them, which hid the very thing worth seeing: the ID, the box
+                 and what that box lists at, on a line each. Picking one is what
+                 the four lines below are about. */
+              <div>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Catalogue IDs
+                </p>
+                <ul className="mt-1 divide-y divide-border/60 overflow-hidden rounded-lg border border-border/80">
+                  {siblings.map((sib) => (
+                    <li key={sib.car_id}>
+                      <button
+                        type="button"
+                        onClick={() => setShownId(sib.car_id)}
+                        aria-current={sib.car_id === shownId}
+                        className={cn(
+                          "flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors",
+                          sib.car_id === shownId
+                            ? "bg-primary/10 text-foreground"
+                            : "text-muted-foreground hover:bg-muted/40",
+                        )}
+                      >
+                        <span className="shrink-0 font-mono text-[11px]">{sib.car_id}</span>
+                        <span className="min-w-0 flex-1 truncate">{sib.assortment || "—"}</span>
+                        <span className="shrink-0 tabular-nums font-medium">
+                          {Number(sib.mrp) ? inrFull(Math.round(Number(sib.mrp))) : "—"}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
+            ) : (
+              <Spec
+                label="Catalogue ID"
+                value={shown?.car_id || car.catalogId || car.carId || car.id || "—"}
+              />
             )}
           </div>
           {preOrder && expectedDate && (

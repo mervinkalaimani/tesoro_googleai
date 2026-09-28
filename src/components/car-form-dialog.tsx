@@ -562,18 +562,21 @@ export function CarFormDialog({
   const showTransit = needsTransit(form.status);
 
   /**
-   * Editing an owned car cannot change what the casting is: that entry is shared
-   * with everyone else who owns one. Everything about *this copy* stays yours to
-   * correct, which now includes the seller, the order date and the MRP — they
-   * used to sit in a read-only rail, so a mistyped seller was permanent.
+   * Every field of your own row is yours to correct, casting and all.
+   *
+   * These used to be locked on an edit, on the argument that the casting is
+   * shared. It is -- but the row is not, and a locked form meant a wrong car
+   * stayed wrong: a bulk import could be read and not fixed, and the only way
+   * out was an admin editing the shared entry for everybody. What you type here
+   * is written to your copy; the catalogue entry it points at is untouched, and
+   * "Link to a catalogue entry" is how a corrected row finds the right one.
    */
   const isEdit = mode === "edit";
   /**
-   * Still inside its import hold, so the casting is not in the shared catalogue
-   * yet and belongs to nobody else — which is the entire point of the hold. The
-   * casting fields stay open until the sweep files it; they were locked on every
-   * edit, so a bulk import could be read and not corrected, and the notice that
-   * promised "editable until then" was not true of anything.
+   * Still inside its import hold, so the casting has not reached the shared
+   * catalogue yet. It no longer decides whether the fields open -- they always
+   * do -- only whether the section says how long is left to correct it before
+   * the sweep files it.
    */
   const held = isEdit && Boolean(initial?.catalogPendingAt);
 
@@ -1785,7 +1788,7 @@ export function CarFormDialog({
           aria-expanded={showIdentity}
           className="flex w-full items-center gap-2 border-t border-border bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          {isEdit && !held ? "What the car is" : "Edit these details"}
+          Edit these details
           {held && initial && (
             <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
               Editable {heldLabel(initial).replace(/^in /, "for another ")}
@@ -1802,15 +1805,12 @@ export function CarFormDialog({
               onChange={setCatalogueValue}
               cars={pool}
               errorFor={(k) => errorFor(k as keyof CarFormData)}
-              disabled={isEdit && !held}
               allowCarNumberEdit={true}
               omit={["assortment"]}
-              chain={(!isEdit || held) && !fromCatalogue}
+              chain={!fromCatalogue}
             />
-            {/* Not disabled on an edit, unlike everything above it. The name is
-                the one thing here that is yours rather than the casting's: it is
-                written to your row and to nothing else, so the catalogue and
-                everyone else's copy keep whatever they already say. */}
+            {/* The one field here that is only ever yours: it is written to your
+                row and nothing reads it back into the catalogue. */}
             <div className="mt-3 border-t border-border/50 pt-3">
               <Field label="Display name">
                 <ClearableInput
@@ -1827,9 +1827,9 @@ export function CarFormDialog({
             </div>
             <p className="mt-2.5 text-[11px] text-muted-foreground">
               {held && initial
-                ? `This casting is not in the shared catalogue yet, so it is still yours to correct. It is filed ${heldLabel(initial)}, and after that it is edited in the catalogue.`
+                ? `This casting is not in the shared catalogue yet. It is filed ${heldLabel(initial)}, and what you type until then is what gets filed.`
                 : isEdit
-                  ? "The casting is shared with everyone who owns one, so it is edited in the catalogue. Only the Car Number and the display name can be updated here."
+                  ? "These describe your copy. Correcting them here does not rewrite the shared catalogue entry — if they now describe a different release, link this car to the right entry from the menu."
                   : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalog ID will be assigned."}
             </p>
           </div>

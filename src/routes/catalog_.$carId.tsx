@@ -316,7 +316,7 @@ function CastingPage() {
       </div>
 
       <SiblingList
-        title={`More from ${car.series || car.assortment || car.brand}`}
+        title={`More from ${car.series || car.type || car.brand}`}
         cars={inSeries}
       />
       <SiblingList title={`More ${car.brand}`} cars={inBrand} />
