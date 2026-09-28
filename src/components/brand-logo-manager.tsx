@@ -110,8 +110,8 @@ export function BrandLogoManager() {
       />
 
       <p className="border-b border-border/60 px-4 py-3 text-xs text-muted-foreground">
-        These are the marks the catalogue&apos;s brand filter shows. Upload a PNG or an SVG, up to
-        5&nbsp;MB, or paste a link to one.
+        These are the marks the catalogue&apos;s brand filter shows. Upload a PNG, SVG, JPG or WebP,
+        up to 5&nbsp;MB, or paste a link to one.
       </p>
 
       <ul className="divide-y divide-border/60">

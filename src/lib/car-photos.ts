@@ -154,7 +154,15 @@ export function uploadAvatar(file: File): Promise<PhotoResult | PhotoError> {
 }
 
 /** A brand mark: PNG or SVG, the two things a logo actually arrives as. */
-export const BRAND_LOGO_ACCEPT = ".png,.svg,image/png,image/svg+xml";
+/** SVG on top of the usual three: a logo arrives as any of them. */
+export const BRAND_LOGO_ACCEPT = `${ACCEPT_ATTR},.svg,image/svg+xml`;
+
+const LOGO_EXT: Record<string, string> = {
+  "image/svg+xml": "svg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "image/jpeg": "jpg",
+};
 
 /**
  * A brand's logo, into the same bucket as the photographs.
@@ -167,15 +175,15 @@ export const BRAND_LOGO_ACCEPT = ".png,.svg,image/png,image/svg+xml";
  */
 export async function uploadBrandLogo(file: File): Promise<PhotoResult | PhotoError> {
   const svg = file.type === "image/svg+xml";
-  if (!svg && file.type !== "image/png" && !isImage(file)) {
-    return { error: "A logo has to be a PNG or an SVG." };
+  if (!svg && !isImage(file)) {
+    return { error: "A logo has to be a PNG, SVG, JPG or WebP." };
   }
 
   const { data: auth } = await supabase.auth.getUser();
   const uid = auth?.user?.id;
   if (!uid) return { error: "Sign in to upload a logo." };
 
-  const ext = svg ? "svg" : file.type === "image/png" ? "png" : "jpg";
+  const ext = LOGO_EXT[file.type] ?? "png";
   const path = `${uid}/brand-${Date.now().toString(36)}-${Math.random()
     .toString(36)
     .slice(2, 7)}.${ext}`;
