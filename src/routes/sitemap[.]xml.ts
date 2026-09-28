@@ -45,6 +45,10 @@ async function handler({ request }: { request: Request }) {
     return `  <url><loc>${xmlEscape(loc)}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}</url>`;
   });
 
+  // The calendar changes every time a pre-order gains a date, which is more
+  // often than any single casting changes.
+  urls.unshift(`  <url><loc>${origin}/releases</loc><changefreq>daily</changefreq></url>`);
+
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls.join("\n")}

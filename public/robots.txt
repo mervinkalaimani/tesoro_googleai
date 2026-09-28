@@ -12,6 +12,7 @@ Disallow: /orders
 Disallow: /habits
 Disallow: /settings
 Disallow: /admin
+Allow: /releases
 Disallow: /login
 Disallow: /reset-password
 Disallow: /api/
