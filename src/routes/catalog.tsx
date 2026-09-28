@@ -840,8 +840,7 @@ function CatalogPage() {
             <div className="hidden h-4 w-px shrink-0 bg-border/60 md:block" />
 
             <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
-              {/* Brand is the tray of logos below, not a chip as well. */}
-              {FILTERS.filter((d) => d.key !== "brand").map((d) => (
+              {FILTERS.map((d) => (
                 <FilterChipDropdown
                   key={d.key}
                   label={d.label}
