@@ -37,7 +37,7 @@ import { assortmentOptionsFor } from "@/lib/car-options";
 import { mrpOptionsFor } from "@/lib/car-prices";
 import type { Diecast } from "@/lib/types";
 import { remainingAssortments } from "@/lib/assortments";
-import { castingKey } from "@/lib/casting-group";
+import { boxSiblings } from "@/lib/casting-group";
 import { ClearableInput, Field, FormSection } from "@/components/form-parts";
 import { MultipackField } from "@/components/multipack-field";
 import { DuplicateNotice } from "@/components/duplicate-notice";
@@ -269,10 +269,7 @@ export function CatalogFormDialog({
     // car_id says which is which.
     setExtras(
       entry && entry !== "new"
-        ? catalog
-            .filter(
-              (c) => c.car_id !== entry.car_id && castingKey(c) === castingKey(entry as CatalogCar),
-            )
+        ? boxSiblings(entry, catalog)
             .sort((a, b) => (Number(a.mrp) || 0) - (Number(b.mrp) || 0))
             .map((c) => ({
               assortment: c.assortment || "",

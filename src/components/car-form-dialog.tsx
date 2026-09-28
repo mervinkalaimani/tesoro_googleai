@@ -55,7 +55,7 @@ import {
 import { useCatalog } from "@/lib/catalog-store";
 import { AssortmentHeader, AssortmentRow } from "@/components/assortment-rows";
 import { remainingAssortments } from "@/lib/assortments";
-import { castingKey } from "@/lib/casting-group";
+import { boxSiblings } from "@/lib/casting-group";
 import { catalogCarToCatalogueCar } from "@/lib/catalog";
 import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
@@ -842,8 +842,7 @@ export function CarFormDialog({
     const self = id ? catalog.find((c) => c.car_id.toUpperCase() === id) : undefined;
     setExtras(
       self
-        ? catalog
-            .filter((c) => c.car_id !== self.car_id && castingKey(c) === castingKey(self))
+        ? boxSiblings(self, catalog)
             .sort((a, b) => (Number(a.mrp) || 0) - (Number(b.mrp) || 0))
             .map((c) => ({
               assortment: c.assortment || "",

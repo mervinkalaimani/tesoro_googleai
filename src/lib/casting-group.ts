@@ -93,3 +93,38 @@ export function priceRange(members: CatalogCar[]): { low: number; high: number }
   if (prices.length === 0) return null;
   return { low: Math.min(...prices), high: Math.max(...prices) };
 }
+
+/**
+ * The other boxes one entry is sold in, for the two forms that file them.
+ *
+ * Deliberately looser than `castingKey`, and only here. The key demands seven
+ * fields agree exactly, which is right for drawing the catalogue -- two entries
+ * with different collector numbers really are two products. It is wrong for
+ * "which boxes is this casting in", because half the catalogue leaves a field
+ * blank: the CCA Camaro SS is filed four times, three with no car number and
+ * one with S10-02, and on the key those are four castings rather than one in
+ * four boxes.
+ *
+ * So a field only speaks when both sides state it -- the rule
+ * `isCarMatchingCatalog` already uses for colour and variant. Brand, make and
+ * model still have to match outright: silence about those is not agreement,
+ * it is an empty row.
+ */
+export function boxSiblings(entry: CatalogCar, catalog: CatalogCar[]): CatalogCar[] {
+  const agrees = (a: string | null | undefined, b: string | null | undefined) => {
+    const x = clean(a);
+    const y = clean(b);
+    return !x || !y || x === y;
+  };
+  return catalog.filter(
+    (c) =>
+      c.car_id !== entry.car_id &&
+      brandKey(c.brand) === brandKey(entry.brand) &&
+      clean(c.make) === clean(entry.make) &&
+      clean(c.model) === clean(entry.model) &&
+      agrees(c.variant, entry.variant) &&
+      agrees(c.series, entry.series) &&
+      agrees(c.sub_series, entry.sub_series) &&
+      agrees(c.car_number, entry.car_number),
+  );
+}
