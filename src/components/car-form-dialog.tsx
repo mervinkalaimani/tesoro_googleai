@@ -14,6 +14,7 @@ import type { Diecast } from "@/lib/types";
 import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
 import { carDraftHasContent } from "@/lib/draft-content";
+import { heldLabel } from "@/lib/held";
 import { carSubLine } from "@/lib/car-subline";
 import { mrpOptionsFor, topSellers, assortmentChipsFor } from "@/lib/car-prices";
 import { catalogueFill } from "@/lib/catalogue-fill";
@@ -567,6 +568,14 @@ export function CarFormDialog({
    * used to sit in a read-only rail, so a mistyped seller was permanent.
    */
   const isEdit = mode === "edit";
+  /**
+   * Still inside its import hold, so the casting is not in the shared catalogue
+   * yet and belongs to nobody else — which is the entire point of the hold. The
+   * casting fields stay open until the sweep files it; they were locked on every
+   * edit, so a bulk import could be read and not corrected, and the notice that
+   * promised "editable until then" was not true of anything.
+   */
+  const held = isEdit && Boolean(initial?.catalogPendingAt);
 
   const catalogueValues: CatalogueValues = {
     make: form.make,
@@ -774,7 +783,9 @@ export function CarFormDialog({
       // Otherwise back to how a fresh dialog starts: a previous pre-filled open
       // must not leave the next by-hand one thinking it came from the catalogue.
       setFromCatalogue(false);
-      setShowIdentity(false);
+      // A held car opens with them showing: the hold exists so these can be
+      // fixed, and behind a collapsed heading nobody finds them.
+      setShowIdentity(held);
       templateOriginRef.current = {};
     }
     setPickingPhoto(false);
@@ -783,7 +794,7 @@ export function CarFormDialog({
     // already covers a change of casting, and it is the object identity that
     // was firing this effect on every unrelated re-render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, seedKey, baseline, draftKey, mode, fromPrefill, isClone]);
+  }, [open, seedKey, baseline, draftKey, mode, fromPrefill, isClone, held]);
 
   // The save. Every keystroke lands here, and an untouched form clears the key
   // rather than leaving a draft that says nothing.
@@ -1774,7 +1785,12 @@ export function CarFormDialog({
           aria-expanded={showIdentity}
           className="flex w-full items-center gap-2 border-t border-border bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          {isEdit ? "What the car is" : "Edit these details"}
+          {isEdit && !held ? "What the car is" : "Edit these details"}
+          {held && initial && (
+            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+              Editable {heldLabel(initial).replace(/^in /, "for another ")}
+            </span>
+          )}
           <ChevronRight
             className={cn("ml-auto size-3.5 transition-transform", showIdentity && "rotate-90")}
           />
@@ -1786,10 +1802,10 @@ export function CarFormDialog({
               onChange={setCatalogueValue}
               cars={pool}
               errorFor={(k) => errorFor(k as keyof CarFormData)}
-              disabled={isEdit}
+              disabled={isEdit && !held}
               allowCarNumberEdit={true}
               omit={["assortment"]}
-              chain={!isEdit && !fromCatalogue}
+              chain={(!isEdit || held) && !fromCatalogue}
             />
             {/* Not disabled on an edit, unlike everything above it. The name is
                 the one thing here that is yours rather than the casting's: it is
@@ -1810,9 +1826,11 @@ export function CarFormDialog({
               </Field>
             </div>
             <p className="mt-2.5 text-[11px] text-muted-foreground">
-              {isEdit
-                ? "The casting is shared with everyone who owns one, so it is edited in the catalogue. Only the Car Number and the display name can be updated here."
-                : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalog ID will be assigned."}
+              {held && initial
+                ? `This casting is not in the shared catalogue yet, so it is still yours to correct. It is filed ${heldLabel(initial)}, and after that it is edited in the catalogue.`
+                : isEdit
+                  ? "The casting is shared with everyone who owns one, so it is edited in the catalogue. Only the Car Number and the display name can be updated here."
+                  : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalog ID will be assigned."}
             </p>
           </div>
         )}
