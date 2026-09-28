@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronDown, Copy, Share2, X } from "lucide-react";
+import { Share2, X } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
@@ -10,6 +10,7 @@ import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { inrFull } from "@/lib/format";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarMarks } from "@/components/car-marks";
+import { CarSubRow, GroupRow, GroupTable, StatusCell, Th } from "@/components/group-table";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -52,110 +53,23 @@ type AttrKey = (typeof ATTRS)[number]["key"];
 
 const DEFAULT_ATTRS: AttrKey[] = ["make", "model", "variant", "year", "brand"];
 
-function DuplicateGroup({ rows, onOpen }: { rows: Diecast[]; onOpen: (car: Diecast) => void }) {
-  const first = rows[0];
-  const valuation = rows.reduce((s, r) => s + (r.mrp || r.spent || 0), 0);
-  const surplus = rows.length - 1;
-  // Closed by default: the page is a list of groups to scan, and the copies
-  // inside one are only worth the room once it is the group you are after.
-  const [open, setOpen] = useState(false);
-
-  return (
-    <article className="card-elevated overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-start justify-between gap-3 p-4 text-left"
-      >
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-md bg-amber-500/15 text-sm font-bold text-amber-400">
-            {rows.length}x
-          </span>
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-bold tracking-tight">
-              {first.name || `${first.make} ${first.model}`.trim() || "—"}
-              {first.brand ? (
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  ({first.brand})
-                </span>
-              ) : null}
-            </h2>
-            {/* No SKU. It was the first car's own ID standing in for the whole
-                group, which is the one thing here that is not shared — every
-                copy below carries its own, and they are all different. */}
-            <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-              {surplus} surplus unit{surplus === 1 ? "" : "s"}
-            </p>
-          </div>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Group valuation
-            </div>
-            <div className="text-sm font-bold tabular-nums">{inrFull(valuation)}</div>
-          </div>
-          <ChevronDown
-            className={`size-4 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
-          />
-        </div>
-      </button>
-
-      {/* Three across. These are copies of one casting, so what you are doing
-          here is comparing them — which cost more, which came from where — and
-          that is a great deal easier side by side than stacked one per row down
-          a page.
-
-          Loose / Carded has gone: it was the widest thing on every row and it
-          read as the heading, when the question on this page is which duplicate
-          to keep. The car ID takes its place, because with three near-identical
-          cards in a row it is the only thing that tells them apart. */}
-      {open && (
-        <div className="grid gap-2 border-t border-border p-3 sm:grid-cols-2 xl:grid-cols-3">
-          {rows.map((r, i) => (
-            <button
-              key={(r.id || "") + i}
-              type="button"
-              onClick={() => onOpen(r)}
-              className="flex min-w-0 flex-col gap-1 rounded-lg border border-border bg-muted/20 p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/40"
-            >
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
-                  #{i + 1}
-                </span>
-                <span className="min-w-0 truncate font-mono text-xs text-foreground">
-                  {r.id || "—"}
-                </span>
-                <CarMarks car={r} primary="chase" iconClassName="size-3.5" className="ml-auto" />
-                <span className="shrink-0 text-sm font-semibold tabular-nums">
-                  {inrFull(r.mrp || r.spent || 0)}
-                </span>
-              </div>
-
-              <div className="truncate font-mono text-xs text-muted-foreground">
-                {r.status || "—"}
-                {r.seller ? ` · ${r.seller}` : ""}
-              </div>
-
-              <div className="truncate font-mono text-xs text-muted-foreground">
-                Cost: {inrFull(r.spent || 0)}
-                {r.date ? ` · ${r.date}` : ""}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-    </article>
-  );
-}
-
 function DuplicatesPage() {
   const { query } = useApp();
   const cars = useCars();
   const { open } = useCarDrawer();
   const [active, setActive] = useState<AttrKey[]>(DEFAULT_ATTRS);
   const [exportOpen, setExportOpen] = useState(false);
+  // Closed by default: the page is a list of groups to scan, and the copies
+  // inside one are only worth the room once it is the group you are after.
+  const [openRows, setOpenRows] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (key: string) =>
+    setOpenRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   const toggle = (key: AttrKey) =>
     setActive((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
@@ -231,16 +145,106 @@ function DuplicatesPage() {
         <p className="text-xs text-destructive">Select at least one attribute to match on.</p>
       )}
 
-      <div className="space-y-3">
-        {groups.map((arr, i) => (
-          <DuplicateGroup key={i} rows={arr} onOpen={open} />
-        ))}
+      <GroupTable
+        head={
+          <>
+            <Th>Casting</Th>
+            <Th>Copies</Th>
+            <Th className="hidden sm:table-cell">Seller</Th>
+            <Th align="right">Spent</Th>
+            <Th align="right">Valuation</Th>
+          </>
+        }
+      >
+        {groups.map((arr, i) => {
+          const key = (arr[0].id || "") + i;
+          const isOpen = openRows.has(key);
+          const first = arr[0];
+          const spent = arr.reduce((t, r) => t + (r.spent || 0), 0);
+          const valuation = arr.reduce((t, r) => t + (r.mrp || r.spent || 0), 0);
+          const surplus = arr.length - 1;
+          const sellers = [...new Set(arr.map((r) => (r.seller || "").trim()).filter(Boolean))];
+          return [
+            <GroupRow
+              key={key}
+              open={isOpen}
+              onToggle={() => toggleGroup(key)}
+              title={
+                <>
+                  {first.name || `${first.make} ${first.model}`.trim() || "—"}
+                  {first.brand ? (
+                    <span className="ml-2 text-xs font-normal text-muted-foreground">
+                      ({first.brand})
+                    </span>
+                  ) : null}
+                </>
+              }
+              sub={`${surplus} surplus unit${surplus === 1 ? "" : "s"}`}
+            >
+              <td className="px-3 py-2.5">
+                <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                  {arr.length}x
+                </span>
+              </td>
+              <td className="hidden px-3 py-2.5 text-xs text-muted-foreground sm:table-cell">
+                {sellers.length === 1
+                  ? sellers[0]
+                  : sellers.length
+                    ? `${sellers.length} sellers`
+                    : "—"}
+              </td>
+              <td className="px-3 py-2.5 text-right tabular-nums">{inrFull(spent)}</td>
+              <td className="px-3 py-2.5 text-right font-medium tabular-nums">
+                {inrFull(valuation)}
+              </td>
+            </GroupRow>,
+            // The copies, as rows rather than as a card each: what you are doing
+            // here is comparing them, and the only things that tell them apart
+            // are their IDs, where they came from, and what they cost.
+            ...(isOpen
+              ? arr.map((r, n) => (
+                  <CarSubRow
+                    key={(r.id || "") + n}
+                    car={r}
+                    onOpen={() => open(r)}
+                    lead={
+                      <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                        #{n + 1}
+                      </span>
+                    }
+                    sub={
+                      <span className="font-mono">
+                        {r.id || "—"}
+                        {r.date ? ` · ${r.date}` : ""}
+                      </span>
+                    }
+                  >
+                    <StatusCell car={r} />
+                    <td className="hidden px-3 py-2 text-xs text-muted-foreground sm:table-cell">
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate">{r.seller || "—"}</span>
+                        <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right text-xs tabular-nums">
+                      {inrFull(r.spent || 0)}
+                    </td>
+                    <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+                      {inrFull(r.mrp || r.spent || 0)}
+                    </td>
+                  </CarSubRow>
+                ))
+              : []),
+          ];
+        })}
         {groups.length === 0 && (
-          <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
-            No duplicates found.
-          </div>
+          <tr>
+            <td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">
+              No duplicates found.
+            </td>
+          </tr>
         )}
-      </div>
+      </GroupTable>
 
       <ExportDialog
         open={exportOpen}

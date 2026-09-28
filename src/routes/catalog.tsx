@@ -35,6 +35,7 @@ import { carSubLine } from "@/lib/car-subline";
 import { inr, formatDayMonthYear } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { logoMap, useBrandLogos } from "@/lib/brand-logos";
 import { RARITIES } from "@/lib/rarity";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { SegmentControl } from "@/components/segment-control";
@@ -233,6 +234,87 @@ const packLabel = (c: CatalogCar) => {
  * own collection with its details already filled in. Admins can also correct an
  * entry — which corrects it in every collection that has the car.
  */
+/**
+ * The brands, as their own marks, under the filter row.
+ *
+ * Brand is the cut people reach for first, and the dropdown made them read 52
+ * names to find it. A row of logos instead, commonest brand first, one tap to
+ * narrow and the same tap again to undo it. No box, no count, no heading: a
+ * logo is the label, and the name under it is only there for the brands that
+ * have no logo yet and for anyone who does not know the mark.
+ *
+ * Logos are uploaded in Settings → Advanced → Brand logos.
+ */
+function BrandTray({
+  brands,
+  logos,
+  active,
+  onPick,
+}: {
+  brands: { value: string; count: number }[];
+  logos: Map<string, string>;
+  active: string;
+  onPick: (brand: string) => void;
+}) {
+  // One brand is not a choice, and no brands is not a tray.
+  if (brands.length < 2) return null;
+
+  return (
+    // Pinned under the filter band, not scrolled past with the first row: the
+    // brand is the cut you change most, and by the time you want another one you
+    // are four hundred castings down. top-[6.5rem] is the top bar (3.5rem) plus
+    // the toolbar band; z-20 keeps it under that band and over the table heads.
+    <div className="sticky top-[6.5rem] z-20 -mx-3 border-b border-border/60 bg-background/95 px-2 py-1.5 shadow-xs backdrop-blur-md md:-mx-6 md:px-5">
+      <div className="no-scrollbar flex items-start gap-1 overflow-x-auto">
+        {brands.map((b) => {
+          const on = active === b.value;
+          const src = logos.get(b.value.trim().toLowerCase());
+          return (
+            <button
+              key={b.value}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onPick(on ? "all" : b.value)}
+              className={cn(
+                "flex w-20 shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-1.5 transition-opacity hover:bg-muted/40",
+                // No frame, so the chosen brand is the one at full strength and
+                // the rest step back. A ring would be the box this is not.
+                on ? "opacity-100" : "opacity-55 hover:opacity-90",
+              )}
+            >
+              {/* The slot is there whether or not the logo is, so the names line
+                  up across a row where only some brands have one yet. */}
+              <span className="flex h-8 w-full items-center justify-center">
+                {src ? (
+                  <img
+                    src={src}
+                    alt={b.value}
+                    loading="lazy"
+                    className="max-h-8 max-w-full object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : null}
+              </span>
+              {/* Never truncated: a brand with a long name wraps and the row grows
+                a line, which is better than "Time Micro Colle…" in every tile. */}
+              <span
+                className={cn(
+                  "w-full text-center text-[10px] leading-tight",
+                  on ? "font-semibold text-primary" : "font-medium text-muted-foreground",
+                )}
+              >
+                {b.value}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function CatalogPage() {
   const {
     catalog,
@@ -505,6 +587,9 @@ function CatalogPage() {
   const leads = useMemo(() => groups.map((g) => g.lead), [groups]);
 
   /** Each filter's choices, narrowed by the other filters, with counts. */
+  const logoRows = useBrandLogos();
+  const brandLogos = useMemo(() => logoMap(logoRows), [logoRows]);
+
   const options = useMemo(() => {
     const out = {} as Record<FilterKey, { value: string; count: number }[]>;
     for (const d of FILTERS) {
@@ -755,7 +840,8 @@ function CatalogPage() {
             <div className="hidden h-4 w-px shrink-0 bg-border/60 md:block" />
 
             <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
-              {FILTERS.map((d) => (
+              {/* Brand is the tray of logos below, not a chip as well. */}
+              {FILTERS.filter((d) => d.key !== "brand").map((d) => (
                 <FilterChipDropdown
                   key={d.key}
                   label={d.label}
@@ -880,6 +966,13 @@ function CatalogPage() {
             <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "table"]} />
           </>
         }
+      />
+
+      <BrandTray
+        brands={options.brand}
+        logos={brandLogos}
+        active={filters.brand}
+        onPick={(brand) => setFilters((f) => ({ ...f, brand }))}
       />
 
       {isLoading && catalog.length === 0 ? (

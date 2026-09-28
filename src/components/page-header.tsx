@@ -38,7 +38,9 @@ export function PageHeading({
         )}
       </div>
       {children && (
-        <div className="min-w-0 max-w-[62%] sm:max-w-none flex justify-end shrink-0">
+        // gap-2: the actions used to sit edge to edge, which read as one long
+        // segmented control rather than four separate buttons.
+        <div className="min-w-0 max-w-[62%] sm:max-w-none flex justify-end gap-2 shrink-0">
           {children}
         </div>
       )}

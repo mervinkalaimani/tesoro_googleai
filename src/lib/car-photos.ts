@@ -153,6 +153,50 @@ export function uploadAvatar(file: File): Promise<PhotoResult | PhotoError> {
   return uploadTo(AVATARS_BUCKET, file, AVATAR_EDGE);
 }
 
+/** A brand mark: PNG or SVG, the two things a logo actually arrives as. */
+export const BRAND_LOGO_ACCEPT = ".png,.svg,image/png,image/svg+xml";
+
+/**
+ * A brand's logo, into the same bucket as the photographs.
+ *
+ * Its own function rather than uploadTo, and nothing here goes through the
+ * canvas. Rasterising a logo to JPEG is the one thing you must not do to it: the
+ * transparency it is drawn on would come back as a white box, and normalise()
+ * keeps the JPEG whenever it is the smaller file — which for a flat logo it
+ * usually is. The bucket's 5 MB ceiling is the only size limit a logo needs.
+ */
+export async function uploadBrandLogo(file: File): Promise<PhotoResult | PhotoError> {
+  const svg = file.type === "image/svg+xml";
+  if (!svg && file.type !== "image/png" && !isImage(file)) {
+    return { error: "A logo has to be a PNG or an SVG." };
+  }
+
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth?.user?.id;
+  if (!uid) return { error: "Sign in to upload a logo." };
+
+  const ext = svg ? "svg" : file.type === "image/png" ? "png" : "jpg";
+  const path = `${uid}/brand-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 7)}.${ext}`;
+
+  const { error } = await supabase.storage
+    .from(CAR_PHOTOS_BUCKET)
+    .upload(path, file, { contentType: file.type, upsert: false });
+
+  if (error) {
+    // An SVG needs the bucket to allow its type, which one migration adds — name
+    // that rather than leaving "mime type not supported" to be decoded.
+    const msg = /mime/i.test(error.message)
+      ? "The bucket does not accept SVG yet — run the brand logo migration."
+      : error.message;
+    return { error: msg };
+  }
+
+  const { data } = supabase.storage.from(CAR_PHOTOS_BUCKET).getPublicUrl(path);
+  return { url: data.publicUrl, path };
+}
+
 /** The storage path inside a public URL, or null if it is someone else's link. */
 export function pathFromPublicUrl(url: string, bucket = CAR_PHOTOS_BUCKET): string | null {
   const marker = `/storage/v1/object/public/${bucket}/`;

@@ -12,6 +12,7 @@ import {
   EyeOff,
   CalendarDays,
   ShoppingBag,
+  Store,
   Database,
 } from "lucide-react";
 import { filterRows } from "@/lib/search";
@@ -57,7 +58,10 @@ const NAV_GROUPS = [
   },
   {
     title: "Habit",
-    items: [{ title: "Habit", url: "/habits", icon: CalendarDays }],
+    items: [
+      { title: "Habit", url: "/habits", icon: CalendarDays },
+      { title: "Seller", url: "/sellers", icon: Store },
+    ],
   },
 ] as const;
 

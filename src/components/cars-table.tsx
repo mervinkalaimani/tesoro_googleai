@@ -3,7 +3,8 @@ import { isPreOrder } from "@/lib/status";
 import type { ReactNode } from "react";
 
 import type { Diecast } from "@/lib/types";
-import { inr } from "@/lib/format";
+import { inr, mrpRatio } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 import { CarMarks, ChangedDot } from "@/components/car-marks";
 import { useCarDrawer } from "@/components/car-details-drawer";
@@ -39,6 +40,37 @@ export function advanceText(r: Diecast): string | null {
   return "Adv not paid";
 }
 
+/**
+ * "MRP ₹150 (+2.2x)" — the list price and, beside it, how far off it the price
+ * paid landed. It used to be two lines, the second of them a sentence ("2.2x
+ * higher than MRP"), which is a line of prose under every car to say one
+ * number. Over MRP is red, under it green, and at MRP there is no multiplier
+ * because there is nothing to report.
+ */
+export function MrpNote({ spent, mrp }: { spent: number; mrp: number }) {
+  if (!(mrp > 0)) return null;
+  const ratio = spent > 0 ? mrpRatio(spent, mrp) : null;
+
+  return (
+    <>
+      MRP {inr(mrp)}
+      {ratio && (
+        <span
+          className={cn(
+            "ml-1 font-medium tabular-nums",
+            ratio.over
+              ? "text-rose-600 dark:text-rose-400"
+              : "text-emerald-600 dark:text-emerald-400",
+          )}
+        >
+          ({ratio.over ? "+" : "-"}
+          {ratio.text})
+        </span>
+      )}
+    </>
+  );
+}
+
 /** Single consolidated cost cell: spent, MRP comparison, and advance payment. */
 export function CostCell({
   car: r,
@@ -64,29 +96,15 @@ export function CostCell({
   const mrp = showMrp && spentOverride === undefined ? r.mrp || 0 : 0;
   const adv = advanceText(r);
 
-  let mrpLine: string | null = null;
-  let diffLine: string | null = null;
-  if (mrp > 0 && spent > 0) {
-    if (Math.round(mrp) === Math.round(spent)) {
-      mrpLine = "At MRP";
-    } else {
-      mrpLine = `MRP ${inr(mrp)}`;
-      const ratio = spent / mrp;
-      diffLine =
-        ratio > 1
-          ? `${ratio.toFixed(1)}x higher than MRP`
-          : `${(1 / ratio).toFixed(1)}x lower than MRP`;
-    }
-  } else if (mrp > 0) {
-    mrpLine = `MRP ${inr(mrp)}`;
-  }
-
   return (
     <div className={`min-w-0 ${align === "right" ? "text-right" : "text-left"}`}>
       <div className="truncate tabular-nums">{spent ? inr(spent) : "—"}</div>
       {adv && <div className="truncate text-[11px] text-muted-foreground">{adv}</div>}
-      {mrpLine && <div className="truncate text-[11px] text-muted-foreground">{mrpLine}</div>}
-      {diffLine && <div className="truncate text-[11px] text-muted-foreground">{diffLine}</div>}
+      {mrp > 0 && (
+        <div className="truncate text-[11px] text-muted-foreground">
+          <MrpNote spent={spent} mrp={mrp} />
+        </div>
+      )}
     </div>
   );
 }
@@ -140,8 +158,7 @@ export function CarListCard({
   const mrp = showMrp ? car.mrp || 0 : 0;
   // The MRP line only when it says something. "MRP ₹600" against a ₹600 car is
   // a row of type to tell you nothing happened.
-  const mrpNote =
-    mrp > 0 && spent > 0 && Math.round(mrp) !== Math.round(spent) ? `MRP ${inr(mrp)}` : null;
+  const showMrpNote = mrp > 0 && spent > 0 && Math.round(mrp) !== Math.round(spent);
 
   return (
     <article className="card-elevated overflow-hidden">
@@ -175,9 +192,11 @@ export function CarListCard({
             <span className="block truncate text-xs text-muted-foreground">
               {car.seller || "—"}
             </span>
-            {(pay || mrpNote) && (
+            {(pay || showMrpNote) && (
               <span className="block truncate text-[11px] text-muted-foreground">
-                {[pay, mrpNote].filter(Boolean).join(" · ")}
+                {pay}
+                {pay && showMrpNote ? " · " : ""}
+                {showMrpNote && <MrpNote spent={spent} mrp={mrp} />}
               </span>
             )}
           </span>

@@ -24,6 +24,7 @@ import { Route as PreordersRouteImport } from './routes/preorders'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ReleasesRouteImport } from './routes/releases'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SellersRouteImport } from './routes/sellers'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -114,6 +115,11 @@ const ReleasesRoute = ReleasesRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SellersRoute = SellersRouteImport.update({
+  id: '/sellers',
+  path: '/sellers',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -216,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/releases': typeof ReleasesRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sellers': typeof SellersRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/releases': typeof ReleasesRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sellers': typeof SellersRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
@@ -283,6 +291,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/releases': typeof ReleasesRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/sellers': typeof SellersRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
@@ -318,6 +327,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/releases'
     | '/reset-password'
+    | '/sellers'
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
@@ -351,6 +361,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/releases'
     | '/reset-password'
+    | '/sellers'
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
@@ -384,6 +395,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/releases'
     | '/reset-password'
+    | '/sellers'
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
@@ -418,6 +430,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ReleasesRoute: typeof ReleasesRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SellersRoute: typeof SellersRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
@@ -541,6 +554,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sellers': {
+      id: '/sellers'
+      path: '/sellers'
+      fullPath: '/sellers'
+      preLoaderRoute: typeof SellersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -674,6 +694,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ReleasesRoute: ReleasesRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SellersRoute: SellersRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,

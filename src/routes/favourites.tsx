@@ -114,15 +114,6 @@ function GalleryCard({
             className={`size-3.5 ${car.favourite ? FAVOURITE_COLOUR : "fill-none text-white/70"}`}
           />
         </button>
-
-        <div className="pointer-events-none absolute bottom-2 left-2 flex flex-wrap items-center gap-1.5">
-          {car.brand && (
-            <span className="rounded-full border border-white/10 bg-black/80 px-2 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
-              {car.brand}
-            </span>
-          )}
-          {/* The Loose/Carded tag went with the "Open" column it read. */}
-        </div>
       </div>
 
       <div className="flex flex-1 flex-col p-4">

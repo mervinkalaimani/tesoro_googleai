@@ -162,6 +162,30 @@ export type Database = {
         };
         Relationships: [];
       };
+      tesoro_brand_logos: {
+        Row: {
+          brand: string;
+          label: string;
+          image_url: string;
+          updated_by: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          brand: string;
+          label?: string;
+          image_url: string;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          brand?: string;
+          label?: string;
+          image_url?: string;
+          updated_by?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       tesoro_assortments: {
         Row: {
           id: string;

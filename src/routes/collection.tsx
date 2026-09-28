@@ -1,30 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Filter, Sparkles, Star } from "lucide-react";
+import { Filter } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
-import { CarsTable, StatusPill } from "@/components/cars-table";
-import { CarThumb } from "@/components/car-thumb";
-import { CompactCarCard } from "@/components/compact-car-card";
-import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
-import { CarFormDialog } from "@/components/car-form-dialog";
+import { MrpNote } from "@/components/cars-table";
+import { CarSubRow, GroupRow, GroupTable, StatusCell, Th } from "@/components/group-table";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { SegmentControl } from "@/components/segment-control";
-import { CarMarkOverlay, ChangedDot } from "@/components/car-marks";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
-import { Button } from "@/components/ui/button";
-import { inr, mrpRatio } from "@/lib/format";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { inr } from "@/lib/format";
 
 export const Route = createFileRoute("/collection")({
   head: () => ({
@@ -70,120 +59,12 @@ const GROUP_KEY: Record<GroupBy, (r: Diecast) => string> = {
 /**
  * Display titles, where they differ from the grouping key. Brand stays in the
  * key so two brands sharing a series name remain separate groups, but it is
- * dropped from the heading because it already appears as a chip underneath.
+ * dropped from the heading because it already appears under the name.
  */
 const GROUP_LABEL: Partial<Record<GroupBy, (r: Diecast) => string>> = {
   set: (r) => [r.series, r.subSeries].filter(Boolean).join(" · ") || "—",
   assortment: (r) => r.assortment || "—",
 };
-
-/**
- * What the car cost against what it lists for. Returns null when either side is
- * missing, or when the two agree — a delta of zero is noise, not information.
- */
-function priceDelta(spent: number, mrp: number) {
-  if (!spent || !mrp) return null;
-  const diff = Math.round(spent - mrp);
-  if (diff === 0) return null;
-  const ratio = mrpRatio(spent, mrp);
-  return {
-    text: inr(Math.abs(diff)),
-    over: diff > 0,
-    hint: ratio ? `${ratio.text} ${ratio.over ? "over" : "under"} MRP` : undefined,
-  };
-}
-
-function Metric({ label, value, className }: { label: string; value: string; className?: string }) {
-  return (
-    <div className="min-w-0">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`mt-0.5 truncate text-sm font-semibold tabular-nums ${className ?? ""}`}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-/** Spend, list price, and the gap between them. */
-function PriceStrip({ car }: { car: Diecast }) {
-  const spent = car.spent || 0;
-  const mrp = car.mrp || 0;
-  const delta = priceDelta(spent, mrp);
-
-  return (
-    <div className="flex min-w-0 items-end gap-3">
-      <Metric label="Spent" value={spent ? inr(spent) : "—"} />
-      <Metric label="MRP" value={mrp ? inr(mrp) : "—"} />
-      {delta && (
-        <div className="min-w-0" title={delta.hint}>
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Delta</div>
-          <div
-            className={`mt-0.5 inline-flex items-center text-sm font-semibold tabular-nums ${
-              delta.over ? "text-rose-400" : "text-emerald-500"
-            }`}
-          >
-            {delta.over ? (
-              <ChevronUp className="size-3.5 shrink-0" />
-            ) : (
-              <ChevronDown className="size-3.5 shrink-0" />
-            )}
-            {delta.text}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/** Mirrors the inventory card so both pages read the same way. */
-function CollectionCard({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
-  return (
-    <article className="card-elevated flex flex-col overflow-hidden">
-      <div className="relative">
-        <button type="button" onClick={onOpen} className="block w-full">
-          <CarThumb car={car} className="aspect-[16/10] w-full" />
-        </button>
-
-        {/* Car ID off the photograph; it belongs in the drawer and the table. */}
-        <CarMarkOverlay car={car} />
-
-        {/* Status pill overlay */}
-        <div className="pointer-events-none absolute bottom-2 right-2">
-          <StatusPill status={car.status} className="shadow-xs" />
-        </div>
-      </div>
-
-      <div className="flex flex-1 flex-col p-3">
-        <div className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-          <span className="truncate">{car.brand || "—"}</span>
-          <span className="shrink-0 tabular-nums">
-            {[car.year, car.size].filter(Boolean).join(" · ")}
-          </span>
-        </div>
-
-        <button
-          type="button"
-          onClick={onOpen}
-          className="mt-1 text-left text-sm font-bold leading-snug hover:text-primary"
-        >
-          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-          <ChangedDot car={car} className="ml-1.5 align-middle" />
-        </button>
-
-        <p className="mt-1 truncate text-xs text-muted-foreground">
-          {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
-        </p>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-          {[car.status, car.type].filter(Boolean).join(" · ") || "—"}
-        </p>
-
-        <div className="mt-auto border-t border-border pt-2.5">
-          <PriceStrip car={car} />
-        </div>
-      </div>
-    </article>
-  );
-}
 
 function CollectionPage() {
   const { query } = useApp();
@@ -191,7 +72,7 @@ function CollectionPage() {
   const [selected, setSelected] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("count");
   const [dir, setDir] = useState<SortDir>("desc");
-  const [view, setView] = useState<ViewMode>("table");
+  const [openRows, setOpenRows] = useState<Set<string>>(new Set());
   const { open } = useCarDrawer();
 
   const cars = useCars();
@@ -212,12 +93,9 @@ function CollectionPage() {
     const built = [...map.entries()]
       .map(([name, items]) => {
         const value = items.reduce((s, r) => s + (r.spent || 0), 0);
-        const statusCount = new Map<string, number>();
-        for (const it of items) statusCount.set(it.status, (statusCount.get(it.status) ?? 0) + 1);
-        const dominant = [...statusCount.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
         const brands = [...new Set(items.map((r) => r.brand).filter(Boolean))].slice(0, 3);
         const label = GROUP_LABEL[group]?.(items[0]) ?? name;
-        return { name, label, items, value, dominant, brands };
+        return { name, label, items, value, brands };
       })
       // Ties fall back to the name so the order stays stable between renders
       // instead of shuffling.
@@ -240,9 +118,16 @@ function CollectionPage() {
   const visibleCars = useMemo(() => visible.flatMap((g) => g.items), [visible]);
   useRegisterExportScope("collection", "Collection", visibleCars);
 
+  const toggle = (name: string) =>
+    setOpenRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
-      {/* PageHeading is out of the box, matching inventory & favourites */}
       <PageHeading
         title="Collection"
         subtitle={`${groups.length} ${group} · ${filtered.length.toLocaleString()} cars`}
@@ -254,14 +139,13 @@ function CollectionPage() {
         // instead of taking a row of its own above the buttons.
         oneLine
         left={
-          /* min-w-0 so the seven-option control can scroll instead of
-             stretching this row past the edge of the card. */
           <SegmentControl
             className="w-auto md:w-auto"
             value={group}
             onChange={(v) => {
               setGroup(v);
               setSelected("all");
+              setOpenRows(new Set());
             }}
             options={[
               { value: "series", label: "Series" },
@@ -308,64 +192,59 @@ function CollectionPage() {
               }))}
             />
             <ExportButton rows={visibleCars} name="collection" label="Collection" iconOnly />
-            <ViewToggle value={view} onChange={setView} />
           </>
         }
       />
 
-      <Accordion type="multiple" className="space-y-2">
-        {visible.map((g) => (
-          <AccordionItem
-            key={g.name}
-            value={g.name}
-            className="card-elevated border-0 px-3 md:px-4"
-          >
-            <AccordionTrigger className="py-3 hover:no-underline">
-              <div className="flex w-full items-center justify-between gap-4 pr-3">
-                <div className="min-w-0 text-left">
-                  <div className="truncate font-medium">{g.label}</div>
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {g.brands.map((b) => (
-                      <span
-                        key={b}
-                        className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                      >
-                        {b}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-4 text-xs">
-                  <span className="tabular-nums">
-                    <b className="text-foreground">{g.items.length}</b>{" "}
-                    <span className="text-muted-foreground">cars</span>
-                  </span>
-                </div>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              {view !== "table" ? (
-                <div className={`pb-3 ${view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}`}>
-                  {g.items.map((r, i) =>
-                    view === "compact" ? (
-                      <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
-                    ) : (
-                      <CollectionCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
-                    ),
-                  )}
-                </div>
-              ) : (
-                <CarsTable rows={g.items} variant="collection" />
-              )}
-            </AccordionContent>
-          </AccordionItem>
-        ))}
+      <GroupTable
+        head={
+          <>
+            <Th className="capitalize">{group}</Th>
+            <Th>Cars</Th>
+            <Th align="right">Spent</Th>
+          </>
+        }
+      >
+        {visible.map((g) => {
+          const isOpen = openRows.has(g.name);
+          return [
+            <GroupRow
+              key={g.name}
+              open={isOpen}
+              onToggle={() => toggle(g.name)}
+              title={g.label}
+              sub={g.brands.join(" · ") || undefined}
+            >
+              <td className="px-3 py-2.5 text-muted-foreground">
+                {g.items.length} {g.items.length === 1 ? "car" : "cars"}
+              </td>
+              <td className="px-3 py-2.5 text-right font-medium tabular-nums">{inr(g.value)}</td>
+            </GroupRow>,
+            ...(isOpen
+              ? g.items.map((r, i) => (
+                  <CarSubRow key={(r.id || "") + i} car={r} onOpen={() => open(r)}>
+                    <StatusCell car={r} />
+                    <td className="px-3 py-2 text-right text-xs tabular-nums">
+                      {r.spent ? inr(r.spent) : "—"}
+                      {r.mrp ? (
+                        <span className="block text-[11px] font-normal text-muted-foreground">
+                          <MrpNote spent={r.spent || 0} mrp={r.mrp} />
+                        </span>
+                      ) : null}
+                    </td>
+                  </CarSubRow>
+                ))
+              : []),
+          ];
+        })}
         {visible.length === 0 && (
-          <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
-            No groups.
-          </div>
+          <tr>
+            <td colSpan={3} className="p-8 text-center text-sm text-muted-foreground">
+              No groups.
+            </td>
+          </tr>
         )}
-      </Accordion>
+      </GroupTable>
     </div>
   );
 }

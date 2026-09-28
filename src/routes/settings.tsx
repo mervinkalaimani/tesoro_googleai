@@ -21,6 +21,7 @@ import {
   Scale,
   MessageCircle,
   Layers,
+  Tag,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,6 +46,7 @@ import {
 import { SegmentControl } from "@/components/segment-control";
 import { CataloguePhotos } from "@/components/catalogue-photos";
 import { AssortmentManager } from "@/components/assortment-manager";
+import { BrandLogoManager } from "@/components/brand-logo-manager";
 import { HelpDoc } from "@/components/help-doc";
 import { SplashMark } from "@/components/brand-mark";
 import { HELP_BLURBS, HELP_TITLES } from "@/lib/help-content";
@@ -103,6 +105,7 @@ type SettingsView =
   | "search_engine"
   | "catalogue_photos"
   | "assortments"
+  | "brand_logos"
   | "homepage"
   | "advanced"
   | "help"
@@ -128,6 +131,7 @@ function parseTab(tab?: string): SettingsView {
   if (t === "search_engine" || t === "search-engine" || t === "search") return "search_engine";
   if (t === "catalogue_photos" || t === "photos") return "catalogue_photos";
   if (t === "assortments" || t === "assortment") return "assortments";
+  if (t === "brand_logos" || t === "brands" || t === "logos") return "brand_logos";
   if (t === "homepage" || t === "home") return "homepage";
   if (t === "advanced") return "advanced";
   if (t === "help" || t === "support") return "help";
@@ -805,6 +809,24 @@ export function SettingsPage() {
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
 
+            {/* BRAND LOGOS */}
+            <button
+              type="button"
+              onClick={() => changeView("brand_logos")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-rose-500 to-pink-600 text-white shadow-xs">
+                <Tag className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Brand logos</span>
+                <p className="text-xs text-muted-foreground">
+                  The marks the catalogue filters by — upload a PNG or an SVG per brand
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </button>
+
             {/* DB CONNECTION (Moved into Admin) */}
             <button
               type="button"
@@ -1090,6 +1112,19 @@ export function SettingsPage() {
           ) : (
             <p className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground shadow-xs">
               The list is shared by everybody, so only an admin can change it.
+            </p>
+          )}
+        </div>
+      )}
+
+      {view === "brand_logos" && (
+        <div className="space-y-6">
+          <SubpageHeader title="Brand logos" onBack={() => changeView("advanced")} />
+          {isAdmin ? (
+            <BrandLogoManager />
+          ) : (
+            <p className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground shadow-xs">
+              The logos are shared by everybody, so only an admin can change them.
             </p>
           )}
         </div>
