@@ -12,7 +12,8 @@ import {
   castingTitle,
   isPublishablePhoto,
   ownersLine,
-  priceBand,
+  typicalPrice,
+  typicalPriceNote,
 } from "@/lib/casting-page";
 import type { CatalogCar } from "@/lib/catalog";
 
@@ -56,13 +57,12 @@ assert.equal(isPublishablePhoto("not a url"), false);
 // A look-alike domain is not ours.
 assert.equal(isPublishablePhoto("https://evil-supabase.co/x.jpg"), false);
 
-// The band. The database withholds the numbers under three buyers, so they
-// arrive null; a band whose ends are equal is one person's receipt and is
-// dropped here as well.
+// What it typically sold for. One buyer is one receipt, so the database sends
+// nulls and the page falls back to the MRP instead.
 assert.equal(
-  priceBand({
-    owners: 2,
-    copies: 2,
+  typicalPrice({
+    owners: 1,
+    copies: 1,
     prices: null,
     paid_min: null,
     paid_max: null,
@@ -70,19 +70,20 @@ assert.equal(
   }),
   null,
 );
+// Two who paid the same is a price, not a range.
 assert.equal(
-  priceBand({
-    owners: 3,
-    copies: 3,
-    prices: 3,
+  typicalPrice({
+    owners: 2,
+    copies: 2,
+    prices: 2,
     paid_min: 400,
     paid_max: 400,
     last_seen: "Apr 2026",
   }),
-  null,
+  "₹400",
 );
 assert.equal(
-  priceBand({
+  typicalPrice({
     owners: 3,
     copies: 4,
     prices: 4,
@@ -90,9 +91,32 @@ assert.equal(
     paid_max: 1250,
     last_seen: "Apr 2026",
   }),
-  "₹300–₹1,250 over 4 purchases · last seen Apr 2026",
+  "₹300 – ₹1,250",
 );
-assert.equal(priceBand(null), null);
+assert.equal(typicalPrice(null), null);
+
+assert.equal(
+  typicalPriceNote({
+    owners: 3,
+    copies: 4,
+    prices: 4,
+    paid_min: 300,
+    paid_max: 1250,
+    last_seen: "Apr 2026",
+  }),
+  "over 4 purchases · last seen Apr 2026",
+);
+assert.equal(
+  typicalPriceNote({
+    owners: 1,
+    copies: 1,
+    prices: null,
+    paid_min: null,
+    paid_max: null,
+    last_seen: null,
+  }),
+  null,
+);
 
 assert.equal(
   ownersLine({

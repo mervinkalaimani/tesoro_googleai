@@ -79,18 +79,24 @@ export function isPublishablePhoto(url: unknown): boolean {
 }
 
 /**
- * "₹300–₹1,250 over 4 purchases · last seen Apr 2026", or null.
+ * What the casting typically sold for: "₹300 – ₹1,250", or one figure when
+ * everybody paid the same, or null when too few people have bought one.
  *
- * Null covers both halves of the rule: the database withholds the numbers below
- * three independent buyers, and a band whose ends are equal says what one
- * person paid however many rows it counted.
+ * The database withholds the numbers below two independent buyers, so null here
+ * means the page should fall back to the MRP instead — the maker's list price,
+ * which is nobody's receipt.
  */
-export function priceBand(s: CastingStats | null | undefined): string | null {
+export function typicalPrice(s: CastingStats | null | undefined): string | null {
   if (!s || s.paid_min == null || s.paid_max == null || !s.prices) return null;
-  if (s.paid_min === s.paid_max) return null;
-  const range = `${inrFull(s.paid_min)}–${inrFull(s.paid_max)}`;
+  if (s.paid_min === s.paid_max) return inrFull(s.paid_min);
+  return `${inrFull(s.paid_min)} – ${inrFull(s.paid_max)}`;
+}
+
+/** "over 4 purchases · last seen Apr 2026", the footnote under that figure. */
+export function typicalPriceNote(s: CastingStats | null | undefined): string | null {
+  if (!s || !s.prices) return null;
   const over = `over ${s.prices} ${s.prices === 1 ? "purchase" : "purchases"}`;
-  return s.last_seen ? `${range} ${over} · last seen ${s.last_seen}` : `${range} ${over}`;
+  return s.last_seen ? `${over} · last seen ${s.last_seen}` : over;
 }
 
 /** "3 collectors here own one", or null when nobody does. */

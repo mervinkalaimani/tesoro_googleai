@@ -25,10 +25,12 @@ import {
   castingTitle,
   isPublishablePhoto,
   ownersLine,
-  priceBand,
+  typicalPrice,
+  typicalPriceNote,
   type CastingStats,
 } from "@/lib/casting-page";
 import { carSubLine } from "@/lib/car-subline";
+import { inrFull } from "@/lib/format";
 import { RARITY_LABEL, rarityOf } from "@/lib/rarity";
 import { PublicShell } from "@/components/public-shell";
 
@@ -179,13 +181,17 @@ function CastingPage() {
 
   const name = castingName(car);
   const photo = isPublishablePhoto(car.image_url) ? String(car.image_url) : "";
-  const band = priceBand(stats);
+  // What it goes for, once enough people have bought one to say. Otherwise the
+  // maker's list price, which belongs to the casting rather than to anybody.
+  const typical = typicalPrice(stats);
+  const typicalNote = typicalPriceNote(stats);
+  const mrp = !typical && car.mrp > 0 ? inrFull(car.mrp) : "";
   const owners = ownersLine(stats);
   const rarity = rarityOf({ rarity: car.rarity } as never);
 
-  // Read by search engines, not by people: the same facts the page shows,
-  // in the shape they index. `offers` only exists when the band does, because
-  // the band is the only price this page is allowed to quote.
+  // Read by search engines, not by people: the same facts the page shows, in
+  // the shape they index. The offer is what the page prints and nothing more —
+  // a range once two collectors have bought one, otherwise the list price.
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -194,7 +200,7 @@ function CastingPage() {
     ...(photo ? { image: photo } : {}),
     ...(car.car_number ? { sku: car.car_number } : {}),
     description: castingDescription(car),
-    ...(stats?.paid_min && stats.paid_max && stats.paid_min !== stats.paid_max
+    ...(typical && stats?.paid_min != null && stats.paid_max != null
       ? {
           offers: {
             "@type": "AggregateOffer",
@@ -204,7 +210,9 @@ function CastingPage() {
             offerCount: stats.prices,
           },
         }
-      : {}),
+      : car.mrp > 0
+        ? { offers: { "@type": "Offer", priceCurrency: "INR", price: car.mrp } }
+        : {}),
   };
 
   return (
@@ -262,18 +270,26 @@ function CastingPage() {
             } as never)}
           </p>
 
-          {(owners || band) && (
+          {(owners || typical || mrp) && (
             <div className="mt-4 rounded-xl border border-border bg-card p-3">
-              {owners ? <p className="text-sm text-foreground">{owners}</p> : null}
-              {band ? (
-                <p className="mt-1 text-sm text-foreground">
-                  <span className="text-muted-foreground">Paid here: </span>
-                  {band}
-                </p>
+              {/* One casting, one owner, is one receipt — so that is the MRP,
+                  which belongs to the casting. Once a second collector has
+                  bought one there is something to average, and the figure
+                  becomes what it goes for rather than what it lists at. */}
+              {typical || mrp ? (
+                <>
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    {typical ? "Typically sold for" : "MRP"}
+                  </p>
+                  <p className="text-lg font-semibold text-foreground">{typical || mrp}</p>
+                  {typical && typicalNote ? (
+                    <p className="text-[11px] text-muted-foreground">{typicalNote}</p>
+                  ) : null}
+                </>
               ) : null}
-              {!band && owners ? (
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Prices appear once three collectors have bought one.
+              {owners ? (
+                <p className={`text-sm text-foreground${typical || mrp ? " mt-2" : ""}`}>
+                  {owners}
                 </p>
               ) : null}
             </div>
