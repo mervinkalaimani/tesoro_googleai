@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Calendar,
@@ -545,6 +545,14 @@ function PreOrdersPage() {
         }
         right={
           <>
+            {/* The other half of the question this page answers. Here is what
+                you have put money on; through here is what is still to drop. */}
+            <Button asChild size="sm" variant="outline" className="gap-1.5" title="Coming soon">
+              <Link to="/releases">
+                <Calendar className="size-4" />
+                <span className="sr-only">Release calendar</span>
+              </Link>
+            </Button>
             <FilterSelect
               value={seller}
               onChange={setSeller}
