@@ -189,7 +189,16 @@ export function MobileNav() {
   // A pill of two pages should not draw two half-bar buttons: every tab is the
   // width it would be in a section of three, and the space a third would have
   // taken is simply left over.
-  const sizing = tabs.length < 3 ? "shrink-0 basis-[calc((100%-0.5rem)/3)]" : "flex-1";
+  // A section of two pages keeps the tab width a section of three has, and the
+  // bar hugs them rather than stretching two half-bar buttons across the row —
+  // the space the third would have taken falls between the bar and Search.
+  //
+  // 184px is everything the row spends before the tabs: 32 of page padding, the
+  // two 58px circles, three 8px gaps, 12 of the bar's own padding and the 8
+  // between three tabs. Taking it off the viewport and dividing by three is the
+  // width the orders bar arrives at on its own.
+  const short = tabs.length < 3;
+  const sizing = short ? "w-[calc((100vw-184px)/3)] shrink-0" : "flex-1";
 
   return (
     <nav
@@ -220,7 +229,9 @@ export function MobileNav() {
 
         <div
           key={navMode}
-          className={`${GLASS} flex min-h-[58px] min-w-0 flex-1 items-stretch gap-1 rounded-[2.5rem] p-1.5 transition-[opacity,transform] duration-200 before:inset-x-4 ${
+          className={`${GLASS} flex min-h-[58px] min-w-0 items-stretch gap-1 rounded-[2.5rem] p-1.5 transition-[opacity,transform] duration-200 before:inset-x-4 ${
+            short ? "flex-none" : "flex-1"
+          } ${
             split ? (sectioned ? "animate-nav-split" : "animate-nav-merge") : ""
           } ${searchOpen ? "pointer-events-none scale-95 opacity-0" : ""}`}
         >
@@ -251,7 +262,9 @@ export function MobileNav() {
           onClick={openSearch}
           aria-label={filtering ? `Search — filtering by “${query}”` : "Search"}
           aria-expanded={searchOpen}
-          className={`${GLASS} grid size-[58px] shrink-0 place-items-center rounded-full before:inset-x-2 active:scale-95 ${
+          // ml-auto so a bar that hugs its tabs leaves the gap here, against
+          // Search, rather than trailing off the right of the row.
+          className={`${GLASS} ml-auto grid size-[58px] shrink-0 place-items-center rounded-full before:inset-x-2 active:scale-95 ${
             filtering ? "text-primary" : "text-muted-foreground hover:text-foreground"
           }`}
           style={{

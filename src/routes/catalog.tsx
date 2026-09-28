@@ -282,7 +282,7 @@ function BrandTray({
                 // background. The chosen brand is the one at full strength and
                 // the rest step back — no ring, which would be the frame this
                 // deliberately is not.
-                "grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-white transition-opacity",
+                "grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-white transition-opacity",
                 on ? "opacity-100" : "opacity-50 hover:opacity-85",
               )}
             >
@@ -303,7 +303,7 @@ function BrandTray({
                 // Until a brand has a mark, its name is the mark. Inside the
                 // square rather than under it, so the row stays one line of
                 // tiles.
-                <span className="text-center text-[9px] font-semibold leading-tight text-neutral-700">
+                <span className="px-1 text-center text-[10px] font-semibold leading-tight text-neutral-700">
                   {b.value}
                 </span>
               )}
