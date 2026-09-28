@@ -265,7 +265,7 @@ function BrandTray({
     // are four hundred castings down. top-[6.5rem] is the top bar (3.5rem) plus
     // the toolbar band; z-20 keeps it under that band and over the table heads.
     <div className="sticky top-[6.5rem] z-20 -mx-3 border-b border-border/60 bg-background/95 px-2 py-1.5 shadow-xs backdrop-blur-md md:-mx-6 md:px-5">
-      <div className="no-scrollbar flex items-start gap-1 overflow-x-auto">
+      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto">
         {brands.map((b) => {
           const on = active === b.value;
           const src = logos.get(b.value.trim().toLowerCase());
@@ -274,39 +274,39 @@ function BrandTray({
               key={b.value}
               type="button"
               aria-pressed={on}
+              title={b.value}
               onClick={() => onPick(on ? "all" : b.value)}
               className={cn(
-                "flex w-20 shrink-0 flex-col items-center gap-1 rounded-lg px-1 py-1.5 transition-opacity hover:bg-muted/40",
-                // No frame, so the chosen brand is the one at full strength and
-                // the rest step back. A ring would be the box this is not.
-                on ? "opacity-100" : "opacity-55 hover:opacity-90",
+                // Square, and white whatever the theme: a logo is drawn for
+                // paper, and half of these are dark marks that vanish on a dark
+                // background. The chosen brand is the one at full strength and
+                // the rest step back — no ring, which would be the frame this
+                // deliberately is not.
+                "grid size-12 shrink-0 place-items-center overflow-hidden rounded-full bg-white transition-opacity",
+                on ? "opacity-100" : "opacity-50 hover:opacity-85",
               )}
             >
-              {/* The slot is there whether or not the logo is, so the names line
-                  up across a row where only some brands have one yet. */}
-              <span className="flex h-8 w-full items-center justify-center">
-                {src ? (
-                  <img
-                    src={src}
-                    alt={b.value}
-                    loading="lazy"
-                    className="max-h-8 max-w-full object-contain"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
-                ) : null}
-              </span>
-              {/* Never truncated: a brand with a long name wraps and the row grows
-                a line, which is better than "Time Micro Colle…" in every tile. */}
-              <span
-                className={cn(
-                  "w-full text-center text-[10px] leading-tight",
-                  on ? "font-semibold text-primary" : "font-medium text-muted-foreground",
-                )}
-              >
-                {b.value}
-              </span>
+              {src ? (
+                <img
+                  src={src}
+                  alt={b.value}
+                  loading="lazy"
+                  // Filling the circle, not sitting inside it: a mark uploaded as a
+                  // square fills it exactly, and a wide one is cropped to the
+                  // middle, which is where a logo's meaning is.
+                  className="size-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                // Until a brand has a mark, its name is the mark. Inside the
+                // square rather than under it, so the row stays one line of
+                // tiles.
+                <span className="text-center text-[9px] font-semibold leading-tight text-neutral-700">
+                  {b.value}
+                </span>
+              )}
             </button>
           );
         })}

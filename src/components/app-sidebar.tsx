@@ -60,7 +60,7 @@ const NAV_GROUPS = [
     title: "Habit",
     items: [
       { title: "Habit", url: "/habits", icon: CalendarDays },
-      { title: "Seller", url: "/sellers", icon: Store },
+      { title: "Sellers", url: "/sellers", icon: Store },
     ],
   },
 ] as const;

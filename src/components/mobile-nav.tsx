@@ -10,6 +10,7 @@ import {
   Star,
   Car,
   Truck,
+  Store,
 } from "lucide-react";
 
 import { useApp } from "@/lib/store";
@@ -33,6 +34,12 @@ const INVENTORY_TABS = [
   { title: "My Cars", url: "/inventory", icon: Car },
   { title: "Favourites", url: "/favourites", icon: Star },
   { title: "Collection", url: "/collection", icon: Boxes },
+] as const;
+
+/** Sub-tabs shown when navigating into Habit. */
+const HABIT_TABS = [
+  { title: "Habit", url: "/habits", icon: CalendarDays },
+  { title: "Sellers", url: "/sellers", icon: Store },
 ] as const;
 
 /** Sub-tabs shown when navigating into My Orders. */
@@ -144,11 +151,17 @@ export function MobileNav() {
     pathname.startsWith("/preorders") ||
     pathname.startsWith("/duplicates");
 
-  const navMode: "default" | "inventory" | "orders" = isInventoryMode
-    ? "inventory"
-    : isOrdersMode
-      ? "orders"
-      : "default";
+  // Habit is a section of its own now that the sellers live under it: tapping
+  // it splits Home out into its own circle and the bar holds the two pages.
+  const isHabitMode = pathname.startsWith("/habits") || pathname.startsWith("/sellers");
+
+  const navMode: "default" | "inventory" | "orders" | "habit" = isHabitMode
+    ? "habit"
+    : isInventoryMode
+      ? "inventory"
+      : isOrdersMode
+        ? "orders"
+        : "default";
 
   // Only a change of section animates — not the bar's first appearance. Once a
   // section has changed, each newly keyed pill plays its entrance on mount.
@@ -163,9 +176,20 @@ export function MobileNav() {
   // Settings → Display → Navbar animation switches this off.
   const compact = useScrollCompact(navAnimation && !searchOpen);
   const tabs =
-    navMode === "default" ? DEFAULT_TABS : navMode === "inventory" ? INVENTORY_TABS : ORDERS_TABS;
+    navMode === "default"
+      ? DEFAULT_TABS
+      : navMode === "inventory"
+        ? INVENTORY_TABS
+        : navMode === "habit"
+          ? HABIT_TABS
+          : ORDERS_TABS;
   const filtering = query.trim().length > 0;
   const sectioned = navMode !== "default";
+
+  // A pill of two pages should not draw two half-bar buttons: every tab is the
+  // width it would be in a section of three, and the space a third would have
+  // taken is simply left over.
+  const sizing = tabs.length < 3 ? "shrink-0 basis-[calc((100%-0.5rem)/3)]" : "flex-1";
 
   return (
     <nav
@@ -207,7 +231,7 @@ export function MobileNav() {
                 key={t.url}
                 to={t.url}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex flex-1 flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${
+                className={`relative flex flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${sizing} ${
                   active
                     ? "bg-primary/12 font-semibold text-primary"
                     : "text-muted-foreground hover:text-foreground"
