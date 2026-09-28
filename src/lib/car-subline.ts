@@ -10,8 +10,13 @@ type SubLineFields = Pick<
  * A case release ("2026 K Case") stands in the car number's place, since a car
  * from a case has no number of its own.
  */
-export function carSubLineParts(r: SubLineFields): string[] {
-  return [r.brand, r.assortment, r.series, r.subSeries, r.carNumber || r.caseNumber]
+export function carSubLineParts(r: SubLineFields, skipBrand = false): string[] {
+  return [
+    ...(skipBrand ? [] : [r.brand, r.assortment]),
+    r.series,
+    r.subSeries,
+    r.carNumber || r.caseNumber,
+  ]
     .map((v) => String(v ?? "").trim())
     .filter(Boolean);
 }
@@ -19,7 +24,11 @@ export function carSubLineParts(r: SubLineFields): string[] {
 /**
  * The line under a car's name, everywhere a car is listed:
  * brand · assortment · series · sub series · car or case number.
+ *
+ * `skipBrand` drops the first two, for a list that has a column of its own for
+ * them — repeating "Hot Wheels · Mainline" under the name and again two columns
+ * to the right is the same fact twice on one row.
  */
-export function carSubLine(r: SubLineFields): string {
-  return carSubLineParts(r).join(" · ") || "—";
+export function carSubLine(r: SubLineFields, skipBrand = false): string {
+  return carSubLineParts(r, skipBrand).join(" · ") || "—";
 }

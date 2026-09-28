@@ -21,9 +21,11 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Receipt,
   Search,
   Star,
   Trash2,
+  Truck,
   UserCheck,
   Users,
   X,
@@ -65,6 +67,7 @@ import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
+import { SellerOrdersDialog } from "@/components/seller-orders-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CarThumb } from "@/components/car-thumb";
 import { carSubLine } from "@/lib/car-subline";
@@ -92,6 +95,8 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   const [batchField, setBatchField] = useState<"shippingId" | "orderId">("shippingId");
   const [batchOpen, setBatchOpen] = useState(false);
   const [statusCar, setStatusCar] = useState<Diecast | null>(null);
+  /** Whose orders are being looked at, from the seller's name on a car. */
+  const [sellerOpen, setSellerOpen] = useState<string | null>(null);
 
   const cars = useCars();
   const { updateCar } = useCarsActions();
@@ -208,6 +213,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
                 setBatchField(field);
                 setBatchOpen(true);
               }}
+              onOpenSeller={(name) => setSellerOpen(name)}
               onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
               // Cycles Normal → TH → STH → Chase → Normal: each tap is the next
               // colour of flame.
@@ -291,6 +297,18 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
         onOpenChange={setBatchOpen}
         initialShippingId={batchShippingId || ""}
         idField={batchField}
+      />
+
+      {/* Everything from one seller. Picking a car in it moves the drawer
+          underneath to that car, so the list stays where you were reading. */}
+      <SellerOrdersDialog
+        open={sellerOpen !== null}
+        onOpenChange={(v) => !v && setSellerOpen(null)}
+        seller={sellerOpen || ""}
+        onSelectCar={(c) => {
+          setSellerOpen(null);
+          open(c);
+        }}
       />
     </CarDrawerCtx.Provider>
   );
@@ -455,6 +473,7 @@ interface CarPopupContentProps {
   onViewInCatalog: () => void;
   onAddAnother: () => void;
   onOpenBatch: (id: string, field: "shippingId" | "orderId") => void;
+  onOpenSeller: (seller: string) => void;
   onToggleFavourite: () => void;
   onToggleChase: () => void;
   onUpdateStatus: () => void;
@@ -468,6 +487,7 @@ function CarPopupContent({
   onViewInCatalog,
   onAddAnother,
   onOpenBatch,
+  onOpenSeller,
   onToggleFavourite,
   onToggleChase,
   onUpdateStatus,
@@ -650,6 +670,7 @@ function CarPopupContent({
                 cleanTransitNotes={cleanTransitNotes}
                 trackable={trackable}
                 onOpenBatch={onOpenBatch}
+                onOpenSeller={onOpenSeller}
               />
             </div>
           </div>
@@ -778,6 +799,7 @@ function CarPopupContent({
                     cleanTransitNotes={cleanTransitNotes}
                     trackable={trackable}
                     onOpenBatch={onOpenBatch}
+                    onOpenSeller={onOpenSeller}
                   />
 
                   {/* What else is like this one: the same one or two shelves
@@ -1046,6 +1068,7 @@ function CarPurchaseAndShippingSection({
   cleanTransitNotes,
   trackable,
   onOpenBatch,
+  onOpenSeller,
 }: {
   car: Diecast;
   spent: number;
@@ -1055,6 +1078,7 @@ function CarPurchaseAndShippingSection({
   cleanTransitNotes: string;
   trackable: boolean;
   onOpenBatch: (id: string, field: "orderId" | "shippingId") => void;
+  onOpenSeller: (seller: string) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -1073,23 +1097,27 @@ function CarPurchaseAndShippingSection({
             className={delta >= 0 ? "text-emerald-600 dark:text-[#00E599]" : "text-rose-400"}
             value={delta >= 0 ? `+${inrFull(delta)}` : `-${inrFull(Math.abs(delta))}`}
           />
-          <Spec label="Seller" value={car.seller} />
+          <div className="min-w-0">
+            <span className="text-xs text-muted-foreground">Seller</span>
+            <div className="mt-0.5 truncate text-sm font-semibold">
+              {car.seller?.trim() ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenSeller(car.seller)}
+                  title={`Everything bought from ${car.seller}`}
+                  className="max-w-full truncate text-sky-500 hover:underline"
+                >
+                  {car.seller}
+                </button>
+              ) : (
+                <span className="text-foreground">—</span>
+              )}
+            </div>
+          </div>
           <Spec label="Order date" value={formatDayMonthYear(car.orderDate) || car.orderDate} />
           <Spec
             label={hasArrived ? "Received date" : "Expected date"}
             value={formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate)}
-          />
-          <IdSpec
-            label="Order ID"
-            value={car.orderId}
-            title={`See every car in order ${car.orderId}`}
-            onClick={() => onOpenBatch(car.orderId, "orderId")}
-          />
-          <IdSpec
-            label="Shipping ID"
-            value={car.shippingId}
-            title={`See every car in shipment ${car.shippingId}`}
-            onClick={() => onOpenBatch(car.shippingId, "shippingId")}
           />
           {(car.deliveryPartner || car.trackingId) && (
             <div className="min-w-0">
@@ -1109,6 +1137,37 @@ function CarPurchaseAndShippingSection({
             </div>
           )}
         </SpecGrid>
+
+        {/* The order and the shipment, as doors rather than as identifiers. */}
+        {(car.orderId?.trim() || car.shippingId?.trim()) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {car.orderId?.trim() && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => onOpenBatch(car.orderId!, "orderId")}
+              >
+                <Receipt className="size-3.5" />
+                View order
+              </Button>
+            )}
+            {car.shippingId?.trim() && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={() => onOpenBatch(car.shippingId!, "shippingId")}
+              >
+                <Truck className="size-3.5" />
+                View shipping details
+              </Button>
+            )}
+          </div>
+        )}
+
         {cleanTransitNotes && (
           <p className="mt-2 text-xs text-foreground bg-muted/30 rounded-lg p-2.5 border border-border/50">
             {cleanTransitNotes}
@@ -1389,46 +1448,6 @@ function RelatedCarCard({
 /** Three across at every width, so a label always sits above its own value. */
 function SpecGrid({ children }: { children: ReactNode }) {
   return <div className="grid grid-cols-3 gap-x-3 gap-y-2.5">{children}</div>;
-}
-
-/**
- * A derived ID that opens the batch it names.
- *
- * Both of these are links rather than a value with "(View Order)" bolted after
- * it: the ID *is* the order, so the thing you would point at should be the
- * thing you can press.
- */
-function IdSpec({
-  label,
-  value,
-  title,
-  onClick,
-}: {
-  label: string;
-  value?: string | null;
-  title: string;
-  onClick: () => void;
-}) {
-  const id = (value || "").trim();
-  return (
-    <div className="min-w-0">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="mt-0.5 truncate text-sm font-semibold">
-        {id ? (
-          <button
-            type="button"
-            onClick={onClick}
-            title={title}
-            className="max-w-full truncate font-mono text-sky-500 hover:underline"
-          >
-            {id}
-          </button>
-        ) : (
-          <span className="text-foreground">—</span>
-        )}
-      </div>
-    </div>
-  );
 }
 
 /** A flag toggle sitting on top of the photograph, legible over either. */

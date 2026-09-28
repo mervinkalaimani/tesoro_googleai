@@ -946,9 +946,10 @@ function InventoryPage() {
           </div>
 
           <div className="card-elevated hidden overflow-x-auto md:block max-h-[calc(100vh-10.5rem)] overflow-y-auto">
-            <table className="w-full min-w-[1000px] table-fixed text-sm">
+            <table className="w-full min-w-[1160px] table-fixed text-sm">
               <colgroup>
                 <col className="w-[18rem]" />
+                <col className="w-[10rem]" />
                 <col className="w-[7rem]" />
                 <col className="w-[7rem]" />
                 <col className="w-[9rem]" />
@@ -960,6 +961,7 @@ function InventoryPage() {
               <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur-xs text-left text-xs uppercase tracking-wide text-muted-foreground shadow-xs">
                 <tr>
                   <th className="px-4 py-2.5 font-medium">Model</th>
+                  <th className="px-3 py-2.5 font-medium">Brand / Assortment</th>
                   <th className="px-3 py-2.5 font-medium">Colour</th>
                   <th className="px-3 py-2.5 font-medium">Type</th>
                   <th className="px-3 py-2.5 text-right font-medium">Cost</th>
@@ -995,7 +997,17 @@ function InventoryPage() {
                           />
                         )}
                       </div>
-                      <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
+                      {/* Brand and assortment are the next column along now, so
+                          the line under the name carries what it does not. */}
+                      <div className="truncate text-xs text-muted-foreground">
+                        {carSubLine(r, true)}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5 align-top">
+                      <div className="truncate">{r.brand || "—"}</div>
+                      <div className="truncate text-xs text-muted-foreground">
+                        {r.assortment || ""}
+                      </div>
                     </td>
                     <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
                       {r.colour || "—"}
@@ -1025,7 +1037,7 @@ function InventoryPage() {
                 ))}
                 {shown.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="p-10 text-center text-muted-foreground">
+                    <td colSpan={9} className="p-10 text-center text-muted-foreground">
                       No cars match those filters.
                     </td>
                   </tr>

@@ -288,7 +288,11 @@ export function CarsTable({
                       <span className="truncate font-medium">{r.name || "—"}</span>
                       <ChangedDot car={r} />
                     </div>
-                    <div className="truncate text-xs text-muted-foreground">{carSubLine(r)}</div>
+                    {/* Brand and assortment are the next column along, so the
+                        line under the name carries what that column does not. */}
+                    <div className="truncate text-xs text-muted-foreground">
+                      {carSubLine(r, true)}
+                    </div>
                   </td>
                   <td className="px-3 py-2.5 md:px-4">
                     <div className="truncate">{r.brand || "—"}</div>

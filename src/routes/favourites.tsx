@@ -8,6 +8,7 @@ import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
 import { ChaseMark, FAVOURITE_COLOUR, ChangedDot } from "@/components/car-marks";
 import { rarityOf } from "@/lib/rarity";
+import { inrFull } from "@/lib/format";
 import { CarThumb } from "@/components/car-thumb";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
@@ -134,7 +135,7 @@ function GalleryCard({
           <ChangedDot car={car} className="ml-1.5 align-middle" />
         </button>
         <p className="mt-1 truncate text-xs text-muted-foreground">
-          {[car.series, car.subSeries, car.assortment].filter(Boolean).join(" · ") || "—"}
+          {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
         </p>
 
         <div className="mt-auto border-t border-border pt-3">
