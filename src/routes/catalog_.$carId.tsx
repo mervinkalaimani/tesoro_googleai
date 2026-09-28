@@ -31,6 +31,7 @@ import {
 import { carSubLine } from "@/lib/car-subline";
 import { RARITY_LABEL, rarityOf } from "@/lib/rarity";
 import { HomeScreenMark } from "@/components/brand-mark";
+import { useAuth } from "@/lib/auth-store";
 
 type Sibling = Pick<CatalogCar, "car_id" | "name" | "make" | "model" | "variant" | "car_number">;
 
@@ -315,6 +316,9 @@ function CastingPage() {
  * about, and the only thing this page wants from them is curiosity.
  */
 function Shell({ children }: { children: React.ReactNode }) {
+  const { status } = useAuth();
+  const signedIn = status === "ready" || status === "pending";
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
@@ -323,11 +327,15 @@ function Shell({ children }: { children: React.ReactNode }) {
             <HomeScreenMark className="size-7" />
             <span className="text-display text-sm font-semibold tracking-tight">Tesoro</span>
           </Link>
+          {/* This page renders the same for everybody, so somebody already
+              signed in would otherwise be invited to sign in again. The server
+              renders it as "loading", which reads as signed out, and it settles
+              a moment later — the same swap every other page makes. */}
           <Link
-            to="/login"
+            to={signedIn ? "/inventory" : "/login"}
             className="ml-auto rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:border-foreground/30"
           >
-            Sign in
+            {signedIn ? "My cars" : "Sign in"}
           </Link>
         </div>
       </header>
