@@ -5,8 +5,10 @@ import { toast } from "sonner";
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
 import { generateCatalogCarId } from "@/lib/car-id";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
-import { resolveCatalogUserId } from "@/lib/catalog";
+import { catalogMergePreview, mergeCatalogEntries, resolveCatalogUserId } from "@/lib/catalog";
+import type { MergePreview } from "@/lib/catalog";
 import { localDay } from "@/lib/delivery-watch";
+import { expectedByOptions, expectedByValue } from "@/lib/date-utils";
 import { releasedOnInput, releasedOnStamp } from "@/lib/released";
 import {
   Dialog,
@@ -49,21 +51,6 @@ import { useAuth } from "@/lib/auth-store";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import { cn } from "@/lib/utils";
-
-const MONTH_LABELS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 /** The value that means "not one of these — let me type it". */
 const OTHER_MRP = "__other__";
@@ -115,6 +102,16 @@ function AssortmentRow({
   const [typed, setTyped] = useState(false);
   const known = !typed && mrp > 0 && priced.includes(mrp);
   const showInput = priced.length === 0 || !known;
+
+  // The commonest price for this box, taken as read. Every Hot Wheels Mainline
+  // is 179; asking for it again on each one is a question with one answer. Only
+  // while nothing is set and nobody has asked to type their own.
+  useEffect(() => {
+    if (!typed && !mrp && priced.length > 0) onMrp(priced[0]);
+    // onMrp is rebuilt every render by the form above; depending on it would
+    // re-run this on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priced, mrp, typed]);
 
   return (
     <div data-field="assortment" className="scroll-mt-24">
@@ -243,6 +240,8 @@ export function CatalogFormDialog({
 }) {
   const { user, profile, isAdmin } = useAuth();
   const isNew = entry === "new" || !entry;
+  /** The entry being edited, when there is one: what a merge folds away. */
+  const entryId = entry && entry !== "new" ? entry.car_id : "";
   const currentUid = user?.id || profile?.user_id;
   const isCreator = Boolean(
     !isNew &&
@@ -303,6 +302,17 @@ export function CatalogFormDialog({
    * and one price. Ticking Multipack while other assortments are on file asks
    * first, because saying yes removes those catalogue entries for everybody.
    */
+  /**
+   * The entry this one is being folded into, once somebody has asked.
+   *
+   * The duplicate notice is where a duplicate is actually noticed -- while
+   * looking straight at both of them -- so the fix belongs there rather than in
+   * a separate admin screen. Every car pointing at the entry being edited moves
+   * to the one picked, and this entry goes.
+   */
+  const [mergeTo, setMergeTo] = useState<CatalogCar | null>(null);
+  const [mergePreview, setMergePreview] = useState<MergePreview | null>(null);
+  const [mergeBusy, setMergeBusy] = useState(false);
   const [packConfirm, setPackConfirm] = useState(false);
   const [packBusy, setPackBusy] = useState(false);
   const [confirmNotDuplicate, setConfirmNotDuplicate] = useState(false);
@@ -361,6 +371,9 @@ export function CatalogFormDialog({
     setAlsoMine(false);
     setPackConfirm(false);
     setPackBusy(false);
+    setMergeTo(null);
+    setMergePreview(null);
+    setMergeBusy(false);
     if (entry && entry !== "new") {
       setForm({
         ...entry,
@@ -457,7 +470,7 @@ export function CatalogFormDialog({
     // new brand also sells is kept.
     if (k === "brand") {
       const sold = new Set(
-        assortmentOptionsFor(cars, String(v)).map((a) => a.trim().toLowerCase()),
+        assortmentOptionsFor(assortmentPool, String(v)).map((a) => a.trim().toLowerCase()),
       );
       const keeps = (a: string) => Boolean(a.trim()) && sold.has(a.trim().toLowerCase());
       setForm((fm) => (keeps(fm.assortment || "") ? fm : { ...fm, assortment: "" }));
@@ -541,10 +554,21 @@ export function CatalogFormDialog({
 
   const isPreOrder = form.release_status === "Pre Order";
 
-  /** The assortments this brand sells, the same list the car form offers. */
+  /**
+   * The assortments this brand sells.
+   *
+   * The catalogue joins your own cars in the pool: this form files castings for
+   * everybody, and a brand you happen to own nothing of would otherwise narrow
+   * to nothing and fall back to the whole vocabulary.
+   */
+  const assortmentPool = useMemo(
+    () =>
+      [...cars, ...catalog.map((c) => ({ brand: c.brand, assortment: c.assortment }))] as Diecast[],
+    [cars, catalog],
+  );
   const brandAssortments = useMemo(
-    () => assortmentOptionsFor(cars, form.brand || ""),
-    [cars, form.brand],
+    () => assortmentOptionsFor(assortmentPool, form.brand || ""),
+    [assortmentPool, form.brand],
   );
   /**
    * What is left to choose. "when clicked, show another row with remaining
@@ -563,18 +587,11 @@ export function CatalogFormDialog({
    * date picker asks for one. Held as the 1st of the month, which is what the
    * car form has always done, so the calendar and the reminders read one shape.
    */
-  const eta = form.expected_date || "";
-  const etaMonth = eta ? String(Number(eta.slice(5, 7)) - 1) : "";
-  const etaYear = eta ? eta.slice(0, 4) : "";
-  const thisYear = new Date().getFullYear();
-  const ETA_YEARS = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2, thisYear + 3];
-  const setEta = (monthIdx: string, year: string) => {
-    if (!monthIdx || !year) {
-      set("expected_date", null);
-      return;
-    }
-    set("expected_date", `${year}-${String(Number(monthIdx) + 1).padStart(2, "0")}-01`);
-  };
+  const eta = expectedByValue(form.expected_date);
+  const etaOptions = useMemo(
+    () => expectedByOptions(form.expected_date ?? ""),
+    [form.expected_date],
+  );
 
   /** The other boxes actually named -- a blank row is not a second assortment. */
   const namedExtras = extras.filter((x) => x.assortment.trim());
@@ -1007,6 +1024,18 @@ export function CatalogFormDialog({
                   onClose();
                   onAddExistingCar?.(c);
                 }}
+                // Only an admin, and only once there is an entry to fold: the
+                // same bar the Duplicates screen keeps, and a casting still
+                // being typed has no cars on it to move.
+                onMergeToThis={
+                  isAdmin && entryId
+                    ? (dupe) => {
+                        setMergeTo(dupe);
+                        setMergePreview(null);
+                        void catalogMergePreview([entryId]).then(setMergePreview);
+                      }
+                    : undefined
+                }
               />
 
               {isNew && duplicates.length > 0 && (
@@ -1176,50 +1205,27 @@ export function CatalogFormDialog({
                   </Field>
 
                   {isPreOrder ? (
-                    <>
-                      <Field label="Expected month">
-                        <Select
-                          disabled={isImageOnly}
-                          value={etaMonth}
-                          onValueChange={(v) => setEta(v, etaYear || String(thisYear))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Month" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MONTH_LABELS.map((m, i) => (
-                              <SelectItem key={m} value={String(i)}>
-                                {m}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      <Field label="Expected year">
-                        <Select
-                          disabled={isImageOnly}
-                          value={etaYear}
-                          onValueChange={(v) => setEta(etaMonth || "0", v)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Year" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ETA_YEARS.map((y) => (
-                              <SelectItem key={y} value={String(y)}>
-                                {y}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-                      {eta && (
-                        <p className="self-end text-[11px] text-muted-foreground">
-                          Saved as <span className="font-medium text-foreground">{eta}</span> — the
-                          1st, and the day the calendar puts it on.
-                        </p>
-                      )}
-                    </>
+                    <Field label="Expected by">
+                      <Select
+                        disabled={isImageOnly}
+                        value={eta}
+                        onValueChange={(v) => set("expected_date", v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Month and year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {etaOptions.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                        Saved as the 1st of that month, which is where the calendar puts it.
+                      </p>
+                    </Field>
                   ) : (
                     <Field label="Released on">
                       <ClearableInput
@@ -1335,6 +1341,67 @@ export function CatalogFormDialog({
       </Dialog>
 
       <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={onApplyScan} />
+
+      {/* Folding one entry into another moves other people's cars, so it says
+          how many before it does anything. */}
+      <Dialog open={mergeTo !== null} onOpenChange={(v) => !v && !mergeBusy && setMergeTo(null)}>
+        <DialogContent className="max-w-md">
+          <DialogTitle>Merge this casting into {mergeTo?.name}?</DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>
+                <span className="font-medium text-foreground">{mergeTo?.name}</span> is kept, with
+                everything it already says.{" "}
+                <span className="font-mono text-[11px]">{mergeTo?.car_id}</span>
+              </p>
+              <p>
+                {mergePreview === null
+                  ? "Counting what would move…"
+                  : mergePreview.cars === 0
+                    ? "Nobody owns a copy filed under this entry, so only the entry itself goes."
+                    : `${mergePreview.cars} car${mergePreview.cars === 1 ? "" : "s"} across ${mergePreview.owners.length} collection${mergePreview.owners.length === 1 ? "" : "s"} move${mergePreview.cars === 1 ? "s" : ""} to it${mergePreview.packs > 0 ? `, and ${mergePreview.packs} pack membership${mergePreview.packs === 1 ? "" : "s"}` : ""}. What each person paid, their status and their photographs are untouched.`}
+              </p>
+              <p>
+                This entry — <span className="font-mono text-[11px]">{entryId}</span> — is then
+                removed, and that cannot be undone.
+              </p>
+            </div>
+          </DialogDescription>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMergeTo(null)} disabled={mergeBusy}>
+              Cancel
+            </Button>
+            <Button
+              disabled={mergeBusy || mergePreview === null}
+              className="gap-1.5"
+              onClick={() => {
+                if (!mergeTo || !entryId) return;
+                setMergeBusy(true);
+                void mergeCatalogEntries(mergeTo.car_id, [entryId])
+                  .then((res) => {
+                    toast.success(`Merged into ${mergeTo.name}`, {
+                      description:
+                        res.cars > 0
+                          ? `${res.cars} car${res.cars === 1 ? "" : "s"} now point at it.`
+                          : "The duplicate entry is gone.",
+                    });
+                    setMergeTo(null);
+                    onClose();
+                  })
+                  .catch((e: Error) => toast.error(e.message || "Could not merge the castings"))
+                  .finally(() => setMergeBusy(false));
+              }}
+            >
+              {mergeBusy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Check className="size-4" />
+              )}
+              {mergeBusy ? "Merging…" : "Merge"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Removing a catalogue entry is removing it for everybody, so it says
           which ones and does not do it until it is told to. */}

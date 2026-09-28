@@ -34,7 +34,13 @@ import {
   writeDraft,
 } from "@/lib/form-draft";
 import { setCachedCarImage } from "@/lib/car-image";
-import { toDateInputValue, deriveMonth, monthEtaToDate } from "@/lib/date-utils";
+import {
+  toDateInputValue,
+  deriveMonth,
+  monthEtaToDate,
+  expectedByOptions,
+  expectedByValue,
+} from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { isoMatchesFor } from "@/lib/iso-match";
@@ -204,21 +210,6 @@ import {
 } from "@/lib/status";
 
 const PAYMENT_OPTIONS = ["Pending", "Partial", "Paid"];
-
-const MONTH_LABELS = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
 
 const SPENT_INFO = "The total amount you've spent to purchase the car.";
 const PAID_INFO = "The amount you've paid till now.";
@@ -662,17 +653,8 @@ export function CarFormDialog({
    * A pre-order's window, held in expectedDate as the 1st of the month so one
    * column carries both and nothing downstream has to learn a second shape.
    */
-  const etaMonth = form.expectedDate ? String(Number(form.expectedDate.slice(5, 7)) - 1) : "";
-  const etaYear = form.expectedDate ? form.expectedDate.slice(0, 4) : "";
-  const thisYear = new Date().getFullYear();
-  const ETA_YEARS = [thisYear - 1, thisYear, thisYear + 1, thisYear + 2, thisYear + 3];
-  const setEta = (monthIdx: string, year: string) => {
-    if (!monthIdx || !year) {
-      set("expectedDate", "");
-      return;
-    }
-    set("expectedDate", `${year}-${String(Number(monthIdx) + 1).padStart(2, "0")}-01`);
-  };
+  const eta = expectedByValue(form.expectedDate);
+  const etaOptions = useMemo(() => expectedByOptions(form.expectedDate), [form.expectedDate]);
 
   /** Each section says what it holds, so it can stay shut and still be read. */
   const purchaseBadge = isIso
@@ -2120,46 +2102,23 @@ export function CarFormDialog({
                   </Field>
                 </>
               ) : isPreOrder ? (
-                <>
-                  <Field label="Expected month">
-                    <Select
-                      value={etaMonth}
-                      onValueChange={(v) => setEta(v, etaYear || String(thisYear))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Month" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MONTH_LABELS.map((m, i) => (
-                          <SelectItem key={m} value={String(i)}>
-                            {m}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  <Field label="Expected year">
-                    <Select value={etaYear} onValueChange={(v) => setEta(etaMonth || "0", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {ETA_YEARS.map((y) => (
-                          <SelectItem key={y} value={String(y)}>
-                            {y}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </Field>
-                  {form.expectedDate && (
-                    <p className="self-end text-[11px] text-muted-foreground sm:col-span-2 lg:col-span-1">
-                      Saved as{" "}
-                      <span className="font-medium text-foreground">{form.expectedDate}</span> — the
-                      1st, and the day you will be reminded.
-                    </p>
-                  )}
-                </>
+                <Field label="Expected by">
+                  <Select value={eta} onValueChange={(v) => set("expectedDate", v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Month and year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {etaOptions.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                    Saved as the 1st of that month, and the day you will be reminded.
+                  </p>
+                </Field>
               ) : (
                 <>
                   <Field label="Expected / available Date">

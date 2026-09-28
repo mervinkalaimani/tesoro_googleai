@@ -7,7 +7,8 @@
  */
 import assert from "node:assert/strict";
 
-import { remainingAssortments } from "@/lib/assortments";
+import { remainingAssortments, setAssortments, type Assortment } from "@/lib/assortments";
+import { assortmentOptionsFor } from "@/lib/car-options";
 import { generateCatalogCarId, setCatalogIdEntries } from "@/lib/car-id";
 
 const ALL = ["Mainline", "Premium", "Moving Parts", "Blister"];
@@ -43,5 +44,43 @@ const b = generateCatalogCarId({ ...casting, assortment: "Moving Parts", mrp: 39
   { id: a, car: { ...casting, assortment: "Mainline", mrp: 179 } },
 ]);
 assert.notEqual(a, b, "two assortments of one casting must not share an ID");
+
+// The kept vocabulary carries no brand of its own -- every row in
+// tesoro_assortments has the column blank -- so narrowing has to come from what
+// each brand is actually sold in.
+const keep = (name: string, sort: number): Assortment => ({
+  id: name,
+  name,
+  brand: "",
+  sort,
+  retired: false,
+});
+setAssortments(
+  ["Mainline", "Premium", "Blister", "Qube Carz", "Sky Busters"].map((n, i) => keep(n, i)),
+);
+
+const pool = [
+  { brand: "Mini GT", assortment: "Blister" },
+  { brand: "Mini GT", assortment: "Qube Carz" },
+  { brand: "Matchbox", assortment: "Sky Busters" },
+  // The same maker, spelled both ways it is spelled in the table.
+  { brand: "Hotwheels", assortment: "Mainline" },
+  { brand: "Hot Wheels", assortment: "Premium" },
+] as never[];
+
+assert.deepEqual(assortmentOptionsFor(pool, "Mini GT"), ["Blister", "Qube Carz"]);
+assert.deepEqual(assortmentOptionsFor(pool, "Matchbox"), ["Sky Busters"]);
+// "Hot Wheels" and "Hotwheels" are one maker, so their boxes are one list.
+assert.deepEqual(assortmentOptionsFor(pool, "Hot Wheels"), ["Mainline", "Premium"]);
+assert.deepEqual(assortmentOptionsFor(pool, "Hotwheels"), ["Mainline", "Premium"]);
+// A brand nothing has been filed under has nothing to narrow by, so it gets the
+// whole vocabulary rather than an empty dropdown.
+assert.deepEqual(assortmentOptionsFor(pool, "Tomica"), [
+  "Mainline",
+  "Premium",
+  "Blister",
+  "Qube Carz",
+  "Sky Busters",
+]);
 
 console.log("assortments.selfcheck ok");

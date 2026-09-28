@@ -78,3 +78,58 @@ export function deriveMonth(d?: string | null): string {
   }
   return "";
 }
+
+const MONTH_LABELS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+/**
+ * The window a pre-order can be due in: this month and the next 23.
+ *
+ * One field rather than a month and a year, because they were never independent
+ * — picking March and then 2027 is two taps to say one thing, and the pair let
+ * you say March 2024, which no pre-order is due in. Each option is the 1st of
+ * its month, which is the shape the column has always been kept in.
+ *
+ * `current` is whatever the row already says. A date outside the window — an
+ * entry filed a year ago, or one dated further out than two years — is kept at
+ * the front rather than silently dropped, so opening the form cannot change it.
+ */
+export function expectedByOptions(
+  current = "",
+  now = new Date(),
+  count = 24,
+): { value: string; label: string }[] {
+  const out: { value: string; label: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    out.push({
+      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`,
+      label: `${MONTH_LABELS[d.getMonth()]} ${d.getFullYear()}`,
+    });
+  }
+  const held = expectedByValue(current);
+  if (held && !out.some((o) => o.value === held)) {
+    const [y, m] = held.split("-").map(Number);
+    out.unshift({ value: held, label: `${MONTH_LABELS[m - 1]} ${y}` });
+  }
+  return out;
+}
+
+/** Any stored expected date as the 1st of its month, or "" if it is not one. */
+export function expectedByValue(d?: string | null): string {
+  const iso = toDateInputValue(d ?? "") || String(d ?? "").trim();
+  const m = /^(\d{4})-(\d{2})/.exec(iso);
+  return m ? `${m[1]}-${m[2]}-01` : "";
+}

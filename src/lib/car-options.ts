@@ -139,6 +139,12 @@ export function optionsFor(field: OptionField, cars: Diecast[]): string[] {
 const norm = (v: string | undefined | null) => (v ?? "").trim().toLowerCase();
 
 /**
+ * A brand without its spaces: "Hot Wheels" and "Hotwheels" are both in the table
+ * and are one maker. Matching on the plain name split their assortments in two.
+ */
+const brandKey = (v: string | undefined | null) => norm(v).replace(/\s+/g, "");
+
+/**
  * Models for one make, and only that make.
  *
  * Both sources are narrowed: the collection is filtered to cars of that make,
@@ -217,24 +223,34 @@ export function variantOptionsFor(cars: Diecast[], make: string, model: string):
  * option for that brand next time.
  */
 export function assortmentOptionsFor(cars: Diecast[], brand: string): string[] {
-  const wanted = norm(brand);
+  const wanted = brandKey(brand);
+  // What this brand is actually sold in, most used first.
+  const sameBrand = wanted ? cars.filter((c) => brandKey(c.brand) === wanted) : [];
+  const used = wanted
+    ? rank(
+        sameBrand.map((c) => c.assortment),
+        [],
+      )
+    : [];
 
-  // The kept list wins when there is one. It is the same vocabulary an admin
-  // maintains in Settings, so a spelling corrected there is corrected in every
-  // picker at once — which is the point of keeping it rather than deriving it
-  // from whatever the cars happen to say.
+  // The kept list is the vocabulary an admin maintains in Settings, so a
+  // spelling corrected there is corrected in every picker at once. It carries no
+  // brand of its own -- all 32 rows have the column blank -- so on its own it
+  // offered Qube Carz under Matchbox and Sky Busters under Mini GT. Narrowed to
+  // the names this brand has actually used, it is both: one spelling, and only
+  // the boxes that exist. A brand nothing has been filed under yet gets the
+  // whole vocabulary, because there is nothing to narrow by.
   if (hasAssortments()) {
     const kept = assortmentNames(brand);
-    if (kept.length) return kept;
+    if (!kept.length) return used;
+    if (!used.length) return kept;
+    const seen = new Set(used.map(norm));
+    const narrowed = kept.filter((k) => seen.has(norm(k)));
+    return narrowed.length ? narrowed : kept;
   }
 
   if (!wanted) return optionsFor("assortment", cars);
-
-  const sameBrand = cars.filter((c) => norm(c.brand) === wanted);
-  return rank(
-    sameBrand.map((c) => c.assortment),
-    [],
-  );
+  return used;
 }
 
 /**

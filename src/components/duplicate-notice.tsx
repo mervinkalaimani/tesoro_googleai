@@ -1,4 +1,4 @@
-import { AlertTriangle, Car, Plus } from "lucide-react";
+import { AlertTriangle, Car, Merge, Plus } from "lucide-react";
 
 import type { CatalogCar } from "@/lib/catalog";
 import type { DuplicateHit, DuplicateLevel } from "@/lib/duplicate";
@@ -30,12 +30,19 @@ const subLineOf = (c: CatalogCar) =>
 export function DuplicateNotice({
   hits,
   onAddThisCar,
+  onMergeToThis,
   onUse,
   className,
 }: {
   hits: DuplicateHit[];
   /** Handler to add this existing car rather than create a new duplicate */
   onAddThisCar?: (car: CatalogCar) => void;
+  /**
+   * Fold the entry being edited into this one: every car pointing at it moves
+   * here and the entry goes. Only offered where there is an entry to fold --
+   * a casting still being typed has nobody on it.
+   */
+  onMergeToThis?: (car: CatalogCar) => void;
   onUse?: (car: CatalogCar) => void;
   className?: string;
 }) {
@@ -89,6 +96,18 @@ export function DuplicateNotice({
                 {because} · {inrFull(Number(car.mrp) || 0)}
               </div>
             </div>
+            {onMergeToThis && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 shrink-0 gap-1 px-2.5 text-xs font-semibold"
+                onClick={() => onMergeToThis(car)}
+              >
+                <Merge className="size-3.5" />
+                Merge to this
+              </Button>
+            )}
             {handleAdd && (
               <Button
                 type="button"
