@@ -1,0 +1,20 @@
+# Tesoro. The catalogue describes castings and is public; everything else is
+# somebody's collection and is not.
+
+User-agent: *
+Allow: /catalog/
+Disallow: /inventory
+Disallow: /collection
+Disallow: /favourites
+Disallow: /duplicates
+Disallow: /preorders
+Disallow: /orders
+Disallow: /habits
+Disallow: /settings
+Disallow: /admin
+Disallow: /login
+Disallow: /reset-password
+Disallow: /api/
+Disallow: /mcp
+
+Sitemap: https://tesoroapp.vercel.app/sitemap.xml
