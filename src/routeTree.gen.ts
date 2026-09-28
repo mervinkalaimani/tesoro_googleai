@@ -24,6 +24,7 @@ import { Route as PreordersRouteImport } from './routes/preorders'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -32,6 +33,7 @@ import { Route as ApiCatalogOwnersRouteImport } from './routes/api/catalog-owner
 import { Route as ApiScanCarRouteImport } from './routes/api/scan-car'
 import { Route as ApiSyncCatalogCarRouteImport } from './routes/api/sync-catalog-car'
 import { Route as ApiSyncImagesRouteImport } from './routes/api/sync-images'
+import { Route as CatalogCarIdRouteImport } from './routes/catalog_.$carId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPushConfigRouteImport } from './routes/api/push/config'
 import { Route as ApiPushDecideRouteImport } from './routes/api/push/decide'
@@ -113,6 +115,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TermsRoute = TermsRouteImport.update({
   id: '/terms',
   path: '/terms',
@@ -153,6 +160,11 @@ const ApiSyncCatalogCarRoute = ApiSyncCatalogCarRouteImport.update({
 const ApiSyncImagesRoute = ApiSyncImagesRouteImport.update({
   id: '/api/sync-images',
   path: '/api/sync-images',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogCarIdRoute = CatalogCarIdRouteImport.update({
+  id: '/catalog_/$carId',
+  path: '/catalog/$carId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
@@ -198,6 +210,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -206,6 +219,7 @@ export interface FileRoutesByFullPath {
   '/api/scan-car': typeof ApiScanCarRoute
   '/api/sync-catalog-car': typeof ApiSyncCatalogCarRoute
   '/api/sync-images': typeof ApiSyncImagesRoute
+  '/catalog/$carId': typeof CatalogCarIdRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
@@ -228,6 +242,7 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -236,6 +251,7 @@ export interface FileRoutesByTo {
   '/api/scan-car': typeof ApiScanCarRoute
   '/api/sync-catalog-car': typeof ApiSyncCatalogCarRoute
   '/api/sync-images': typeof ApiSyncImagesRoute
+  '/catalog/$carId': typeof CatalogCarIdRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
@@ -259,6 +275,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -267,6 +284,7 @@ export interface FileRoutesById {
   '/api/scan-car': typeof ApiScanCarRoute
   '/api/sync-catalog-car': typeof ApiSyncCatalogCarRoute
   '/api/sync-images': typeof ApiSyncImagesRoute
+  '/catalog_/$carId': typeof CatalogCarIdRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
@@ -291,6 +309,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/sitemap.xml'
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -299,6 +318,7 @@ export interface FileRouteTypes {
     | '/api/scan-car'
     | '/api/sync-catalog-car'
     | '/api/sync-images'
+    | '/catalog/$carId'
     | '/.mcp/invoke-tool/$tool'
     | '/api/push/config'
     | '/api/push/decide'
@@ -321,6 +341,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/sitemap.xml'
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -329,6 +350,7 @@ export interface FileRouteTypes {
     | '/api/scan-car'
     | '/api/sync-catalog-car'
     | '/api/sync-images'
+    | '/catalog/$carId'
     | '/.mcp/invoke-tool/$tool'
     | '/api/push/config'
     | '/api/push/decide'
@@ -351,6 +373,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/reset-password'
     | '/settings'
+    | '/sitemap.xml'
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -359,6 +382,7 @@ export interface FileRouteTypes {
     | '/api/scan-car'
     | '/api/sync-catalog-car'
     | '/api/sync-images'
+    | '/catalog_/$carId'
     | '/.mcp/invoke-tool/$tool'
     | '/api/push/config'
     | '/api/push/decide'
@@ -382,6 +406,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -390,6 +415,7 @@ export interface RootRouteChildren {
   ApiScanCarRoute: typeof ApiScanCarRoute
   ApiSyncCatalogCarRoute: typeof ApiSyncCatalogCarRoute
   ApiSyncImagesRoute: typeof ApiSyncImagesRoute
+  CatalogCarIdRoute: typeof CatalogCarIdRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPushConfigRoute: typeof ApiPushConfigRoute
   ApiPushDecideRoute: typeof ApiPushDecideRoute
@@ -504,6 +530,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/terms': {
       id: '/terms'
       path: '/terms'
@@ -560,6 +593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSyncImagesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/catalog_/$carId': {
+      id: '/catalog_/$carId'
+      path: '/catalog/$carId'
+      fullPath: '/catalog/$carId'
+      preLoaderRoute: typeof CatalogCarIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -614,6 +654,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
@@ -623,6 +664,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiScanCarRoute: ApiScanCarRoute,
   ApiSyncCatalogCarRoute: ApiSyncCatalogCarRoute,
   ApiSyncImagesRoute: ApiSyncImagesRoute,
+  CatalogCarIdRoute: CatalogCarIdRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPushConfigRoute: ApiPushConfigRoute,
   ApiPushDecideRoute: ApiPushDecideRoute,

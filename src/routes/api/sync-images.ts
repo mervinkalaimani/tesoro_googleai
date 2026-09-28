@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 
+import { mirrorImage } from "@/lib/mirror-image";
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -42,7 +44,9 @@ async function handler({ request }: { request: Request }) {
     const cleanCatalogId = catalog_id?.trim() || "";
 
     let updatedCatalog = 0;
-    let updatedRaw = 0;
+    const updatedRaw = 0;
+    /** The public URL of our own copy of the photo, when one could be made. */
+    let mirrored: string | null = null;
 
     // 1. If we have a catalog ID, update tesoro_car_catalog
     if (cleanCatalogId) {
@@ -53,6 +57,16 @@ async function handler({ request }: { request: Request }) {
 
       if (!catErr && count !== null) {
         updatedCatalog = count;
+      }
+
+      // Then keep a copy, if the photo's licence allows one. A link into a wiki
+      // is fine behind a login and wrong on a page anyone can read — and only a
+      // photo on our own storage is shown there. Failing is not an error: the
+      // entry keeps the link it was given, and scripts/cache-catalogue-images.ts
+      // picks it up the next time it runs.
+      if (cleanImage) {
+        const outcome = await mirrorImage(client as never, cleanCatalogId, cleanImage);
+        if (outcome.status === "copied") mirrored = outcome.url;
       }
     }
     // There used to be an "else" here that looked the casting up by make and
@@ -86,7 +100,8 @@ async function handler({ request }: { request: Request }) {
       success: true,
       updatedCatalog,
       updatedRaw,
-      image_url: cleanImage,
+      image_url: mirrored || cleanImage,
+      mirrored,
       source,
     });
   } catch (err) {
