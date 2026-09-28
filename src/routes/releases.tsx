@@ -16,6 +16,8 @@ import { useMemo } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useCars } from "@/lib/cars-store";
+import { useCarDrawer } from "@/components/car-details-drawer";
+import type { Diecast } from "@/lib/types";
 import { isIso } from "@/lib/status";
 import { PageHeading } from "@/components/page-header";
 import { castingName } from "@/lib/casting-page";
@@ -23,10 +25,30 @@ import type { CatalogCar } from "@/lib/catalog";
 
 type Upcoming = Pick<
   CatalogCar,
-  "car_id" | "brand" | "name" | "make" | "model" | "variant" | "series" | "expected_date"
+  | "car_id"
+  | "brand"
+  | "name"
+  | "make"
+  | "model"
+  | "variant"
+  | "assortment"
+  | "series"
+  | "sub_series"
+  | "car_number"
+  | "colour"
+  | "expected_date"
 >;
 
-const FIELDS = "car_id, brand, name, make, model, variant, series, expected_date";
+const FIELDS =
+  "car_id, brand, name, make, model, variant, assortment, series, sub_series, car_number, colour, expected_date";
+
+/** make · assortment · series · sub series · car number · colour, empties dropped. */
+function subtitleOf(row: Upcoming): string {
+  return [row.make, row.assortment, row.series, row.sub_series, row.car_number, row.colour]
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean)
+    .join(" · ");
+}
 
 /** "2026-10-15" → "October 2026". Anything unparseable is filtered out before here. */
 function monthLabel(iso: string): string {
@@ -66,7 +88,7 @@ export const Route = createFileRoute("/releases")({
   }),
 
   head: () => {
-    const title = "Coming soon — diecast release calendar | Tesoro";
+    const title = "Pre Order Calendar — upcoming diecast releases | Tesoro";
     const description =
       "Upcoming die-cast releases by month: Mini GT, Kaido House, Greenlight, Hot Wheels and more, with the date each is expected.";
     return {
@@ -87,6 +109,7 @@ export const Route = createFileRoute("/releases")({
 function ReleasesPage() {
   const { upcoming } = Route.useLoaderData();
   const cars = useCars();
+  const drawer = useCarDrawer();
 
   /**
    * The castings this visitor is hunting. Signed out it is empty and nothing is
@@ -99,6 +122,24 @@ function ReleasesPage() {
       if (isIso(c.status) && c.catalogId) ids.add(c.catalogId.toUpperCase());
     }
     return ids;
+  }, [cars]);
+
+  /**
+   * Your own copy of each casting on the page, if you have one.
+   *
+   * A pre-order you placed is a car in your collection, so the row should open
+   * that car rather than send you to the shared catalogue entry — the catalogue
+   * says what the casting is, your row says what you paid and when it is due.
+   * Only when you own none of it does the row fall back to the casting page.
+   */
+  const ownedByCasting = useMemo(() => {
+    const byId = new Map<string, Diecast>();
+    for (const c of cars) {
+      if (!c.catalogId || isIso(c.status)) continue;
+      const key = c.catalogId.toUpperCase();
+      if (!byId.has(key)) byId.set(key, c);
+    }
+    return byId;
   }, [cars]);
 
   const months = useMemo(() => {
@@ -126,7 +167,7 @@ function ReleasesPage() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <PageHeading
-        title="Coming soon"
+        title="Pre Order Calendar"
         subtitle={
           <>
             {total === 0
@@ -152,30 +193,46 @@ function ReleasesPage() {
           <ul className="divide-y divide-border">
             {list.map((row) => {
               const isWanted = wanted.has(row.car_id.toUpperCase());
+              const owned = ownedByCasting.get(row.car_id.toUpperCase());
+              const inside = (
+                <>
+                  <span className="w-14 shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
+                    {dayLabel(String(row.expected_date))}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium text-foreground">
+                      {castingName(row as CatalogCar)}
+                    </span>
+                    <span className="block truncate text-[11px] text-muted-foreground">
+                      {subtitleOf(row)}
+                    </span>
+                  </span>
+                  {owned ? (
+                    <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
+                      Yours
+                    </span>
+                  ) : null}
+                  {isWanted ? (
+                    <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                      On your list
+                    </span>
+                  ) : null}
+                </>
+              );
+              const rowClass =
+                "flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/40";
+
               return (
                 <li key={row.car_id}>
-                  <Link
-                    to="/catalog/$carId"
-                    params={{ carId: row.car_id }}
-                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40"
-                  >
-                    <span className="w-14 shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
-                      {dayLabel(String(row.expected_date))}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-foreground">
-                        {castingName(row as CatalogCar)}
-                      </span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        {[row.brand, row.series].filter(Boolean).join(" · ")}
-                      </span>
-                    </span>
-                    {isWanted ? (
-                      <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-                        On your list
-                      </span>
-                    ) : null}
-                  </Link>
+                  {owned ? (
+                    <button type="button" className={rowClass} onClick={() => drawer.open(owned)}>
+                      {inside}
+                    </button>
+                  ) : (
+                    <Link to="/catalog/$carId" params={{ carId: row.car_id }} className={rowClass}>
+                      {inside}
+                    </Link>
+                  )}
                 </li>
               );
             })}

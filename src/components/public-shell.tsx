@@ -26,7 +26,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
             to="/releases"
             className="text-xs font-medium text-muted-foreground hover:text-foreground"
           >
-            Coming soon
+            Pre Order Calendar
           </Link>
           {/* These pages render the same for everybody, so somebody already
               signed in would otherwise be invited to sign in again. The server
