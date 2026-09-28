@@ -127,7 +127,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // app shell; the policy and the terms have to be readable by somebody who
   // has not signed in, which is the whole point of them.
   const BARE = ["/login", "/reset-password", "/privacy", "/terms"];
-  const isBareRoute = BARE.includes(pathname);
+  // A single casting is public; the catalogue that lists them is not. One is a
+  // page about an object, the other is a working tool over everyone's rows, so
+  // the prefix matters: /catalog/<id> renders, /catalog still sends you to sign
+  // in.
+  const isBareRoute = BARE.includes(pathname) || pathname.startsWith("/catalog/");
 
   useEffect(() => {
     if (status === "signed-out" && !isBareRoute) {

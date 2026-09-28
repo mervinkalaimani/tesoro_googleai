@@ -31,6 +31,12 @@ export type CatalogCar = {
   type?: string;
   size?: string;
   image_url?: string | null;
+  /**
+   * Where image_url was copied from, when it was copied rather than uploaded.
+   * The wikis' photographs are CC BY-SA: free to serve from our own bucket,
+   * not free to serve without saying whose they are.
+   */
+  image_source_url?: string | null;
   /** Out in shops, or only open to pre-order so far. Absent reads as Released. */
   release_status?: ReleaseStatus;
   /**
