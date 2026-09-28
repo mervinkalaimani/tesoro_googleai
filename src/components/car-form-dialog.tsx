@@ -2940,7 +2940,7 @@ export function DeleteCarDialog({
 
   if (!car) return null;
 
-  const phrase = `delete ${(car.make || car.name || "car").trim()}`.toLowerCase();
+  const phrase = "delete";
   const matches = typed.trim().toLowerCase() === phrase;
   const confirm = () => {
     if (!matches) return;
