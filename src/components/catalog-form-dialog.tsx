@@ -41,7 +41,7 @@ import { boxSiblings } from "@/lib/casting-group";
 import { ClearableInput, Field, FormSection } from "@/components/form-parts";
 import { MultipackField } from "@/components/multipack-field";
 import { DuplicateNotice } from "@/components/duplicate-notice";
-import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
+import { findDuplicates, matchPercent, needsCarNumber } from "@/lib/duplicate";
 import { packBadge } from "@/lib/pack";
 import { ChaseMark } from "@/components/car-marks";
 import { useCars } from "@/lib/cars-store";
@@ -477,15 +477,22 @@ export function CatalogFormDialog({
   /**
    * The entries that could be this same casting filed twice.
    *
-   * Brand, name, make, model and car number, all of them, with a blank matching
-   * a blank. The name is what keeps this list short: brand, make, model and
-   * number alone puts 13 Hot Wheels Porsche 911s in front of you, and they are
-   * thirteen different castings — the same mistake the duplicate notice was
-   * fixed for. With the name in, the largest group in the catalogue is 7.
+   * Requiring brand, name, make, model and number to agree outright found
+   * nothing on almost every entry, which is the wrong answer: the same casting
+   * in Mainline and in Premium carries two different collector numbers, and its
+   * name is as often "'21 Ford Bronco" on one and "Ford Bronco" on the other.
    *
-   * Assortment, series and sub-series are deliberately not consulted: those are
-   * what make one casting's boxes *different* entries, and a merge is the case
-   * where you have decided two of them should not be.
+   * So the spine is the brand plus any one of: the same car number, the same
+   * make and model, the same name, or the same make in the same series or
+   * sub-series. Everything else is scored rather than demanded.
+   *
+   * The Mini GT T1 Microbus is the case that set this: two entries, both
+   * number 1191, one filed as model "T1" variant "Microbus" in Mizu Design and
+   * the other as model "T1 Microbus" variant "Mizu" in Mijo Exclusive. They
+   * agree on almost nothing a string comparison can see, and they are one car. The percentage on each row is how
+   * much of the description the two share, the same figure the duplicate notice
+   * shows, and the list is closest first. The judgement stays yours; this only
+   * puts the right dozen in front of you.
    */
   const mergeCandidates = useMemo(() => {
     const flat = (v: string | null | undefined) => (v || "").trim().toLowerCase();
@@ -495,17 +502,56 @@ export function CatalogFormDialog({
     const make = flat(form.make);
     const model = flat(form.model);
     const number = flat(form.car_number);
-    if (!brand || !make || !model) return [];
-    return catalog.filter(
-      (c) =>
-        c.car_id !== entryId &&
-        key(c.brand) === brand &&
-        flat(c.name) === name &&
-        flat(c.make) === make &&
-        flat(c.model) === model &&
-        flat(c.car_number) === number,
-    );
-  }, [catalog, entryId, form.brand, form.name, form.make, form.model, form.car_number]);
+    const series = flat(form.series);
+    const subSeries = flat(form.sub_series);
+    if (!brand) return [];
+
+    const fields = {
+      brand: form.brand,
+      make: form.make,
+      model: form.model,
+      variant: form.variant,
+      colour: form.colour,
+      assortment: form.assortment,
+      series: form.series,
+      subSeries: form.sub_series,
+      carNumber: form.car_number,
+      year: form.year,
+    };
+
+    return catalog
+      .filter((c) => {
+        if (c.car_id === entryId || key(c.brand) !== brand) return false;
+        // Any one of these is reason enough to put it in front of you; the
+        // percentage says how much of the rest it agrees with.
+        return (
+          (!!number && flat(c.car_number) === number) ||
+          (!!make && !!model && flat(c.make) === make && flat(c.model) === model) ||
+          (!!name && flat(c.name) === name) ||
+          (!!make &&
+            flat(c.make) === make &&
+            ((!!series && flat(c.series) === series) ||
+              (!!subSeries && flat(c.sub_series) === subSeries)))
+        );
+      })
+      .map((car) => ({ car, match: matchPercent(fields, car) }))
+      .sort((x, y) => y.match - x.match || x.car.car_id.localeCompare(y.car.car_id))
+      .slice(0, 12);
+  }, [
+    catalog,
+    entryId,
+    form.brand,
+    form.name,
+    form.make,
+    form.model,
+    form.variant,
+    form.colour,
+    form.assortment,
+    form.series,
+    form.sub_series,
+    form.car_number,
+    form.year,
+  ]);
 
   /** Folds the chosen entry into this one: this entry is the one that stays. */
   const absorbEntry = () => {
@@ -1435,16 +1481,28 @@ export function CatalogFormDialog({
           <DialogTitle>Merge into this casting</DialogTitle>
           <DialogDescription>
             {mergeCandidates.length === 0
-              ? "Nothing else in the catalogue shares this brand, make, model and car number."
-              : "These share this casting's brand, make, model and car number. Folding one in moves every car on it here and removes it."}
+              ? "Nothing else in the catalogue is this brand and this casting."
+              : "Closest first, by how much of the description they share. Folding one in moves every car on it here and removes it."}
           </DialogDescription>
 
           <div className="max-h-[50vh] space-y-1.5 overflow-y-auto">
-            {mergeCandidates.map((c) => (
+            {mergeCandidates.map(({ car: c, match }) => (
               <div
                 key={c.car_id}
                 className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-2"
               >
+                {/* How much of the description the two share — the same figure
+                    the duplicate notice shows, so the two read alike. */}
+                <span
+                  className={cn(
+                    "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                    match >= 90
+                      ? "bg-amber-500/25 text-amber-800 dark:text-amber-300"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {match}%
+                </span>
                 <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
                   {c.image_url ? (
                     <img src={c.image_url} alt="" className="size-full object-cover" />

@@ -78,7 +78,7 @@ export const needsCarNumber = (brand: string | null | undefined) => brandUsesCar
  * rather than 100%, and the difference is the thing worth looking at before
  * you decide it is the same car.
  */
-function matchPercent(fields: DuplicateFields, c: CatalogCar): number {
+export function matchPercent(fields: DuplicateFields, c: CatalogCar): number {
   const pairs: [string, string][] = [
     [brandKey(fields.brand), brandKey(c.brand)],
     [norm(fields.make), norm(c.make)],
