@@ -12,11 +12,12 @@ import { Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { useAuth } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
 import {
   LATEST_BUILD,
-  RELEASES,
   readSeen,
+  releasesFor,
   releasesSince,
   stamp,
   writeSeen,
@@ -27,6 +28,7 @@ import {
 const IN_THE_BAR = 2;
 
 export function WhatsNewStar() {
+  const { isAdmin } = useAuth();
   // Read once: a changelog does not change while the tab is open, and reading
   // it in state is what lets the mark disappear the moment it is closed.
   const [seen, setSeen] = useState(readSeen);
@@ -37,7 +39,8 @@ export function WhatsNewStar() {
   // last two whatever you have seen — the one before is the context for the one
   // you missed.
   if (releasesSince(seen).length === 0) return null;
-  const fresh = RELEASES.slice(0, IN_THE_BAR);
+  const fresh = releasesFor(isAdmin).slice(0, IN_THE_BAR);
+  if (fresh.length === 0) return null;
 
   return (
     <Popover
@@ -88,9 +91,10 @@ export function WhatsNewStar() {
 
 /** Every build, for the Settings page. */
 export function WhatsNewList() {
+  const { isAdmin } = useAuth();
   return (
     <div className="space-y-4">
-      {RELEASES.map((r) => (
+      {releasesFor(isAdmin).map((r) => (
         <div
           key={r.build}
           className="rounded-2xl border border-border/80 bg-card px-4 py-3.5 shadow-xs"

@@ -3,13 +3,17 @@
  *
  * Hand-written rather than generated from commits: a commit subject is written
  * for whoever is reading the log, and half of them are about a file. One entry
- * per push, the build number being the commit count that built it, so two
- * people comparing screens can say which one is behind.
+ * per day of work, the build number being the commit count that built it, so
+ * two people comparing screens can say which one is behind.
  *
  * `key` marks the two or three things in a release worth stopping on. If
  * everything is marked, nothing is.
+ *
+ * `admin` is for changes to screens only an admin can open. Telling everybody
+ * about a metadata editor they cannot reach is noise at best, and at worst it
+ * reads as something of theirs that is broken.
  */
-export type Change = { text: string; key?: boolean };
+export type Change = { text: string; key?: boolean; admin?: boolean };
 
 export type Release = {
   /** Commits at the time of the build. Monotonic, and it matches the deploy. */
@@ -31,6 +35,7 @@ export const RELEASES: Release[] = [
       },
       {
         key: true,
+        admin: true,
         text: "A Merge button beside a casting's name in the catalogue. It finds the other copies by brand, car number, make, model and series, shows how closely each one agrees, and folds one in — or keeps it as another box.",
       },
       {
@@ -38,6 +43,7 @@ export const RELEASES: Release[] = [
         text: "The app now notices when it has been deployed again and offers to refresh, so a tab left open all week stops running last week's code.",
       },
       {
+        admin: true,
         text: "Metadata editor in Settings → Advanced: rename brands, makes, models and colours across the whole catalogue. Assortments, catalogue entries and brand logos are tabs of it.",
       },
       {
@@ -51,7 +57,7 @@ export const RELEASES: Release[] = [
         text: "Picking diorama, a 2–10 pack, team transport or super rigs ticks multipack and fills in how many cars are in it.",
       },
       { text: "A photo can be added by link on a phone, not only on a computer." },
-      { text: "A box can leave its casting and stand on its own, or join another." },
+      { admin: true, text: "A box can leave its casting and stand on its own, or join another." },
       { text: "The close button sits in line with the title in every dialog." },
       {
         text: "Fixed: the filters on the catalogue stopped taking clicks once the page had been scrolled.",
@@ -75,6 +81,7 @@ export const RELEASES: Release[] = [
         text: "Collection and Duplicates read as tables that open a row at a time, rather than a column of cards.",
       },
       {
+        admin: true,
         text: "Brand logos can be uploaded as a PNG, SVG, JPG or WebP, or pointed at a link (Settings → Metadata).",
       },
       {
@@ -92,12 +99,263 @@ export const RELEASES: Release[] = [
         key: true,
         text: "A casting can come in more than one box, and Add a car asks which one yours came in rather than guessing.",
       },
-      { text: "Assortments read as a table, and a pack counts as one box by definition." },
+      {
+        admin: true,
+        text: "Assortments read as a table, and a pack counts as one box by definition.",
+      },
       {
         text: "The calendar is a Tesoro page now: it carries what each day cost and reads as a month when you want one.",
       },
       { text: "A pre-order is due in a month rather than on a day it was never promised on." },
       { text: "A casting says what it typically sold for, or its MRP." },
+    ],
+  },
+  {
+    build: 185,
+    at: "2026-09-27T15:31",
+    changes: [
+      {
+        key: true,
+        text: "Importing a CSV became a conversation: the preview is where a bad row gets fixed, it offers the answers instead of asking you to type them, and an import can be taken back afterwards.",
+      },
+      {
+        key: true,
+        text: "Every stored ID was rewritten in the shapes the app derives — one catalogue ID per casting, one car ID per car you own.",
+      },
+      { text: "My Orders groups by parcel or by purchase." },
+      { text: "A parcel is one parcel, and an order says which month it was." },
+      {
+        text: "A car can be pointed at a different casting, and says when somebody else changed it.",
+      },
+      {
+        text: "The CSV template teaches by example and holds the fields the form asks for. A scale and a collector number survive being opened in Excel.",
+      },
+      {
+        admin: true,
+        text: "Assortments are a list somebody keeps, not whatever the cars happen to say, and the catalogue page edits more than photos.",
+      },
+      { text: "Fixed: the badge on Add a car goes out, and points at the right door." },
+    ],
+  },
+  {
+    build: 172,
+    at: "2026-09-26T21:37",
+    changes: [
+      {
+        key: true,
+        text: "A casting sold in two boxes shows both of them, and the number on the box is what decides where one casting ends and the next begins.",
+      },
+      {
+        text: "A catalogue entry can be told when it came out. Recently Released is the last week, dated from the first copy that actually arrived.",
+      },
+      { text: "A casting filed twice under different variants still clubs together." },
+      { text: "Fixed: a year typed on one entry and not on the other made a second casting." },
+      { text: "The import preview scrolls, and shows the IDs and the casting it will write." },
+    ],
+  },
+  {
+    build: 160,
+    at: "2026-09-25T18:51",
+    changes: [
+      {
+        key: true,
+        text: "Your price and your name stay yours. What you paid is readable by you and by nobody else, whatever else the app shows.",
+      },
+      {
+        key: true,
+        text: "The home page is yours to arrange, and the catalogue's filters chain — each one narrows what the next one offers.",
+      },
+      {
+        text: "An order launching is one notice rather than one per car, and reads as the shipment it is.",
+      },
+      { text: "The Late tile opens the cars that are late." },
+      { text: "Search by any field, and what was searched is kept." },
+      { text: "Update car can fetch its casting from the catalogue." },
+      { text: "The privacy policy and the terms are readable before you sign in." },
+      { text: "Arriving soon says who it is from and how long the wait is." },
+      { text: "A car inside a box stops counting twice." },
+    ],
+  },
+  {
+    build: 138,
+    at: "2026-09-24T21:51",
+    changes: [
+      {
+        key: true,
+        text: "Adding a purchase is seven taps: one card per casting, and the form already knows what other collectors filed.",
+      },
+      {
+        text: "Photographs: tap the one in the identity card to pick a different one, and scrolling to the end of the strip reveals the rest.",
+      },
+      {
+        text: "A photo you set on a car stays that car's, and replacing one no longer deletes it out from under everybody else.",
+      },
+      { text: "Only a car in transit is asked for a courier." },
+      { text: "The catalogue is read again when you come back to the tab." },
+      { text: "Arriving soon has a window of its own." },
+      {
+        admin: true,
+        text: "Settings → Catalogue Photos, for filling in a run of them: it searches like the main box and knows the colour it is looking for.",
+      },
+    ],
+  },
+  {
+    build: 114,
+    at: "2026-09-23T17:56",
+    changes: [
+      {
+        key: true,
+        text: "Eleven statuses became six, and buying the same casting again collapses to one row rather than another line in the list.",
+      },
+      { text: "Catalogue details reads like a car's, and a quiet week says what is coming." },
+      { text: "A shared car number is no longer treated as a duplicate." },
+      { text: "Fixed: the add-a-car form wiped itself every few seconds." },
+      {
+        admin: true,
+        text: "Push the catalogue into every collection from one button — and it never pushes its photos into anybody's cars.",
+      },
+    ],
+  },
+  {
+    build: 105,
+    at: "2026-09-21T19:19",
+    changes: [
+      {
+        text: "A Google sign-in that does not finish says why, and the button reads Continue with Google.",
+      },
+      { text: "Inventory is called My Cars." },
+      { text: "A car number can be corrected from car details." },
+    ],
+  },
+  {
+    build: 102,
+    at: "2026-09-20T18:09",
+    changes: [
+      {
+        key: true,
+        text: "A catalogue entry can be a box of cars, and the cars inside one are hidden rather than counted twice.",
+      },
+      { text: "File a casting the same way you add a car, and mark a box from either." },
+      { text: "The catalogue says so when it already has the casting being typed." },
+      { text: "Fixed: owning one colour of a casting marked the other colours owned." },
+      { admin: true, text: "A duplicate catalogue entry can be merged into the one being kept." },
+    ],
+  },
+  {
+    build: 96,
+    at: "2026-09-19T22:51",
+    changes: [
+      {
+        text: "Steadier screens: a panel that fails to load recovers instead of emptying, and who may change what is checked more carefully.",
+      },
+    ],
+  },
+  {
+    build: 92,
+    at: "2026-09-18T21:05",
+    changes: [
+      {
+        key: true,
+        text: "One form for every car. Adding and updating stopped being two different screens that disagreed with each other.",
+      },
+      { text: "One catalogue entry per casting, one Car ID per car owned." },
+      { text: "A mix number is a case release, not a sub series." },
+      { text: "The catalogue fits a phone, and the form keeps its place when you come back." },
+    ],
+  },
+  {
+    build: 88,
+    at: "2026-09-17T10:31",
+    changes: [
+      { key: true, text: "Photograph a card and the form fills itself in from it." },
+      { text: "The app renders on the server, so the first screen arrives already drawn." },
+    ],
+  },
+  {
+    build: 85,
+    at: "2026-09-16T23:28",
+    changes: [
+      {
+        key: true,
+        text: "A shared catalogue page, and car details that take their facts from it rather than from whatever was typed.",
+      },
+      { text: "Pay a balance while updating a status." },
+      {
+        text: "Web image search, an Update order dialog, and errors shown on the field that caused them.",
+      },
+      { text: "A splash screen, new icons and a live search bar." },
+      { text: "The iPhone home-screen icon follows light and dark mode." },
+    ],
+  },
+  {
+    build: 77,
+    at: "2026-09-15T23:56",
+    changes: [
+      { key: true, text: "A recently pre-ordered shelf, and a spending chart on Habits." },
+      { text: "Top 5 picks make, model, series or the rest with a segment control." },
+      {
+        text: "Phone polish: the navigation bar, the transit tracker and the gestures on car details.",
+      },
+      { text: "Fixed: the catalogue crashed, and the navbar shrank on the iOS bounce." },
+      { admin: true, text: "A Users page, and approvals that arrive as a push notification." },
+    ],
+  },
+  {
+    build: 66,
+    at: "2026-09-14T17:23",
+    changes: [
+      {
+        text: "Layout on phones: the car details drawer, how it is dismissed, and touch handling throughout.",
+      },
+      { text: "Looking up a car's picture got harder to break." },
+    ],
+  },
+  {
+    build: 60,
+    at: "2026-09-13T12:57",
+    changes: [
+      { key: true, text: "Rarity and condition on a car, a five-step add car, and deliveries in the bell." },
+      { text: "Adding a car searches every collection, not only your own." },
+      { text: "Your rows are locked to you at the database, not only in the screens." },
+    ],
+  },
+  {
+    build: 57,
+    at: "2026-09-12T14:45",
+    changes: [
+      {
+        key: true,
+        text: "Order IDs, a bottom bar on the phone, and inventory became a page rather than a panel.",
+      },
+      { text: "Photograph the card instead of typing it." },
+      { text: "The car details card reads top to bottom." },
+      { text: "One flame, one star, and a filter panel that fits." },
+      { text: "The mark takes the accent colour, and changes with it." },
+    ],
+  },
+  {
+    build: 35,
+    at: "2026-09-11T22:11",
+    changes: [
+      { key: true, text: "A dashboard about what is coming and what has arrived." },
+      { text: "One parcel, one shipping ID." },
+      { text: "Photographs of the actual car, rather than a link to somebody else's." },
+      { text: "The account in the corner, and an account page to go with it." },
+      { text: "One bell for what expires, one button for what moves." },
+    ],
+  },
+  {
+    build: 19,
+    at: "2026-09-10T23:40",
+    changes: [
+      {
+        key: true,
+        text: "The beginning: a collection to add to, a CSV template one click away, and catalogue fields that are searchable dropdowns which learn as they are used.",
+      },
+      { text: "A shipment gets an expected date, a courier and a number." },
+      { text: "An undo button, and a delivery that asks before it reconciles." },
+      { text: "The car name splits into three linked dropdowns, and a report comes out as a PDF." },
+      { text: "An auto theme, kept with the account rather than with the browser." },
     ],
   },
 ];
@@ -106,6 +364,19 @@ export const LATEST_BUILD = RELEASES[0].build;
 
 /** Where the last build read is remembered. Per browser, not per account. */
 export const SEEN_KEY = "dg.whatsNewSeen";
+
+/**
+ * The releases as this reader should see them.
+ *
+ * A release whose every line was about an admin screen is dropped rather than
+ * shown empty: the build happened, but there is nothing in it to tell them.
+ */
+export function releasesFor(isAdmin: boolean): Release[] {
+  if (isAdmin) return RELEASES;
+  return RELEASES.map((r) => ({ ...r, changes: r.changes.filter((c) => !c.admin) })).filter(
+    (r) => r.changes.length > 0,
+  );
+}
 
 /** What has landed since the build last read. */
 export function releasesSince(seen: number): Release[] {
