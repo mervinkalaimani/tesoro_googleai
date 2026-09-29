@@ -61,6 +61,7 @@ import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker";
 import { MultipackField } from "@/components/multipack-field";
+import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
 import { DuplicateNotice } from "@/components/duplicate-notice";
 import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
 import { looksLikeColour } from "@/lib/colour-words";
@@ -1055,6 +1056,33 @@ export function CarFormDialog({
    * an entry somebody owns a copy from refuses to be deleted, and then the tick
    * does not happen either.
    */
+  /**
+   * Picking the box also answers the two questions the box name already
+   * contains: "5 Pack" is a multipack of five, and nobody should have to say so
+   * twice. Leaving one of those names unticks it again, because a casting that
+   * was a 5 Pack a moment ago and is a Mainline now is not a box.
+   *
+   * Only while this is the casting's one assortment: a casting filed in several
+   * boxes is not itself a box, which is what the greyed tick below says.
+   */
+  const onAssortmentPicked = (v: string) => {
+    set("assortment", v);
+    if (namedExtras.length > 0) return;
+
+    const pack = packFromAssortment(v);
+    if (pack) {
+      packTouched.current = true;
+      setIsPack(true);
+      if (pack.size) setPackSize(pack.size);
+      return;
+    }
+    if (isPackAssortment(form.assortment)) {
+      packTouched.current = true;
+      setIsPack(false);
+      setPackSize(0);
+    }
+  };
+
   const onPackChange = (v: boolean) => {
     if (v && namedExtras.length > 0) {
       setPackConfirm(true);
@@ -1995,8 +2023,7 @@ export function CarFormDialog({
             money={!isIso}
             spent={form.spent}
             spentError={errorFor("spent")}
-            paid={form.paid}
-            onAssortment={(v) => set("assortment", v)}
+            onAssortment={onAssortmentPicked}
             onMrp={(v) => {
               set("mrp", v);
               // The buying price follows the retail price until it is changed,
@@ -2004,7 +2031,6 @@ export function CarFormDialog({
               handleSpentChange(v);
             }}
             onSpent={isIso ? undefined : handleSpentChange}
-            onPaid={isIso ? undefined : handlePaidChange}
           />
           {!isPack &&
             extras.map((x, i) => (
@@ -2072,15 +2098,21 @@ export function CarFormDialog({
             packTouched.current = true;
             setPackList(ids);
           }}
-          disabled={!isAdmin}
+          // A casting filed in two boxes cannot also be a box: ticking this
+          // used to open a dialog offering to delete the other assortments,
+          // which reads as the tick not working. Greyed out with the reason
+          // under it instead, and one assortment ticks as it always did.
+          disabled={!isAdmin || (!isPack && namedExtras.length > 0)}
           canEditMembers={isAdmin}
           onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
           selfCarId={derivedCatalogCarId}
         />
         <p className="mt-2.5 text-[11px] text-muted-foreground">
-          {isAdmin
-            ? "The box and what is in it are part of the shared catalogue, so this is what everyone who owns one sees. The cars inside stop being listed on their own."
-            : "The box is shared with everyone who owns one, so it is edited in the catalogue rather than here."}
+          {!isPack && namedExtras.length > 0
+            ? "This casting is filed in more than one box, so it is not itself a box. Remove the other assortments above to make it one."
+            : isAdmin
+              ? "The box and what is in it are part of the shared catalogue, so this is what everyone who owns one sees. The cars inside stop being listed on their own."
+              : "The box is shared with everyone who owns one, so it is edited in the catalogue rather than here."}
         </p>
       </FormSection>
 
@@ -2168,6 +2200,24 @@ export function CarFormDialog({
               Shown because payment is not Paid
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {/* Asked here rather than in the assortments row: what has been
+                  handed over is a fact about the purchase, not about the box,
+                  and it only matters while something is still owed. */}
+              <Field label="Paid so far (INR)">
+                <ClearableInput
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  placeholder="0"
+                  className="tabular-nums"
+                  value={form.paid ?? ""}
+                  onChange={(e) =>
+                    handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
+                  }
+                  aria-label="Amount paid so far"
+                />
+              </Field>
               <Field label="Balance (INR)">
                 <div className="flex h-9 items-center rounded-md border border-dashed border-input px-3 text-sm font-semibold tabular-nums">
                   {inrFull(Number(form.balance) || 0)}

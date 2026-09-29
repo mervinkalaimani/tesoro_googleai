@@ -38,6 +38,7 @@ import { mrpOptionsFor } from "@/lib/car-prices";
 import type { Diecast } from "@/lib/types";
 import { remainingAssortments } from "@/lib/assortments";
 import { boxSiblings } from "@/lib/casting-group";
+import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
 import { ClearableInput, Field, FormSection } from "@/components/form-parts";
 import { MultipackField } from "@/components/multipack-field";
 import { DuplicateNotice } from "@/components/duplicate-notice";
@@ -330,6 +331,18 @@ export function CatalogFormDialog({
     // An assortment is one brand's own range, so it cannot outlive a change of
     // brand: Qube Carz under Matchbox is a box that does not exist. Anything the
     // new brand also sells is kept.
+    // The box name carries both answers: "5 Pack" is a multipack of five.
+    // Leaving one of those names puts it back to a single car.
+    if (k === "assortment" && namedExtras.length === 0) {
+      const pack = packFromAssortment(String(v));
+      if (pack) {
+        set("is_multipack", true);
+        if (pack.size) set("pack_size", pack.size);
+      } else if (isPackAssortment(form.assortment)) {
+        set("is_multipack", false);
+        set("pack_size", null);
+      }
+    }
     if (k === "brand") {
       const sold = new Set(
         assortmentOptionsFor(assortmentPool, String(v)).map((a) => a.trim().toLowerCase()),
@@ -1317,7 +1330,11 @@ export function CatalogFormDialog({
                   onPackChange={onPackChange}
                   onSizeChange={(v) => set("pack_size", v)}
                   onMembersChange={setMembers}
-                  disabled={isImageOnly}
+                  // Same rule as Add a car: a casting filed in more than one
+                  // box is not itself a box, and a tick that opens a dialog
+                  // offering to delete those boxes reads as a tick that does
+                  // not work.
+                  disabled={isImageOnly || (!isPack && namedExtras.length > 0)}
                   canEditMembers={isAdmin}
                   selfCarId={entry && entry !== "new" ? entry.car_id : ""}
                   onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
