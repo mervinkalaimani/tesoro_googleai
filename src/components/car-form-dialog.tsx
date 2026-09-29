@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import { catalogueKey, useCatalogueSearch, type CatalogueCar } from "@/lib/catalogue-search";
@@ -510,6 +511,7 @@ export function CarFormDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   /** The card scanner, raised from the catalogue fields it fills in. */
   const [scanOpen, setScanOpen] = useState(false);
+  const isMobile = useIsMobile();
   /**
    * Step two's three groups. The catalogue fields start shut because a picked car
    * has already filled them in; they open on their own when the car was entered
@@ -2622,18 +2624,31 @@ export function CarFormDialog({
                       {onSwitchToBulk && (
                         <button
                           type="button"
+                          // A table of thirty-five columns and a file picker are
+                          // not a phone's work. Left on the screen rather than
+                          // hidden, so the answer to "where did bulk go" is on
+                          // the screen that raises the question.
+                          disabled={isMobile}
+                          title={isMobile ? "Add in bulk is available on a computer" : undefined}
                           // Wrapped, not passed directly: onSwitchToBulk takes seed
                           // cars, and a bare handler would hand it the click event
                           // as the batch to prefill.
                           onClick={() => onSwitchToBulk()}
-                          className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                          className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted/30 disabled:hover:border-border/60"
                         >
                           <span className="flex items-center gap-2 text-sm font-semibold">
-                            <Layers className="size-4 text-primary" />
-                            Add in bulk
+                            <Layers
+                              className={cn(
+                                "size-4",
+                                isMobile ? "text-muted-foreground" : "text-primary",
+                              )}
+                            />
+                            <span className={isMobile ? "text-muted-foreground" : undefined}>
+                              Add in bulk
+                            </span>
                           </span>
                           <span className="text-[11px] text-muted-foreground">
-                            Several at once, or a CSV
+                            {isMobile ? "Available on a computer" : "Several at once, or a CSV"}
                           </span>
                         </button>
                       )}
