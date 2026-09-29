@@ -28,9 +28,12 @@ import { importDelta, parseCsvToDiecast } from "@/lib/csv";
 import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { REQUIRED_KEYS, missingRequired } from "@/lib/car-required";
 import { DATE_FIELDS, columnChoices } from "@/lib/column-options";
-import { assignCarIds } from "@/lib/car-id";
+import { assignCarIds, catalogCandidates } from "@/lib/car-id";
 import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
+import { CatalogCarDetails } from "@/components/car-details-drawer";
+import { catalogCarToDiecast, type CatalogCar } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-store";
+import { useAuth } from "@/lib/auth-store";
 import {
   useCars,
   useCarsActions,
@@ -115,8 +118,11 @@ export function UploadCarsDialog({
   const [samplesIgnored, setSamplesIgnored] = useState(0);
   /** Which row is picking a catalogue entry, by index. */
   const [linking, setLinking] = useState<number | null>(null);
+  /** The casting being read, by catalogue ID, when one is open. */
+  const [viewing, setViewing] = useState<string | null>(null);
 
   const cars = useCars();
+  const { isAdmin } = useAuth();
   const { catalog } = useCatalog();
   const { bulkAddCars } = useCarsActions();
   const { undo } = useCarsUndo();
@@ -196,6 +202,30 @@ export function UploadCarsDialog({
         previewCars.filter((c) => c.catalogId && catalogIds.has(c.catalogId)).map((c) => c.id),
       ),
     [previewCars, catalogIds],
+  );
+
+  /**
+   * Rows whose casting the file did not say enough to choose.
+   *
+   * A row naming no colour and no assortment can be any of the four entries
+   * the catalogue holds for that casting, and the matcher has to answer with
+   * one. It picks the first, which is the right thing to do and the wrong
+   * thing to do quietly — so the row says how many it was choosing between,
+   * and Match is offered to settle it.
+   */
+  const ambiguousById = useMemo(() => {
+    const out = new Map<string, number>();
+    for (const car of previewCars) {
+      if (!linkedIds.has(car.id)) continue;
+      const n = catalogCandidates(car).length;
+      if (n > 1) out.set(car.id, n);
+    }
+    return out;
+  }, [previewCars, linkedIds]);
+
+  const viewingEntry: CatalogCar | null = useMemo(
+    () => (viewing ? (catalog.find((c) => c.car_id === viewing) ?? null) : null),
+    [viewing, catalog],
   );
 
   /**
@@ -594,9 +624,40 @@ export function UploadCarsDialog({
                               ID then, so printing a guess now would be both
                               wrong and unstable — it moves as the row is
                               edited. */}
-                          <span className="font-mono text-[11px] text-foreground">
-                            {linkedIds.has(car.id) ? car.catalogId : "—"}
-                          </span>
+                          {linkedIds.has(car.id) ? (
+                            // The ID is the casting. Being able to read it and
+                            // not open it is the thing that makes checking an
+                            // import a job of switching tabs.
+                            <button
+                              type="button"
+                              onClick={() => setViewing(car.catalogId ?? "")}
+                              title={`Open ${car.catalogId} in the catalogue`}
+                              className="font-mono text-[11px] text-sky-500 hover:underline"
+                            >
+                              {car.catalogId}
+                            </button>
+                          ) : (
+                            <span className="font-mono text-[11px] text-foreground">—</span>
+                          )}
+                          {ambiguousById.has(car.id) && (
+                            <>
+                              <Badge
+                                variant="outline"
+                                title={`This row could be any of ${ambiguousById.get(car.id)} castings — it names no colour or box to tell them apart. Match to choose.`}
+                                className="ml-1.5 border-amber-500/50 px-1 py-0 text-[10px] font-normal text-amber-600 dark:text-amber-400"
+                              >
+                                1 of {ambiguousById.get(car.id)}
+                              </Badge>
+                              <button
+                                type="button"
+                                onClick={() => setLinking(i)}
+                                className="ml-1.5 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                              >
+                                <Link2 className="size-3" />
+                                Match
+                              </button>
+                            </>
+                          )}
                           {!linkedIds.has(car.id) && (
                             <>
                               <Badge
@@ -818,6 +879,21 @@ export function UploadCarsDialog({
         }}
         title="Which casting is this?"
       />
+
+      {/* The casting itself, read from the preview. The same panel the
+          catalogue opens, so what is checked here is what is filed there. */}
+      {viewingEntry && (
+        <CatalogCarDetails
+          car={catalogCarToDiecast(viewingEntry)}
+          catalogCar={viewingEntry}
+          preOrder={false}
+          owned
+          onAdd={() => setViewing(null)}
+          onClose={() => setViewing(null)}
+          canEdit={isAdmin}
+          onEdit={() => setViewing(null)}
+        />
+      )}
     </Dialog>
   );
 }
