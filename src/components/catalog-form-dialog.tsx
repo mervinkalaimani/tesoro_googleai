@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Link2, Loader2, Plus, ScanLine, Trash2, X } from "lucide-react";
+import { Car, Check, Link2, Loader2, Merge, Plus, ScanLine, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
@@ -198,6 +198,12 @@ export function CatalogFormDialog({
   const [members, setMembers] = useState<string[]>([]);
   /** Open while choosing an existing entry to file as another box of this one. */
   const [picking, setPicking] = useState(false);
+  /** Open while looking at the entries that could be folded into this one. */
+  const [merging, setMerging] = useState(false);
+  /** The one chosen to fold in, and what would move with it. */
+  const [absorb, setAbsorb] = useState<CatalogCar | null>(null);
+  const [absorbPreview, setAbsorbPreview] = useState<MergePreview | null>(null);
+  const [absorbBusy, setAbsorbBusy] = useState(false);
   const [linking, setLinking] = useState(false);
 
   /**
@@ -466,6 +472,58 @@ export function CatalogFormDialog({
       return;
     }
     set("is_multipack", v);
+  };
+
+  /**
+   * The entries that could be this same casting filed twice.
+   *
+   * Brand, name, make, model and car number, all of them, with a blank matching
+   * a blank. The name is what keeps this list short: brand, make, model and
+   * number alone puts 13 Hot Wheels Porsche 911s in front of you, and they are
+   * thirteen different castings — the same mistake the duplicate notice was
+   * fixed for. With the name in, the largest group in the catalogue is 7.
+   *
+   * Assortment, series and sub-series are deliberately not consulted: those are
+   * what make one casting's boxes *different* entries, and a merge is the case
+   * where you have decided two of them should not be.
+   */
+  const mergeCandidates = useMemo(() => {
+    const flat = (v: string | null | undefined) => (v || "").trim().toLowerCase();
+    const key = (v: string | null | undefined) => flat(v).replace(/\s+/g, "");
+    const brand = key(form.brand);
+    const name = flat(form.name);
+    const make = flat(form.make);
+    const model = flat(form.model);
+    const number = flat(form.car_number);
+    if (!brand || !make || !model) return [];
+    return catalog.filter(
+      (c) =>
+        c.car_id !== entryId &&
+        key(c.brand) === brand &&
+        flat(c.name) === name &&
+        flat(c.make) === make &&
+        flat(c.model) === model &&
+        flat(c.car_number) === number,
+    );
+  }, [catalog, entryId, form.brand, form.name, form.make, form.model, form.car_number]);
+
+  /** Folds the chosen entry into this one: this entry is the one that stays. */
+  const absorbEntry = () => {
+    if (!absorb || !entryId) return;
+    setAbsorbBusy(true);
+    void mergeCatalogEntries(entryId, [absorb.car_id])
+      .then((res) => {
+        toast.success(`${absorb.name || absorb.car_id} folded in`, {
+          description:
+            res.cars > 0
+              ? `${res.cars} car${res.cars === 1 ? "" : "s"} now point at this entry.`
+              : "The other entry is gone.",
+        });
+        setAbsorb(null);
+        setMerging(false);
+      })
+      .catch((e: Error) => toast.error(e.message || "Could not merge the castings"))
+      .finally(() => setAbsorbBusy(false));
   };
 
   /**
@@ -885,6 +943,28 @@ export function CatalogFormDialog({
                       </p>
                     )}
                   </div>
+                  {/* Beside the name, because merging is about this casting
+                      rather than about any one of its fields. Only on an entry
+                      that exists, and only for an admin: a merge moves other
+                      people's cars. */}
+                  {!isNew && entryId && isAdmin && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5"
+                      onClick={() => setMerging(true)}
+                      title="Other entries that look like this same casting"
+                    >
+                      <Merge className="size-3.5" />
+                      Merge
+                      {mergeCandidates.length > 0 && (
+                        <span className="rounded bg-amber-500/20 px-1 text-[10px] font-bold tabular-nums text-amber-700 dark:text-amber-300">
+                          {mergeCandidates.length}
+                        </span>
+                      )}
+                    </Button>
+                  )}
                 </div>
 
                 {pickingPhoto && (
@@ -1338,6 +1418,112 @@ export function CatalogFormDialog({
 
       {/* Removing a catalogue entry is removing it for everybody, so it says
           which ones and does not do it until it is told to. */}
+      {/* Everything that shares this casting's brand, make, model and number.
+          Folding one in keeps THIS entry — the opposite direction to the
+          "Merge to this" button on the duplicate notice, which folds this one
+          away. Both exist because which of two entries is the keeper is a
+          judgement, not a rule. */}
+      <Dialog
+        open={merging}
+        onOpenChange={(v) => {
+          if (absorbBusy) return;
+          setMerging(v);
+          if (!v) setAbsorb(null);
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogTitle>Merge into this casting</DialogTitle>
+          <DialogDescription>
+            {mergeCandidates.length === 0
+              ? "Nothing else in the catalogue shares this brand, make, model and car number."
+              : "These share this casting's brand, make, model and car number. Folding one in moves every car on it here and removes it."}
+          </DialogDescription>
+
+          <div className="max-h-[50vh] space-y-1.5 overflow-y-auto">
+            {mergeCandidates.map((c) => (
+              <div
+                key={c.car_id}
+                className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-2"
+              >
+                <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
+                  {c.image_url ? (
+                    <img src={c.image_url} alt="" className="size-full object-cover" />
+                  ) : (
+                    <Car className="size-4 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-semibold">{c.name || "—"}</div>
+                  <div className="truncate text-[11px] text-muted-foreground">
+                    {[c.assortment, c.series, c.sub_series].filter(Boolean).join(" · ") || "—"}
+                  </div>
+                  <div className="truncate font-mono text-[10px] text-muted-foreground/75">
+                    {c.car_id} · {inrFull(Number(c.mrp) || 0)}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 shrink-0 gap-1 px-2.5 text-xs"
+                  disabled={absorbBusy}
+                  onClick={() => {
+                    setAbsorb(c);
+                    setAbsorbPreview(null);
+                    void catalogMergePreview([c.car_id]).then(setAbsorbPreview);
+                  }}
+                >
+                  <Merge className="size-3.5" />
+                  Fold in
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {absorb && (
+            <div className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-xs">
+              <p className="font-semibold text-foreground">
+                Fold {absorb.name || absorb.car_id} into this entry?
+              </p>
+              <p className="text-muted-foreground">
+                {absorbPreview === null
+                  ? "Counting what would move…"
+                  : absorbPreview.cars === 0
+                    ? "Nobody owns a copy filed under it, so only the entry itself goes."
+                    : `${absorbPreview.cars} car${absorbPreview.cars === 1 ? "" : "s"} across ${absorbPreview.owners.length} collection${absorbPreview.owners.length === 1 ? "" : "s"} move${absorbPreview.cars === 1 ? "s" : ""} here${absorbPreview.packs > 0 ? `, and ${absorbPreview.packs} pack membership${absorbPreview.packs === 1 ? "" : "s"}` : ""}. What each person paid, their status and their photographs are untouched.`}
+              </p>
+              <p className="text-muted-foreground">
+                <span className="font-mono text-[11px]">{absorb.car_id}</span> is then removed, and
+                that cannot be undone.
+              </p>
+              <div className="flex justify-end gap-2 pt-0.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={absorbBusy}
+                  onClick={() => setAbsorb(null)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={absorbBusy || absorbPreview === null}
+                  onClick={absorbEntry}
+                >
+                  {absorbBusy ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Check className="size-4" />
+                  )}
+                  {absorbBusy ? "Merging…" : "Merge"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Reuses the list that answers "which casting is this?" everywhere else,
           ordered by how much of the description it agrees with. */}
       <CatalogueLinkDialog
