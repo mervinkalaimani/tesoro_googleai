@@ -400,28 +400,6 @@ export function SettingsPage() {
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </button>
-
-            {/* WHAT'S NEW — the permanent home of the changelog. The mark in the
-                top bar shows the last two builds and then removes itself. */}
-            <button
-              type="button"
-              onClick={() => changeView("whats_new")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
-                <Sparkles className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">What&apos;s new</span>
-                <p className="text-xs text-muted-foreground">
-                  Everything added in each build, newest first
-                </p>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="tabular-nums">Build {LATEST_BUILD}</span>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
           </div>
 
           {/* ADVANCED — the owner's card. Search engine, diagnostics, users,
@@ -468,6 +446,28 @@ export function SettingsPage() {
                 </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </button>
+
+            {/* WHAT'S NEW — the permanent home of the changelog. The mark in the
+                top bar shows the last two builds and then removes itself. */}
+            <button
+              type="button"
+              onClick={() => changeView("whats_new")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <Sparkles className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">What&apos;s new</span>
+                <p className="text-xs text-muted-foreground">
+                  Everything added in each build, newest first
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="tabular-nums">Build {LATEST_BUILD}</span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
             </button>
           </div>
 
