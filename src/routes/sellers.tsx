@@ -209,8 +209,12 @@ function SellersPage() {
             <tr key={g.key} className="border-t border-border/60 hover:bg-muted/30">
               <td className="px-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary/12 text-[11px] font-semibold uppercase text-primary">
-                    {initials(sellerLabel(g.label, shop))}
+                  <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/12 text-[11px] font-semibold uppercase text-primary">
+                    {shop?.image_url ? (
+                      <img src={shop.image_url} alt="" className="size-full object-cover" />
+                    ) : (
+                      initials(sellerLabel(g.label, shop))
+                    )}
                   </span>
                   <div className="min-w-0 flex-1">
                     {/* The name is the door. The row used to open in place to the

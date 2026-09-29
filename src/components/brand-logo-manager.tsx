@@ -119,11 +119,28 @@ export function BrandLogoManager() {
           const src = logos.get(b.key);
           const working = busy === b.key;
           const open = linking?.key === b.key;
+          // What the frame shows while a link is being typed: the thing being
+          // pasted, not the thing it is about to replace. A URL is not a
+          // picture until something draws it, and finding that out after
+          // saving is the wrong order.
+          const typed = open ? (linking?.url ?? "").trim() : "";
+          const preview = typed || src;
           return (
             <li key={b.key} className="flex flex-wrap items-center gap-3 px-4 py-2.5">
               <span className="grid h-9 w-16 shrink-0 place-items-center rounded-md bg-muted/40">
-                {src ? (
-                  <img src={src} alt="" className="max-h-7 max-w-14 object-contain" />
+                {preview ? (
+                  <img
+                    key={preview}
+                    src={preview}
+                    alt=""
+                    className="max-h-7 max-w-14 object-contain"
+                    onError={(e) => {
+                      e.currentTarget.style.visibility = "hidden";
+                    }}
+                    onLoad={(e) => {
+                      e.currentTarget.style.visibility = "visible";
+                    }}
+                  />
                 ) : (
                   <span className="text-[10px] uppercase text-muted-foreground">none</span>
                 )}

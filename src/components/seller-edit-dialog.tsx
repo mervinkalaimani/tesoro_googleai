@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SegmentControl } from "@/components/segment-control";
+import { CarPhotoField } from "@/components/car-photo-field";
 import { saveSellerDetails, type SellerDetails } from "@/lib/seller-details";
 
 export function SellerEditDialog({
@@ -43,6 +44,7 @@ export function SellerEditDialog({
   const [phone, setPhone] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [location, setLocation] = useState("");
+  const [image, setImage] = useState("");
   const [prefer, setPrefer] = useState<"owner" | "store">("owner");
   const [busy, setBusy] = useState(false);
 
@@ -53,6 +55,7 @@ export function SellerEditDialog({
     setPhone(details?.phone || "");
     setWhatsapp(details?.whatsapp || "");
     setLocation(details?.location || "");
+    setImage(details?.image_url || "");
     setPrefer(details?.prefer === "store" ? "store" : "owner");
   }, [open, details]);
 
@@ -63,6 +66,7 @@ export function SellerEditDialog({
       phone,
       whatsapp,
       location,
+      image_url: image,
       prefer,
     });
     setBusy(false);
@@ -85,6 +89,13 @@ export function SellerEditDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="space-y-2">
+            {/* The same field a car uses, so a shop sign can be uploaded or
+                pointed at, and neither is a second way of doing it. */}
+            <Label>Picture</Label>
+            <CarPhotoField value={image} onChange={setImage} />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="seller-store">Store name</Label>
             <Input
@@ -142,9 +153,7 @@ export function SellerEditDialog({
                   { value: "store", label: store.trim() },
                 ]}
               />
-              <p className="text-xs text-muted-foreground">
-                Which name the Sellers page shows.
-              </p>
+              <p className="text-xs text-muted-foreground">Which name the Sellers page shows.</p>
             </div>
           )}
         </div>

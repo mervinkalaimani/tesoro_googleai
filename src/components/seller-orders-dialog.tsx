@@ -179,7 +179,16 @@ export function SellerOrdersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[calc(100dvh-3rem)] w-full max-w-full flex-col overflow-hidden sm:max-w-4xl max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none">
         <DialogHeader className="shrink-0">
-          <DialogTitle>{sellerLabel(seller, shop) || "No seller"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2.5">
+            {shop?.image_url && (
+              <img
+                src={shop.image_url}
+                alt=""
+                className="size-8 shrink-0 rounded-full object-cover"
+              />
+            )}
+            {sellerLabel(seller, shop) || "No seller"}
+          </DialogTitle>
           <DialogDescription>
             Everything bought from them, by order or by shipment.
           </DialogDescription>
@@ -343,9 +352,10 @@ export function SellerOrdersDialog({
                               <td className="px-3 py-2 text-right text-xs tabular-nums">
                                 {inrFull(Number(car.spent) || 0)}
                               </td>
-                              <td className="hidden px-3 py-2 text-right text-xs tabular-nums text-muted-foreground sm:table-cell">
-                                {Number(car.shippingCost) ? inrFull(Number(car.shippingCost)) : "—"}
-                              </td>
+                              {/* Shipping is charged on the parcel, not on the
+                                  car. Printing a share of it against each one
+                                  read as though every car had paid it. */}
+                              <td className="hidden sm:table-cell" />
                             </tr>
                           ))
                         : []),

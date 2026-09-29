@@ -20,6 +20,7 @@ export type SellerDetails = {
   phone: string | null;
   whatsapp: string | null;
   location: string | null;
+  image_url: string | null;
   prefer: "owner" | "store";
 };
 
@@ -41,7 +42,7 @@ async function fetchAll(): Promise<Map<string, SellerDetails>> {
   // The generated Database types predate this table, as they do tesoro_raw.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from("tesoro_sellers") as any).select(
-    "seller_key, owner_name, store_name, phone, whatsapp, location, prefer",
+    "seller_key, owner_name, store_name, phone, whatsapp, location, image_url, prefer",
   );
   const rows = (error ? [] : ((data || []) as unknown as SellerDetails[])) ?? [];
   cache = new Map(rows.map((r) => [r.seller_key, r]));
@@ -83,6 +84,7 @@ export async function saveSellerDetails(
     phone: string;
     whatsapp: string;
     location: string;
+    image_url: string;
     prefer: "owner" | "store";
   },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -103,6 +105,7 @@ export async function saveSellerDetails(
       phone: blank(patch.phone),
       whatsapp: blank(patch.whatsapp),
       location: blank(patch.location),
+      image_url: blank(patch.image_url),
       // A shop cannot go by a store name it has not got.
       prefer: patch.prefer === "store" && blank(patch.store_name) ? "store" : "owner",
       updated_at: new Date().toISOString(),
