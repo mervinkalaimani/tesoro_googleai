@@ -10,6 +10,7 @@ import { carSubLine } from "@/lib/car-subline";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { ImageSearchDialog } from "@/components/image-search-dialog";
 import { RecentSearches } from "@/components/recent-searches";
+import { NAV_GLASS } from "@/components/nav-glass";
 import { useRecentSearches } from "@/lib/recent-searches";
 import { inrFull } from "@/lib/format";
 
@@ -120,7 +121,11 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
           closeSearch();
         }}
         aria-hidden={!open}
-        className="pointer-events-auto relative flex h-[58px] min-w-0 flex-1 items-center gap-0.5 rounded-full border border-black/10 bg-background/85 pl-4 pr-1.5 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-background/75"
+        // The same glass as the rest of the bottom bar, highlight and all. It
+        // used to carry its own copy without the hairline along the top, so
+        // against a dark page it read as a box with no top edge and a barely
+        // visible left one, sitting beside pills that had both.
+        className={`${NAV_GLASS} flex h-[58px] min-w-0 flex-1 items-center gap-1.5 rounded-full pl-4 pr-1.5 before:inset-x-6`}
         style={{
           // Closed, only the circle at the right-hand end is uncovered — exactly
           // where the search button sits — so opening reads as that button

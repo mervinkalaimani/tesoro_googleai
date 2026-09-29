@@ -20,6 +20,7 @@ import {
   useKeyboardInset,
   useSearchOpen,
 } from "@/components/search-overlay";
+import { NAV_GLASS } from "@/components/nav-glass";
 
 /** Default tabs when on Home, Habits, or general root screens. */
 const DEFAULT_TABS = [
@@ -111,10 +112,7 @@ function useScrollCompact(enabled: boolean) {
 }
 
 /** The frosted glass every piece of the bar is cut from. */
-const GLASS = `pointer-events-auto relative border border-black/10 bg-background/80 shadow-[0_8px_32px_-8px_rgba(0,0,0,0.4)]
-  backdrop-blur-2xl backdrop-saturate-150 dark:border-white/10 dark:bg-background/70
-  before:pointer-events-none before:absolute before:top-0 before:h-px
-  before:bg-gradient-to-r before:from-transparent before:via-white/40 before:to-transparent dark:before:via-white/20`;
+const GLASS = NAV_GLASS;
 
 const HOME_CIRCLE = `${GLASS} flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full text-muted-foreground transition-all duration-200 before:inset-x-2 hover:text-foreground active:scale-95`;
 
