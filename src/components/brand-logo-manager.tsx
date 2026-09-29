@@ -8,7 +8,7 @@
  * it is drawn on.
  */
 import { useMemo, useRef, useState } from "react";
-import { Check, Link2, Loader2, Trash2, Upload, X } from "lucide-react";
+import { Check, ClipboardPaste, Link2, Loader2, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { useCatalog } from "@/lib/catalog-store";
 import { BRAND_LOGO_ACCEPT, uploadBrandLogo } from "@/lib/car-photos";
 import { brandKey, clearBrandLogo, logoMap, setBrandLogo, useBrandLogos } from "@/lib/brand-logos";
+import { readClipboardImage } from "@/lib/paste-image";
 
 export function BrandLogoManager() {
   const { catalog } = useCatalog();
@@ -51,8 +52,8 @@ export function BrandLogoManager() {
     picker.current?.click();
   };
 
-  const onFile = async (file: File | undefined) => {
-    const key = target.current;
+  const onFile = async (file: File | undefined, forKey = target.current) => {
+    const key = forKey;
     if (!file || !key) return;
     const label = brands.find((b) => b.key === key)?.label ?? key;
 
@@ -67,6 +68,18 @@ export function BrandLogoManager() {
     setBusy(null);
     if (err) toast.error(err);
     else toast.success(`${label} has a logo`);
+  };
+
+  // A logo is usually already copied off the brand's own page. There are 52
+  // rows and a bare Ctrl+V could not say which one it meant, so this is a
+  // button on the row rather than a listener on the window.
+  const pasteFor = async (key: string) => {
+    const res = await readClipboardImage();
+    if ("error" in res) {
+      toast.error(res.error);
+      return;
+    }
+    await onFile(res.file, key);
   };
 
   const saveLink = async (key: string, label: string) => {
@@ -111,7 +124,7 @@ export function BrandLogoManager() {
 
       <p className="border-b border-border/60 px-4 py-3 text-xs text-muted-foreground">
         These are the marks the catalogue&apos;s brand filter shows. Upload a PNG, SVG, JPG or WebP,
-        up to 5&nbsp;MB, or paste a link to one.
+        up to 5&nbsp;MB, paste a copied image, or paste a link to one.
       </p>
 
       <ul className="divide-y divide-border/60">
@@ -165,6 +178,15 @@ export function BrandLogoManager() {
                     }
                   >
                     <Link2 className="size-3.5" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="size-8 text-muted-foreground"
+                    title={`Paste a copied image as ${b.label}'s logo`}
+                    onClick={() => void pasteFor(b.key)}
+                  >
+                    <ClipboardPaste className="size-3.5" />
                   </Button>
                   {src && (
                     <Button

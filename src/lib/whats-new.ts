@@ -26,6 +26,49 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 238,
+    at: "2026-09-29T21:35",
+    changes: [
+      {
+        key: true,
+        text: "A picture can be pasted. Copy a photo — a screenshot, or a right-click-copy off a listing — and press Ctrl+V while adding or editing a car, a casting or a seller. There is a Paste button beside Choose a file for anyone who would rather click.",
+      },
+      {
+        key: true,
+        text: "A CSV import no longer files a car you already own as a new casting. Hotwheels and Hot Wheels are the same brand now, and a column your sheet left blank is no longer read as a difference.",
+      },
+      {
+        text: "The import preview says when it had to guess: an amber 1 of 4 beside a row, and a catalogue ID you can click to see the casting it picked.",
+      },
+      {
+        key: true,
+        text: "Sellers is a shop now: store name, phone, WhatsApp, location and a picture, with how many pre-orders and how many are still coming. The seller's name opens all of it.",
+      },
+      {
+        text: "Shipping is shown against the order it belongs to, not repeated on every car in it.",
+      },
+      {
+        text: "The login page asks who you are before it asks for a password: the people who use this device, as faces.",
+      },
+      {
+        text: "Scan a card works on a computer — it opens the webcam, and a card already on the clipboard can be pasted straight in.",
+      },
+      { text: "Add in bulk is a computer's job, and says so on a phone instead of half working." },
+      { text: "The search field on a phone has its top edge back." },
+      {
+        text: "Tesoro has been updated stops appearing when nothing has been deployed.",
+      },
+      {
+        admin: true,
+        text: "Brand logos take a pasted image, and a typed link is drawn in the frame before it is saved.",
+      },
+      {
+        admin: true,
+        text: "Authentication and social logins have their own section under Advanced, out of DB connection.",
+      },
+    ],
+  },
+  {
     build: 223,
     at: "2026-09-29T16:53",
     changes: [

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  ClipboardPaste,
   Globe,
   ImageIcon,
   ImagePlus,
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ACCEPT_ATTR, uploadCarPhoto } from "@/lib/car-photos";
+import { readClipboardImage, useImagePaste } from "@/lib/paste-image";
 import type { CarImageCandidate } from "@/lib/car-image-search";
 import { WebImageSearchDialog } from "@/components/web-image-search-dialog";
 import { cn } from "@/lib/utils";
@@ -97,6 +99,21 @@ export function CarPhotoField({
     // it from its own cache while every other device got a 400. An orphaned
     // JPEG costs nothing; a dead URL costs a picture on someone else's shelf.
     onChange(res.url);
+  };
+
+  // A screenshot, or a right-click-copy off a listing, is already in hand:
+  // Ctrl+V anywhere in the window files it, and the button is there for anyone
+  // who does not think in Ctrl+V. Off while one is uploading, so a second paste
+  // cannot race the first.
+  useImagePaste(!busy, (file) => void take(file));
+
+  const paste = async () => {
+    const res = await readClipboardImage();
+    if ("error" in res) {
+      toast.error("Nothing to paste", { description: res.error });
+      return;
+    }
+    await take(res.file);
   };
 
   const remove = () => {
@@ -202,7 +219,7 @@ export function CarPhotoField({
                   ? "That image would not load"
                   : touch
                     ? "No photo yet"
-                    : "Drop a photo here, or click to browse"}
+                    : "Drop a photo here, paste one, or click to browse"}
             </span>
             {!touch && !busy && (
               <span className="text-[10px] text-muted-foreground">JPG, PNG or WebP</span>
@@ -340,6 +357,18 @@ export function CarPhotoField({
           >
             <Upload className="size-3.5" />
             {value ? "Replace" : "Choose a file"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="gap-1.5"
+            disabled={busy}
+            title="Or press Ctrl+V anywhere in this window"
+            onClick={() => void paste()}
+          >
+            <ClipboardPaste className="size-3.5" />
+            Paste
           </Button>
           <Button
             type="button"

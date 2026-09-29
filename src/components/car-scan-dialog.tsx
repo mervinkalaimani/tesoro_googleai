@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { ACCEPT_ATTR, imageToBase64 } from "@/lib/car-photos";
 import { runClientOcr, parseTextToCarFields } from "@/lib/card-ocr";
+import { readClipboardImage, useImagePaste } from "@/lib/paste-image";
 import { cn } from "@/lib/utils";
 
 /**
@@ -168,36 +169,20 @@ export function CarScanDialog({
    * that is how an image is usually already in hand, and saving it to disk
    * first only to pick it back out of a file dialog is two steps for nothing.
    */
-  useEffect(() => {
-    if (!open) return;
-    const onPaste = (e: ClipboardEvent) => {
-      const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
-      const file = item?.getAsFile();
-      if (!file) return;
-      e.preventDefault();
-      void scan(file);
-    };
-    window.addEventListener("paste", onPaste);
-    return () => window.removeEventListener("paste", onPaste);
-    // `scan` is rebuilt every render; the engine it should use is the one
-    // chosen when the paste happens, which is what this dependency tracks.
-  }, [open, engine]); // eslint-disable-line react-hooks/exhaustive-deps
+  // While this is open it is on top of whatever opened it, so it is the one
+  // that gets the paste — a car form has a picture field listening too, and one
+  // Ctrl+V should scan the card, not quietly file it as the car's photo.
+  useImagePaste(open, (file) => void scan(file));
 
   /** The same thing from a button, for anybody who does not think in Ctrl+V. */
   const pasteFromClipboard = async () => {
     setError("");
-    try {
-      for (const item of await navigator.clipboard.read()) {
-        const type = item.types.find((t) => t.startsWith("image/"));
-        if (!type) continue;
-        const blob = await item.getType(type);
-        await scan(new File([blob], "card.png", { type }));
-        return;
-      }
-      setError("Nothing on the clipboard that looks like an image.");
-    } catch {
-      setError("The browser would not read the clipboard. Ctrl+V into this window works too.");
+    const res = await readClipboardImage();
+    if ("error" in res) {
+      setError(res.error);
+      return;
     }
+    await scan(res.file);
   };
 
   // One scan per visit. Reopening to do another card should not open on the
