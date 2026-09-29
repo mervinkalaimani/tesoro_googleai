@@ -186,7 +186,15 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
+  <div
+    // The gutter belongs here rather than on the title alone: three of these
+    // carry a button beside the title, and without it the close button lands on
+    // top of one. The marker lets the title stand down so the two do not indent
+    // one after the other.
+    data-dialog-header=""
+    className={cn("flex flex-col space-y-1.5 pr-10 text-center sm:text-left", className)}
+    {...props}
+  />
 );
 DialogHeader.displayName = "DialogHeader";
 
@@ -204,9 +212,12 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    // pr-10 keeps the close button out of a long title rather than letting
-    // the two draw over each other.
-    className={cn("pr-10 text-lg font-semibold leading-none tracking-tight", className)}
+    // pr-10 keeps the close button out of a title that has no header around
+    // it; inside one, the header is already holding that space open.
+    className={cn(
+      "pr-10 text-lg font-semibold leading-none tracking-tight [[data-dialog-header]_&]:pr-0",
+      className,
+    )}
     {...props}
   />
 ));
