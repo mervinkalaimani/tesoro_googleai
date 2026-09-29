@@ -53,9 +53,6 @@ ok(
 // The thing the mark is for.
 ok(releasesSince(LATEST_BUILD).length === 0, "up to date means no news");
 ok(releasesSince(0).length === RELEASES.length, "a browser that never looked has all of it");
-ok(
-  releasesSince(RELEASES[1].build).length === 1,
-  "one build behind is one build of news",
-);
+ok(releasesSince(RELEASES[1].build).length === 1, "one build behind is one build of news");
 
 console.log(`ok — ${checks} checks`);

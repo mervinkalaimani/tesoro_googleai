@@ -314,7 +314,10 @@ export const RELEASES: Release[] = [
     build: 60,
     at: "2026-09-13T12:57",
     changes: [
-      { key: true, text: "Rarity and condition on a car, a five-step add car, and deliveries in the bell." },
+      {
+        key: true,
+        text: "Rarity and condition on a car, a five-step add car, and deliveries in the bell.",
+      },
       { text: "Adding a car searches every collection, not only your own." },
       { text: "Your rows are locked to you at the database, not only in the screens." },
     ],
