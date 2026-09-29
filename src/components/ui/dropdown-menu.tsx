@@ -6,7 +6,22 @@ import { Check, ChevronRight, Circle } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const DropdownMenu = DropdownMenuPrimitive.Root;
+/**
+ * Not modal by default.
+ *
+ * A modal menu locks the page's scroll while it is open, and Radix does that by
+ * putting `overflow` on the document — which switches off `position: sticky`
+ * for everything on the page. Opening Sort or Group on the catalogue therefore
+ * dropped the filter band and the app header out of the top of the window, and
+ * they only came back when you scrolled up. Nothing here is a modal: they are
+ * menus, and the page underneath may carry on as it was.
+ */
+const DropdownMenu = ({
+  modal = false,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Root>) => (
+  <DropdownMenuPrimitive.Root modal={modal} {...props} />
+);
 
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
