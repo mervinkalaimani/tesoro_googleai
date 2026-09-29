@@ -6,10 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useAuth, handleError, takeOAuthError, type OAuthProvider } from "@/lib/auth-store";
+import {
+  useAuth,
+  demoUnlocked,
+  handleError,
+  takeOAuthError,
+  type OAuthProvider,
+} from "@/lib/auth-store";
 import { useOAuthProviders } from "@/lib/deployment-settings";
 import { rememberSession, setRememberSession } from "@/integrations/supabase/session-storage";
 import { SplashMark } from "@/components/brand-mark";
+import { Face, ProfilePicker } from "@/components/profile-picker";
+import { forgetProfile, knownProfiles, type KnownProfile } from "@/lib/known-profiles";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -95,6 +103,31 @@ function LoginPage() {
   const [oauthBusy, setOauthBusy] = useState<OAuthProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // The faces that have signed in here before. Read in an effect: there is no
+  // localStorage during the server render, and a list that appeared after
+  // hydration would fail it.
+  const [faces, setFaces] = useState<KnownProfile[]>([]);
+  const [chosen, setChosen] = useState<KnownProfile | null>(null);
+  // Set by "Someone else", and by arriving at a page with nobody on it.
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    setFaces(knownProfiles());
+  }, []);
+
+  // Faces first: with somebody to pick, a stranger asking for an email address
+  // is the wrong question. The form is what happens after the question is
+  // answered.
+  const showFaces = view === "signin" && faces.length > 0 && !chosen && !typing;
+
+  // Mr Tesoro is not on this page for anybody but whoever is building the app.
+  // He opens every admin screen, so he exists only on a development build
+  // served from this machine — never on the deployed site, whatever is in the
+  // address bar. Read in an effect because the server render cannot know.
+  const [fullDemo, setFullDemo] = useState(false);
+  useEffect(() => {
+    setFullDemo(demoUnlocked());
+  }, []);
 
   // A provider sign-in that was cancelled or refused comes back here by way of
   // the guard; say why, in the same box as any other failure.
@@ -426,14 +459,57 @@ function LoginPage() {
               Back
             </Button>
           </form>
+        ) : showFaces ? (
+          <ProfilePicker
+            faces={faces}
+            picked={email}
+            onPick={(p) => {
+              setChosen(p);
+              setEmail(p.handle);
+              setError(null);
+              // Straight to the only thing still being asked for.
+              window.setTimeout(() => document.getElementById("password")?.focus(), 0);
+            }}
+            onAnother={() => {
+              setTyping(true);
+              setEmail("");
+              setPassword("");
+              window.setTimeout(() => document.getElementById("email")?.focus(), 0);
+            }}
+            onForget={(handle) => {
+              forgetProfile(handle);
+              setFaces((list) => list.filter((f) => f.handle !== handle));
+            }}
+          />
         ) : (
           <>
-            <Tabs value={view} onValueChange={(v) => go(v as View)}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="signin">Sign in</TabsTrigger>
-                <TabsTrigger value="signup">Create account</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            {chosen && (
+              <div className="mb-6 flex flex-col items-center gap-2">
+                <Face face={chosen} selected />
+                <p className="text-sm font-medium text-foreground">{chosen.name}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setChosen(null);
+                    setEmail("");
+                    setPassword("");
+                    setError(null);
+                  }}
+                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Not you?
+                </button>
+              </div>
+            )}
+
+            {!chosen && (
+              <Tabs value={view} onValueChange={(v) => go(v as View)}>
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="signin">Sign in</TabsTrigger>
+                  <TabsTrigger value="signup">Create account</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            )}
 
             {/* Only the providers this deployment actually has configured.
                 A Google button on an install where Google was never set up in
@@ -443,7 +519,7 @@ function LoginPage() {
 
                 Nothing renders until the answer is in, so the buttons never
                 appear and then vanish. */}
-            {enabledProviders.length > 0 && (
+            {!chosen && enabledProviders.length > 0 && (
               <>
                 {/* One pair of buttons for both tabs: with a provider, signing
                     in and signing up are the same action. */}
@@ -476,10 +552,10 @@ function LoginPage() {
                 </div>
               </>
             )}
-            {enabledProviders.length === 0 && <div className="mt-6" />}
+            {(chosen || enabledProviders.length === 0) && <div className="mt-6" />}
 
             <form onSubmit={onCredentials} className="space-y-4">
-              <div className="space-y-2">
+              <div className={chosen ? "hidden" : "space-y-2"}>
                 <Label htmlFor="email">{view === "signin" ? "Email or user ID" : "Email"}</Label>
                 <Input
                   id="email"
@@ -577,11 +653,23 @@ function LoginPage() {
         <span aria-hidden>·</span>
         <button
           type="button"
-          onClick={enterGuest}
+          onClick={() => enterGuest("guest")}
           className="underline underline-offset-2 transition-colors hover:text-muted-foreground"
         >
           Guest Mode
         </button>
+        {fullDemo && (
+          <>
+            <span aria-hidden>·</span>
+            <button
+              type="button"
+              onClick={() => enterGuest("full")}
+              className="underline underline-offset-2 transition-colors hover:text-muted-foreground"
+            >
+              Mr Tesoro
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

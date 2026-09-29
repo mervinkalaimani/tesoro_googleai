@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { rememberProfile } from "@/lib/known-profiles";
 import { setUserIdPrefix } from "@/lib/car-id";
 import { clearAllDrafts } from "@/lib/form-draft";
 
@@ -99,7 +100,9 @@ type Ctx = {
   updatePassword: (password: string) => Promise<AuthResult>;
   /** Demo session: bundled cars, no Supabase reads or writes at all. */
   isGuest: boolean;
-  enterGuest: () => void;
+  enterGuest: (kind?: DemoKind) => void;
+  /** Which demo is running, when one is. */
+  demoKind: DemoKind;
   /**
    * Phone sign-in is written and wired but not surfaced: the project has no SMS
    * provider configured. The signup form still collects the number so these can
@@ -189,6 +192,25 @@ function isMissingSchema(code?: string, message?: string): boolean {
  */
 const GUEST_KEY = "dg.guestMode";
 
+/** Which demo is running: a visitor, or the one that may open everything. */
+export type DemoKind = "guest" | "full";
+
+/**
+ * Whether Mr Tesoro exists at all on this machine.
+ *
+ * A query string is a secret anybody can guess, and a costume that opens every
+ * admin screen should not be one URL away from a stranger. He exists only where
+ * the app is being developed: a development build served from a local host.
+ * On the deployed site the tile is not drawn, the flag is not honoured, and a
+ * session storage key set by hand does nothing.
+ */
+export function demoUnlocked(): boolean {
+  if (!import.meta.env.DEV) return false;
+  if (typeof window === "undefined") return false;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1";
+}
+
 /**
  * Why a provider sign-in came back without a session: cancelled on Google's
  * screen, or refused. Supabase returns to "/" with the reason in the URL, and
@@ -231,6 +253,35 @@ export function takeOAuthError(): string | null {
   }
 }
 
+/**
+ * The demo that is allowed everywhere.
+ *
+ * Guest Mode is for somebody deciding whether they want the app, and it is
+ * deliberately a visitor: no admin screens, nothing anyone could mistake for
+ * their own collection. This one is for testing the screens only an admin can
+ * open, which is why it is not on the login page for everybody.
+ *
+ * It is a costume, not a key. There is no account and no token behind it, so
+ * every write still meets the same closed door the database shows any signed
+ * out browser — the catalogue, the users table and everything else are
+ * "to authenticated" and refuse it.
+ */
+const DEMO_PROFILE: Profile = {
+  sno: 0,
+  user_id: "mr-tesoro",
+  auth_uid: null,
+  first_name: "Mr",
+  last_name: "Tesoro",
+  email_id: "Demo session — full access",
+  phone: null,
+  dob: null,
+  avatar_url: null,
+  is_admin: true,
+  is_approved: true,
+  is_owner: true,
+  created_at: "",
+};
+
 /** Stand-in profile so the shell has a name and handle to render. */
 const GUEST_PROFILE: Profile = {
   sno: 0,
@@ -267,21 +318,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Read in an effect rather than at init: the server render has no
   // sessionStorage, and a mismatch here would fail hydration.
   const [isGuest, setIsGuest] = useState(false);
+  const [demoKind, setDemoKind] = useState<DemoKind>("guest");
 
   useEffect(() => {
     try {
-      if (sessionStorage.getItem(GUEST_KEY) === "1") setIsGuest(true);
+      const flag = sessionStorage.getItem(GUEST_KEY);
+      if (flag === "1" || flag === "full") {
+        setIsGuest(true);
+        setDemoKind(flag === "full" && demoUnlocked() ? "full" : "guest");
+      }
     } catch {
       // Storage unavailable (private mode); guest mode simply won't persist.
     }
   }, []);
 
-  const enterGuest = useCallback(() => {
+  const enterGuest = useCallback((wanted: DemoKind = "guest") => {
+    // Asked for in the one place that decides, rather than trusted from the
+    // button that called it.
+    const kind: DemoKind = wanted === "full" && demoUnlocked() ? "full" : "guest";
     try {
-      sessionStorage.setItem(GUEST_KEY, "1");
+      sessionStorage.setItem(GUEST_KEY, kind === "full" ? "full" : "1");
     } catch {
       // Ignore; the in-memory flag below still starts the demo.
     }
+    setDemoKind(kind);
     setIsGuest(true);
   }, []);
 
@@ -326,6 +386,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserIdPrefix(row?.id_prefix ?? null);
     // The owner is always an admin, mirroring is_tesoro_admin() in the database.
     setIsAdmin(Boolean(row?.is_admin) || Boolean(row?.is_owner));
+    // The face for the login page to offer next time. The handle and the
+    // picture only — never a password, never a session.
+    if (row) {
+      rememberProfile({
+        handle: row.user_id || row.email_id,
+        name: [row.first_name, row.last_name].filter(Boolean).join(" ").trim() || row.email_id,
+        avatar: row.avatar_url,
+      });
+    }
   }, []);
 
   useEffect(() => {
@@ -618,6 +687,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Ignore; the flag below is what the UI actually reads.
     }
     setIsGuest(false);
+    setDemoKind("guest");
     await supabase.auth.signOut();
     setProfile(null);
     setIsAdmin(false);
@@ -657,10 +727,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       status,
       session,
       user: session?.user ?? null,
-      profile: isGuest ? GUEST_PROFILE : profile,
-      // A guest is never an admin: no admin nav, no user management.
-      isAdmin: isGuest ? false : isAdmin,
-      isOwner: isGuest ? false : Boolean(profile?.is_owner),
+      profile: isGuest ? (demoKind === "full" ? DEMO_PROFILE : GUEST_PROFILE) : profile,
+      // A guest is never an admin: no admin nav, no user management. Mr Tesoro
+      // is the exception, and only so the admin screens can be looked at.
+      isAdmin: isGuest ? demoKind === "full" : isAdmin,
+      isOwner: isGuest ? demoKind === "full" : Boolean(profile?.is_owner),
+      demoKind,
       signIn,
       signUp,
       checkHandle,
@@ -675,6 +747,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       reloadProfile,
     }),
     [
+      demoKind,
       status,
       session,
       profile,
