@@ -26,6 +26,18 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 239,
+    at: "2026-09-29T22:30",
+    changes: [
+      {
+        text: "Adding or editing a car or a casting keeps the name of what you are working on at the top of the window while you scroll through the rest of it.",
+      },
+      {
+        text: "That line now ends with the colour, after the number — the number alone does not say which release is in your hand.",
+      },
+    ],
+  },
+  {
     build: 238,
     at: "2026-09-29T21:35",
     changes: [

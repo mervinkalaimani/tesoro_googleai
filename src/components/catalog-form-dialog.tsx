@@ -48,7 +48,7 @@ import { ChaseMark } from "@/components/car-marks";
 import { useCars } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
-import { carSubLine } from "@/lib/car-subline";
+import { carSubLineParts } from "@/lib/car-subline";
 import { buildCarName } from "@/lib/car-name";
 import { useAuth } from "@/lib/auth-store";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
@@ -677,14 +677,24 @@ export function CatalogFormDialog({
     series: form.series,
   });
 
-  /** The standard secondary line, so the card reads like a car anywhere else. */
-  const identityLine = carSubLine({
-    brand: catalogueValues.brand,
-    assortment: catalogueValues.assortment,
-    series: catalogueValues.series,
-    subSeries: catalogueValues.subSeries,
-    carNumber: catalogueValues.carNumber,
-  });
+  /**
+   * The standard secondary line, so the card reads like a car anywhere else,
+   * with the colour after the number: two castings can share a number, and the
+   * colour is what says which release this one is.
+   */
+  const identityLine =
+    [
+      ...carSubLineParts({
+        brand: catalogueValues.brand,
+        assortment: catalogueValues.assortment,
+        series: catalogueValues.series,
+        subSeries: catalogueValues.subSeries,
+        carNumber: catalogueValues.carNumber,
+      }),
+      catalogueValues.colour?.trim(),
+    ]
+      .filter(Boolean)
+      .join(" · ") || "—";
 
   /** In the order the fields appear, so the first one flagged is the first on screen. */
   const validate = (): FieldError | null => {
@@ -974,8 +984,13 @@ export function CatalogFormDialog({
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-0.5">
               {/* What the casting is, as one line you read rather than thirteen
                   fields you re-check. The fields are still here, one tap down. */}
-              <section className="overflow-hidden rounded-lg border border-border bg-muted/30">
-                <div className="flex items-start gap-3 p-3">
+              {/* Pinned to the top of the scroller: which casting this is, is
+                  the one thing you need while filling in everything below it.
+                  The tint moved off the box and onto its rows because a sticky
+                  box must be opaque — bg-muted/30 let the fields scroll through
+                  it. */}
+              <section className="sticky top-0 z-20 overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+                <div className="flex items-start gap-3 bg-muted/30 p-3">
                   {/* Same tap-the-photo-to-fix-it as the car form. The search
                       has already run by the time this card is drawn. */}
                   <PhotoThumbButton
@@ -1041,7 +1056,7 @@ export function CatalogFormDialog({
                 {/* Who filed it and who last touched it — the same two pairs the
                     details drawer shows, in the same order. */}
                 {!isNew && entry && (
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border px-3 py-2 text-[11px] text-muted-foreground">
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
                     <div className="truncate">
                       Added by{" "}
                       <span className="font-medium text-foreground">

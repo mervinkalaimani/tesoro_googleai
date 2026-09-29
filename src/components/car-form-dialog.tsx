@@ -16,7 +16,7 @@ import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
 import { carDraftHasContent } from "@/lib/draft-content";
 import { heldLabel } from "@/lib/held";
-import { carSubLine } from "@/lib/car-subline";
+import { carSubLineParts } from "@/lib/car-subline";
 import { mrpOptionsFor, topSellers } from "@/lib/car-prices";
 import { catalogueFill } from "@/lib/catalogue-fill";
 import { useSuggestionPool } from "@/lib/suggestion-pool";
@@ -647,15 +647,25 @@ export function CarFormDialog({
     set(k as keyof CarFormData, v as CarFormData[keyof CarFormData]);
   };
 
-  /** The standard secondary line, so the summary reads like a car anywhere else. */
-  const identityLine = carSubLine({
-    brand: form.brand,
-    assortment: form.assortment,
-    series: form.series,
-    subSeries: form.subSeries,
-    carNumber: form.carNumber,
-    caseNumber: form.caseNumber,
-  });
+  /**
+   * The standard secondary line, so the summary reads like a car anywhere else,
+   * with the colour after the number: two cars can be the same casting and the
+   * same number, and the colour is what says which one is on the card.
+   */
+  const identityLine =
+    [
+      ...carSubLineParts({
+        brand: form.brand,
+        assortment: form.assortment,
+        series: form.series,
+        subSeries: form.subSeries,
+        carNumber: form.carNumber,
+        caseNumber: form.caseNumber,
+      }),
+      form.colour?.trim(),
+    ]
+      .filter(Boolean)
+      .join(" · ") || "—";
 
   /** What this brand and assortment has cost before, most used first. */
   const mrpChoices = useMemo(
@@ -1846,86 +1856,97 @@ export function CarFormDialog({
           bg-muted/30 let the fields scroll through it. */}
       <section
         className={cn(
-          "overflow-hidden rounded-lg border border-border bg-background",
-          // Opened, the fields make it taller than the scroller, and a sticky
-          // box that tall pins over everything below it instead of yielding.
+          // No `overflow-hidden`: it would make this box the scrollport of the
+          // row inside it, and a box that does not scroll never lets anything
+          // stick. The last child rounds its own bottom corners in its place.
+          "rounded-lg border border-border bg-background [&>:last-child]:rounded-b-lg",
+          // Closed, the whole box pins — it is only the name row and the
+          // button under it. Opened, the fields make it taller than the
+          // scroller, and a sticky box that tall pins over everything below it
+          // instead of yielding: then it is the row inside that pins, which is
+          // the part you need while you are typing into the rest of it.
           !showIdentity && "sticky top-0 z-20 shadow-sm",
         )}
       >
-        <div className="flex items-start gap-3 bg-muted/30 p-3">
-          {/* The thumbnail is the button for fixing it — see photo-picker.tsx,
+        {/* Opaque, because the form scrolls under it. The tint is on the row
+            rather than the box for the same reason: bg-muted/30 alone let the
+            fields show through. */}
+        <div className="sticky top-0 z-20 rounded-t-lg bg-background shadow-sm">
+          <div className="flex items-start gap-3 rounded-t-lg bg-muted/30 p-3">
+            {/* The thumbnail is the button for fixing it — see photo-picker.tsx,
               which the catalogue's own dialog shares. */}
-          <PhotoThumbButton
-            url={form.imageUrl}
-            picking={pickingPhoto}
-            onClick={() => setPickingPhoto((v) => !v)}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <TruncatedName
-                name={previewName || "New casting"}
-                className="text-sm font-semibold text-foreground"
-              />
-              <ChaseMark rarity={form.rarity} className="size-3.5 shrink-0" />
+            <PhotoThumbButton
+              url={form.imageUrl}
+              picking={pickingPhoto}
+              onClick={() => setPickingPhoto((v) => !v)}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <TruncatedName
+                  name={previewName || "New casting"}
+                  className="text-sm font-semibold text-foreground"
+                />
+                <ChaseMark rarity={form.rarity} className="size-3.5 shrink-0" />
+              </div>
+              <p className="truncate text-[11px] text-muted-foreground">{identityLine}</p>
+              {fromCatalogue && !isEdit && (
+                <span className="mt-1.5 inline-flex rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                  Filled from the catalogue
+                </span>
+              )}
             </div>
-            <p className="truncate text-[11px] text-muted-foreground">{identityLine}</p>
-            {fromCatalogue && !isEdit && (
-              <span className="mt-1.5 inline-flex rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                Filled from the catalogue
-              </span>
-            )}
-          </div>
-          {/* Adding, you can go back and pick a different casting. Editing, the
+            {/* Adding, you can go back and pick a different casting. Editing, the
               car is the car — so the button here copies what the catalogue says
               about it instead of changing which casting it is. */}
-          {isEdit ? (
-            <>
-              {/* Which casting this is, as against what the catalogue says about
+            {isEdit ? (
+              <>
+                {/* Which casting this is, as against what the catalogue says about
                   it. Filed against the wrong entry is a different problem from
                   filed against the right one with the wrong details, and until
                   now only the second had a button. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => setRelinkOpen(true)}
+                  title="Point this car at a different catalogue entry"
+                >
+                  <Link2 className="size-3.5 shrink-0" />
+                  <span className="truncate">Link to catalogue</span>
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 gap-1.5"
+                  onClick={fillFromCatalogue}
+                  disabled={!catalogueSource}
+                  title={
+                    catalogueSource
+                      ? "Copy this casting's details from the catalogue"
+                      : "This casting has no catalogue entry yet"
+                  }
+                >
+                  <BookOpen className="size-3.5 shrink-0" />
+                  <span className="truncate">Get from Catalogue</span>
+                </Button>
+              </>
+            ) : (
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="shrink-0 gap-1.5"
-                onClick={() => setRelinkOpen(true)}
-                title="Point this car at a different catalogue entry"
+                className="shrink-0"
+                onClick={() => {
+                  setValidationError(null);
+                  setCurrentStep(1);
+                }}
               >
-                <Link2 className="size-3.5 shrink-0" />
-                <span className="truncate">Link to catalogue</span>
+                Change
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0 gap-1.5"
-                onClick={fillFromCatalogue}
-                disabled={!catalogueSource}
-                title={
-                  catalogueSource
-                    ? "Copy this casting's details from the catalogue"
-                    : "This casting has no catalogue entry yet"
-                }
-              >
-                <BookOpen className="size-3.5 shrink-0" />
-                <span className="truncate">Get from Catalogue</span>
-              </Button>
-            </>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="shrink-0"
-              onClick={() => {
-                setValidationError(null);
-                setCurrentStep(1);
-              }}
-            >
-              Change
-            </Button>
-          )}
+            )}
+          </div>
         </div>
 
         {/* What the search turned up for this car, as a row you scroll. The
