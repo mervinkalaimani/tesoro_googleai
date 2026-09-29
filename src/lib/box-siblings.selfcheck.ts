@@ -60,3 +60,23 @@ assert.deepEqual(
 assert.deepEqual(boxSiblings(numbered, [numbered]), []);
 
 console.log("box-siblings.selfcheck ok");
+
+// ---------------------------------------------------- standing on its own
+//
+// The description cannot tell two products that read alike apart, so an entry
+// can say so itself. Either side saying it ends the grouping.
+{
+  const a = entry({ car_id: "SA", assortment: "Box" });
+  const b = entry({ car_id: "SB", assortment: "Blister" });
+
+  console.assert(boxSiblings(a, [a, b]).length === 1, "alike entries group as usual");
+  console.assert(
+    boxSiblings(a, [a, { ...b, standalone: true }]).length === 0,
+    "a standalone entry is never offered as a box of another",
+  );
+  console.assert(
+    boxSiblings({ ...a, standalone: true }, [a, b]).length === 0,
+    "and a standalone entry has no boxes of its own",
+  );
+  console.log("standalone checks ok");
+}

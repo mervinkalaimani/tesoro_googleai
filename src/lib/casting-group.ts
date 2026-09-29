@@ -116,9 +116,13 @@ export function boxSiblings(entry: CatalogCar, catalog: CatalogCar[]): CatalogCa
     const y = clean(b);
     return !x || !y || x === y;
   };
+  // Either side saying "I am my own casting" ends it before the description is
+  // consulted at all.
+  if (entry.standalone) return [];
   return catalog.filter(
     (c) =>
       c.car_id !== entry.car_id &&
+      !c.standalone &&
       brandKey(c.brand) === brandKey(entry.brand) &&
       clean(c.make) === clean(entry.make) &&
       clean(c.model) === clean(entry.model) &&

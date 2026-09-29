@@ -81,6 +81,7 @@ export type Database = {
           created_by: string | null;
           updated_by: string | null;
           is_multipack: boolean;
+          standalone: boolean;
           pack_size: number | null;
         };
         Insert: {
@@ -109,6 +110,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           is_multipack?: boolean;
+          standalone?: boolean;
           pack_size?: number | null;
         };
         Update: {
@@ -137,6 +139,7 @@ export type Database = {
           created_by?: string | null;
           updated_by?: string | null;
           is_multipack?: boolean;
+          standalone?: boolean;
           pack_size?: number | null;
         };
         Relationships: [];

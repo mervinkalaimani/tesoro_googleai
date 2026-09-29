@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Plus, ScanLine, Trash2, X } from "lucide-react";
+import { Check, Link2, Loader2, Plus, ScanLine, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
@@ -46,6 +46,7 @@ import { packBadge } from "@/lib/pack";
 import { ChaseMark } from "@/components/car-marks";
 import { useCars } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
+import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
 import { carSubLine } from "@/lib/car-subline";
 import { buildCarName } from "@/lib/car-name";
 import { useAuth } from "@/lib/auth-store";
@@ -195,6 +196,9 @@ export function CatalogFormDialog({
   const { packMembers, setPackMembers, addCatalogCar, updateCatalogCar, deleteCatalogCar } =
     useCatalog();
   const [members, setMembers] = useState<string[]>([]);
+  /** Open while choosing an existing entry to file as another box of this one. */
+  const [picking, setPicking] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   /**
    * The four groups. Which casting it is and what it costs are open, because
@@ -462,6 +466,66 @@ export function CatalogFormDialog({
       return;
     }
     set("is_multipack", v);
+  };
+
+  /**
+   * An entry that is already in the catalogue, filed as another box of this
+   * casting.
+   *
+   * Which boxes a casting comes in is worked out from the description, so
+   * joining a group means agreeing with it: the entry keeps its own id, box,
+   * price and photograph, and takes this casting's brand, make, model, variant,
+   * series, sub-series and number. Anything else would be a second grouping
+   * mechanism nobody could see.
+   */
+  const attachEntry = async (pick: CatalogCar) => {
+    setPicking(false);
+    if (entryId && pick.car_id === entryId) return;
+    if (extras.some((x) => x.car_id === pick.car_id)) {
+      toast.info(`${pick.assortment || pick.car_id} is already one of these boxes`);
+      return;
+    }
+    setLinking(true);
+    const ok = await updateCatalogCar({
+      ...pick,
+      brand: form.brand || pick.brand,
+      make: form.make || pick.make,
+      model: form.model || pick.model,
+      variant: form.variant ?? pick.variant,
+      series: form.series ?? pick.series,
+      sub_series: form.sub_series ?? pick.sub_series,
+      car_number: form.car_number ?? pick.car_number,
+      standalone: false,
+    });
+    setLinking(false);
+    if (!ok) {
+      toast.error("That entry could not be moved");
+      return;
+    }
+    setExtras((rows) => [
+      ...rows,
+      { assortment: pick.assortment || "", mrp: Number(pick.mrp) || 0, car_id: pick.car_id },
+    ]);
+    toast.success(`${pick.assortment || pick.car_id} is a box of this casting now`, {
+      description: "It keeps its own ID, price and photograph.",
+    });
+  };
+
+  /** The other direction: this box is its own product, not one of these. */
+  const detachEntry = async (carId: string) => {
+    const target = catalog.find((c) => c.car_id === carId);
+    if (!target) return;
+    setLinking(true);
+    const ok = await updateCatalogCar({ ...target, standalone: true });
+    setLinking(false);
+    if (!ok) {
+      toast.error("That entry could not be separated");
+      return;
+    }
+    setExtras((rows) => rows.filter((x) => x.car_id !== carId));
+    toast.success(`${target.assortment || carId} is its own casting now`, {
+      description: "It stays in the catalogue, on its own.",
+    });
   };
 
   const confirmPack = async () => {
@@ -1008,6 +1072,9 @@ export function CatalogFormDialog({
                             ? undefined
                             : () => setExtras((rows) => rows.filter((_, j) => j !== i))
                         }
+                        onDetach={
+                          x.car_id && isAdmin ? () => void detachEntry(x.car_id!) : undefined
+                        }
                       />
                     ))}
                 </div>
@@ -1022,6 +1089,24 @@ export function CatalogFormDialog({
                   >
                     <Plus className="size-4" />
                     Add an assortment
+                  </Button>
+                )}
+                {!isImageOnly && isAdmin && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="ml-2 mt-2.5 gap-1.5"
+                    disabled={isPack || !form.brand || linking}
+                    onClick={() => setPicking(true)}
+                    title="A box of this casting that is already in the catalogue under its own entry"
+                  >
+                    {linking ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Link2 className="size-4" />
+                    )}
+                    Add from catalogue
                   </Button>
                 )}
                 <p className="mt-2 text-[11px] text-muted-foreground">
@@ -1253,6 +1338,28 @@ export function CatalogFormDialog({
 
       {/* Removing a catalogue entry is removing it for everybody, so it says
           which ones and does not do it until it is told to. */}
+      {/* Reuses the list that answers "which casting is this?" everywhere else,
+          ordered by how much of the description it agrees with. */}
+      <CatalogueLinkDialog
+        open={picking}
+        onClose={() => setPicking(false)}
+        car={
+          {
+            brand: form.brand || "",
+            make: form.make || "",
+            model: form.model || "",
+            variant: form.variant || "",
+            colour: form.colour || "",
+            series: form.series || "",
+            subSeries: form.sub_series || "",
+            carNumber: form.car_number || "",
+            assortment: "",
+          } as unknown as Diecast
+        }
+        onPick={(pick) => void attachEntry(pick)}
+        title="Add a box from the catalogue"
+      />
+
       <Dialog open={packConfirm} onOpenChange={(v) => !v && !packBusy && setPackConfirm(false)}>
         <DialogContent className="max-w-md">
           <DialogTitle>Make this a multipack?</DialogTitle>

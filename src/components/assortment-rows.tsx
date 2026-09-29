@@ -11,7 +11,7 @@
  * which AssortmentHeader draws.
  */
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Unlink, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
@@ -66,6 +66,7 @@ export function AssortmentRow({
   onSpent,
   onPaid,
   onRemove,
+  onDetach,
 }: {
   assortment: string;
   mrp: number;
@@ -92,6 +93,12 @@ export function AssortmentRow({
   onSpent?: (v: number | "") => void;
   onPaid?: (v: number | "") => void;
   onRemove?: () => void;
+  /**
+   * Take this box out of the casting and let it stand on its own. Only for a
+   * row already on file: a row typed here and not saved is nothing to detach,
+   * it is only removed.
+   */
+  onDetach?: () => void;
 }) {
   const priced = useMemo(
     () => mrpOptionsFor(cars, brand, assortment, 3),
@@ -214,7 +221,19 @@ export function AssortmentRow({
             </div>
           </>
         ) : null}
-        {onRemove ? (
+        {onDetach ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onDetach}
+            className="size-9 text-muted-foreground hover:text-foreground"
+            aria-label="Make this a separate casting"
+            title="Not a box of this casting — make it its own"
+          >
+            <Unlink className="size-4" />
+          </Button>
+        ) : onRemove ? (
           <Button
             type="button"
             variant="ghost"

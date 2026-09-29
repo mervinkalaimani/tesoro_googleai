@@ -68,6 +68,13 @@ export type CatalogCar = {
    * part-filled pack can still say "3 of 5 listed".
    */
   pack_size?: number | null;
+  /**
+   * This entry is its own casting, never a box of another one. Which boxes a
+   * casting comes in is otherwise worked out from the description, which cannot
+   * tell two products that read alike apart — so this is the one place to say
+   * it.
+   */
+  standalone?: boolean;
 };
 
 export type ReleaseStatus = "Released" | "Pre Order";
@@ -441,6 +448,7 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         updated_by: row.updated_by,
         is_multipack: Boolean(row.is_multipack),
         pack_size: row.pack_size ?? null,
+        standalone: Boolean((row as { standalone?: boolean }).standalone),
       }));
       saveLocalCatalog(formatted);
       return formatted;
@@ -514,6 +522,7 @@ export async function saveCatalogCarToSupabase(
       // casting from Add a car must not quietly un-flag a pack.
       ...(catalogCar.is_multipack !== undefined ? { is_multipack: catalogCar.is_multipack } : {}),
       ...(catalogCar.pack_size !== undefined ? { pack_size: catalogCar.pack_size } : {}),
+      ...(catalogCar.standalone !== undefined ? { standalone: catalogCar.standalone } : {}),
       ...(catalogCar.created_at ? { created_at: catalogCar.created_at } : {}),
       // Only when stated: saving a casting from Add a car must not reset a
       // pre-order back to the column's Released default.
