@@ -5,10 +5,11 @@
  *   npx esbuild src/lib/duplicate.selfcheck.ts --bundle --format=esm \
  *     --platform=node --alias:@=./src --outfile=<tmp>/dup.mjs && node <tmp>/dup.mjs
  *
- * The rule under test: brand + car number, OR every one of brand, make, model,
- * assortment, series, sub-series and car number. Sharing a make and a model is
- * not a duplicate — that was the bug, and "Porsche 911" returning six
- * different castings is the case that proved it.
+ * The rule under test: brand, make, model and car number, OR every one of
+ * brand, make, model, assortment, series, sub-series and car number. Sharing a
+ * make and a model is not a duplicate — that was the bug, and "Porsche 911"
+ * returning six different castings is the case that proved it. Nor is sharing
+ * only a number: Hot Wheels prints a position, so "3/5" is eight castings.
  */
 import { findDuplicates, needsCarNumber, type DuplicateFields } from "@/lib/duplicate";
 import type { CatalogCar } from "@/lib/catalog";
@@ -90,7 +91,9 @@ ok(
   "blank on both sides counts as agreement",
 );
 
-// Brand + number alone, whatever the rest says.
+// Brand, make, model and number. The number carries the rest of the
+// description — assortment, series, sub-series need not agree — but it does not
+// carry the car.
 const numbered = entry({
   brand: "Mini GT",
   make: "Nissan",
@@ -101,11 +104,18 @@ const numbered = entry({
   car_number: "1133",
 });
 const byNumber = findDuplicates(
-  typed({ brand: "Mini GT", make: "Toyota", model: "Supra", carNumber: "1133" }),
+  typed({ brand: "Mini GT", make: "Nissan", model: "Skyline", carNumber: "1133" }),
   [numbered],
 );
-ok(byNumber.length === 1, "brand and car number agreeing is enough on its own");
+ok(byNumber.length === 1, "brand, make, model and number agreeing is a duplicate");
 ok(byNumber[0].because.includes("1133"), "and the reason says which number");
+
+ok(
+  findDuplicates(typed({ brand: "Mini GT", make: "Toyota", model: "Supra", carNumber: "1133" }), [
+    numbered,
+  ]).length === 0,
+  "a shared number on a different casting is not offered",
+);
 
 ok(
   findDuplicates(typed({ brand: "Mini GT", carNumber: "1133" }), [
@@ -135,5 +145,31 @@ ok(needsCarNumber("Mini GT") === true, "Mini GT still has to state its number");
 ok(needsCarNumber("Hot Wheels") === false, "Hot Wheels prints a position, not a number");
 ok(needsCarNumber("Matchbox") === false, "Matchbox prints a position, not a number");
 ok(needsCarNumber("") === false, "no brand, nothing to require");
+
+// ------------------------------------------------------- how close it is
+//
+// A field either side states is a field that counts. A field blank on both
+// sides is not evidence of anything and is left out of the sum — so the score
+// is out of what there was to compare, and a form that has not said what colour
+// it is scores below one that has.
+
+const full = typed({ carNumber: "" });
+const twin = entry({ colour: "", year: "" });
+ok(findDuplicates(full, [twin])[0].match === 100, "every stated field agreeing is 100%");
+
+// The entry states a colour and a year the form has not: eight fields counted,
+// six of them agreeing.
+const vague = findDuplicates(full, [entry({})]);
+ok(vague.length === 1, "fields the form has not filled in do not disqualify a match");
+ok(vague[0].match === 75, `six of eight fields is 75%, got ${vague[0].match}`);
+
+// Saying the colour, and saying the wrong one, is worse than not saying it.
+const wrongColour = findDuplicates(typed({ colour: "Red" }), [entry({ colour: "White" })]);
+ok(wrongColour.length === 1, "a colour that differs does not disqualify a match");
+ok(wrongColour[0].match < 100, "and it costs the score");
+
+// Closest first.
+const ranked = findDuplicates(full, [entry({}), twin]);
+ok(ranked[0].match === 100, "the closest match leads");
 
 console.log(`duplicate.selfcheck: ${checks} checks passed`);

@@ -22,6 +22,8 @@ export type DuplicateHit = {
   level: DuplicateLevel;
   /** Why this one came up, in words, so the judgement is yours and not ours. */
   because: string;
+  /** How much of the description the two share, 0-100. */
+  match: number;
 };
 
 /** The fields a duplicate is judged on. Both forms speak this shape. */
@@ -66,6 +68,39 @@ export const brandUsesCarNumber = (brand: string | null | undefined) => {
 
 /** Whether this casting must state a car number before it can be filed. */
 export const needsCarNumber = (brand: string | null | undefined) => brandUsesCarNumber(brand);
+
+/**
+ * How much of the description two castings share, as a percentage.
+ *
+ * Every field either side states is a field that counts; a field blank on both
+ * sides is not evidence of anything and is left out of the sum. So a casting
+ * matching on brand, make, model and number but differing in colour reads 80%
+ * rather than 100%, and the difference is the thing worth looking at before
+ * you decide it is the same car.
+ */
+function matchPercent(fields: DuplicateFields, c: CatalogCar): number {
+  const pairs: [string, string][] = [
+    [brandKey(fields.brand), brandKey(c.brand)],
+    [norm(fields.make), norm(c.make)],
+    [norm(fields.model), norm(c.model)],
+    [norm(fields.variant), norm(c.variant)],
+    [norm(fields.colour), norm(c.colour)],
+    [norm(fields.assortment), norm(c.assortment)],
+    [norm(fields.series), norm(c.series)],
+    [norm(fields.subSeries), norm(c.sub_series)],
+    [norm(fields.carNumber), norm(c.car_number)],
+    [norm(fields.year), norm(c.year)],
+  ];
+
+  let counted = 0;
+  let agreed = 0;
+  for (const [a, b] of pairs) {
+    if (!a && !b) continue;
+    counted += 1;
+    if (a === b) agreed += 1;
+  }
+  return counted === 0 ? 0 : Math.round((agreed / counted) * 100);
+}
 
 /**
  * Candidate duplicates for what has been typed.
@@ -119,13 +154,21 @@ export function findDuplicates(
     if (skip && c.car_id.toUpperCase() === skip) continue;
     if (brandKey(c.brand) !== brand) continue;
 
-    // The number names one product, so brand and number agreeing is enough on
-    // its own — the rest of the fields need not be filled in yet.
-    if (carNumber && norm(c.car_number) === carNumber) {
+    // A shared number used to be enough on its own. It is not: Hot Wheels and
+    // Matchbox print a position rather than a number, so "3/5" brought back
+    // every third-of-five in the catalogue — a different casting each time.
+    // Brand, make, model and number, and nothing less.
+    if (
+      carNumber &&
+      norm(c.car_number) === carNumber &&
+      norm(c.make) === make &&
+      norm(c.model) === model
+    ) {
       hits.push({
         car: c,
         level: "certain",
         because: `Same ${c.brand || "brand"} number #${c.car_number}`,
+        match: matchPercent(fields, c),
       });
       continue;
     }
@@ -143,6 +186,7 @@ export function findDuplicates(
     hits.push({
       car: c,
       level: "certain",
+      match: matchPercent(fields, c),
       because: [
         "Same casting",
         c.assortment && `${c.assortment}`,
@@ -154,7 +198,7 @@ export function findDuplicates(
     });
   }
 
-  return hits.slice(0, limit);
+  return hits.sort((a, b) => b.match - a.match).slice(0, limit);
 }
 
 /** A set of catalogue entries that look like one casting. */

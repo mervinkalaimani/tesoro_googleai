@@ -77,11 +77,25 @@ export function DuplicateNotice({
       </div>
 
       <div className="space-y-1.5 p-2.5">
-        {hits.map(({ car, because }) => (
+        {hits.map(({ car, because, match }) => (
           <div
             key={car.car_id}
             className="flex items-center gap-2 rounded-md border border-border bg-background/85 p-2"
           >
+            {/* How much of the description the two share. 100% is every field
+                either of them states agreeing; anything less is the thing to
+                look at before deciding it is the same car. */}
+            <span
+              className={cn(
+                "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                match >= 95
+                  ? "bg-amber-500/25 text-amber-800 dark:text-amber-300"
+                  : "bg-muted text-muted-foreground",
+              )}
+              title="How much of the description matches"
+            >
+              {match}%
+            </span>
             <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
               {car.image_url ? (
                 <img src={car.image_url} alt="" className="size-full object-cover" />
@@ -92,7 +106,7 @@ export function DuplicateNotice({
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs font-semibold">{car.name}</div>
               <div className="truncate text-[10px] text-muted-foreground">{subLineOf(car)}</div>
-              <div className="truncate text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+              <div className="truncate text-[10px] font-medium text-amber-700 dark:text-amber-400">
                 {because} · {inrFull(Number(car.mrp) || 0)}
               </div>
             </div>
