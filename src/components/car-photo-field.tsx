@@ -301,6 +301,20 @@ export function CarPhotoField({
             <ImagePlus className="size-4" />
             {value ? "Replace image" : "Add image"}
           </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5"
+            disabled={busy}
+            onClick={() => {
+              setLink(value && !/\/storage\/v1\/object\/public\//.test(value) ? value : "");
+              setLinkOpen((v) => !v);
+            }}
+          >
+            <Link2 className="size-4" />
+            {linkOpen ? "Hide the link box" : "Add image via link"}
+          </Button>
           {searchQuery.trim() && (
             <Button
               type="button"
@@ -363,7 +377,7 @@ export function CarPhotoField({
         onPick={onChange}
       />
 
-      {linkOpen && !touch && (
+      {linkOpen && (
         <div className="flex gap-1.5">
           <Input
             autoFocus
