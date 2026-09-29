@@ -32,8 +32,12 @@ export function WhatsNewStar() {
   const [seen, setSeen] = useState(readSeen);
   const [open, setOpen] = useState(false);
 
-  const fresh = releasesSince(seen).slice(0, IN_THE_BAR);
-  if (fresh.length === 0) return null;
+  // Whether to show the mark at all is one question; what it shows is another.
+  // It appears because there is a build you have not seen, and then shows the
+  // last two whatever you have seen — the one before is the context for the one
+  // you missed.
+  if (releasesSince(seen).length === 0) return null;
+  const fresh = RELEASES.slice(0, IN_THE_BAR);
 
   return (
     <Popover
@@ -54,7 +58,7 @@ export function WhatsNewStar() {
           size="icon"
           className="relative size-9 shrink-0 rounded-full"
           title={`What's new in build ${LATEST_BUILD}`}
-          aria-label={`What's new — ${fresh.length} new build${fresh.length === 1 ? "" : "s"}`}
+          aria-label="What's new"
         >
           <Sparkles className="size-4.5" />
           <span className="absolute right-1 top-1 size-2 rounded-full border-2 border-background bg-violet-500" />
