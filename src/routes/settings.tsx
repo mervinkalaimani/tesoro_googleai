@@ -65,6 +65,8 @@ import { FavouriteDetector } from "@/components/favourite-detector";
 import { IdRebuild } from "@/components/shipping-id-rebuild";
 import { OAuthProvidersCard } from "@/components/oauth-providers-card";
 import { SupabaseSyncCard } from "@/components/supabase-sync-card";
+import { WhatsNewList } from "@/components/whats-new";
+import { LATEST_BUILD } from "@/lib/whats-new";
 import { useAuth, fullName } from "@/lib/auth-store";
 import { useCarsSource } from "@/lib/cars-store";
 
@@ -106,6 +108,7 @@ type SettingsView =
   | "metadata"
   | "homepage"
   | "advanced"
+  | "whats_new"
   | "help"
   | "help_privacy"
   | "help_terms"
@@ -143,6 +146,9 @@ function parseTab(tab?: string): SettingsView {
   }
   if (t === "homepage" || t === "home") return "homepage";
   if (t === "advanced") return "advanced";
+  if (t === "whats_new" || t === "whatsnew" || t === "changelog" || t === "updates") {
+    return "whats_new";
+  }
   if (t === "help" || t === "support") return "help";
   if (t === "help_privacy" || t === "privacy") return "help_privacy";
   if (t === "help_terms" || t === "terms") return "help_terms";
@@ -391,6 +397,28 @@ export function SettingsPage() {
                 </p>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </button>
+
+            {/* WHAT'S NEW — the permanent home of the changelog. The mark in the
+                top bar shows the last two builds and then removes itself. */}
+            <button
+              type="button"
+              onClick={() => changeView("whats_new")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <Sparkles className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">What&apos;s new</span>
+                <p className="text-xs text-muted-foreground">
+                  Everything added in each build, newest first
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span className="tabular-nums">Build {LATEST_BUILD}</span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </button>
@@ -895,6 +923,20 @@ export function SettingsPage() {
               view === "help_privacy" ? "privacy" : view === "help_terms" ? "terms" : "contact"
             }
           />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBPAGE: WHAT IS NEW                                                     */}
+      {/* ========================================================================= */}
+      {view === "whats_new" && (
+        <div className="space-y-5">
+          <SubpageHeader title="What's new" onBack={() => changeView("root")} />
+          <p className="text-xs text-muted-foreground">
+            Every build, newest first. The build number rises with every change that goes in, so two
+            screens can be told apart. A filled dot is one worth knowing about.
+          </p>
+          <WhatsNewList />
         </div>
       )}
 

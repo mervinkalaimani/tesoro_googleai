@@ -23,11 +23,9 @@ import {
   Loader2,
   Pencil,
   Plus,
-  Receipt,
   Search,
   Star,
   Trash2,
-  Truck,
   UserCheck,
   Users,
   X,
@@ -1099,28 +1097,37 @@ function CarPurchaseAndShippingSection({
             className={delta >= 0 ? "text-emerald-600 dark:text-[#00E599]" : "text-rose-400"}
             value={delta >= 0 ? `+${inrFull(delta)}` : `-${inrFull(Math.abs(delta))}`}
           />
-          <div className="min-w-0">
-            <span className="text-xs text-muted-foreground">Seller</span>
-            <div className="mt-0.5 truncate text-sm font-semibold">
-              {car.seller?.trim() ? (
-                <button
-                  type="button"
-                  onClick={() => onOpenSeller(car.seller)}
-                  title={`Everything bought from ${car.seller}`}
-                  className="max-w-full truncate text-sky-500 hover:underline"
-                >
-                  {car.seller}
-                </button>
-              ) : (
-                <span className="text-foreground">—</span>
-              )}
-            </div>
-          </div>
+          <LinkSpec
+            label="Seller"
+            value={car.seller}
+            title={`Everything bought from ${car.seller}`}
+            onClick={() => onOpenSeller(car.seller)}
+          />
           <Spec label="Order date" value={formatDayMonthYear(car.orderDate) || car.orderDate} />
           <Spec
             label={hasArrived ? "Received date" : "Expected date"}
             value={formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate)}
           />
+          {/* The order and the shipment are facts of this purchase, not a pair
+              of buttons under it: the ID is worth seeing, and it doubles as the
+              door to everything else that came in the same order or parcel —
+              the same as the seller two cells up. */}
+          {car.orderId?.trim() && (
+            <LinkSpec
+              label="Order"
+              value={car.orderId}
+              title={`Everything in order ${car.orderId}`}
+              onClick={() => onOpenBatch(car.orderId!, "orderId")}
+            />
+          )}
+          {car.shippingId?.trim() && (
+            <LinkSpec
+              label="Shipment"
+              value={car.shippingId}
+              title={`Everything in shipment ${car.shippingId}`}
+              onClick={() => onOpenBatch(car.shippingId!, "shippingId")}
+            />
+          )}
           {(car.deliveryPartner || car.trackingId) && (
             <div className="min-w-0">
               <span className="text-xs text-muted-foreground">Courier</span>
@@ -1139,36 +1146,6 @@ function CarPurchaseAndShippingSection({
             </div>
           )}
         </SpecGrid>
-
-        {/* The order and the shipment, as doors rather than as identifiers. */}
-        {(car.orderId?.trim() || car.shippingId?.trim()) && (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {car.orderId?.trim() && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => onOpenBatch(car.orderId!, "orderId")}
-              >
-                <Receipt className="size-3.5" />
-                View order
-              </Button>
-            )}
-            {car.shippingId?.trim() && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5"
-                onClick={() => onOpenBatch(car.shippingId!, "shippingId")}
-              >
-                <Truck className="size-3.5" />
-                View shipping details
-              </Button>
-            )}
-          </div>
-        )}
 
         {cleanTransitNotes && (
           <p className="mt-2 text-xs text-foreground bg-muted/30 rounded-lg p-2.5 border border-border/50">
@@ -1552,6 +1529,48 @@ function CopyId({ id, className }: { id: string; className?: string }) {
         <Copy className="size-3.5" />
       )}
     </button>
+  );
+}
+
+/**
+ * A value in the grid that opens something.
+ *
+ * The seller, the order and the shipment are all the same shape: a short
+ * identifier that is worth reading and is also the way to the rest of what it
+ * covers. Rendered as a link rather than as a button, because a grid of
+ * nine facts with two outline buttons under it reads as a toolbar nobody asked
+ * for, and the buttons sat nowhere near the fields they were about.
+ */
+function LinkSpec({
+  label,
+  value,
+  title,
+  onClick,
+}: {
+  label: string;
+  value?: string | null;
+  title: string;
+  onClick: () => void;
+}) {
+  const text = (value || "").trim();
+  return (
+    <div className="min-w-0">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="mt-0.5 truncate text-sm font-semibold">
+        {text ? (
+          <button
+            type="button"
+            onClick={onClick}
+            title={title}
+            className="max-w-full truncate text-sky-500 hover:underline"
+          >
+            {text}
+          </button>
+        ) : (
+          <span className="text-foreground">—</span>
+        )}
+      </div>
+    </div>
   );
 }
 

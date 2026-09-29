@@ -10,6 +10,7 @@ import type { Diecast } from "@/lib/types";
 import { HomeScreenMark } from "@/components/brand-mark";
 import { SearchBox } from "@/components/search-box";
 import { NotificationCenter } from "@/components/notification-center";
+import { WhatsNewStar } from "@/components/whats-new";
 import { AccountButton } from "@/components/account-button";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { UploadCarsDialog } from "@/components/upload-cars-dialog";
@@ -124,6 +125,7 @@ export function TopBar() {
           <RefreshCw className={cn("size-4.5", syncing && "animate-spin")} />
         </Button>
 
+        <WhatsNewStar />
         <NotificationCenter />
         {/* Reading right to left from the corner: who you are, then the thing
             you came to do. +, catalog, and avatar buttons share identical size with an additional 2pt spacing on desktop */}
