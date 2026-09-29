@@ -73,6 +73,38 @@ import { CarThumb } from "@/components/car-thumb";
 import { carSubLine } from "@/lib/car-subline";
 import { boughtOn, purchaseHistory, type Purchase } from "@/lib/copies";
 import { isInHand, isIso } from "@/lib/status";
+import { toast } from "sonner";
+import { uploadCarPhoto } from "@/lib/car-photos";
+import { useImagePaste } from "@/lib/paste-image";
+
+/**
+ * A photograph pasted onto whatever is open.
+ *
+ * The details window has no photo controls — it is for looking at a car, not
+ * editing one — but a picture of the car is exactly what you have in hand while
+ * you are looking at it. Ctrl+V uploads it and saves; there is nothing else to
+ * learn. The upload takes a moment, so the toast says so, and a second paste
+ * while the first is still going is ignored rather than queued.
+ */
+function usePastedPhoto(enabled: boolean, save: (url: string) => void | Promise<unknown>) {
+  const busy = useRef(false);
+  useImagePaste(enabled, (file) => {
+    if (busy.current) return;
+    busy.current = true;
+    const note = toast.loading("Adding the photo…");
+    void (async () => {
+      const up = await uploadCarPhoto(file);
+      if ("error" in up) {
+        toast.error("Could not add that photo", { id: note, description: up.error });
+        busy.current = false;
+        return;
+      }
+      await save(up.url);
+      toast.success("Photo updated", { id: note });
+      busy.current = false;
+    })();
+  });
+}
 
 type Ctx = {
   open: (car: Diecast) => void;
@@ -494,7 +526,12 @@ function CarPopupContent({
   onSelectCar,
 }: CarPopupContentProps) {
   const cars = useCars();
+  const { updateCar } = useCarsActions();
   const mobile = useMobileHeroGestures(onClose);
+
+  // Your own copy, so no admin about it: a photo pasted here replaces the one
+  // on this car.
+  usePastedPhoto(true, (url) => updateCar({ ...car, imageUrl: url }));
 
   // Opening the car is seeing it: the dot beside its name has done its job and
   // goes. The database checks the caller owns the row, so this is safe to fire
@@ -1951,10 +1988,16 @@ function CatalogDetailsContent({
   const isActuallyIso = Boolean(isIsoProp || matchingIsoCar);
 
   /** Every entry for this casting, so the owner count covers all its boxes. */
-  const { catalog } = useCatalog();
+  const { catalog, updateCatalogCar } = useCatalog();
   const ownerEntries = useMemo(
     () => (catalogCar ? castingSiblings(catalogCar, catalog) : []),
     [catalogCar, catalog],
+  );
+
+  // The catalogue is everybody's: this photo is the one every collection shows
+  // for this casting, so only an admin can paste over it.
+  usePastedPhoto(Boolean(isAdmin && catalogCar), (url) =>
+    updateCatalogCar({ ...catalogCar!, image_url: url }),
   );
 
   // A box's contents head the shelf column, and cost it one of its two shelves.

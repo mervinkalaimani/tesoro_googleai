@@ -1301,7 +1301,9 @@ export function CatalogFormDialog({
                         <SelectTrigger>
                           <SelectValue placeholder="Month and year" />
                         </SelectTrigger>
-                        <SelectContent>
+                        {/* Seven months, and the other seventeen are a scroll
+                            away — the same list the car form shows. */}
+                        <SelectContent className="max-h-[242px]">
                           {etaOptions.map((o) => (
                             <SelectItem key={o.value} value={o.value}>
                               {o.label}

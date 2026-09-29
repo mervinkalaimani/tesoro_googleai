@@ -2296,7 +2296,10 @@ export function CarFormDialog({
                     <SelectTrigger>
                       <SelectValue placeholder="Month and year" />
                     </SelectTrigger>
-                    <SelectContent>
+                    {/* Seven months, and the other seventeen are a scroll
+                        away: two years of them opened as a list the height of
+                        the window, which hid the form behind it. */}
+                    <SelectContent className="max-h-[242px]">
                       {etaOptions.map((o) => (
                         <SelectItem key={o.value} value={o.value}>
                           {o.label}
