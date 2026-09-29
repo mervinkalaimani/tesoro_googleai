@@ -64,6 +64,29 @@ const session = {
   },
 };
 
+/**
+ * When the tab copy and the kept copy disagree, which one is still good.
+ *
+ * The tab copy used to win outright, which is right while a "don't stay signed
+ * in" session is running and wrong the moment one is left behind. A tab that
+ * once held an expired session kept handing it to Supabase in front of a
+ * perfectly good remembered one, Supabase tried to refresh the dead one, failed
+ * and signed the person out — so "Remember me" was ticked and the password was
+ * asked for anyway.
+ *
+ * Both copies are sessions in the same shape, so the one that expires later is
+ * the one to use. Anything unparseable falls back to the old behaviour.
+ */
+function expiresAt(raw: string | null): number {
+  if (!raw) return -1;
+  try {
+    const v = JSON.parse(raw) as { expires_at?: number };
+    return typeof v?.expires_at === "number" ? v.expires_at : 0;
+  } catch {
+    return 0;
+  }
+}
+
 const isOAuthVerifierKey = (k: string) =>
   k.includes("code-verifier") || k.includes("provider") || k.includes("flow-id");
 
@@ -84,12 +107,14 @@ export function rememberAwareStorage() {
         }
       }
 
-      // Checked first regardless of the current flag: a session written while
-      // the box was unticked has to keep working for the life of the tab, even
-      // if the preference is changed underneath it.
+      // A session written while the box was unticked has to keep working for
+      // the life of the tab, even if the preference changes underneath it — so
+      // the tab copy is read, but it no longer wins by being looked at first.
       const inTab = session.get(key);
-      if (inTab !== null) return inTab;
-      return await persistent.getItem(key);
+      const kept = await persistent.getItem(key);
+      if (inTab === null) return kept;
+      if (kept === null) return inTab;
+      return expiresAt(inTab) >= expiresAt(kept) ? inTab : kept;
     },
     setItem: async (key: string, value: string) => {
       // Always store OAuth PKCE verifiers in standard localStorage so full-window OAuth
