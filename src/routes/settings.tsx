@@ -46,6 +46,7 @@ import {
 import { SegmentControl } from "@/components/segment-control";
 import { CataloguePhotos } from "@/components/catalogue-photos";
 import { MetadataEditor } from "@/components/metadata-editor";
+import { DeleteMyData } from "@/components/delete-my-data";
 import { HelpDoc } from "@/components/help-doc";
 import { SplashMark } from "@/components/brand-mark";
 import { HELP_BLURBS, HELP_TITLES } from "@/lib/help-content";
@@ -478,6 +479,11 @@ export function SettingsPage() {
           <SubpageHeader title="Account" onBack={() => changeView("root")} />
 
           <AccountCard />
+
+          {/* Guest mode has nothing of its own to delete. The owner does, but
+              deleting it would leave the catalogue with nobody to keep it, so
+              the card says so rather than hiding. */}
+          {!isGuest && <DeleteMyData blocked={isOwner} />}
 
           {/* In Apple Settings, Sign Out is also at the very bottom of Apple ID */}
           <div className="pt-2">
