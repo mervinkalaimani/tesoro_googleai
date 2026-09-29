@@ -17,6 +17,11 @@ import { rarityOf } from "@/lib/rarity";
  * new car, and importing your collection back would double it. Leave it blank
  * for a car you are adding and the app mints one.
  *
+ * No catalogue ID: a spreadsheet is written by a person, and nobody types
+ * 180F0A-03-0000-1. Which casting a row is, is worked out from what the row
+ * says — brand, make, model and the rest — which is the same question Add a
+ * car answers from the same fields.
+ *
  * Shipping ID, Order ID, Received date, Month and Name are gone. The first two
  * are derived from the seller and the dates; the received date is stamped when
  * a car is marked In Hand; the name assembles itself from make, model, variant
