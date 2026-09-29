@@ -15,7 +15,9 @@ import {
   BookOpen,
   Calendar,
   Car,
+  Check,
   CheckCircle2,
+  Copy,
   Flame,
   Layers,
   Loader2,
@@ -1512,6 +1514,47 @@ function Section({
  * the card sat at text-sm, so three of the twenty facts on screen were four
  * times the size of the others for no reason anyone could have named.
  */
+/**
+ * A catalogue ID you can take with you.
+ *
+ * The ID is how a casting is referred to anywhere outside this app — in a
+ * message to another collector, in a spreadsheet, in a search here — and until
+ * now the only way to have it was to read it off the screen and type it back.
+ */
+function CopyId({ id, className }: { id: string; className?: string }) {
+  const [done, setDone] = useState(false);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setDone(true);
+      setTimeout(() => setDone(false), 1400);
+    } catch {
+      // A denied clipboard is not worth a dialog: the ID is on screen either
+      // way, and the button simply does nothing.
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      title={`Copy ${id}`}
+      aria-label={`Copy catalogue ID ${id}`}
+      className={cn(
+        "inline-flex shrink-0 items-center rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+        className,
+      )}
+    >
+      {done ? (
+        <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+      ) : (
+        <Copy className="size-3.5" />
+      )}
+    </button>
+  );
+}
+
 function Spec({
   label,
   value,
@@ -2380,13 +2423,13 @@ function CatalogDetailsBody({
                 </p>
                 <ul className="mt-1 divide-y divide-border/60 overflow-hidden rounded-lg border border-border/80">
                   {siblings.map((sib) => (
-                    <li key={sib.car_id}>
+                    <li key={sib.car_id} className="flex items-center">
                       <button
                         type="button"
                         onClick={() => setShownId(sib.car_id)}
                         aria-current={sib.car_id === shownId}
                         className={cn(
-                          "flex w-full items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors",
+                          "flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors",
                           sib.car_id === shownId
                             ? "bg-primary/10 text-foreground"
                             : "text-muted-foreground hover:bg-muted/40",
@@ -2398,15 +2441,21 @@ function CatalogDetailsBody({
                           {Number(sib.mrp) ? inrFull(Math.round(Number(sib.mrp))) : "—"}
                         </span>
                       </button>
+                      <CopyId id={sib.car_id} className="mr-1.5" />
                     </li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <Spec
-                label="Catalogue ID"
-                value={shown?.car_id || car.catalogId || car.carId || car.id || "—"}
-              />
+              (() => {
+                const id = shown?.car_id || car.catalogId || car.id || "";
+                return (
+                  <div className="flex items-end gap-1">
+                    <Spec label="Catalogue ID" value={id || "—"} className="font-mono" />
+                    {id ? <CopyId id={id} className="mb-0.5" /> : null}
+                  </div>
+                );
+              })()
             )}
           </div>
           {preOrder && expectedDate && (

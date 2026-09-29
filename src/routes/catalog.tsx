@@ -259,58 +259,58 @@ function BrandTray({
   // One brand is not a choice, and no brands is not a tray.
   if (brands.length < 2) return null;
 
+  const picked = active !== "all" && active !== "";
+
   return (
-    // Pinned under the filter band, not scrolled past with the first row: the
-    // brand is the cut you change most, and by the time you want another one you
-    // are four hundred castings down. top-[6.5rem] is the top bar (3.5rem) plus
-    // the toolbar band; z-20 keeps it under that band and over the table heads.
-    <div className="sticky top-[6.5rem] z-20 -mx-3 border-b border-border/60 bg-background/95 px-2 py-1.5 shadow-xs backdrop-blur-md md:-mx-6 md:px-5">
-      <div className="no-scrollbar flex items-center gap-2 overflow-x-auto">
-        {brands.map((b) => {
-          const on = active === b.value;
-          const src = logos.get(b.value.trim().toLowerCase());
-          return (
-            <button
-              key={b.value}
-              type="button"
-              aria-pressed={on}
-              title={b.value}
-              onClick={() => onPick(on ? "all" : b.value)}
-              className={cn(
-                // Square, and white whatever the theme: a logo is drawn for
-                // paper, and half of these are dark marks that vanish on a dark
-                // background. The chosen brand is the one at full strength and
-                // the rest step back — no ring, which would be the frame this
-                // deliberately is not.
-                "grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-white transition-opacity",
-                on ? "opacity-100" : "opacity-50 hover:opacity-85",
-              )}
-            >
-              {src ? (
-                <img
-                  src={src}
-                  alt={b.value}
-                  loading="lazy"
-                  // Filling the circle, not sitting inside it: a mark uploaded as a
-                  // square fills it exactly, and a wide one is cropped to the
-                  // middle, which is where a logo's meaning is.
-                  className="size-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
-                />
-              ) : (
-                // Until a brand has a mark, its name is the mark. Inside the
-                // square rather than under it, so the row stays one line of
-                // tiles.
-                <span className="px-1 text-center text-[10px] font-semibold leading-tight text-neutral-700">
-                  {b.value}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+    // No band of its own: it rides inside the toolbar's, which is the only way
+    // it stays under the filters however many rows they wrap to.
+    <div className="no-scrollbar -mx-1 flex items-center gap-2 overflow-x-auto px-1 pt-2">
+      {brands.map((b) => {
+        const on = active === b.value;
+        const src = logos.get(b.value.trim().toLowerCase());
+        return (
+          <button
+            key={b.value}
+            type="button"
+            aria-pressed={on}
+            title={b.value}
+            onClick={() => onPick(on ? "all" : b.value)}
+            className={cn(
+              // Round, and white whatever the theme: a logo is drawn for
+              // paper, and half of these are dark marks that vanish on a dark
+              // background.
+              "grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-white transition-opacity",
+              // Nothing chosen is not a row of rejected brands: they all read
+              // normally until one is picked, and only then do the others step
+              // back. No ring on the chosen one, which would be the frame this
+              // deliberately is not.
+              picked && !on ? "opacity-40 hover:opacity-80" : "opacity-100",
+            )}
+          >
+            {src ? (
+              <img
+                src={src}
+                alt={b.value}
+                loading="lazy"
+                // Filling the circle, not sitting inside it: a mark uploaded as a
+                // square fills it exactly, and a wide one is cropped to the
+                // middle, which is where a logo's meaning is.
+                className="size-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            ) : (
+              // Until a brand has a mark, its name is the mark. Inside the
+              // square rather than under it, so the row stays one line of
+              // tiles.
+              <span className="px-1 text-center text-[10px] font-semibold leading-tight text-neutral-700">
+                {b.value}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -879,6 +879,14 @@ function CatalogPage() {
             </div>
           </div>
         }
+        below={
+          <BrandTray
+            brands={options.brand}
+            logos={brandLogos}
+            active={filters.brand}
+            onPick={(brand) => setFilters((f) => ({ ...f, brand }))}
+          />
+        }
         right={
           <>
             {/* Hide owned used to be a checkbox out here. It is a chip beside
@@ -965,13 +973,6 @@ function CatalogPage() {
             <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "table"]} />
           </>
         }
-      />
-
-      <BrandTray
-        brands={options.brand}
-        logos={brandLogos}
-        active={filters.brand}
-        onPick={(brand) => setFilters((f) => ({ ...f, brand }))}
       />
 
       {isLoading && catalog.length === 0 ? (

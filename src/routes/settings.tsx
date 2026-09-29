@@ -332,7 +332,7 @@ export function SettingsPage() {
               onClick={() => changeView("homepage")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Home className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -352,7 +352,7 @@ export function SettingsPage() {
               onClick={() => changeView("display")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Palette className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -372,7 +372,7 @@ export function SettingsPage() {
               onClick={() => changeView("notifications")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-rose-500 to-red-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Bell className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -398,7 +398,7 @@ export function SettingsPage() {
                 onClick={() => changeView("advanced")}
                 className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
               >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-slate-500 to-slate-700 text-white shadow-xs">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                   <Wrench className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -421,7 +421,7 @@ export function SettingsPage() {
               onClick={() => changeView("help")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-cyan-500 to-sky-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <LifeBuoy className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -722,7 +722,7 @@ export function SettingsPage() {
               onClick={() => changeView("search_engine")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-sky-500 to-blue-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Search className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -742,7 +742,7 @@ export function SettingsPage() {
               onClick={() => changeView("diagnostics")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-indigo-500 to-purple-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Wrench className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -760,7 +760,7 @@ export function SettingsPage() {
               to="/admin"
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-amber-500 to-amber-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <ShieldCheck className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -779,7 +779,7 @@ export function SettingsPage() {
               onClick={() => changeView("catalogue_photos")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-violet-500 to-purple-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <ImageIcon className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -797,7 +797,7 @@ export function SettingsPage() {
               onClick={() => changeView("assortments")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-amber-500 to-orange-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Layers className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -815,7 +815,7 @@ export function SettingsPage() {
               onClick={() => changeView("brand_logos")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-rose-500 to-pink-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Tag className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -833,7 +833,7 @@ export function SettingsPage() {
               onClick={() => changeView("database")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b from-emerald-500 to-teal-600 text-white shadow-xs">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Database className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -868,20 +868,18 @@ export function SettingsPage() {
           <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
             {(
               [
-                ["help_privacy", "privacy", FileText, "from-indigo-500 to-violet-600"],
-                ["help_terms", "terms", Scale, "from-amber-500 to-orange-600"],
-                ["help_contact", "contact", MessageCircle, "from-emerald-500 to-teal-600"],
+                ["help_privacy", "privacy", FileText],
+                ["help_terms", "terms", Scale],
+                ["help_contact", "contact", MessageCircle],
               ] as const
-            ).map(([target, key, Icon, tint]) => (
+            ).map(([target, key, Icon]) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => changeView(target)}
                 className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
               >
-                <div
-                  className={`flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-gradient-to-b ${tint} text-white shadow-xs`}
-                >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                   <Icon className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">

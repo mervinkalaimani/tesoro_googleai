@@ -62,12 +62,21 @@ export const TOP_BAR_PX = "3.5rem";
 export function PageToolbar({
   left,
   right,
+  below,
   className = "",
   sticky = false,
   oneLine = false,
 }: {
   left?: ReactNode;
   right?: ReactNode;
+  /**
+   * A second row inside the band, under the controls. It belongs here rather
+   * than as a sticky element of its own: two sticky bands have to agree on how
+   * tall the first one is, and a toolbar that wraps to three rows on a narrow
+   * desktop made a liar of any offset the second one hardcoded — it sat on top
+   * of the filters instead of under them.
+   */
+  below?: ReactNode;
   className?: string;
   /**
    * Pin below the top bar on long pages, on a translucent band. The controls
@@ -114,7 +123,16 @@ export function PageToolbar({
     </div>
   );
 
-  if (!sticky) return inner;
+  const body = below ? (
+    <>
+      {inner}
+      {below}
+    </>
+  ) : (
+    inner
+  );
+
+  if (!sticky) return body;
 
   return (
     // The negative margins let the band reach the edges of the page's padding
@@ -122,7 +140,7 @@ export function PageToolbar({
     // with a gap either side reads as a floating box, not as part of the
     // chrome. z-30 keeps it over table headers (z-10/20) and under the top bar (z-40).
     <div className="sticky top-14 z-30 -mx-3 border-b border-border/60 bg-background/95 px-3 py-2 backdrop-blur-md shadow-xs md:-mx-6 md:px-6">
-      {inner}
+      {body}
     </div>
   );
 }
