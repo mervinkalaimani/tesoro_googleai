@@ -511,7 +511,7 @@ function LoginPage() {
                 {view === "signin" ? (
                   <button
                     type="button"
-                    className="absolute right-0 top-0 text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                    className="absolute right-0 top-0 text-xs font-medium text-primary underline underline-offset-2 hover:opacity-80"
                     onClick={() => {
                       setResetEmail(email.includes("@") ? email : "");
                       go("reset");
@@ -553,6 +553,27 @@ function LoginPage() {
                 {busy ? <Loader2 className="size-4 animate-spin" /> : null}
                 {view === "signin" ? "Sign in" : "Continue"}
               </Button>
+
+              {/* The second way to the same screen. The link by the Password
+                  label is where it belongs while you are filling the form in,
+                  and is also four words of small grey type beside a label —
+                  easy to miss entirely if the reason you are here is that the
+                  password is the part you have lost. */}
+              {view === "signin" ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  Forgotten your password?{" "}
+                  <button
+                    type="button"
+                    className="font-medium text-primary underline underline-offset-2 hover:opacity-80"
+                    onClick={() => {
+                      setResetEmail(email.includes("@") ? email : "");
+                      go("reset");
+                    }}
+                  >
+                    Email me a reset link
+                  </button>
+                </p>
+              ) : null}
             </form>
           </>
         )}
