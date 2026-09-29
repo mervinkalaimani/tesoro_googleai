@@ -169,10 +169,12 @@ const DialogContent = React.forwardRef<
           />
         )}
         {children}
-        {/* Desktop only visible. Accessible & clickable on mobile via sr-only. */}
+        {/* On the title's line, at the right-hand end of it, at every width.
+            It used to be readable only from a tablet up — on a phone it was
+            sr-only and the gesture was the only way out that you could see. */}
         <DialogPrimitive.Close
           ref={sheet.closeRef}
-          className="sr-only sm:not-sr-only sm:absolute sm:right-4 sm:top-4 cursor-pointer rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground"
+          className="absolute right-3 top-3 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-5 sm:top-5"
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
@@ -202,7 +204,9 @@ const DialogTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    className={cn("text-lg font-semibold leading-none tracking-tight", className)}
+    // pr-10 keeps the close button out of a long title rather than letting
+    // the two draw over each other.
+    className={cn("pr-10 text-lg font-semibold leading-none tracking-tight", className)}
     {...props}
   />
 ));

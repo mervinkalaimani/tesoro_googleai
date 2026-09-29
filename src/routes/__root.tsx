@@ -16,6 +16,7 @@ import { CatalogProvider } from "@/lib/catalog-store";
 import { CarDrawerProvider } from "@/components/car-details-drawer";
 import { AuthProvider } from "@/lib/auth-store";
 import { AuthGate } from "@/components/auth-gate";
+import { UpdateNotice } from "@/components/update-notice";
 import { Toaster } from "@/components/ui/sonner";
 import { BootSplash } from "@/components/brand-mark";
 
@@ -286,6 +287,9 @@ function RootComponent() {
                     bucket was missing. The upload looked like it silently did
                     nothing, which is exactly what it looked like. */}
                 <Toaster position="bottom-right" richColors closeButton />
+                {/* Above the gate, so a tab left open on the login screen hears
+                    about a deploy too. */}
+                <UpdateNotice />
               </CarDrawerProvider>
             </CatalogProvider>
           </CarsProvider>

@@ -1519,6 +1519,28 @@ export function CatalogFormDialog({
                     {c.car_id} · {inrFull(Number(c.mrp) || 0)}
                   </div>
                 </div>
+                {/* A different box is not always a duplicate. Two entries of
+                    one casting in Mainline and in Premium are both real, and
+                    what you want there is for them to read as one casting with
+                    two boxes — not for one of them to be swallowed. */}
+                {(c.assortment || "").trim().toLowerCase() !==
+                  (form.assortment || "").trim().toLowerCase() && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0 gap-1 px-2.5 text-xs"
+                    disabled={absorbBusy || linking || isPack}
+                    title={`Keep both, with ${c.assortment || "this box"} as another box of this casting`}
+                    onClick={() => {
+                      setMerging(false);
+                      void attachEntry(c);
+                    }}
+                  >
+                    <Link2 className="size-3.5" />
+                    Add as a box
+                  </Button>
+                )}
                 <Button
                   type="button"
                   size="sm"
