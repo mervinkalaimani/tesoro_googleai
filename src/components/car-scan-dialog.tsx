@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Camera,
   Check,
+  ClipboardPaste,
   Images,
   Loader2,
   ScanLine,
@@ -93,14 +94,117 @@ export function CarScanDialog({
   const [found, setFound] = useState<ScanResult | null>(null);
   const [take, setTake] = useState<Set<ScanKey>>(new Set());
 
+  /** The live webcam, when one is running. Null the rest of the time. */
+  const [cam, setCam] = useState<MediaStream | null>(null);
+
   const lastFileRef = useRef<File | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  // Read by the stop helper and the unmount cleanup, neither of which should
+  // have to wait for a re-render to know there is a camera to switch off.
+  const camRef = useRef<MediaStream | null>(null);
+
+  /**
+   * The camera, on a machine that has one but no `capture` attribute.
+   *
+   * `capture="environment"` raises a phone's camera app and does nothing at all
+   * on a desktop browser, so Scan a card offered a file picker and nothing else
+   * to anybody on a computer — which is most of the webcams in the world.
+   * getUserMedia is the other half of the same button.
+   */
+  const stopCamera = () => {
+    camRef.current?.getTracks().forEach((t) => t.stop());
+    camRef.current = null;
+    setCam(null);
+  };
+
+  const startCamera = async () => {
+    setError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        // The back camera on anything that has two; ignored where there is one.
+        video: { facingMode: "environment", width: { ideal: 1920 } },
+      });
+      camRef.current = stream;
+      setCam(stream);
+    } catch {
+      // A refusal and an absence look the same from here, and the answer to
+      // both is the same: use a photo instead.
+      setError(
+        "No camera, or the browser would not hand it over. Check this site's camera permission, or choose a photo.",
+      );
+    }
+  };
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !cam) return;
+    v.srcObject = cam;
+    void v.play().catch(() => {
+      /* An autoplay refusal leaves a still frame; the shutter still works. */
+    });
+  }, [cam]);
+
+  /** The frame on screen, as a file the scanner can read. */
+  const shoot = async () => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = v.videoWidth;
+    canvas.height = v.videoHeight;
+    canvas.getContext("2d")?.drawImage(v, 0, 0);
+    const blob = await new Promise<Blob | null>((res) =>
+      canvas.toBlob((b) => res(b), "image/jpeg", 0.92),
+    );
+    stopCamera();
+    if (blob) await scan(new File([blob], "card.jpg", { type: "image/jpeg" }));
+  };
+
+  /**
+   * A card already on the clipboard.
+   *
+   * Screenshot, snipping tool, right-click-copy off a listing — on a computer
+   * that is how an image is usually already in hand, and saving it to disk
+   * first only to pick it back out of a file dialog is two steps for nothing.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const item = [...(e.clipboardData?.items ?? [])].find((i) => i.type.startsWith("image/"));
+      const file = item?.getAsFile();
+      if (!file) return;
+      e.preventDefault();
+      void scan(file);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+    // `scan` is rebuilt every render; the engine it should use is the one
+    // chosen when the paste happens, which is what this dependency tracks.
+  }, [open, engine]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** The same thing from a button, for anybody who does not think in Ctrl+V. */
+  const pasteFromClipboard = async () => {
+    setError("");
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((t) => t.startsWith("image/"));
+        if (!type) continue;
+        const blob = await item.getType(type);
+        await scan(new File([blob], "card.png", { type }));
+        return;
+      }
+      setError("Nothing on the clipboard that looks like an image.");
+    } catch {
+      setError("The browser would not read the clipboard. Ctrl+V into this window works too.");
+    }
+  };
 
   // One scan per visit. Reopening to do another card should not open on the
   // last card's answers.
   useEffect(() => {
     if (open) return;
+    stopCamera();
     setBusy(false);
     setBusyMessage("");
     setError("");
@@ -113,6 +217,10 @@ export function CarScanDialog({
       return "";
     });
   }, [open]);
+
+  // A camera left running behind a closed dialog is a light on somebody's
+  // laptop that nothing on screen explains.
+  useEffect(() => () => stopCamera(), []);
 
   const processFields = (fields: ScanResult) => {
     const filled = FIELDS.map((f) => f.key).filter((k) => (fields[k] || "").trim());
@@ -309,7 +417,14 @@ export function CarScanDialog({
           <>
             {/* WHAT WAS PHOTOGRAPHED */}
             <div className="relative aspect-[16/10] w-full overflow-hidden rounded-lg border border-dashed border-border bg-muted/30">
-              {preview ? (
+              {cam ? (
+                <video
+                  ref={videoRef}
+                  playsInline
+                  muted
+                  className="absolute inset-0 size-full object-cover"
+                />
+              ) : preview ? (
                 <img src={preview} alt="" className="absolute inset-0 size-full object-contain" />
               ) : (
                 <div className="absolute inset-0 grid place-items-center text-center text-xs text-muted-foreground">
@@ -329,32 +444,71 @@ export function CarScanDialog({
               )}
             </div>
 
-            <div className="flex flex-wrap gap-1.5">
-              {touch && (
+            {cam ? (
+              // The shutter replaces the row while the camera is up: there is
+              // one thing to do with a live frame.
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="flex-1 gap-1.5"
+                  disabled={busy}
+                  onClick={() => void shoot()}
+                >
+                  <Camera className="size-3.5" />
+                  Take the shot
+                </Button>
+                <Button type="button" variant="outline" size="sm" onClick={stopCamera}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="flex-1 gap-1.5"
                   disabled={busy}
-                  onClick={() => cameraRef.current?.click()}
+                  // A phone raises its own camera app, which is better than a
+                  // video element in a dialog. A computer has no such thing.
+                  onClick={() => (touch ? cameraRef.current?.click() : void startCamera())}
                 >
                   <Camera className="size-3.5" />
                   Camera
                 </Button>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={touch ? "flex-1 gap-1.5" : "gap-1.5"}
-                disabled={busy}
-                onClick={() => fileRef.current?.click()}
-              >
-                {touch ? <Images className="size-3.5" /> : <Upload className="size-3.5" />}
-                {found || error ? "Choose another" : touch ? "Gallery" : "Choose a photo"}
-              </Button>
-            </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 gap-1.5"
+                  disabled={busy}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {touch ? <Images className="size-3.5" /> : <Upload className="size-3.5" />}
+                  {found || error ? "Choose another" : touch ? "Gallery" : "Choose a photo"}
+                </Button>
+                {!touch && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={busy}
+                    title="Or press Ctrl+V anywhere in this window"
+                    onClick={() => void pasteFromClipboard()}
+                  >
+                    <ClipboardPaste className="size-3.5" />
+                    Paste
+                  </Button>
+                )}
+              </div>
+            )}
+            {!touch && !cam && (
+              <p className="text-[11px] text-muted-foreground">
+                A screenshot on the clipboard can be pasted straight in with Ctrl+V.
+              </p>
+            )}
           </>
         )}
 
