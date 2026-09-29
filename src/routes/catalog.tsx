@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { useCatalog } from "@/lib/catalog-store";
 import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
+import { compareCarNumbers } from "@/lib/car-number";
 import { useAuth } from "@/lib/auth-store";
 import { isIso } from "@/lib/status";
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
@@ -141,7 +142,7 @@ const NO_FILTERS: Filters = {
  * is why direction is not a control of its own — there is nothing to set it to
  * until you have said what you are ordering by.
  */
-type SortKey = "added" | "sno" | "brand" | "make" | "year";
+type SortKey = "added" | "sno" | "brand" | "make" | "year" | "car_number";
 type Sort = { key: SortKey; dir: "asc" | "desc" };
 
 const SORTS: { value: SortKey; label: string }[] = [
@@ -150,6 +151,7 @@ const SORTS: { value: SortKey; label: string }[] = [
   { value: "brand", label: "Brand" },
   { value: "make", label: "Make" },
   { value: "year", label: "Year" },
+  { value: "car_number", label: "Car number" },
 ];
 
 /**
@@ -203,6 +205,12 @@ function compareBy(a: CatalogCar, b: CatalogCar, sort: Sort, serials: Map<string
   }
   if (sort.key === "sno") {
     return flip * ((serials.get(a.car_id) ?? 0) - (serials.get(b.car_id) ?? 0));
+  }
+  // The number on the card reads as a number, hash and all — see car-number.ts.
+  if (sort.key === "car_number") {
+    return (
+      compareCarNumbers(a.car_number, b.car_number, flip) || cmpText(clean(a.name), clean(b.name))
+    );
   }
 
   const av = sort.key === "year" ? yearOf(a) : clean(a[sort.key]);

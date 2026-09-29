@@ -30,6 +30,7 @@ import { CopiesBadge } from "@/components/copies-badge";
 import { Button } from "@/components/ui/button";
 import { SegmentControl } from "@/components/segment-control";
 import { SortSelect, type SortDir } from "@/components/filter-select";
+import { compareCarNumbers } from "@/lib/car-number";
 import { ExportButton } from "@/components/export-button";
 import { carSubLine } from "@/lib/car-subline";
 import { toDateInputValue } from "@/lib/date-utils";
@@ -122,7 +123,7 @@ const EMPTY_FILTERS: Record<FilterKey, string> = {
   seller: "all",
 };
 
-type SortKey = "added" | "sno" | "value" | "cost" | "model" | "brand";
+type SortKey = "added" | "sno" | "value" | "cost" | "model" | "brand" | "carNumber";
 
 /** Each order with the direction it starts in; picking it again flips it. */
 const SORT_OPTIONS: { value: SortKey; label: string; dir: SortDir }[] = [
@@ -132,6 +133,7 @@ const SORT_OPTIONS: { value: SortKey; label: string; dir: SortDir }[] = [
   { value: "cost", label: "Cost", dir: "desc" },
   { value: "model", label: "Model", dir: "asc" },
   { value: "brand", label: "Brand", dir: "asc" },
+  { value: "carNumber", label: "Car number", dir: "asc" },
 ];
 
 const LOAD_BATCH = 50;
@@ -442,6 +444,12 @@ function InventoryPage() {
         return [...out].sort((a, b) => (value(a) - value(b)) * sign);
       case "cost":
         return [...out].sort((a, b) => ((a.spent || 0) - (b.spent || 0)) * sign);
+      case "carNumber":
+        return [...out].sort(
+          (a, b) =>
+            compareCarNumbers(a.carNumber, b.carNumber, sign) ||
+            title(a).localeCompare(title(b)) * sign,
+        );
       case "model":
         return [...out].sort((a, b) => title(a).localeCompare(title(b)) * sign);
       case "brand":

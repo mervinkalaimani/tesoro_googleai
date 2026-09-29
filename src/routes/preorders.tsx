@@ -28,6 +28,7 @@ import { KpiBand, KpiTile } from "@/components/kpi";
 import { UpdateStatusButton } from "@/components/update-status-button";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
+import { compareCarNumbers } from "@/lib/car-number";
 import { ExportButton } from "@/components/export-button";
 import { SegmentControl } from "@/components/segment-control";
 
@@ -74,7 +75,7 @@ function getPreorderDate(car: Diecast): Date | null {
   return isNaN(fallback.getTime()) ? null : fallback;
 }
 
-type SortMode = "balance" | "expectedDate" | "orderDate" | "seller" | "cost";
+type SortMode = "balance" | "expectedDate" | "orderDate" | "seller" | "cost" | "carNumber";
 type Grouping = "car" | "order";
 
 function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
@@ -418,6 +419,8 @@ function PreOrdersPage() {
           return (a.seller || "").localeCompare(b.seller || "") * sign;
         case "cost":
           return ((a.spent || 0) - (b.spent || 0)) * sign;
+        case "carNumber":
+          return compareCarNumbers(a.carNumber, b.carNumber, sign);
         default:
           return (balanceOf(a) - balanceOf(b)) * sign;
       }
@@ -579,6 +582,7 @@ function PreOrdersPage() {
                 { value: "orderDate", label: "Order date", dir: "desc" },
                 { value: "seller", label: "Seller", dir: "asc" },
                 { value: "cost", label: "Cost", dir: "desc" },
+                { value: "carNumber", label: "Car number", dir: "asc" },
               ]}
             />
             {/* Every pre-order on the page, filtered as it stands. */}

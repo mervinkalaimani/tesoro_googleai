@@ -26,6 +26,22 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 241,
+    at: "2026-09-29T22:15",
+    changes: [
+      {
+        key: true,
+        text: "A photo can be pasted straight onto a car you are looking at: copy a picture, open the car, press Ctrl+V. On a catalogue casting only an admin can, since that photo is the one every collection shows.",
+      },
+      {
+        text: "My Cars, the catalogue and Pre Orders can be sorted by the number on the card, up or down. 042 and 42 are the same number, #80 is the number 80, and a car with no number stays at the bottom either way.",
+      },
+      {
+        text: "Expected by opens seven months instead of two years of them, with the rest a scroll away.",
+      },
+    ],
+  },
+  {
     build: 239,
     at: "2026-09-29T22:30",
     changes: [
