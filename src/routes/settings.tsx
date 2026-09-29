@@ -21,6 +21,7 @@ import {
   Scale,
   MessageCircle,
   Layers,
+  KeyRound,
   Tag,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -104,6 +105,7 @@ type SettingsView =
   | "notifications"
   | "diagnostics"
   | "database"
+  | "auth_providers"
   | "search_engine"
   | "metadata"
   | "homepage"
@@ -129,6 +131,9 @@ function parseTab(tab?: string): SettingsView {
   if (t === "notifications" || t === "alerts") return "notifications";
   if (t === "diagnostics" || t === "diag") return "diagnostics";
   if (t === "database" || t === "supabase" || t === "db") return "database";
+  if (t === "auth_providers" || t === "auth" || t === "logins" || t === "providers") {
+    return "auth_providers";
+  }
   if (t === "search_engine" || t === "search-engine" || t === "search") return "search_engine";
   // The three screens these named are tabs of one editor now, so the old
   // links still land on it.
@@ -833,6 +838,26 @@ export function SettingsPage() {
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
 
+            {/* AUTHENTICATION — its own screen. Which buttons appear on the
+                login page has nothing to do with which database is behind it,
+                and it was living inside the connection settings. */}
+            <button
+              type="button"
+              onClick={() => changeView("auth_providers")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <KeyRound className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Authentication</span>
+                <p className="text-xs text-muted-foreground">
+                  Which sign-in methods and social logins the login page offers
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </button>
+
             {/* DB CONNECTION (Moved into Admin) */}
             <button
               type="button"
@@ -1122,6 +1147,19 @@ export function SettingsPage() {
         </div>
       )}
 
+      {view === "auth_providers" && isOwner && (
+        <div className="space-y-5">
+          <SubpageHeader
+            title="Authentication"
+            onBack={() => changeView("advanced")}
+            backLabel="Advanced"
+          />
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+            <OAuthProvidersCard />
+          </div>
+        </div>
+      )}
+
       {view === "database" && (
         <div className="space-y-6">
           <SubpageHeader title="DB Connection" onBack={() => changeView("root")} />
@@ -1170,15 +1208,6 @@ export function SettingsPage() {
           {/* Database Configuration */}
           {isOwner ? (
             <div className="space-y-6">
-              <div className="space-y-1.5">
-                <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Authentication &amp; Social Logins
-                </div>
-                <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
-                  <OAuthProvidersCard />
-                </div>
-              </div>
-
               <div className="space-y-1.5">
                 <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Supabase Synchronization

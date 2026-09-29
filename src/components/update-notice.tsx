@@ -22,7 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { currentFingerprint, fetchFingerprint } from "@/lib/app-update";
+import { fetchFingerprint } from "@/lib/app-update";
 
 /** Long enough that a tab nobody touches is not a request every minute. */
 const HEARTBEAT_MS = 15 * 60 * 1000;
@@ -31,6 +31,17 @@ const QUIET_MS = 60 * 1000;
 
 export function UpdateNotice() {
   const [ready, setReady] = useState(false);
+  /**
+   * The build this tab is measured against — read off the served page, never
+   * off the live document.
+   *
+   * The document was the obvious baseline and the wrong one. The router adds a
+   * modulepreload for every chunk it loads, so a tab that has been to the
+   * catalogue and back carries a dozen scripts that the page it is compared
+   * against never listed, and the answer came back "updated" every single time
+   * for a deploy that never happened. Both sides come from the same request
+   * now, so a difference between them is a difference in the build.
+   */
   const mine = useRef("");
   const lastCheck = useRef(0);
   // Told once. Saying it again five minutes later is nagging, and the person
@@ -42,9 +53,6 @@ export function UpdateNotice() {
     // hashed, so there is nothing to compare and nothing to say.
     if (!import.meta.env.PROD) return;
 
-    mine.current = currentFingerprint();
-    if (!mine.current) return;
-
     let alive = true;
     const ac = new AbortController();
 
@@ -55,13 +63,23 @@ export function UpdateNotice() {
       lastCheck.current = now;
 
       const theirs = await fetchFingerprint(ac.signal);
-      if (!alive || !theirs || theirs === mine.current) return;
+      if (!alive || !theirs) return;
+      // The first answer is the baseline, not news.
+      if (!mine.current) {
+        mine.current = theirs;
+        return;
+      }
+      if (theirs === mine.current) return;
       setReady(true);
     };
 
     const onVisible = () => {
       if (document.visibilityState === "visible") void check();
     };
+
+    // Take the baseline straight away, so the first real check has something
+    // to disagree with.
+    void check();
 
     document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("focus", onVisible);
