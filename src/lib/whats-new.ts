@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 247,
+    at: "2026-09-30T22:15",
+    changes: [
+      {
+        key: true,
+        text: "A car's own page is redesigned. The photograph is the size of the card art, and beside it the name, the status, rarity and favourite as three chips you can tap, and what the casting is. Under them the purchase reads across the page, with the IDs and who filed the casting in a column of the same width beside it, and what else is like it along the bottom as shelves you flick.",
+      },
+      {
+        text: "View in Catalogue is the Catalogue ID now: the journey is named after where it lands rather than after the button.",
+      },
+    ],
+  },
+  {
     build: 246,
     at: "2026-09-30T20:30",
     changes: [
