@@ -1433,7 +1433,12 @@ function CarProvenancePanel({
   return (
     <div className="min-w-0 divide-y divide-border/50">
       <Row label="Car ID">
-        <span className="font-mono tracking-wide select-all">{car.id || "—"}</span>
+        {/* The first six characters are the owner's prefix, the same on every
+            car you own, so they say nothing here. The whole ID is still what
+            the title copies. */}
+        <span className="font-mono tracking-wide select-all" title={car.id}>
+          {car.id.length > 6 ? car.id.slice(6) : car.id || "—"}
+        </span>
       </Row>
       <Row label="Catalogue ID">
         <span className="font-mono tracking-wide">
