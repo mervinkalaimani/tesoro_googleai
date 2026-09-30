@@ -627,7 +627,7 @@ function CarPopupContent({
     return out;
   }, [cars, car, seriesHeading, setHeading]);
 
-  const visibleShelves = useMemo(() => shelves.slice(0, hasPack ? 1 : 2), [shelves, hasPack]);
+  const visibleShelves = useMemo(() => shelves.slice(0, 1), [shelves]);
 
   const hasMoreToShow = hasPack || visibleShelves.length > 0;
 
@@ -735,9 +735,12 @@ function CarPopupContent({
         </div>
 
         <div className="flex-1 space-y-7 overflow-y-auto px-8 pb-7 [scrollbar-gutter:stable_both-edges]">
-          <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-stretch gap-8">
+          <div className="grid grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] items-stretch gap-8">
             {/* The photograph in the shape of the card art itself. */}
-            <div className="relative aspect-3/2 w-full overflow-hidden rounded-2xl border border-border/60 bg-white">
+            {/* self-start so the picture keeps its own shape: stretched to the
+                row it would take whatever height the tab beside it came to, and
+                the aspect ratio would count for nothing. */}
+            <div className="relative aspect-4/3 w-full self-start overflow-hidden rounded-2xl border border-border/60 bg-white">
               <HeroCarImage car={car} contain />
             </div>
 
@@ -777,7 +780,7 @@ function CarPopupContent({
             className="absolute inset-x-0 top-0 z-0 w-full overflow-hidden bg-white select-none"
             style={{ height: "var(--hero-h)" }}
           >
-            <HeroCarImage car={car} contain />
+            <HeroCarImage car={car} />
           </div>
 
           {/* Scrollable body: a see-through gap the height of the photo, then the card */}
@@ -1414,7 +1417,7 @@ function CarPurchaseTab({
               compact
               partner={car.deliveryPartner}
               trackingId={car.trackingId}
-              className="text-[15px] font-bold"
+              className="text-[15px] font-bold text-primary"
             />
           ) : (
             <span className="truncate">{courier || cleanTransitNotes}</span>

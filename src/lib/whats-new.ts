@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 254,
+    at: "2026-10-01T02:10",
+    changes: [
+      {
+        text: "One shelf under a car rather than two, and it is the closest relation there is: the same brand in the same series.",
+      },
+      {
+        text: "The photograph is 4:3 and keeps that shape whatever the tab beside it comes to. On a phone it fills the frame.",
+      },
+      { text: "The courier link takes the accent colour, like every other link on the page." },
+    ],
+  },
+  {
     build: 253,
     at: "2026-10-01T01:30",
     changes: [
