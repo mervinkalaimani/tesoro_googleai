@@ -229,6 +229,8 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
         <DialogContent
           id="car-details-dialog-content"
           hideDragHandle
+          // The header draws its own, beside the tabs.
+          hideClose
           // The phone layout runs its own gestures: pull the photo to close,
           // pull the card to stretch the photo.
           disableSheetDismiss
@@ -645,12 +647,51 @@ function CarPopupContent({
     (typeof car.cardRating === "number" && car.cardRating > 0),
   );
 
+  /** Brand, number and box: which car this is, before what it is called. */
+  const kicker = [car.brand, car.carNumber, car.assortment]
+    .map((v) => (v || "").trim())
+    .filter(Boolean);
+
+  const title = car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car";
+
+  /** The three readings, one at a time. A different car opens on its details. */
+  const [tab, setTab] = useState<CarTab>("details");
+  useEffect(() => {
+    setTab("details");
+  }, [car.id]);
+
+  const tabBody = (stacked: boolean) =>
+    tab === "details" ? (
+      <CarDetailsTab
+        car={car}
+        rarity={rarity}
+        exactCount={exactCount}
+        hasCondition={hasCondition}
+        stacked={stacked}
+        onToggleChase={onToggleChase}
+        onToggleFavourite={onToggleFavourite}
+        onUpdateStatus={onUpdateStatus}
+      />
+    ) : tab === "purchase" ? (
+      <CarPurchaseTab
+        car={car}
+        spent={spent}
+        mrp={mrp}
+        delta={delta}
+        hasArrived={hasArrived}
+        cleanTransitNotes={cleanTransitNotes}
+        trackable={trackable}
+        onOpenBatch={onOpenBatch}
+        onOpenSeller={onOpenSeller}
+      />
+    ) : (
+      <CarRecordTab car={car} onViewInCatalog={onViewInCatalog} />
+    );
+
   return (
     <div className="relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Hidden Accessible Dialog Title & Description */}
-      <DialogTitle className="sr-only">
-        {car.name || `${car.make} ${car.model}`} Details
-      </DialogTitle>
+      <DialogTitle className="sr-only">{title} Details</DialogTitle>
       <DialogDescription className="sr-only">
         Diecast car specifications, status, logistics, and pricing details.
       </DialogDescription>
@@ -658,85 +699,85 @@ function CarPopupContent({
       {/* =====================================================================
           1. DESKTOP & TABLET LAYOUT
 
-          One column of full-width bands rather than three tall columns side by
-          side: the car and what it is across the top, the purchase and where
-          the entry came from under it, then what else is like it. Each band is
-          as wide as the window, so nothing is a 360px sliver of itself.
+          The name heads the window, the photograph holds the left of it, and
+          the right is whichever of the three readings you asked for.
           ===================================================================== */}
-      <div className="hidden md:flex md:h-[86vh] md:max-h-[86vh] md:w-[min(1080px,calc(100vw-4rem))] md:flex-col overflow-hidden">
-        <div
-          id="car-details-left-col"
-          className="flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges] px-6 py-6 xl:px-7 xl:py-7"
-        >
-          <div className="space-y-6">
-            <div className="grid grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] items-start gap-6 xl:gap-8">
-              {/* The photograph at the size it deserves, in the shape of the
-                  card art itself. */}
-              <div className="relative aspect-3/2 w-full overflow-hidden rounded-2xl border border-border/60 bg-muted/20">
-                <HeroCarImage car={car} />
-              </div>
-
-              <CarIdentityPanel
-                car={car}
-                rarity={rarity}
-                exactCount={exactCount}
-                hasCondition={hasCondition}
-                onToggleChase={onToggleChase}
-                onToggleFavourite={onToggleFavourite}
-                onUpdateStatus={onUpdateStatus}
-                actions={<CarDetailActions onEdit={onEdit} onAddAnother={onAddAnother} />}
-              />
-            </div>
-
-            <hr className="border-border" />
-
-            <div className="grid grid-cols-2 items-stretch gap-8 xl:gap-10">
-              <CarPurchasePanel
-                car={car}
-                spent={spent}
-                mrp={mrp}
-                delta={delta}
-                hasArrived={hasArrived}
-                cleanTransitNotes={cleanTransitNotes}
-                trackable={trackable}
-                onOpenBatch={onOpenBatch}
-                onOpenSeller={onOpenSeller}
-              />
-              <CarProvenancePanel car={car} onViewInCatalog={onViewInCatalog} />
-            </div>
-
-            {hasPack && <PackContents packCarId={car.catalogId} />}
-
-            {visibleShelves.map((shelf) => (
-              <CarShelfRow
-                key={shelf.key}
-                heading={shelf.heading}
-                cars={shelf.cars}
-                currentId={car.id}
-                onSelectCar={onSelectCar}
-              />
-            ))}
+      <div className="hidden md:flex md:h-[88vh] md:max-h-[88vh] md:w-[min(1100px,calc(100vw-4rem))] md:flex-col overflow-hidden">
+        <div className="flex shrink-0 items-start justify-between gap-6 px-8 pb-5 pt-7">
+          <div className="min-w-0">
+            {kicker.length > 0 && (
+              <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                {kicker.map((part, i) => (
+                  <span key={`${part}-${i}`} className="flex items-center gap-2">
+                    {i > 0 && <span className="text-primary/40">·</span>}
+                    <span className="truncate">{part}</span>
+                  </span>
+                ))}
+              </p>
+            )}
+            <h2 className="mt-1.5 truncate text-2xl font-bold tracking-tight text-foreground xl:text-3xl">
+              {title}
+            </h2>
           </div>
+
+          <div className="flex shrink-0 items-center gap-4">
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close"
+              aria-label="Close"
+              className="grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background transition-transform hover:scale-105 active:scale-95"
+            >
+              <X className="size-4" />
+            </button>
+            <CarTabSwitch value={tab} onChange={setTab} />
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-7 overflow-y-auto px-8 pb-7 [scrollbar-gutter:stable_both-edges]">
+          <div className="grid grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-stretch gap-8">
+            {/* The photograph in the shape of the card art itself. */}
+            <div className="relative aspect-3/2 w-full overflow-hidden rounded-2xl border border-border/60 bg-white">
+              <HeroCarImage car={car} contain />
+            </div>
+
+            <div className="flex min-w-0 flex-col justify-between gap-6">
+              {tabBody(true)}
+              <CarDetailActions onEdit={onEdit} onAddAnother={onAddAnother} />
+            </div>
+          </div>
+
+          {hasPack && <PackContents packCarId={car.catalogId} />}
+
+          {visibleShelves.map((shelf) => (
+            <CarShelfRow
+              key={shelf.key}
+              heading={shelf.heading.replace(/^More (from )?/i, "")}
+              cars={shelf.cars}
+              currentId={car.id}
+              onSelectCar={onSelectCar}
+            />
+          ))}
         </div>
       </div>
 
       {/* =====================================================================
-          2. PHONE LAYOUT: the same bands, stacked under the photo.
+          2. PHONE LAYOUT: the photo, then the same three readings stacked.
           ===================================================================== */}
       <div
         ref={mobile.rootRef}
         className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background"
-        style={{ "--hero-h": "clamp(360px, 48vh, 520px)" } as React.CSSProperties}
+        style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
       >
         <div className="relative flex-1 min-h-0">
           {/* The photo sits still behind the sheet: pushing the card up slides
               it over the photo, pulling the card down stretches the photo. */}
           <div
             ref={mobile.heroRef}
-            className="absolute inset-x-0 top-0 z-0 w-full overflow-hidden bg-muted/60 select-none"
+            className="absolute inset-x-0 top-0 z-0 w-full overflow-hidden bg-white select-none"
             style={{ height: "var(--hero-h)" }}
           >
-            <HeroCarImage car={car} />
+            <HeroCarImage car={car} contain />
           </div>
 
           {/* Scrollable body: a see-through gap the height of the photo, then the card */}
@@ -754,50 +795,53 @@ function CarPopupContent({
 
               <div
                 ref={mobile.cardRef}
-                className="relative flex flex-1 flex-col rounded-t-3xl border-t border-border bg-background px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)]"
+                className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)]"
               >
-                <div className="space-y-6">
-                  <CarIdentityPanel
-                    car={car}
-                    rarity={rarity}
-                    exactCount={exactCount}
-                    hasCondition={hasCondition}
-                    onToggleChase={onToggleChase}
-                    onToggleFavourite={onToggleFavourite}
-                    onUpdateStatus={onUpdateStatus}
-                  />
+                {/* The warmth behind the sheet. A phone is held close and holds
+                    one thing at a time, so the panel is allowed to glow; the
+                    wide layout carries three columns of its own and would only
+                    be tinted by it. */}
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 h-80"
+                  style={{
+                    background:
+                      "radial-gradient(120% 70% at 88% 0%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 70%)",
+                  }}
+                />
 
-                  <hr className="border-border" />
+                <div className="relative space-y-5">
+                  <div className="min-w-0">
+                    {kicker.length > 0 && (
+                      <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                        {kicker.map((part, i) => (
+                          <span key={`${part}-${i}`} className="flex items-center gap-2">
+                            {i > 0 && <span className="text-primary/40">·</span>}
+                            <span className="truncate">{part}</span>
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                    <h2 className="mt-1.5 text-2xl font-bold tracking-tight text-foreground">
+                      {title}
+                    </h2>
+                  </div>
 
-                  <CarPurchasePanel
-                    car={car}
-                    spent={spent}
-                    mrp={mrp}
-                    delta={delta}
-                    hasArrived={hasArrived}
-                    cleanTransitNotes={cleanTransitNotes}
-                    trackable={trackable}
-                    onOpenBatch={onOpenBatch}
-                    onOpenSeller={onOpenSeller}
-                  />
+                  <CarTabSwitch value={tab} onChange={setTab} className="flex w-full" />
+
+                  {tabBody(false)}
 
                   {hasPack && <PackContents packCarId={car.catalogId} />}
 
                   {visibleShelves.map((shelf) => (
                     <CarShelfRow
                       key={shelf.key}
-                      heading={shelf.heading}
+                      heading={shelf.heading.replace(/^More (from )?/i, "")}
                       cars={shelf.cars}
                       currentId={car.id}
                       onSelectCar={onSelectCar}
                     />
                   ))}
-
-                  <hr className="border-border" />
-
-                  {/* Where the entry came from reads last on a phone: it is the
-                      smallest print on the page and nothing waits on it. */}
-                  <CarProvenancePanel car={car} onViewInCatalog={onViewInCatalog} />
                 </div>
               </div>
             </div>
@@ -817,7 +861,7 @@ function CarPopupContent({
             onClick={onClose}
             title="Close details"
             aria-label="Close"
-            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex size-8 cursor-pointer items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
+            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
           >
             <X className="size-4" />
           </button>
@@ -832,65 +876,114 @@ function CarPopupContent({
   );
 }
 
+/** The three readings of a car you own, in the order you want them. */
+type CarTab = "details" | "purchase" | "record";
+
+const CAR_TABS: { value: CarTab; label: string }[] = [
+  { value: "details", label: "Details" },
+  { value: "purchase", label: "Purchase" },
+  { value: "record", label: "Record" },
+];
+
 /**
- * A quiet caption over the answer, which is the whole typographic idea of this
- * page: the label is small print and the fact is the size you read.
+ * The switch between them.
  *
- * A blank field draws nothing at all. Half a collection has no case number and
- * no courier, and a column of em dashes is a column of noise.
+ * Its own control rather than the form SegmentControl: this one is a pill on a
+ * dark track with a white thumb, which is a different thing from the bordered
+ * field that sits inside a form row, and bending one into the other would have
+ * changed it everywhere it is a field.
  */
-function Field({
-  label,
+function CarTabSwitch({
   value,
+  onChange,
   className,
-  cell,
-  children,
-  size = "md",
 }: {
-  label: string;
-  value?: string | number | null;
+  value: CarTab;
+  onChange: (v: CarTab) => void;
   className?: string;
-  /** Where this fact sits in its grid. A field that is blank draws nothing,
-   *  and an explicit cell is what stops the rest sliding up into its place. */
-  cell?: string;
-  children?: ReactNode;
-  size?: "md" | "lg";
 }) {
-  const text = value === null || value === undefined ? "" : String(value).trim();
-  if (!children && !text) return null;
   return (
-    <div className={cn("min-w-0", cell)}>
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </p>
-      <div
-        className={cn(
-          "mt-1 truncate font-medium text-foreground",
-          size === "lg" ? "text-sm xl:text-base" : "text-[13px] xl:text-sm",
-          className,
-        )}
-      >
-        {children ?? text}
-      </div>
+    <div
+      role="tablist"
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full bg-muted/60 p-1 text-xs",
+        className,
+      )}
+    >
+      {CAR_TABS.map((t) => {
+        const active = t.value === value;
+        return (
+          <button
+            key={t.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(t.value)}
+            className={cn(
+              "h-8 flex-1 cursor-pointer rounded-full px-4 font-semibold transition-colors",
+              active
+                ? "bg-foreground text-background shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {t.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
 
-/** The same pair read sideways: caption left, answer right, one per line. */
-function Row({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * One fact, on a line of its own with a rule under it.
+ *
+ * `stacked` puts the caption above the answer, which is how the casting reads
+ * on a wide screen where there is a column to fill. Everywhere else the caption
+ * holds the left and the answer the right, because a list of short answers is
+ * easier to scan down the right-hand edge than down two ragged columns.
+ */
+function InfoRow({
+  label,
+  value,
+  children,
+  stacked = false,
+  size = "md",
+  accent = false,
+}: {
+  label: string;
+  value?: string | null;
+  children?: ReactNode;
+  stacked?: boolean;
+  size?: "md" | "lg";
+  accent?: boolean;
+}) {
+  const text = (value ?? "").toString().trim();
+  if (!children && !text) return null;
   return (
-    <div className="flex items-baseline justify-between gap-4 py-1.5">
+    <div
+      className={cn(
+        "border-b border-border/50 py-3 last:border-b-0",
+        stacked ? "" : "flex items-baseline justify-between gap-4",
+      )}
+    >
       <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </span>
-      <span className="min-w-0 truncate text-right text-[13px] font-medium text-foreground">
-        {children}
+      <span
+        className={cn(
+          "block min-w-0 truncate font-bold",
+          stacked ? "mt-1.5 text-lg" : "text-right text-[15px]",
+          size === "lg" && !stacked && "text-lg",
+          accent && "text-primary",
+        )}
+      >
+        {children ?? text}
       </span>
     </div>
   );
 }
 
-/** A value that opens something. The sky blue is the app's one link colour. */
+/** A value that opens something, in the accent the rest of the app uses. */
 function LinkValue({
   value,
   title,
@@ -907,7 +1000,7 @@ function LinkValue({
       type="button"
       onClick={onClick}
       title={title}
-      className="max-w-full cursor-pointer truncate text-sky-500 hover:underline"
+      className="max-w-full cursor-pointer truncate text-primary hover:underline"
     >
       {text}
     </button>
@@ -917,9 +1010,8 @@ function LinkValue({
 /**
  * The two things you do with a car you own: correct it, or buy it again.
  *
- * "View in Catalogue" used to sit beside them; it is the Catalogue ID in the
- * provenance list now, which is the same journey named after the thing it
- * lands on rather than after the button.
+ * "View in Catalogue" is the Catalogue ID on the Record tab, which is the same
+ * journey named after the thing it lands on rather than after the button.
  */
 function CarDetailActions({
   onEdit,
@@ -935,7 +1027,7 @@ function CarDetailActions({
         variant="outline"
         onClick={onEdit}
         title="Update this car"
-        className="h-10 flex-1 cursor-pointer gap-2 text-[13px] font-semibold"
+        className="h-11 flex-1 cursor-pointer gap-2 text-sm font-semibold"
       >
         <Pencil className="size-3.5 shrink-0" />
         Update
@@ -944,7 +1036,7 @@ function CarDetailActions({
         type="button"
         onClick={onAddAnother}
         title="Add another of this casting"
-        className="h-10 flex-1 cursor-pointer gap-2 text-[13px] font-semibold"
+        className="h-11 flex-1 cursor-pointer gap-2 text-sm font-semibold"
       >
         <Plus className="size-4 shrink-0" />
         Add Another
@@ -954,15 +1046,13 @@ function CarDetailActions({
 }
 
 /**
- * Status, rarity and favourite as three pills under the name.
+ * Status, rarity and favourite as three pills.
  *
- * Each one is the control as well as the reading: the status pill opens the
- * status dialog, the flame cycles Normal → TH → STH → Chase, the star toggles.
- * They were a bordered strip of buttons in a tinted box; the box is gone and
- * the buttons kept, because there were never more than three of them.
+ * Each is the reading and the control at once: the first opens the status
+ * dialog, the second cycles Normal → TH → STH → Chase, the third toggles.
  */
 const CHIP =
-  "inline-flex cursor-pointer select-none items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors active:scale-95";
+  "inline-flex cursor-pointer select-none items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors active:scale-95";
 
 function CarChips({
   car,
@@ -985,7 +1075,7 @@ function CarChips({
         type="button"
         onClick={onUpdateStatus}
         title="Update status"
-        className="cursor-pointer rounded-full transition-transform active:scale-95"
+        className={cn(CHIP, "border-border/80 text-foreground hover:border-foreground/40")}
       >
         <StatusPill status={car.status} />
       </button>
@@ -998,7 +1088,7 @@ function CarChips({
           CHIP,
           rarity !== "Normal"
             ? "border-accent/50 bg-accent/20 text-foreground"
-            : "border-border/80 text-muted-foreground hover:border-border hover:text-foreground",
+            : "border-border/80 text-foreground hover:border-foreground/40",
         )}
       >
         <Flame
@@ -1007,9 +1097,8 @@ function CarChips({
             rarity === "Normal" ? "text-muted-foreground" : RARITY_FLAME[rarity],
           )}
         />
-        {/* Normal is not a label worth printing, so the chip offers the three
-            it could become instead. */}
-        <span>{rarity === "Normal" ? "Chase / TH / STH" : RARITY_LABEL[rarity]}</span>
+        {/* Normal is not worth printing, so the chip offers what it could be. */}
+        <span>{rarity === "Normal" ? "Chase" : RARITY_LABEL[rarity]}</span>
       </button>
 
       <button
@@ -1020,7 +1109,7 @@ function CarChips({
           CHIP,
           car.favourite
             ? "border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
-            : "border-border/80 text-muted-foreground hover:border-border hover:text-foreground",
+            : "border-border/80 text-foreground hover:border-foreground/40",
         )}
       >
         <Star
@@ -1029,10 +1118,9 @@ function CarChips({
             car.favourite ? FAVOURITE_COLOUR : "text-muted-foreground",
           )}
         />
-        <span>Fav</span>
+        <span>Favourite</span>
       </button>
 
-      {/* How many of exactly this car are in the collection. Not a control. */}
       {exactCount > 1 && (
         <span
           title={`${exactCount} identical cars in your collection`}
@@ -1046,58 +1134,28 @@ function CarChips({
   );
 }
 
-/**
- * What the car is: the line of identifiers, the name, the three chips, and the
- * fields that describe the casting rather than the purchase.
- *
- * `actions` is passed on a wide screen, where the buttons belong under this
- * column; a phone docks them at the bottom of the sheet instead and passes
- * nothing.
- */
-function CarIdentityPanel({
+/** What the casting is: the chips, then the description, field by field. */
+function CarDetailsTab({
   car,
   rarity,
   exactCount,
   hasCondition,
+  stacked,
   onToggleChase,
   onToggleFavourite,
   onUpdateStatus,
-  actions,
 }: {
   car: Diecast;
   rarity: import("@/lib/rarity").Rarity;
   exactCount: number;
   hasCondition: boolean;
+  stacked: boolean;
   onToggleChase: () => void;
   onToggleFavourite: () => void;
   onUpdateStatus: () => void;
-  actions?: ReactNode;
 }) {
-  // Brand, number, box: the three words a collector uses to say which car this
-  // is before saying what it is called.
-  const kicker = [car.brand, car.carNumber, car.assortment]
-    .map((v) => (v || "").trim())
-    .filter(Boolean);
-
   return (
-    <div className="min-w-0 space-y-4">
-      <div className="space-y-2.5">
-        {kicker.length > 0 && (
-          <p className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            {kicker.map((part, i) => (
-              <span key={`${part}-${i}`} className="flex items-center gap-2">
-                {i > 0 && <span className="text-muted-foreground/40">·</span>}
-                <span className="truncate">{part}</span>
-              </span>
-            ))}
-          </p>
-        )}
-
-        <h2 className="text-xl font-bold leading-tight tracking-tight text-foreground xl:text-2xl">
-          {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
-        </h2>
-      </div>
-
+    <div className="min-w-0 space-y-5">
       <CarChips
         car={car}
         rarity={rarity}
@@ -1107,17 +1165,25 @@ function CarIdentityPanel({
         onUpdateStatus={onUpdateStatus}
       />
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3.5">
-        <Field size="lg" label="Series" value={car.series} />
-        <Field size="lg" label="Sub series" value={car.subSeries} />
-        <Field size="lg" label="Colour" value={car.colour} />
-        <Field size="lg" label="Type" value={car.type} />
-        <Field label="Size" value={car.size} />
-        <Field label="Case number" value={car.caseNumber} />
+      <div>
+        <InfoRow stacked={stacked} size="lg" label="Series" value={car.series} />
+        <InfoRow stacked={stacked} size="lg" label="Sub series" value={car.subSeries} />
+        <InfoRow stacked={stacked} size="lg" label="Colour" value={car.colour} />
+        <InfoRow stacked={stacked} size="lg" label="Type" value={car.type} />
+        <InfoRow stacked={stacked} label="Size" value={car.size} />
+        <InfoRow stacked={stacked} label="Case number" value={car.caseNumber} />
         {hasCondition && (
           <>
-            <ConditionSpec label="Car" grade={car.carCondition} rating={car.carRating} />
-            <ConditionSpec label="Card" grade={car.cardCondition} rating={car.cardRating} />
+            <InfoRow
+              stacked={stacked}
+              label="Car condition"
+              value={conditionLine(car.carCondition, car.carRating)}
+            />
+            <InfoRow
+              stacked={stacked}
+              label="Card condition"
+              value={conditionLine(car.cardCondition, car.cardRating)}
+            />
           </>
         )}
       </div>
@@ -1125,56 +1191,15 @@ function CarIdentityPanel({
       {/* An admin reading a car is the person who can file the box it is
           missing, so the suggestion sits with the description it is about. */}
       <AssortmentSuggestions catalogId={car.catalogId} />
-
-      {actions}
     </div>
   );
 }
 
-/**
- * One shelf, the width of the page, scrolled sideways.
- *
- * It was a 3×2 grid in a 360px column, which is six cars and a scrollbar. A
- * row you flick reads as a shelf and holds as many as the series has.
- */
-function CarShelfRow({
-  heading,
-  cars,
-  currentId,
-  onSelectCar,
-}: {
-  heading: string;
-  cars: Diecast[];
-  currentId: string;
-  onSelectCar?: (car: Diecast) => void;
-}) {
-  if (cars.length === 0) return null;
-  return (
-    <section className="space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3
-          className="truncate text-base font-bold tracking-tight text-foreground xl:text-lg"
-          title={heading}
-        >
-          {heading}
-        </h3>
-        <span className="shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
-          {cars.length} {cars.length === 1 ? "car" : "cars"}
-        </span>
-      </div>
-      <div className="-mx-1 flex snap-x scroll-px-1 items-stretch gap-3 overflow-x-auto px-1 pb-1 no-scrollbar">
-        {cars.map((related) => (
-          <RelatedCarCard
-            key={related.id}
-            car={related}
-            isCurrent={related.id === currentId}
-            className="w-28 shrink-0 snap-start xl:w-32"
-            onSelect={() => onSelectCar?.(related)}
-          />
-        ))}
-      </div>
-    </section>
-  );
+/** "Mint · ★★★★☆", or whichever half of it was recorded. */
+function conditionLine(grade?: string | null, rating?: number | null): string {
+  const g = (grade || "").trim();
+  const stars = typeof rating === "number" && rating > 0 ? "★".repeat(Math.round(rating)) : "";
+  return [g, stars].filter(Boolean).join(" · ");
 }
 
 /**
@@ -1308,11 +1333,11 @@ function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
 /**
  * What this copy cost and how it got here.
  *
- * One grid, no sub-headings: nine short facts that are all answers to "what is
- * this purchase", where money, seller and parcel used to be three bordered
- * blocks with three titles.
+ * The price leads, because it is the one number you came to this tab for, and
+ * what it was against retail is the line under it rather than a field of its
+ * own — a gap only means anything next to the number it is a gap from.
  */
-function CarPurchasePanel({
+function CarPurchaseTab({
   car,
   spent,
   mrp,
@@ -1334,111 +1359,78 @@ function CarPurchasePanel({
   onOpenSeller: (seller: string) => void;
 }) {
   const courier = (car.deliveryPartner || car.trackingId || "").trim();
-  // The note is the transit field's value when there is no courier to name, so
-  // it is only printed again below when the field is already saying something
-  // else.
+  // The note stands in for the courier when there is none to name, so it is
+  // only printed again below when the field is already saying something else.
   const noteBelow = cleanTransitNotes && courier ? cleanTransitNotes : "";
 
-  return (
-    <section className="flex min-w-0 flex-col gap-4">
-      {/* content-between spreads the three rows over whatever height the IDs
-          beside them come to, so the two halves end on the same line and the
-          gaps inside this one stay equal to each other. */}
-      {/* Every fact has a cell of its own, on both layouts. A blank field
-          draws nothing — a car with no courier says nothing about one — and
-          the cell it leaves stays blank rather than dragging the shipping ID
-          up beside the order date. */}
-      <div className="grid flex-1 grid-rows-4 content-between gap-x-5 gap-y-3.5 grid-cols-2 md:grid-cols-3 md:grid-rows-3">
-        {/* What it cost against what it lists at, as one fact: the gap only
-            means anything beside the number it is a gap from, and it was a
-            third of the row to itself. */}
-        <Field
-          label="Purchased for"
-          value={inrFull(spent)}
-          cell="col-start-1 row-start-1 md:col-start-1 md:row-start-1"
-        >
-          <span className="truncate">
-            {inrFull(spent)}
-            {delta !== 0 && (
-              <span
-                className={cn(
-                  "ml-1.5 text-[11px] font-semibold",
-                  delta > 0 ? "text-emerald-600 dark:text-[#00E599]" : "text-rose-400",
-                )}
-              >
-                ({delta > 0 ? `+${inrFull(delta)}` : `-${inrFull(Math.abs(delta))}`})
-              </span>
-            )}
-          </span>
-        </Field>
-        <Field
-          label="MRP"
-          value={inrFull(mrp)}
-          cell="col-start-2 row-start-1 md:col-start-2 md:row-start-1"
-        />
+  const againstMrp =
+    mrp <= 0
+      ? ""
+      : delta === 0
+        ? "Bought at MRP"
+        : delta > 0
+          ? `${inrFull(delta)} under MRP`
+          : `${inrFull(Math.abs(delta))} over MRP`;
 
-        {/* Who sold it and who carried it read as a pair, which is also what
-            puts them on one line of a phone's two columns. */}
-        <Field
-          label="Sold by"
-          value={car.seller}
-          cell="col-start-1 row-start-2 md:col-start-1 md:row-start-2"
-        >
+  return (
+    <div className="min-w-0 space-y-5">
+      <div>
+        <p className="text-3xl font-bold tracking-tight text-foreground">{inrFull(spent)}</p>
+        {againstMrp && (
+          <p
+            className={cn(
+              "mt-1 text-xs font-medium",
+              delta > 0
+                ? "text-emerald-600 dark:text-[#00E599]"
+                : delta < 0
+                  ? "text-rose-400"
+                  : "text-muted-foreground",
+            )}
+          >
+            {againstMrp}
+          </p>
+        )}
+      </div>
+
+      <div>
+        <InfoRow label="Sold by" value={car.seller} accent>
           <LinkValue
             value={car.seller}
             title={`Everything bought from ${car.seller}`}
             onClick={() => onOpenSeller(car.seller)}
           />
-        </Field>
-        <Field
-          label="Transit info"
-          value={courier || cleanTransitNotes}
-          cell="col-start-2 row-start-2 md:col-start-1 md:row-start-3"
-        >
-          {trackable ? (
-            <TrackingLink
-              compact
-              partner={car.deliveryPartner}
-              trackingId={car.trackingId}
-              className="text-[13px] font-medium xl:text-sm"
-            />
-          ) : (
-            <span className="truncate">{courier || cleanTransitNotes}</span>
-          )}
-        </Field>
-        <Field
-          label="Ordered on"
-          value={formatDayMonthYear(car.orderDate) || car.orderDate}
-          cell="col-start-1 row-start-3 md:col-start-2 md:row-start-2"
-        />
-        <Field
-          label="Order ID"
-          value={car.orderId}
-          cell="col-start-2 row-start-3 md:col-start-3 md:row-start-2"
-        >
+        </InfoRow>
+        <InfoRow label="Ordered on" value={formatDayMonthYear(car.orderDate) || car.orderDate} />
+        <InfoRow label="Order ID" value={car.orderId} accent>
           <LinkValue
             value={car.orderId}
             title={`Everything in order ${car.orderId}`}
             onClick={() => onOpenBatch(car.orderId || "", "orderId")}
           />
-        </Field>
-
-        <Field
+        </InfoRow>
+        <InfoRow label="Transit info" value={courier || cleanTransitNotes} accent={trackable}>
+          {trackable ? (
+            <TrackingLink
+              compact
+              partner={car.deliveryPartner}
+              trackingId={car.trackingId}
+              className="text-[15px] font-bold"
+            />
+          ) : (
+            <span className="truncate">{courier || cleanTransitNotes}</span>
+          )}
+        </InfoRow>
+        <InfoRow
           label={hasArrived ? "Received on" : "Expected on"}
           value={formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate)}
-          cell="col-start-1 row-start-4 md:col-start-2 md:row-start-3"
         />
-        <Field
-          label="Shipping ID"
-          value={car.shippingId}
-          cell="col-start-2 row-start-4 md:col-start-3 md:row-start-3"
-        >
+        <InfoRow label="Shipping ID" value={car.shippingId} accent>
           <LinkValue
             value={car.shippingId}
             title={`Everything in shipment ${car.shippingId}`}
             onClick={() => onOpenBatch(car.shippingId || "", "shippingId")}
           />
-        </Field>
+        </InfoRow>
       </div>
 
       {noteBelow && (
@@ -1448,7 +1440,7 @@ function CarPurchasePanel({
       )}
 
       <BoughtBefore car={car} />
-    </section>
+    </div>
   );
 }
 
@@ -1461,13 +1453,7 @@ function CarPurchasePanel({
  * With no entry to read, all that is left is the day the car reached the
  * collection.
  */
-function CarProvenancePanel({
-  car,
-  onViewInCatalog,
-}: {
-  car: Diecast;
-  onViewInCatalog: () => void;
-}) {
+function CarRecordTab({ car, onViewInCatalog }: { car: Diecast; onViewInCatalog: () => void }) {
   const { catalog } = useCatalog();
 
   const entry = useMemo(() => {
@@ -1480,18 +1466,18 @@ function CarProvenancePanel({
   }, [catalog, car]);
 
   const edited = Boolean(entry?.updated_by);
+  const addedOn = formatDayMonthYear(entry?.created_at) || formatDayMonthYear(car.createdAt) || "";
 
   return (
-    <div className="min-w-0 divide-y divide-border/50">
-      <Row label="Car ID">
-        {/* The first six characters are the owner's prefix, the same on every
-            car you own, so they say nothing here. The whole ID is still what
-            the title copies. */}
+    <div className="min-w-0">
+      {/* The first six characters are the owner's prefix, the same on every car
+          you own, so they say nothing here. */}
+      <InfoRow label="Car ID">
         <span className="font-mono tracking-wide select-all" title={car.id}>
           {car.id.length > 6 ? car.id.slice(6) : car.id || "—"}
         </span>
-      </Row>
-      <Row label="Catalogue ID">
+      </InfoRow>
+      <InfoRow label="Catalogue ID" accent>
         <span className="font-mono tracking-wide">
           <LinkValue
             value={car.catalogId || entry?.car_id}
@@ -1499,20 +1485,91 @@ function CarProvenancePanel({
             onClick={onViewInCatalog}
           />
         </span>
-      </Row>
-      {entry ? (
-        <>
-          <Row label="Added by">{resolveCatalogUserId(entry.created_by)}</Row>
-          <Row label="Added on">
-            {formatDayMonthYear(entry.created_at) || formatDayMonthYear(car.createdAt) || "—"}
-          </Row>
-          <Row label="Updated by">{edited ? resolveCatalogUserId(entry.updated_by) : "—"}</Row>
-          <Row label="Updated on">{edited ? formatDayMonthYear(entry.updated_at) || "—" : "—"}</Row>
-        </>
-      ) : (
-        <Row label="Added on">{formatDayMonthYear(car.createdAt) || "—"}</Row>
+      </InfoRow>
+      {entry && (
+        <InfoRow label="Added by">
+          <NameOnDate name={resolveCatalogUserId(entry.created_by)} date={addedOn} />
+        </InfoRow>
+      )}
+      {!entry && addedOn && (
+        <InfoRow label="Added on">
+          <span>{addedOn}</span>
+        </InfoRow>
+      )}
+      {entry && edited && (
+        <InfoRow label="Updated by">
+          <NameOnDate
+            name={resolveCatalogUserId(entry.updated_by)}
+            date={formatDayMonthYear(entry.updated_at) || ""}
+          />
+        </InfoRow>
       )}
     </div>
+  );
+}
+
+/** "Mervin on 29, Sept '26" — the person in the reading weight, the day beside it. */
+function NameOnDate({ name, date }: { name: string; date: string }) {
+  return (
+    <span className="truncate">
+      {name || "—"}
+      {date && (
+        <>
+          <span className="mx-1.5 text-[11px] font-normal text-muted-foreground">on</span>
+          {date}
+        </>
+      )}
+    </span>
+  );
+}
+
+/**
+ * What else is in the same series, as a shelf you flick.
+ *
+ * The heading stands to the left of the cars on a wide screen and above them on
+ * a phone, because 12 Models is a caption for the row and not a row of its own.
+ */
+function CarShelfRow({
+  heading,
+  cars,
+  currentId,
+  onSelectCar,
+}: {
+  heading: string;
+  cars: Diecast[];
+  currentId: string;
+  onSelectCar?: (car: Diecast) => void;
+}) {
+  if (cars.length === 0) return null;
+  const count = `${cars.length} ${cars.length === 1 ? "Model" : "Models"}`;
+  return (
+    <section className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
+      <div className="flex items-baseline justify-between gap-3 md:block md:w-40 md:shrink-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground max-md:hidden">
+          More from
+        </p>
+        <p
+          className="line-clamp-2 text-base font-bold text-foreground md:mt-1 md:text-xl"
+          title={heading}
+        >
+          <span className="md:hidden">More from </span>
+          {heading}
+        </p>
+        <p className="shrink-0 text-sm font-semibold text-primary md:mt-1">{count}</p>
+      </div>
+
+      <div className="-mx-1 flex min-w-0 snap-x scroll-px-1 items-stretch gap-3 overflow-x-auto px-1 pb-1 no-scrollbar md:flex-1">
+        {cars.map((related) => (
+          <RelatedCarCard
+            key={related.id}
+            car={related}
+            isCurrent={related.id === currentId}
+            className="w-28 shrink-0 snap-start xl:w-32"
+            onSelect={() => onSelectCar?.(related)}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1974,7 +2031,13 @@ function ConditionSpec({
   );
 }
 
-function HeroCarImage({ car }: { car: Diecast }) {
+/**
+ * The contain flag shows the whole card art rather than filling the frame with the
+ * middle of it. A catalogue photograph is a photograph *of a card*, with the
+ * number and the logo printed at its edges, and cropping to fill cuts exactly
+ * those off — which is most of what tells you which release you are looking at.
+ */
+function HeroCarImage({ car, contain = false }: { car: Diecast; contain?: boolean }) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -2020,7 +2083,7 @@ function HeroCarImage({ car }: { car: Diecast }) {
   ]);
 
   return (
-    <div className="relative h-full w-full flex items-center justify-center bg-background/60">
+    <div className="relative flex h-full w-full items-center justify-center">
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-muted/30">
           <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -2031,7 +2094,10 @@ function HeroCarImage({ car }: { car: Diecast }) {
         <img
           src={src}
           alt={car.name || `${car.make} ${car.model}`}
-          className="h-full w-full object-cover transition-opacity duration-300"
+          className={cn(
+            "h-full w-full transition-opacity duration-300",
+            contain ? "object-contain" : "object-cover",
+          )}
           onError={() => setSrc(null)}
         />
       ) : !loading ? (

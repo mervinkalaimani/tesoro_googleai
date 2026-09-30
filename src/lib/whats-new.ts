@@ -26,6 +26,22 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 253,
+    at: "2026-10-01T01:30",
+    changes: [
+      {
+        key: true,
+        text: "A car's page reads in three: Details is what the casting is, Purchase is what it cost and how it got here, Record is which row and which casting it is. One at a time, from a switch beside the name, so no tab is a wall of small print.",
+      },
+      {
+        text: "The photograph shows the whole card art now — the number and the logo are printed at its edges, and filling the frame cropped exactly those off.",
+      },
+      {
+        text: "On a phone the sheet carries a warm glow behind it. A phone is held close and holds one thing at a time; the wide layout carries columns of its own and stays plain.",
+      },
+    ],
+  },
+  {
     build: 252,
     at: "2026-10-01T00:20",
     changes: [

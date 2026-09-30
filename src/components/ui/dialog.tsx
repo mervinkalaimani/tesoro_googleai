@@ -124,65 +124,74 @@ const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     hideDragHandle?: boolean;
+    /** For a dialog that draws its own close in its own header. */
+    hideClose?: boolean;
     disableSheetDismiss?: boolean;
     onDismiss?: () => void;
   }
->(({ className, children, hideDragHandle, disableSheetDismiss, onDismiss, ...props }, ref) => {
-  const sheet = useSheetDismiss({ disabled: Boolean(disableSheetDismiss), onDismiss });
+>(
+  (
+    { className, children, hideDragHandle, hideClose, disableSheetDismiss, onDismiss, ...props },
+    ref,
+  ) => {
+    const sheet = useSheetDismiss({ disabled: Boolean(disableSheetDismiss), onDismiss });
 
-  return (
-    <DialogPortal>
-      <DialogOverlay />
-      <DialogPrimitive.Content
-        ref={ref}
-        style={sheet.style}
-        {...sheet.handlers}
-        className={cn(
-          "fixed z-50 grid gap-4 border bg-background shadow-lg duration-200 overflow-x-hidden overscroll-contain max-w-full",
-          // Phone: a sheet that comes up from the bottom of the screen and can
-          // be pushed back down. Every dialog behaves this way, so a modal is
-          // one gesture to leave wherever you meet it.
-          "inset-x-0 bottom-0 max-h-[92svh] w-full rounded-t-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
-          "max-sm:transition-transform",
-          "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-          "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-          // Tablet and up: the centred dialog it has always been.
-          //
-          // The default width is `sm:`-scoped because the centred layout is. A
-          // caller that wants a wider dialog has to say `sm:max-w-4xl` and not
-          // `max-w-4xl`: tailwind-merge only drops a class when the one
-          // replacing it carries the same modifier, so an unprefixed width
-          // survives the merge and then loses to this one inside the media
-          // query. Several dialogs asked for 5xl that way and rendered at 32rem.
-          "sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:p-6",
-          "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-2 sm:data-[state=open]:slide-in-from-bottom-2",
-          className,
-        )}
-        {...props}
-      >
-        {/* The affordance for the gesture: without it a sheet that can be
+    return (
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Content
+          ref={ref}
+          style={sheet.style}
+          {...sheet.handlers}
+          className={cn(
+            "fixed z-50 grid gap-4 border bg-background shadow-lg duration-200 overflow-x-hidden overscroll-contain max-w-full",
+            // Phone: a sheet that comes up from the bottom of the screen and can
+            // be pushed back down. Every dialog behaves this way, so a modal is
+            // one gesture to leave wherever you meet it.
+            "inset-x-0 bottom-0 max-h-[92svh] w-full rounded-t-2xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
+            "max-sm:transition-transform",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+            "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
+            // Tablet and up: the centred dialog it has always been.
+            //
+            // The default width is `sm:`-scoped because the centred layout is. A
+            // caller that wants a wider dialog has to say `sm:max-w-4xl` and not
+            // `max-w-4xl`: tailwind-merge only drops a class when the one
+            // replacing it carries the same modifier, so an unprefixed width
+            // survives the merge and then loses to this one inside the media
+            // query. Several dialogs asked for 5xl that way and rendered at 32rem.
+            "sm:inset-x-auto sm:bottom-auto sm:left-[50%] sm:top-[50%] sm:max-w-lg sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-lg sm:p-6",
+            "sm:data-[state=closed]:zoom-out-95 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:slide-out-to-bottom-2 sm:data-[state=open]:slide-in-from-bottom-2",
+            className,
+          )}
+          {...props}
+        >
+          {/* The affordance for the gesture: without it a sheet that can be
             pushed away looks exactly like one that cannot. */}
-        {!hideDragHandle && (
-          <div
-            aria-hidden
-            className="mx-auto -mt-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 sm:hidden"
-          />
-        )}
-        {children}
-        {/* On the title's line, at the right-hand end of it, at every width.
+          {!hideDragHandle && (
+            <div
+              aria-hidden
+              className="mx-auto -mt-1 h-1 w-10 shrink-0 rounded-full bg-muted-foreground/30 sm:hidden"
+            />
+          )}
+          {children}
+          {/* On the title's line, at the right-hand end of it, at every width.
             It used to be readable only from a tablet up — on a phone it was
             sr-only and the gesture was the only way out that you could see. */}
-        <DialogPrimitive.Close
-          ref={sheet.closeRef}
-          className="absolute right-3 top-3 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-5 sm:top-5"
-        >
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
-    </DialogPortal>
-  );
-});
+          {!hideClose && (
+            <DialogPrimitive.Close
+              ref={sheet.closeRef}
+              className="absolute right-3 top-3 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-5 sm:top-5"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    );
+  },
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
