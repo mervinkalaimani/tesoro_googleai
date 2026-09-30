@@ -1344,11 +1344,19 @@ function CarPurchasePanel({
       {/* content-between spreads the three rows over whatever height the IDs
           beside them come to, so the two halves end on the same line and the
           gaps inside this one stay equal to each other. */}
-      <div className="grid flex-1 content-between gap-x-5 gap-y-3.5 grid-cols-2 md:grid-cols-3">
+      {/* Every fact has a cell of its own, on both layouts. A blank field
+          draws nothing — a car with no courier says nothing about one — and
+          the cell it leaves stays blank rather than dragging the shipping ID
+          up beside the order date. */}
+      <div className="grid flex-1 grid-rows-4 content-between gap-x-5 gap-y-3.5 grid-cols-2 md:grid-cols-3 md:grid-rows-3">
         {/* What it cost against what it lists at, as one fact: the gap only
             means anything beside the number it is a gap from, and it was a
             third of the row to itself. */}
-        <Field label="Purchased for" value={inrFull(spent)} cell="md:col-start-1 md:row-start-1">
+        <Field
+          label="Purchased for"
+          value={inrFull(spent)}
+          cell="col-start-1 row-start-1 md:col-start-1 md:row-start-1"
+        >
           <span className="truncate">
             {inrFull(spent)}
             {delta !== 0 && (
@@ -1363,11 +1371,19 @@ function CarPurchasePanel({
             )}
           </span>
         </Field>
-        <Field label="MRP" value={inrFull(mrp)} cell="md:col-start-2 md:row-start-1" />
+        <Field
+          label="MRP"
+          value={inrFull(mrp)}
+          cell="col-start-2 row-start-1 md:col-start-2 md:row-start-1"
+        />
 
         {/* Who sold it and who carried it read as a pair, which is also what
             puts them on one line of a phone's two columns. */}
-        <Field label="Sold by" value={car.seller} cell="md:col-start-1 md:row-start-2">
+        <Field
+          label="Sold by"
+          value={car.seller}
+          cell="col-start-1 row-start-2 md:col-start-1 md:row-start-2"
+        >
           <LinkValue
             value={car.seller}
             title={`Everything bought from ${car.seller}`}
@@ -1377,7 +1393,7 @@ function CarPurchasePanel({
         <Field
           label="Transit info"
           value={courier || cleanTransitNotes}
-          cell="md:col-start-1 md:row-start-3"
+          cell="col-start-2 row-start-2 md:col-start-1 md:row-start-3"
         >
           {trackable ? (
             <TrackingLink
@@ -1393,9 +1409,13 @@ function CarPurchasePanel({
         <Field
           label="Ordered on"
           value={formatDayMonthYear(car.orderDate) || car.orderDate}
-          cell="md:col-start-2 md:row-start-2"
+          cell="col-start-1 row-start-3 md:col-start-2 md:row-start-2"
         />
-        <Field label="Order ID" value={car.orderId} cell="md:col-start-3 md:row-start-2">
+        <Field
+          label="Order ID"
+          value={car.orderId}
+          cell="col-start-2 row-start-3 md:col-start-3 md:row-start-2"
+        >
           <LinkValue
             value={car.orderId}
             title={`Everything in order ${car.orderId}`}
@@ -1406,9 +1426,13 @@ function CarPurchasePanel({
         <Field
           label={hasArrived ? "Received on" : "Expected on"}
           value={formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate)}
-          cell="md:col-start-2 md:row-start-3"
+          cell="col-start-1 row-start-4 md:col-start-2 md:row-start-3"
         />
-        <Field label="Shipping ID" value={car.shippingId} cell="md:col-start-3 md:row-start-3">
+        <Field
+          label="Shipping ID"
+          value={car.shippingId}
+          cell="col-start-2 row-start-4 md:col-start-3 md:row-start-3"
+        >
           <LinkValue
             value={car.shippingId}
             title={`Everything in shipment ${car.shippingId}`}
