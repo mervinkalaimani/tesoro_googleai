@@ -26,6 +26,29 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 243,
+    at: "2026-09-30T15:40",
+    changes: [
+      {
+        key: true,
+        text: "An Assortments chip in the catalogue, beside Cars inside packs: on, the boxes of one casting ride on one card; off, every box is its own card with its own ID, price and colours.",
+      },
+      {
+        key: true,
+        text: "A casting taken out of its group now draws its own card. Detaching three Durangos and still seeing one was the card drawing ignoring what detaching means.",
+      },
+      {
+        text: "A casting's window shows the ID its boxes share, and each box's own colours beside it — the Box in six colours and the Blister in two are two answers, not one.",
+      },
+      {
+        text: "Adding a car offers the colours of the box you picked before the rest.",
+      },
+      {
+        text: "The brand shelf and the chip rows no longer draw a scrollbar under themselves.",
+      },
+    ],
+  },
+  {
     build: 242,
     at: "2026-09-30T14:05",
     changes: [

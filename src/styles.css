@@ -329,6 +329,32 @@
   }
 }
 
+/* A row you scroll sideways with a finger or a wheel, and no gutter under it.
+   Both spellings, because half the app asks for one and half for the other —
+   and neither existed, so the brand shelf, the chip rows and the photo strips
+   have all been drawing a scrollbar nobody asked for. The content still
+   scrolls; only the bar is gone. Never put this on a tall column: a vertical
+   scrollbar is how you know there is more below. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
 @utility text-display {
   font-family: var(--font-display);
   font-style: normal;

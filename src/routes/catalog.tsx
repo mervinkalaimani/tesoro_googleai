@@ -346,6 +346,12 @@ function CatalogPage() {
    * buy. Turn it off to see the castings individually.
    */
   const [hideInPacks, setHideInPacks] = useState(true);
+  /**
+   * On by default: the boxes of one casting ride on one card, which is what
+   * makes the catalogue read as castings rather than as packaging. Off draws
+   * every box its own card, with its own ID, price and colours.
+   */
+  const [groupBoxes, setGroupBoxes] = useState(true);
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [draftFilters, setDraftFilters] = useState<Filters>(NO_FILTERS);
   const [draftHideInPacks, setDraftHideInPacks] = useState(true);
@@ -585,7 +591,18 @@ function CatalogPage() {
    * model, variant, series, sub-series and car number and differ only in
    * assortment ride together; 75 pairs in the catalogue do.
    */
-  const groups = useMemo(() => groupCastings(rows), [rows]);
+  const groups = useMemo(
+    () =>
+      groupBoxes
+        ? groupCastings(rows)
+        : rows.map((c) => ({
+            key: c.car_id,
+            lead: c,
+            members: [c],
+            assortments: [(c.assortment || "").trim()].filter(Boolean),
+          })),
+    [rows, groupBoxes],
+  );
   /** Lead entry id to its siblings, for the chip and the picker. */
   const siblings = useMemo(() => {
     const m = new Map<string, CastingGroup>();
@@ -783,7 +800,13 @@ function CatalogPage() {
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <PageHeading
         title="Catalog"
-        subtitle={`${leads.length.toLocaleString()} casting${leads.length === 1 ? "" : "s"} · tap one to add it to your collection`}
+        // A card is a casting while the boxes ride together and a box when they
+        // do not, and the count should say which it is counting.
+        subtitle={`${leads.length.toLocaleString()} ${
+          groupBoxes
+            ? `casting${leads.length === 1 ? "" : "s"}`
+            : `box${leads.length === 1 ? "" : "es"}`
+        } · tap one to add it to your collection`}
       >
         {isAdmin && (
           <>
@@ -871,6 +894,14 @@ function CatalogPage() {
                 label="Cars inside packs"
                 active={!hideInPacks}
                 onToggle={() => setHideInPacks((v) => !v)}
+              />
+              {/* One card per casting, or one per box. On, the Mainline and the
+                  Moving Parts of a Bronco ride together and the card says
+                  "2 boxes"; off, they are two cards with a price each. */}
+              <ToggleChip
+                label="Assortments"
+                active={!groupBoxes}
+                onToggle={() => setGroupBoxes((v) => !v)}
               />
               {activeCount > 0 && (
                 <button

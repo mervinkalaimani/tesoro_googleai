@@ -29,6 +29,10 @@ const clean = (v: string | null | undefined) => (v || "").trim().toLowerCase();
 const brandKey = (v: string | null | undefined) => clean(v).replace(/\s+/g, "");
 
 export function castingKey(c: CatalogCar): string {
+  // Taken out of its casting on purpose, so it rides with nothing. `boxSiblings`
+  // has always honoured this; the card drawing did not, which is why detaching
+  // three Durangos still drew one card.
+  if (c.standalone) return `alone|${c.car_id}`;
   return [
     brandKey(c.brand),
     clean(c.make),
@@ -38,6 +42,26 @@ export function castingKey(c: CatalogCar): string {
     clean(c.sub_series),
     clean(c.car_number),
   ].join("|");
+}
+
+/**
+ * The ID the boxes of one casting share.
+ *
+ * A catalogue ID is built in slots — brand, make and model, then the box, then
+ * series and sub series, then a copy digit. The boxes of one casting therefore
+ * already differ in exactly one slot and agree everywhere else, so taking the
+ * box's slot out leaves the casting: 070A08-03-0000-1 and 070A08-0J-0000-1 are
+ * both 070A08-0000. Nothing is stored for this; it is read off the IDs that
+ * are, which is why an assortment's own ID reads as this one with its box put
+ * back in.
+ *
+ * A legacy ID that is not in the scheme is its own casting, and comes back
+ * unchanged rather than mangled.
+ */
+export function castingId(c: Pick<CatalogCar, "car_id">): string {
+  const id = (c.car_id || "").trim().toUpperCase();
+  const m = /^([0-9A-Z]{6})-[0-9A-Z]{2}-([0-9A-Z]{4})-[0-9A-Z]$/.exec(id);
+  return m ? `${m[1]}-${m[2]}` : id;
 }
 
 export type CastingGroup = {

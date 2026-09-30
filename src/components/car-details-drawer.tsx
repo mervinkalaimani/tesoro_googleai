@@ -72,6 +72,7 @@ import { SellerOrdersDialog } from "@/components/seller-orders-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CarThumb } from "@/components/car-thumb";
 import { carSubLine } from "@/lib/car-subline";
+import { castingId } from "@/lib/casting-group";
 import { boughtOn, purchaseHistory, type Purchase } from "@/lib/copies";
 import { isInHand, isIso } from "@/lib/status";
 import { toast } from "sonner";
@@ -2488,32 +2489,50 @@ function CatalogDetailsBody({
                  and what that box lists at, on a line each. Picking one is what
                  the four lines below are about. */
               <div>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Catalogue IDs
+                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+                  Casting
+                  {/* The ID the boxes share. Each of theirs is this one with
+                      its box put back in, which is the whole of how they are
+                      related — worth saying once, above them. */}
+                  <span className="font-mono normal-case tracking-normal text-foreground">
+                    {castingId(shown ?? siblings[0])}
+                  </span>
                 </p>
                 <ul className="mt-1 divide-y divide-border/60 overflow-hidden rounded-lg border border-border/80">
-                  {siblings.map((sib) => (
-                    <li key={sib.car_id} className="flex items-center">
-                      <button
-                        type="button"
-                        onClick={() => setShownId(sib.car_id)}
-                        aria-current={sib.car_id === shownId}
-                        className={cn(
-                          "flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors",
-                          sib.car_id === shownId
-                            ? "bg-primary/10 text-foreground"
-                            : "text-muted-foreground hover:bg-muted/40",
-                        )}
-                      >
-                        <span className="shrink-0 font-mono text-[11px]">{sib.car_id}</span>
-                        <span className="min-w-0 flex-1 truncate">{sib.assortment || "—"}</span>
-                        <span className="shrink-0 tabular-nums font-medium">
-                          {Number(sib.mrp) ? inrFull(Math.round(Number(sib.mrp))) : "—"}
-                        </span>
-                      </button>
-                      <CopyId id={sib.car_id} className="mr-1.5" />
-                    </li>
-                  ))}
+                  {siblings.map((sib) => {
+                    const boxColours = catalogColours(sib);
+                    return (
+                      <li key={sib.car_id} className="flex items-center">
+                        <button
+                          type="button"
+                          onClick={() => setShownId(sib.car_id)}
+                          aria-current={sib.car_id === shownId}
+                          className={cn(
+                            "flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors",
+                            sib.car_id === shownId
+                              ? "bg-primary/10 text-foreground"
+                              : "text-muted-foreground hover:bg-muted/40",
+                          )}
+                        >
+                          <span className="shrink-0 font-mono text-[11px]">{sib.car_id}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate">{sib.assortment || "—"}</span>
+                            {/* This box's colours, not the casting's: a Box in
+                                six and a Blister in two are two answers. */}
+                            {boxColours.length > 0 && (
+                              <span className="block truncate text-[10px] text-muted-foreground">
+                                {boxColours.join(" · ")}
+                              </span>
+                            )}
+                          </span>
+                          <span className="shrink-0 tabular-nums font-medium">
+                            {Number(sib.mrp) ? inrFull(Math.round(Number(sib.mrp))) : "—"}
+                          </span>
+                        </button>
+                        <CopyId id={sib.car_id} className="mr-1.5" />
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             ) : (

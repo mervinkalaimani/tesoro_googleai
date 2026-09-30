@@ -79,6 +79,7 @@ export function CatalogueFields({
    */
   omit = [],
   chain = false,
+  colours,
 }: {
   values: CatalogueValues;
   onChange: <K extends keyof CatalogueValues>(key: K, value: CatalogueValues[K]) => void;
@@ -92,6 +93,13 @@ export function CatalogueFields({
   omit?: (keyof CatalogueValues)[];
   /** Adding by hand: opening one field opens the next. */
   chain?: boolean;
+  /**
+   * The colours this box is known in, offered first. A casting comes out in
+   * several and each box carries its own set: the Box in six, the Blister in
+   * two, and the field should say so before it says what the whole collection
+   * has ever been painted.
+   */
+  colours?: string[];
 }) {
   const err = (k: keyof CatalogueValues) => errorFor?.(k);
 
@@ -125,7 +133,13 @@ export function CatalogueFields({
     [cars, values.make, values.model],
   );
   const yearOptions = useMemo(() => yearOptionsFor(cars), [cars]);
-  const colourOptions = useMemo(() => optionsFor("colour", cars), [cars]);
+  const colourOptions = useMemo(() => {
+    const known = (colours ?? []).map((v) => v.trim()).filter(Boolean);
+    const rest = optionsFor("colour", cars).filter(
+      (v) => !known.some((k) => k.toLowerCase() === v.trim().toLowerCase()),
+    );
+    return [...known, ...rest];
+  }, [cars, colours]);
   const typeOptions = useMemo(() => optionsFor("type", cars), [cars]);
   const brandOptions = useMemo(() => optionsFor("brand", cars), [cars]);
   // An assortment belongs to its brand the way a model belongs to its make:

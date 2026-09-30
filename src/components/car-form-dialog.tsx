@@ -56,6 +56,7 @@ import {
 import { useCatalog } from "@/lib/catalog-store";
 import { AssortmentHeader, AssortmentRow } from "@/components/assortment-rows";
 import { boxSiblings } from "@/lib/casting-group";
+import { catalogColours } from "@/lib/catalog";
 import { catalogCarToCatalogueCar } from "@/lib/catalog";
 import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
@@ -1902,6 +1903,10 @@ export function CarFormDialog({
               allowCarNumberEdit={true}
               omit={["assortment"]}
               chain={!fromCatalogue}
+              // The colours of the box you said yours came out of, first. A
+              // casting in six colours as a Box and two as a Blister has two
+              // answers, and the one that matters is the box in your hand.
+              colours={catalogueSource ? catalogColours(catalogueSource) : undefined}
             />
             {/* The one field here that is only ever yours: it is written to your
                 row and nothing reads it back into the catalogue. */}

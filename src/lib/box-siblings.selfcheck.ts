@@ -6,7 +6,7 @@
  */
 import assert from "node:assert/strict";
 
-import { boxSiblings, castingKey } from "@/lib/casting-group";
+import { boxSiblings, castingId, castingKey } from "@/lib/casting-group";
 import type { CatalogCar } from "@/lib/catalog";
 
 const entry = (over: Partial<CatalogCar>): CatalogCar =>
@@ -80,3 +80,31 @@ console.log("box-siblings.selfcheck ok");
   );
   console.log("standalone checks ok");
 }
+
+// Detached on purpose: `standalone` takes an entry out of its casting, and the
+// card drawing has to honour that as much as the two forms do — three Durangos
+// detached must draw three cards, not one.
+const alone = entry({ car_id: "070A08-0J-0000-1", assortment: "Moving Parts", standalone: true });
+const withIt = entry({ car_id: "070A08-03-0000-1", assortment: "Mainline" });
+assert.notEqual(castingKey(alone), castingKey(withIt));
+assert.equal(castingKey(alone), `alone|${alone.car_id}`);
+assert.equal(
+  castingKey(entry({ car_id: "070A08-03-0000-1" })),
+  castingKey(entry({ car_id: "070A08-0J-0000-1" })),
+  "two boxes of one casting still ride together when neither has been detached",
+);
+
+// The ID the boxes share, read off the IDs themselves.
+assert.equal(castingId({ car_id: "070A08-03-0000-1" }), "070A08-0000");
+assert.equal(
+  castingId({ car_id: "070A08-0J-0000-1" }),
+  castingId({ car_id: "070A08-03-0000-1" }),
+  "the box is the one slot the boxes of a casting disagree in",
+);
+assert.equal(
+  castingId({ car_id: "070A08-0F-0302-1" }),
+  "070A08-0302",
+  "a different series is a different casting, and says so",
+);
+assert.equal(castingId({ car_id: "MKCCB/MBX/MNL/073" }), "MKCCB/MBX/MNL/073");
+assert.equal(castingId({ car_id: "" }), "");
