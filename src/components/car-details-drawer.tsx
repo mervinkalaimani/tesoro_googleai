@@ -648,7 +648,7 @@ function CarPopupContent({
   );
 
   /** Brand, number and box: which car this is, before what it is called. */
-  const kicker = [car.brand, car.carNumber, car.assortment]
+  const kicker = [car.brand, car.carNumber, car.assortment, car.size]
     .map((v) => (v || "").trim())
     .filter(Boolean);
 
@@ -706,7 +706,7 @@ function CarPopupContent({
           The name heads the window, the photograph holds the left of it, and
           the right is whichever of the three readings you asked for.
           ===================================================================== */}
-      <div className="hidden md:flex md:h-[88vh] md:max-h-[88vh] md:w-[min(1100px,calc(100vw-4rem))] md:flex-col overflow-hidden">
+      <div className="hidden md:flex md:max-h-[88vh] md:w-[min(1100px,calc(100vw-4rem))] md:flex-col overflow-hidden">
         {/* The extra 10px is the scrollbar gutter the body below reserves on
             both edges: without it the header grid is 20px wider than the body
             grid and the two stop lining up. */}
@@ -1186,7 +1186,6 @@ function CarDetailsTab({
         <InfoRow stacked={stacked} size="lg" label="Sub series" value={car.subSeries} />
         <InfoRow stacked={stacked} size="lg" label="Colour" value={car.colour} />
         <InfoRow stacked={stacked} size="lg" label="Type" value={car.type} />
-        <InfoRow stacked={stacked} label="Size" value={car.size} />
         <InfoRow stacked={stacked} label="Case number" value={car.caseNumber} />
         {hasCondition && (
           <>

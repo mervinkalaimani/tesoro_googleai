@@ -26,6 +26,18 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 257,
+    at: "2026-10-01T04:00",
+    changes: [
+      {
+        text: "A car's window is as tall as what is in it. It was a fixed 88% of the screen, so a car with four fields sat above a field of nothing.",
+      },
+      {
+        text: "The size joins the line that says which car this is — Mini GT · 915 · Blister · 1:64 — instead of being the fifth field of the description.",
+      },
+    ],
+  },
+  {
     build: 256,
     at: "2026-10-01T03:30",
     changes: [
