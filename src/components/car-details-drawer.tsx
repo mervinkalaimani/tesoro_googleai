@@ -707,35 +707,39 @@ function CarPopupContent({
           the right is whichever of the three readings you asked for.
           ===================================================================== */}
       <div className="hidden md:flex md:h-[88vh] md:max-h-[88vh] md:w-[min(1100px,calc(100vw-4rem))] md:flex-col overflow-hidden">
-        <div className="flex shrink-0 items-start justify-between gap-6 px-8 pb-5 pt-7">
-          <div className="min-w-0">
-            {kicker.length > 0 && (
-              <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
-                {kicker.map((part, i) => (
-                  <span key={`${part}-${i}`} className="flex items-center gap-2">
-                    {i > 0 && <span className="text-primary/40">·</span>}
-                    <span className="truncate">{part}</span>
-                  </span>
-                ))}
-              </p>
-            )}
-            <h2 className="mt-1.5 truncate text-2xl font-bold tracking-tight text-foreground xl:text-3xl">
-              {title}
-            </h2>
-          </div>
+        {/* The extra 10px is the scrollbar gutter the body below reserves on
+            both edges: without it the header grid is 20px wider than the body
+            grid and the two stop lining up. */}
+        <div className="grid shrink-0 grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] items-center gap-8 px-[calc(2rem+10px)] pb-5 pt-7">
+          <div className="flex min-w-0 items-start justify-between gap-4">
+            <div className="min-w-0">
+              {kicker.length > 0 && (
+                <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                  {kicker.map((part, i) => (
+                    <span key={`${part}-${i}`} className="flex items-center gap-2">
+                      {i > 0 && <span className="text-primary/40">·</span>}
+                      <span className="truncate">{part}</span>
+                    </span>
+                  ))}
+                </p>
+              )}
+              <h2 className="mt-1.5 truncate text-2xl font-bold tracking-tight text-foreground xl:text-3xl">
+                {title}
+              </h2>
+            </div>
 
-          <div className="flex shrink-0 items-center gap-4">
             <button
               type="button"
               onClick={onClose}
               title="Close"
               aria-label="Close"
-              className="grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background transition-transform hover:scale-105 active:scale-95"
+              className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full bg-foreground text-background transition-transform hover:scale-105 active:scale-95"
             >
               <X className="size-4" />
             </button>
-            <CarTabSwitch value={tab} onChange={setTab} tabs={tabs} />
           </div>
+
+          <CarTabSwitch value={tab} onChange={setTab} tabs={tabs} className="flex w-full" />
         </div>
 
         <div className="flex-1 space-y-7 overflow-y-auto px-8 pb-7 [scrollbar-gutter:stable_both-edges]">
@@ -785,6 +789,21 @@ function CarPopupContent({
             <HeroCarImage car={car} />
           </div>
 
+          {/* The warmth behind the sheet, which is part of the window rather
+              than part of what scrolls in it: it sits where the sheet comes to
+              rest and stays there while the sheet slides over it. A phone is
+              held close and holds one thing at a time, so the panel is allowed
+              to glow; the wide layout has columns of its own to keep apart. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]"
+            style={{
+              top: "calc(var(--hero-h) - 1.5rem)",
+              background:
+                "radial-gradient(120% 55% at 88% 0%, color-mix(in oklab, var(--accent) 26%, transparent), transparent 70%)",
+            }}
+          />
+
           {/* Scrollable body: a see-through gap the height of the photo, then the card */}
           <div
             ref={mobile.scrollRef}
@@ -800,21 +819,8 @@ function CarPopupContent({
 
               <div
                 ref={mobile.cardRef}
-                className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)]"
+                className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
               >
-                {/* The warmth behind the sheet. A phone is held close and holds
-                    one thing at a time, so the panel is allowed to glow; the
-                    wide layout carries three columns of its own and would only
-                    be tinted by it. */}
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-80"
-                  style={{
-                    background:
-                      "radial-gradient(120% 70% at 88% 0%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 70%)",
-                  }}
-                />
-
                 <div className="relative space-y-5">
                   <div className="min-w-0">
                     {kicker.length > 0 && (

@@ -26,6 +26,21 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 256,
+    at: "2026-10-01T03:30",
+    changes: [
+      {
+        text: "On a phone the glow stays where it is while the sheet slides over it, and the sheet is frosted, so the warmth reads through the panel rather than scrolling away with it.",
+      },
+      {
+        text: "OLED is a phone's option now. A backlit screen saves nothing on a black pixel, so it is offered and applied only where it is worth having; the same account on a wide screen reads it as plain dark.",
+      },
+      {
+        text: "On a car's page the tab switch is exactly as wide as what it switches, and the close button sits at the top corner of the photograph.",
+      },
+    ],
+  },
+  {
     build: 255,
     at: "2026-10-01T02:50",
     changes: [

@@ -11,8 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 /**
  * What the person chose. "system" hands the decision to the operating system,
- * and "oled" is dark with the background turned all the way off — on a phone
- * that draws its own pixels, black costs no light at all.
+ * and "oled" is dark with the background turned all the way off.
+ *
+ * OLED is a phone's answer: a screen that lights each pixel itself spends
+ * nothing on a black one, which is not true of the backlit panel a laptop
+ * almost certainly has. So it is offered on a phone and applied on a phone —
+ * the same account on a wide screen reads it as plain dark.
  */
 export type ThemePreference = "light" | "dark" | "oled" | "system";
 /** What actually gets painted, once "system" and "oled" have been resolved. */
@@ -26,6 +30,10 @@ export const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "oled", label: "OLED" },
   { value: "system", label: "Auto" },
 ];
+
+/** The same list without the option this screen cannot make use of. */
+export const themeOptionsFor = (phone: boolean) =>
+  phone ? THEME_OPTIONS : THEME_OPTIONS.filter((o) => o.value !== "oled");
 
 export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   { value: "crimson", label: "Crimson" },
@@ -153,6 +161,8 @@ type AppState = {
 const AppCtx = createContext<AppState | null>(null);
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
+/** The width the app already calls a phone, in the one place OLED needs it. */
+const PHONE_QUERY = "(max-width: 767px)";
 
 function isAccentColor(value: unknown): value is AccentColor {
   return typeof value === "string" && ACCENT_OPTIONS.some((option) => option.value === value);
@@ -262,9 +272,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => mq.removeEventListener("change", sync);
   }, []);
 
+  // Whether this screen is a phone's. Watched rather than read once, because a
+  // window can be dragged narrow and a phone can be turned on its side.
+  const [phone, setPhone] = useState(false);
   useEffect(() => {
-    if (hydrated) applyTheme(theme, themePreference === "oled");
-  }, [hydrated, theme, themePreference]);
+    if (typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia(PHONE_QUERY);
+    const sync = () => setPhone(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) applyTheme(theme, phone && themePreference === "oled");
+  }, [hydrated, theme, themePreference, phone]);
 
   useEffect(() => {
     if (hydrated) applyAccent(accentColor);
@@ -375,7 +397,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleTheme = useCallback(() => {
-    const order: ThemePreference[] = ["light", "dark", "oled", "system"];
+    // The quick toggle stays the three everybody has. OLED is chosen on
+    // purpose, in Settings, on the screen it is for.
+    const order: ThemePreference[] = ["light", "dark", "system"];
     const next = order[(order.indexOf(themePreference) + 1) % order.length];
     setThemePreference(next);
   }, [themePreference, setThemePreference]);

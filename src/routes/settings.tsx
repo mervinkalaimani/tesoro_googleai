@@ -28,7 +28,7 @@ import { toast } from "sonner";
 
 import {
   ACCENT_OPTIONS,
-  THEME_OPTIONS,
+  themeOptionsFor,
   FONT_SIZE_OPTIONS,
   ARRIVING_SOON_OPTIONS,
   ARRIVING_WINDOW_OPTIONS,
@@ -45,6 +45,7 @@ import {
   type SearchEngine,
 } from "@/lib/car-image-search";
 import { SegmentControl } from "@/components/segment-control";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { CataloguePhotos } from "@/components/catalogue-photos";
 import { MetadataEditor } from "@/components/metadata-editor";
 import { DeleteMyData } from "@/components/delete-my-data";
@@ -169,6 +170,9 @@ function initialsOf(name: string, fallback: string): string {
 }
 
 export function SettingsPage() {
+  // OLED is a phone's option: a backlit panel saves nothing on a black pixel,
+  // so the choice is not offered on a screen that cannot use it.
+  const isPhone = useIsMobile();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const [view, setView] = useState<SettingsView>(() => parseTab(search.tab));
@@ -559,7 +563,7 @@ export function SettingsPage() {
                 <SegmentControl
                   value={themePreference}
                   onChange={setThemePreference}
-                  options={THEME_OPTIONS}
+                  options={themeOptionsFor(isPhone)}
                   fill
                   className="h-9 text-sm sm:w-auto"
                 />
