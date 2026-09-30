@@ -984,7 +984,7 @@ function CarActionButtons({
         title="View in Catalogue"
       >
         <BookOpen className="size-3.5 shrink-0" />
-        <span className="truncate">View in Catalogue</span>
+        <span className="truncate">View in Catalogueue</span>
       </Button>
       <Button
         variant="outline"

@@ -57,6 +57,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import { AssortmentHeader, AssortmentRow } from "@/components/assortment-rows";
 import { boxSiblings } from "@/lib/casting-group";
 import { catalogColours } from "@/lib/catalog";
+import { ensureAssortment } from "@/lib/assortments";
 import { catalogCarToCatalogueCar } from "@/lib/catalog";
 import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
@@ -1553,9 +1554,27 @@ export function CarFormDialog({
     // can see the whole collection. The catalogue ID says which casting it is.
     const carId = isEdit && initial?.id && !isPlaceholderId(initial.id) ? initial.id : "";
 
+    /**
+     * The ID this car keeps, if it keeps one.
+     *
+     * A catalogue ID carries the box in one of its slots, so moving a car into
+     * another box has to move its ID too — keeping the old one files a Blister
+     * under the Box's ID. Dropping it here hands the job to `catalogIdFor`,
+     * which finds that box's entry if the catalogue has one and derives a new
+     * ID from the box if it does not.
+     */
+    const keptCatalogId = (() => {
+      const id = initial?.catalogId?.trim();
+      if (!id) return undefined;
+      const entry = catalog.find((c) => c.car_id.toUpperCase() === id.toUpperCase());
+      if (!entry) return id;
+      const box = (v?: string | null) => (v || "").trim().toLowerCase();
+      return box(entry.assortment) === box(assortment) ? id : undefined;
+    })();
+
     const payload: Diecast = {
       id: carId,
-      catalogId: relinkedTo || derivedCatalogCarId || initial?.catalogId,
+      catalogId: relinkedTo || derivedCatalogCarId || keptCatalogId,
       sno: isEdit ? initial?.sno : undefined,
       name,
       make,
@@ -1686,6 +1705,12 @@ export function CarFormDialog({
       // The contents are a table of their own, and an admin-only one.
       if (membersChanged && isAdmin) await setPackMembers(packId, wanted);
     }
+
+    // A box only an admin could have typed, filed as a box. Nothing else adds
+    // to the list: a name that arrives on a car and nowhere else is in every
+    // picker and in no vocabulary, which is how the list stopped describing
+    // what the catalogue holds.
+    if (isAdmin && assortment) await ensureAssortment(assortment, brand);
 
     // The store's copy, not the payload: it carries the IDs that were assigned
     // on the way in, which is what a caller waiting on the casting needs.
@@ -1929,7 +1954,7 @@ export function CarFormDialog({
                 ? `This casting is not in the shared catalogue yet. It is filed ${heldLabel(initial)}, and what you type until then is what gets filed.`
                 : isEdit
                   ? "These describe your copy. Correcting them here does not rewrite the shared catalogue entry — if they now describe a different release, link this car to the right entry from the menu."
-                  : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalog ID will be assigned."}
+                  : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalogue ID will be assigned."}
             </p>
           </div>
         )}

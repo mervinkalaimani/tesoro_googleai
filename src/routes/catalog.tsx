@@ -79,12 +79,12 @@ import {
 export const Route = createFileRoute("/catalog")({
   head: () => ({
     meta: [
-      { title: "Catalog | Tesoro" },
+      { title: "Catalogue | Tesoro" },
       {
         name: "description",
         content: "Browse every casting in the catalogue and add one to your collection.",
       },
-      { property: "og:title", content: "Catalog | Tesoro" },
+      { property: "og:title", content: "Catalogue | Tesoro" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -799,7 +799,7 @@ function CatalogPage() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
       <PageHeading
-        title="Catalog"
+        title="Catalogue"
         // A card is a casting while the boxes ride together and a box when they
         // do not, and the count should say which it is counting.
         subtitle={`${leads.length.toLocaleString()} ${
@@ -890,9 +890,11 @@ function CatalogPage() {
                 active={hideOwned}
                 onToggle={() => setHideOwned((v) => !v)}
               />
+              {/* Lit, a multipack is one line and the cars in it are not listed
+                  again on their own — the box is the thing you bought. */}
               <ToggleChip
-                label="Cars inside packs"
-                active={!hideInPacks}
+                label="Combine multi pack"
+                active={hideInPacks}
                 onToggle={() => setHideInPacks((v) => !v)}
               />
               {/* One card per casting, or one per box. On, the Mainline and the
@@ -1253,7 +1255,7 @@ function CatalogPage() {
             <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 transition-colors hover:bg-muted/50">
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-foreground">
-                  Hide cars in multipacks
+                  Combine multi pack
                 </span>
                 <span className="block text-[11px] text-muted-foreground">
                   Show the box, not the five cars inside it.

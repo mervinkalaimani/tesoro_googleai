@@ -670,8 +670,8 @@ function InventoryPage() {
                   reach. Nothing was deleted — this puts the rows back. */}
               {inPackCount > 0 && (
                 <ToggleChip
-                  label={`Cars inside packs (${inPackCount})`}
-                  active={!hideInPacks}
+                  label={`Combine multi pack (${inPackCount})`}
+                  active={hideInPacks}
                   onToggle={() => setHideInPacks((v) => !v)}
                 />
               )}
@@ -836,8 +836,8 @@ function InventoryPage() {
                 />
                 {inPackCount > 0 && (
                   <ToggleChip
-                    label={`Cars inside packs (${inPackCount})`}
-                    active={!hideInPacks}
+                    label={`Combine multi pack (${inPackCount})`}
+                    active={hideInPacks}
                     onToggle={() => setHideInPacks((v) => !v)}
                   />
                 )}

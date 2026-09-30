@@ -36,7 +36,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { assortmentOptionsFor } from "@/lib/car-options";
 import { mrpOptionsFor } from "@/lib/car-prices";
 import type { Diecast } from "@/lib/types";
-import { remainingAssortments } from "@/lib/assortments";
+import { ensureAssortment, remainingAssortments } from "@/lib/assortments";
 import { boxSiblings } from "@/lib/casting-group";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
 import { ClearableInput, Field, FormSection } from "@/components/form-parts";
@@ -904,6 +904,15 @@ export function CatalogFormDialog({
         if (!saved) {
           toast.error(`Could not file the ${assortment} box`, { description: sibling.car_id });
         }
+      }
+    }
+
+    // Every box this entry names, as boxes. Only an admin can type one the
+    // list has not heard of, and this is where typing it becomes filing it —
+    // nothing else adds to the vocabulary.
+    if (ok && !isImageOnly && isAdmin) {
+      for (const box of [car.assortment, ...extras.map((x) => x.assortment)]) {
+        if (box?.trim()) await ensureAssortment(box, car.brand);
       }
     }
 

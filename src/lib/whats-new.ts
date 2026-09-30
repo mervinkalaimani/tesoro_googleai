@@ -26,6 +26,25 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 244,
+    at: "2026-09-30T16:30",
+    changes: [
+      {
+        key: true,
+        text: "Moving a car into another box moves its catalogue ID with it: the ID carries the box in one of its slots, so a Blister kept the Box's ID and now takes the Blister's — that box's entry when the catalogue has one, a new ID derived from the box when it does not.",
+      },
+      {
+        text: "Assortments are a list somebody keeps rather than whatever has been typed. You pick from the list; only an admin can add to it, and typing a new one now files it as a box instead of leaving a name that is in every picker and no list.",
+      },
+      { text: "Cars inside packs is now Combine multi pack, and reads the way round it sounds." },
+      { text: "Catalog is spelt Catalogue." },
+      {
+        admin: true,
+        text: "Every assortment has been detached from its casting, so each one stands as its own card.",
+      },
+    ],
+  },
+  {
     build: 243,
     at: "2026-09-30T15:40",
     changes: [

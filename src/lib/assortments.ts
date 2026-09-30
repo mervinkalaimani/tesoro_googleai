@@ -82,6 +82,32 @@ export async function addAssortment(
   return { success: true };
 }
 
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** Whether the kept list already holds this box, under this brand or no brand. */
+export function isKeptAssortment(name: string, brand = ""): boolean {
+  const want = name.trim();
+  if (!want) return false;
+  return kept.some(
+    (a) => same(a.name, want) && (!a.brand.trim() || !brand.trim() || same(a.brand, brand)),
+  );
+}
+
+/**
+ * A box the list has never heard of, filed on purpose.
+ *
+ * Assortments are a vocabulary somebody keeps, not a by-product of typing: a
+ * name that only ever existed on a car was in every picker and in no list, and
+ * nobody had decided it was a box. So it is added here, by the admin who typed
+ * it, or not at all — a collector picks from what exists.
+ */
+export async function ensureAssortment(name: string, brand = ""): Promise<boolean> {
+  const cleaned = name.trim();
+  if (!cleaned || !hasAssortments() || isKeptAssortment(cleaned, brand)) return false;
+  const res = await addAssortment(cleaned, brand);
+  return res.success;
+}
+
 /**
  * Rename, which is also how two spellings become one: renaming onto a name that
  * already exists moves the cars and drops the spare row.

@@ -201,13 +201,13 @@ export function SupabaseSyncCard() {
       } else {
         setStatusMessage({
           type: "error",
-          text: res.error || "Failed to populate catalog table.",
+          text: res.error || "Failed to populate the catalogue table.",
         });
       }
     } catch (err) {
       setStatusMessage({
         type: "error",
-        text: (err as Error).message || "Failed to populate catalog.",
+        text: (err as Error).message || "Failed to populate the catalogue.",
       });
     } finally {
       setSyncingCatalog(false);
@@ -652,7 +652,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
             <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1">
               <div className="text-muted-foreground flex items-center gap-1">
                 <Database className="size-3 text-primary" />
-                <span>Backend Catalog Table</span>
+                <span>Backend Catalogue Table</span>
               </div>
               <div className="font-mono font-semibold text-foreground">
                 public.tesoro_car_catalog
@@ -715,7 +715,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
               )}
               <span>
                 {syncingCatalog
-                  ? "Populating Catalog..."
+                  ? "Populating Catalogue..."
                   : `Populate Catalog Table (${extractCatalogFromCars(cars).length} castings)`}
               </span>
             </Button>
@@ -851,7 +851,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5 font-semibold text-foreground">
                 <Database className="size-4 text-primary" />
-                <span>2. Master Catalog Backend Table (public.tesoro_car_catalog)</span>
+                <span>2. Master Catalogue Backend Table (public.tesoro_car_catalog)</span>
               </div>
               <Button
                 variant="ghost"
@@ -867,7 +867,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
                 ) : (
                   <>
                     <Copy className="size-3" />
-                    <span>Copy Catalog SQL</span>
+                    <span>Copy Catalogue SQL</span>
                   </>
                 )}
               </Button>

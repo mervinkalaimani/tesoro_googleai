@@ -7,7 +7,13 @@
  */
 import assert from "node:assert/strict";
 
-import { remainingAssortments, setAssortments, type Assortment } from "@/lib/assortments";
+import {
+  ensureAssortment,
+  isKeptAssortment,
+  remainingAssortments,
+  setAssortments,
+  type Assortment,
+} from "@/lib/assortments";
 import { assortmentOptionsFor } from "@/lib/car-options";
 import { generateCatalogCarId, setCatalogIdEntries } from "@/lib/car-id";
 
@@ -82,5 +88,29 @@ assert.deepEqual(assortmentOptionsFor(pool, "Tomica"), [
   "Qube Carz",
   "Sky Busters",
 ]);
+
+// A box is a name somebody keeps, not a by-product of typing one.
+setAssortments([
+  { id: "1", name: "Mainline", brand: "", sort: 0, retired: false },
+  { id: "2", name: "Qube Carz", brand: "Mini GT", sort: 1, retired: false },
+] as Assortment[]);
+
+assert.equal(isKeptAssortment("Mainline"), true);
+assert.equal(isKeptAssortment("  mainline "), true, "spelling it quietly is spelling it");
+assert.equal(isKeptAssortment("Qube Carz", "Mini GT"), true);
+assert.equal(
+  isKeptAssortment("Qube Carz", "Matchbox"),
+  false,
+  "a brand's own line is not every brand's",
+);
+assert.equal(isKeptAssortment("Mainline", "Matchbox"), true, "a box with no brand is anybody's");
+assert.equal(isKeptAssortment("Moving Parts"), false);
+assert.equal(isKeptAssortment(""), false);
+
+// Nothing is filed for a name the list already holds, and nothing at all
+// before the list has loaded -- an empty list is not evidence a box is new.
+assert.equal(await ensureAssortment("Mainline", "Matchbox"), false);
+setAssortments([]);
+assert.equal(await ensureAssortment("Something New", "Matchbox"), false);
 
 console.log("assortments.selfcheck ok");

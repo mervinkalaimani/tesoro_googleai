@@ -161,9 +161,9 @@ export function TopBar() {
             variant="outline"
             size="icon"
             className="size-9 rounded-full shrink-0 flex items-center justify-center p-0"
-            title="Catalog"
+            title="Catalogue"
           >
-            <Link to="/catalog" aria-label="Catalog">
+            <Link to="/catalog" aria-label="Catalogue">
               <Store className="size-4.5" />
             </Link>
           </Button>
