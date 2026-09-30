@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 255,
+    at: "2026-10-01T02:50",
+    changes: [
+      {
+        key: true,
+        text: "A multipack gets a tab of its own: In the Box lists what is inside it, one car to a line with the catalogue's ID beside it. Only a box has the tab.",
+      },
+      {
+        text: "Every copy you own now reads on the Record tab — when you bought them, in which parcel, and how many came in each.",
+      },
+    ],
+  },
+  {
     build: 254,
     at: "2026-10-01T02:10",
     changes: [

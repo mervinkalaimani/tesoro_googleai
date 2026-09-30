@@ -660,8 +660,12 @@ function CarPopupContent({
     setTab("details");
   }, [car.id]);
 
+  const tabs = carTabs(hasPack);
+
   const tabBody = (stacked: boolean) =>
-    tab === "details" ? (
+    tab === "box" ? (
+      <CarInTheBoxTab packCarId={car.catalogId} />
+    ) : tab === "details" ? (
       <CarDetailsTab
         car={car}
         rarity={rarity}
@@ -730,7 +734,7 @@ function CarPopupContent({
             >
               <X className="size-4" />
             </button>
-            <CarTabSwitch value={tab} onChange={setTab} />
+            <CarTabSwitch value={tab} onChange={setTab} tabs={tabs} />
           </div>
         </div>
 
@@ -749,8 +753,6 @@ function CarPopupContent({
               <CarDetailActions onEdit={onEdit} onAddAnother={onAddAnother} />
             </div>
           </div>
-
-          {hasPack && <PackContents packCarId={car.catalogId} />}
 
           {visibleShelves.map((shelf) => (
             <CarShelfRow
@@ -830,11 +832,9 @@ function CarPopupContent({
                     </h2>
                   </div>
 
-                  <CarTabSwitch value={tab} onChange={setTab} className="flex w-full" />
+                  <CarTabSwitch value={tab} onChange={setTab} tabs={tabs} className="flex w-full" />
 
                   {tabBody(false)}
-
-                  {hasPack && <PackContents packCarId={car.catalogId} />}
 
                   {visibleShelves.map((shelf) => (
                     <CarShelfRow
@@ -879,13 +879,18 @@ function CarPopupContent({
   );
 }
 
-/** The three readings of a car you own, in the order you want them. */
-type CarTab = "details" | "purchase" | "record";
+/** The readings of a car you own, in the order you want them. */
+type CarTab = "details" | "box" | "purchase" | "record";
 
-const CAR_TABS: { value: CarTab; label: string }[] = [
-  { value: "details", label: "Details" },
-  { value: "purchase", label: "Purchase" },
-  { value: "record", label: "Record" },
+/**
+ * "In the Box" only exists for a box. Most cars are one car, and a tab that is
+ * empty four times out of five is a tab you learn to skip.
+ */
+const carTabs = (hasPack: boolean): { value: CarTab; label: string }[] => [
+  { value: "details" as const, label: "Details" },
+  ...(hasPack ? [{ value: "box" as const, label: "In the Box" }] : []),
+  { value: "purchase" as const, label: "Purchase" },
+  { value: "record" as const, label: "Record" },
 ];
 
 /**
@@ -899,10 +904,12 @@ const CAR_TABS: { value: CarTab; label: string }[] = [
 function CarTabSwitch({
   value,
   onChange,
+  tabs,
   className,
 }: {
   value: CarTab;
   onChange: (v: CarTab) => void;
+  tabs: { value: CarTab; label: string }[];
   className?: string;
 }) {
   return (
@@ -913,7 +920,7 @@ function CarTabSwitch({
         className,
       )}
     >
-      {CAR_TABS.map((t) => {
+      {tabs.map((t) => {
         const active = t.value === value;
         return (
           <button
@@ -1198,6 +1205,48 @@ function CarDetailsTab({
   );
 }
 
+/**
+ * What is in the box, one car to a line.
+ *
+ * The catalogue ID rides on the right because that is the part you would go
+ * looking up; the name is what you read.
+ */
+function CarInTheBoxTab({ packCarId }: { packCarId?: string | null }) {
+  const { pack, members } = usePack(packCarId);
+  if (!pack?.is_multipack) return null;
+
+  const declared = Number(pack.pack_size) || 0;
+
+  return (
+    <div className="min-w-0">
+      {members.length === 0 ? (
+        <p className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+          Nobody has listed what is in this one yet.
+        </p>
+      ) : (
+        members.map(({ id, entry }) => (
+          <div
+            key={id}
+            className="flex items-baseline justify-between gap-4 border-b border-border/50 py-3 last:border-b-0"
+          >
+            <span className="min-w-0 truncate text-[15px] font-bold text-foreground">
+              {entry?.name || id}
+            </span>
+            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{id}</span>
+          </div>
+        ))
+      )}
+      {/* A box that says it holds eight and lists six is worth saying out loud,
+          rather than quietly showing six. */}
+      {declared > 0 && members.length !== declared && (
+        <p className="pt-3 text-xs text-muted-foreground">
+          {members.length} of {declared} listed
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** "Mint · ★★★★☆", or whichever half of it was recorded. */
 function conditionLine(grade?: string | null, rating?: number | null): string {
   const g = (grade || "").trim();
@@ -1441,8 +1490,6 @@ function CarPurchaseTab({
           {noteBelow}
         </p>
       )}
-
-      <BoughtBefore car={car} />
     </div>
   );
 }
@@ -1458,6 +1505,7 @@ function CarPurchaseTab({
  */
 function CarRecordTab({ car, onViewInCatalog }: { car: Diecast; onViewInCatalog: () => void }) {
   const { catalog } = useCatalog();
+  const mine = useCars();
 
   const entry = useMemo(() => {
     const id = (car.catalogId || "").trim().toUpperCase();
@@ -1470,6 +1518,22 @@ function CarRecordTab({ car, onViewInCatalog }: { car: Diecast; onViewInCatalog:
 
   const edited = Boolean(entry?.updated_by);
   const addedOn = formatDayMonthYear(entry?.created_at) || formatDayMonthYear(car.createdAt) || "";
+
+  /**
+   * Every copy of this casting you own, as one line per day *and* parcel.
+   *
+   * Never a line per copy: five of the six Twin Tags came in one parcel on one
+   * day, and a row-per-copy list prints the same date five times over.
+   */
+  const { copies, lines } = useMemo(() => {
+    const id = (car.catalogId || "").trim().toUpperCase();
+    if (!id) return { copies: [] as Diecast[], lines: [] as Purchase[] };
+    const ownCopies = mine.filter((c) => (c.catalogId || "").trim().toUpperCase() === id);
+    return { copies: ownCopies, lines: purchaseHistory(ownCopies) };
+  }, [mine, car.catalogId]);
+
+  const thisDay = boughtOn(car);
+  const thisShipment = (car.shippingId || "").trim();
 
   return (
     <div className="min-w-0">
@@ -1506,6 +1570,45 @@ function CarRecordTab({ car, onViewInCatalog }: { car: Diecast; onViewInCatalog:
             date={formatDayMonthYear(entry.updated_at) || ""}
           />
         </InfoRow>
+      )}
+
+      {copies.length > 1 && (
+        <div className="pt-6">
+          <div className="flex items-baseline justify-between gap-4 pb-1">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Purchased {copies.length} times
+            </p>
+            {lines.some((l) => l.n > 1) && (
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                Purchased multiple times
+              </p>
+            )}
+          </div>
+
+          {lines.map((l) => (
+            <div
+              key={`${l.day}|${l.shippingId}`}
+              className="flex items-baseline justify-between gap-4 border-b border-border/50 py-3 last:border-b-0"
+            >
+              <span className="flex min-w-0 items-baseline gap-2 truncate">
+                <span className="text-[15px] font-bold text-foreground">
+                  {formatDayMonthYear(l.day) || l.day || "No date"}
+                </span>
+                {/* Which of them you are looking at. */}
+                {l.day === thisDay && l.shippingId === thisShipment && (
+                  <span className="text-[11px] font-medium text-muted-foreground">This one</span>
+                )}
+                {l.estimated && (
+                  <span className="text-[10px] italic text-muted-foreground">received</span>
+                )}
+              </span>
+              <span className="shrink-0 text-[15px] font-bold text-primary">
+                {l.shippingId || "—"}
+                {l.n > 1 && <span className="ml-2 text-foreground">{l.n}×</span>}
+              </span>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -1573,73 +1676,6 @@ function CarShelfRow({
         ))}
       </div>
     </section>
-  );
-}
-
-/**
- * "You've bought this casting 6 times", and when.
- *
- * Shown only when there is more than one, because My Cars now collapses the
- * copies into a single row — this is where the rest of them went. It is the
- * answer to the question the row raises: not just that you own six, but that
- * you bought them across four separate occasions and what each cost.
- *
- * One line per day *and* shipment, never per copy: five of the six Twin Tags
- * came in one parcel on one day, and a row-per-copy list would print the same
- * date and shipping ID five times over.
- */
-function BoughtBefore({ car }: { car: Diecast }) {
-  const cars = useCars();
-
-  const { copies, lines } = useMemo(() => {
-    const id = (car.catalogId || "").trim().toUpperCase();
-    if (!id) return { copies: [] as Diecast[], lines: [] as Purchase[] };
-    const mine = cars.filter((c) => (c.catalogId || "").trim().toUpperCase() === id);
-    return { copies: mine, lines: purchaseHistory(mine) };
-  }, [cars, car.catalogId]);
-
-  if (copies.length < 2) return null;
-
-  const total = copies.reduce((s, c) => s + (c.spent || 0), 0);
-  const thisDay = boughtOn(car);
-  const thisShipment = (car.shippingId || "").trim();
-
-  return (
-    <div className="mt-3 rounded-lg border border-primary/25 bg-primary/5 p-2.5">
-      <p className="text-xs font-semibold text-foreground">
-        You've bought this casting {copies.length} times.
-      </p>
-
-      <div className="mt-1.5 divide-y divide-primary/15">
-        {lines.map((l) => {
-          const isThisOne = l.day === thisDay && l.shippingId === thisShipment;
-          return (
-            <div
-              key={`${l.day}|${l.shippingId}`}
-              className="flex items-baseline justify-between gap-3 py-1 text-xs"
-            >
-              <span className="min-w-0 tabular-nums">
-                {formatDayMonthYear(l.day) || l.day || "No date"}
-                {l.estimated && (
-                  <span className="ml-1 text-[10px] italic text-muted-foreground">received</span>
-                )}
-                {isThisOne && (
-                  <span className="ml-1.5 text-[10px] font-semibold text-primary">this one</span>
-                )}
-              </span>
-              <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
-                {l.shippingId || "—"}
-                {l.n > 1 && <span className="ml-1 font-sans font-bold text-primary">{l.n}×</span>}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      <p className="mt-1.5 text-[11px] text-muted-foreground">
-        {inrFull(total)} across all {copies.length}.
-      </p>
-    </div>
   );
 }
 
