@@ -105,7 +105,7 @@ export function matchPercent(fields: DuplicateFields, c: CatalogCar): number {
 /**
  * Candidate duplicates for what has been typed.
  *
- * Two ways in, and nothing else counts:
+ * Three ways in, and nothing else counts:
  *
  *   1. Brand and car number agree. The number names one product, so this needs
  *      nothing else filled in yet.
@@ -113,6 +113,14 @@ export function matchPercent(fields: DuplicateFields, c: CatalogCar): number {
  *      agree. A blank on both sides is agreement — two Hot Wheels mainlines
  *      with no series between them are the same mainline — but a blank against
  *      a value is not.
+ *   3. Brand, make and series agree, and the model is free to differ. Weaker
+ *      than the two above and labelled "possible" for it: the same make in the
+ *      same series is worth a glance rather than a warning, which is why the
+ *      form pins it as one line instead of a block.
+ *
+ * There is no partial credit inside a rule: a hit either satisfies one of the
+ * three outright or is not offered. What the level says is which rule it came
+ * from.
  *
  * It used to score partial matches instead, and offered anything sharing a
  * make and a model. Typing "Porsche 911" brought back six different castings —
@@ -120,9 +128,6 @@ export function matchPercent(fields: DuplicateFields, c: CatalogCar): number {
  * existing car to add instead. A suggestion list that is wrong six times out
  * of six is worse than none: it trains you to scroll past the one time it is
  * right.
- *
- * There is no partial credit any more, so every hit is "certain" and the
- * levels only survive for the Duplicates page below.
  *
  * Variant is deliberately absent from rule 2, because the list of fields came
  * from the person who uses this. Two variants of one casting that both lack a
@@ -173,32 +178,56 @@ export function findDuplicates(
       continue;
     }
 
-    // Otherwise every field has to agree. A blank on both sides counts as
-    // agreement — two Hot Wheels mainlines with no series between them are
-    // still the same mainline — but a blank against a value does not.
+    // Everything below needs the make, which is where the two remaining rules
+    // part company: one also demands the model and every other field, the other
+    // asks only that the series agrees.
     if (norm(c.make) !== make) continue;
-    if (norm(c.model) !== model) continue;
-    if (norm(c.assortment) !== assortment) continue;
-    if (norm(c.series) !== series) continue;
-    if (norm(c.sub_series) !== subSeries) continue;
-    if (norm(c.car_number) !== carNumber) continue;
 
-    hits.push({
-      car: c,
-      level: "certain",
-      match: matchPercent(fields, c),
-      because: [
-        "Same casting",
-        c.assortment && `${c.assortment}`,
-        c.series && `${c.series}`,
-        c.sub_series && `${c.sub_series}`,
-      ]
-        .filter(Boolean)
-        .join(" · "),
-    });
+    // Every field agrees. A blank on both sides counts as agreement — two Hot
+    // Wheels mainlines with no series between them are still the same mainline —
+    // but a blank against a value does not.
+    const wholeDescription =
+      norm(c.model) === model &&
+      norm(c.assortment) === assortment &&
+      norm(c.series) === series &&
+      norm(c.sub_series) === subSeries &&
+      norm(c.car_number) === carNumber;
+
+    if (wholeDescription) {
+      hits.push({
+        car: c,
+        level: "certain",
+        match: matchPercent(fields, c),
+        because: [
+          "Same casting",
+          c.assortment && `${c.assortment}`,
+          c.series && `${c.series}`,
+          c.sub_series && `${c.sub_series}`,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+      });
+      continue;
+    }
+
+    // Brand, make and series, and nothing more asked of it. The model may
+    // differ, so this is not a duplicate — it is the line worth reading before
+    // filing another car into a series you already have this make in. It comes
+    // back as "possible" and the form shows it as one line rather than a block.
+    if (series && norm(c.series) === series) {
+      hits.push({
+        car: c,
+        level: "possible",
+        match: matchPercent(fields, c),
+        because: ["Same make", c.series, c.sub_series].filter(Boolean).join(" · "),
+      });
+    }
   }
 
-  return hits.sort((a, b) => b.match - a.match).slice(0, limit);
+  // Certain first, then how much of the description agrees. Without the level
+  // the sort could put a series guess above the entry that really is this car.
+  const rank: Record<DuplicateLevel, number> = { certain: 0, likely: 1, possible: 2 };
+  return hits.sort((a, b) => rank[a.level] - rank[b.level] || b.match - a.match).slice(0, limit);
 }
 
 /** A set of catalogue entries that look like one casting. */

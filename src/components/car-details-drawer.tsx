@@ -72,7 +72,7 @@ import { SellerOrdersDialog } from "@/components/seller-orders-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CarThumb } from "@/components/car-thumb";
 import { carSubLine } from "@/lib/car-subline";
-import { castingId } from "@/lib/casting-group";
+import { attachSuggestions, castingId } from "@/lib/casting-group";
 import { boughtOn, purchaseHistory, type Purchase } from "@/lib/copies";
 import { isInHand, isIso } from "@/lib/status";
 import { toast } from "sonner";
@@ -1001,6 +1001,134 @@ function CarActionButtons({
 }
 
 /** Car details section (specs) */
+/**
+ * Catalogue entries that look like another box of this casting.
+ *
+ * Which boxes a casting comes in is read off the description, so two entries
+ * only group once somebody makes them agree -- and until then the Blister and
+ * the Box of one car sit in the catalogue as strangers. This is the list of
+ * entries worth looking at, and the one tap that makes them agree.
+ *
+ * Admin only, and silent for everybody else: attaching rewrites a shared
+ * catalogue entry, so a suggestion nobody can act on is noise on a page that is
+ * for looking at a car.
+ */
+function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
+  const { isAdmin } = useAuth();
+  const { catalog, updateCatalogCar } = useCatalog();
+  const [busy, setBusy] = useState("");
+
+  const id = (catalogId || "").trim().toUpperCase();
+  const entry = useMemo(
+    () => (id ? catalog.find((c) => (c.car_id || "").trim().toUpperCase() === id) : undefined),
+    [catalog, id],
+  );
+
+  const suggestions = useMemo(
+    () =>
+      entry
+        ? attachSuggestions(entry, catalog, {
+            exclude: castingSiblings(entry, catalog).map((c) => c.car_id),
+          })
+        : [],
+    [entry, catalog],
+  );
+
+  if (!isAdmin || !entry || suggestions.length === 0) return null;
+
+  /**
+   * Joining a casting means agreeing with it: the entry keeps its own ID, box,
+   * price and photograph and takes this one's description, which is the only
+   * thing the grouping reads. The same bargain the catalogue's own form makes.
+   */
+  const attach = async (pick: CatalogCar) => {
+    setBusy(pick.car_id);
+    const moved = await updateCatalogCar({
+      ...pick,
+      brand: entry.brand,
+      make: entry.make,
+      model: entry.model,
+      variant: entry.variant,
+      series: entry.series,
+      sub_series: entry.sub_series,
+      car_number: entry.car_number,
+      standalone: false,
+    });
+    // This entry may itself have been taken out of its group, in which case
+    // nothing would show: a group needs both sides in it.
+    if (moved && entry.standalone) await updateCatalogCar({ ...entry, standalone: false });
+    setBusy("");
+    if (!moved) {
+      toast.error("That entry could not be moved");
+      return;
+    }
+    toast.success(`${pick.assortment || pick.car_id} is a box of this casting now`, {
+      description: "It keeps its own ID, price and photograph.",
+    });
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-border/80 bg-muted/20 p-2.5">
+      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <Layers className="size-3.5" />
+        Possible other boxes
+      </p>
+      <ul className="mt-2 space-y-1.5">
+        {suggestions.map(({ car, definite, because, match }) => (
+          <li
+            key={car.car_id}
+            className="flex items-center gap-2 rounded-md border border-border bg-background/85 p-2"
+          >
+            <span
+              className={cn(
+                "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                definite
+                  ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                  : "bg-muted text-muted-foreground",
+              )}
+              title={
+                definite
+                  ? "The brand and the number agree, which names one product"
+                  : "How much of the description matches"
+              }
+            >
+              {/* A percentage would undersell the strong rule: the Blister of a
+                  Porsche filed under a longer model name shares a third of its
+                  description and is still certainly the same car. */}
+              {definite ? "Number" : `${match}%`}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-xs font-semibold">{car.assortment || "No box"}</div>
+              <div className="truncate font-mono text-[10px] text-muted-foreground">
+                {car.car_id}
+              </div>
+              <div className="truncate text-[10px] text-muted-foreground">
+                {because}
+                {Number(car.mrp) ? ` · ${inrFull(Math.round(Number(car.mrp)))}` : ""}
+              </div>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              variant={definite ? "default" : "outline"}
+              className="h-7 shrink-0 gap-1 px-2.5 text-xs font-semibold"
+              disabled={busy !== ""}
+              onClick={() => void attach(car)}
+            >
+              {busy === car.car_id ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+              Attach
+            </Button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function CarSpecsSection({ car, hasCondition }: { car: Diecast; hasCondition: boolean }) {
   return (
     <div>
@@ -1019,6 +1147,9 @@ function CarSpecsSection({ car, hasCondition }: { car: Diecast; hasCondition: bo
           <ConditionSpec label="Card" grade={car.cardCondition} rating={car.cardRating} />
         </div>
       ) : null}
+      {/* An admin reading a car is the person who can file the box it is
+          missing, so the suggestion sits with the description it is about. */}
+      <AssortmentSuggestions catalogId={car.catalogId} />
     </div>
   );
 }
@@ -2565,6 +2696,9 @@ function CatalogDetailsBody({
           )}
         </div>
       </div>
+
+      {/* Under the IDs, because it is about which of them belong together. */}
+      <AssortmentSuggestions catalogId={shown?.car_id || car.catalogId} />
 
       {isAdmin && !onSeeAllOwners && (
         <CatalogOwnersDialog

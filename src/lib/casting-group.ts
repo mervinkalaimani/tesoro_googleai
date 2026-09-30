@@ -1,4 +1,5 @@
 import type { CatalogCar } from "@/lib/catalog";
+import { brandUsesCarNumber, matchPercent } from "@/lib/duplicate";
 
 /**
  * One card per casting, however many boxes it was sold in.
@@ -155,4 +156,107 @@ export function boxSiblings(entry: CatalogCar, catalog: CatalogCar[]): CatalogCa
       agrees(c.sub_series, entry.sub_series) &&
       agrees(c.car_number, entry.car_number),
   );
+}
+
+/**
+ * Entries that look like another box of this casting, for an admin to attach.
+ *
+ * Grouping is read off the description, so a box only joins a casting once
+ * somebody makes the two agree -- which means finding it first. This is that
+ * search, and it is deliberately looser than `boxSiblings`: the whole point is
+ * to surface an entry that does *not* group yet.
+ *
+ * Hot Wheels and Matchbox are left out. Their card prints a position rather
+ * than a number, so "3/5" is eight different castings, and the one rule strong
+ * enough to be worth acting on -- brand and number -- is the one rule that is
+ * meaningless for them. `brandUsesCarNumber` already draws that line for the
+ * duplicate check and draws it here.
+ *
+ * An entry in the same box is not a box of the same casting, it is a second
+ * copy of the same product, so it is left to the Duplicates page.
+ */
+export type AttachSuggestion = {
+  car: CatalogCar;
+  /** Brand and number agree, which names one product. Worth acting on. */
+  definite: boolean;
+  /** Why it came up, in words, so the judgement stays with the admin. */
+  because: string;
+  /** How much of the description the two share, 0-100. */
+  match: number;
+};
+
+export function attachSuggestions(
+  entry: CatalogCar,
+  catalog: CatalogCar[],
+  { exclude = [], limit = 6 }: { exclude?: string[]; limit?: number } = {},
+): AttachSuggestion[] {
+  if (!brandUsesCarNumber(entry.brand)) return [];
+  const brand = brandKey(entry.brand);
+  if (!brand) return [];
+
+  const skip = new Set([entry.car_id, ...exclude].map((id) => (id || "").trim().toUpperCase()));
+  const number = clean(entry.car_number);
+  const make = clean(entry.make);
+  const model = clean(entry.model);
+  const box = clean(entry.assortment);
+
+  // Both sides have to state a field before it is allowed to disagree: half the
+  // catalogue leaves series blank, and silence is not a difference.
+  const agrees = (a: string | null | undefined, b: string | null | undefined) => {
+    const x = clean(a);
+    const y = clean(b);
+    return !x || !y || x === y;
+  };
+
+  const fields = {
+    brand: entry.brand,
+    make: entry.make,
+    model: entry.model,
+    variant: entry.variant,
+    colour: entry.colour,
+    assortment: entry.assortment,
+    series: entry.series,
+    subSeries: entry.sub_series,
+    carNumber: entry.car_number,
+    year: entry.year,
+  };
+
+  const out: AttachSuggestion[] = [];
+  for (const c of catalog) {
+    if (skip.has((c.car_id || "").trim().toUpperCase())) continue;
+    if (brandKey(c.brand) !== brand) continue;
+    // Same box is the same product filed twice, which is a duplicate.
+    if (clean(c.assortment) === box) continue;
+
+    const sameNumber = Boolean(number) && clean(c.car_number) === number;
+    const sameCasting =
+      Boolean(make) && Boolean(model) && clean(c.make) === make && clean(c.model) === model;
+
+    if (!sameNumber && !sameCasting) continue;
+    // A different number on an otherwise identical description is a different
+    // product, so it is not offered on the description alone.
+    if (!sameNumber && !agrees(c.car_number, entry.car_number)) continue;
+    if (
+      !sameNumber &&
+      !(
+        agrees(c.variant, entry.variant) &&
+        agrees(c.series, entry.series) &&
+        agrees(c.sub_series, entry.sub_series)
+      )
+    )
+      continue;
+
+    out.push({
+      car: c,
+      definite: sameNumber,
+      match: matchPercent(fields, c),
+      because: sameNumber
+        ? `Same ${entry.brand || "brand"} number #${entry.car_number}`
+        : ["Same make and model", c.series || "", c.sub_series || ""].filter(Boolean).join(" · "),
+    });
+  }
+
+  return out
+    .sort((a, b) => Number(b.definite) - Number(a.definite) || b.match - a.match)
+    .slice(0, limit);
 }

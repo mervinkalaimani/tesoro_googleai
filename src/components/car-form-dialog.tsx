@@ -64,7 +64,7 @@ import { CarPhotoField } from "@/components/car-photo-field";
 import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker";
 import { MultipackField } from "@/components/multipack-field";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
-import { DuplicateNotice } from "@/components/duplicate-notice";
+import { DuplicateBar, DuplicateNotice } from "@/components/duplicate-notice";
 import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
 import { looksLikeColour } from "@/lib/colour-words";
 import { packBadge } from "@/lib/pack";
@@ -1782,6 +1782,10 @@ export function CarFormDialog({
       {/* Above the summary, so it is read before the purchase is filled in.
           "Use this" is the whole point: the fix for a duplicate is to pick the
           entry that already exists, which is one tap from here. */}
+      {/* One line that stays once you have scrolled past the entries, so a
+          possible duplicate is still on screen while the purchase is filled in.
+          Scrolling back up is how you read them. */}
+      <DuplicateBar hits={duplicates} />
       <DuplicateNotice
         hits={duplicates}
         onUse={(c) => pickFromCatalogue(catalogCarToCatalogueCar(c))}
@@ -1803,13 +1807,21 @@ export function CarFormDialog({
           // scroller, and a sticky box that tall pins over everything below it
           // instead of yielding: then it is the row inside that pins, which is
           // the part you need while you are typing into the rest of it.
-          !showIdentity && "sticky top-0 z-20 shadow-sm",
+          !showIdentity && "sticky z-20 shadow-sm",
+          // The duplicate bar above pins first and is h-7 tall, so this comes
+          // to rest under it instead of behind it.
+          !showIdentity && (duplicates.length > 0 ? "top-7" : "top-0"),
         )}
       >
         {/* Opaque, because the form scrolls under it. The tint is on the row
             rather than the box for the same reason: bg-muted/30 alone let the
             fields show through. */}
-        <div className="sticky top-0 z-20 rounded-t-lg bg-background shadow-sm">
+        <div
+          className={cn(
+            "sticky z-20 rounded-t-lg bg-background shadow-sm",
+            duplicates.length > 0 ? "top-7" : "top-0",
+          )}
+        >
           <div className="flex items-start gap-3 rounded-t-lg bg-muted/30 p-3">
             {/* The thumbnail is the button for fixing it — see photo-picker.tsx,
               which the catalogue's own dialog shares. */}

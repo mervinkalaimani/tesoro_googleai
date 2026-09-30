@@ -139,3 +139,55 @@ export function DuplicateNotice({
     </section>
   );
 }
+
+/**
+ * The same warning as one line, pinned while the rest of the form is filled in.
+ *
+ * Separate from the notice above rather than a mode of it, because a sticky
+ * element cannot outlive its own parent: put inside the notice, the line left
+ * the screen with the entries it was summarising, which is the one thing it is
+ * there not to do. As a sibling of the sections it pins over, its parent is the
+ * whole scrolling column and it stays for as long as there is form left.
+ *
+ * It says how many and nothing else. The entries are directly under it, and
+ * scrolling back up is how you read them.
+ */
+const PINNED: Record<DuplicateLevel, string> = {
+  certain: "Duplicate in catalogue",
+  likely: "Matches an existing entry",
+  possible: "Possible duplicate",
+};
+
+export function DuplicateBar({ hits, className }: { hits: DuplicateHit[]; className?: string }) {
+  if (hits.length === 0) return null;
+  const worst = hits[0].level;
+  const loud = worst === "certain";
+
+  return (
+    <div
+      className={cn(
+        // h-7, and the identity card below pins at top-7 to come to rest under
+        // it rather than behind it.
+        "sticky top-0 z-30 flex h-7 items-center gap-2 rounded-lg border px-3",
+        loud
+          ? "border-amber-500/60 bg-amber-500/20 text-foreground"
+          : "border-amber-500/40 bg-amber-500/15 text-foreground",
+        className,
+      )}
+    >
+      <AlertTriangle
+        className={cn(
+          "size-3.5 shrink-0",
+          loud ? "text-amber-600 dark:text-amber-400" : "text-amber-500",
+        )}
+      />
+      <p className="min-w-0 truncate text-[11px] font-semibold">
+        {PINNED[worst]}
+        <span className="font-normal text-muted-foreground">
+          {" · "}
+          {hits.length === 1 ? hits[0].car.name : `${hits.length} entries`}
+        </span>
+      </p>
+    </div>
+  );
+}

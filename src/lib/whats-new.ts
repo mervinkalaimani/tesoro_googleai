@@ -26,6 +26,23 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 245,
+    at: "2026-09-30T19:45",
+    changes: [
+      {
+        key: true,
+        admin: true,
+        text: "A casting's details page now offers the other entries that look like another box of it, with one tap to attach them. The brand and the collector number agreeing names one product, so that is offered as certain; the same make and model with nothing contradicting is offered as a guess. Hot Wheels and Matchbox are left out, because their number is a position in a series and not a product.",
+      },
+      {
+        text: "Adding a car by hand also watches the brand, the make and the series: the same make in the same series now comes back as a possible duplicate, where before only the whole description or the collector number counted.",
+      },
+      {
+        text: "A possible duplicate stays on screen as one line while you fill in what you paid, instead of scrolling away with the entries. Scroll back up to read them.",
+      },
+    ],
+  },
+  {
     build: 244,
     at: "2026-09-30T16:30",
     changes: [
