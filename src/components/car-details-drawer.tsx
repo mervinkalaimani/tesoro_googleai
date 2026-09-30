@@ -931,16 +931,18 @@ function CarDetailActions({
         variant="outline"
         onClick={onEdit}
         title="Update this car"
-        className="h-10 flex-1 cursor-pointer text-[13px] font-semibold"
+        className="h-10 flex-1 cursor-pointer gap-2 text-[13px] font-semibold"
       >
+        <Pencil className="size-3.5 shrink-0" />
         Update
       </Button>
       <Button
         type="button"
         onClick={onAddAnother}
         title="Add another of this casting"
-        className="h-10 flex-1 cursor-pointer text-[13px] font-semibold"
+        className="h-10 flex-1 cursor-pointer gap-2 text-[13px] font-semibold"
       >
+        <Plus className="size-4 shrink-0" />
         Add Another
       </Button>
     </div>
