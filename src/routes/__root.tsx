@@ -193,6 +193,7 @@ try {
   if (t === 'system') {
     t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
+  if (t === 'oled') { t = 'dark'; document.documentElement.dataset.oled = 'on'; }
   document.documentElement.classList.toggle('dark', t === 'dark');
   var a = JSON.parse(localStorage.getItem('dg.accentColor') || '"crimson"');
   if (['crimson','blue','emerald','violet','amber'].indexOf(a) !== -1) document.documentElement.dataset.accent = a;

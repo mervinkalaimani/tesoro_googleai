@@ -26,6 +26,25 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 248,
+    at: "2026-09-30T23:30",
+    changes: [
+      {
+        key: true,
+        text: "A fourth appearance: OLED. Dark with the background turned all the way off, for a screen that lights every pixel itself — the text and the accent stay exactly as they were. Settings → Display.",
+      },
+      {
+        text: "What a car cost now carries the gap to its retail price in brackets beside it, instead of spending a third of the row on a field of its own.",
+      },
+      {
+        text: "On a phone, who sold it and who carried it read on one line.",
+      },
+      {
+        text: "A car's ID drops the six characters of owner prefix that every car in your collection shares.",
+      },
+    ],
+  },
+  {
     build: 247,
     at: "2026-09-30T22:15",
     changes: [

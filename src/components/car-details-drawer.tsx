@@ -843,19 +843,23 @@ function Field({
   label,
   value,
   className,
+  cell,
   children,
   size = "md",
 }: {
   label: string;
   value?: string | number | null;
   className?: string;
+  /** Where this fact sits in its grid. A field that is blank draws nothing,
+   *  and an explicit cell is what stops the rest sliding up into its place. */
+  cell?: string;
   children?: ReactNode;
   size?: "md" | "lg";
 }) {
   const text = value === null || value === undefined ? "" : String(value).trim();
   if (!children && !text) return null;
   return (
-    <div className="min-w-0">
+    <div className={cn("min-w-0", cell)}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
@@ -1340,32 +1344,41 @@ function CarPurchasePanel({
       {/* content-between spreads the three rows over whatever height the IDs
           beside them come to, so the two halves end on the same line and the
           gaps inside this one stay equal to each other. */}
-      <div className="grid flex-1 content-between gap-x-5 gap-y-3.5 grid-cols-2 sm:grid-cols-3">
-        <Field label="Purchased for" value={inrFull(spent)} />
-        <Field label="MRP" value={inrFull(mrp)} />
-        <Field
-          label="Difference"
-          className={delta >= 0 ? "text-emerald-600 dark:text-[#00E599]" : "text-rose-400"}
-          value={delta >= 0 ? `+${inrFull(delta)}` : `-${inrFull(Math.abs(delta))}`}
-        />
+      <div className="grid flex-1 content-between gap-x-5 gap-y-3.5 grid-cols-2 md:grid-cols-3">
+        {/* What it cost against what it lists at, as one fact: the gap only
+            means anything beside the number it is a gap from, and it was a
+            third of the row to itself. */}
+        <Field label="Purchased for" value={inrFull(spent)} cell="md:col-start-1 md:row-start-1">
+          <span className="truncate">
+            {inrFull(spent)}
+            {delta !== 0 && (
+              <span
+                className={cn(
+                  "ml-1.5 text-[11px] font-semibold",
+                  delta > 0 ? "text-emerald-600 dark:text-[#00E599]" : "text-rose-400",
+                )}
+              >
+                ({delta > 0 ? `+${inrFull(delta)}` : `-${inrFull(Math.abs(delta))}`})
+              </span>
+            )}
+          </span>
+        </Field>
+        <Field label="MRP" value={inrFull(mrp)} cell="md:col-start-2 md:row-start-1" />
 
-        <Field label="Sold by" value={car.seller}>
+        {/* Who sold it and who carried it read as a pair, which is also what
+            puts them on one line of a phone's two columns. */}
+        <Field label="Sold by" value={car.seller} cell="md:col-start-1 md:row-start-2">
           <LinkValue
             value={car.seller}
             title={`Everything bought from ${car.seller}`}
             onClick={() => onOpenSeller(car.seller)}
           />
         </Field>
-        <Field label="Ordered on" value={formatDayMonthYear(car.orderDate) || car.orderDate} />
-        <Field label="Order ID" value={car.orderId}>
-          <LinkValue
-            value={car.orderId}
-            title={`Everything in order ${car.orderId}`}
-            onClick={() => onOpenBatch(car.orderId || "", "orderId")}
-          />
-        </Field>
-
-        <Field label="Transit info" value={courier || cleanTransitNotes}>
+        <Field
+          label="Transit info"
+          value={courier || cleanTransitNotes}
+          cell="md:col-start-1 md:row-start-3"
+        >
           {trackable ? (
             <TrackingLink
               compact
@@ -1378,10 +1391,24 @@ function CarPurchasePanel({
           )}
         </Field>
         <Field
+          label="Ordered on"
+          value={formatDayMonthYear(car.orderDate) || car.orderDate}
+          cell="md:col-start-2 md:row-start-2"
+        />
+        <Field label="Order ID" value={car.orderId} cell="md:col-start-3 md:row-start-2">
+          <LinkValue
+            value={car.orderId}
+            title={`Everything in order ${car.orderId}`}
+            onClick={() => onOpenBatch(car.orderId || "", "orderId")}
+          />
+        </Field>
+
+        <Field
           label={hasArrived ? "Received on" : "Expected on"}
           value={formatDayMonthYear(hasArrived ? car.date || car.expectedDate : car.expectedDate)}
+          cell="md:col-start-2 md:row-start-3"
         />
-        <Field label="Shipping ID" value={car.shippingId}>
+        <Field label="Shipping ID" value={car.shippingId} cell="md:col-start-3 md:row-start-3">
           <LinkValue
             value={car.shippingId}
             title={`Everything in shipment ${car.shippingId}`}

@@ -9,9 +9,13 @@ import {
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-/** What the person chose. "system" hands the decision to the operating system. */
-export type ThemePreference = "light" | "dark" | "system";
-/** What actually gets painted, once "system" has been resolved. */
+/**
+ * What the person chose. "system" hands the decision to the operating system,
+ * and "oled" is dark with the background turned all the way off — on a phone
+ * that draws its own pixels, black costs no light at all.
+ */
+export type ThemePreference = "light" | "dark" | "oled" | "system";
+/** What actually gets painted, once "system" and "oled" have been resolved. */
 export type Theme = "light" | "dark";
 
 export type AccentColor = "crimson" | "blue" | "emerald" | "violet" | "amber";
@@ -19,6 +23,7 @@ export type AccentColor = "crimson" | "blue" | "emerald" | "violet" | "amber";
 export const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
+  { value: "oled", label: "OLED" },
   { value: "system", label: "Auto" },
 ];
 
@@ -154,15 +159,19 @@ function isAccentColor(value: unknown): value is AccentColor {
 }
 
 function isThemePreference(value: unknown): value is ThemePreference {
-  return value === "light" || value === "dark" || value === "system";
+  return value === "light" || value === "dark" || value === "oled" || value === "system";
 }
 
 function isFontSizePreference(value: unknown): value is FontSizePreference {
   return value === "-2" || value === "-1" || value === "0" || value === "+1" || value === "+2";
 }
 
-function applyTheme(theme: Theme) {
+function applyTheme(theme: Theme, oled: boolean) {
   document.documentElement.classList.toggle("dark", theme === "dark");
+  // An attribute rather than a second class, so the stylesheet can say "dark,
+  // and blacker" in one selector and everything else keeps reading .dark.
+  if (oled) document.documentElement.dataset.oled = "on";
+  else delete document.documentElement.dataset.oled;
 }
 
 function applyAccent(accent: AccentColor) {
@@ -212,7 +221,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
-  const theme: Theme = themePreference === "system" ? systemTheme : themePreference;
+  const theme: Theme =
+    themePreference === "system"
+      ? systemTheme
+      : themePreference === "oled"
+        ? "dark"
+        : themePreference;
 
   // Load from localStorage on mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -249,8 +263,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated) applyTheme(theme);
-  }, [hydrated, theme]);
+    if (hydrated) applyTheme(theme, themePreference === "oled");
+  }, [hydrated, theme, themePreference]);
 
   useEffect(() => {
     if (hydrated) applyAccent(accentColor);
@@ -361,7 +375,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const toggleTheme = useCallback(() => {
-    const order: ThemePreference[] = ["light", "dark", "system"];
+    const order: ThemePreference[] = ["light", "dark", "oled", "system"];
     const next = order[(order.indexOf(themePreference) + 1) % order.length];
     setThemePreference(next);
   }, [themePreference, setThemePreference]);
