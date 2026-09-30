@@ -108,6 +108,7 @@ export type Database = {
           car_id: string;
           car_number: string;
           colour: string;
+          colours: string[];
           created_at: string;
           created_by: string | null;
           expected_date: string | null;
@@ -138,6 +139,7 @@ export type Database = {
           car_id: string;
           car_number?: string;
           colour?: string;
+          colours?: string[];
           created_at?: string;
           created_by?: string | null;
           expected_date?: string | null;
@@ -168,6 +170,7 @@ export type Database = {
           car_id?: string;
           car_number?: string;
           colour?: string;
+          colours?: string[];
           created_at?: string;
           created_by?: string | null;
           expected_date?: string | null;
@@ -1141,6 +1144,7 @@ export type Database = {
       };
       tesoro_sellers: {
         Row: {
+          image_url: string | null;
           location: string | null;
           owner_name: string;
           phone: string | null;
@@ -1152,6 +1156,7 @@ export type Database = {
           whatsapp: string | null;
         };
         Insert: {
+          image_url?: string | null;
           location?: string | null;
           owner_name?: string;
           phone?: string | null;
@@ -1163,6 +1168,7 @@ export type Database = {
           whatsapp?: string | null;
         };
         Update: {
+          image_url?: string | null;
           location?: string | null;
           owner_name?: string;
           phone?: string | null;

@@ -26,6 +26,27 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 242,
+    at: "2026-09-30T14:05",
+    changes: [
+      {
+        key: true,
+        text: "A colour no longer makes a second casting. Filing the red one of a casting the catalogue holds in yellow keeps the same catalogue ID and adds red to the colours that casting comes in — and the colour on your car stays the one you own, which the catalogue used to write over every time it was saved.",
+      },
+      {
+        key: true,
+        text: "Adding or editing a car asks which box yours came out of when the casting is sold in more than one, instead of listing them all as rows to fill in. Picking one brings its price and files the car under it.",
+      },
+      {
+        text: "My Cars keeps the boxes apart: the Box and the Blister of one casting are two things you own, not one owned twice.",
+      },
+      {
+        admin: true,
+        text: "Filing a casting in a second box is the catalogue's window now; the car form no longer offers to delete other people's entries when Multipack is ticked.",
+      },
+    ],
+  },
+  {
     build: 241,
     at: "2026-09-29T22:15",
     changes: [

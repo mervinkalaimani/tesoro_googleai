@@ -55,6 +55,7 @@ import {
   getCatalogCarOwners,
   getCastingOwners,
   castingSiblings,
+  catalogColours,
   ownerCount,
   isCarMatchingCatalog,
   catalogCarToDiecast,
@@ -2288,6 +2289,8 @@ function CatalogDetailsBody({
     setShownId(catalogCar?.car_id ?? "");
   }, [catalogCar?.car_id]);
   const shown = siblings.find((s) => s.car_id === shownId) ?? catalogCar;
+  /** Every colour this casting is known in, the entry's own first. */
+  const castingColours = shown ? catalogColours(shown) : [];
 
   const addedBy = resolveCatalogUserId(shown?.created_by);
   const addedOn = formatDayMonthYear(shown?.created_at) || "—";
@@ -2434,7 +2437,12 @@ function CatalogDetailsBody({
           says them, and repeating them three rows later was the spec grid's
           least useful third. */}
       <SpecGrid>
-        <Spec label="Colour" value={car.colour} />
+        {/* A casting comes out in several colours and stays one casting, so
+            the entry lists them; which one you own is on your own car. */}
+        <Spec
+          label={castingColours.length > 1 ? "Colours" : "Colour"}
+          value={castingColours.length > 1 ? castingColours.join(" · ") : car.colour}
+        />
         <Spec label="Assortment" value={car.assortment} />
         <Spec label="Series" value={car.series} />
         <Spec label="Sub series" value={car.subSeries} />

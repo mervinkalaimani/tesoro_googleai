@@ -28,6 +28,15 @@ export type CatalogCar = {
   variant?: string;
   year?: string | null;
   colour?: string;
+  /**
+   * Every colour this casting is known in, the entry's own first.
+   *
+   * A colour is not what makes a casting: the same tooling comes out in four
+   * of them, and telling them apart with four catalogue IDs made four castings
+   * out of one. The list is the casting's; which one you have is on your row,
+   * and the database adds yours here when you file it.
+   */
+  colours?: string[];
   type?: string;
   size?: string;
   image_url?: string | null;
@@ -432,6 +441,7 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         variant: row.variant || "",
         year: row.year || "",
         colour: row.colour || "",
+        colours: row.colours ?? [],
         type: row.type || "",
         size: row.size || "1:64",
         image_url: row.image_url || null,
@@ -894,6 +904,20 @@ export type CatalogCarOwner = {
 const norm = (v?: string | null) => (v || "").trim().toLowerCase();
 
 /**
+ * Every colour a catalogue entry is known in: the one it was filed under, and
+ * the ones collectors have since filed a copy in. The database keeps the list;
+ * this only reads it.
+ */
+export const catalogColours = (c: CatalogCar): string[] => {
+  const out: string[] = [];
+  for (const v of [c.colour, ...(c.colours ?? [])]) {
+    const value = (v || "").trim();
+    if (value && !out.some((x) => x.toLowerCase() === value.toLowerCase())) out.push(value);
+  }
+  return out;
+};
+
+/**
  * The number printed on the box, where that number names the product.
  *
  * Hot Wheels and Matchbox print a position in a series — "2/10" is the second
@@ -1196,8 +1220,10 @@ export function isCarMatchingCatalog(
   const catId = (catalogCar.car_id || "").trim().toUpperCase();
   if (catId) {
     const cCol = (c.colour || "").trim().toLowerCase();
-    const catCol = (catalogCar.colour || "").trim().toLowerCase();
-    const colorsConflict = Boolean(cCol && catCol && cCol !== catCol);
+    // Every colour the casting is known in, not only the entry's own: a
+    // casting comes out in four of them and they are all still this entry.
+    const known = catalogColours(catalogCar).map((v) => v.toLowerCase());
+    const colorsConflict = Boolean(cCol && known.length > 0 && !known.includes(cCol));
 
     if (!colorsConflict) {
       if ((c.catalogId || "").trim().toUpperCase() === catId) return true;
@@ -1290,8 +1316,10 @@ export function isCarMatchingCatalog(
 
   // What actually separates one catalogue entry from another once the make,
   // model and series agree. Without these a white Supra matched the yellow one
-  // and the catalogue marked both of them owned.
-  if (!agrees(norm(c.colour), norm(catalogCar.colour))) return false;
+  // and the catalogue marked both of them owned — but a casting the entry is
+  // known in four colours of is the same casting in all four.
+  const known = catalogColours(catalogCar).map(norm);
+  if (known.length > 0 && !known.some((colour) => agrees(norm(c.colour), colour))) return false;
   if (!agrees(norm(c.variant), norm(catalogCar.variant))) return false;
   if (!agrees(cAssort, norm(catalogCar.assortment))) return false;
 

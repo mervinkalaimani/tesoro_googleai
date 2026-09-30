@@ -36,7 +36,11 @@ export function applyCatalogToCar(
   const newModel = cat.model || car.model;
   const newVariant = cat.variant !== undefined ? cat.variant : car.variant;
   const newYear = cat.year !== undefined && cat.year !== null ? cat.year : car.year;
-  const newColour = cat.colour || car.colour;
+  // Yours. A casting comes out in several colours and the entry lists them
+  // all; the one on your row is the one in your hand, so the catalogue fills
+  // it in when it is blank and never writes over it. Same rule the database
+  // keeps since a_casting_comes_in_colours.
+  const newColour = car.colour || cat.colour || "";
   const newType = cat.type || car.type;
   const newBrand = cat.brand || car.brand;
   const newSeries = cat.series || car.series;

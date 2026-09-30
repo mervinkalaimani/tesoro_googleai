@@ -48,9 +48,41 @@ assert.equal(findCatalogEntry({ ...asFiled, mrp: null })?.car_id, ENTRY.car_id);
 assert.equal(catalogIdFor({ ...asFiled, mrp: 400 }), ENTRY.car_id);
 
 // What still separates one entry from another, price or no price: the spine.
-assert.equal(findCatalogEntry({ ...asFiled, mrp: 450, colour: "Red" }), undefined);
 assert.equal(findCatalogEntry({ ...asFiled, mrp: 450, model: "Corvette" }), undefined);
 assert.equal(findCatalogEntry({ ...asFiled, mrp: 450, brand: "Matchbox" }), undefined);
+
+// A colour is not one of them. The same tooling comes out red as well as
+// yellow, and it is the same casting: the colour joins the entry's list rather
+// than minting a second ID for it.
+assert.equal(
+  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Red" })?.car_id,
+  ENTRY.car_id,
+  "a colour the entry has not seen is still this casting",
+);
+assert.equal(catalogIdFor({ ...asFiled, mrp: 450, colour: "Red" }), ENTRY.car_id);
+
+// Where the catalogue does hold one casting under two entries, the colour is
+// what picks between them.
+setCatalogIdEntries([
+  { ...ENTRY, car_id: "010506-01-0000-1", colour: "Yellow" },
+  { ...ENTRY, car_id: "010506-01-0000-2", colour: "Red", colours: ["Red", "Crimson"] },
+]);
+assert.equal(
+  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Red" })?.car_id,
+  "010506-01-0000-2",
+  "the entry that knows this colour wins",
+);
+assert.equal(
+  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Crimson" })?.car_id,
+  "010506-01-0000-2",
+  "including a colour a collector added to it",
+);
+assert.equal(
+  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Green" })?.car_id,
+  "010506-01-0000-1",
+  "and a colour neither knows takes the first rather than a new entry",
+);
+setCatalogIdEntries([ENTRY]);
 
 // Spelling is not identity. The catalogue holds 713 entries reading "Hot
 // Wheels" and an exported spreadsheet says "Hotwheels"; comparing the strings
