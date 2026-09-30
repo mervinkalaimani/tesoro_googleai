@@ -55,7 +55,6 @@ import {
 } from "@/lib/car-id";
 import { useCatalog } from "@/lib/catalog-store";
 import { AssortmentHeader, AssortmentRow } from "@/components/assortment-rows";
-import { remainingAssortments } from "@/lib/assortments";
 import { boxSiblings } from "@/lib/casting-group";
 import { catalogCarToCatalogueCar } from "@/lib/catalog";
 import { diecastToCatalogCar } from "@/lib/catalog";
@@ -108,12 +107,10 @@ import {
   Trash2,
   Info,
   X,
-  ClipboardCheck,
   Search,
   Loader2,
   BookOpen,
   Link2,
-  Plus,
 } from "lucide-react";
 
 const STATUS_OPTIONS = STATUSES;
@@ -484,14 +481,7 @@ export function CarFormDialog({
   const pool = useSuggestionPool();
   // Read here rather than beside the pack fields below: the assortment options
   // narrow by what the catalogue holds, and those memos run before that point.
-  const {
-    catalog,
-    addCatalogCar,
-    updateCatalogCar,
-    deleteCatalogCar,
-    packMembers,
-    setPackMembers,
-  } = useCatalog();
+  const { catalog, addCatalogCar, updateCatalogCar, packMembers, setPackMembers } = useCatalog();
   const { isGuest, isAdmin } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
@@ -548,18 +538,6 @@ export function CarFormDialog({
   const packTouched = useRef(false);
   const [showPack, setShowPack] = useState(false);
   const [showAssortments, setShowAssortments] = useState(true);
-  /**
-   * The other boxes this casting is sold in, one row each.
-   *
-   * The first box is form.assortment -- the one your copy came out of, and the
-   * only row that carries money. These are the rest: the same casting, another
-   * box, another price, each its own catalogue entry. A row that came from the
-   * catalogue carries its car_id; a row typed here is filed on save.
-   */
-  const [extras, setExtras] = useState<{ assortment: string; mrp: number; car_id?: string }[]>([]);
-  /** A box of cars and a car sold in several boxes cannot be the same entry. */
-  const [packConfirm, setPackConfirm] = useState(false);
-  const [packBusy, setPackBusy] = useState(false);
 
   /**
    * An ISO row is a car you are looking for, not one you bought. There is no
@@ -840,33 +818,6 @@ export function CarFormDialog({
     writeDraft<CarDraft>(draftKey, { form, step: currentStep });
   }, [open, draftReady, form, currentStep, baseline, draftKey]);
 
-  /**
-   * The other boxes the catalogue already knows this casting in.
-   *
-   * Read once per opening rather than on every catalogue refresh: the list
-   * re-reads itself every time you come back to the tab, and a refresh landing
-   * mid-edit would throw away a row being typed.
-   */
-  useEffect(() => {
-    if (!open) return;
-    setPackConfirm(false);
-    setPackBusy(false);
-    const id = (initial?.catalogId || "").trim().toUpperCase();
-    const self = id ? catalog.find((c) => c.car_id.toUpperCase() === id) : undefined;
-    setExtras(
-      self
-        ? boxSiblings(self, catalog)
-            .sort((a, b) => (Number(a.mrp) || 0) - (Number(b.mrp) || 0))
-            .map((c) => ({
-              assortment: c.assortment || "",
-              mrp: Number(c.mrp) || 0,
-              car_id: c.car_id,
-            }))
-        : [],
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initial?.catalogId]);
-
   const discard = () => {
     clearDraft(draftKey);
     setForm(baseline);
@@ -952,6 +903,8 @@ export function CarFormDialog({
    * Identity fields stay open and visible because fields are subjected to change.
    */
   const pickFromCatalogue = (car: CatalogueCar) => {
+    // A casting picked now is not the box chosen a moment ago.
+    setRelinkedTo(null);
     applyExisting(car);
     setFromCatalogue(true);
     setShowIdentity(true);
@@ -960,6 +913,7 @@ export function CarFormDialog({
 
   /** The other way through step one: nothing to copy, so the fields open. */
   const startByHand = () => {
+    setRelinkedTo(null);
     setValidationError(null);
     setFromCatalogue(false);
     setShowIdentity(true);
@@ -1057,17 +1011,6 @@ export function CarFormDialog({
     () => assortmentOptionsFor(assortmentPool, form.brand),
     [assortmentPool, form.brand],
   );
-  /** The boxes actually named -- a blank row is not a second assortment. */
-  const namedExtras = extras.filter((x) => x.assortment.trim());
-  /** Of those, the ones already in the catalogue. The rest are only on screen. */
-  const filedExtras = namedExtras.filter((x) => x.car_id);
-
-  /**
-   * Ticking Multipack when this casting is filed in other boxes too. Those
-   * entries are the shared catalogue, so nothing happens until it is confirmed;
-   * an entry somebody owns a copy from refuses to be deleted, and then the tick
-   * does not happen either.
-   */
   /**
    * Picking the box also answers the two questions the box name already
    * contains: "5 Pack" is a multipack of five, and nobody should have to say so
@@ -1079,7 +1022,7 @@ export function CarFormDialog({
    */
   const onAssortmentPicked = (v: string) => {
     set("assortment", v);
-    if (namedExtras.length > 0) return;
+    if (boxes.length > 1) return;
 
     const pack = packFromAssortment(v);
     if (pack) {
@@ -1096,59 +1039,15 @@ export function CarFormDialog({
   };
 
   const onPackChange = (v: boolean) => {
-    if (v && namedExtras.length > 0) {
-      setPackConfirm(true);
-      return;
-    }
     packTouched.current = true;
     setIsPack(v);
   };
 
-  const confirmPack = async () => {
-    setPackBusy(true);
-    const kept: typeof extras = [];
-    for (const box of extras) {
-      if (!box.assortment.trim()) continue;
-      // A row typed here and never saved is nothing to delete.
-      if (!box.car_id) continue;
-      const res = await deleteCatalogCar(box.car_id);
-      if (!res.deleted) kept.push(box);
-    }
-    setExtras(kept);
-    setPackBusy(false);
-    setPackConfirm(false);
-    if (kept.length > 0) {
-      toast.error(`${kept.length} of them could not be removed`, {
-        description: "Somebody owns a copy filed under that entry. Multipack is left off.",
-      });
-      return;
-    }
-    packTouched.current = true;
-    setIsPack(true);
-  };
-
-  /** What is left to choose once the other rows have taken theirs. */
-  const assortmentChoices = (current: string) =>
-    remainingAssortments(
-      brandAssortments,
-      [form.assortment, ...extras.map((x) => x.assortment)],
-      current,
-    );
   const sizeOptions = useMemo(() => optionsFor("size", pool), [pool]);
   const seriesOptions = useMemo(() => optionsFor("series", pool), [pool]);
   const subSeriesOptions = useMemo(() => optionsFor("subSeries", pool), [pool]);
-  /** Every box this casting is sold in, including the one your copy came in. */
-  const assortmentsBadge = (() => {
-    const boxes = [
-      { assortment: form.assortment.trim(), mrp: Number(form.mrp) || 0 },
-      ...namedExtras,
-    ];
-    if (boxes.length > 1) {
-      const prices = boxes.map((b) => b.mrp);
-      return `${boxes.length} boxes · ${inrFull(Math.min(...prices))} – ${inrFull(Math.max(...prices))}`;
-    }
-    return `${boxes[0].assortment || "not set"} · ${inrFull(boxes[0].mrp)}`;
-  })();
+  /** The box your copy came out of, which is the only one this form is about. */
+  const assortmentsBadge = `${form.assortment.trim() || "not set"} · ${inrFull(Number(form.mrp) || 0)}`;
   // Sellers are never seeded — the list is only ever the ones this collection
   // has actually bought from.
   const sellerOptions = useMemo(
@@ -1245,6 +1144,49 @@ export function CarFormDialog({
     const byId = id ? catalog.find((c) => c.car_id.toUpperCase() === id) : undefined;
     return byId ?? existingCatalogMatch ?? null;
   }, [catalog, relinkedTo, initial?.catalogId, existingCatalogMatch]);
+
+  /**
+   * The boxes this casting is sold in, cheapest first.
+   *
+   * A casting can be a Box and a Blister — two catalogue entries, two prices —
+   * but your copy came out of one of them. This form used to list them all as
+   * rows to fill in, which is the catalogue's job and not a collector's: here
+   * they are a choice, and only when there is more than one to make.
+   */
+  const boxes = useMemo(() => {
+    if (!catalogueSource) return [];
+    const all = [catalogueSource, ...boxSiblings(catalogueSource, catalog)];
+    const byBox = new Map<string, { assortment: string; mrp: number; car_id: string }>();
+    for (const c of all) {
+      const assortment = (c.assortment || "").trim();
+      if (!assortment || byBox.has(assortment.toLowerCase())) continue;
+      byBox.set(assortment.toLowerCase(), {
+        assortment,
+        mrp: Number(c.mrp) || 0,
+        car_id: c.car_id,
+      });
+    }
+    return [...byBox.values()].sort((a, b) => a.mrp - b.mrp);
+  }, [catalogueSource, catalog]);
+
+  /**
+   * Which box is yours.
+   *
+   * The entry is named rather than matched: the boxes of one casting can differ
+   * in colour as well as in price, and letting the match wander off the fields
+   * would both file the car under nothing and take the other boxes off the
+   * screen while you were still choosing between them.
+   */
+  const pickBox = (assortment: string) => {
+    const box = boxes.find((b) => b.assortment === assortment);
+    if (!box) return;
+    setRelinkedTo(box.car_id);
+    onAssortmentPicked(box.assortment);
+    if (box.mrp > 0) {
+      set("mrp", box.mrp);
+      handleSpentChange(box.mrp);
+    }
+  };
 
   /**
    * Fill the casting's fields from the catalogue, on purpose.
@@ -1744,36 +1686,6 @@ export function CarFormDialog({
       if (membersChanged && isAdmin) await setPackMembers(packId, wanted);
     }
 
-    // The other boxes this casting is sold in. Each is a catalogue entry of its
-    // own -- the same casting, another box, another price -- and none of them is
-    // a car you own, so nothing is added to the collection for them. A row that
-    // arrived with an id is already filed and is left alone.
-    if (!isPack) {
-      const handedOut: { id: string; car: Parameters<typeof generateCatalogCarId>[0] }[] = [];
-      for (const box of extras) {
-        const boxName = box.assortment.trim();
-        if (!boxName || box.car_id || !(box.mrp > 0)) continue;
-        const fields = {
-          brand: payload.brand,
-          make: payload.make,
-          model: payload.model,
-          assortment: boxName,
-          series: payload.series,
-          subSeries: payload.subSeries,
-        };
-        const id = generateCatalogCarId(fields, handedOut);
-        handedOut.push({ id, car: fields });
-        await addCatalogCar({
-          ...diecastToCatalogCar(payload),
-          car_id: id,
-          assortment: boxName,
-          mrp: box.mrp,
-          is_multipack: false,
-          pack_size: null,
-        });
-      }
-    }
-
     // The store's copy, not the payload: it carries the IDs that were assigned
     // on the way in, which is what a caller waiting on the casting needs.
     const saved = mode === "add" ? addCar(payload) : (updateCar(payload), payload);
@@ -2032,12 +1944,30 @@ export function CarFormDialog({
         open={showAssortments}
         onToggle={() => setShowAssortments((v) => !v)}
       >
+        {/* The catalogue knows this casting in more than one box, so which one
+            yours came out of is a question with an answer — not a row to fill
+            in. Picking one brings its price with it. */}
+        {boxes.length > 1 && (
+          <div className="mb-3">
+            <p className="mb-1.5 text-[11px] text-muted-foreground">
+              Which box is yours? This casting is sold in {boxes.length}.
+            </p>
+            <SegmentControl
+              value={boxes.find((b) => b.assortment === form.assortment.trim())?.assortment ?? ""}
+              onChange={pickBox}
+              options={boxes.map((b) => ({
+                value: b.assortment,
+                label: b.mrp > 0 ? `${b.assortment} · ${inrFull(b.mrp)}` : b.assortment,
+              }))}
+            />
+          </div>
+        )}
         <AssortmentHeader money={!isIso} />
         <div className="space-y-2">
           <AssortmentRow
             assortment={form.assortment}
             mrp={Number(form.mrp) || 0}
-            options={assortmentChoices(form.assortment)}
+            options={brandAssortments}
             cars={pool}
             brand={form.brand}
             allowCustom={isAdmin}
@@ -2055,50 +1985,13 @@ export function CarFormDialog({
             }}
             onSpent={isIso ? undefined : handleSpentChange}
           />
-          {!isPack &&
-            extras.map((x, i) => (
-              <AssortmentRow
-                key={x.car_id ?? `new-${i}`}
-                assortment={x.assortment}
-                mrp={x.mrp}
-                options={assortmentChoices(x.assortment)}
-                cars={pool}
-                brand={form.brand}
-                allowCustom={isAdmin}
-                disabled={!form.brand}
-                filedAs={x.car_id}
-                money={!isIso}
-                onAssortment={(v) =>
-                  setExtras((rows) => rows.map((r, j) => (j === i ? { ...r, assortment: v } : r)))
-                }
-                onMrp={(v) =>
-                  setExtras((rows) => rows.map((r, j) => (j === i ? { ...r, mrp: v } : r)))
-                }
-                // A row already on file is a catalogue entry other people may
-                // own a copy from, so this form does not throw it away.
-                onRemove={
-                  x.car_id ? undefined : () => setExtras((rows) => rows.filter((_, j) => j !== i))
-                }
-              />
-            ))}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-2.5 gap-1.5"
-          disabled={isPack || !form.brand}
-          onClick={() => setExtras((rows) => [...rows, { assortment: "", mrp: 0 }])}
-        >
-          <Plus className="size-4" />
-          Add an assortment
-        </Button>
         <p className="mt-2 text-[11px] text-muted-foreground">
           {!form.brand
             ? "Pick a brand first — an assortment is one maker's own range."
-            : isPack
-              ? "A multipack is the product, so it has one assortment and one price. Untick Multipack below to file this casting in more than one box."
-              : "The first row is the box your copy came out of, and the only one that carries money. Each of the others is its own catalogue entry, and they read as one casting."}
+            : boxes.length > 1
+              ? "One box, the one yours came out of. The others are the same casting in the catalogue, and this car is filed under whichever you pick."
+              : "The box your copy came out of, and what it cost. Filing this casting in another box as well is the catalogue's own window."}
         </p>
       </FormSection>
 
@@ -2121,18 +2014,17 @@ export function CarFormDialog({
             packTouched.current = true;
             setPackList(ids);
           }}
-          // A casting filed in two boxes cannot also be a box: ticking this
-          // used to open a dialog offering to delete the other assortments,
-          // which reads as the tick not working. Greyed out with the reason
-          // under it instead, and one assortment ticks as it always did.
-          disabled={!isAdmin || (!isPack && namedExtras.length > 0)}
+          // A casting the catalogue knows in two boxes cannot also be a box.
+          // Greyed out with the reason under it, and one assortment ticks as
+          // it always did.
+          disabled={!isAdmin || (!isPack && boxes.length > 1)}
           canEditMembers={isAdmin}
           onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
           selfCarId={derivedCatalogCarId}
         />
         <p className="mt-2.5 text-[11px] text-muted-foreground">
-          {!isPack && namedExtras.length > 0
-            ? "This casting is filed in more than one box, so it is not itself a box. Remove the other assortments above to make it one."
+          {!isPack && boxes.length > 1
+            ? "The catalogue has this casting in more than one box, so it is not itself a box. That is changed in the catalogue's own window."
             : isAdmin
               ? "The box and what is in it are part of the shared catalogue, so this is what everyone who owns one sees. The cars inside stop being listed on their own."
               : "The box is shared with everyone who owns one, so it is edited in the catalogue rather than here."}
@@ -2802,66 +2694,6 @@ export function CarFormDialog({
       {/* Stacked over the form, in both modes. Cancelling out of it leaves
           everything typed so far untouched. */}
       <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={applyScan} />
-
-      {/* Removing a catalogue entry is removing it for everybody, so it says
-          which ones and does not do it until it is told to. */}
-      <Dialog open={packConfirm} onOpenChange={(v) => !v && !packBusy && setPackConfirm(false)}>
-        <DialogContent className="max-w-md">
-          <DialogTitle>Make this a multipack?</DialogTitle>
-          <DialogDescription asChild>
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>
-                A multipack is the product itself, so it has one assortment and one price. This
-                casting is filed in {namedExtras.length + 1}{" "}
-                {namedExtras.length + 1 === 1 ? "box" : "boxes"}.
-              </p>
-              <p>
-                <span className="font-medium text-foreground">
-                  {form.assortment || "The first box"}
-                </span>{" "}
-                is kept.{" "}
-                {filedExtras.length > 0
-                  ? "These are removed from the catalogue for everybody, and that cannot be undone:"
-                  : "These have not been filed yet, so they are only dropped from this form:"}
-              </p>
-              <ul className="space-y-1">
-                {namedExtras.map((x) => (
-                  <li key={x.car_id ?? x.assortment} className="text-foreground">
-                    {x.assortment} · {inrFull(x.mrp)}
-                    {x.car_id ? (
-                      <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">
-                        {x.car_id}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-              {filedExtras.length > 0 ? (
-                <p>An entry somebody already owns a copy from is refused, and nothing changes.</p>
-              ) : null}
-            </div>
-          </DialogDescription>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPackConfirm(false)} disabled={packBusy}>
-              Cancel
-            </Button>
-            <Button onClick={() => void confirmPack()} disabled={packBusy} className="gap-1.5">
-              {packBusy ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : filedExtras.length > 0 ? (
-                <Trash2 className="size-4" />
-              ) : (
-                <ClipboardCheck className="size-4" />
-              )}
-              {packBusy
-                ? "Removing…"
-                : filedExtras.length > 0
-                  ? "Remove and make it a pack"
-                  : "Make it a pack"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Filing a car that goes inside the pack you are describing. Searching
           the catalogue is no help when the car in the box has never been

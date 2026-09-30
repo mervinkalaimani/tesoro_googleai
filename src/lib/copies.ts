@@ -43,10 +43,15 @@ export type CopyGroup = {
  * agreeing on make and model can still be different colours of it. A row
  * without one is its own group, never merged with another blank: a missing ID
  * is an unknown casting, not a shared one.
+ *
+ * The box is part of it. A casting sold as a Box and as a Blister is two
+ * things to own, and a collector who bought both bought two different products
+ * — collapsing them into "2×" hides the one thing that tells them apart.
  */
 const castingKey = (c: Diecast) => {
   const id = (c.catalogId || "").trim().toUpperCase();
-  return id ? `cat:${id}` : `row:${c.id}`;
+  const box = (c.assortment || "").trim().toLowerCase();
+  return id ? `cat:${id}|${box}` : `row:${c.id}`;
 };
 
 /**
