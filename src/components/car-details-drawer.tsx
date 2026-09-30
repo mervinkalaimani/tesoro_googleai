@@ -2233,8 +2233,16 @@ function CatalogDetailsContent({
             add button pinned under them. Laid out like a car's own details
             page, where everything about the thing you are looking at is in one
             column and the column beside it is about something else. */}
-        <div className="w-[360px] xl:w-[390px] shrink-0 pr-5 xl:pr-6 flex flex-col h-full overflow-hidden justify-between">
-          <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin space-y-4">
+        {/* The right padding is the gutter before the next column, so when
+            there is no next column — no shelves to draw, no owners opened — it
+            is dead space, and the card sits off-centre in its own window.
+            last:pr-0 takes it back exactly when nothing follows. */}
+        <div className="w-[360px] xl:w-[390px] shrink-0 pr-5 xl:pr-6 last:pr-0 xl:last:pr-0 flex flex-col h-full overflow-hidden justify-between">
+          {/* The scrollbar takes a real 10px out of this column, and taking it
+              from one side alone is what left the card sitting left of centre.
+              Reserving the gutter on both edges spends the same space twice and
+              reads as padding. */}
+          <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges] space-y-4">
             <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-xs bg-muted/20 border border-border/60 shrink-0">
               <HeroCarImage car={car} />
             </div>
@@ -2261,7 +2269,10 @@ function CatalogDetailsContent({
               onSeeAllOwners={handleSeeAll}
             />
           </div>
-          <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/95 backdrop-blur-xs pt-3 pb-1 flex items-center gap-2.5">
+          {/* px-2.5 is the scrollbar gutter above it: the buttons sit outside
+              the scroller, so without it they were 10px wider on each side than
+              everything they are under. */}
+          <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/95 backdrop-blur-xs px-2.5 pt-3 pb-1 flex items-center gap-2.5">
             {actionButtons}
           </div>
         </div>

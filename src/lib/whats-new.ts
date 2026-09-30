@@ -26,6 +26,15 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 246,
+    at: "2026-09-30T20:30",
+    changes: [
+      {
+        text: "A casting opened from anywhere but the catalogue sat left of centre in its own window: the column kept the gutter meant for the shelves beside it, and the scrollbar took its 10px from one side only. Both are even now.",
+      },
+    ],
+  },
+  {
     build: 245,
     at: "2026-09-30T19:45",
     changes: [
