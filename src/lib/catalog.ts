@@ -46,6 +46,15 @@ export type CatalogCar = {
    * not free to serve without saying whose they are.
    */
   image_source_url?: string | null;
+  /**
+   * The assortment case or mix this casting shipped in, e.g. "2024 L".
+   *
+   * A car has one of these too, and it is not this one: that is the carton the
+   * copy came out of, and two people's copies of one casting can come out of
+   * different cartons. This is the release's, printed on the box before anybody
+   * owns one, which is why the catalogue can know it and a collection cannot.
+   */
+  case_number?: string | null;
   /** Out in shops, or only open to pre-order so far. Absent reads as Released. */
   release_status?: ReleaseStatus;
   /**
@@ -270,6 +279,7 @@ export function catalogCarToDiecast(c: CatalogCar): Diecast {
     series: c.series,
     subSeries: c.sub_series,
     carNumber: c.car_number,
+    caseNumber: c.case_number || "",
     size: c.size || "1:64",
     mrp: c.mrp,
     spent: c.mrp,
@@ -445,6 +455,9 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         type: row.type || "",
         size: row.size || "1:64",
         image_url: row.image_url || null,
+        // Cast for the same reason released_at is: the generated types predate
+        // the column and the select is `*`.
+        case_number: (row as { case_number?: string | null }).case_number ?? null,
         release_status: row.release_status === "Pre Order" ? "Pre Order" : "Released",
         // Cast because the generated Supabase types predate this column. The
         // select is `*`, so the value is there; regenerating the whole types
@@ -545,11 +558,17 @@ export async function saveCatalogCarToSupabase(
       // first time a casting is marked Released, and Add a car saving an entry
       // it did not change must not wipe that.
       ...(catalogCar.released_at !== undefined ? { released_at: catalogCar.released_at } : {}),
+      // Only when stated, the rule the rest of this payload follows: a casting
+      // saved from Add a car knows nothing about the case and must not clear it.
+      ...(catalogCar.case_number !== undefined ? { case_number: catalogCar.case_number } : {}),
     };
 
     const { error } = await supabase
       .from("tesoro_car_catalog")
-      .upsert(payload, { onConflict: "car_id", ignoreDuplicates: !overwrite });
+      // Cast for the same reason the read of case_number is: the generated
+      // Supabase types predate the column, and regenerating the whole file for
+      // one field would be a far bigger diff than the field.
+      .upsert(payload as never, { onConflict: "car_id", ignoreDuplicates: !overwrite });
 
     if (error) {
       console.warn("saveCatalogCarToSupabase warning:", error.message);

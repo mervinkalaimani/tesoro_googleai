@@ -2350,8 +2350,9 @@ export function CarFormDialog({
         onToggle={() => setShowExtras((v) => !v)}
       >
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {/* Which box this one came out of, not what the casting is
-                      — so it stays on your car rather than the catalogue. */}
+          {/* Which carton this copy came out of. The casting has one too, for
+              the case the run shipped in; yours is yours, and saving the
+              catalogue entry does not touch it. */}
           <Field label="Case / Mix">
             <Combobox
               clearable

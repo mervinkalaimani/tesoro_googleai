@@ -2076,6 +2076,7 @@ function CatalogDetailsTab({
         )}
 
         <InfoRow stacked={stacked} size="lg" label="Type" value={car.type} />
+        <InfoRow stacked={stacked} size="lg" label="Case / Mix" value={car.caseNumber} />
       </div>
 
       {/* The count states; "View all" acts. Only an admin has the button. */}

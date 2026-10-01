@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 265,
+    at: "2026-10-01T11:15",
+    changes: [
+      {
+        key: true,
+        text: "A casting can now say which case it shipped in. Case / Mix was only ever a fact about your copy — which carton it came out of — and it is also a fact about the release, printed on the box before anybody owns one. It sits under Release status when you file or edit a casting, and reads back on the casting’s own page.",
+      },
+      {
+        text: "The box suggests the case names already in use, from the catalogue and from collections, so one carton is not filed four ways. Your own car’s Case / Mix is untouched by it: saving a casting never writes to your row.",
+      },
+    ],
+  },
+  {
     build: 264,
     at: "2026-10-01T10:30",
     changes: [

@@ -33,7 +33,7 @@ import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { AssortmentHeader, AssortmentRow } from "@/components/assortment-rows";
 import { Combobox } from "@/components/ui/combobox";
-import { assortmentOptionsFor } from "@/lib/car-options";
+import { assortmentOptionsFor, optionsFor } from "@/lib/car-options";
 import { mrpOptionsFor } from "@/lib/car-prices";
 import type { Diecast } from "@/lib/types";
 import { ensureAssortment, remainingAssortments } from "@/lib/assortments";
@@ -189,6 +189,25 @@ export function CatalogFormDialog({
   const [scanOpen, setScanOpen] = useState(false);
   /** Ranks the suggestion lists, the same way the car form ranks them. */
   const cars = useCars();
+  /**
+   * Case names already in use, so the same carton is not filed four ways.
+   *
+   * Both pools: what people have typed on their own cars, and what the
+   * catalogue already says. A case entered here is new to the catalogue and
+   * old news to somebody's collection, and neither list alone has both.
+   */
+  const caseOptions = useMemo(() => {
+    const seen = new Set<string>();
+    for (const v of optionsFor("caseNumber", cars)) {
+      const t = v.trim();
+      if (t) seen.add(t);
+    }
+    for (const c of catalog) {
+      const t = (c.case_number || "").trim();
+      if (t) seen.add(t);
+    }
+    return [...seen].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [cars, catalog]);
 
   /**
    * What is in the box, as car_ids in the order they should read.
@@ -278,6 +297,7 @@ export function CatalogFormDialog({
         series: "",
         sub_series: "",
         car_number: "",
+        case_number: "",
         mrp: 0,
         name: "",
         image_url: "",
@@ -1389,6 +1409,26 @@ export function CatalogFormDialog({
                       </p>
                     </Field>
                   )}
+
+                  {/* Which carton the run shipped in. It sits here and not with
+                      the identity fields because it does not name the casting:
+                      the same car comes back in a later case and is still the
+                      same car, which is also why the ID does not read it. */}
+                  <Field label="Case / Mix">
+                    <Combobox
+                      clearable
+                      disabled={isImageOnly}
+                      value={form.case_number || ""}
+                      onChange={(v) => set("case_number", v)}
+                      options={caseOptions}
+                      placeholder="e.g. 2026 K Case"
+                      searchPlaceholder="Search cases, or type a new one…"
+                    />
+                    <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                      The case this release shipped in. A collector&rsquo;s own Case / Mix is on
+                      their car and is not set from here.
+                    </p>
+                  </Field>
                 </div>
               </FormSection>
 
