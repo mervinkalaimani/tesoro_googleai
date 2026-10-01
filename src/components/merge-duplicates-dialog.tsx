@@ -201,7 +201,7 @@ export function MergeDuplicatesDialog({
         hideDragHandle
         className={cn(
           "flex flex-col overflow-hidden overscroll-contain touch-pan-y",
-          "w-full max-w-full sm:max-w-3xl",
+          "w-full max-w-full sm:max-w-4xl",
           "sm:top-6 sm:translate-y-0 sm:max-h-[calc(100dvh-3rem)]",
           "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
         )}
@@ -317,7 +317,7 @@ function GroupRow({ group, onOpen }: { group: DuplicateGroup; onOpen: () => void
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-xs font-medium">{group.label}</div>
-        <div className="truncate text-[10px] text-muted-foreground">{group.because}</div>
+        <div className="text-[10px] leading-snug text-muted-foreground">{group.because}</div>
       </div>
       <span
         className={cn(
@@ -378,9 +378,14 @@ function MergePanel({
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-medium">{c.name}</div>
-                <div className="truncate text-[10px] text-muted-foreground">{subLineOf(c)}</div>
-                <div className="truncate font-mono text-[10px] text-muted-foreground/75">
+                <div className="text-xs font-medium">{c.name}</div>
+                {/* Wraps rather than truncates: brand, box, series, sub-series
+                    and number is the whole of what tells two near-identical
+                    entries apart, and it was the line being cut off. */}
+                <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                  {subLineOf(c)}
+                </div>
+                <div className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground/75">
                   {c.car_id} · {inrFull(Number(c.mrp) || 0)} ·{" "}
                   {formatDayMonthYear(c.created_at) || "no date"}
                   {!c.image_url && " · no photo"}

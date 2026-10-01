@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 262,
+    at: "2026-10-01T08:30",
+    changes: [
+      {
+        key: true,
+        text: "Castings are back to grouping only where they were told to. Letting the description decide broke Fast & Furious worst of all — a Silver Series car, a Premium and a Mainline of one set read as one casting in three boxes when they are three products — so the 1,637 entries that were marked as their own casting are marked again, exactly as they were.",
+      },
+      {
+        text: "Merging duplicates is wider, and the description under each name is no longer cut off. Brand, box, series, sub-series and number is the whole of what tells two near-identical entries apart.",
+      },
+    ],
+  },
+  {
     build: 261,
     at: "2026-10-01T08:05",
     changes: [
