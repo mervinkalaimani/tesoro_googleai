@@ -48,6 +48,7 @@ import { ChaseMark } from "@/components/car-marks";
 import { useCars } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
+import { MergePanel } from "@/components/merge-castings";
 import { carSubLineParts } from "@/lib/car-subline";
 import { buildCarName } from "@/lib/car-name";
 import { useAuth } from "@/lib/auth-store";
@@ -99,6 +100,8 @@ export function CatalogFormDialog({
   const isNew = entry === "new" || !entry;
   /** The entry being edited, when there is one: what a merge folds away. */
   const entryId = entry && entry !== "new" ? entry.car_id : "";
+  /** The saved entry, narrowed: "new" is not a row and has nothing to merge. */
+  const savedEntry = entry && entry !== "new" ? entry : null;
   const currentUid = user?.id || profile?.user_id;
   const isCreator = Boolean(
     !isNew &&
@@ -201,10 +204,20 @@ export function CatalogFormDialog({
   const [picking, setPicking] = useState(false);
   /** Open while looking at the entries that could be folded into this one. */
   const [merging, setMerging] = useState(false);
-  /** The one chosen to fold in, and what would move with it. */
+  /**
+   * The entry picked to merge with this one, and which way round it runs.
+   *
+   * It used to fold the other entry in and keep this one, always — the other
+   * direction lived on the duplicate notice as a separate button, and which of
+   * two entries deserves to be the keeper is a judgement you can only make
+   * looking at both. So both are on screen, and either can be the one that
+   * stays.
+   */
   const [absorb, setAbsorb] = useState<CatalogCar | null>(null);
   const [absorbPreview, setAbsorbPreview] = useState<MergePreview | null>(null);
   const [absorbBusy, setAbsorbBusy] = useState(false);
+  const [mergeKeepId, setMergeKeepId] = useState("");
+  const [mergeDropIds, setMergeDropIds] = useState<string[]>([]);
   const [linking, setLinking] = useState(false);
 
   /**
@@ -566,20 +579,56 @@ export function CatalogFormDialog({
     form.year,
   ]);
 
-  /** Folds the chosen entry into this one: this entry is the one that stays. */
+  /** The two entries in the merge, this one first. */
+  const mergeCars = useMemo(
+    () => (savedEntry && absorb ? [savedEntry, absorb] : []),
+    [savedEntry, absorb],
+  );
+
+  /** Opens the chooser on the obvious answer: keep this one, fold the other in. */
+  const startMerge = (pick: CatalogCar) => {
+    if (!entryId) return;
+    setAbsorb(pick);
+    setMergeKeepId(entryId);
+    setMergeDropIds([pick.car_id]);
+  };
+
+  // What would move, for whichever entries are ticked. Re-read on every change,
+  // because flipping the keeper flips what moves.
+  useEffect(() => {
+    if (!absorb || mergeDropIds.length === 0) {
+      setAbsorbPreview(null);
+      return;
+    }
+    let live = true;
+    setAbsorbPreview(null);
+    void catalogMergePreview(mergeDropIds)
+      .then((pv) => live && setAbsorbPreview(pv))
+      .catch(() => live && setAbsorbPreview(null));
+    return () => {
+      live = false;
+    };
+  }, [absorb, mergeDropIds]);
+
+  /** Runs it the way round the chooser says. */
   const absorbEntry = () => {
-    if (!absorb || !entryId) return;
+    if (!absorb || !entryId || !mergeKeepId || mergeDropIds.length === 0) return;
+    const keepingThis = mergeKeepId === entryId;
     setAbsorbBusy(true);
-    void mergeCatalogEntries(entryId, [absorb.car_id])
+    void mergeCatalogEntries(mergeKeepId, mergeDropIds)
       .then((res) => {
-        toast.success(`${absorb.name || absorb.car_id} folded in`, {
+        const keeper = mergeCars.find((c) => c.car_id === mergeKeepId);
+        toast.success(`Merged into ${keeper?.name || mergeKeepId}`, {
           description:
             res.cars > 0
-              ? `${res.cars} car${res.cars === 1 ? "" : "s"} now point at this entry.`
+              ? `${res.cars} car${res.cars === 1 ? "" : "s"} now point at it.`
               : "The other entry is gone.",
         });
         setAbsorb(null);
         setMerging(false);
+        // This entry was the one folded away, so the form behind is editing a
+        // row that no longer exists.
+        if (!keepingThis) onClose();
       })
       .catch((e: Error) => toast.error(e.message || "Could not merge the castings"))
       .finally(() => setAbsorbBusy(false));
@@ -1520,7 +1569,7 @@ export function CatalogFormDialog({
           if (!v) setAbsorb(null);
         }}
       >
-        <DialogContent className="max-w-lg">
+        <DialogContent className="sm:max-w-2xl">
           <DialogTitle>Merge into this casting</DialogTitle>
           <DialogDescription>
             {mergeCandidates.length === 0
@@ -1587,38 +1636,49 @@ export function CatalogFormDialog({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant={absorb?.car_id === c.car_id ? "default" : "outline"}
                   className="h-7 shrink-0 gap-1 px-2.5 text-xs"
                   disabled={absorbBusy}
-                  onClick={() => {
-                    setAbsorb(c);
-                    setAbsorbPreview(null);
-                    void catalogMergePreview([c.car_id]).then(setAbsorbPreview);
-                  }}
+                  onClick={() => startMerge(c)}
+                  title="Choose which of the two to keep"
                 >
                   <Merge className="size-3.5" />
-                  Fold in
+                  Merge
                 </Button>
               </div>
             ))}
           </div>
 
-          {absorb && (
-            <div className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-xs">
-              <p className="font-semibold text-foreground">
-                Fold {absorb.name || absorb.car_id} into this entry?
+          {absorb && mergeCars.length === 2 && (
+            <div className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
+              <p className="text-xs font-semibold text-foreground">
+                Choose the entry to keep. The cars on the other move onto it, and nobody
+                else&rsquo;s collection changes.
               </p>
-              <p className="text-muted-foreground">
-                {absorbPreview === null
-                  ? "Counting what would move…"
-                  : absorbPreview.cars === 0
-                    ? "Nobody owns a copy filed under it, so only the entry itself goes."
-                    : `${absorbPreview.cars} car${absorbPreview.cars === 1 ? "" : "s"} across ${absorbPreview.owners.length} collection${absorbPreview.owners.length === 1 ? "" : "s"} move${absorbPreview.cars === 1 ? "s" : ""} here${absorbPreview.packs > 0 ? `, and ${absorbPreview.packs} pack membership${absorbPreview.packs === 1 ? "" : "s"}` : ""}. What each person paid, their status and their photographs are untouched.`}
+
+              <MergePanel
+                cars={mergeCars}
+                keepId={mergeKeepId}
+                dropIds={mergeDropIds}
+                onKeep={(id) => {
+                  setMergeKeepId(id);
+                  // The keeper is never also merged away, and the one it
+                  // replaces takes its place in the list of what moves.
+                  setMergeDropIds(mergeCars.filter((c) => c.car_id !== id).map((c) => c.car_id));
+                }}
+                onToggleDrop={(id) =>
+                  setMergeDropIds((xs) =>
+                    xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id],
+                  )
+                }
+                preview={absorbPreview}
+                loadingPreview={absorbPreview === null && mergeDropIds.length > 0}
+              />
+
+              <p className="text-[11px] text-muted-foreground">
+                The entries merged in are removed, and that cannot be undone.
               </p>
-              <p className="text-muted-foreground">
-                <span className="font-mono text-[11px]">{absorb.car_id}</span> is then removed, and
-                that cannot be undone.
-              </p>
+
               <div className="flex justify-end gap-2 pt-0.5">
                 <Button
                   size="sm"
@@ -1631,15 +1691,15 @@ export function CatalogFormDialog({
                 <Button
                   size="sm"
                   className="gap-1.5"
-                  disabled={absorbBusy || absorbPreview === null}
+                  disabled={absorbBusy || !mergeKeepId || mergeDropIds.length === 0}
                   onClick={absorbEntry}
                 >
                   {absorbBusy ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Check className="size-4" />
+                    <Merge className="size-4" />
                   )}
-                  {absorbBusy ? "Merging…" : "Merge"}
+                  {absorbBusy ? "Merging…" : `Merge ${mergeDropIds.length} into the keeper`}
                 </Button>
               </div>
             </div>

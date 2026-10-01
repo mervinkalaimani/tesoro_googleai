@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 263,
+    at: "2026-10-01T09:15",
+    changes: [
+      {
+        key: true,
+        text: "Merging from a casting's own page now asks which of the two to keep, the same way the Duplicates screen does. It only ever folded the other entry in and kept this one — and which of two entries deserves to be the keeper is a judgement you can only make looking at both.",
+      },
+      {
+        text: "What the merge moves is counted for whichever way round you pick, and recounted when you flip it.",
+      },
+    ],
+  },
+  {
     build: 262,
     at: "2026-10-01T08:30",
     changes: [
