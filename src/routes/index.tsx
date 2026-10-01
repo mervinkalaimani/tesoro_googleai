@@ -920,6 +920,24 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
     [resolveCatalogCar, toCarWithCatalogId],
   );
 
+  /**
+   * The pre-order, as the box and colour chosen on the catalogue panel.
+   *
+   * A casting sold in two boxes and four colours is eight different things to
+   * own, and the panel is where you say which — so the form opens on that one
+   * rather than on the entry the card happened to stand for.
+   */
+  const withPick = (p: RecentPreorder | null, pick?: CatalogCar) =>
+    p && pick
+      ? {
+          ...p,
+          colour: pick.colour || p.colour,
+          assortment: pick.assortment || p.assortment,
+          catalogId: pick.car_id || p.catalogId,
+          mrp: Number(pick.mrp) || p.mrp,
+        }
+      : p;
+
   const viewingCatalogCar = useMemo(() => {
     return viewing ? resolveCatalogCar(viewing) : undefined;
   }, [viewing, resolveCatalogCar]);
@@ -986,20 +1004,20 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
           if (viewing) setEditingCatalog(catalogEntryFor(viewing));
           setViewing(null);
         }}
-        onAdd={() => {
+        onAdd={(pick) => {
           const target = viewing;
           setViewing(null);
           setAddingIso(false);
-          setAdding(target);
+          setAdding(withPick(target, pick));
         }}
         onAddIso={
           isGuest
             ? undefined
-            : () => {
+            : (pick) => {
                 const target = viewing;
                 setViewing(null);
                 setAddingIso(true);
-                setAdding(target);
+                setAdding(withPick(target, pick));
               }
         }
       />
@@ -1409,8 +1427,8 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
           setEditingCatalog(viewing);
           setViewing(null);
         }}
-        onAdd={() => {
-          const target = viewing;
+        onAdd={(pick) => {
+          const target = pick ?? viewing;
           setViewing(null);
           setAdding(target);
         }}

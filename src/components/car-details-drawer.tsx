@@ -9,10 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Calendar,
   Car,
   Check,
   CheckCircle2,
@@ -24,13 +20,9 @@ import {
   Plus,
   Search,
   Star,
-  Trash2,
-  UserCheck,
-  Users,
   X,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useCars, useCarsActions } from "@/lib/cars-store";
@@ -45,13 +37,11 @@ import {
   FavouriteMark,
   hasUnseenAdminChange,
 } from "@/components/car-marks";
-import { StarRating } from "@/components/star-rating";
 import { RARITY_FLAME, RARITY_LABEL, nextRarity, rarityOf, withRarity } from "@/lib/rarity";
 import { Button } from "@/components/ui/button";
 import type { CatalogCar } from "@/lib/catalog";
 import {
   resolveCatalogUserId,
-  getCatalogCarOwners,
   getCastingOwners,
   castingSiblings,
   catalogColours,
@@ -61,7 +51,7 @@ import {
   type CatalogCarOwner,
 } from "@/lib/catalog";
 import { useAuth } from "@/lib/auth-store";
-import { CatalogOwnersDialog, parseDateVal } from "@/components/catalog-owners-dialog";
+import { CatalogOwnersDialog } from "@/components/catalog-owners-dialog";
 import { StatusPill } from "@/components/status-pill";
 import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -73,6 +63,7 @@ import { CarThumb } from "@/components/car-thumb";
 import { carSubLine } from "@/lib/car-subline";
 import { attachSuggestions, castingId } from "@/lib/casting-group";
 import { boughtOn, purchaseHistory, type Purchase } from "@/lib/copies";
+import { moreFrom } from "@/lib/more-from";
 import { isInHand, isIso } from "@/lib/status";
 import { toast } from "sonner";
 import { uploadCarPhoto } from "@/lib/car-photos";
@@ -569,10 +560,7 @@ function CarPopupContent({
     }
   }, [car.id]);
 
-  const seriesName = (car.series || "").trim();
   const setName = ((car as unknown as { set?: string }).set || car.subSeries || "").trim();
-  const seriesHeading = seriesName ? `More from ${seriesName}` : "More from collection";
-  const setHeading = setName ? `More from ${setName} set` : "More from set";
 
   const exactCount = useMemo(() => {
     return cars.filter((c) => isExactMatch(c, car)).length;
@@ -582,54 +570,30 @@ function CarPopupContent({
   const hasPack = Boolean(pack?.is_multipack);
 
   /**
-   * What else there is to look at, narrowest first.
-   *
-   * Three readings of "more like this", widening as they go: the series, the
-   * set inside it, and the kind of vehicle it is -- the brand and the type.
-   * Every one of them is scoped to the brand — Car Culture is a Hot Wheels
-   * idea, and a Matchbox car sharing the word was never the same series.
-   *
-   * Only the first one or two are drawn. A shelf of shelves is a second page
-   * stapled to this one, and the panel has a box's contents to carry first.
+   * What else there is to look at: one shelf, by the rule in `moreFrom` —
+   * the set, else the series, else the casting's own make and model.
    */
-  const shelves = useMemo(() => {
-    const norm = (v?: string | null) => (v || "").trim().toLowerCase();
-    const setOf = (c: Diecast) => (c as unknown as { set?: string }).set || c.subSeries;
-
-    const brand = norm(car.brand);
-    const series = norm(car.series);
-    const sub = norm(setOf(car));
-    const kind = norm(car.type);
-
-    const kin = cars.filter((c) => c.id !== car.id && norm(c.brand) === brand);
-    const out: { key: string; heading: string; cars: Diecast[] }[] = [];
-
-    if (series) {
-      const list = kin.filter((c) => norm(c.series) === series);
-      if (list.length) out.push({ key: "series", heading: seriesHeading, cars: list });
-    }
-    if (series && sub) {
-      const list = kin.filter((c) => norm(c.series) === series && norm(setOf(c)) === sub);
-      if (list.length) out.push({ key: "set", heading: setHeading, cars: list });
-    }
-    // The widest ring is the kind of vehicle, not the box it came in: every
-    // Mainline card said "More from Mainline", which is most of the catalogue
-    // and tells you nothing. "More Mini GT Vans" is a shelf worth having.
-    if (kind) {
-      const list = kin.filter((c) => norm(c.type) === kind);
-      if (list.length)
-        out.push({
-          key: "type",
-          heading: `More ${[(car.brand || "").trim(), (car.type || "").trim()].filter(Boolean).join(" ")}`,
-          cars: list,
-        });
-    }
-    return out;
-  }, [cars, car, seriesHeading, setHeading]);
-
-  const visibleShelves = useMemo(() => shelves.slice(0, 1), [shelves]);
-
-  const hasMoreToShow = hasPack || visibleShelves.length > 0;
+  const shelf = useMemo(
+    () =>
+      moreFrom(
+        {
+          brand: car.brand,
+          series: car.series,
+          subSeries: setName,
+          make: car.make,
+          model: car.model,
+        },
+        cars.filter((c) => c.id !== car.id),
+        (c) => ({
+          brand: c.brand,
+          series: c.series,
+          subSeries: (c as unknown as { set?: string }).set || c.subSeries,
+          make: c.make,
+          model: c.model,
+        }),
+      ),
+    [cars, car, setName],
+  );
 
   const spent = Math.round(car.spent ?? 0);
   const mrp = Math.round(car.mrp ?? 0);
@@ -753,20 +717,19 @@ function CarPopupContent({
             </div>
 
             <div className="flex min-w-0 flex-col justify-between gap-6">
-              {tabBody(true)}
+              {tabBody(false)}
               <CarDetailActions onEdit={onEdit} onAddAnother={onAddAnother} />
             </div>
           </div>
 
-          {visibleShelves.map((shelf) => (
+          {shelf && (
             <CarShelfRow
-              key={shelf.key}
-              heading={shelf.heading.replace(/^More (from )?/i, "")}
+              heading={shelf.heading}
               cars={shelf.cars}
               currentId={car.id}
               onSelectCar={onSelectCar}
             />
-          ))}
+          )}
         </div>
       </div>
 
@@ -842,15 +805,14 @@ function CarPopupContent({
 
                   {tabBody(false)}
 
-                  {visibleShelves.map((shelf) => (
+                  {shelf && (
                     <CarShelfRow
-                      key={shelf.key}
-                      heading={shelf.heading.replace(/^More (from )?/i, "")}
+                      heading={shelf.heading}
                       cars={shelf.cars}
                       currentId={car.id}
                       onSelectCar={onSelectCar}
                     />
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
@@ -907,15 +869,15 @@ const carTabs = (hasPack: boolean): { value: CarTab; label: string }[] => [
  * field that sits inside a form row, and bending one into the other would have
  * changed it everywhere it is a field.
  */
-function CarTabSwitch({
+function CarTabSwitch<T extends string>({
   value,
   onChange,
   tabs,
   className,
 }: {
-  value: CarTab;
-  onChange: (v: CarTab) => void;
-  tabs: { value: CarTab; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  tabs: { value: T; label: string }[];
   className?: string;
 }) {
   return (
@@ -987,7 +949,9 @@ function InfoRow({
       </span>
       <span
         className={cn(
-          "block min-w-0 truncate font-bold",
+          "block min-w-0 font-bold",
+          // Chips wrap; a plain answer still rides on one line.
+          children ? "" : "truncate",
           stacked ? "mt-1.5 text-lg" : "text-right text-[15px]",
           size === "lg" && !stacked && "text-lg",
           accent && "text-primary",
@@ -1043,19 +1007,19 @@ function CarDetailActions({
         variant="outline"
         onClick={onEdit}
         title="Update this car"
-        className="h-11 flex-1 cursor-pointer gap-2 text-sm font-semibold"
+        className="h-11 min-w-0 flex-1 cursor-pointer gap-2 px-2 text-sm font-semibold"
       >
         <Pencil className="size-3.5 shrink-0" />
-        Update
+        <span className="truncate">Update</span>
       </Button>
       <Button
         type="button"
         onClick={onAddAnother}
         title="Add another of this casting"
-        className="h-11 flex-1 cursor-pointer gap-2 text-sm font-semibold"
+        className="h-11 min-w-0 flex-1 cursor-pointer gap-2 px-2 text-sm font-semibold"
       >
         <Plus className="size-4 shrink-0" />
-        Add Another
+        <span className="truncate">Add Another</span>
       </Button>
     </div>
   );
@@ -1684,138 +1648,6 @@ function CarShelfRow({
   );
 }
 
-/** 3x2 grid with horizontal scrolling for desktop right column */
-function WebRelatedGridShelf({
-  cars,
-  currentCarId,
-  onSelectCar,
-}: {
-  cars: Diecast[];
-  currentCarId?: string;
-  onSelectCar?: (car: Diecast) => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  useScrollHint(containerRef);
-
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      const { scrollLeft, scrollWidth, clientWidth } = containerRef.current;
-      const canScrollLeft = scrollLeft > 0;
-      const canScrollRight = scrollLeft + clientWidth < scrollWidth - 1;
-      if ((e.deltaY > 0 && canScrollRight) || (e.deltaY < 0 && canScrollLeft)) {
-        containerRef.current.scrollLeft += e.deltaY;
-      }
-    }
-  };
-
-  return (
-    <div className="relative">
-      <div
-        ref={containerRef}
-        onWheel={handleWheel}
-        // Three columns and a sliver of the fourth. They used to divide the
-        // width exactly three ways, so the next column began precisely where
-        // the shelf ended and a row of eight looked identical to a row of
-        // three. 42px buys the two gaps back and leaves about 18px of the
-        // fourth card showing, which is the part that says keep going.
-        className="grid grid-flow-col grid-rows-2 auto-cols-[calc((100%-2.625rem)/3)] gap-2 overflow-x-auto pb-2 scrollbar-thin snap-x scroll-px-0.5 scroll-smooth"
-      >
-        {cars.map((relatedCar) => (
-          <RelatedCarCard
-            key={relatedCar.id}
-            car={relatedCar}
-            isCurrent={relatedCar.id === currentCarId}
-            className="w-full h-full snap-start"
-            onSelect={() => onSelectCar?.(relatedCar)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Nudges a scrolling shelf twenty pixels and lets it fall back, once, when it
- * has more in it than fits.
- *
- * The scrollbar is hidden until you touch the row, so a shelf with eight cars
- * in it looked exactly like a shelf with six. Two arrow buttons said so
- * instead, which is a pair of controls for something every trackpad and phone
- * already does — the movement says it without taking any room.
- */
-function useScrollHint(ref: React.RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    let back = 0;
-    let settle = 0;
-    // Measured when the hint plays, not when the effect runs: at mount the
-    // cards have no width yet, so scrollWidth and clientWidth agree and the
-    // shelf looks like it fits when it does not.
-    const out = window.setTimeout(() => {
-      // Nothing to hint at when it all fits, or when the person has already
-      // moved it themselves.
-      if (el.scrollWidth <= el.clientWidth + 8 || el.scrollLeft > 0) return;
-      // Moved, not scrolled. The row carries scroll snapping, which pulls a
-      // ten-pixel scroll straight back to the snap point it started on — the
-      // hint played and nothing appeared to happen.
-      el.style.transition = "transform 200ms ease-out";
-      el.style.transform = "translateX(-20px)";
-      back = window.setTimeout(() => {
-        el.style.transform = "";
-        settle = window.setTimeout(() => {
-          el.style.transition = "";
-        }, 240);
-      }, 240);
-    }, 500);
-
-    return () => {
-      window.clearTimeout(out);
-      window.clearTimeout(back);
-      window.clearTimeout(settle);
-      el.style.transform = "";
-      el.style.transition = "";
-    };
-  }, [ref]);
-}
-
-/** Single-row horizontal shelf for tablet layout at bottom */
-function TabRelatedShelf({
-  cars,
-  currentCarId,
-  onSelectCar,
-}: {
-  cars: Diecast[];
-  currentCarId?: string;
-  onSelectCar?: (car: Diecast) => void;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  useScrollHint(containerRef);
-
-  return (
-    <div className="relative">
-      <div
-        ref={containerRef}
-        className="flex items-stretch gap-3 overflow-x-auto pb-2 scrollbar-thin snap-x scroll-smooth"
-      >
-        {cars.map((relatedCar) => (
-          <RelatedCarCard
-            key={relatedCar.id}
-            car={relatedCar}
-            isCurrent={relatedCar.id === currentCarId}
-            className="w-36 sm:w-40 shrink-0 snap-start"
-            onSelect={() => onSelectCar?.(relatedCar)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Related car card used both in mobile horizontal shelf and web 3x2 grid */
 function RelatedCarCard({
   car,
   onSelect,
@@ -1882,80 +1714,6 @@ function RelatedCarCard({
   );
 }
 
-/** Three across at every width, so a label always sits above its own value. */
-function SpecGrid({ children }: { children: ReactNode }) {
-  return <div className="grid grid-cols-3 gap-x-3 gap-y-2.5">{children}</div>;
-}
-
-/** A flag toggle sitting on top of the photograph, legible over either. */
-function FlagButton({
-  onClick,
-  pressed,
-  title,
-  children,
-}: {
-  onClick: () => void;
-  pressed: boolean;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      aria-pressed={pressed}
-      className="flex size-8 cursor-pointer items-center justify-center rounded-lg border border-white/20 bg-black/40 backdrop-blur-sm transition-colors hover:bg-black/60"
-    >
-      {children}
-    </button>
-  );
-}
-
-/**
- * A band of related facts under a rule and a heading.
- *
- * Purchase and shipping were each a filled card with its own border and tint,
- * which on a phone stacked into a column of boxes — three containers deep in
- * places, and no clearer for it. A hairline and a small capitalised heading
- * separate them just as well and leave the values room to breathe.
- */
-function Section({
-  title,
-  action,
-  children,
-}: {
-  title: string;
-  action?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <section className="border-t border-border pt-2.5">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
-        <h3 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-          {title}
-        </h3>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-/**
- * One labelled value inside a section.
- *
- * One size, everywhere. Purchase used to render at text-2xl while the rest of
- * the card sat at text-sm, so three of the twenty facts on screen were four
- * times the size of the others for no reason anyone could have named.
- */
-/**
- * A catalogue ID you can take with you.
- *
- * The ID is how a casting is referred to anywhere outside this app — in a
- * message to another collector, in a spreadsheet, in a search here — and until
- * now the only way to have it was to read it off the screen and type it back.
- */
 function CopyId({ id, className }: { id: string; className?: string }) {
   const [done, setDone] = useState(false);
 
@@ -1990,97 +1748,6 @@ function CopyId({ id, className }: { id: string; className?: string }) {
   );
 }
 
-/**
- * A value in the grid that opens something.
- *
- * The seller, the order and the shipment are all the same shape: a short
- * identifier that is worth reading and is also the way to the rest of what it
- * covers. Rendered as a link rather than as a button, because a grid of
- * nine facts with two outline buttons under it reads as a toolbar nobody asked
- * for, and the buttons sat nowhere near the fields they were about.
- */
-function LinkSpec({
-  label,
-  value,
-  title,
-  onClick,
-}: {
-  label: string;
-  value?: string | null;
-  title: string;
-  onClick: () => void;
-}) {
-  const text = (value || "").trim();
-  return (
-    <div className="min-w-0">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <div className="mt-0.5 truncate text-sm font-semibold">
-        {text ? (
-          <button
-            type="button"
-            onClick={onClick}
-            title={title}
-            className="max-w-full truncate text-sky-500 hover:underline"
-          >
-            {text}
-          </button>
-        ) : (
-          <span className="text-foreground">—</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Spec({
-  label,
-  value,
-  className,
-}: {
-  label: string;
-  value?: string | null;
-  className?: string;
-}) {
-  return (
-    <div className="min-w-0">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span
-        className={`mt-0.5 block truncate text-sm font-semibold text-foreground ${className ?? ""}`}
-        title={value || undefined}
-      >
-        {value || "—"}
-      </span>
-    </div>
-  );
-}
-
-/** A condition grade with its star rating underneath. */
-function ConditionSpec({
-  label,
-  grade,
-  rating,
-}: {
-  label: string;
-  grade?: string;
-  rating?: number;
-}) {
-  return (
-    <div className="min-w-0">
-      <span className="text-xs text-muted-foreground">{label} condition</span>
-      <span className="mt-0.5 block truncate text-sm font-semibold text-foreground">
-        {grade || "—"}
-      </span>
-      {rating ? <StarRating value={rating} label={`${label} rating`} size="sm" /> : null}
-    </div>
-  );
-}
-
-/**
- * The contain flag shows the whole card art rather than filling the frame with the
- * middle of it. A catalogue photograph is a photograph *of a card*, with the
- * number and the logo printed at its edges, and cropping to fill cuts exactly
- * those off — which is most of what tells you which release you are looking at.
- */
 function HeroCarImage({ car, contain = false }: { car: Diecast; contain?: boolean }) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -2174,106 +1841,6 @@ function HeroCarImage({ car, contain = false }: { car: Diecast; contain?: boolea
  * casting never appears twice, and each is capped — brand alone runs to four
  * figures and a shelf is for browsing, not for listing.
  */
-const RELATED_CAP = 24;
-
-/**
- * What else the catalogue holds near this entry, narrowest ring first.
- *
- * The series it belongs to, the set inside that series, and the kind of vehicle
- * it is — each scoped to the brand, because a series name belongs to the maker
- * that coined it. Two are drawn, or one when the panel is also carrying the
- * contents of a box.
- */
-function CatalogRelatedShelves({
-  entry,
-  onSelect,
-  className,
-  limit = 2,
-  header,
-}: {
-  entry: CatalogCar;
-  onSelect: (c: CatalogCar) => void;
-  className?: string;
-  /** How many rings to draw. */
-  limit?: number;
-  /** Drawn above the shelves, and keeps the column alive when there are none. */
-  header?: React.ReactNode;
-}) {
-  const { catalog } = useCatalog();
-
-  const rings = useMemo(() => {
-    const norm = (v?: string | null) => (v || "").trim().toLowerCase();
-    const brand = norm(entry.brand);
-    const series = norm(entry.series);
-    const sub = norm(entry.sub_series);
-    const kind = norm(entry.type);
-    // This entry and its other boxes. The Blister of the car you are looking at
-    // is not "more from" anything — it is the same car, and it is already named
-    // in the control above.
-    const self = new Set(
-      castingSiblings(entry, catalog).map((c) => (c.car_id || "").trim().toUpperCase()),
-    );
-
-    const kin = catalog.filter(
-      (c) => !self.has((c.car_id || "").trim().toUpperCase()) && norm(c.brand) === brand,
-    );
-
-    const out: { key: string; heading: string; cars: CatalogCar[] }[] = [];
-    if (brand && series) {
-      const cars = kin.filter((c) => norm(c.series) === series);
-      if (cars.length) out.push({ key: "collection", heading: `More from ${entry.series}`, cars });
-    }
-    if (brand && series && sub) {
-      const cars = kin.filter((c) => norm(c.series) === series && norm(c.sub_series) === sub);
-      if (cars.length) out.push({ key: "set", heading: `More from ${entry.sub_series} set`, cars });
-    }
-    if (brand && kind) {
-      const cars = kin.filter((c) => norm(c.type) === kind);
-      if (cars.length)
-        out.push({
-          key: "type",
-          heading: `More ${[(entry.brand || "").trim(), (entry.type || "").trim()].filter(Boolean).join(" ")}`,
-          cars,
-        });
-    }
-    return out.slice(0, Math.max(0, limit));
-  }, [catalog, entry, limit]);
-
-  // Nothing nearby and nothing to head the column with: the caller renders this
-  // as a whole column, so returning null is what makes it go away rather than
-  // stand there empty.
-  if (rings.length === 0 && !header) return null;
-
-  return (
-    <div className={cn("space-y-6", className)}>
-      {header}
-      {rings.map((ring, i) => (
-        <div key={ring.key} className="space-y-2.5">
-          {i > 0 && <hr className="border-border/60" />}
-          <div className="flex items-center justify-between">
-            <span
-              className="truncate text-xs font-bold uppercase tracking-wider text-muted-foreground"
-              title={ring.heading}
-            >
-              {ring.heading}
-            </span>
-            <span className="ml-1 shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
-              {ring.cars.length} {ring.cars.length === 1 ? "car" : "cars"}
-            </span>
-          </div>
-          <WebRelatedGridShelf
-            cars={ring.cars.slice(0, RELATED_CAP).map(catalogCarToDiecast)}
-            onSelectCar={(picked) => {
-              const match = ring.cars.find((c) => c.car_id === picked.id);
-              if (match) onSelect(match);
-            }}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /**
  * How many people have this casting, in the past tense.
  *
@@ -2285,6 +1852,324 @@ function ownersLine(loading: boolean, count: number): string {
   if (count === 0) return "Nobody has added this to their collection yet.";
   if (count === 1) return "1 person added this to their collection.";
   return `${count} people added this to their collection.`;
+}
+
+/** The readings of a catalogue entry, in the order you want them. */
+type CatalogTab = "details" | "box" | "record";
+
+/** Same rule as a car's: a box's contents are a tab only when there is a box. */
+const catalogTabs = (hasPack: boolean): { value: CatalogTab; label: string }[] => [
+  { value: "details" as const, label: "Details" },
+  ...(hasPack ? [{ value: "box" as const, label: "What's Inside" }] : []),
+  { value: "record" as const, label: "Record" },
+];
+
+/**
+ * One of several, as a row of pills.
+ *
+ * The catalogue's two multiple-choice facts — which colour, and which box —
+ * are the same question asked twice, and they are not decoration: what is
+ * chosen here is what the Add button puts in your collection.
+ */
+function PickChips({
+  value,
+  onChange,
+  options,
+  stacked,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string; title?: string }[];
+  stacked: boolean;
+}) {
+  return (
+    <span className={cn("flex flex-wrap items-center gap-2", stacked ? "" : "justify-end")}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <button
+            key={o.value}
+            type="button"
+            title={o.title ?? o.label}
+            aria-pressed={active}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              CHIP,
+              "text-xs",
+              active
+                ? "border-accent bg-accent text-accent-foreground"
+                : "border-border/80 text-foreground hover:border-foreground/40",
+            )}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </span>
+  );
+}
+
+/**
+ * What the catalogue says about this entry, as badges.
+ *
+ * Read-only, every one of them: this is everybody's entry, and nothing here is
+ * yours to toggle. The car's own details page has the same row as controls,
+ * which is the difference between the two pages in one line.
+ */
+function CatalogChips({
+  preOrder,
+  owned,
+  isIso,
+  packSize,
+  rarity,
+}: {
+  preOrder: boolean;
+  owned: boolean;
+  isIso: boolean;
+  packSize: number;
+  rarity: import("@/lib/rarity").Rarity;
+}) {
+  const base = cn(CHIP, "cursor-default");
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span
+        className={cn(
+          base,
+          preOrder
+            ? "border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+            : "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+        )}
+      >
+        {preOrder ? "Pre-order" : "Released"}
+      </span>
+
+      {owned && (
+        <span
+          className={cn(
+            base,
+            "border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+          )}
+        >
+          <CheckCircle2 className="size-3 shrink-0" />
+          In collection
+        </span>
+      )}
+
+      {isIso && (
+        <span
+          className={cn(base, "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400")}
+        >
+          <Search className="size-3 shrink-0" />
+          On your ISO list
+        </span>
+      )}
+
+      {packSize > 1 && (
+        <span className={cn(base, "border-primary/30 bg-primary/10 text-primary")}>
+          <Layers className="size-3 shrink-0" />
+          {packSize} Pack
+        </span>
+      )}
+
+      {rarity !== "Normal" && (
+        <span className={cn(base, "border-accent/50 bg-accent/20 text-foreground")}>
+          <Flame className={cn("size-3.5 shrink-0", RARITY_FLAME[rarity])} />
+          {RARITY_LABEL[rarity]}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * What the casting is, and which of it you mean.
+ *
+ * The colours and the boxes are pickable because the answer travels: the Add
+ * button below files exactly the box and the colour chosen here, rather than
+ * whichever entry you happened to arrive on.
+ */
+function CatalogDetailsTab({
+  car,
+  stacked,
+  preOrder,
+  owned,
+  isIso,
+  packSize,
+  colours,
+  colour,
+  onColour,
+  siblings,
+  shownId,
+  onShown,
+  ownersText,
+  onSeeAllOwners,
+}: {
+  car: Diecast;
+  stacked: boolean;
+  preOrder: boolean;
+  owned: boolean;
+  isIso: boolean;
+  packSize: number;
+  colours: string[];
+  colour: string;
+  onColour: (v: string) => void;
+  siblings: CatalogCar[];
+  shownId: string;
+  onShown: (id: string) => void;
+  ownersText: string;
+  /** Admin only — the list is people, so most readers do not get a button. */
+  onSeeAllOwners?: () => void;
+}) {
+  const boxPrice = (c: CatalogCar) =>
+    Number(c.mrp)
+      ? `${c.assortment || "—"} · ${inrFull(Math.round(Number(c.mrp)))}`
+      : c.assortment || "—";
+
+  return (
+    <div className="min-w-0 space-y-5">
+      <CatalogChips
+        preOrder={preOrder}
+        owned={owned}
+        isIso={isIso}
+        packSize={packSize}
+        rarity={rarityOf(car)}
+      />
+
+      <div>
+        <InfoRow stacked={stacked} size="lg" label="Series" value={car.series} />
+        <InfoRow stacked={stacked} size="lg" label="Sub series" value={car.subSeries} />
+
+        {colours.length > 1 ? (
+          <InfoRow stacked={stacked} label="Colours">
+            <PickChips
+              stacked={stacked}
+              value={colour}
+              onChange={onColour}
+              options={colours.map((c) => ({ value: c, label: c }))}
+            />
+          </InfoRow>
+        ) : (
+          <InfoRow stacked={stacked} size="lg" label="Colour" value={colours[0] || car.colour} />
+        )}
+
+        {siblings.length > 1 ? (
+          <InfoRow stacked={stacked} label="Assortments">
+            <PickChips
+              stacked={stacked}
+              value={shownId}
+              onChange={onShown}
+              options={siblings.map((s) => ({
+                value: s.car_id,
+                label: boxPrice(s),
+                title: `${s.assortment || "This box"} — ${s.car_id}`,
+              }))}
+            />
+          </InfoRow>
+        ) : (
+          <InfoRow
+            stacked={stacked}
+            size="lg"
+            label="Assortment"
+            value={siblings[0] ? boxPrice(siblings[0]) : car.assortment}
+          />
+        )}
+
+        <InfoRow stacked={stacked} size="lg" label="Type" value={car.type} />
+      </div>
+
+      {/* The count states; "View all" acts. Only an admin has the button. */}
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        <p className="text-xs text-muted-foreground">{ownersText}</p>
+        {onSeeAllOwners && (
+          <button
+            type="button"
+            onClick={onSeeAllOwners}
+            className="cursor-pointer text-xs font-medium text-primary transition-colors hover:text-primary/80"
+          >
+            View all
+          </button>
+        )}
+      </div>
+
+      {/* Under the description, because it is about which entries belong
+          together — the same place it sits on a car. */}
+      <AssortmentSuggestions catalogId={shownId} />
+    </div>
+  );
+}
+
+/**
+ * Where each of this casting's entries came from, one box at a time.
+ *
+ * The casting ID the boxes share heads the tab; under it, each box's own ID
+ * and who filed and corrected it. One entry is the ordinary case and reads as
+ * a single block with a heading it does not really need — which is cheaper
+ * than a second layout that exists for the common case alone.
+ */
+function CatalogRecordTab({
+  siblings,
+  stacked,
+  preOrder,
+  expectedDate,
+}: {
+  siblings: CatalogCar[];
+  stacked: boolean;
+  preOrder: boolean;
+  expectedDate?: string | null;
+}) {
+  if (siblings.length === 0) return null;
+
+  return (
+    <div className="min-w-0 space-y-5">
+      {siblings.length > 1 && (
+        <InfoRow stacked={stacked} label="Casting">
+          <span className="font-mono">{castingId(siblings[0])}</span>
+        </InfoRow>
+      )}
+
+      {siblings.map((sib) => {
+        const edited = Boolean(sib.updated_by);
+        return (
+          <div key={sib.car_id} className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              {sib.assortment || "Entry"}
+            </p>
+            <InfoRow stacked={stacked} label="Catalogue ID" accent>
+              <span className="inline-flex max-w-full items-center gap-1.5">
+                <span className="truncate font-mono">{sib.car_id}</span>
+                <CopyId id={sib.car_id} />
+              </span>
+            </InfoRow>
+            <InfoRow stacked={stacked} label="Added by">
+              <NameOnDate
+                name={resolveCatalogUserId(sib.created_by)}
+                date={formatDayMonthYear(sib.created_at) || "—"}
+              />
+            </InfoRow>
+            {/* An entry nobody has corrected has no editor and no edit date.
+                Falling back to the creator described an edit that never
+                happened, so the row simply is not drawn. */}
+            {edited && (
+              <InfoRow stacked={stacked} label="Updated by">
+                <NameOnDate
+                  name={resolveCatalogUserId(sib.updated_by)}
+                  date={formatDayMonthYear(sib.updated_at) || "—"}
+                />
+              </InfoRow>
+            )}
+          </div>
+        );
+      })}
+
+      {preOrder && expectedDate && (
+        <InfoRow
+          stacked={stacked}
+          label="Expected"
+          value={formatDayMonthYear(expectedDate) || expectedDate}
+        />
+      )}
+    </div>
+  );
 }
 
 export function CatalogCarDetails({
@@ -2299,8 +2184,6 @@ export function CatalogCarDetails({
   onAddIso,
   canEdit,
   onEdit,
-  canDelete,
-  onDelete,
   onSelectCatalogCar,
 }: {
   /** The entry shaped as a car; null when closed. */
@@ -2311,37 +2194,34 @@ export function CatalogCarDetails({
   owned: boolean;
   isIso?: boolean;
   onClose: () => void;
-  onAdd: () => void;
+  /**
+   * Add it to the collection. The entry handed back is the box and the colour
+   * chosen on the page, not whichever entry the window happened to open on —
+   * a casting sold in two boxes and four colours is eight different things to
+   * own, and the page is where you say which.
+   */
+  onAdd: (pick?: CatalogCar) => void;
   /**
    * Put this casting on your ISO list — the wishlist, not the collection.
    * Absent when the caller has nowhere to put it.
    */
-  onAddIso?: () => void;
+  onAddIso?: (pick?: CatalogCar) => void;
   canEdit?: boolean;
   onEdit?: () => void;
-  /** Owner only: removing the casting from the catalogue altogether. */
-  canDelete?: boolean;
-  onDelete?: () => void;
   /**
-   * Open a different catalogue entry. The related shelves are only drawn when
-   * a caller can act on a tap — a shelf of cards that do nothing is worse than
+   * Open a different catalogue entry. The related shelf is only drawn when a
+   * caller can act on a tap — a shelf of cards that do nothing is worse than
    * no shelf.
    */
   onSelectCatalogCar?: (c: CatalogCar) => void;
 }) {
-  const [showOwnersColumn, setShowOwnersColumn] = useState(false);
-
-  // Reset 3rd column whenever a different car is opened
-  useEffect(() => {
-    setShowOwnersColumn(false);
-  }, [car?.id]);
-
   return (
     <Dialog open={Boolean(car)} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
         hideDragHandle
+        hideClose
         disableSheetDismiss
-        className="max-md:top-0 max-md:inset-x-0 max-md:h-[100dvh] max-md:max-h-[100dvh] max-md:w-full max-md:max-w-full max-md:rounded-none max-md:p-0 max-md:flex max-md:flex-col block gap-0 overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 text-foreground shadow-2xl md:max-h-[82vh] md:w-fit md:max-w-[calc(100vw-2rem)] transition-[max-width] duration-200"
+        className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:pb-0 max-sm:flex max-sm:flex-col overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 gap-0 block text-foreground shadow-2xl sm:max-h-[92vh] sm:w-fit sm:max-w-[calc(100vw-2rem)]"
       >
         {car && (
           <CatalogDetailsContent
@@ -2356,8 +2236,6 @@ export function CatalogCarDetails({
             onAddIso={onAddIso}
             canEdit={canEdit}
             onEdit={onEdit}
-            showOwnersColumn={showOwnersColumn}
-            onToggleOwnersColumn={setShowOwnersColumn}
             onSelectCatalogCar={onSelectCatalogCar}
           />
         )}
@@ -2378,8 +2256,6 @@ function CatalogDetailsContent({
   onAddIso,
   canEdit,
   onEdit,
-  showOwnersColumn = false,
-  onToggleOwnersColumn,
   onSelectCatalogCar,
 }: {
   car: Diecast;
@@ -2389,17 +2265,16 @@ function CatalogDetailsContent({
   owned: boolean;
   isIso?: boolean;
   onClose: () => void;
-  onAdd: () => void;
-  onAddIso?: () => void;
+  onAdd: (pick?: CatalogCar) => void;
+  onAddIso?: (pick?: CatalogCar) => void;
   canEdit?: boolean;
   onEdit?: () => void;
-  showOwnersColumn?: boolean;
-  onToggleOwnersColumn?: (show: boolean) => void;
   onSelectCatalogCar?: (c: CatalogCar) => void;
 }) {
   const mobile = useMobileHeroGestures(onClose);
   const { isAdmin, user, profile } = useAuth();
   const mine = useCars();
+  const { catalog, updateCatalogCar } = useCatalog();
   const [owners, setOwners] = useState<CatalogCarOwner[]>([]);
   const [ownersLoading, setOwnersLoading] = useState(false);
   const [ownersModalOpen, setOwnersModalOpen] = useState(false);
@@ -2417,11 +2292,42 @@ function CatalogDetailsContent({
   const isActuallyOwned = owned || Boolean(matchingUserCar);
   const isActuallyIso = Boolean(isIsoProp || matchingIsoCar);
 
-  /** Every entry for this casting, so the owner count covers all its boxes. */
-  const { catalog, updateCatalogCar } = useCatalog();
-  const ownerEntries = useMemo(
+  /** Every box this casting is sold in, so one page answers for all of them. */
+  const siblings = useMemo(
     () => (catalogCar ? castingSiblings(catalogCar, catalog) : []),
     [catalogCar, catalog],
+  );
+
+  /**
+   * Which box, and which colour. Both start on the entry you opened and both
+   * travel to the Add button — see `pick` below.
+   */
+  const [shownId, setShownId] = useState(catalogCar?.car_id ?? "");
+  useEffect(() => {
+    setShownId(catalogCar?.car_id ?? "");
+  }, [catalogCar?.car_id]);
+  const shown = siblings.find((s) => s.car_id === shownId) ?? catalogCar ?? null;
+
+  const colours = useMemo(() => (shown ? catalogColours(shown) : []), [shown]);
+  const [colour, setColour] = useState("");
+  // A box picked while a colour was chosen keeps the colour when that box comes
+  // in it, and falls back to the box's own first colour when it does not.
+  useEffect(() => {
+    setColour((c) =>
+      c && colours.some((x) => x.toLowerCase() === c.toLowerCase()) ? c : (colours[0] ?? ""),
+    );
+  }, [colours]);
+
+  /** The casting shaped as a car, following whichever box is chosen. */
+  const shownCar = useMemo(
+    () => (shown ? { ...catalogCarToDiecast(shown), colour: colour || shown.colour || "" } : car),
+    [shown, colour, car],
+  );
+
+  /** What the Add button files: this box, in this colour. */
+  const pick = useMemo(
+    () => (shown ? { ...shown, colour: colour || shown.colour || "" } : undefined),
+    [shown, colour],
   );
 
   // The catalogue is everybody's: this photo is the one every collection shows
@@ -2430,9 +2336,19 @@ function CatalogDetailsContent({
     updateCatalogCar({ ...catalogCar!, image_url: url }),
   );
 
-  // A box's contents head the shelf column, and cost it one of its two shelves.
-  const { pack: catalogPack } = usePack(catalogCar?.car_id);
-  const catalogHasPack = Boolean(catalogPack?.is_multipack);
+  const { pack } = usePack(shown?.car_id);
+  const hasPack = Boolean(pack?.is_multipack);
+  const packSize = hasPack ? Number(pack?.pack_size) || 0 : 0;
+
+  const [tab, setTab] = useState<CatalogTab>("details");
+  useEffect(() => {
+    setTab("details");
+  }, [catalogCar?.car_id]);
+  const tabs = catalogTabs(hasPack);
+  // A box that stops being a box while its tab is open leaves nothing to read.
+  useEffect(() => {
+    if (tab === "box" && !hasPack) setTab("details");
+  }, [tab, hasPack]);
 
   useEffect(() => {
     if (!catalogCar?.car_id) {
@@ -2442,7 +2358,7 @@ function CatalogDetailsContent({
     let cancelled = false;
     setOwnersLoading(true);
     // Across every box the casting is catalogued in — see getCastingOwners.
-    getCastingOwners(ownerEntries, (entry) => ({
+    getCastingOwners(siblings.length ? siblings : [catalogCar], (entry) => ({
       catalogCar: entry,
       isOwned: isActuallyOwned && entry.car_id === catalogCar.car_id,
       currentUser: user
@@ -2461,39 +2377,96 @@ function CatalogDetailsContent({
     return () => {
       cancelled = true;
     };
-  }, [
-    catalogCar?.car_id,
-    catalogCar,
-    ownerEntries,
-    isActuallyOwned,
-    user,
-    profile,
-    matchingUserCar,
-  ]);
+  }, [catalogCar?.car_id, catalogCar, siblings, isActuallyOwned, user, profile, matchingUserCar]);
 
-  const handleSeeAll = () => {
-    if (typeof window !== "undefined" && window.innerWidth >= 768 && onToggleOwnersColumn) {
-      onToggleOwnersColumn(!showOwnersColumn);
-    } else {
-      setOwnersModalOpen(true);
-    }
-  };
+  /**
+   * The one shelf under the window: the set, the series, or the casting's own
+   * make and model. Its own boxes are not "more from" anything — they are this
+   * car, and they are already named in the control above.
+   */
+  const shelf = useMemo(() => {
+    if (!catalogCar || !onSelectCatalogCar) return null;
+    const self = new Set(siblings.map((c) => (c.car_id || "").trim().toUpperCase()));
+    self.add((catalogCar.car_id || "").trim().toUpperCase());
+    const pool = catalog.filter((c) => !self.has((c.car_id || "").trim().toUpperCase()));
+    return moreFrom(
+      {
+        brand: catalogCar.brand,
+        series: catalogCar.series,
+        subSeries: catalogCar.sub_series,
+        make: catalogCar.make,
+        model: catalogCar.model,
+      },
+      pool,
+      (c) => ({
+        brand: c.brand,
+        series: c.series,
+        subSeries: c.sub_series,
+        make: c.make,
+        model: c.model,
+      }),
+    );
+  }, [catalog, catalogCar, siblings, onSelectCatalogCar]);
+
+  const shelfRow = shelf ? (
+    <CarShelfRow
+      heading={shelf.heading}
+      cars={shelf.cars.map(catalogCarToDiecast)}
+      currentId={shownId}
+      onSelectCar={(picked) => {
+        const match = shelf.cars.find((c) => c.car_id === picked.id);
+        if (match) onSelectCatalogCar?.(match);
+      }}
+    />
+  ) : null;
+
+  const ownersText = ownersLine(ownersLoading, ownerCount(owners));
+  const canSeeAllOwners = isAdmin && !ownersLoading && owners.length > 0;
+
+  const tabBody = (stacked: boolean) =>
+    tab === "box" ? (
+      <CarInTheBoxTab packCarId={shown?.car_id} />
+    ) : tab === "record" ? (
+      <CatalogRecordTab
+        siblings={siblings.length ? siblings : catalogCar ? [catalogCar] : []}
+        stacked={stacked}
+        preOrder={preOrder}
+        expectedDate={expectedDate}
+      />
+    ) : (
+      <CatalogDetailsTab
+        car={shownCar}
+        stacked={stacked}
+        preOrder={preOrder}
+        owned={isActuallyOwned}
+        isIso={isActuallyIso}
+        packSize={packSize}
+        colours={colours}
+        colour={colour}
+        onColour={setColour}
+        siblings={siblings}
+        shownId={shownId}
+        onShown={setShownId}
+        ownersText={ownersText}
+        onSeeAllOwners={canSeeAllOwners ? () => setOwnersModalOpen(true) : undefined}
+      />
+    );
 
   // All three share the width rather than Add taking whatever the other two
   // leave. "Add to collection" spelled out was the widest thing in the row and
   // said nothing the button's position did not: this is the catalogue, and the
   // only place to add to is your collection.
-  const actionButtons = (
+  const actions = (
     <div className="flex w-full items-center gap-2.5">
       {canEdit && onEdit && (
         <Button
           type="button"
           variant="outline"
           onClick={onEdit}
-          className="h-11 flex-1 gap-1.5 px-3 text-sm font-semibold cursor-pointer border-border hover:bg-muted"
+          className="h-11 min-w-0 flex-1 cursor-pointer gap-2 px-2 text-sm font-semibold"
         >
-          <Pencil className="size-4" />
-          Edit
+          <Pencil className="size-3.5 shrink-0" />
+          <span className="truncate">Update</span>
         </Button>
       )}
       {/* Only while it is not already on the list — "Add to ISO" on a car you
@@ -2503,120 +2476,133 @@ function CatalogDetailsContent({
         <Button
           type="button"
           variant="outline"
-          onClick={onAddIso}
-          className="h-11 flex-1 gap-1.5 px-3 text-sm font-semibold cursor-pointer border-border hover:bg-muted"
+          onClick={() => onAddIso(pick)}
+          title="Add to your ISO list"
+          // Three full labels do not fit a 375px phone. The wish list is the
+          // least used of the three, so it keeps the icon and gives up the
+          // words rather than clipping all three to half a word each.
+          className="h-11 w-11 shrink-0 cursor-pointer gap-2 px-0 text-sm font-semibold sm:w-auto sm:min-w-0 sm:flex-1 sm:px-2"
         >
-          <Search className="size-4" />
-          Add to ISO
+          <Search className="size-3.5 shrink-0" />
+          <span className="hidden truncate sm:inline">Add to ISO</span>
         </Button>
       )}
-      <Button onClick={onAdd} className="h-11 flex-1 gap-2 px-3 text-sm font-semibold">
-        <Plus className="size-4" />
-        {isActuallyOwned ? "Add another" : "Add"}
+      <Button
+        type="button"
+        onClick={() => onAdd(pick)}
+        className="h-11 min-w-0 flex-1 cursor-pointer gap-2 px-2 text-sm font-semibold"
+      >
+        <Plus className="size-4 shrink-0" />
+        <span className="truncate">{isActuallyOwned ? "Add another" : "Add"}</span>
       </Button>
     </div>
   );
 
+  /** Brand, number and box: which entry this is, before what it is called. */
+  const kicker = [shownCar.brand, shownCar.carNumber, shownCar.assortment, shownCar.size]
+    .map((v) => (v || "").trim())
+    .filter(Boolean);
+
+  const title =
+    shownCar.name ||
+    `${shownCar.make} ${shownCar.model} ${shownCar.variant || ""}`.trim() ||
+    "Unnamed car";
+
   return (
     <div className="relative flex h-full w-full min-h-0 flex-1 flex-col overflow-hidden">
-      <DialogTitle className="sr-only">{car.name} — catalogue</DialogTitle>
+      <DialogTitle className="sr-only">{title} — catalogue</DialogTitle>
       <DialogDescription className="sr-only">
-        What this casting is, its rarity and retail price, with a button to add it.
+        What this casting is, which boxes and colours it comes in, and who filed it.
       </DialogDescription>
 
-      {/* Desktop layout: 3 sections in equal size, side padding, image filled above title on left, 3rd column on See All */}
-      <div className="hidden w-fit md:flex md:h-[82vh] md:max-h-[82vh] md:flex-row md:items-stretch overflow-hidden px-5 xl:px-6 py-4 xl:py-5 divide-x divide-border">
-        {/* SECTION 1: Left Column - photo, title, the entry's details, and the
-            add button pinned under them. Laid out like a car's own details
-            page, where everything about the thing you are looking at is in one
-            column and the column beside it is about something else. */}
-        {/* The right padding is the gutter before the next column, so when
-            there is no next column — no shelves to draw, no owners opened — it
-            is dead space, and the card sits off-centre in its own window.
-            last:pr-0 takes it back exactly when nothing follows. */}
-        <div className="w-[360px] xl:w-[390px] shrink-0 pr-5 xl:pr-6 last:pr-0 xl:last:pr-0 flex flex-col h-full overflow-hidden justify-between">
-          {/* The scrollbar takes a real 10px out of this column, and taking it
-              from one side alone is what left the card sitting left of centre.
-              Reserving the gutter on both edges spends the same space twice and
-              reads as padding. */}
-          <div className="flex-1 overflow-y-auto [scrollbar-gutter:stable_both-edges] space-y-4">
-            <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-xs bg-muted/20 border border-border/60 shrink-0">
-              <HeroCarImage car={car} />
+      {/* =====================================================================
+          1. DESKTOP & TABLET: the same window a car you own opens in — the
+          name heads it, the photograph holds the left, and the right is
+          whichever reading you asked for.
+          ===================================================================== */}
+      <div className="hidden md:flex md:max-h-[88vh] md:w-[min(1100px,calc(100vw-4rem))] md:flex-col overflow-hidden">
+        {/* The extra 10px is the scrollbar gutter the body below reserves on
+            both edges: without it the header grid is 20px wider than the body
+            grid and the two stop lining up. */}
+        <div className="grid shrink-0 grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] items-center gap-8 px-[calc(2rem+10px)] pb-5 pt-7">
+          <div className="flex min-w-0 items-start justify-between gap-4">
+            <div className="min-w-0">
+              {kicker.length > 0 && (
+                <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                  {kicker.map((part, i) => (
+                    <span key={`${part}-${i}`} className="flex items-center gap-2">
+                      {i > 0 && <span className="text-primary/40">·</span>}
+                      <span className="truncate">{part}</span>
+                    </span>
+                  ))}
+                </p>
+              )}
+              <h2 className="mt-1.5 truncate text-2xl font-bold tracking-tight text-foreground xl:text-3xl">
+                {title}
+              </h2>
             </div>
-            <CatalogCarTitleSection
-              car={car}
-              catalogCar={catalogCar}
-              owned={isActuallyOwned}
-              isIso={isActuallyIso}
-              preOrder={preOrder}
-              owners={owners}
-              ownersLoading={ownersLoading}
-              onSeeAllOwners={handleSeeAll}
-            />
-            <CatalogDetailsBody
-              car={car}
-              catalogCar={catalogCar}
-              preOrder={preOrder}
-              expectedDate={expectedDate}
-              owned={isActuallyOwned}
-              isIso={isActuallyIso}
-              showTitle={false}
-              owners={owners}
-              ownersLoading={ownersLoading}
-              onSeeAllOwners={handleSeeAll}
-            />
+
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close"
+              aria-label="Close"
+              className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-full bg-foreground text-background transition-transform hover:scale-105 active:scale-95"
+            >
+              <X className="size-4" />
+            </button>
           </div>
-          {/* px-2.5 is the scrollbar gutter above it: the buttons sit outside
-              the scroller, so without it they were 10px wider on each side than
-              everything they are under. */}
-          <div className="sticky bottom-0 z-10 shrink-0 border-t border-border bg-background/95 backdrop-blur-xs px-2.5 pt-3 pb-1 flex items-center gap-2.5">
-            {actionButtons}
-          </div>
+
+          <CarTabSwitch value={tab} onChange={setTab} tabs={tabs} className="flex w-full" />
         </div>
 
-        {/* SECTION 2: Middle Column - what else the catalogue holds nearby.
-            Dropped entirely when there is nothing to put in it, rather than
-            standing there empty. */}
-        {catalogCar && onSelectCatalogCar && (
-          <CatalogRelatedShelves
-            entry={catalogCar}
-            onSelect={onSelectCatalogCar}
-            header={catalogHasPack ? <PackContents packCarId={catalogCar.car_id} /> : null}
-            limit={catalogHasPack ? 1 : 2}
-            className={cn(
-              "w-[360px] xl:w-[390px] shrink-0 h-full overflow-y-auto scrollbar-thin",
-              showOwnersColumn ? "px-5 xl:px-6" : "pl-5 xl:pl-6",
-            )}
-          />
-        )}
+        <div className="flex-1 space-y-7 overflow-y-auto px-8 pb-7 [scrollbar-gutter:stable_both-edges]">
+          <div className="grid grid-cols-[minmax(0,1.02fr)_minmax(0,1fr)] items-stretch gap-8">
+            {/* self-start so the picture keeps its own shape: stretched to the
+                row it would take whatever height the tab beside it came to. */}
+            <div className="relative aspect-4/3 w-full self-start overflow-hidden rounded-2xl border border-border/60 bg-white">
+              <HeroCarImage car={shownCar} contain />
+            </div>
 
-        {/* SECTION 3: Right Column - Owners (Only when See All is clicked, do not auto scale) */}
-        {showOwnersColumn && (
-          <div className="w-[360px] xl:w-[390px] shrink-0 pl-5 xl:pl-6 flex flex-col h-full overflow-hidden">
-            <CatalogOwnersColumn
-              owners={owners}
-              loading={ownersLoading}
-              carName={car.name || `${car.make} ${car.model}`}
-              onClose={() => onToggleOwnersColumn?.(false)}
-            />
+            <div className="flex min-w-0 flex-col justify-between gap-6">
+              {tabBody(false)}
+              {actions}
+            </div>
           </div>
-        )}
+
+          {shelfRow}
+        </div>
       </div>
 
-      {/* Phone: the same photo-under-card layout as a car's own details. */}
+      {/* =====================================================================
+          2. PHONE: the photo, then the same readings stacked over it.
+          ===================================================================== */}
       <div
         ref={mobile.rootRef}
-        className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-background md:hidden"
-        style={{ "--hero-h": "clamp(320px, 44vh, 480px)" } as React.CSSProperties}
+        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background"
+        style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
       >
-        <div className="relative min-h-0 flex-1">
+        <div className="relative flex-1 min-h-0">
           <div
             ref={mobile.heroRef}
-            className="absolute inset-x-0 top-0 z-0 w-full select-none overflow-hidden bg-muted/60"
+            className="absolute inset-x-0 top-0 z-0 w-full overflow-hidden bg-white select-none"
             style={{ height: "var(--hero-h)" }}
           >
-            <HeroCarImage car={car} />
+            <HeroCarImage car={shownCar} />
           </div>
+
+          {/* The warmth behind the sheet, which is part of the window rather
+              than part of what scrolls in it. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]"
+            style={{
+              top: "calc(var(--hero-h) - 1.5rem)",
+              background:
+                "radial-gradient(120% 55% at 88% 0%, color-mix(in oklab, var(--accent) 26%, transparent), transparent 70%)",
+            }}
+          />
+
           <div
             ref={mobile.scrollRef}
             className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden overscroll-contain"
@@ -2627,61 +2613,66 @@ function CatalogDetailsContent({
                 className="shrink-0"
                 style={{ height: "calc(var(--hero-h) - 1.5rem)" }}
               />
+
               <div
                 ref={mobile.cardRef}
-                className="relative flex-1 rounded-t-3xl border-t border-border bg-background px-4 pb-6 pt-5 shadow-[0_-8px_24px_rgba(0,0,0,0.1)]"
+                className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
               >
-                <CatalogDetailsBody
-                  car={car}
-                  catalogCar={catalogCar}
-                  preOrder={preOrder}
-                  expectedDate={expectedDate}
-                  owned={isActuallyOwned}
-                  isIso={isActuallyIso}
-                  showTitle={true}
-                  owners={owners}
-                  ownersLoading={ownersLoading}
-                  onSeeAllOwners={() => setOwnersModalOpen(true)}
-                />
-                {catalogCar && onSelectCatalogCar && (
-                  <CatalogRelatedShelves
-                    entry={catalogCar}
-                    onSelect={onSelectCatalogCar}
-                    header={catalogHasPack ? <PackContents packCarId={catalogCar.car_id} /> : null}
-                    limit={catalogHasPack ? 1 : 2}
-                    className="pt-5"
-                  />
-                )}
+                <div className="relative space-y-5">
+                  <div className="min-w-0">
+                    {kicker.length > 0 && (
+                      <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                        {kicker.map((part, i) => (
+                          <span key={`${part}-${i}`} className="flex items-center gap-2">
+                            {i > 0 && <span className="text-primary/40">·</span>}
+                            <span className="truncate">{part}</span>
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                    <h2 className="mt-1.5 text-2xl font-bold tracking-tight text-foreground">
+                      {title}
+                    </h2>
+                  </div>
+
+                  <CarTabSwitch value={tab} onChange={setTab} tabs={tabs} className="flex w-full" />
+
+                  {tabBody(false)}
+
+                  {shelfRow}
+                </div>
               </div>
             </div>
           </div>
+
           <div
             ref={mobile.pillRef}
             aria-hidden
-            className="pointer-events-none absolute left-1/2 top-2.5 z-20 -translate-x-1/2 px-4 py-1"
+            className="pointer-events-none absolute top-2.5 left-1/2 z-20 -translate-x-1/2 py-1 px-4"
           >
             <div className="h-1.5 w-12 rounded-full bg-white/85 shadow-md backdrop-blur-md" />
           </div>
           <button
             type="button"
             onClick={onClose}
+            title="Close details"
             aria-label="Close"
-            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 flex size-8 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white backdrop-blur-md transition-colors hover:bg-black/70 active:scale-95"
+            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
           >
             <X className="size-4" />
           </button>
         </div>
-        <div className="z-20 shrink-0 border-t border-border bg-background/95 p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)] backdrop-blur-md">
-          {actionButtons}
+
+        <div className="shrink-0 z-20 border-t border-border bg-background/95 backdrop-blur-md p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
+          {actions}
         </div>
       </div>
 
-      {/* Mobile Dialog fallback when See All is clicked on phone */}
       {isAdmin && (
         <CatalogOwnersDialog
           open={ownersModalOpen}
           onClose={() => setOwnersModalOpen(false)}
-          carName={car.name || `${car.make} ${car.model}`}
+          carName={title}
           owners={owners}
           loading={ownersLoading}
         />
@@ -2690,549 +2681,6 @@ function CatalogDetailsContent({
   );
 }
 
-function CatalogDetailsBody({
-  car,
-  catalogCar,
-  preOrder,
-  expectedDate,
-  owned,
-  isIso,
-  showTitle = true,
-  owners: externalOwners,
-  ownersLoading: externalOwnersLoading,
-  onSeeAllOwners,
-}: {
-  car: Diecast;
-  catalogCar?: CatalogCar | null;
-  preOrder: boolean;
-  expectedDate?: string | null;
-  owned: boolean;
-  isIso?: boolean;
-  showTitle?: boolean;
-  owners?: CatalogCarOwner[];
-  ownersLoading?: boolean;
-  onSeeAllOwners?: () => void;
-}) {
-  const rarity = rarityOf(car);
-  const { catalog } = useCatalog();
-
-  /**
-   * The same casting in every box the catalogue knows it in. One entry is the
-   * ordinary case and shows no control at all.
-   */
-  const siblings = useMemo(
-    () => (catalogCar ? castingSiblings(catalogCar, catalog) : []),
-    [catalogCar, catalog],
-  );
-  const [shownId, setShownId] = useState(catalogCar?.car_id ?? "");
-  useEffect(() => {
-    setShownId(catalogCar?.car_id ?? "");
-  }, [catalogCar?.car_id]);
-  const shown = siblings.find((s) => s.car_id === shownId) ?? catalogCar;
-  /** Every colour this casting is known in, the entry's own first. */
-  const castingColours = shown ? catalogColours(shown) : [];
-
-  const addedBy = resolveCatalogUserId(shown?.created_by);
-  const addedOn = formatDayMonthYear(shown?.created_at) || "—";
-  // An entry nobody has corrected has no editor and no edit date. Falling back
-  // to the creator and the filing date, as this used to, described an edit that
-  // never happened — and now that the column exists it can say so instead.
-  const edited = Boolean(shown?.updated_by);
-  const updatedBy = edited ? resolveCatalogUserId(shown?.updated_by) : "—";
-  const updatedOn = edited ? formatDayMonthYear(shown?.updated_at) || "—" : "—";
-
-  const { isAdmin, user, profile } = useAuth();
-  const mine = useCars();
-  const [internalOwners, setInternalOwners] = useState<CatalogCarOwner[]>([]);
-  const [internalOwnersLoading, setInternalOwnersLoading] = useState(false);
-  const [ownersModalOpen, setOwnersModalOpen] = useState(false);
-
-  const owners = externalOwners ?? internalOwners;
-  const ownersLoading = externalOwnersLoading ?? internalOwnersLoading;
-
-  const matchingUserCar = useMemo(() => {
-    if (!catalogCar?.car_id) return null;
-    const clean = catalogCar.car_id.trim().toUpperCase();
-    return (
-      mine.find((c) => (c.catalogId || "").trim().toUpperCase() === clean) ||
-      mine.find((c) => (c.id || "").trim().toUpperCase() === clean) ||
-      mine.find((c) => (c.carId || "").trim().toUpperCase() === clean) ||
-      mine.find(
-        (c) =>
-          c.make?.trim().toLowerCase() === catalogCar.make?.trim().toLowerCase() &&
-          c.model?.trim().toLowerCase() === catalogCar.model?.trim().toLowerCase() &&
-          c.brand?.trim().toLowerCase() === catalogCar.brand?.trim().toLowerCase() &&
-          (!catalogCar.assortment ||
-            c.assortment?.trim().toLowerCase() === catalogCar.assortment?.trim().toLowerCase()),
-      ) ||
-      null
-    );
-  }, [mine, catalogCar]);
-
-  useEffect(() => {
-    if (externalOwners !== undefined) return;
-    if (!catalogCar?.car_id) {
-      setInternalOwners([]);
-      return;
-    }
-    let cancelled = false;
-    setInternalOwnersLoading(true);
-    // Every box this casting comes in, so the count is the casting's and not
-    // one package's. Only the entry actually open can claim the viewer's own
-    // copy; the others are answered from the database alone.
-    getCastingOwners(siblings.length ? siblings : [catalogCar], (entry) => ({
-      catalogCar: entry,
-      isOwned: owned && entry.car_id === catalogCar.car_id,
-      currentUser: user ? { uid: user.id, email: user.email, profile } : null,
-      userCar: entry.car_id === catalogCar.car_id ? matchingUserCar : null,
-    }))
-      .then((data) => {
-        if (!cancelled) setInternalOwners(data);
-      })
-      .finally(() => {
-        if (!cancelled) setInternalOwnersLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    externalOwners,
-    catalogCar?.car_id,
-    catalogCar,
-    siblings,
-    owned,
-    user,
-    profile,
-    matchingUserCar,
-  ]);
-
-  return (
-    <div className="space-y-4">
-      {showTitle && (
-        <>
-          <div>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-1.5 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <span>{car.brand || "—"}</span>
-                {car.assortment && (
-                  <>
-                    <span className="text-muted-foreground/40">·</span>
-                    <span className="truncate">{car.assortment}</span>
-                  </>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {isIso && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-400">
-                    <Search className="size-3" />
-                    <span>On your ISO list</span>
-                  </span>
-                )}
-                {owned && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-                    <CheckCircle2 className="size-3" />
-                    <span>In your collection</span>
-                  </span>
-                )}
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium",
-                    preOrder
-                      ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
-                      : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
-                  )}
-                >
-                  {preOrder ? "PO" : "Released"}
-                </span>
-              </div>
-            </div>
-            <h2 className="mt-1 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-              {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-            </h2>
-            {/* The count is a statement, not a control. It used to be the
-                clickable thing, which meant the only way to discover the owner
-                list was to try tapping a sentence. "View all" beside it is the
-                button, and only an admin has one — the list is people. */}
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <p className="text-xs text-muted-foreground">
-                {ownersLine(ownersLoading, ownerCount(owners))}
-              </p>
-              {isAdmin && onSeeAllOwners && !ownersLoading && owners.length > 0 && (
-                <button
-                  type="button"
-                  onClick={onSeeAllOwners}
-                  className="text-xs font-medium text-primary transition-colors hover:text-primary/80 cursor-pointer"
-                >
-                  View all
-                </button>
-              )}
-            </div>
-          </div>
-
-          <hr className="border-border" />
-        </>
-      )}
-
-      {/* Make, model and year are deliberately absent: the title above already
-          says them, and repeating them three rows later was the spec grid's
-          least useful third. */}
-      <SpecGrid>
-        {/* A casting comes out in several colours and stays one casting, so
-            the entry lists them; which one you own is on your own car. */}
-        <Spec
-          label={castingColours.length > 1 ? "Colours" : "Colour"}
-          value={castingColours.length > 1 ? castingColours.join(" · ") : car.colour}
-        />
-        <Spec label="Assortment" value={car.assortment} />
-        <Spec label="Series" value={car.series} />
-        <Spec label="Sub series" value={car.subSeries} />
-        <Spec label="Car number" value={car.carNumber} />
-        <Spec label="Retail / MRP" value={car.mrp ? inrFull(Math.round(car.mrp)) : ""} />
-      </SpecGrid>
-
-      <hr className="border-border" />
-
-      {/* Read-only here: the rarity is the catalogue's, not something to tap. */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border/80 bg-muted/20 p-2.5 sm:p-3">
-        {(["Chase", "TH", "STH"] as const).map((r) => (
-          <span
-            key={r}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold",
-              rarity === r
-                ? "border-accent/50 bg-accent/20 text-foreground shadow-xs"
-                : "border-border/80 bg-background/80 text-muted-foreground/60",
-            )}
-          >
-            <Flame
-              className={cn(
-                "size-4 shrink-0",
-                rarity === r ? RARITY_FLAME[r] : "text-muted-foreground/50",
-              )}
-            />
-            {r}
-          </span>
-        ))}
-      </div>
-
-      <hr className="border-border" />
-
-      {/* Provenance section: Catalogue ID on top, no section title, no people who owns it */}
-      <div>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
-          <div className="col-span-2">
-            {siblings.length > 1 ? (
-              /* Sold in more than one box, so there is more than one entry and
-                 more than one price. A segment control used to pick between
-                 them, which hid the very thing worth seeing: the ID, the box
-                 and what that box lists at, on a line each. Picking one is what
-                 the four lines below are about. */
-              <div>
-                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
-                  Casting
-                  {/* The ID the boxes share. Each of theirs is this one with
-                      its box put back in, which is the whole of how they are
-                      related — worth saying once, above them. */}
-                  <span className="font-mono normal-case tracking-normal text-foreground">
-                    {castingId(shown ?? siblings[0])}
-                  </span>
-                </p>
-                <ul className="mt-1 divide-y divide-border/60 overflow-hidden rounded-lg border border-border/80">
-                  {siblings.map((sib) => {
-                    const boxColours = catalogColours(sib);
-                    return (
-                      <li key={sib.car_id} className="flex items-center">
-                        <button
-                          type="button"
-                          onClick={() => setShownId(sib.car_id)}
-                          aria-current={sib.car_id === shownId}
-                          className={cn(
-                            "flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2 text-left text-xs transition-colors",
-                            sib.car_id === shownId
-                              ? "bg-primary/10 text-foreground"
-                              : "text-muted-foreground hover:bg-muted/40",
-                          )}
-                        >
-                          <span className="shrink-0 font-mono text-[11px]">{sib.car_id}</span>
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate">{sib.assortment || "—"}</span>
-                            {/* This box's colours, not the casting's: a Box in
-                                six and a Blister in two are two answers. */}
-                            {boxColours.length > 0 && (
-                              <span className="block truncate text-[10px] text-muted-foreground">
-                                {boxColours.join(" · ")}
-                              </span>
-                            )}
-                          </span>
-                          <span className="shrink-0 tabular-nums font-medium">
-                            {Number(sib.mrp) ? inrFull(Math.round(Number(sib.mrp))) : "—"}
-                          </span>
-                        </button>
-                        <CopyId id={sib.car_id} className="mr-1.5" />
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            ) : (
-              (() => {
-                const id = shown?.car_id || car.catalogId || car.id || "";
-                return (
-                  <div className="flex items-end gap-1">
-                    <Spec label="Catalogue ID" value={id || "—"} className="font-mono" />
-                    {id ? <CopyId id={id} className="mb-0.5" /> : null}
-                  </div>
-                );
-              })()
-            )}
-          </div>
-          {preOrder && expectedDate && (
-            <div className="col-span-2">
-              <Spec
-                label="Expected date"
-                value={formatDayMonthYear(expectedDate) || expectedDate}
-              />
-            </div>
-          )}
-          {catalogCar && (
-            <>
-              <Spec label="Added by" value={addedBy} />
-              <Spec label="Added on" value={addedOn} />
-              <Spec label="Updated by" value={updatedBy} />
-              <Spec label="Updated on" value={updatedOn} />
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* Under the IDs, because it is about which of them belong together. */}
-      <AssortmentSuggestions catalogId={shown?.car_id || car.catalogId} />
-
-      {isAdmin && !onSeeAllOwners && (
-        <CatalogOwnersDialog
-          open={ownersModalOpen}
-          onClose={() => setOwnersModalOpen(false)}
-          carName={car.name || `${car.make} ${car.model}`}
-          owners={owners}
-          loading={ownersLoading}
-        />
-      )}
-    </div>
-  );
-}
-
-export function CatalogCarTitleSection({
-  car,
-  catalogCar,
-  owned,
-  isIso,
-  preOrder,
-  owners,
-  ownersLoading,
-  onSeeAllOwners,
-}: {
-  car: Diecast;
-  catalogCar?: CatalogCar | null;
-  owned: boolean;
-  isIso?: boolean;
-  preOrder: boolean;
-  owners?: CatalogCarOwner[];
-  ownersLoading?: boolean;
-  onSeeAllOwners?: () => void;
-}) {
-  const { isAdmin } = useAuth();
-  const ownersList = owners || [];
-
-  return (
-    <div className="space-y-2.5">
-      {/* Brand & Assortment on the left, status tags on the right */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 min-w-0 text-xs font-semibold uppercase tracking-wider text-muted-foreground truncate">
-          <span>{car.brand || "—"}</span>
-          {car.assortment && (
-            <>
-              <span className="text-muted-foreground/40">·</span>
-              <span className="truncate">{car.assortment}</span>
-            </>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          {isIso && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[11px] font-medium text-sky-400">
-              <Search className="size-3" />
-              <span>On your ISO list</span>
-            </span>
-          )}
-          {owned && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-400">
-              <CheckCircle2 className="size-3" />
-              <span>In your collection</span>
-            </span>
-          )}
-          <span
-            className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium",
-              preOrder
-                ? "border-amber-500/40 bg-amber-500/10 text-amber-400"
-                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
-            )}
-          >
-            {preOrder ? "PO" : "Released"}
-          </span>
-        </div>
-      </div>
-
-      {/* Car title */}
-      <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl leading-snug">
-        {car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car"}
-      </h2>
-
-      {/* Same rule as the desktop layout: the count states, "View all" acts. */}
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <p className="text-xs text-muted-foreground">
-          {ownersLine(Boolean(ownersLoading), ownerCount(ownersList))}
-        </p>
-        {isAdmin && onSeeAllOwners && !ownersLoading && ownersList.length > 0 && (
-          <button
-            type="button"
-            onClick={onSeeAllOwners}
-            className="text-xs font-medium text-primary transition-colors hover:text-primary/80 cursor-pointer"
-          >
-            View all
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function CatalogOwnersColumn({
-  owners,
-  loading,
-  carName,
-  onClose,
-}: {
-  owners: CatalogCarOwner[];
-  loading: boolean;
-  carName: string;
-  onClose: () => void;
-}) {
-  const [search, setSearch] = useState("");
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return owners;
-    return owners.filter((o) => {
-      return (
-        (o.display_name && o.display_name.toLowerCase().includes(q)) ||
-        (o.user_id && o.user_id.toLowerCase().includes(q)) ||
-        (o.first_name && o.first_name.toLowerCase().includes(q)) ||
-        (o.last_name && o.last_name.toLowerCase().includes(q))
-      );
-    });
-  }, [owners, search]);
-
-  return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2 pb-3 border-b border-border/60 shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <h3 className="text-sm font-semibold text-foreground truncate">People who own it</h3>
-          <span className="rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-xs font-semibold tabular-nums shrink-0">
-            {owners.length}
-          </span>
-        </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="size-7 text-muted-foreground hover:text-foreground cursor-pointer shrink-0"
-        >
-          <X className="size-4" />
-        </Button>
-      </div>
-
-      {/* Search filter if many owners */}
-      {owners.length > 4 && (
-        <div className="pt-3 pb-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search owners..."
-              className="h-8 pl-8 text-xs"
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Owners list */}
-      <div className="flex-1 overflow-y-auto pt-3 space-y-2 scrollbar-thin pr-1">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-            <span className="text-xs">Loading owners...</span>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-            <Users className="size-8 stroke-[1.5] mb-2 opacity-40" />
-            <span className="text-xs font-medium">
-              {search ? "No matching owners" : "No registered owners yet"}
-            </span>
-          </div>
-        ) : (
-          filtered.map((o) => {
-            const initials = (o.display_name || o.user_id || "U").slice(0, 2).toUpperCase();
-            return (
-              <div
-                key={o.auth_uid || o.user_id}
-                className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/40 transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="size-8 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-                    {initials}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-foreground truncate">
-                      {o.display_name}
-                    </div>
-                    {o.user_id && o.user_id !== o.display_name && (
-                      <div className="text-[10px] text-muted-foreground truncate">@{o.user_id}</div>
-                    )}
-                  </div>
-                </div>
-                <div className="text-[11px] text-muted-foreground tabular-nums shrink-0">
-                  {o.date_added && o.date_added !== "—"
-                    ? formatDayMonthYear(o.date_added) || o.date_added
-                    : "Owned"}
-                </div>
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * What is in a box, wherever a box is shown.
- *
- * Takes the pack's catalogue id and resolves the rest itself, because it is
- * wanted in two places that hold different things: the catalogue's own details
- * view, which has the entry, and an owned car's, which has only the Catalog ID
- * its row points at. Renders nothing at all for an entry that is not a pack,
- * which is all but a few dozen of them.
- */
-/**
- * The catalogue entry behind a car, and what is in it when it is a box.
- *
- * Shared, because the panel that draws the contents is no longer the only
- * thing that needs to know: the layout decides how many "More from" shelves
- * fit beside them.
- */
 function usePack(packCarId?: string | null) {
   const { catalog, packMembers } = useCatalog();
 

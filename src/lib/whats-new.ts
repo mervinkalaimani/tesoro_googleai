@@ -26,6 +26,28 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 258,
+    at: "2026-10-01T05:10",
+    changes: [
+      {
+        key: true,
+        text: "A catalogue entry opens in the same window a car you own does: the name heads it, the photograph holds the left, and Details, What's Inside and Record sit on the right.",
+      },
+      {
+        text: "The colours and the boxes a casting comes in are now things you pick, and what you pick is what Add files — the red one in the blister, not whichever entry the card stood for.",
+      },
+      {
+        text: "Linking a car to a catalogue entry that is known in several colours asks which one it is, instead of quietly taking the first.",
+      },
+      {
+        text: "One shelf under both pages, and it is the narrowest thing that holds: the set when the set has more than three cars, else the series, else the casting's own make and model.",
+      },
+      {
+        text: "Every field reads caption on the left, answer on the right, on a phone and on a wide screen alike.",
+      },
+    ],
+  },
+  {
     build: 257,
     at: "2026-10-01T04:00",
     changes: [

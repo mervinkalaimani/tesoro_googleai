@@ -2779,10 +2779,16 @@ export function CarFormDialog({
         open={relinkOpen}
         onClose={() => setRelinkOpen(false)}
         car={initial ?? null}
-        onPick={(entry) => {
+        askColour
+        onPick={(entry, colour) => {
           setRelinkedTo(entry.car_id);
+          // The one detail the dialog did ask about. Everything else is left
+          // exactly as typed — "Get from Catalogue" is there for the rest.
+          if (colour) set("colour", colour);
           toast.success(`Linked to ${entry.name || entry.car_id}`, {
-            description: "Save to keep it. The details here are unchanged.",
+            description: colour
+              ? `Saved as ${colour}. Save to keep it.`
+              : "Save to keep it. The details here are unchanged.",
           });
         }}
         title="Which casting is this car?"

@@ -161,8 +161,10 @@ export function UploadCarsDialog({
   };
 
   /** Point a row at a casting that already exists, instead of filing a new one. */
-  const linkRow = (row: number, catalogId: string) => {
-    setParsedCars((prev) => prev.map((c, i) => (i === row ? { ...c, catalogId } : c)));
+  const linkRow = (row: number, catalogId: string, colour?: string) => {
+    setParsedCars((prev) =>
+      prev.map((c, i) => (i === row ? { ...c, catalogId, ...(colour ? { colour } : {}) } : c)),
+    );
   };
 
   /**
@@ -874,8 +876,9 @@ export function UploadCarsDialog({
         open={linking !== null}
         onClose={() => setLinking(null)}
         car={linking === null ? null : (previewCars[linking] ?? null)}
-        onPick={(entry) => {
-          if (linking !== null) linkRow(linking, entry.car_id);
+        askColour
+        onPick={(entry, colour) => {
+          if (linking !== null) linkRow(linking, entry.car_id, colour);
         }}
         title="Which casting is this?"
       />

@@ -12,8 +12,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCatalog } from "@/lib/catalog-store";
 import { catalogueCandidates } from "@/lib/catalogue-candidates";
-import type { CatalogCar } from "@/lib/catalog";
+import { catalogColours, type CatalogCar } from "@/lib/catalog";
 import { carSubLine } from "@/lib/car-subline";
+import { cn } from "@/lib/utils";
 import { inrFull } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
 
@@ -31,16 +32,51 @@ export function CatalogueLinkDialog({
   onClose,
   car,
   onPick,
+  askColour = false,
   title = "Link to a catalogue entry",
 }: {
   open: boolean;
   onClose: () => void;
   car: Diecast | null;
-  onPick: (entry: CatalogCar) => void;
+  /** The colour is given only when the second step actually asked for it. */
+  onPick: (entry: CatalogCar, colour?: string) => void;
+  /**
+   * Ask which colour, when the entry is known in several.
+   *
+   * Only for the callers the answer belongs to — a car being filed, a row being
+   * imported. Attaching another box to a casting is not a question about
+   * colour, and a step with nothing behind it is one more tap.
+   */
+  askColour?: boolean;
   title?: string;
 }) {
   const { catalog } = useCatalog();
   const [query, setQuery] = useState("");
+  /**
+   * The entry chosen, while it is still being asked which colour of it.
+   *
+   * A casting comes out in several colours and stays one casting, so the entry
+   * answers "which casting is this" and leaves "which one of them" open. Taking
+   * the entry's first colour silently was the old behaviour and quietly filed
+   * the red one as blue; this asks, and only when there is something to ask.
+   */
+  const [pending, setPending] = useState<CatalogCar | null>(null);
+
+  const close = () => {
+    setQuery("");
+    setPending(null);
+    onClose();
+  };
+
+  /** Straight through when the entry is known in one colour. */
+  const choose = (entry: CatalogCar) => {
+    if (askColour && catalogColours(entry).length > 1) {
+      setPending(entry);
+      return;
+    }
+    onPick(entry);
+    close();
+  };
 
   const candidates = useMemo(
     () => (car ? catalogueCandidates(car, catalog, { query }) : []),
@@ -61,10 +97,7 @@ export function CatalogueLinkDialog({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) {
-          setQuery("");
-          onClose();
-        }
+        if (!v) close();
       }}
     >
       <DialogContent className="flex max-h-[85svh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg sm:p-0">
@@ -75,11 +108,13 @@ export function CatalogueLinkDialog({
           </div>
           <DialogTitle className="mt-1 text-base font-semibold">{title}</DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            {car
-              ? `Matched on brand, make, model, series, sub series, colour and car number for ${car.name || "this car"}.`
-              : "No car selected."}
+            {pending
+              ? `${pending.name} comes in ${catalogColours(pending).length} colours. Which one is this?`
+              : car
+                ? `Matched on brand, make, model, series, sub series, colour and car number for ${car.name || "this car"}.`
+                : "No car selected."}
           </DialogDescription>
-          <div className="relative mt-2">
+          <div className={cn("relative mt-2", pending && "hidden")}>
             <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
             <Input
               value={query}
@@ -102,7 +137,23 @@ export function CatalogueLinkDialog({
         {/* In the flow, not a floating panel: a positioned list gets clipped to
             nothing inside a dialog that scrolls. */}
         <div className="min-h-0 flex-1 divide-y divide-border/50 overflow-y-auto p-2">
-          {candidates.length === 0 ? (
+          {pending ? (
+            <div className="flex flex-wrap gap-2 p-2">
+              {catalogColours(pending).map((colour) => (
+                <button
+                  key={colour}
+                  type="button"
+                  onClick={() => {
+                    onPick({ ...pending, colour }, colour);
+                    close();
+                  }}
+                  className="cursor-pointer rounded-full border border-border/80 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground"
+                >
+                  {colour}
+                </button>
+              ))}
+            </div>
+          ) : candidates.length === 0 ? (
             <div className="px-4 py-10 text-center text-sm text-muted-foreground">
               <Car className="mx-auto mb-2 size-7 text-muted-foreground/40" />
               <p className="font-medium text-foreground">
@@ -119,11 +170,7 @@ export function CatalogueLinkDialog({
               <button
                 key={entry.car_id}
                 type="button"
-                onClick={() => {
-                  onPick(entry);
-                  setQuery("");
-                  onClose();
-                }}
+                onClick={() => choose(entry)}
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
               >
                 <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-muted/30">
@@ -157,8 +204,14 @@ export function CatalogueLinkDialog({
         </div>
 
         <div className="shrink-0 border-t border-border bg-muted/20 px-4 py-3 text-right">
-          <Button type="button" size="sm" variant="outline" onClick={onClose} className="text-xs">
-            Cancel
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => (pending ? setPending(null) : close())}
+            className="text-xs"
+          >
+            {pending ? "Back" : "Cancel"}
           </Button>
         </div>
       </DialogContent>

@@ -1062,17 +1062,17 @@ function CatalogPage() {
           setViewing(null);
           setEditing(target);
         }}
-        onAdd={() => {
+        onAdd={(pick) => {
           setAddingIso(false);
-          setAdding(viewing);
+          setAdding(pick ?? viewing);
           setViewing(null);
         }}
         onAddIso={
           isGuest
             ? undefined
-            : () => {
+            : (pick) => {
                 setAddingIso(true);
-                setAdding(viewing);
+                setAdding(pick ?? viewing);
                 setViewing(null);
               }
         }
