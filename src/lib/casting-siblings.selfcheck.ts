@@ -113,6 +113,22 @@ const shelby = hw({ car_id: "H1", variant: "Shelby GT500", colour: "Blue", car_n
 const mache = hw({ car_id: "H2", variant: "Mach E 1400", colour: "Black", car_number: "2/10" });
 assert.deepEqual(clubbed(shelby, [shelby, mache]), ["H1"]);
 
+// Detached on purpose: the one thing the description cannot say. The same
+// rule `castingKey` and `boxSiblings` apply, and from either side of the pair.
+const twinA = car({ car_id: "T1", car_number: "1336" });
+const twinB = car({ car_id: "T2", car_number: "1336", assortment: "Blister" });
+assert.deepEqual(clubbed(twinA, [twinA, twinB]), ["T1", "T2"], "they club by default");
+assert.deepEqual(
+  clubbed(twinA, [twinA, { ...twinB, standalone: true }]),
+  ["T1"],
+  "a detached entry is not another box of this one",
+);
+assert.deepEqual(
+  clubbed({ ...twinA, standalone: true }, [twinA, twinB]),
+  ["T1"],
+  "and a detached entry has no other boxes of its own",
+);
+
 // The entry itself comes first, whatever the rest sort to.
 const [first] = castingSiblings(cadillacB, [cadillacA, cadillacB]);
 assert.equal(first.car_id, "B");

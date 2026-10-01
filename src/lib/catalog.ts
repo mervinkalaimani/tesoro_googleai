@@ -938,8 +938,15 @@ const collectorNumber = (c: CatalogCar) => (brandUsesCarNumber(c.brand) ? norm(c
  * With no number to go on, the colour and the variant have to match, or a
  * Defender 90 clubs with a Defender 110 and a Countach with a Countach 500s —
  * different castings whose twin was filed without its variant.
+ *
+ * `standalone` ends it before the description is read, on either side. It is
+ * the one thing the description cannot say — "these two are different products
+ * that happen to read the same" — and `castingKey` and `boxSiblings` have
+ * always honoured it. This did not, so detaching a box took it off the
+ * catalogue's card and left it on the details page, grouped as before.
  */
 const sameCasting = (a: CatalogCar, b: CatalogCar): boolean => {
+  if (a.standalone || b.standalone) return false;
   if (norm(a.brand) !== norm(b.brand)) return false;
   if (norm(a.make) !== norm(b.make) || norm(a.model) !== norm(b.model)) return false;
 

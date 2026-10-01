@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 259,
+    at: "2026-10-01T06:20",
+    changes: [
+      {
+        key: true,
+        text: 'Castings group again. A flag meaning "this one only looks like that one" was set on 1,637 of 1,639 catalogue entries, so every entry was its own casting and no box ever joined another — the Bathurst 12H AMG GT3 drew as a Blister and a Box rather than as one car in two boxes. The catalogue now reads 1,513 castings instead of 1,639.',
+      },
+      {
+        text: "Detaching a box now holds on the details page too. The card and the page had two different ideas of what one casting is, and only the card was honouring the flag.",
+      },
+    ],
+  },
+  {
     build: 258,
     at: "2026-10-01T05:10",
     changes: [
