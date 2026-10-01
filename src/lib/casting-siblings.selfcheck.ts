@@ -113,6 +113,60 @@ const shelby = hw({ car_id: "H1", variant: "Shelby GT500", colour: "Blue", car_n
 const mache = hw({ car_id: "H2", variant: "Mach E 1400", colour: "Black", car_number: "2/10" });
 assert.deepEqual(clubbed(shelby, [shelby, mache]), ["H1"]);
 
+// Hot Wheels prints a position, not a number, so there is no number to settle
+// it and the description is all there is. Two Skyline GT-Rs in Silver from two
+// different sets are two products, and were clubbing as one.
+const hwSkyline = (p: Partial<CatalogCar> & { car_id: string }) =>
+  car({
+    brand: "Hot Wheels",
+    make: "Nissan",
+    model: "Skyline",
+    variant: "GT-R",
+    colour: "Silver",
+    ...p,
+  });
+const silverSeries = hwSkyline({
+  car_id: "181X01-0D-0D06-1",
+  assortment: "Silver Series",
+  series: "Fast & Furious",
+  sub_series: "Brian O'Conner",
+  car_number: "3/5",
+});
+const popCulture = hwSkyline({
+  car_id: "181X01-06-0Z06-1",
+  assortment: "Premium",
+  series: "Pop Culture",
+  sub_series: "Gran Tourismo",
+});
+assert.deepEqual(
+  clubbed(silverSeries, [silverSeries, popCulture]),
+  ["181X01-0D-0D06-1"],
+  "a different series is a different product",
+);
+// Same series, different set inside it: still two products.
+const sameSeries = hwSkyline({
+  car_id: "181X01-06-0D05-1",
+  assortment: "Premium",
+  series: "Fast & Furious",
+  sub_series: "Brian O'Conner Diorama",
+});
+assert.deepEqual(
+  clubbed(silverSeries, [silverSeries, sameSeries]),
+  ["181X01-0D-0D06-1"],
+  "a different sub series is a different product",
+);
+// And the box of the same set still clubs, which is the whole point.
+const sameSet = hwSkyline({
+  car_id: "181X01-06-0D06-1",
+  assortment: "Premium",
+  series: "Fast & Furious",
+  sub_series: "Brian O'Conner",
+});
+assert.deepEqual(clubbed(silverSeries, [silverSeries, sameSet]).length, 2, "same set still clubs");
+// Silence is not disagreement: an entry filed without a set still joins one.
+const noSet = hwSkyline({ car_id: "181X01-06-0000-1", assortment: "Premium" });
+assert.deepEqual(clubbed(silverSeries, [silverSeries, noSet]).length, 2, "a blank set still joins");
+
 // Detached on purpose: the one thing the description cannot say. The same
 // rule `castingKey` and `boxSiblings` apply, and from either side of the pair.
 const twinA = car({ car_id: "T1", car_number: "1336" });

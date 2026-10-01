@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 260,
+    at: "2026-10-01T07:10",
+    changes: [
+      {
+        key: true,
+        text: "Add to ISO became Remove ISO once the casting is on your list. The button used to disappear, which read as done and left no way off the list from the catalogue at all — the wish could only be dropped by finding its row in My Cars.",
+      },
+      {
+        text: 'A set is part of what makes a casting. Hot Wheels prints a position rather than a number, so with no number to go on the Silver Series Skyline GT-R from Fast & Furious was clubbing with the Premium one from Pop Culture on the strength of "GT-R" and "Silver" alone — and showing two boxes for a car sold in one.',
+      },
+    ],
+  },
+  {
     build: 259,
     at: "2026-10-01T06:20",
     changes: [

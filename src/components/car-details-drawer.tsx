@@ -20,6 +20,7 @@ import {
   Plus,
   Search,
   Star,
+  Trash2,
   X,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -2274,7 +2275,10 @@ function CatalogDetailsContent({
   const mobile = useMobileHeroGestures(onClose);
   const { isAdmin, user, profile } = useAuth();
   const mine = useCars();
+  const { deleteCar } = useCarsActions();
   const { catalog, updateCatalogCar } = useCatalog();
+  /** The wish being taken back off the list, while it is being confirmed. */
+  const [dropIso, setDropIso] = useState(false);
   const [owners, setOwners] = useState<CatalogCarOwner[]>([]);
   const [ownersLoading, setOwnersLoading] = useState(false);
   const [ownersModalOpen, setOwnersModalOpen] = useState(false);
@@ -2469,24 +2473,38 @@ function CatalogDetailsContent({
           <span className="truncate">Update</span>
         </Button>
       )}
-      {/* Only while it is not already on the list — "Add to ISO" on a car you
-          are already looking for is an offer to file the same wish twice. Your
-          list, not the catalogue's: nobody else's is touched. */}
-      {onAddIso && !isActuallyIso && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => onAddIso(pick)}
-          title="Add to your ISO list"
-          // Three full labels do not fit a 375px phone. The wish list is the
-          // least used of the three, so it keeps the icon and gives up the
-          // words rather than clipping all three to half a word each.
-          className="h-11 w-11 shrink-0 cursor-pointer gap-2 px-0 text-sm font-semibold sm:w-auto sm:min-w-0 sm:flex-1 sm:px-2"
-        >
-          <Search className="size-3.5 shrink-0" />
-          <span className="hidden truncate sm:inline">Add to ISO</span>
-        </Button>
-      )}
+      {/* One button, both directions. It used to vanish once the casting was
+          on the list, which read as "done" and left no way back off the list
+          from the catalogue at all — the wish could only be dropped by finding
+          its row in My Cars. Your list either way: nobody else's is touched.
+
+          Three full labels do not fit a 375px phone, so this one keeps its
+          icon and gives up its words rather than clipping all three to half a
+          word each. */}
+      {onAddIso &&
+        (isActuallyIso ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setDropIso(true)}
+            title="Take this off your ISO list"
+            className="h-11 w-11 shrink-0 cursor-pointer gap-2 px-0 text-sm font-semibold text-rose-500 hover:text-rose-500 sm:w-auto sm:min-w-0 sm:flex-1 sm:px-2"
+          >
+            <Trash2 className="size-3.5 shrink-0" />
+            <span className="hidden truncate sm:inline">Remove ISO</span>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onAddIso(pick)}
+            title="Add to your ISO list"
+            className="h-11 w-11 shrink-0 cursor-pointer gap-2 px-0 text-sm font-semibold sm:w-auto sm:min-w-0 sm:flex-1 sm:px-2"
+          >
+            <Search className="size-3.5 shrink-0" />
+            <span className="hidden truncate sm:inline">Add to ISO</span>
+          </Button>
+        ))}
       <Button
         type="button"
         onClick={() => onAdd(pick)}
@@ -2667,6 +2685,39 @@ function CatalogDetailsContent({
           {actions}
         </div>
       </div>
+
+      {/* A wish is not a purchase record, so this asks once rather than making
+          you type a word — and the row it drops is undoable from the top bar
+          like any other car. */}
+      <Dialog open={dropIso} onOpenChange={setDropIso}>
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle className="text-lg font-semibold">Take this off your ISO list?</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{title}</span> stays in the catalogue. You
+            are only saying you have stopped looking for it.
+          </DialogDescription>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setDropIso(false)}>
+              Keep it
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (!matchingIsoCar) return;
+                deleteCar(matchingIsoCar.id);
+                setDropIso(false);
+                toast.success("Off your ISO list", {
+                  description: "Undo in the top bar brings it back.",
+                });
+              }}
+              className="bg-rose-600 text-white hover:bg-rose-600/90"
+            >
+              <Trash2 className="size-4 shrink-0" />
+              Remove
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {isAdmin && (
         <CatalogOwnersDialog

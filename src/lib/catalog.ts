@@ -937,7 +937,13 @@ const collectorNumber = (c: CatalogCar) => (brandUsesCarNumber(c.brand) ? norm(c
  *
  * With no number to go on, the colour and the variant have to match, or a
  * Defender 90 clubs with a Defender 110 and a Countach with a Countach 500s —
- * different castings whose twin was filed without its variant.
+ * different castings whose twin was filed without its variant. So does the set:
+ * Hot Wheels prints a position rather than a number, so there is no number to
+ * fall back from, and a Silver Series Skyline GT-R from Fast & Furious was
+ * clubbing with a Premium one from Pop Culture on the strength of "GT-R" and
+ * "Silver" alone. A set each side names is a set each side has to agree about —
+ * the same rule `boxSiblings` already applies, and the same fields
+ * `castingKey` keeps apart.
  *
  * `standalone` ends it before the description is read, on either side. It is
  * the one thing the description cannot say — "these two are different products
@@ -958,10 +964,20 @@ const sameCasting = (a: CatalogCar, b: CatalogCar): boolean => {
   const n = collectorNumber(a);
   if (n.length > 0 && n === collectorNumber(b)) return true;
 
+  // A field only speaks when both sides state it: half the catalogue says
+  // nothing about a sub-series, and silence is not disagreement.
+  const agrees = (x?: string | null, y?: string | null) => {
+    const p = norm(x);
+    const q = norm(y);
+    return !p || !q || p === q;
+  };
+
   return (
     norm(a.year) === norm(b.year) &&
     norm(a.variant) === norm(b.variant) &&
-    norm(a.colour) === norm(b.colour)
+    norm(a.colour) === norm(b.colour) &&
+    agrees(a.series, b.series) &&
+    agrees(a.sub_series, b.sub_series)
   );
 };
 
