@@ -180,7 +180,7 @@ export function findDuplicates(
 
     // Everything below needs the make, which is where the two remaining rules
     // part company: one also demands the model and every other field, the other
-    // asks only that the series agrees.
+    // asks only that the set agrees.
     if (norm(c.make) !== make) continue;
 
     // Every field agrees. A blank on both sides counts as agreement — two Hot
@@ -210,11 +210,22 @@ export function findDuplicates(
       continue;
     }
 
-    // Brand, make and series, and nothing more asked of it. The model may
+    // Brand, make and the set, and nothing more asked of it. The model may
     // differ, so this is not a duplicate — it is the line worth reading before
-    // filing another car into a series you already have this make in. It comes
+    // filing another car into a set you already have this make in. It comes
     // back as "possible" and the form shows it as one line rather than a block.
-    if (series && norm(c.series) === series) {
+    //
+    // The set is both halves of it. The sub-series was printed in the reason
+    // and then not read, so a Circuit Legends 911 was offered as a near-match
+    // for a Le Mans one — same series, different set, different product — and
+    // a shared sub-series under a blank series was not offered at all. A field
+    // speaks only when both sides state it, as everywhere else: silence is not
+    // disagreement, and a conflict is.
+    const agrees = (a: string, b: string) => !a || !b || a === b;
+    const sharesSet =
+      (series && norm(c.series) === series) || (subSeries && norm(c.sub_series) === subSeries);
+
+    if (sharesSet && agrees(norm(c.series), series) && agrees(norm(c.sub_series), subSeries)) {
       hits.push({
         car: c,
         level: "possible",

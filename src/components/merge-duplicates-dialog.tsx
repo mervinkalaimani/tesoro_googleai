@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Car, Check, Loader2, Merge, Users } from "lucide-react";
+import { Car, Check, Loader2, Merge, Search, Users, X } from "lucide-react";
 import { toast } from "sonner";
 
 import type { CatalogCar } from "@/lib/catalog";
@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { SegmentControl } from "@/components/segment-control";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +38,52 @@ import { cn } from "@/lib/utils";
  * cost, who sold them and their condition — what changes is which casting they
  * say they are.
  */
+
+/**
+ * Everything a group says about itself, as one lower-case line to search.
+ *
+ * Every field of every entry in it, not only the one the heading names: a pair
+ * is two entries and the half you remember may be either of them.
+ */
+const haystack = (g: DuplicateGroup) =>
+  [
+    g.label,
+    g.because,
+    ...g.cars.flatMap((c) => [
+      c.car_id,
+      c.name,
+      c.brand,
+      c.make,
+      c.model,
+      c.variant,
+      c.colour,
+      c.assortment,
+      c.series,
+      c.sub_series,
+      c.car_number,
+      c.year,
+    ]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+/**
+ * Commas narrow, and every term has to land somewhere.
+ *
+ * "hot wheels, skyline, premium" is three conditions, not one phrase, and none
+ * of them has to be in the same field as the others. Without it the only way
+ * through a list this long was the two-option segment above it.
+ */
+const matchesQuery = (g: DuplicateGroup, query: string) => {
+  const terms = query
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+  if (terms.length === 0) return true;
+  const hay = haystack(g);
+  return terms.every((t) => hay.includes(t));
+};
 
 const subLineOf = (c: CatalogCar) =>
   carSubLine({
@@ -61,10 +108,11 @@ export function MergeDuplicatesDialog({
 }) {
   const groups = useMemo(() => findDuplicateGroups(catalog), [catalog]);
   const [level, setLevel] = useState<"certain" | "all">("certain");
-  const shown = useMemo(
-    () => (level === "certain" ? groups.filter((g) => g.level === "certain") : groups),
-    [groups, level],
-  );
+  const [query, setQuery] = useState("");
+  const shown = useMemo(() => {
+    const base = level === "certain" ? groups.filter((g) => g.level === "certain") : groups;
+    return query.trim() ? base.filter((g) => matchesQuery(g, query)) : base;
+  }, [groups, level, query]);
 
   /** The group being worked on. Nothing is merged from the list itself. */
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -80,6 +128,7 @@ export function MergeDuplicatesDialog({
     if (!open) {
       setOpenKey(null);
       setLevel("certain");
+      setQuery("");
     }
   }, [open]);
 
@@ -167,7 +216,7 @@ export function MergeDuplicatesDialog({
         </DialogHeader>
 
         {!group && (
-          <div className="shrink-0">
+          <div className="shrink-0 space-y-2">
             <SegmentControl
               fill
               value={level}
@@ -181,6 +230,25 @@ export function MergeDuplicatesDialog({
                 { value: "all", label: `All candidates (${groups.length})` },
               ]}
             />
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search any field — commas narrow: hot wheels, skyline, premium"
+                className="h-9 bg-muted/30 pl-8 pr-8 text-xs"
+              />
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  aria-label="Clear the search"
+                  className="absolute right-2.5 top-2.5 cursor-pointer text-muted-foreground hover:text-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -188,7 +256,7 @@ export function MergeDuplicatesDialog({
           {!group ? (
             shown.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                Nothing looks duplicated.
+                {query.trim() ? "Nothing here matches that." : "Nothing looks duplicated."}
               </p>
             ) : (
               shown.map((g) => <GroupRow key={g.key} group={g} onOpen={() => setOpenKey(g.key)} />)

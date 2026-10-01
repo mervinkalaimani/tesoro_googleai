@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 261,
+    at: "2026-10-01T08:05",
+    changes: [
+      {
+        key: true,
+        text: 'Duplicate castings can be searched, and commas narrow: "hot wheels, skyline, premium" is three conditions and none of them has to land in the same field. Sixteen groups with two filter buttons was not a list you could get through.',
+      },
+      {
+        text: "A similar casting now reads the whole set. The sub-series was printed in the reason and then not read, so a Circuit Legends 911 was offered as a near-match for a Le Mans one — and a shared sub-series under a blank series was not offered at all.",
+      },
+    ],
+  },
+  {
     build: 260,
     at: "2026-10-01T07:10",
     changes: [

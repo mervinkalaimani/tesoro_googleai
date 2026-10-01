@@ -61,11 +61,33 @@ ok(
   "a different series is not offered",
 );
 
-// A different sub-series is not the same casting, so it is not "certain" — but
-// the make and the series still agree, which is rule 3 and reads as a guess.
+// A different sub-series is a different set, and rule 3 reads both halves of
+// one. Circuit Legends and Le Mans are two Car Culture sets, not one.
+ok(
+  findDuplicates(typed({ subSeries: "LeMans Set" }), [entry({})]).length === 0,
+  "a different sub-series inside the same series is not offered",
+);
+
+// Said once on either side, the set still speaks: a shared sub-series under a
+// series nobody filed is the same set by the only name it has.
 {
-  const hits = findDuplicates(typed({ subSeries: "LeMans Set" }), [entry({})]);
-  ok(hits.length === 1 && hits[0].level === "possible", "a different sub-series is only possible");
+  const hits = findDuplicates(typed({ series: "" }), [entry({ series: "" })]);
+  ok(
+    hits.length === 1 && hits[0].level === "certain",
+    "a blank series on both sides still matches",
+  );
+}
+{
+  const hits = findDuplicates(typed({ series: "", model: "Skyline GT-R" }), [
+    entry({ series: "" }),
+  ]);
+  ok(hits.length === 1 && hits[0].level === "possible", "a shared sub-series alone is a guess");
+}
+
+// Silence on one side is not disagreement.
+{
+  const hits = findDuplicates(typed({ model: "Skyline GT-R" }), [entry({ sub_series: "" })]);
+  ok(hits.length === 1 && hits[0].level === "possible", "a blank sub-series does not block it");
 }
 
 // Rule 3: brand, make and series, with the model free to differ. A glance, not
@@ -76,11 +98,12 @@ ok(
   ok(/Same make/.test(hits[0].because), "the reason says the make matched");
 }
 
-// Rule 3 needs a series on both sides. Nothing in common but a make is nothing.
+// Rule 3 needs a set on both sides. Nothing in common but a make is nothing.
 ok(
-  findDuplicates(typed({ model: "Skyline GT-R", series: "" }), [entry({ series: "" })]).length ===
-    0,
-  "a shared make with no series is not offered",
+  findDuplicates(typed({ model: "Skyline GT-R", series: "", subSeries: "" }), [
+    entry({ series: "", sub_series: "" }),
+  ]).length === 0,
+  "a shared make with no set is not offered",
 );
 
 // Certain before possible, however the catalogue is ordered: the entry that
@@ -111,11 +134,14 @@ ok(
   "a different brand is never offered",
 );
 
-// A blank on one side against a value on the other is a difference, not a match.
-ok(
-  findDuplicates(typed({ series: "" }), [entry({ series: "Car Culture" })]).length === 0,
-  "a blank series does not match a filled one",
-);
+// A blank on one side against a value on the other is not the same casting --
+// but it is not nothing either, now that the set is read as both of its names:
+// these two agree about Circuit Legends and one of them simply never said which
+// series that set belongs to.
+{
+  const hits = findDuplicates(typed({ series: "" }), [entry({ series: "Car Culture" })]);
+  ok(hits.length === 1 && hits[0].level === "possible", "a blank series is a guess, never certain");
+}
 
 // ------------------------------------------------------------ what must match
 
