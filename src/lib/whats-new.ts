@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 264,
+    at: "2026-10-01T10:30",
+    changes: [
+      {
+        key: true,
+        text: "The catalogue and My Cars can be sorted by series and by sub-series. Both were filterable and groupable and neither was sortable, which is the one of the three that answers “what is this set missing”. A car filed under no series sorts last, not first.",
+      },
+      {
+        text: "Who owns a casting now shows, under your own name and nowhere else, the parcel your copy came in. Press it and the order opens, the same screen the shipping ID on a car has always opened.",
+      },
+    ],
+  },
+  {
     build: 263,
     at: "2026-10-01T09:15",
     changes: [

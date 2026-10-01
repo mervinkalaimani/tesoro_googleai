@@ -4,6 +4,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   Calendar,
+  Package,
   Search,
   UserCheck,
   Users,
@@ -42,18 +43,52 @@ export function parseDateVal(val: string): number {
   return 0;
 }
 
+/**
+ * The reader's own parcel reference for one row of the owners list, or "".
+ *
+ * Two rules in one, and both matter: it answers for the reader's own row only,
+ * because a parcel reference is one person's and the list is everyone's; and it
+ * answers for the box that row is about, because the same casting in a Blister
+ * and in a 5 Pack arrived in two different parcels. The single-parcel fallback
+ * is for the ordinary case where the box names do not line up -- the reader's
+ * copy carries the box they typed, the row carries the catalogue's.
+ */
+export function ownParcel(
+  owner: Pick<CatalogCarOwner, "auth_uid" | "assortment">,
+  myUid?: string | null,
+  myShipping?: Record<string, string>,
+): string {
+  if (!myUid || !myShipping || owner.auth_uid !== myUid) return "";
+  const byBox = myShipping[(owner.assortment || "").trim().toLowerCase()];
+  if (byBox) return byBox;
+  const all = Object.values(myShipping);
+  return all.length === 1 ? all[0] : "";
+}
+
 export function CatalogOwnersDialog({
   open,
   onClose,
   carName,
   owners,
   loading = false,
+  myUid,
+  myShipping,
+  onOpenParcel,
 }: {
   open: boolean;
   onClose: () => void;
   carName?: string;
   owners: CatalogCarOwner[];
   loading?: boolean;
+  /** Which row is the reader's own. Nobody else's parcel is their business. */
+  myUid?: string | null;
+  /**
+   * The reader's own parcel reference, by the box it came in -- they can own the
+   * same casting in two, and the parcels are then two different parcels.
+   */
+  myShipping?: Record<string, string>;
+  /** Opens everything that came in that parcel. Own row only, so own parcel only. */
+  onOpenParcel?: (shippingId: string) => void;
 }) {
   const [search, setSearch] = useState("");
   // Default: sort by date added
@@ -106,6 +141,8 @@ export function CatalogOwnersDialog({
       }
     });
   }, [filtered, sortCol, sortDir]);
+
+  const myParcel = (o: CatalogCarOwner) => ownParcel(o, myUid, myShipping);
 
   const displayDate = (raw: string) => {
     if (!raw || raw === "—") return "—";
@@ -234,19 +271,40 @@ export function CatalogOwnersDialog({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-muted-foreground shrink-0 font-medium">
-                  {/* Which box theirs came in, when the casting is catalogued in
-                      more than one. Everybody owning the same one says nothing,
-                      so it only appears where the answers differ. */}
-                  {mixedAssortments && u.assortment && (
-                    <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[11px]">
-                      {u.assortment}
+                <div className="shrink-0 text-right text-xs font-medium text-muted-foreground">
+                  <div className="flex items-center justify-end gap-2">
+                    {/* Which box theirs came in, when the casting is catalogued in
+                        more than one. Everybody owning the same one says nothing,
+                        so it only appears where the answers differ. */}
+                    {mixedAssortments && u.assortment && (
+                      <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[11px]">
+                        {u.assortment}
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1.5">
+                      <Calendar className="size-3.5 text-muted-foreground/60" />
+                      {displayDate(u.date_added)}
                     </span>
-                  )}
-                  <span className="inline-flex items-center gap-1.5">
-                    <Calendar className="size-3.5 text-muted-foreground/60" />
-                    {displayDate(u.date_added)}
-                  </span>
+                  </div>
+                  {/* Own row only: which parcel it arrived in is yours to read
+                      and nobody else's to be shown. */}
+                  {myParcel(u) &&
+                    (onOpenParcel ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenParcel(myParcel(u))}
+                        title={`Everything that came in parcel ${myParcel(u)}`}
+                        className="mt-0.5 inline-flex cursor-pointer items-center gap-1.5 font-mono text-[11px] text-primary transition-colors hover:text-primary/80 hover:underline"
+                      >
+                        <Package className="size-3" />
+                        {myParcel(u)}
+                      </button>
+                    ) : (
+                      <div className="mt-0.5 inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground/80">
+                        <Package className="size-3 text-muted-foreground/60" />
+                        {myParcel(u)}
+                      </div>
+                    ))}
                 </div>
               </div>
             ))

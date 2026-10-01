@@ -123,7 +123,8 @@ const EMPTY_FILTERS: Record<FilterKey, string> = {
   seller: "all",
 };
 
-type SortKey = "added" | "sno" | "value" | "cost" | "model" | "brand" | "carNumber";
+type SortKey =
+  "added" | "sno" | "value" | "cost" | "model" | "brand" | "series" | "subSeries" | "carNumber";
 
 /** Each order with the direction it starts in; picking it again flips it. */
 const SORT_OPTIONS: { value: SortKey; label: string; dir: SortDir }[] = [
@@ -133,6 +134,8 @@ const SORT_OPTIONS: { value: SortKey; label: string; dir: SortDir }[] = [
   { value: "cost", label: "Cost", dir: "desc" },
   { value: "model", label: "Model", dir: "asc" },
   { value: "brand", label: "Brand", dir: "asc" },
+  { value: "series", label: "Series", dir: "asc" },
+  { value: "subSeries", label: "Sub series", dir: "asc" },
   { value: "carNumber", label: "Car number", dir: "asc" },
 ];
 
@@ -458,6 +461,18 @@ function InventoryPage() {
             ((a.brand || "").localeCompare(b.brand || "") || title(a).localeCompare(title(b))) *
             sign,
         );
+      case "series":
+      case "subSeries":
+        return [...out].sort((a, b) => {
+          const read = (c: Diecast) => ((sort === "series" ? c.series : c.subSeries) || "").trim();
+          const av = read(a);
+          const bv = read(b);
+          // A car filed under no series goes last whichever way round the rest
+          // is: "unknown" is not early in the alphabet, it is simply not an
+          // answer. Same rule the catalogue sorts by.
+          if (!av !== !bv) return av ? -1 : 1;
+          return (av.localeCompare(bv) || title(a).localeCompare(title(b))) * sign;
+        });
       default: {
         // Serial no: status group first, then SNO — the app-wide default order.
         const sorted = sortCars(out);

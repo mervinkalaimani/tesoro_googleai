@@ -142,7 +142,7 @@ const NO_FILTERS: Filters = {
  * is why direction is not a control of its own — there is nothing to set it to
  * until you have said what you are ordering by.
  */
-type SortKey = "added" | "sno" | "brand" | "make" | "year" | "car_number";
+type SortKey = "added" | "sno" | "brand" | "make" | "series" | "sub_series" | "year" | "car_number";
 type Sort = { key: SortKey; dir: "asc" | "desc" };
 
 const SORTS: { value: SortKey; label: string }[] = [
@@ -150,6 +150,8 @@ const SORTS: { value: SortKey; label: string }[] = [
   { value: "sno", label: "S.No" },
   { value: "brand", label: "Brand" },
   { value: "make", label: "Make" },
+  { value: "series", label: "Series" },
+  { value: "sub_series", label: "Sub series" },
   { value: "year", label: "Year" },
   { value: "car_number", label: "Car number" },
 ];

@@ -2282,6 +2282,8 @@ function CatalogDetailsContent({
   const [owners, setOwners] = useState<CatalogCarOwner[]>([]);
   const [ownersLoading, setOwnersLoading] = useState(false);
   const [ownersModalOpen, setOwnersModalOpen] = useState(false);
+  /** The parcel being opened from the owners list, by its shipping ID. */
+  const [parcel, setParcel] = useState("");
 
   const matchingUserCar = useMemo(() => {
     if (!catalogCar) return null;
@@ -2423,6 +2425,25 @@ function CatalogDetailsContent({
       }}
     />
   ) : null;
+
+  /**
+   * The parcel each of my own copies came in, by the box it came in.
+   *
+   * Read from my own collection, not from the owners list: the list is everyone
+   * and a parcel reference is one person's. Keyed by box because the same
+   * casting in a Blister and in a 5 Pack arrived in two different parcels.
+   */
+  const myShipping = useMemo(() => {
+    const out: Record<string, string> = {};
+    const pool = siblings.length ? siblings : catalogCar ? [catalogCar] : [];
+    for (const c of mine) {
+      const ship = (c.shippingId || "").trim();
+      if (!ship || isIso(c.status)) continue;
+      if (!pool.some((entry) => isCarMatchingCatalog(c, entry))) continue;
+      out[(c.assortment || "").trim().toLowerCase()] = ship;
+    }
+    return out;
+  }, [mine, siblings, catalogCar]);
 
   const ownersText = ownersLine(ownersLoading, ownerCount(owners));
   const canSeeAllOwners = isAdmin && !ownersLoading && owners.length > 0;
@@ -2726,8 +2747,19 @@ function CatalogDetailsContent({
           carName={title}
           owners={owners}
           loading={ownersLoading}
+          myUid={user?.id}
+          myShipping={myShipping}
+          onOpenParcel={setParcel}
         />
       )}
+
+      {/* The parcel the reader's own copy came in: same dialog the Shipping ID
+          on a car opens, so one parcel has one screen. */}
+      <ShippingBatchDialog
+        open={Boolean(parcel)}
+        onOpenChange={(v) => !v && setParcel("")}
+        initialShippingId={parcel}
+      />
     </div>
   );
 }
