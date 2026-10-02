@@ -15,7 +15,7 @@
  * drawn from what people own, by `tesoro_casting_public_stats` in the database:
  * counts and a price band over at least three buyers, and never a name.
  */
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogCar } from "@/lib/catalog";
@@ -53,7 +53,10 @@ export const Route = createFileRoute("/catalog_/$carId")({
       .eq("car_id", id)
       .maybeSingle();
 
-    if (!car) return { car: null, stats: null, inSeries: [], inBrand: [] };
+    // A casting that does not exist is not a page. Returning one with
+    // `noindex` still answered 200, so every misspelt ID a crawler invented
+    // was a real URL as far as it could tell.
+    if (!car) throw notFound();
 
     // The stats come from a function rather than a table: tesoro_raw is nobody's
     // business but its owner's, and this returns only what cannot be traced back
@@ -122,6 +125,11 @@ export const Route = createFileRoute("/catalog_/$carId")({
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: description },
       ],
+      // The ID is upper-cased before it is looked up, so /catalog/<lowercase>
+      // and any query string a share adds are the same page as this one.
+      // Relative, because the document's own origin is the right answer on
+      // production and on a preview deployment alike.
+      links: [{ rel: "canonical", href: `/catalog/${car.car_id}` }],
     };
   },
 
@@ -315,10 +323,7 @@ function CastingPage() {
         </div>
       </div>
 
-      <SiblingList
-        title={`More from ${car.series || car.type || car.brand}`}
-        cars={inSeries}
-      />
+      <SiblingList title={`More from ${car.series || car.type || car.brand}`} cars={inSeries} />
       <SiblingList title={`More ${car.brand}`} cars={inBrand} />
     </div>
   );

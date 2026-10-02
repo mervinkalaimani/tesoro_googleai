@@ -26,6 +26,28 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 266,
+    at: "2026-10-02T08:30",
+    changes: [
+      {
+        key: true,
+        text: "Six old backup tables were readable by anybody with the public key, and two of them were copies of collection rows — what was paid, who it was bought from, which parcel it came in. They are closed. Nothing was lost: the tables are still there, and only the server reads them now.",
+      },
+      {
+        text: "Two database functions that could be called without signing in no longer can be. One of them wrote to collections.",
+      },
+      {
+        text: "A price range of one price is no longer published. Two buyers who paid the same is not a range — it is both of their receipts — so it is withheld, the way a single buyer’s already was. Twelve castings were showing one.",
+      },
+      {
+        text: "A casting page for an ID that does not exist now answers 404 instead of pretending to be a page, every casting page names its own canonical address, and the description reads “an orange” rather than “a orange”.",
+      },
+      {
+        text: "Every response now carries the usual protective headers.",
+      },
+    ],
+  },
+  {
     build: 265,
     at: "2026-10-01T11:15",
     changes: [

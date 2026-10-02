@@ -44,6 +44,11 @@ export function castingTitle(c: CatalogCar): string {
  * The grey line under it. A sentence rather than a list of fields: a search
  * result is read, and "Yellow · Construction Vehicle · 2024" is not read.
  */
+/** "a" or "an", by how the next word sounds as written. */
+function article(word: string): "a" | "an" {
+  return /^[aeiou]/i.test(word.trim()) ? "an" : "a";
+}
+
 export function castingDescription(c: CatalogCar): string {
   const name = castingName(c) || "This casting";
   const what = [clean(c.colour).toLowerCase(), clean(c.brand), clean(c.type)]
@@ -53,7 +58,8 @@ export function castingDescription(c: CatalogCar): string {
   const number = clean(c.car_number);
   const year = clean(c.year);
 
-  const bits = [`${name} is a ${what || "die-cast model"}`];
+  const subject = what || "die-cast model";
+  const bits = [`${name} is ${article(subject)} ${subject}`];
   if (series) bits.push(`from the ${series} series`);
   if (number) bits.push(`numbered ${number}`);
   if (year) bits.push(`released in ${year}`);

@@ -152,4 +152,20 @@ assert.equal(
   "2 collectors here own one — 5 copies between them",
 );
 
+// The description is the one sentence a search result shows, so "a orange
+// Matchbox" is a typo in public.
+assert.match(
+  castingDescription({ ...excavator, colour: "Orange", type: "Sports Car" }),
+  / is an orange Matchbox Sports Car/,
+);
+assert.match(
+  castingDescription({ ...excavator, colour: "Yellow", type: "Sports Car" }),
+  / is a yellow Matchbox Sports Car/,
+);
+// Nothing to describe at all still has to read as a sentence.
+assert.match(
+  castingDescription({ ...excavator, colour: "", brand: "", type: "" }),
+  / is a die-cast model/,
+);
+
 console.log("casting-page: a public page names a casting, never a collector.");
