@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 267,
+    at: "2026-10-02T21:30",
+    changes: [
+      {
+        key: true,
+        text: "Reading a card from a photograph can now go through an OmniRoute server instead of Google’s — an OpenAI-compatible router that picks a provider and falls back between them itself. Name one and the scan asks it first; name nothing and the scan is exactly what it was.",
+      },
+      {
+        text: "With both set up, the router goes first and Gemini catches what it drops. Naming a router means wanting it used, not wanting it to be the only thing between a photograph and an answer.",
+      },
+    ],
+  },
+  {
     build: 266,
     at: "2026-10-02T08:30",
     changes: [

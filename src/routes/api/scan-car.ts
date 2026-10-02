@@ -1,11 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { GoogleGenAI, Type } from "@google/genai";
 
+import { fieldsFromChatCompletion } from "@/lib/scan-reply";
+
 /**
  * Reads a photograph of a die-cast car (card, box, or loose model) and extracts
  * its attributes (make, model, colour, brand, series, etc.).
  *
- * Server-side route using @google/genai with GEMINI_API_KEY.
+ * Two backends, tried in order:
+ *
+ *   1. OmniRoute, when OMNIROUTE_BASE_URL is set. An OpenAI-compatible router
+ *      that picks a provider and falls back between them itself, so one key in
+ *      one place covers whatever the scan runs on. It is opt-in because it is
+ *      somebody's own process: a deployment that does not name one never calls
+ *      it, which is why production keeps working unchanged.
+ *   2. Gemini through @google/genai with GEMINI_API_KEY.
+ *
+ * Either alone is enough. With both, OmniRoute goes first and Gemini catches
+ * what it drops -- naming a router means wanting it used, not wanting it to be
+ * the only thing between a photograph and an answer.
  */
 
 const CANDIDATE_MODELS = [
@@ -70,6 +83,64 @@ function getGenAI(apiKey: string): GoogleGenAI {
   return aiClient;
 }
 
+/** Asks OmniRoute. Returns the fields, or the reason it could not. */
+async function scanViaOmniRoute(
+  base: string,
+  image: { mimeType: string; data: string },
+): Promise<{ fields?: Record<string, unknown>; model: string; error?: string }> {
+  const model = process.env["OMNIROUTE_MODEL"] || "auto";
+  const apiKey = process.env["OMNIROUTE_API_KEY"];
+  const url = `${base.replace(/\/+$/, "")}/v1/chat/completions`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: `${PROMPT}
+
+Reply with JSON only, using exactly these keys: ${SCAN_FIELDS.join(", ")}.`,
+              },
+              {
+                type: "image_url",
+                image_url: { url: `data:${image.mimeType};base64,${image.data}` },
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    const payload: unknown = await res.json().catch(() => null);
+    if (!res.ok) {
+      // OmniRoute says which providers it tried and why each refused. That is
+      // the whole reason to read its body rather than just the status.
+      const detail =
+        (payload as { error?: { message?: string } })?.error?.message ||
+        `OmniRoute answered ${res.status}.`;
+      return { model, error: detail };
+    }
+
+    const fields = fieldsFromChatCompletion(payload);
+    if (!fields) return { model, error: "OmniRoute returned no readable JSON." };
+    return { fields, model };
+  } catch (err) {
+    return { model, error: (err as Error)?.message || "OmniRoute could not be reached." };
+  }
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -97,11 +168,12 @@ function cleanFields(parsed: Record<string, unknown>): ScanFields {
 
 async function handler({ request }: { request: Request }) {
   const key = process.env["GEMINI_API_KEY"];
-  if (!key) {
+  const omniBase = process.env["OMNIROUTE_BASE_URL"];
+  if (!key && !omniBase) {
     return json(
       {
         error:
-          "Image analysis is not set up on this deployment. Add a GEMINI_API_KEY environment variable and redeploy.",
+          "Image analysis is not set up on this deployment. Add a GEMINI_API_KEY or an OMNIROUTE_BASE_URL environment variable and redeploy.",
       },
       501,
     );
@@ -119,11 +191,22 @@ async function handler({ request }: { request: Request }) {
     return json({ error: "Send a JPEG, PNG or WebP under about 4MB." }, 400);
   }
 
+  let lastError = "Image analysis failed.";
+
+  // The router first, when there is one.
+  if (omniBase) {
+    const attempt = await scanViaOmniRoute(omniBase, image);
+    if (attempt.fields) {
+      return json({ fields: cleanFields(attempt.fields), modelUsed: `omniroute:${attempt.model}` });
+    }
+    lastError = `${attempt.error} (omniroute: ${attempt.model})`;
+    // Nothing else to fall back to.
+    if (!key) return json({ error: lastError }, 502);
+  }
+
   const specifiedModel = process.env["GEMINI_MODEL"];
   const modelsToTry = specifiedModel ? [specifiedModel] : CANDIDATE_MODELS;
-
-  let lastError = "Image analysis failed.";
-  const ai = getGenAI(key);
+  const ai = getGenAI(key!);
 
   for (const model of modelsToTry) {
     try {
