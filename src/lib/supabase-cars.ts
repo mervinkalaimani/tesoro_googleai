@@ -59,7 +59,6 @@ export type TesoroRawRow = {
   "Card Rating"?: number | null;
   Favourite?: boolean | null;
   Official?: boolean | null;
-  Open?: boolean | null;
   "Image URL"?: string | null;
   image_url?: string | null;
   Image?: string | null;
@@ -331,7 +330,8 @@ export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
       const { data, error } = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
-        .select(`
+        .select(
+          `
           SNO,
           "Car ID",
           "Catalog ID",
@@ -375,13 +375,13 @@ export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
           "Card Rating",
           Favourite,
           Official,
-          Open,
-          image_url,
+          "Image URL",
           created_at,
           catalog_pending_at,
           admin_changed_at,
           owner_seen_at
-        `)
+        `,
+        )
         .eq("user_id", userId)
         // SNO is the identity column, so ascending SNO is the order rows were
         // actually added — what the unsorted ("raw") views should show. It is
