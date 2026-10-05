@@ -15,7 +15,6 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -29,7 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CarPhotoField } from "@/components/car-photo-field";
-import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { AssortmentHeader, AssortmentRow } from "@/components/assortment-rows";
 import { Combobox } from "@/components/ui/combobox";
@@ -39,11 +37,12 @@ import type { Diecast } from "@/lib/types";
 import { ensureAssortment, remainingAssortments } from "@/lib/assortments";
 import { boxSiblings } from "@/lib/casting-group";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
-import { ClearableInput, Field, FormSection } from "@/components/form-parts";
+import { ClearableInput, Field, FormSection, InfoTip } from "@/components/form-parts";
 import { MultipackField } from "@/components/multipack-field";
 import { DuplicateNotice } from "@/components/duplicate-notice";
 import { findDuplicates, matchPercent, needsCarNumber } from "@/lib/duplicate";
 import { packBadge } from "@/lib/pack";
+import { EditorShell, SummaryRow, ThingsLeft, type RailItem } from "@/components/editor-shell";
 import { ChaseMark } from "@/components/car-marks";
 import { useCars } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
@@ -58,7 +57,12 @@ import { cn } from "@/lib/utils";
 
 /** The first required field left empty, shown on the field itself. */
 type FieldKey = keyof CatalogueValues | "mrp";
-type FieldError = { field: FieldKey; message: string };
+type FieldError = {
+  field: FieldKey;
+  message: string;
+  /** Three words for the "things left" list, where the sentence will not fit. */
+  short?: string;
+};
 
 /** The fields that live behind "What the casting is". */
 const IDENTITY_FIELDS = new Set<FieldKey>([
@@ -248,10 +252,9 @@ export function CatalogFormDialog({
   const [showIdentity, setShowIdentity] = useState(true);
   const [showAssortments, setShowAssortments] = useState(true);
   const [showRelease, setShowRelease] = useState(true);
-  const [showPack, setShowPack] = useState(false);
-  const [showPhoto, setShowPhoto] = useState(false);
+  const [showPack, setShowPack] = useState(true);
+  const [showPhoto, setShowPhoto] = useState(true);
   /** Whether the photos found for this casting are open under the header card. */
-  const [pickingPhoto, setPickingPhoto] = useState(false);
   /** Whether a second copy of this dialog is open, filing a pack member. */
   const [addingMember, setAddingMember] = useState(false);
 
@@ -326,12 +329,11 @@ export function CatalogFormDialog({
     setMembers(existing);
     // A pack is shown open, because a shut "Multipack" header is the one thing
     // on this form nobody thinks to look inside.
-    setShowPack(Boolean(entry && entry !== "new" && entry.is_multipack));
+    setShowPack(true);
     setShowIdentity(!isImageOnly);
     setShowAssortments(!isImageOnly);
     setShowRelease(!isImageOnly);
-    setShowPhoto(isImageOnly);
-    setPickingPhoto(false);
+    setShowPhoto(true);
     // packMembers is read for the entry being opened; re-running when the whole
     // map changes would throw away an edit in progress the moment any other
     // pack was saved.
@@ -766,24 +768,43 @@ export function CatalogFormDialog({
       .join(" · ") || "—";
 
   /** In the order the fields appear, so the first one flagged is the first on screen. */
-  const validate = (): FieldError | null => {
-    if (isImageOnly) return null;
-    if (!form.make?.trim()) return { field: "make", message: "Enter the make." };
-    if (!form.model?.trim()) return { field: "model", message: "Enter the model." };
-    if (!form.brand?.trim()) return { field: "brand", message: "Enter the brand." };
-    if (!form.assortment?.trim()) return { field: "assortment", message: "Enter the assortment." };
+  /**
+   * Everything still missing, in the order it appears on screen.
+   *
+   * The first of them is what a failed save flags; all of them are what the
+   * summary lists as still to do. One list rather than two, because two drift.
+   */
+  const missing = (): FieldError[] => {
+    if (isImageOnly) return [];
+    const out: FieldError[] = [];
+    const need = (field: FieldKey, message: string, short: string) => {
+      out.push({ field, message, short });
+    };
+    if (!form.make?.trim()) need("make", "Enter the make.", "Enter the make");
+    if (!form.model?.trim()) need("model", "Enter the model.", "Enter the model");
+    if (!form.brand?.trim()) need("brand", "Enter the brand.", "Enter the brand");
+    if (!form.assortment?.trim())
+      need("assortment", "Enter the assortment.", "Name the assortment");
     if (needsCarNumber(form.brand) && !form.car_number?.trim())
-      return {
-        field: "carNumber",
-        message: `${form.brand?.trim()} prints a collector number on the box — it is what tells two near-identical castings apart.`,
-      };
-    if (!form.mrp || form.mrp <= 0) return { field: "mrp", message: "Enter the retail price." };
+      need(
+        "carNumber",
+        `${form.brand?.trim()} prints a collector number on the box — it is what tells two near-identical castings apart.`,
+        "Enter the car number",
+      );
+    if (!form.mrp || form.mrp <= 0)
+      need("mrp", "Enter the retail price.", "Enter the retail price");
     for (const x of extras) {
       if (x.assortment.trim() && !(x.mrp > 0))
-        return { field: "mrp", message: `Enter what ${x.assortment.trim()} costs.` };
+        need(
+          "mrp",
+          `Enter what ${x.assortment.trim()} costs.`,
+          `Price the ${x.assortment.trim()} box`,
+        );
     }
-    return null;
+    return out;
   };
+
+  const validate = (): FieldError | null => missing()[0] ?? null;
 
   /** What the catalogue already has that looks like this. */
   const duplicates = useMemo(
@@ -859,6 +880,117 @@ export function CatalogFormDialog({
       ? `${boxes.length} boxes · ${inrFull(Math.min(...boxes.map((x) => x.mrp)))} – ${inrFull(Math.max(...boxes.map((x) => x.mrp)))}`
       : `${boxes[0].assortment || "not set"} · ${inrFull(boxes[0].mrp)}`;
   const photoBadge = form.image_url ? "photo set" : "no photo";
+
+  /** Everything still to answer, each one a tap from the field that fixes it. */
+  const thingsLeft = missing().map((m) => ({
+    label: m.short || m.message,
+    onJump: () => {
+      jumpToError.current = true;
+      setValidationError(m);
+    },
+  }));
+
+  /** The sections, as the rail beside the form lists them. */
+  const rail: RailItem[] = isImageOnly
+    ? []
+    : [
+        {
+          id: "identity",
+          label: "What it is",
+          status: identityBadge,
+          tone: identityBadge === "not set" ? "warn" : "muted",
+        },
+        {
+          id: "assortments",
+          label: "Assortments",
+          status: assortmentsBadge,
+          tone: form.assortment?.trim() ? "muted" : "warn",
+        },
+        { id: "release", label: "Release status", status: releaseBadge },
+        {
+          id: "multipack",
+          label: "Multipack",
+          status: packBadge(isPack, declaredSize, members.length),
+        },
+        { id: "photo", label: "Photo", status: photoBadge },
+      ];
+
+  /**
+   * The casting as it currently reads — the same card everyone else will see on
+   * the catalogue page once this is filed.
+   */
+  const summary = (
+    <div className="rounded-2xl border border-border/70 bg-card p-3">
+      {/* The same frame the car's own page gives it: 4:3, rounded, white. */}
+      <div className="relative mb-3 grid aspect-4/3 w-full place-items-center overflow-hidden rounded-2xl border border-border/60 bg-white">
+        {form.image_url ? (
+          <img src={form.image_url} alt="" className="size-full object-cover" />
+        ) : (
+          <Car className="size-8 text-muted-foreground/40" />
+        )}
+      </div>
+      <p className="truncate text-base font-bold tracking-tight">
+        {form.name?.trim() || autoName || "New casting"}
+      </p>
+      <p className="truncate text-[11px] text-muted-foreground">{identityLine}</p>
+      <div className="mt-2.5">
+        <SummaryRow label="Brand" value={form.brand} />
+        <SummaryRow label="Assortment" value={form.assortment} />
+        <SummaryRow label="Retail / MRP" value={form.mrp ? inrFull(Number(form.mrp)) : ""} />
+        <SummaryRow label="Release" value={form.release_status} />
+        <SummaryRow label="Rarity" value={form.rarity} />
+      </div>
+    </div>
+  );
+
+  const actions = (
+    <div className="flex flex-col gap-2">
+      {isNew && !isImageOnly && (
+        <div className="flex items-center gap-1 rounded-xl bg-muted/50 px-2.5 py-2">
+          <label className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-2.5 text-xs font-medium">
+            <Checkbox checked={alsoMine} onCheckedChange={(v) => setAlsoMine(v === true)} />
+            Add one to my collection
+          </label>
+          <InfoTip
+            label="Add one to my collection"
+            text="Opens the car form with this casting filled in. Leave it off to file the casting only."
+          />
+        </div>
+      )}
+      <Button
+        type="submit"
+        size="lg"
+        disabled={saving || (isNew && duplicates.length > 0 && !confirmNotDuplicate)}
+        className="w-full justify-between font-semibold"
+      >
+        {isNew ? "Add casting" : "Save changes"}
+        {saving ? <Loader2 className="size-4 animate-spin" /> : <Check className="size-4" />}
+      </Button>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          onClick={onClose}
+          disabled={saving}
+        >
+          Cancel
+        </Button>
+        {!isNew && effectiveCanDelete && onDelete && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onDelete}
+            disabled={saving}
+            className="flex-1 gap-1.5 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400"
+          >
+            <Trash2 className="size-4" />
+            Remove
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 
   const save = async () => {
     const error = validate();
@@ -1017,152 +1149,56 @@ export function CatalogFormDialog({
             card it has to pinch. */}
         <DialogContent
           hideDragHandle
+          // Every section is open, so the first thing the browser would focus
+          // is some way down a long form — and focusing it scrolls the form
+          // there, past the fields you came to fill in. Focus the dialog
+          // itself instead; the trap and Escape still work from there.
+          onOpenAutoFocus={(e) => {
+            e.preventDefault();
+            (e.currentTarget as HTMLElement | null)?.focus();
+          }}
           className={cn(
             "flex flex-col overflow-hidden overscroll-contain touch-pan-y",
-            "w-full max-w-full sm:max-w-3xl lg:max-w-4xl",
+            "w-full max-w-full sm:max-w-3xl lg:max-w-6xl xl:max-w-[88rem]",
             "sm:top-6 sm:translate-y-0 sm:max-h-[calc(100dvh-3rem)]",
             "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
           )}
         >
-          <DialogHeader className="shrink-0">
-            <div className="flex items-center justify-between gap-2">
-              <DialogTitle>{isNew ? "Add a casting" : "Update casting"}</DialogTitle>
-              {!isImageOnly && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 shrink-0 gap-1.5 px-3 text-xs"
-                  onClick={() => setScanOpen(true)}
-                >
-                  <ScanLine className="size-3.5" />
-                  Scan card
-                </Button>
-              )}
-            </div>
-            <DialogDescription>
-              {isImageOnly
-                ? "You can update or propose the photo for this catalogue casting."
-                : isNew
-                  ? "What the casting is, and what it retails for. Everyone browses the same one."
-                  : "Changes are written into this casting for every collector who owns one."}
-            </DialogDescription>
-          </DialogHeader>
-
           <form
             onSubmit={(e) => {
               e.preventDefault();
               void save();
             }}
-            className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col gap-4 overflow-x-hidden"
+            className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden"
           >
-            {/* The only part that scrolls. `min-h-0` is what lets it: without it
-                a flex child refuses to shrink below its content and the footer is
-                pushed off the bottom of the dialog instead. */}
-            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overflow-x-hidden pr-0.5">
-              {/* What the casting is, as one line you read rather than thirteen
-                  fields you re-check. The fields are still here, one tap down. */}
-              {/* Pinned to the top of the scroller: which casting this is, is
-                  the one thing you need while filling in everything below it.
-                  The tint moved off the box and onto its rows because a sticky
-                  box must be opaque — bg-muted/30 let the fields scroll through
-                  it. */}
-              <section className="sticky top-0 z-20 overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-                <div className="flex items-start gap-3 bg-muted/30 p-3">
-                  {/* Same tap-the-photo-to-fix-it as the car form. The search
-                      has already run by the time this card is drawn. */}
-                  <PhotoThumbButton
-                    url={form.image_url || ""}
-                    picking={pickingPhoto}
-                    onClick={() => setPickingPhoto((v) => !v)}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-center gap-1.5">
-                      <span className="truncate text-sm font-semibold text-foreground">
-                        {form.name?.trim() ||
-                          `${form.make || ""} ${form.model || ""}`.trim() ||
-                          "New casting"}
-                      </span>
-                      <ChaseMark
-                        rarity={(form.rarity as CatalogueValues["rarity"]) || "Normal"}
-                        className="size-3.5 shrink-0"
-                      />
-                    </div>
-                    <p className="truncate text-[11px] text-muted-foreground">{identityLine}</p>
-                    {!isNew && entry && (
-                      <p className="mt-1 truncate font-mono text-[10px] text-muted-foreground/75">
-                        {entry.car_id}
-                      </p>
-                    )}
-                  </div>
-                  {/* Beside the name, because merging is about this casting
-                      rather than about any one of its fields. Only on an entry
-                      that exists, and only for an admin: a merge moves other
-                      people's cars. */}
-                  {!isNew && entryId && isAdmin && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="shrink-0 gap-1.5"
-                      onClick={() => setMerging(true)}
-                      title="Other entries that look like this same casting"
-                    >
-                      <Merge className="size-3.5" />
-                      Merge
-                      {mergeCandidates.length > 0 && (
-                        <span className="rounded bg-amber-500/20 px-1 text-[10px] font-bold tabular-nums text-amber-700 dark:text-amber-300">
-                          {mergeCandidates.length}
-                        </span>
-                      )}
-                    </Button>
-                  )}
-                </div>
-
-                {pickingPhoto && (
-                  <PhotoCandidateStrip
-                    search={imageSuggestions}
-                    value={form.image_url || ""}
-                    onPick={(url) => {
-                      set("image_url", url);
-                      setPickingPhoto(false);
-                    }}
-                    emptyHint="Nothing found — Photo below takes a file or a link"
-                  />
-                )}
-
-                {/* Who filed it and who last touched it — the same two pairs the
-                    details drawer shows, in the same order. */}
-                {!isNew && entry && (
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 border-t border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-                    <div className="truncate">
-                      Added by{" "}
-                      <span className="font-medium text-foreground">
-                        {resolveCatalogUserId(entry.created_by)}
-                      </span>
-                    </div>
-                    <div className="truncate">
-                      Added on{" "}
-                      <span className="font-medium text-foreground">
-                        {formatDayMonthYear(entry.created_at) || "—"}
-                      </span>
-                    </div>
-                    <div className="truncate">
-                      Updated by{" "}
-                      <span className="font-medium text-foreground">
-                        {entry.updated_by ? resolveCatalogUserId(entry.updated_by) : "—"}
-                      </span>
-                    </div>
-                    <div className="truncate">
-                      Updated on{" "}
-                      <span className="font-medium text-foreground">
-                        {formatDayMonthYear(entry.updated_at) || "—"}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </section>
-
+            <EditorShell
+              title={isNew ? "Add a casting" : "Update casting"}
+              description={
+                isImageOnly
+                  ? "You can update or propose the photo for this catalogue casting."
+                  : isNew
+                    ? "What the casting is, and what it retails for. Everyone browses the same one."
+                    : "Changes are written into this casting for every collector who owns one."
+              }
+              rail={rail}
+              headerAction={
+                !isImageOnly && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 shrink-0 gap-1.5 px-3 text-xs"
+                    onClick={() => setScanOpen(true)}
+                  >
+                    <ScanLine className="size-3.5" />
+                    Scan card
+                  </Button>
+                )
+              }
+              summary={summary}
+              alerts={<ThingsLeft items={thingsLeft} done="Every required field is in" />}
+              actions={actions}
+            >
               {/* Above the fields, not below them: by the time the catalogue
                   already has this casting, the useful moment is before the rest
                   of it is typed out. */}
@@ -1211,7 +1247,9 @@ export function CatalogFormDialog({
               )}
 
               <FormSection
+                id="identity"
                 title="What the casting is"
+                description="Make, model and the details that tell releases apart."
                 badge={identityBadge}
                 badgeTone={identityBadge === "not set" ? "warn" : "muted"}
                 open={showIdentity}
@@ -1251,7 +1289,9 @@ export function CatalogFormDialog({
                   Release & price: which boxes exist decides what the prices are
                   a list of, and the release date is the casting's either way. */}
               <FormSection
+                id="assortments"
                 title="Assortments"
+                description="Every box this casting is sold in, and what each retails for."
                 badge={assortmentsBadge}
                 badgeTone={boxes[0].assortment ? "muted" : "warn"}
                 open={showAssortments}
@@ -1349,7 +1389,9 @@ export function CatalogFormDialog({
               </FormSection>
 
               <FormSection
+                id="release"
                 title="Release status"
+                description="Whether it is out yet, and which case it shipped in."
                 badge={releaseBadge}
                 open={showRelease}
                 onToggle={() => setShowRelease((v) => !v)}
@@ -1433,7 +1475,9 @@ export function CatalogFormDialog({
               </FormSection>
 
               <FormSection
+                id="multipack"
                 title="Multipack"
+                description="Whether this entry is a box of cars rather than one."
                 badge={packBadge(isPack, declaredSize, members.length)}
                 open={showPack}
                 onToggle={() => setShowPack((v) => !v)}
@@ -1458,7 +1502,9 @@ export function CatalogFormDialog({
               </FormSection>
 
               <FormSection
+                id="photo"
                 title="Photo"
+                description="The picture everyone browsing the catalogue will see."
                 badge={photoBadge}
                 open={showPhoto}
                 onToggle={() => setShowPhoto((v) => !v)}
@@ -1470,63 +1516,7 @@ export function CatalogFormDialog({
                   searchQuery={webSearchWords}
                 />
               </FormSection>
-            </div>
-
-            {isNew && !isImageOnly && (
-              <label className="flex shrink-0 cursor-pointer select-none items-start gap-2.5 border-t border-border/50 pt-3 text-xs text-muted-foreground">
-                <Checkbox
-                  checked={alsoMine}
-                  onCheckedChange={(v) => setAlsoMine(v === true)}
-                  className="mt-0.5"
-                />
-                <span>
-                  <span className="font-medium text-foreground">Add one to my collection</span> —
-                  opens the car form with this casting filled in. Leave it off to file the casting
-                  only.
-                </span>
-              </label>
-            )}
-
-            {/* Cancel left, Save right, at the foot of the dialog at every width —
-                outside the scroller, so they are where you left them however far
-                down the form you are. */}
-            <DialogFooter className="flex shrink-0 w-full min-w-0 flex-row items-center justify-between gap-2 border-t border-border/50 pt-3 sm:justify-between">
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={onClose}
-                  disabled={saving}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  Cancel
-                </Button>
-                {!isNew && effectiveCanDelete && onDelete && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={onDelete}
-                    disabled={saving}
-                    className="gap-1.5 border-border text-rose-500 hover:bg-rose-500/10 hover:text-rose-400"
-                  >
-                    <Trash2 className="size-4" />
-                    <span className="max-sm:sr-only">Remove</span>
-                  </Button>
-                )}
-              </div>
-              <Button
-                type="submit"
-                disabled={saving || (isNew && duplicates.length > 0 && !confirmNotDuplicate)}
-                className="gap-1.5 font-semibold"
-              >
-                {saving ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Check className="size-4" />
-                )}
-                {isNew ? "Add casting" : "Save changes"}
-              </Button>
-            </DialogFooter>
+            </EditorShell>
           </form>
         </DialogContent>
       </Dialog>

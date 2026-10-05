@@ -10,7 +10,6 @@ import { CAR_CONDITIONS, CARD_CONDITIONS, cardGradeForCarGrade, describe } from 
 import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { ChaseMark } from "@/components/car-marks";
 import { StarRating } from "@/components/star-rating";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { Diecast } from "@/lib/types";
 import { useCarsActions, useCars } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
@@ -61,7 +60,6 @@ import { ensureAssortment } from "@/lib/assortments";
 import { catalogCarToCatalogueCar } from "@/lib/catalog";
 import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
-import { PhotoCandidateStrip, PhotoThumbButton } from "@/components/photo-picker";
 import { MultipackField } from "@/components/multipack-field";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
 import { DuplicateBar, DuplicateNotice } from "@/components/duplicate-notice";
@@ -69,6 +67,13 @@ import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
 import { looksLikeColour } from "@/lib/colour-words";
 import { packBadge } from "@/lib/pack";
 import { ClearableInput, Field, FormSection, PillButton, PillRow } from "@/components/form-parts";
+import {
+  EditorShell,
+  SummaryRow,
+  ThingsLeft,
+  scrollToSection,
+  type RailItem,
+} from "@/components/editor-shell";
 import { SegmentControl } from "@/components/segment-control";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
@@ -79,7 +84,6 @@ import {
   DialogContent,
   DialogDescription,
   DialogFooter,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -509,14 +513,13 @@ export function CarFormDialog({
    * has already filled them in; they open on their own when the car was entered
    * by hand, or when one of them fails validation and has to be shown.
    */
-  const [showIdentity, setShowIdentity] = useState(false);
+  const [showIdentity, setShowIdentity] = useState(true);
   /** Whether the photos found for this car are open under the identity card. */
-  const [pickingPhoto, setPickingPhoto] = useState(false);
   /** Whether a second wizard is open over this one, filing a pack member. */
   const [addingMember, setAddingMember] = useState(false);
   const [showPurchase, setShowPurchase] = useState(true);
-  const [showCondition, setShowCondition] = useState(false);
-  const [showExtras, setShowExtras] = useState(false);
+  const [showCondition, setShowCondition] = useState(true);
+  const [showExtras, setShowExtras] = useState(true);
   /**
    * Whether step two's summary describes a car the catalogue filled in. Only for
    * the badge: a car entered by hand has nothing to claim credit for.
@@ -538,7 +541,7 @@ export function CarFormDialog({
   const [packList, setPackList] = useState<string[]>([]);
   /** Until this is touched, the pack fields follow whatever casting is picked. */
   const packTouched = useRef(false);
-  const [showPack, setShowPack] = useState(false);
+  const [showPack, setShowPack] = useState(true);
   const [showAssortments, setShowAssortments] = useState(true);
 
   /**
@@ -789,12 +792,9 @@ export function CarFormDialog({
       // Otherwise back to how a fresh dialog starts: a previous pre-filled open
       // must not leave the next by-hand one thinking it came from the catalogue.
       setFromCatalogue(false);
-      // A held car opens with them showing: the hold exists so these can be
-      // fixed, and behind a collapsed heading nobody finds them.
-      setShowIdentity(held);
+      setShowIdentity(true);
       templateOriginRef.current = {};
     }
-    setPickingPhoto(false);
     setDraftReady(true);
     // prefill is read above but is deliberately not a dependency: seedKey
     // already covers a change of casting, and it is the object identity that
@@ -1272,7 +1272,7 @@ export function CarFormDialog({
     setIsPack(catalogPack.isPack);
     setPackSize(catalogPack.size);
     setPackList(catalogPack.members);
-    setShowPack(catalogPack.isPack);
+    setShowPack(true);
   }, [open, catalogPack]);
 
   /**
@@ -1375,14 +1375,25 @@ export function CarFormDialog({
   };
 
   // Validation per step
-  const validateStep = (step: number): FieldError | null => {
-    const need = (field: keyof CarFormData, message: string): FieldError => ({ field, message });
+  /**
+   * Everything still wrong on a step, in the order it appears on screen.
+   *
+   * The first of them is what a failed Next flags; all of them are what the
+   * summary lists as still to do. One list rather than two, because two drift:
+   * a rule added to the check nobody updated in the list is a form that refuses
+   * to save without saying why.
+   */
+  const missingOn = (step: number): FieldError[] => {
+    const out: FieldError[] = [];
+    const need = (field: keyof CarFormData, message: string, short: string) => {
+      out.push({ field, message, short });
+    };
     // In the order the fields appear, so the first one flagged is the first on screen.
     if (step === 1) {
       // Step one is the search. Nothing can be right yet unless a car was picked
       // or the manual route filled these in, and both land on step two.
-      if (!form.make.trim()) return need("make", "Pick a car, or enter one by hand.");
-      if (!form.model.trim()) return need("model", "Enter the model.");
+      if (!form.make.trim()) need("make", "Pick a car, or enter one by hand.", "Pick a car");
+      if (!form.model.trim()) need("model", "Enter the model.", "Enter the model");
     } else if (step === 2) {
       // The catalogue fields first: they sit above the purchase on this step.
       //
@@ -1392,33 +1403,40 @@ export function CarFormDialog({
       // enough, in any language; a colour already in the collection is enough
       // too, so whatever has been used before stays usable.
       if (!looksLikeColour(form.colour) && !knownColour(form.colour))
-        return need(
+        need(
           "colour",
           `“${form.colour.trim()}” is not a colour. Anything with a colour in it is fine — “Spectraflame Red”, “Rosso Corsa”, “Off-White” — but not the name of the car.`,
+          "Fix the colour",
         );
-      if (!form.type.trim()) return need("type", "Enter the type.");
-      if (!form.brand.trim()) return need("brand", "Enter the brand.");
-      if (!form.assortment.trim()) return need("assortment", "Enter the assortment.");
+      if (!form.type.trim()) need("type", "Enter the type.", "Enter the type");
+      if (!form.brand.trim()) need("brand", "Enter the brand.", "Enter the brand");
+      if (!form.assortment.trim())
+        need("assortment", "Enter the assortment.", "Pick the assortment");
       // Hot Wheels and Matchbox print a position in a series; every other brand
       // prints a number that belongs to the casting, and it is what tells two
       // near-identical ones apart.
       if (needsCarNumber(form.brand) && !form.carNumber.trim())
-        return need(
+        need(
           "carNumber",
           `${form.brand.trim()} prints a collector number on the box — enter it so this casting can be told from its near-twins.`,
+          "Enter the car number",
         );
-      if (!form.status.trim()) return need("status", "Pick a status.");
+      if (!form.status.trim()) need("status", "Pick a status.", "Pick a status");
       // Everything below describes a purchase, and an ISO row is not one.
-      if (isIso) return null;
+      if (isIso) return out;
       if (!form.seller.trim())
-        return need("seller", `Pick a seller, or "${NO_SELLER}" if there wasn't one.`);
-      if (!form.orderDate.trim()) return need("orderDate", "Pick the order date.");
-      if (form.mrp === "" || form.mrp === null) return need("mrp", "Enter the MRP.");
-      if (form.spent === "" || form.spent === null) return need("spent", "Enter what it cost.");
-      if (!form.payment.trim()) return need("payment", "Pick a payment status.");
+        need("seller", `Pick a seller, or "${NO_SELLER}" if there wasn't one.`, "Pick a seller");
+      if (!form.orderDate.trim()) need("orderDate", "Pick the order date.", "Pick the order date");
+      if (form.mrp === "" || form.mrp === null)
+        need("mrp", "Enter the MRP.", "Pick the retail price");
+      if (form.spent === "" || form.spent === null)
+        need("spent", "Enter what it cost.", "Enter what it cost");
+      if (!form.payment.trim()) need("payment", "Pick a payment status.", "Pick a payment status");
     }
-    return null;
+    return out;
   };
+
+  const validateStep = (step: number): FieldError | null => missingOn(step)[0] ?? null;
 
   // Once the flagged field is rendered (a step change may be needed first),
   // bring it into view and put the caret in it.
@@ -1456,6 +1474,26 @@ export function CarFormDialog({
     });
     return () => cancelAnimationFrame(frame);
   }, [validationError, currentStep]);
+
+  /**
+   * Every section is open, so the form is long. Editing a car is almost always
+   * about its status, its seller or whether it is paid for — so that is the
+   * part of it the editor opens on, rather than the top of a page of fields
+   * that were right when they were filled in.
+   */
+  useEffect(() => {
+    if (!open || !isEdit) return;
+    // Twice: once as soon as the sections are painted, and again once the
+    // things that fill in after them — the pack members, the duplicate bar —
+    // have stopped changing the height of what is above the target.
+    const go = () => scrollToSection(document.querySelector('[data-section="seller"]'));
+    const frame = requestAnimationFrame(go);
+    const settled = setTimeout(go, 300);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(settled);
+    };
+  }, [open, isEdit]);
 
   const handleNext = () => {
     const error = validateStep(currentStep);
@@ -1777,6 +1815,265 @@ export function CarFormDialog({
     ],
   );
 
+  /** Everything still to answer on the step being filled in. */
+  const missing = missingOn(isEdit ? 2 : currentStep);
+  /**
+   * The same list as a row of taps. Setting the error is what moves the screen:
+   * the effect that scrolls a failed field into view and focuses it is already
+   * there, and a thing you have been told about should land you on it.
+   */
+  const thingsLeft = missing.map((m) => ({
+    label: m.short || m.message,
+    onJump: () => {
+      jumpToError.current = true;
+      setValidationError(m);
+    },
+  }));
+
+  /** The sections, as the rail beside the form lists them. */
+  const rail: RailItem[] = [
+    {
+      id: "car",
+      label: "Car details",
+      status: fromCatalogue ? "from catalogue" : "as entered",
+    },
+    {
+      id: "assortments",
+      label: "Assortments",
+      status: assortmentsBadge,
+      tone: form.assortment.trim() ? "muted" : "warn",
+    },
+    {
+      id: "multipack",
+      label: "Multipack",
+      status: packBadge(isPack, packSize, packList.length),
+    },
+    { id: "seller", label: "Seller & payment", status: purchaseBadge, tone: purchaseBadgeTone },
+    { id: "condition", label: "Condition", status: conditionBadge },
+    { id: "photo", label: "Photo & notes", status: extrasBadge },
+  ];
+
+  /**
+   * What is about to be saved, as it currently reads. The same five lines the
+   * car's own detail view leads with, so what you are filling in and what you
+   * will get back are the same thing.
+   */
+  const summary = (
+    <div className="rounded-2xl border border-border/70 bg-card p-3">
+      {/* The same frame the car's own page gives it: 4:3, rounded, white. */}
+      <div className="relative mb-3 grid aspect-4/3 w-full place-items-center overflow-hidden rounded-2xl border border-border/60 bg-white">
+        {form.imageUrl ? (
+          <img src={form.imageUrl} alt="" className="size-full object-cover" />
+        ) : (
+          <Car className="size-8 text-muted-foreground/40" />
+        )}
+      </div>
+      {/* Which casting this car is, and what the catalogue says about it.
+          Filed against the wrong entry is a different problem from filed
+          against the right one with the wrong details, and both are answered
+          here, beside the picture of the casting in question. */}
+      {isEdit && (
+        <div className="mb-3 flex gap-1.5">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1 justify-center gap-1.5"
+            onClick={() => setRelinkOpen(true)}
+            title="Point this car at a different catalogue entry"
+          >
+            <Link2 className="size-3.5 shrink-0" />
+            <span className="truncate">Link</span>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="flex-1 justify-center gap-1.5"
+            onClick={fillFromCatalogue}
+            disabled={!catalogueSource}
+            title={
+              catalogueSource
+                ? "Copy this casting's details from the catalogue"
+                : "This casting has no catalogue entry yet"
+            }
+          >
+            <BookOpen className="size-3.5 shrink-0" />
+            <span className="truncate">Refresh</span>
+          </Button>
+        </div>
+      )}
+      {form.make.trim() ? (
+        <>
+          <p className="truncate text-base font-bold tracking-tight">
+            {previewName || "New casting"}
+          </p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {[form.brand, form.assortment, form.carNumber]
+              .map((x) => x?.trim())
+              .filter(Boolean)
+              .join(" · ") || "—"}
+          </p>
+          {[form.series, form.subSeries].some((x) => x?.trim()) && (
+            <p className="truncate text-[11px] text-muted-foreground">
+              {[form.series, form.subSeries]
+                .map((x) => x?.trim())
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          )}
+          <div className="mt-2.5">
+            <SummaryRow label="Status" value={form.status} />
+            <SummaryRow label="Seller" value={form.seller} />
+            <SummaryRow label="Payment" value={form.payment} />
+            <SummaryRow
+              label="Retail / MRP"
+              value={form.mrp === "" || form.mrp === null ? "" : inrFull(Number(form.mrp))}
+            />
+            <SummaryRow label="Condition" value={form.carCondition} />
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-base font-bold tracking-tight">No car picked yet</p>
+          <p className="text-[11px] text-muted-foreground">
+            Search the catalogue and pick a car. Its details appear here.
+          </p>
+        </>
+      )}
+    </div>
+  );
+
+  const cancelAll = () => {
+    // Cancel is the one gesture that means "throw this away", so it is also the
+    // one that drops the draft. Closing by Escape, the X, or a phone deciding
+    // to reload the tab all leave it.
+    clearDraft(draftKey);
+    onOpenChange(false);
+  };
+
+  /* The keys on Next and Add car matter, and this is why.
+
+     Without them React sees one <button> in this slot across both branches and
+     keeps the same DOM node, swapping only its `type` attribute. Clicking Next
+     then ran handleNext, React flushed the state update before the browser got
+     round to the click's default action, and the browser read type="submit" off
+     the element it had just changed — saving the car on the way to a step
+     nobody ever saw. Distinct keys mean distinct nodes. */
+  const actions = isEdit ? (
+    <div className="flex flex-col gap-2">
+      <Button type="submit" size="lg" className="w-full justify-between">
+        Update car <ChevronRight className="size-4" />
+      </Button>
+      <div className="flex gap-2">
+        <Button type="button" variant="outline" className="flex-1" onClick={cancelAll}>
+          Cancel
+        </Button>
+        {/* At the far end of the footer from Save. It was a full-width button on
+            the car's detail view, one tap from simply reading about a car. */}
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 gap-1.5 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400"
+          onClick={() => setConfirmDelete(true)}
+        >
+          <Trash2 className="size-4" />
+          Delete
+        </Button>
+      </div>
+    </div>
+  ) : (
+    <div className="flex flex-col gap-2">
+      {currentStep < LAST_STEP ? (
+        <Button
+          key="next"
+          type="button"
+          size="lg"
+          className="w-full justify-between"
+          onClick={handleNext}
+        >
+          Next <ChevronRight className="size-4" />
+        </Button>
+      ) : (
+        <Button key="save" type="submit" size="lg" className="w-full justify-between">
+          Add car <Check className="size-4" />
+        </Button>
+      )}
+      <div className="flex gap-2">
+        {currentStep > 1 && (
+          <Button type="button" variant="outline" className="flex-1 gap-1" onClick={handleBack}>
+            <ChevronLeft className="size-4" /> Back
+          </Button>
+        )}
+        <Button type="button" variant="outline" className="flex-1" onClick={cancelAll}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+
+  /**
+   * Which car this is, as one line you confirm rather than sixteen fields you
+   * fill. The fields are still here, one tap down.
+   *
+   * It is the editor's lead rather than the first thing in the scroller: see
+   * the lead prop on EditorShell.
+   */
+  const identityCard = (
+    <FormSection
+      id="car"
+      title="Car details"
+      description="Make, model and the details that tell releases apart."
+      badge={fromCatalogue ? "from catalogue" : "as entered"}
+      open={showIdentity}
+      onToggle={() => setShowIdentity((v) => !v)}
+    >
+      {held && initial && (
+        <p className="mb-3 inline-flex rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+          Editable {heldLabel(initial).replace(/^in /, "for another ")}
+        </p>
+      )}
+      <div>
+        <CatalogueFields
+          values={catalogueValues}
+          onChange={setCatalogueValue}
+          cars={pool}
+          errorFor={(k) => errorFor(k as keyof CarFormData)}
+          allowCarNumberEdit={true}
+          omit={["assortment"]}
+          chain={!fromCatalogue}
+          // The colours of the box you said yours came out of, first. A casting
+          // in six colours as a Box and two as a Blister has two answers, and
+          // the one that matters is the box in your hand.
+          colours={catalogueSource ? catalogColours(catalogueSource) : undefined}
+        />
+        {/* The one field here that is only ever yours: it is written to your row
+            and nothing reads it back into the catalogue. */}
+        <div className="mt-3 border-t border-border/50 pt-3">
+          <Field label="Display name">
+            <ClearableInput
+              value={form.displayName}
+              onChange={(e) => set("displayName", e.target.value)}
+              placeholder={derivedName(form) || "Make Model"}
+              aria-label="Display name"
+            />
+            <p className="pt-1 text-[11px] text-muted-foreground">
+              What you call this one. Blank builds it from make and model. Yours only — the
+              catalogue and other collections are not touched.
+            </p>
+          </Field>
+        </div>
+        <p className="mt-2.5 text-[11px] text-muted-foreground">
+          {held && initial
+            ? `This casting is not in the shared catalogue yet. It is filed ${heldLabel(initial)}, and what you type until then is what gets filed.`
+            : isEdit
+              ? "These describe your copy. Correcting them here does not rewrite the shared catalogue entry — if they now describe a different release, link this car to the right entry from the menu."
+              : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalogue ID will be assigned."}
+        </p>
+      </div>
+    </FormSection>
+  );
+
   const copyFields = (
     <div className="space-y-3">
       {/* Above the summary, so it is read before the purchase is filled in.
@@ -1790,187 +2087,10 @@ export function CarFormDialog({
         hits={duplicates}
         onUse={(c) => pickFromCatalogue(catalogCarToCatalogueCar(c))}
       />
+
+      {identityCard}
       {/* What the car is, as one line you confirm rather than sixteen
                   fields you fill. The fields are still here, one tap down. */}
-      {/* Pinned to the top of the scroller: which car this is, is the one thing
-          you need while filling in everything below it. The tint moved off the
-          section and onto its rows because a sticky box must be opaque —
-          bg-muted/30 let the fields scroll through it. */}
-      <section
-        className={cn(
-          // No `overflow-hidden`: it would make this box the scrollport of the
-          // row inside it, and a box that does not scroll never lets anything
-          // stick. The last child rounds its own bottom corners in its place.
-          "rounded-lg border border-border bg-background [&>:last-child]:rounded-b-lg",
-          // Closed, the whole box pins — it is only the name row and the
-          // button under it. Opened, the fields make it taller than the
-          // scroller, and a sticky box that tall pins over everything below it
-          // instead of yielding: then it is the row inside that pins, which is
-          // the part you need while you are typing into the rest of it.
-          !showIdentity && "sticky z-20 shadow-sm",
-          // The duplicate bar above pins first and is h-7 tall, so this comes
-          // to rest under it instead of behind it.
-          !showIdentity && (duplicates.length > 0 ? "top-7" : "top-0"),
-        )}
-      >
-        {/* Opaque, because the form scrolls under it. The tint is on the row
-            rather than the box for the same reason: bg-muted/30 alone let the
-            fields show through. */}
-        <div
-          className={cn(
-            "sticky z-20 rounded-t-lg bg-background shadow-sm",
-            duplicates.length > 0 ? "top-7" : "top-0",
-          )}
-        >
-          <div className="flex items-start gap-3 rounded-t-lg bg-muted/30 p-3">
-            {/* The thumbnail is the button for fixing it — see photo-picker.tsx,
-              which the catalogue's own dialog shares. */}
-            <PhotoThumbButton
-              url={form.imageUrl}
-              picking={pickingPhoto}
-              onClick={() => setPickingPhoto((v) => !v)}
-            />
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <TruncatedName
-                  name={previewName || "New casting"}
-                  className="text-sm font-semibold text-foreground"
-                />
-                <ChaseMark rarity={form.rarity} className="size-3.5 shrink-0" />
-              </div>
-              <p className="truncate text-[11px] text-muted-foreground">{identityLine}</p>
-              {fromCatalogue && !isEdit && (
-                <span className="mt-1.5 inline-flex rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                  Filled from the catalogue
-                </span>
-              )}
-            </div>
-            {/* Adding, you can go back and pick a different casting. Editing, the
-              car is the car — so the button here copies what the catalogue says
-              about it instead of changing which casting it is. */}
-            {isEdit ? (
-              <>
-                {/* Which casting this is, as against what the catalogue says about
-                  it. Filed against the wrong entry is a different problem from
-                  filed against the right one with the wrong details, and until
-                  now only the second had a button. */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 gap-1.5"
-                  onClick={() => setRelinkOpen(true)}
-                  title="Point this car at a different catalogue entry"
-                >
-                  <Link2 className="size-3.5 shrink-0" />
-                  <span className="truncate">Link to catalogue</span>
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="shrink-0 gap-1.5"
-                  onClick={fillFromCatalogue}
-                  disabled={!catalogueSource}
-                  title={
-                    catalogueSource
-                      ? "Copy this casting's details from the catalogue"
-                      : "This casting has no catalogue entry yet"
-                  }
-                >
-                  <BookOpen className="size-3.5 shrink-0" />
-                  <span className="truncate">Get from Catalogue</span>
-                </Button>
-              </>
-            ) : (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="shrink-0"
-                onClick={() => {
-                  setValidationError(null);
-                  setCurrentStep(1);
-                }}
-              >
-                Change
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* What the search turned up for this car, as a row you scroll. The
-            same candidates Photo & notes shows further down — this is the
-            shortcut, not a second search. Choosing one closes the row, because
-            the picture in the card above is the answer. */}
-        {pickingPhoto && (
-          <PhotoCandidateStrip
-            search={imageSearch}
-            value={form.imageUrl}
-            onPick={(url) => {
-              setImage(url);
-              setPickingPhoto(false);
-            }}
-          />
-        )}
-
-        <button
-          type="button"
-          onClick={() => setShowIdentity((v) => !v)}
-          aria-expanded={showIdentity}
-          className="flex w-full items-center gap-2 border-t border-border bg-muted/30 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
-        >
-          Edit these details
-          {held && initial && (
-            <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
-              Editable {heldLabel(initial).replace(/^in /, "for another ")}
-            </span>
-          )}
-          <ChevronRight
-            className={cn("ml-auto size-3.5 transition-transform", showIdentity && "rotate-90")}
-          />
-        </button>
-        {showIdentity && (
-          <div className="border-t border-border bg-background p-3">
-            <CatalogueFields
-              values={catalogueValues}
-              onChange={setCatalogueValue}
-              cars={pool}
-              errorFor={(k) => errorFor(k as keyof CarFormData)}
-              allowCarNumberEdit={true}
-              omit={["assortment"]}
-              chain={!fromCatalogue}
-              // The colours of the box you said yours came out of, first. A
-              // casting in six colours as a Box and two as a Blister has two
-              // answers, and the one that matters is the box in your hand.
-              colours={catalogueSource ? catalogColours(catalogueSource) : undefined}
-            />
-            {/* The one field here that is only ever yours: it is written to your
-                row and nothing reads it back into the catalogue. */}
-            <div className="mt-3 border-t border-border/50 pt-3">
-              <Field label="Display name">
-                <ClearableInput
-                  value={form.displayName}
-                  onChange={(e) => set("displayName", e.target.value)}
-                  placeholder={derivedName(form) || "Make Model"}
-                  aria-label="Display name"
-                />
-                <p className="pt-1 text-[11px] text-muted-foreground">
-                  What you call this one. Blank builds it from make and model. Yours only — the
-                  catalogue and other collections are not touched.
-                </p>
-              </Field>
-            </div>
-            <p className="mt-2.5 text-[11px] text-muted-foreground">
-              {held && initial
-                ? `This casting is not in the shared catalogue yet. It is filed ${heldLabel(initial)}, and what you type until then is what gets filed.`
-                : isEdit
-                  ? "These describe your copy. Correcting them here does not rewrite the shared catalogue entry — if they now describe a different release, link this car to the right entry from the menu."
-                  : "You can adjust any fields (colour, variant, year, car number, etc.) for this car. If the details describe a different release, a unique Catalogue ID will be assigned."}
-            </p>
-          </div>
-        )}
-      </section>
 
       {/* Whether the casting is a box rather than a car — the same control the
           catalogue form has, because this is the other place a casting gets
@@ -1980,7 +2100,9 @@ export function CarFormDialog({
           out of. Above Multipack because the two are alternatives: a multipack
           is the product, so it is one box by definition. */}
       <FormSection
+        id="assortments"
         title="Assortments"
+        description="The box your copy came out of, and what it cost."
         badge={assortmentsBadge}
         badgeTone={form.assortment.trim() ? "muted" : "warn"}
         open={showAssortments}
@@ -2038,7 +2160,9 @@ export function CarFormDialog({
       </FormSection>
 
       <FormSection
+        id="multipack"
         title="Multipack"
+        description="Whether this casting is a box of cars rather than one."
         badge={packBadge(isPack, packSize, packList.length)}
         open={showPack}
         onToggle={() => setShowPack((v) => !v)}
@@ -2077,7 +2201,9 @@ export function CarFormDialog({
                   step is in here, and shut it would be a form that looks
                   finished while being empty. */}
       <FormSection
+        id="seller"
         title="Seller & payment"
+        description="Where it came from, what it cost, and whether it is paid for."
         badge={purchaseBadge}
         badgeTone={purchaseBadgeTone}
         open={showPurchase}
@@ -2313,7 +2439,9 @@ export function CarFormDialog({
       </FormSection>
 
       <FormSection
+        id="condition"
         title="Condition"
+        description="The grade of the car and of the card it came on."
         badge={conditionBadge}
         open={showCondition}
         onToggle={() => setShowCondition((v) => !v)}
@@ -2344,7 +2472,9 @@ export function CarFormDialog({
       </FormSection>
 
       <FormSection
+        id="photo"
         title="Photo & notes"
+        description="A picture of your copy, and anything worth remembering."
         badge={extrasBadge}
         open={showExtras}
         onToggle={() => setShowExtras((v) => !v)}
@@ -2419,7 +2549,7 @@ export function CarFormDialog({
           // The dialog itself no longer scrolls; the part between them does.
           "flex flex-col overflow-hidden overscroll-contain touch-pan-y",
           "w-full max-w-full sm:max-w-3xl",
-          mode === "add" ? "lg:max-w-5xl" : "lg:max-w-6xl",
+          "lg:max-w-6xl xl:max-w-[88rem]",
           // Pinned near the top of the window rather than centred on it. A
           // centred dialog puts step one — a search box and two buttons — in
           // the middle of the screen, and the form appears to jump up the page
@@ -2428,295 +2558,150 @@ export function CarFormDialog({
           "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
         )}
       >
-        <DialogHeader className="shrink-0">
-          <DialogTitle>{mode === "add" ? "Add a car" : "Update car"}</DialogTitle>
-          {/* The search, Scan and Add in bulk used to sit here in one row of six
-              small controls, with Export and the CSV template beside them. They
-              are step one now — the search full width and focused, the other two
-              as buttons you can hit on a phone. Export went back to the page
-              toolbars, where the list it exports actually is. */}
-          <DialogDescription>
-            {mode === "add"
-              ? "Find the car, then say what your copy cost."
-              : "Status, logistics, payment and flags. What the car is stays as catalogued."}
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* The "Car Name:" banner that used to sit here is gone. It existed to
-            preview a name assembled from fields as they were typed — but step
-            one has nothing typed yet and read "Make Model", and step two prints
-            the same name at the top of the summary card a few pixels below it.
-            Edit mode had already dropped it for the same reason. */}
-
-        {restored && (
-          <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
-            <span className="flex items-center gap-2 text-foreground">
-              <RotateCcw className="size-3.5 shrink-0 text-primary" />
-              Picked up where you left off — nothing you typed was lost.
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs"
-              onClick={discard}
-            >
-              Start fresh
-            </Button>
-          </div>
-        )}
-
-        {/* Adding marks the field itself; editing has no step fields to mark. */}
-        {validationError && mode !== "add" && (
-          <div className="flex shrink-0 items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            <AlertCircle className="size-4 shrink-0" />
-            <span>{validationError.message}</span>
-          </div>
-        )}
-
-        {/* ===================== MODE: ADD ===================== */}
-        {mode === "add" ? (
-          <div className="flex min-h-0 flex-1 flex-col gap-4">
-            {/* Two steps, so the rail is two buttons rather than a strip of five. */}
-            <div className="shrink-0 space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                {WIZARD_STEPS.map((step) => {
-                  const StepIcon = step.icon;
-                  const isActive = currentStep === step.id;
-                  const isCompleted = currentStep > step.id;
-                  return (
-                    <button
-                      key={step.id}
-                      type="button"
-                      onClick={() => {
-                        if (step.id < currentStep) {
-                          setValidationError(null);
-                          setCurrentStep(step.id);
-                        }
-                      }}
-                      className={cn(
-                        "flex min-w-0 items-center justify-center gap-2 rounded-lg border p-2 text-center transition-all",
-                        isActive
-                          ? "border-primary bg-primary/10 text-primary shadow-xs"
-                          : isCompleted
-                            ? "cursor-pointer border-border bg-muted/60 text-foreground hover:bg-muted"
-                            : "cursor-not-allowed border-border/40 bg-muted/20 text-muted-foreground/60",
-                      )}
-                    >
-                      <span
-                        className={cn(
-                          "flex size-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold",
-                          isActive
-                            ? "bg-primary text-primary-foreground"
-                            : isCompleted
-                              ? "bg-emerald-500 text-white"
-                              : "bg-muted text-muted-foreground",
-                        )}
-                      >
-                        {isCompleted ? <Check className="size-3" /> : step.id}
-                      </span>
-                      <StepIcon className="hidden size-3.5 sm:inline" />
-                      <span className="truncate text-xs font-medium">{step.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full bg-primary transition-all duration-300"
-                  style={{ width: `${(currentStep / LAST_STEP) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <form
-              onSubmit={(e) => void handleSubmit(e)}
-              className="flex min-h-0 flex-1 flex-col gap-4"
-            >
-              {/* The only part that scrolls. `min-h-0` is what lets it: without
-                  it a flex child refuses to shrink below its content and the
-                  footer is pushed off the bottom of the dialog instead. */}
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-0.5">
-                {/* ---------------- STEP 1: WHICH CAR ---------------- */}
-                {currentStep === 1 && (
-                  <div className="space-y-4">
-                    {/* Above the search rather than below: by the time three fields
-                      agree with something on the ISO list, the useful moment is
-                      before the rest is typed out by hand. */}
-                    {!isoDismissed && (
-                      <IsoSuggestions
-                        matches={isoMatches}
-                        onUse={setIsoStatusCar}
-                        onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
-                        onDismiss={() => setIsoDismissed(true)}
-                      />
-                    )}
-
-                    <div className="space-y-1.5">
-                      <CollectionSearch
-                        cars={cars}
-                        onPick={pickFromCatalogue}
-                        searchAll={!isGuest}
-                        wide
-                        autoFocus
-                      />
-                      <p className="text-[11px] text-muted-foreground">
-                        Pick a car and the fourteen fields that describe the casting fill themselves
-                        in. Your collection first, then every collection.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setScanOpen(true)}
-                        className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
-                      >
-                        <span className="flex items-center gap-2 text-sm font-semibold">
-                          <ScanLine className="size-4 text-primary" />
-                          Scan a card
-                        </span>
-                        <span className="text-[11px] text-muted-foreground">
-                          Read make, model and series off the card
-                        </span>
-                      </button>
-                      {onSwitchToBulk && (
-                        <button
-                          type="button"
-                          // A table of thirty-five columns and a file picker are
-                          // not a phone's work. Left on the screen rather than
-                          // hidden, so the answer to "where did bulk go" is on
-                          // the screen that raises the question.
-                          disabled={isMobile}
-                          title={isMobile ? "Add in bulk is available on a computer" : undefined}
-                          // Wrapped, not passed directly: onSwitchToBulk takes seed
-                          // cars, and a bare handler would hand it the click event
-                          // as the batch to prefill.
-                          onClick={() => onSwitchToBulk()}
-                          className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted/30 disabled:hover:border-border/60"
-                        >
-                          <span className="flex items-center gap-2 text-sm font-semibold">
-                            <Layers
-                              className={cn(
-                                "size-4",
-                                isMobile ? "text-muted-foreground" : "text-primary",
-                              )}
-                            />
-                            <span className={isMobile ? "text-muted-foreground" : undefined}>
-                              Add in bulk
-                            </span>
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            {isMobile ? "Available on a computer" : "Several at once, or a CSV"}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={startByHand}
-                      className="text-xs text-primary underline underline-offset-2"
-                    >
-                      Not in the catalogue? Enter it manually →
-                    </button>
-                  </div>
-                )}
-
-                {/* ---------------- STEP 2: YOUR COPY ---------------- */}
-                {currentStep === 2 && copyFields}
-              </div>
-
-              {/* Cancel left, Next right, at the foot of the dialog at every
-                  width — outside the scroller, so they are where you left them
-                  however far down the form you are. */}
-              <DialogFooter className="flex shrink-0 flex-row items-center justify-between border-t border-border/50 pt-3 sm:justify-between">
-                <div>
-                  {/* Cancel is the one gesture that means "throw this away", so
-                      it is also the one that drops the draft. Closing by Escape,
-                      the X, or a phone deciding to reload the tab all leave it. */}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => {
-                      clearDraft(draftKey);
-                      onOpenChange(false);
-                    }}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  {currentStep > 1 && (
-                    <Button type="button" variant="outline" onClick={handleBack}>
-                      <ChevronLeft className="size-4 mr-1" /> Back
-                    </Button>
-                  )}
-                  {/* The keys matter, and this is why.
-
-                      Without them React sees one <button> in this slot across
-                      both branches and keeps the same DOM node, swapping only
-                      its `type` attribute. Clicking Next then ran handleNext,
-                      React flushed the state update before the browser got round
-                      to the click's default action, and the browser read
-                      type="submit" off the element it had just changed — saving
-                      the car on the way to a step nobody ever saw. Distinct keys
-                      mean distinct nodes. */}
-                  {currentStep < LAST_STEP ? (
-                    <Button key="next" type="button" onClick={handleNext}>
-                      Next <ChevronRight className="size-4 ml-1" />
-                    </Button>
-                  ) : (
-                    <Button key="save" type="submit" className="bg-primary text-primary-foreground">
-                      <Check className="size-4 mr-1" /> Add car
-                    </Button>
-                  )}
-                </div>
-              </DialogFooter>
-            </form>
-          </div>
-        ) : (
-          /* ===================== MODE: EDIT ===================== */
-          /* The same block adding a car uses for step two, with the casting
-             locked. What differs is the footer: editing can delete. */
-          <form
-            onSubmit={(e) => void handleSubmit(e)}
-            className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col gap-4 overflow-x-hidden"
+        <form
+          onSubmit={(e) => void handleSubmit(e)}
+          className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden"
+        >
+          <EditorShell
+            title={mode === "add" ? "Add a car" : "Update car"}
+            description={
+              mode === "add"
+                ? "Find the car, then say what your copy cost."
+                : "Status, logistics, payment and flags. What the car is stays as catalogued."
+            }
+            steps={
+              mode === "add" ? WIZARD_STEPS.map((s) => ({ id: s.id, label: s.label })) : undefined
+            }
+            current={currentStep}
+            onStep={(id) => {
+              setValidationError(null);
+              setCurrentStep(id);
+            }}
+            rail={isEdit || currentStep === LAST_STEP ? rail : []}
+            summary={summary}
+            alerts={
+              isEdit || currentStep === LAST_STEP ? (
+                <ThingsLeft items={thingsLeft} done="Every required field is in" />
+              ) : null
+            }
+            actions={actions}
           >
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden pr-0.5">
-              {copyFields}
-            </div>
-
-            {/* Delete lives here now, at the far end of the footer from Save.
-                It was a full-width button on the car's detail view, one tap from
-                simply reading about a car; behind Edit it takes a deliberate
-                trip, and it is still the only red thing on screen. */}
-            <DialogFooter className="flex shrink-0 flex-row items-center justify-between gap-2 border-t border-border/60 pt-3 sm:justify-between w-full min-w-0">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setConfirmDelete(true)}
-                className="gap-1.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400 shrink-0"
-              >
-                <Trash2 className="size-4" />
-                Delete
-              </Button>
-              <div className="flex items-center gap-2 shrink-0">
+            {restored && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
+                <span className="flex items-center gap-2 text-foreground">
+                  <RotateCcw className="size-3.5 shrink-0 text-primary" />
+                  Picked up where you left off — nothing you typed was lost.
+                </span>
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => {
-                    clearDraft(draftKey);
-                    onOpenChange(false);
-                  }}
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={discard}
                 >
-                  Cancel
+                  Start fresh
                 </Button>
-                <Button type="submit">Update car</Button>
               </div>
-            </DialogFooter>
-          </form>
-        )}
+            )}
+
+            {/* Adding marks the field itself; editing has no step fields to mark. */}
+            {validationError && mode !== "add" && (
+              <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <AlertCircle className="size-4 shrink-0" />
+                <span>{validationError.message}</span>
+              </div>
+            )}
+
+            {/* ---------------- STEP 1: WHICH CAR ---------------- */}
+            {mode === "add" && currentStep === 1 && (
+              <div className="space-y-4">
+                {/* Above the search rather than below: by the time three fields
+                      agree with something on the ISO list, the useful moment is
+                      before the rest is typed out by hand. */}
+                {!isoDismissed && (
+                  <IsoSuggestions
+                    matches={isoMatches}
+                    onUse={setIsoStatusCar}
+                    onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
+                    onDismiss={() => setIsoDismissed(true)}
+                  />
+                )}
+
+                <div className="space-y-1.5">
+                  <CollectionSearch
+                    cars={cars}
+                    onPick={pickFromCatalogue}
+                    searchAll={!isGuest}
+                    wide
+                    autoFocus
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Pick a car and the fourteen fields that describe the casting fill themselves in.
+                    Your collection first, then every collection.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setScanOpen(true)}
+                    className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      <ScanLine className="size-4 text-primary" />
+                      Scan a card
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">
+                      Read make, model and series off the card
+                    </span>
+                  </button>
+                  {onSwitchToBulk && (
+                    <button
+                      type="button"
+                      // A table of thirty-five columns and a file picker are
+                      // not a phone's work. Left on the screen rather than
+                      // hidden, so the answer to "where did bulk go" is on
+                      // the screen that raises the question.
+                      disabled={isMobile}
+                      title={isMobile ? "Add in bulk is available on a computer" : undefined}
+                      // Wrapped, not passed directly: onSwitchToBulk takes seed
+                      // cars, and a bare handler would hand it the click event
+                      // as the batch to prefill.
+                      onClick={() => onSwitchToBulk()}
+                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted/30 disabled:hover:border-border/60"
+                    >
+                      <span className="flex items-center gap-2 text-sm font-semibold">
+                        <Layers
+                          className={cn(
+                            "size-4",
+                            isMobile ? "text-muted-foreground" : "text-primary",
+                          )}
+                        />
+                        <span className={isMobile ? "text-muted-foreground" : undefined}>
+                          Add in bulk
+                        </span>
+                      </span>
+                      <span className="text-[11px] text-muted-foreground">
+                        {isMobile ? "Available on a computer" : "Several at once, or a CSV"}
+                      </span>
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={startByHand}
+                  className="text-xs text-primary underline underline-offset-2"
+                >
+                  Not in the catalogue? Enter it manually →
+                </button>
+              </div>
+            )}
+
+            {/* ---------------- STEP 2: YOUR COPY ---------------- */}
+            {(isEdit || currentStep === LAST_STEP) && copyFields}
+          </EditorShell>
+        </form>
       </DialogContent>
 
       {/* Deleting closes this dialog; anything showing the car behind it — the
@@ -2802,37 +2787,12 @@ export function CarFormDialog({
 const CARD_CONDITION_NOTES = describe(CARD_CONDITIONS);
 
 /** Every field the wizard collected, grouped by the step that asked for it. */
-/**
- * A car name that stops at the edge with an ellipsis instead of widening the
- * dialog. The full name shows on hover with a mouse, or on a tap on a phone.
- */
-type FieldError = { field: keyof CarFormData; message: string };
-
-function TruncatedName({ name, className = "" }: { name: string; className?: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={name}
-          onPointerEnter={(e) => e.pointerType === "mouse" && setOpen(true)}
-          onPointerLeave={(e) => e.pointerType === "mouse" && setOpen(false)}
-          className={`block min-w-0 truncate text-left ${className}`}
-        >
-          {name}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        className="w-auto max-w-[min(22rem,calc(100vw-2rem))] break-words px-3 py-2 text-xs font-medium"
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        {name}
-      </PopoverContent>
-    </Popover>
-  );
-}
+type FieldError = {
+  field: keyof CarFormData;
+  message: string;
+  /** Three words for the "things left" list, where the sentence will not fit. */
+  short?: string;
+};
 
 /**
  * Search for a car and copy its catalogue fields into the form.

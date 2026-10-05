@@ -26,6 +26,25 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 268,
+    at: "2026-10-05T14:00",
+    changes: [
+      {
+        key: true,
+        text: "Add a car, update a car and file a casting are one editor now: the sections down the left with what is in each, the form in the middle, and on the right the thing you are filing — its picture, its status, its seller, its price — with the save button under it.",
+      },
+      {
+        text: "Under that picture is what is still missing, each one a tap from the field that fixes it, so “why can I not save this” is answered before you press anything. When nothing is missing it says so.",
+      },
+      {
+        text: "Every section starts open. Updating a car opens on Seller & payment, which is what you came for; what the car is stays one section up, out of the way.",
+      },
+      {
+        text: "On a phone the sections become a row of chips with a dot on the ones still needing an answer, and what is missing sits above the buttons at the bottom of the screen.",
+      },
+    ],
+  },
+  {
     build: 267,
     at: "2026-10-02T21:30",
     changes: [

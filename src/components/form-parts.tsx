@@ -24,6 +24,7 @@ export function Field({
   info,
   name,
   error,
+  required,
 }: {
   label: string;
   children: React.ReactNode;
@@ -34,6 +35,8 @@ export function Field({
   name?: string;
   /** What is missing, shown under the field with the field outlined in red. */
   error?: string;
+  /** Marks the label with a star. Says nothing about validation, which is the form's. */
+  required?: boolean;
 }) {
   return (
     <div
@@ -47,8 +50,16 @@ export function Field({
       )}
     >
       <div className="flex items-center gap-1">
-        <Label className={cn("text-xs", error ? "text-destructive" : "text-muted-foreground")}>
+        {/* Small caps rather than sentence case: a label this size has to read
+            as a label and not as the first word of the answer. */}
+        <Label
+          className={cn(
+            "text-[10px] font-semibold uppercase tracking-wider",
+            error ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
           {label}
+          {required && <span className="ml-0.5 text-primary">*</span>}
         </Label>
         {info && <InfoTip label={label} text={info} />}
       </div>
@@ -137,14 +148,20 @@ export function ClearableInput({ className, ...props }: React.ComponentProps<typ
  * shut one still tells you something.
  */
 export function FormSection({
+  id,
   title,
+  description,
   badge,
   badgeTone = "muted",
   open,
   onToggle,
   children,
 }: {
+  /** What the rail beside the form scrolls to. See editor-shell.tsx. */
+  id?: string;
   title: string;
+  /** One line saying what the section is for, under its title. */
+  description?: string;
   badge?: string;
   /** "warn" for a badge that is flagging something missing. */
   badgeTone?: "muted" | "warn";
@@ -153,21 +170,31 @@ export function FormSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-border">
+    <section
+      data-section={id}
+      // Scrolled to by the rail, so it stops clear of the top of the scroller
+      // rather than flush against it.
+      className="scroll-mt-2 overflow-hidden rounded-xl border border-border/70 bg-muted/30"
+    >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-medium hover:bg-muted/40"
+        className="flex w-full items-start gap-2 px-3.5 py-3 text-left hover:bg-muted/50"
       >
-        {title}
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold tracking-tight">{title}</span>
+          {description && (
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">{description}</span>
+          )}
+        </span>
         {badge && (
           <span
             className={cn(
-              "ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium",
+              "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
               badgeTone === "warn"
                 ? "bg-primary/12 text-primary"
-                : "bg-muted text-muted-foreground",
+                : "bg-background text-muted-foreground",
             )}
           >
             {badge}
@@ -175,13 +202,12 @@ export function FormSection({
         )}
         <ChevronRight
           className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform",
-            !badge && "ml-auto",
+            "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform",
             open && "rotate-90",
           )}
         />
       </button>
-      {open && <div className="border-t border-border p-3">{children}</div>}
+      {open && <div className="border-t border-border/70 bg-card p-3.5">{children}</div>}
     </section>
   );
 }
