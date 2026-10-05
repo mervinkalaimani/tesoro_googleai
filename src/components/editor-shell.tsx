@@ -342,7 +342,7 @@ export function ThingsLeft({
             key={i.label}
             type="button"
             onClick={i.onJump}
-            className="flex w-full items-center gap-2 rounded-md px-1 py-1 text-left text-[13px] font-medium text-primary hover:bg-primary/10"
+            className="flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left text-[11px] font-medium text-primary hover:bg-primary/10"
           >
             <span className="min-w-0 flex-1 truncate">{i.label}</span>
             {i.onJump && <ChevronRight className="size-3.5 shrink-0" />}

@@ -40,7 +40,7 @@ import { boxSiblings } from "@/lib/casting-group";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
 import { ClearableInput, Field, FormSection, InfoTip } from "@/components/form-parts";
 import { MultipackField } from "@/components/multipack-field";
-import { DuplicateNotice } from "@/components/duplicate-notice";
+import { DuplicatesButton, DuplicatesDialog } from "@/components/duplicates-dialog";
 import { findDuplicates, matchPercent, needsCarNumber } from "@/lib/duplicate";
 import { packBadge } from "@/lib/pack";
 import { EditorShell, SummaryRow, ThingsLeft, type RailItem } from "@/components/editor-shell";
@@ -48,7 +48,7 @@ import { ChaseMark } from "@/components/car-marks";
 import { useCars } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
-import { MergePanel } from "@/components/merge-castings";
+import { MergeChoiceDialog } from "@/components/merge-castings";
 import { carSubLineParts } from "@/lib/car-subline";
 import { buildCarName } from "@/lib/car-name";
 import { useAuth } from "@/lib/auth-store";
@@ -175,9 +175,6 @@ export function CatalogFormDialog({
    * a separate admin screen. Every car pointing at the entry being edited moves
    * to the one picked, and this entry goes.
    */
-  const [mergeTo, setMergeTo] = useState<CatalogCar | null>(null);
-  const [mergePreview, setMergePreview] = useState<MergePreview | null>(null);
-  const [mergeBusy, setMergeBusy] = useState(false);
   const [packConfirm, setPackConfirm] = useState(false);
   const [packBusy, setPackBusy] = useState(false);
   const [confirmNotDuplicate, setConfirmNotDuplicate] = useState(false);
@@ -237,6 +234,7 @@ export function CatalogFormDialog({
    * looking at both. So both are on screen, and either can be the one that
    * stays.
    */
+  const [dupesOpen, setDupesOpen] = useState(false);
   const [absorb, setAbsorb] = useState<CatalogCar | null>(null);
   const [absorbPreview, setAbsorbPreview] = useState<MergePreview | null>(null);
   const [absorbBusy, setAbsorbBusy] = useState(false);
@@ -273,9 +271,6 @@ export function CatalogFormDialog({
     setAlsoMine(false);
     setPackConfirm(false);
     setPackBusy(false);
-    setMergeTo(null);
-    setMergePreview(null);
-    setMergeBusy(false);
     if (entry && entry !== "new") {
       setForm({
         ...entry,
@@ -649,6 +644,7 @@ export function CatalogFormDialog({
         });
         setAbsorb(null);
         setMerging(false);
+        setDupesOpen(false);
         // This entry was the one folded away, so the form behind is editing a
         // row that no longer exists.
         if (!keepingThis) onClose();
@@ -750,23 +746,23 @@ export function CatalogFormDialog({
   });
 
   /**
-   * The standard secondary line, so the card reads like a car anywhere else,
-   * with the colour after the number: two castings can share a number, and the
-   * colour is what says which release this one is.
+   * What the card says under the name: series, sub-series, number.
+   *
+   * Not the brand or the box, which are rows of their own two lines below —
+   * printed in both places they were the same fact twice, and the half that
+   * tells two releases apart was the half falling off the end.
    */
   const identityLine =
-    [
-      ...carSubLineParts({
-        brand: catalogueValues.brand,
-        assortment: catalogueValues.assortment,
-        series: catalogueValues.series,
-        subSeries: catalogueValues.subSeries,
-        carNumber: catalogueValues.carNumber,
-      }),
-      catalogueValues.colour?.trim(),
-    ]
-      .filter(Boolean)
-      .join(" · ") || "—";
+    carSubLineParts(
+      {
+        brand: "",
+        assortment: "",
+        series: catalogueValues.series ?? "",
+        subSeries: catalogueValues.subSeries ?? "",
+        carNumber: catalogueValues.carNumber ?? "",
+      },
+      true,
+    ).join(" · ") || "—";
 
   /** In the order the fields appear, so the first one flagged is the first on screen. */
   /**
@@ -897,7 +893,7 @@ export function CatalogFormDialog({
     : [
         {
           id: "identity",
-          label: "What it is",
+          label: "Car details",
           status: identityBadge,
           tone: identityBadge === "not set" ? "warn" : "muted",
         },
@@ -1205,28 +1201,10 @@ export function CatalogFormDialog({
               summary={summary}
               alerts={
                 <>
-                  {/* Under the preview of the casting being filed: "this
-                      already exists" is only readable next to the thing it is
-                      said about. */}
-                  <DuplicateNotice
-                    hits={duplicates}
-                    onAddThisCar={(c) => {
-                      onClose();
-                      onAddExistingCar?.(c);
-                    }}
-                    // Only an admin, and only once there is an entry to fold:
-                    // the same bar the Duplicates screen keeps, and a casting
-                    // still being typed has no cars on it to move.
-                    onMergeToThis={
-                      isAdmin && entryId
-                        ? (dupe) => {
-                            setMergeTo(dupe);
-                            setMergePreview(null);
-                            void catalogMergePreview([entryId]).then(setMergePreview);
-                          }
-                        : undefined
-                    }
-                  />
+                  {/* Under the preview of the casting being filed, as a count.
+                      The entries themselves need the width of a dialog to be
+                      worth reading, so that is where they are. */}
+                  <DuplicatesButton count={duplicates.length} onClick={() => setDupesOpen(true)} />
                   {isNew && duplicates.length > 0 && (
                     <div
                       data-duplicate-confirm
@@ -1255,7 +1233,7 @@ export function CatalogFormDialog({
             >
               <FormSection
                 id="identity"
-                title="What the casting is"
+                title="Car details"
                 description="Make, model and the details that tell releases apart."
                 badge={identityBadge}
                 badgeTone={identityBadge === "not set" ? "warn" : "muted"}
@@ -1530,74 +1508,12 @@ export function CatalogFormDialog({
 
       <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={onApplyScan} />
 
-      {/* Folding one entry into another moves other people's cars, so it says
-          how many before it does anything. */}
-      <Dialog open={mergeTo !== null} onOpenChange={(v) => !v && !mergeBusy && setMergeTo(null)}>
-        <DialogContent className="max-w-md">
-          <DialogTitle>Merge this casting into {mergeTo?.name}?</DialogTitle>
-          <DialogDescription asChild>
-            <div className="space-y-3 text-sm text-muted-foreground">
-              <p>
-                <span className="font-medium text-foreground">{mergeTo?.name}</span> is kept, with
-                everything it already says.{" "}
-                <span className="font-mono text-[11px]">{mergeTo?.car_id}</span>
-              </p>
-              <p>
-                {mergePreview === null
-                  ? "Counting what would move…"
-                  : mergePreview.cars === 0
-                    ? "Nobody owns a copy filed under this entry, so only the entry itself goes."
-                    : `${mergePreview.cars} car${mergePreview.cars === 1 ? "" : "s"} across ${mergePreview.owners.length} collection${mergePreview.owners.length === 1 ? "" : "s"} move${mergePreview.cars === 1 ? "s" : ""} to it${mergePreview.packs > 0 ? `, and ${mergePreview.packs} pack membership${mergePreview.packs === 1 ? "" : "s"}` : ""}. What each person paid, their status and their photographs are untouched.`}
-              </p>
-              <p>
-                This entry — <span className="font-mono text-[11px]">{entryId}</span> — is then
-                removed, and that cannot be undone.
-              </p>
-            </div>
-          </DialogDescription>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMergeTo(null)} disabled={mergeBusy}>
-              Cancel
-            </Button>
-            <Button
-              disabled={mergeBusy || mergePreview === null}
-              className="gap-1.5"
-              onClick={() => {
-                if (!mergeTo || !entryId) return;
-                setMergeBusy(true);
-                void mergeCatalogEntries(mergeTo.car_id, [entryId])
-                  .then((res) => {
-                    toast.success(`Merged into ${mergeTo.name}`, {
-                      description:
-                        res.cars > 0
-                          ? `${res.cars} car${res.cars === 1 ? "" : "s"} now point at it.`
-                          : "The duplicate entry is gone.",
-                    });
-                    setMergeTo(null);
-                    onClose();
-                  })
-                  .catch((e: Error) => toast.error(e.message || "Could not merge the castings"))
-                  .finally(() => setMergeBusy(false));
-              }}
-            >
-              {mergeBusy ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Check className="size-4" />
-              )}
-              {mergeBusy ? "Merging…" : "Merge"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Removing a catalogue entry is removing it for everybody, so it says
           which ones and does not do it until it is told to. */}
       {/* Everything that shares this casting's brand, make, model and number.
           Folding one in keeps THIS entry — the opposite direction to the
-          "Merge to this" button on the duplicate notice, which folds this one
-          away. Both exist because which of two entries is the keeper is a
-          judgement, not a rule. */}
+          chooser that opens next is where which of the two survives is
+          settled. */}
       <Dialog
         open={merging}
         onOpenChange={(v) => {
@@ -1634,7 +1550,11 @@ export function CatalogFormDialog({
                 </span>
                 <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
                   {c.image_url ? (
-                    <img src={transformImageUrl(c.image_url, "thumb")} alt="" className="size-full object-cover" />
+                    <img
+                      src={transformImageUrl(c.image_url, "thumb")}
+                      alt=""
+                      className="size-full object-cover"
+                    />
                   ) : (
                     <Car className="size-4 text-muted-foreground" />
                   )}
@@ -1685,64 +1605,77 @@ export function CatalogFormDialog({
               </div>
             ))}
           </div>
-
-          {absorb && mergeCars.length === 2 && (
-            <div className="space-y-2 rounded-lg border border-amber-500/50 bg-amber-500/10 p-3">
-              <p className="text-xs font-semibold text-foreground">
-                Choose the entry to keep. The cars on the other move onto it, and nobody
-                else&rsquo;s collection changes.
-              </p>
-
-              <MergePanel
-                cars={mergeCars}
-                keepId={mergeKeepId}
-                dropIds={mergeDropIds}
-                onKeep={(id) => {
-                  setMergeKeepId(id);
-                  // The keeper is never also merged away, and the one it
-                  // replaces takes its place in the list of what moves.
-                  setMergeDropIds(mergeCars.filter((c) => c.car_id !== id).map((c) => c.car_id));
-                }}
-                onToggleDrop={(id) =>
-                  setMergeDropIds((xs) =>
-                    xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id],
-                  )
-                }
-                preview={absorbPreview}
-                loadingPreview={absorbPreview === null && mergeDropIds.length > 0}
-              />
-
-              <p className="text-[11px] text-muted-foreground">
-                The entries merged in are removed, and that cannot be undone.
-              </p>
-
-              <div className="flex justify-end gap-2 pt-0.5">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={absorbBusy}
-                  onClick={() => setAbsorb(null)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  className="gap-1.5"
-                  disabled={absorbBusy || !mergeKeepId || mergeDropIds.length === 0}
-                  onClick={absorbEntry}
-                >
-                  {absorbBusy ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Merge className="size-4" />
-                  )}
-                  {absorbBusy ? "Merging…" : `Merge ${mergeDropIds.length} into the keeper`}
-                </Button>
-              </div>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
+
+      {/* Chosen after the list, not inside it: which of the two survives is a
+          judgement of its own. Both the duplicate list and the brand browser
+          open it, and it runs the merge whichever way round it is set. */}
+      <MergeChoiceDialog
+        open={absorb !== null}
+        onClose={() => setAbsorb(null)}
+        cars={mergeCars}
+        keepId={mergeKeepId}
+        dropIds={mergeDropIds}
+        onKeep={(id) => {
+          setMergeKeepId(id);
+          // The keeper is never also merged away, and the one it replaces
+          // takes its place in the list of what moves.
+          setMergeDropIds(mergeCars.filter((c) => c.car_id !== id).map((c) => c.car_id));
+        }}
+        onToggleDrop={(id) =>
+          setMergeDropIds((xs) => (xs.includes(id) ? xs.filter((x) => x !== id) : [...xs, id]))
+        }
+        preview={absorbPreview}
+        busy={absorbBusy}
+        onConfirm={absorbEntry}
+      />
+
+      {/* Everything the catalogue already has that reads like this one, wide
+          enough to compare field by field. */}
+      <DuplicatesDialog
+        open={dupesOpen}
+        onClose={() => setDupesOpen(false)}
+        subject={{ ...form, car_id: entryId, name: form.name?.trim() || autoName }}
+        hits={duplicates}
+        useLabel="Add this car"
+        onUse={(c) => {
+          setDupesOpen(false);
+          onClose();
+          onAddExistingCar?.(c);
+        }}
+        // A different box is not a duplicate, and joining the two as boxes of
+        // one casting keeps both. Not for a pack, which is not a box.
+        onAddAsBox={
+          entryId && !isPack && !isImageOnly
+            ? (c) => {
+                setDupesOpen(false);
+                void attachEntry(c);
+              }
+            : undefined
+        }
+        // Only an admin, and only once there is an entry to fold: a merge moves
+        // cars other people own, and a casting still being typed has nobody on it.
+        onMerge={isAdmin && entryId ? (c) => startMerge(c) : undefined}
+        busy={absorbBusy || linking}
+        footer={
+          !isNew && entryId && isAdmin ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => {
+                setDupesOpen(false);
+                setMerging(true);
+              }}
+            >
+              <Merge className="size-3.5" />
+              Browse the whole brand
+            </Button>
+          ) : undefined
+        }
+      />
 
       {/* Reuses the list that answers "which casting is this?" everywhere else,
           ordered by how much of the description it agrees with. */}

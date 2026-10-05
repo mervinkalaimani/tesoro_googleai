@@ -26,6 +26,24 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 272,
+    at: "2026-10-05T19:30",
+    changes: [
+      {
+        key: true,
+        text: "Adding a car or filing a casting says “2 duplicates found” under the picture, and opening it puts what you are typing and what the catalogue already has side by side — every field, the price, the catalogue ID, in the same columns. Taking the one that is already there is a tap.",
+      },
+      {
+        admin: true,
+        text: "Merge is on each of those rows. It opens on the question it is actually asking — which of the two you keep — with how many cars move onto it and whose they are, before anything is removed.",
+      },
+      {
+        text: "The catalogue card now reads series, sub-series and number under the name. The brand and the box are rows of their own two lines below, and printing them twice was what pushed the number off the end.",
+      },
+      { text: "“What the casting is” is called Car details, the same as on a car." },
+    ],
+  },
+  {
     build: 268,
     at: "2026-10-05T14:00",
     changes: [

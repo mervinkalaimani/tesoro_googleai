@@ -1,4 +1,4 @@
-import { Car, Check, Users } from "lucide-react";
+import { Car, Check, Loader2, Merge, Users } from "lucide-react";
 
 import type { CatalogCar, MergePreview } from "@/lib/catalog";
 import { resolveCatalogUserId } from "@/lib/catalog";
@@ -6,6 +6,14 @@ import { carSubLine } from "@/lib/car-subline";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
 import { transformImageUrl } from "@/lib/image-transform";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 /**
@@ -74,7 +82,11 @@ export function MergePanel({
             <div className="flex items-start gap-2.5">
               <div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded bg-muted">
                 {c.image_url ? (
-                  <img src={transformImageUrl(c.image_url, "thumb")} alt="" className="size-full object-cover" />
+                  <img
+                    src={transformImageUrl(c.image_url, "thumb")}
+                    alt=""
+                    className="size-full object-cover"
+                  />
                 ) : (
                   <Car className="size-4 text-muted-foreground" />
                 )}
@@ -163,5 +175,78 @@ export function MergePanel({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * The panel as a dialog of its own: what is kept, what is folded into it.
+ *
+ * A step after the list rather than inside it. The list answers "are these the
+ * same casting"; this answers "then which one survives", and they are different
+ * enough questions that reading the second one half way down the first was how
+ * the wrong entry got kept.
+ */
+export function MergeChoiceDialog({
+  open,
+  onClose,
+  cars,
+  keepId,
+  dropIds,
+  onKeep,
+  onToggleDrop,
+  preview,
+  busy,
+  onConfirm,
+}: {
+  open: boolean;
+  onClose: () => void;
+  cars: CatalogCar[];
+  keepId: string;
+  dropIds: string[];
+  onKeep: (id: string) => void;
+  onToggleDrop: (id: string) => void;
+  preview: MergePreview | null;
+  busy?: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && !busy && onClose()}>
+      <DialogContent className="flex max-h-[calc(100dvh-3rem)] flex-col overflow-hidden sm:max-w-2xl">
+        <DialogHeader className="shrink-0 text-left">
+          <DialogTitle>Which one do you keep?</DialogTitle>
+          <DialogDescription>
+            The cars on the entries you merge in move onto the one you keep, and nobody else&rsquo;s
+            collection changes. The entries merged in are removed, and that cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="min-h-0 flex-1 overflow-y-auto pr-0.5">
+          <MergePanel
+            cars={cars}
+            keepId={keepId}
+            dropIds={dropIds}
+            onKeep={onKeep}
+            onToggleDrop={onToggleDrop}
+            preview={preview}
+            loadingPreview={preview === null && dropIds.length > 0}
+          />
+        </div>
+
+        <DialogFooter className="flex w-full shrink-0 flex-row items-center justify-between gap-2 border-t border-border/50 pt-3 sm:justify-between">
+          <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            className="gap-1.5 font-semibold"
+            disabled={busy || !keepId || dropIds.length === 0}
+            onClick={onConfirm}
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Merge className="size-4" />}
+            {busy ? "Merging…" : `Merge ${dropIds.length} into the keeper`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -62,7 +62,7 @@ import { diecastToCatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { MultipackField } from "@/components/multipack-field";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
-import { DuplicateBar, DuplicateNotice } from "@/components/duplicate-notice";
+import { DuplicatesButton, DuplicatesDialog } from "@/components/duplicates-dialog";
 import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
 import { looksLikeColour } from "@/lib/colour-words";
 import { packBadge } from "@/lib/pack";
@@ -1134,6 +1134,7 @@ export function CarFormDialog({
    * details are usually the thing that was right.
    */
   const [relinkedTo, setRelinkedTo] = useState<string | null>(null);
+  const [dupesOpen, setDupesOpen] = useState(false);
   const [relinkOpen, setRelinkOpen] = useState(false);
 
   /**
@@ -1245,6 +1246,9 @@ export function CarFormDialog({
       form.subSeries,
     ],
   );
+
+  /** The entry this car is filed under: a relink first, then its own, then what is typed. */
+  const catalogueId = relinkedTo || initial?.catalogId || derivedCatalogCarId || "";
 
   /**
    * The casting's pack, as the catalogue currently has it. This is the baseline
@@ -1863,7 +1867,11 @@ export function CarFormDialog({
       {/* The same frame the car's own page gives it: 4:3, rounded, white. */}
       <div className="relative mb-3 grid aspect-4/3 w-full place-items-center overflow-hidden rounded-2xl border border-border/60 bg-white">
         {form.imageUrl ? (
-          <img src={form.imageUrl} alt="" className="size-full object-cover" />
+          <img
+            src={form.imageUrl}
+            alt=""
+            className="absolute inset-y-0 left-1/2 h-full w-auto max-w-none -translate-x-1/2"
+          />
         ) : (
           <Car className="size-8 text-muted-foreground/40" />
         )}
@@ -2079,15 +2087,6 @@ export function CarFormDialog({
       {/* Above the summary, so it is read before the purchase is filled in.
           "Use this" is the whole point: the fix for a duplicate is to pick the
           entry that already exists, which is one tap from here. */}
-      {/* One line that stays once you have scrolled past the entries, so a
-          possible duplicate is still on screen while the purchase is filled in.
-          Scrolling back up is how you read them. */}
-      <DuplicateBar hits={duplicates} />
-      <DuplicateNotice
-        hits={duplicates}
-        onUse={(c) => pickFromCatalogue(catalogCarToCatalogueCar(c))}
-      />
-
       {identityCard}
       {/* What the car is, as one line you confirm rather than sixteen
                   fields you fill. The fields are still here, one tap down. */}
@@ -2531,6 +2530,26 @@ export function CarFormDialog({
             searchQuery={webSearchWords}
             layout="split"
           />
+          {catalogueId && (
+            <div className="mt-1.5">
+              <a
+                href={`/catalog/${encodeURIComponent(catalogueId)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:underline"
+              >
+                <span className="font-mono">{catalogueId}</span>
+                <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+              </a>
+            </div>
+          )}
         </div>
       </FormSection>
     </div>
@@ -2580,9 +2599,15 @@ export function CarFormDialog({
             rail={isEdit || currentStep === LAST_STEP ? rail : []}
             summary={summary}
             alerts={
-              isEdit || currentStep === LAST_STEP ? (
-                <ThingsLeft items={thingsLeft} done="Every required field is in" />
-              ) : null
+              <>
+                {/* Under the picture of the car being described, as a count.
+                    Reading the entries is comparing two descriptions field by
+                    field, which wants the width of a dialog. */}
+                <DuplicatesButton count={duplicates.length} onClick={() => setDupesOpen(true)} />
+                {(isEdit || currentStep === LAST_STEP) && (
+                  <ThingsLeft items={thingsLeft} done="Every required field is in" />
+                )}
+              </>
             }
             actions={actions}
           >
@@ -2778,6 +2803,34 @@ export function CarFormDialog({
           });
         }}
         title="Which casting is this car?"
+      />
+
+      {/* What the catalogue already has that reads like what is being typed,
+          beside the same fields for this one. Taking one of them is the point:
+          the fix for a duplicate is to file the car under the entry that is
+          already there. */}
+      <DuplicatesDialog
+        open={dupesOpen}
+        onClose={() => setDupesOpen(false)}
+        subject={{
+          car_id: catalogueId,
+          name: previewName,
+          brand: form.brand,
+          assortment: form.assortment,
+          series: form.series,
+          sub_series: form.subSeries,
+          car_number: form.carNumber,
+          colour: form.colour,
+          year: form.year,
+          mrp: Number(form.mrp) || 0,
+          image_url: form.imageUrl,
+        }}
+        hits={duplicates}
+        useLabel="Use this one"
+        onUse={(c) => {
+          setDupesOpen(false);
+          pickFromCatalogue(catalogCarToCatalogueCar(c));
+        }}
       />
     </Dialog>
   );
