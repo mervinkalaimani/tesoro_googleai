@@ -6,6 +6,7 @@ import type { CatalogCar } from "@/lib/catalog";
 import { catalogMergePreview, mergeCatalogEntries, type MergePreview } from "@/lib/catalog";
 import { findDuplicateGroups, type DuplicateGroup } from "@/lib/duplicate";
 import { MergePanel } from "@/components/merge-castings";
+import { transformImageUrl } from "@/lib/image-transform";
 import {
   Dialog,
   DialogContent,
@@ -296,7 +297,7 @@ function GroupRow({ group, onOpen }: { group: DuplicateGroup; onOpen: () => void
     >
       <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
         {group.cars[0].image_url ? (
-          <img src={group.cars[0].image_url} alt="" className="size-full object-cover" />
+          <img src={transformImageUrl(group.cars[0].image_url, "thumb")} alt="" className="size-full object-cover" />
         ) : (
           <Car className="size-4 text-muted-foreground" />
         )}

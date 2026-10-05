@@ -331,7 +331,57 @@ export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
       const { data, error } = await supabase
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .from(tableName as any)
-        .select("*")
+        .select(`
+          SNO,
+          "Car ID",
+          "Catalog ID",
+          "Case Number",
+          Name,
+          Make,
+          Model,
+          Variant,
+          Year,
+          Type,
+          Series,
+          "Sub Series",
+          "Car Number",
+          Colour,
+          Brand,
+          Assortment,
+          Size,
+          Spent,
+          MRP,
+          "Shipping Cost",
+          Seller,
+          Status,
+          Payment,
+          Paid,
+          Month,
+          Date,
+          O_Date,
+          O_Month,
+          "Transit Info / ETA",
+          "Expected Date",
+          "Delivery Partner",
+          "Tracking ID",
+          "Shipping ID",
+          "Order ID",
+          Balance,
+          Chase,
+          Rarity,
+          "Car Condition",
+          "Card Condition",
+          "Car Rating",
+          "Card Rating",
+          Favourite,
+          Official,
+          Open,
+          image_url,
+          created_at,
+          catalog_pending_at,
+          admin_changed_at,
+          owner_seen_at
+        `)
         .eq("user_id", userId)
         // SNO is the identity column, so ascending SNO is the order rows were
         // actually added — what the unsorted ("raw") views should show. It is

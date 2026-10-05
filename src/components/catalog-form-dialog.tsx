@@ -10,6 +10,7 @@ import type { MergePreview } from "@/lib/catalog";
 import { localDay } from "@/lib/delivery-watch";
 import { expectedByOptions, expectedByValue } from "@/lib/date-utils";
 import { releasedOnInput, releasedOnStamp } from "@/lib/released";
+import { transformImageUrl } from "@/lib/image-transform";
 import {
   Dialog,
   DialogContent,
@@ -924,7 +925,11 @@ export function CatalogFormDialog({
       {/* The same frame the car's own page gives it: 4:3, rounded, white. */}
       <div className="relative mb-3 grid aspect-4/3 w-full place-items-center overflow-hidden rounded-2xl border border-border/60 bg-white">
         {form.image_url ? (
-          <img src={form.image_url} alt="" className="size-full object-cover" />
+          <img
+            src={form.image_url}
+            alt=""
+            className="absolute inset-y-0 left-1/2 h-full w-auto max-w-none -translate-x-1/2"
+          />
         ) : (
           <Car className="size-8 text-muted-foreground/40" />
         )}
@@ -1007,7 +1012,9 @@ export function CatalogFormDialog({
         description:
           "Please add the existing car instead, or confirm below that this is a different release.",
       });
-      const el = document.getElementById("duplicate-confirmation-box");
+      const el = [...document.querySelectorAll<HTMLElement>("[data-duplicate-confirm]")].find(
+        (box) => box.offsetParent !== null,
+      );
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -1196,56 +1203,56 @@ export function CatalogFormDialog({
                 )
               }
               summary={summary}
-              alerts={<ThingsLeft items={thingsLeft} done="Every required field is in" />}
+              alerts={
+                <>
+                  {/* Under the preview of the casting being filed: "this
+                      already exists" is only readable next to the thing it is
+                      said about. */}
+                  <DuplicateNotice
+                    hits={duplicates}
+                    onAddThisCar={(c) => {
+                      onClose();
+                      onAddExistingCar?.(c);
+                    }}
+                    // Only an admin, and only once there is an entry to fold:
+                    // the same bar the Duplicates screen keeps, and a casting
+                    // still being typed has no cars on it to move.
+                    onMergeToThis={
+                      isAdmin && entryId
+                        ? (dupe) => {
+                            setMergeTo(dupe);
+                            setMergePreview(null);
+                            void catalogMergePreview([entryId]).then(setMergePreview);
+                          }
+                        : undefined
+                    }
+                  />
+                  {isNew && duplicates.length > 0 && (
+                    <div
+                      data-duplicate-confirm
+                      className="space-y-2.5 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3"
+                    >
+                      <p className="text-[11px] font-medium text-foreground">
+                        This casting matches one the catalogue already has. Add that one instead, or
+                        say below that this is a different release.
+                      </p>
+                      <label className="flex cursor-pointer select-none items-start gap-2.5">
+                        <Checkbox
+                          checked={confirmNotDuplicate}
+                          onCheckedChange={(checked) => setConfirmNotDuplicate(checked === true)}
+                          className="mt-0.5"
+                        />
+                        <span className="text-[11px] font-semibold leading-tight text-foreground">
+                          This is not a duplicate — it is a genuinely different release
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                  <ThingsLeft items={thingsLeft} done="Every required field is in" />
+                </>
+              }
               actions={actions}
             >
-              {/* Above the fields, not below them: by the time the catalogue
-                  already has this casting, the useful moment is before the rest
-                  of it is typed out. */}
-              <DuplicateNotice
-                hits={duplicates}
-                onAddThisCar={(c) => {
-                  onClose();
-                  onAddExistingCar?.(c);
-                }}
-                // Only an admin, and only once there is an entry to fold: the
-                // same bar the Duplicates screen keeps, and a casting still
-                // being typed has no cars on it to move.
-                onMergeToThis={
-                  isAdmin && entryId
-                    ? (dupe) => {
-                        setMergeTo(dupe);
-                        setMergePreview(null);
-                        void catalogMergePreview([entryId]).then(setMergePreview);
-                      }
-                    : undefined
-                }
-              />
-
-              {isNew && duplicates.length > 0 && (
-                <div
-                  id="duplicate-confirmation-box"
-                  className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 space-y-2.5 transition-all"
-                >
-                  <p className="text-xs font-medium text-foreground">
-                    This casting matches an existing catalogue entry. Please click{" "}
-                    <strong>Add this car</strong> above to add the existing car to your collection.
-                    Adding a duplicate entry is blocked unless confirmed below.
-                  </p>
-                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
-                    <Checkbox
-                      id="confirm-not-duplicate"
-                      checked={confirmNotDuplicate}
-                      onCheckedChange={(checked) => setConfirmNotDuplicate(checked === true)}
-                      className="mt-0.5"
-                    />
-                    <span className="text-xs font-semibold text-foreground leading-tight">
-                      I confirm this is not a duplicate entry and is a genuinely different release
-                    </span>
-                  </label>
-                </div>
-              )}
-
               <FormSection
                 id="identity"
                 title="What the casting is"
@@ -1627,7 +1634,7 @@ export function CatalogFormDialog({
                 </span>
                 <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
                   {c.image_url ? (
-                    <img src={c.image_url} alt="" className="size-full object-cover" />
+                    <img src={transformImageUrl(c.image_url, "thumb")} alt="" className="size-full object-cover" />
                   ) : (
                     <Car className="size-4 text-muted-foreground" />
                   )}

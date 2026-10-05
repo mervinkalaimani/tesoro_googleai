@@ -4,6 +4,7 @@ import type { CatalogCar, MergePreview } from "@/lib/catalog";
 import { resolveCatalogUserId } from "@/lib/catalog";
 import { carSubLine } from "@/lib/car-subline";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
+import { transformImageUrl } from "@/lib/image-transform";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +74,7 @@ export function MergePanel({
             <div className="flex items-start gap-2.5">
               <div className="grid size-11 shrink-0 place-items-center overflow-hidden rounded bg-muted">
                 {c.image_url ? (
-                  <img src={c.image_url} alt="" className="size-full object-cover" />
+                  <img src={transformImageUrl(c.image_url, "thumb")} alt="" className="size-full object-cover" />
                 ) : (
                   <Car className="size-4 text-muted-foreground" />
                 )}

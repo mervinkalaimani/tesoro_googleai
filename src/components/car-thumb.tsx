@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Car, Loader2 } from "lucide-react";
 import { findCarImage } from "@/lib/car-image";
+import { transformImageUrl } from "@/lib/image-transform";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -17,7 +18,7 @@ export function CarThumb({ car, className = "" }: { car: Diecast; className?: st
     setSrc(null);
 
     if (car.imageUrl) {
-      setSrc(car.imageUrl);
+      setSrc(transformImageUrl(car.imageUrl, "card"));
       setLoading(false);
       return;
     }

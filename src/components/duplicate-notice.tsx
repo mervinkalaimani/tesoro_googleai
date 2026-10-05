@@ -4,6 +4,7 @@ import type { CatalogCar } from "@/lib/catalog";
 import type { DuplicateHit, DuplicateLevel } from "@/lib/duplicate";
 import { carSubLine } from "@/lib/car-subline";
 import { inrFull } from "@/lib/format";
+import { transformImageUrl } from "@/lib/image-transform";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -98,7 +99,7 @@ export function DuplicateNotice({
             </span>
             <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
               {car.image_url ? (
-                <img src={car.image_url} alt="" className="size-full object-cover" />
+                <img src={transformImageUrl(car.image_url, "thumb")} alt="" className="size-full object-cover" />
               ) : (
                 <Car className="size-4 text-muted-foreground" />
               )}

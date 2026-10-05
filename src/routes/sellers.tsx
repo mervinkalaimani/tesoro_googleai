@@ -16,6 +16,7 @@ import { filterRows } from "@/lib/search";
 import type { Diecast } from "@/lib/types";
 import { formatDayMonthYear, inr, parseDMY } from "@/lib/format";
 import { canBeLate, isPreOrder, styleFor } from "@/lib/status";
+import { transformImageUrl } from "@/lib/image-transform";
 import { cn } from "@/lib/utils";
 import { GroupTable, Th } from "@/components/group-table";
 import { SellerOrdersDialog } from "@/components/seller-orders-dialog";
@@ -211,7 +212,7 @@ function SellersPage() {
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/12 text-[11px] font-semibold uppercase text-primary">
                     {shop?.image_url ? (
-                      <img src={shop.image_url} alt="" className="size-full object-cover" />
+                      <img src={transformImageUrl(shop.image_url, "thumb")} alt="" className="size-full object-cover" />
                     ) : (
                       initials(sellerLabel(g.label, shop))
                     )}
