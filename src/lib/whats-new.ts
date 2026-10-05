@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 273,
+    at: "2026-10-05T20:30",
+    changes: [
+      {
+        key: true,
+        text: "The photos suggested under a car are photos of that car again. The search was asking Bing, which had started answering every question with the same unrelated pictures — fields, scenery, strangers — and because it answered with plenty of them, the engine that does work was never asked. It is asked first now, and nothing reaches the strip unless it names the car.",
+      },
+    ],
+  },
+  {
     build: 272,
     at: "2026-10-05T19:30",
     changes: [

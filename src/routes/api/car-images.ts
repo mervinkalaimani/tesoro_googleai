@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
+import { mentionsCar } from "@/lib/image-relevance";
+
 /**
  * Finds photographs of a casting from what was typed about it.
  *
@@ -508,15 +510,27 @@ async function fromWebSearch(
         rawResults = [...rawResults, ...(await fetchGoogle(broaderQuery))];
       }
     } else {
-      // Auto (Smart Multi-Engine fallback)
-      rawResults = await fetchBing(queryStr);
+      /**
+       * DuckDuckGo first, and Bing last.
+       *
+       * Bing was first, and the fallback only ran when it returned fewer than
+       * three results. It returns thirty — of something else. Asked for "blue
+       * elephant" it answers with population-density maps of China, and asked
+       * for a Land Rover Defender it answers with farmland: the scraper is
+       * being served a page that is not the search. Thirty wrong answers clear
+       * a bar set at three, so the engine that works never ran.
+       *
+       * It stays at the end rather than being deleted because the shape of
+       * what it returns is still right, and a blocked scraper is a thing that
+       * comes back. Below it, nothing reaches the strip that does not name
+       * the car.
+       */
+      rawResults = await fetchDdg(queryStr);
       if (rawResults.length < 3) {
-        const ddg = await fetchDdg(queryStr);
-        rawResults = [...rawResults, ...ddg];
+        rawResults = [...rawResults, ...(await fetchWikimedia(queryStr))];
       }
       if (rawResults.length < 3) {
-        const wiki = await fetchWikimedia(queryStr);
-        rawResults = [...rawResults, ...wiki];
+        rawResults = [...rawResults, ...(await fetchBing(queryStr))];
       }
     }
 
@@ -531,19 +545,25 @@ async function fromWebSearch(
               ? "Google Images"
               : "Web Search";
 
-    return rawResults.slice(0, rawQuery ? 30 : 16).flatMap((r) => {
-      if (!r.image) return [];
-      const scored = scoreFile(r.title || "", q);
-      return [
-        {
-          url: r.image,
-          thumb: r.thumbnail || r.image,
-          title: r.title || `${q.brand} ${q.make} ${q.model}`.trim(),
-          source: `${q.brand || "Diecast"} (${providerLabel})`,
-          kind: scored.kind,
-        },
-      ];
-    });
+    // Words typed into the web-search box are searched as written, so they are
+    // not held to the form: looking for something the form does not say is the
+    // reason that box is there. Everything else has to name the car.
+    return rawResults
+      .filter((r) => (rawQuery ? true : mentionsCar(r.title || "", q)))
+      .slice(0, rawQuery ? 30 : 16)
+      .flatMap((r) => {
+        if (!r.image) return [];
+        const scored = scoreFile(r.title || "", q);
+        return [
+          {
+            url: r.image,
+            thumb: r.thumbnail || r.image,
+            title: r.title || `${q.brand} ${q.make} ${q.model}`.trim(),
+            source: `${q.brand || "Diecast"} (${providerLabel})`,
+            kind: scored.kind,
+          },
+        ];
+      });
   } catch {
     return [];
   }
