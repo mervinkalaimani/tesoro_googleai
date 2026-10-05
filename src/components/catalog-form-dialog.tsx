@@ -38,7 +38,13 @@ import type { Diecast } from "@/lib/types";
 import { ensureAssortment, remainingAssortments } from "@/lib/assortments";
 import { boxSiblings } from "@/lib/casting-group";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
-import { ClearableInput, Field, FormSection, InfoTip } from "@/components/form-parts";
+import {
+  CatalogueIdLink,
+  ClearableInput,
+  Field,
+  FormSection,
+  InfoTip,
+} from "@/components/form-parts";
 import { MultipackField } from "@/components/multipack-field";
 import { DuplicatesButton, DuplicatesDialog } from "@/components/duplicates-dialog";
 import { findDuplicates, matchPercent, needsCarNumber } from "@/lib/duplicate";
@@ -930,6 +936,7 @@ export function CatalogFormDialog({
           <Car className="size-8 text-muted-foreground/40" />
         )}
       </div>
+      <CatalogueIdLink id={entryId} className="mb-2 mt-0" />
       <p className="truncate text-base font-bold tracking-tight">
         {form.name?.trim() || autoName || "New casting"}
       </p>
@@ -1494,11 +1501,16 @@ export function CatalogFormDialog({
                 open={showPhoto}
                 onToggle={() => setShowPhoto((v) => !v)}
               >
+                {/* layout="split": on a desktop the frame is smaller and the
+                    found photos fill the space to its right, the same as the
+                    car form. A full-width frame put the suggestions below the
+                    fold of the section. */}
                 <CarPhotoField
                   value={form.image_url || ""}
                   onChange={(url) => set("image_url", url)}
                   suggestions={imageSuggestions}
                   searchQuery={webSearchWords}
+                  layout="split"
                 />
               </FormSection>
             </EditorShell>

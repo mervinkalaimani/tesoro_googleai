@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { AlertCircle, ChevronRight, Info, X } from "lucide-react";
+import { AlertCircle, ChevronRight, ExternalLink, Info, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -264,5 +264,32 @@ export function PillButton({
     >
       {children}
     </Button>
+  );
+}
+
+/**
+ * Which catalogue entry this is, as the ID and a way to go and read it.
+ *
+ * Under the picture rather than under the photo field, in both forms: the ID
+ * names the casting in the frame above it, and beside the upload buttons it
+ * read as something to do with the file you had just chosen.
+ */
+export function CatalogueIdLink({ id, className }: { id?: string | null; className?: string }) {
+  const value = (id ?? "").trim();
+  if (!value) return null;
+  return (
+    <a
+      href={`/catalog/${encodeURIComponent(value)}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Open this casting's catalogue page"
+      className={cn(
+        "mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded px-1.5 py-1 font-mono text-[11px] font-medium text-primary hover:bg-primary/10 hover:underline",
+        className,
+      )}
+    >
+      <span className="truncate">{value}</span>
+      <ExternalLink className="size-3 shrink-0" />
+    </a>
   );
 }

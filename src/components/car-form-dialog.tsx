@@ -66,7 +66,14 @@ import { DuplicatesButton, DuplicatesDialog } from "@/components/duplicates-dial
 import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
 import { looksLikeColour } from "@/lib/colour-words";
 import { packBadge } from "@/lib/pack";
-import { ClearableInput, Field, FormSection, PillButton, PillRow } from "@/components/form-parts";
+import {
+  CatalogueIdLink,
+  ClearableInput,
+  Field,
+  FormSection,
+  PillButton,
+  PillRow,
+} from "@/components/form-parts";
 import {
   EditorShell,
   SummaryRow,
@@ -1876,6 +1883,7 @@ export function CarFormDialog({
           <Car className="size-8 text-muted-foreground/40" />
         )}
       </div>
+      <CatalogueIdLink id={catalogueId} className="mb-2 mt-0" />
       {/* Which casting this car is, and what the catalogue says about it.
           Filed against the wrong entry is a different problem from filed
           against the right one with the wrong details, and both are answered
@@ -2530,26 +2538,6 @@ export function CarFormDialog({
             searchQuery={webSearchWords}
             layout="split"
           />
-          {catalogueId && (
-            <div className="mt-1.5">
-              <a
-                href={`/catalog/${encodeURIComponent(catalogueId)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 hover:underline"
-              >
-                <span className="font-mono">{catalogueId}</span>
-                <svg className="size-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                  />
-                </svg>
-              </a>
-            </div>
-          )}
         </div>
       </FormSection>
     </div>

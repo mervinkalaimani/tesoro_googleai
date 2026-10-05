@@ -26,6 +26,18 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 274,
+    at: "2026-10-05T21:15",
+    changes: [
+      {
+        text: "The catalogue ID sits under the picture on the right now, on a car and on a casting both, and opens that casting’s page. On a car it was down beside the upload buttons, where it read as something to do with the file you had just chosen.",
+      },
+      {
+        text: "Filing a casting gets the same photo section a car has: a small frame with everything found for it beside rather than under, so the suggestions are on screen with it.",
+      },
+    ],
+  },
+  {
     build: 273,
     at: "2026-10-05T20:30",
     changes: [
