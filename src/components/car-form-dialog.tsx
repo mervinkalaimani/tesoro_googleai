@@ -67,7 +67,7 @@ import { findDuplicates, needsCarNumber } from "@/lib/duplicate";
 import { looksLikeColour } from "@/lib/colour-words";
 import { packBadge } from "@/lib/pack";
 import {
-  CatalogueIdLink,
+  CatalogueIdValue,
   ClearableInput,
   Field,
   FormSection,
@@ -1883,7 +1883,6 @@ export function CarFormDialog({
           <Car className="size-8 text-muted-foreground/40" />
         )}
       </div>
-      <CatalogueIdLink id={catalogueId} className="mb-2 mt-0" />
       {/* Which casting this car is, and what the catalogue says about it.
           Filed against the wrong entry is a different problem from filed
           against the right one with the wrong details, and both are answered
@@ -1947,6 +1946,11 @@ export function CarFormDialog({
               value={form.mrp === "" || form.mrp === null ? "" : inrFull(Number(form.mrp))}
             />
             <SummaryRow label="Condition" value={form.carCondition} />
+            {/* Last, and the only row that leaves the form: which casting this
+                copy is, and its page a tap away. */}
+            {catalogueId && (
+              <SummaryRow label="Catalogue ID" value={<CatalogueIdValue id={catalogueId} />} />
+            )}
           </div>
         </>
       ) : (

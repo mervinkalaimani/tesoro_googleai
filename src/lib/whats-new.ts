@@ -30,7 +30,7 @@ export const RELEASES: Release[] = [
     at: "2026-10-05T21:15",
     changes: [
       {
-        text: "The catalogue ID sits under the picture on the right now, on a car and on a casting both, and opens that casting’s page. On a car it was down beside the upload buttons, where it read as something to do with the file you had just chosen.",
+        text: "The catalogue ID is the last line of the details on the right now, on a car and on a casting both. On a car it opens that casting’s page; on the casting itself it is just the ID, since that page is the one you are already editing. It used to be down beside the upload buttons, where it read as something to do with the file you had just chosen.",
       },
       {
         text: "Filing a casting gets the same photo section a car has: a small frame with everything found for it beside rather than under, so the suggestions are on screen with it.",

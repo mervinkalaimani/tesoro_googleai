@@ -268,25 +268,25 @@ export function PillButton({
 }
 
 /**
- * Which catalogue entry this is, as the ID and a way to go and read it.
+ * Which catalogue entry this is: the last line of the details, as a value a
+ * SummaryRow prints.
  *
- * Under the picture rather than under the photo field, in both forms: the ID
- * names the casting in the frame above it, and beside the upload buttons it
- * read as something to do with the file you had just chosen.
+ * A link from a car, which is filed under a casting it can go and read. Not a
+ * link from the casting itself — that page is the one being edited, and
+ * offering to open it from inside its own form is a trip back to where you
+ * already are.
  */
-export function CatalogueIdLink({ id, className }: { id?: string | null; className?: string }) {
+export function CatalogueIdValue({ id, href = true }: { id?: string | null; href?: boolean }) {
   const value = (id ?? "").trim();
   if (!value) return null;
+  if (!href) return <span className="font-mono text-[11px]">{value}</span>;
   return (
     <a
       href={`/catalog/${encodeURIComponent(value)}`}
       target="_blank"
       rel="noopener noreferrer"
       title="Open this casting's catalogue page"
-      className={cn(
-        "mt-1.5 inline-flex max-w-full items-center gap-1.5 rounded px-1.5 py-1 font-mono text-[11px] font-medium text-primary hover:bg-primary/10 hover:underline",
-        className,
-      )}
+      className="inline-flex max-w-full items-center gap-1.5 font-mono text-[11px] text-primary hover:underline"
     >
       <span className="truncate">{value}</span>
       <ExternalLink className="size-3 shrink-0" />

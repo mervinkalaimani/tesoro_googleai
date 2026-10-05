@@ -39,7 +39,7 @@ import { ensureAssortment, remainingAssortments } from "@/lib/assortments";
 import { boxSiblings } from "@/lib/casting-group";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
 import {
-  CatalogueIdLink,
+  CatalogueIdValue,
   ClearableInput,
   Field,
   FormSection,
@@ -936,7 +936,6 @@ export function CatalogFormDialog({
           <Car className="size-8 text-muted-foreground/40" />
         )}
       </div>
-      <CatalogueIdLink id={entryId} className="mb-2 mt-0" />
       <p className="truncate text-base font-bold tracking-tight">
         {form.name?.trim() || autoName || "New casting"}
       </p>
@@ -947,6 +946,9 @@ export function CatalogFormDialog({
         <SummaryRow label="Retail / MRP" value={form.mrp ? inrFull(Number(form.mrp)) : ""} />
         <SummaryRow label="Release" value={form.release_status} />
         <SummaryRow label="Rarity" value={form.rarity} />
+        {entryId && (
+          <SummaryRow label="Catalogue ID" value={<CatalogueIdValue id={entryId} href={false} />} />
+        )}
       </div>
     </div>
   );
