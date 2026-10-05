@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 275,
+    at: "2026-10-05T22:00",
+    changes: [
+      {
+        text: "Paste is on the phone now, in the photo section of both forms. A screenshot of a listing is how most photos get here, and a phone has a clipboard but no Ctrl+V to use it with.",
+      },
+      { text: "Ten photos are suggested rather than sixteen. Past ten they stop being a choice." },
+      {
+        text: "Filing a casting asks about the multipack before the release status, which is the order you know the answers in.",
+      },
+    ],
+  },
+  {
     build: 274,
     at: "2026-10-05T21:15",
     changes: [

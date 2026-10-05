@@ -909,12 +909,12 @@ export function CatalogFormDialog({
           status: assortmentsBadge,
           tone: form.assortment?.trim() ? "muted" : "warn",
         },
-        { id: "release", label: "Release status", status: releaseBadge },
         {
           id: "multipack",
           label: "Multipack",
           status: packBadge(isPack, declaredSize, members.length),
         },
+        { id: "release", label: "Release status", status: releaseBadge },
         { id: "photo", label: "Photo", status: photoBadge },
       ];
 
@@ -1383,6 +1383,33 @@ export function CatalogFormDialog({
               </FormSection>
 
               <FormSection
+                id="multipack"
+                title="Multipack"
+                description="Whether this entry is a box of cars rather than one."
+                badge={packBadge(isPack, declaredSize, members.length)}
+                open={showPack}
+                onToggle={() => setShowPack((v) => !v)}
+              >
+                <MultipackField
+                  isPack={isPack}
+                  packSize={declaredSize}
+                  members={members}
+                  onPackChange={onPackChange}
+                  onSizeChange={(v) => set("pack_size", v)}
+                  onMembersChange={setMembers}
+                  // Same rule as Add a car: a casting filed in more than one
+                  // box is not itself a box, and a tick that opens a dialog
+                  // offering to delete those boxes reads as a tick that does
+                  // not work.
+                  disabled={isImageOnly || (!isPack && namedExtras.length > 0)}
+                  canEditMembers={isAdmin}
+                  selfCarId={entry && entry !== "new" ? entry.car_id : ""}
+                  onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
+                  addNewLabel="New casting"
+                />
+              </FormSection>
+
+              <FormSection
                 id="release"
                 title="Release status"
                 description="Whether it is out yet, and which case it shipped in."
@@ -1466,33 +1493,6 @@ export function CatalogFormDialog({
                     </p>
                   </Field>
                 </div>
-              </FormSection>
-
-              <FormSection
-                id="multipack"
-                title="Multipack"
-                description="Whether this entry is a box of cars rather than one."
-                badge={packBadge(isPack, declaredSize, members.length)}
-                open={showPack}
-                onToggle={() => setShowPack((v) => !v)}
-              >
-                <MultipackField
-                  isPack={isPack}
-                  packSize={declaredSize}
-                  members={members}
-                  onPackChange={onPackChange}
-                  onSizeChange={(v) => set("pack_size", v)}
-                  onMembersChange={setMembers}
-                  // Same rule as Add a car: a casting filed in more than one
-                  // box is not itself a box, and a tick that opens a dialog
-                  // offering to delete those boxes reads as a tick that does
-                  // not work.
-                  disabled={isImageOnly || (!isPack && namedExtras.length > 0)}
-                  canEditMembers={isAdmin}
-                  selfCarId={entry && entry !== "new" ? entry.car_id : ""}
-                  onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
-                  addNewLabel="New casting"
-                />
               </FormSection>
 
               <FormSection

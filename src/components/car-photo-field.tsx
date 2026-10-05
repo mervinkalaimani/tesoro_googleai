@@ -141,10 +141,10 @@ export function CarPhotoField({
     setLinkOpen(false);
   };
 
-  // The endpoint now sends its whole ranked tail so the identity card's picker
-  // can page through it. This block lays them all out side by side on a wide
-  // screen, so it keeps to the head it has always shown.
-  const found = (suggestions?.candidates ?? []).slice(0, 16);
+  // The endpoint sends its whole ranked tail so other pickers can page through
+  // it. This strip lays them out side by side beside the frame, so it shows the
+  // head and no more: past ten they stop being a choice and become the section.
+  const found = (suggestions?.candidates ?? []).slice(0, 10);
   const chosen = found.find((c) => c.url === value);
 
   return (
@@ -317,6 +317,21 @@ export function CarPhotoField({
           >
             <ImagePlus className="size-4" />
             {value ? "Replace image" : "Add image"}
+          </Button>
+          {/* A phone has a clipboard too, and no Ctrl+V to use it with. A
+              screenshot of a listing is how most photos get here, and without
+              this the only way to that screenshot was the photo library two
+              sheets down. */}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full gap-1.5"
+            disabled={busy}
+            onClick={() => void paste()}
+          >
+            <ClipboardPaste className="size-4" />
+            Paste
           </Button>
           <Button
             type="button"
