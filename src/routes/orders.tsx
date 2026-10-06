@@ -19,6 +19,7 @@ import { useCarDrawer } from "@/components/car-details-drawer";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
+import { ProGate } from "@/components/pro-gate";
 
 export const Route = createFileRoute("/orders")({
   head: () => ({
@@ -45,7 +46,11 @@ export const Route = createFileRoute("/orders")({
     const tab = search.tab;
     return typeof tab === "string" && TABS.some((t) => t.value === tab) ? { tab: tab as Tab } : {};
   },
-  component: OrdersPage,
+  component: () => (
+    <ProGate title="My Orders">
+      <OrdersPage />
+    </ProGate>
+  ),
 });
 
 const isOpenStatus = (s: string | null | undefined) => isOpenOrder(s);

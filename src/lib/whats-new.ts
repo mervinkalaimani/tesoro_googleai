@@ -26,6 +26,27 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 276,
+    at: "2026-10-06T22:30",
+    changes: [
+      {
+        key: true,
+        text: "Tesoro has a Pro tier. Everybody already here is on it, with no end date — nothing you can see or do has changed, and nothing of yours is going anywhere. A PRO chip sits on your picture.",
+      },
+      {
+        text: "A free account gets My Cars, the catalogue and up to 50 cars. Favourites, Collection, Duplicates, Habit, Sellers, My Orders and Pre Orders are Pro, and so is the card scanner.",
+      },
+      {
+        admin: true,
+        text: "Make Pro is beside Make admin in the admin screen. It takes a start date and the month is the database’s arithmetic, so the date somebody is shown is the date the rules use.",
+      },
+      {
+        admin: true,
+        text: "The card scanner used to answer anybody who could reach it, spending the image key on them. It asks who is calling now, before the first model call.",
+      },
+    ],
+  },
+  {
     build: 275,
     at: "2026-10-05T22:00",
     changes: [

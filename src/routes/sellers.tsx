@@ -28,6 +28,7 @@ import { SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { Button } from "@/components/ui/button";
+import { ProGate } from "@/components/pro-gate";
 
 export const Route = createFileRoute("/sellers")({
   head: () => ({
@@ -47,7 +48,11 @@ export const Route = createFileRoute("/sellers")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: SellersPage,
+  component: () => (
+    <ProGate title="Sellers">
+      <SellersPage />
+    </ProGate>
+  ),
 });
 
 type SortField = "spent" | "cars" | "name";
@@ -212,7 +217,11 @@ function SellersPage() {
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/12 text-[11px] font-semibold uppercase text-primary">
                     {shop?.image_url ? (
-                      <img src={transformImageUrl(shop.image_url, "thumb")} alt="" className="size-full object-cover" />
+                      <img
+                        src={transformImageUrl(shop.image_url, "thumb")}
+                        alt=""
+                        className="size-full object-cover"
+                      />
                     ) : (
                       initials(sellerLabel(g.label, shop))
                     )}

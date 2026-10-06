@@ -4,6 +4,7 @@ import { ExportScopeProvider } from "@/lib/export-scope";
 import { AppSidebar } from "./app-sidebar";
 import { TopBar } from "./top-bar";
 import { MobileNav } from "./mobile-nav";
+import { TierBanner } from "./tier-banner";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -20,6 +21,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <AppSidebar />
           <SidebarInset className="min-w-0 flex-1">
             <TopBar />
+            {/* Under the bar and above everything else: a date that is
+                going to take something away is not a thing to scroll to. */}
+            <TierBanner />
             {/* Room under the last row for the floating bar, plus whatever the
                 phone reserves for its own home indicator. The bar is glass, so
                 it has to be scrolled *past* rather than merely avoided — the

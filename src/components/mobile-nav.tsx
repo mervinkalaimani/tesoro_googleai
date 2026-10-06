@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 
 import { useApp } from "@/lib/store";
+import { useAuth } from "@/lib/auth-store";
+import { isProPath } from "@/lib/tiers";
 import {
   MobileSearchBar,
   openSearch,
@@ -134,6 +136,7 @@ function HomeCircle({
 export function MobileNav() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { query, navAnimation } = useApp();
+  const { isPro } = useAuth();
   const searchOpen = useSearchOpen();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const keyboard = useKeyboardInset(searchOpen);
@@ -173,7 +176,15 @@ export function MobileNav() {
 
   // Settings → Display → Navbar animation switches this off.
   const compact = useScrollCompact(navAnimation && !searchOpen);
-  const tabs =
+  /**
+   * The bar on a phone holds four pills and has no room for a row of padlocks,
+   * so a section this account cannot open is left out rather than greyed.
+   *
+   * The sidebar still shows them locked — there is width there for a lock to
+   * mean something, and somebody who never sees a section cannot want it. This
+   * is the one place the two disagree, and it is because of the space.
+   */
+  const allTabs =
     navMode === "default"
       ? DEFAULT_TABS
       : navMode === "inventory"
@@ -181,6 +192,10 @@ export function MobileNav() {
         : navMode === "habit"
           ? HABIT_TABS
           : ORDERS_TABS;
+  const open = allTabs.filter((t) => isPro || !isProPath(t.url));
+  // Every tab of a section being Pro would leave an empty bar. Fall back to the
+  // one page a free account always has, so there is still somewhere to tap.
+  const tabs = open.length > 0 ? open : DEFAULT_TABS.filter((t) => !isProPath(t.url));
   const filtering = query.trim().length > 0;
   const sectioned = navMode !== "default";
 

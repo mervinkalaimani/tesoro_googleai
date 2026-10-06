@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+
+import { callerFrom } from "@/lib/supabase-server";
 import { GoogleGenAI, Type } from "@google/genai";
 
 import { fieldsFromChatCompletion } from "@/lib/scan-reply";
@@ -167,6 +169,25 @@ function cleanFields(parsed: Record<string, unknown>): ScanFields {
 }
 
 async function handler({ request }: { request: Request }) {
+  /**
+   * Who is asking, before anything is spent on them.
+   *
+   * This route had no caller check at all: anyone who could reach the
+   * deployment could post an image and bill the Gemini or OmniRoute key to it.
+   * The tier gate and that hole are the same fix, so both close here, and
+   * before the model is called rather than after.
+   */
+  const caller = await callerFrom(request);
+  if (!caller) {
+    return json({ error: "Sign in to scan a card." }, 401);
+  }
+  if (!caller.isPro) {
+    return json(
+      { error: "Scanning a card is part of Pro. Ask an admin to turn it on for your account." },
+      403,
+    );
+  }
+
   const key = process.env["GEMINI_API_KEY"];
   const omniBase = process.env["OMNIROUTE_BASE_URL"];
   if (!key && !omniBase) {

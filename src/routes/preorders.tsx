@@ -31,6 +31,7 @@ import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-sele
 import { compareCarNumbers } from "@/lib/car-number";
 import { ExportButton } from "@/components/export-button";
 import { SegmentControl } from "@/components/segment-control";
+import { ProGate } from "@/components/pro-gate";
 
 export const Route = createFileRoute("/preorders")({
   head: () => ({
@@ -51,7 +52,11 @@ export const Route = createFileRoute("/preorders")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: PreOrdersPage,
+  component: () => (
+    <ProGate title="Pre Orders">
+      <PreOrdersPage />
+    </ProGate>
+  ),
 });
 
 /** Remaining balance for a pre-order row: car cost minus amount paid. */

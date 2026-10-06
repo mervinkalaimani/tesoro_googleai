@@ -14,6 +14,7 @@ import { CarSubRow, GroupRow, GroupTable, StatusCell, Th } from "@/components/gr
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { ProGate } from "@/components/pro-gate";
 
 export const Route = createFileRoute("/duplicates")({
   head: () => ({
@@ -34,7 +35,11 @@ export const Route = createFileRoute("/duplicates")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: DuplicatesPage,
+  component: () => (
+    <ProGate title="Duplicates">
+      <DuplicatesPage />
+    </ProGate>
+  ),
 });
 
 const ATTRS = [

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Mail, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { TierAvatar } from "@/components/tier-avatar";
+import { TierLine } from "@/components/tier-line";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -55,7 +56,7 @@ function fieldsOf(
 }
 
 export function AccountCard() {
-  const { profile, session, isGuest, requestPasswordReset, updatePassword, reloadProfile } =
+  const { profile, session, isGuest, isPro, requestPasswordReset, updatePassword, reloadProfile } =
     useAuth();
 
   const baseline = useMemo(() => fieldsOf(profile), [profile]);
@@ -194,16 +195,27 @@ export function AccountCard() {
   return (
     <>
       <section className="card-elevated p-5">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-          Your details
-        </h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Your details
+          </h2>
+          {/* What this account is, in the words the rest of the app uses. A
+              date when there is one, because "Pro" with no end is a different
+              thing from "Pro until the 6th" and only one of them needs doing
+              something about. */}
+          {!isGuest && <TierLine />}
+        </div>
 
         {/* PICTURE */}
         <div className="flex items-center gap-4 border-b border-border pb-5">
-          <Avatar className="size-16 border border-border">
-            {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-            <AvatarFallback className="bg-muted text-lg font-semibold">{initials}</AvatarFallback>
-          </Avatar>
+          <TierAvatar
+            url={profile?.avatar_url}
+            initials={initials}
+            pro={isPro}
+            className="size-16 border border-border"
+            fallbackClassName="bg-muted text-lg font-semibold"
+            chipClassName="px-1.5 py-0.5 text-[9px]"
+          />
           <div className="min-w-0 space-y-1.5">
             <div className="text-sm font-medium">Profile picture</div>
             <div className="flex flex-wrap gap-1.5">

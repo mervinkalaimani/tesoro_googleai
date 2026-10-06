@@ -14,7 +14,9 @@ import {
   ShoppingBag,
   Store,
   Database,
+  Lock,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { filterRows } from "@/lib/search";
 
 import {
@@ -34,41 +36,45 @@ import { useCars, useCarsSource } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { isPackMember, packMemberIds } from "@/lib/pack";
 import { inrFull } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { HomeScreenMark } from "@/components/brand-mark";
 
-const NAV_GROUPS = [
+const NAV_GROUPS: {
+  title: string;
+  items: { title: string; url: string; icon: LucideIcon; pro?: boolean }[];
+}[] = [
   {
     title: "My Cars",
     items: [
       { title: "My Cars", url: "/inventory", icon: Car },
-      { title: "Favourites", url: "/favourites", icon: Star },
-      { title: "Collection", url: "/collection", icon: Boxes },
+      { title: "Favourites", url: "/favourites", icon: Star, pro: true },
+      { title: "Collection", url: "/collection", icon: Boxes, pro: true },
     ],
   },
   {
     title: "My Orders",
     items: [
-      { title: "My Orders", url: "/orders", icon: Truck },
-      { title: "Pre Orders", url: "/preorders", icon: ShoppingBag },
-      { title: "Duplicates", url: "/duplicates", icon: Copy },
+      { title: "My Orders", url: "/orders", icon: Truck, pro: true },
+      { title: "Pre Orders", url: "/preorders", icon: ShoppingBag, pro: true },
+      { title: "Duplicates", url: "/duplicates", icon: Copy, pro: true },
     ],
   },
   {
     title: "Habit",
     items: [
-      { title: "Habit", url: "/habits", icon: CalendarDays },
-      { title: "Sellers", url: "/sellers", icon: Store },
+      { title: "Habit", url: "/habits", icon: CalendarDays, pro: true },
+      { title: "Sellers", url: "/sellers", icon: Store, pro: true },
     ],
   },
-] as const;
+];
 
 export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, query } = useApp();
-  const { isOwner, isGuest } = useAuth();
+  const { isOwner, isGuest, isPro } = useAuth();
   const { source } = useCarsSource();
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
   const { packMembers } = useCatalog();
@@ -142,8 +148,8 @@ export function AppSidebar() {
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {group.items.map((item) => {
-                  const active =
-                    item.url === "/" ? pathname === "/" : pathname.startsWith(item.url);
+                  const active = pathname.startsWith(item.url);
+                  const locked = item.pro && !isPro;
                   return (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton
@@ -158,8 +164,9 @@ export function AppSidebar() {
                             if (isMobile) setOpenMobile(false);
                           }}
                         >
-                          <item.icon className="size-4.5" />
-                          <span>{item.title}</span>
+                          <item.icon className={cn("size-4.5", locked && "opacity-50")} />
+                          <span className={cn(locked && "opacity-50")}>{item.title}</span>
+                          {locked && <Lock className="ml-auto size-3.5 text-muted-foreground" />}
                         </Link>
                       </SidebarMenuButton>
                     </SidebarMenuItem>

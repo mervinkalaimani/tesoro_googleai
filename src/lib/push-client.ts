@@ -2,6 +2,7 @@
 // again, and asking the server to tell the admins about a new account.
 
 import { supabase } from "@/integrations/supabase/client";
+import { authHeader } from "@/lib/api-auth";
 
 export type PushState =
   | "unsupported" // no service worker / Push API in this browser
@@ -49,12 +50,6 @@ function publicKey() {
 async function existingSubscription() {
   const reg = await navigator.serviceWorker.getRegistration(SW_URL);
   return (await reg?.pushManager.getSubscription()) ?? null;
-}
-
-async function authHeader(): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 export async function readPushState(): Promise<PushState> {

@@ -28,6 +28,7 @@ import { ACCEPT_ATTR, imageToBase64 } from "@/lib/car-photos";
 import { runClientOcr, parseTextToCarFields } from "@/lib/card-ocr";
 import { readClipboardImage, useImagePaste } from "@/lib/paste-image";
 import { cn } from "@/lib/utils";
+import { authHeader } from "@/lib/api-auth";
 
 /**
  * Photograph the card, keep what it read.
@@ -251,9 +252,10 @@ export function CarScanDialog({
     setBusyMessage("Analyzing card with AI Vision…");
     try {
       const image = await imageToBase64(file);
+      // The route checks who is asking before it spends a model call on them.
       const res = await fetch("/api/scan-car", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await authHeader()) },
         body: JSON.stringify(image),
       });
       const body = (await res.json().catch(() => null)) as {

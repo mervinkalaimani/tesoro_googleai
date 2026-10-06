@@ -60,7 +60,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { TierAvatar } from "@/components/tier-avatar";
 import { AccountCard } from "@/components/account-card";
 import { AdminPushCard } from "@/components/admin-push-card";
 import { FavouriteDetector } from "@/components/favourite-detector";
@@ -214,7 +214,7 @@ export function SettingsPage() {
     showNewPreorders,
     setShowNewPreorders,
   } = useApp();
-  const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
+  const { profile, isGuest, isOwner, isAdmin, isPro, signOut } = useAuth();
   const { source } = useCarsSource();
 
   const name = fullName(profile);
@@ -310,12 +310,14 @@ export function SettingsPage() {
             onClick={() => changeView("account")}
             className="group flex w-full items-center gap-4 rounded-2xl border border-border/80 bg-card p-4 text-left shadow-xs transition-all hover:border-border hover:bg-muted/30 active:scale-[0.995]"
           >
-            <Avatar className="size-14 border border-border/80 shadow-xs">
-              {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-              <AvatarFallback className="bg-muted text-base font-semibold text-foreground">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <TierAvatar
+              url={profile?.avatar_url}
+              initials={initials}
+              pro={isPro}
+              className="size-14 border border-border/80 shadow-xs"
+              fallbackClassName="bg-muted text-base font-semibold text-foreground"
+              chipClassName="px-1.5 py-0.5 text-[9px]"
+            />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

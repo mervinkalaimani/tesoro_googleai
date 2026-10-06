@@ -17,6 +17,7 @@ import { PageHeading, PageToolbar } from "@/components/page-header";
 import { ExportButton } from "@/components/export-button";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
+import { ProGate } from "@/components/pro-gate";
 
 type Mode = "favourite" | "chase" | "th" | "sth";
 
@@ -74,7 +75,11 @@ export const Route = createFileRoute("/favourites")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: FavouritesPage,
+  component: () => (
+    <ProGate title="Favourites">
+      <FavouritesPage />
+    </ProGate>
+  ),
 });
 
 function GalleryCard({

@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { ChevronRight, Eye, EyeOff, Settings, Table } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { TierAvatar } from "@/components/tier-avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { UserMenu } from "@/components/user-menu";
@@ -41,7 +41,7 @@ export function AccountButton() {
 
 function MobileAccountMenu() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { profile, isAdmin, isOwner, isGuest } = useAuth();
+  const { profile, isAdmin, isOwner, isGuest, isPro } = useAuth();
   const { hideInvestment, setHideInvestment, query } = useApp();
   const allCars = useCars();
   const [localReveal, setLocalReveal] = useState(false);
@@ -71,12 +71,13 @@ function MobileAccountMenu() {
         aria-expanded={menuOpen}
         className="size-9 rounded-full outline-none ring-offset-background transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0 flex items-center justify-center"
       >
-        <Avatar className="size-9 border border-border">
-          {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-          <AvatarFallback className="bg-muted text-xs font-semibold">
-            {initialsOf(name, display)}
-          </AvatarFallback>
-        </Avatar>
+        <TierAvatar
+          url={profile?.avatar_url}
+          initials={initialsOf(name, display)}
+          pro={isPro}
+          className="size-9 border border-border"
+          fallbackClassName="bg-muted text-xs font-semibold"
+        />
       </button>
 
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
@@ -90,12 +91,14 @@ function MobileAccountMenu() {
 
           {/* 1. User Details */}
           <div className="flex items-center gap-3.5 rounded-2xl border border-border/80 bg-muted/40 p-3.5 shadow-xs">
-            <Avatar className="size-12 border border-border shadow-xs">
-              {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-              <AvatarFallback className="bg-muted text-sm font-semibold">
-                {initialsOf(name, display)}
-              </AvatarFallback>
-            </Avatar>
+            <TierAvatar
+              url={profile?.avatar_url}
+              initials={initialsOf(name, display)}
+              pro={isPro}
+              className="size-12 border border-border shadow-xs"
+              fallbackClassName="bg-muted text-sm font-semibold"
+              chipClassName="px-1.5 text-[8px]"
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-semibold text-foreground">{display}</span>

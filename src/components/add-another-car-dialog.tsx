@@ -122,6 +122,9 @@ export function AddAnotherCarDialog({
       };
 
       const added = addCar(newCopy);
+      // Null means the free limit refused it, and said so. Leave the dialog
+      // open rather than claiming a copy that was never written.
+      if (!added) return;
       toast.success(`Added another copy of ${car.name || car.model || "car"} to collection`);
       onAdded?.(added);
       onOpenChange(false);

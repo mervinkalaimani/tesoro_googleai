@@ -383,6 +383,11 @@ export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
         `,
         )
         .eq("user_id", userId)
+        // Put away by the free-tier sweep. Still in the table, still theirs,
+        // and back the moment the account is Pro again — but not part of the
+        // collection while it is hidden, or the count that decides the ceiling
+        // would include the rows the ceiling already removed.
+        .is("archived_at", null)
         // SNO is the identity column, so ascending SNO is the order rows were
         // actually added — what the unsorted ("raw") views should show. It is
         // also unique and monotonic, which makes range() paging stable in a way

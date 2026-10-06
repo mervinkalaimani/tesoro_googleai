@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Car, Check, Link2, Loader2, Merge, Plus, ScanLine, Trash2, X } from "lucide-react";
+import { Car, Check, Link2, Loader2, Merge, Plus, ScanLine, Trash2, X, Lock } from "lucide-react";
 import { toast } from "sonner";
 
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
@@ -107,7 +107,7 @@ export function CatalogFormDialog({
   canDelete?: boolean;
   onDelete?: () => void;
 }) {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin, isPro } = useAuth();
   const isNew = entry === "new" || !entry;
   /** The entry being edited, when there is one: what a merge folds away. */
   const entryId = entry && entry !== "new" ? entry.car_id : "";
@@ -1199,10 +1199,12 @@ export function CatalogFormDialog({
                     type="button"
                     variant="outline"
                     size="sm"
+                    disabled={!isPro}
+                    title={isPro ? undefined : "Scanning a card is part of Pro"}
                     className="h-8 shrink-0 gap-1.5 px-3 text-xs"
                     onClick={() => setScanOpen(true)}
                   >
-                    <ScanLine className="size-3.5" />
+                    {isPro ? <ScanLine className="size-3.5" /> : <Lock className="size-3.5" />}
                     Scan card
                   </Button>
                 )

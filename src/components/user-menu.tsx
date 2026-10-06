@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Settings } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { TierAvatar } from "@/components/tier-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,7 +28,7 @@ function initialsOf(name: string, fallback: string): string {
  * anyone looks for Settings, admin, and the way out.
  */
 export function UserMenu() {
-  const { profile, isAdmin } = useAuth();
+  const { profile, isAdmin, isPro } = useAuth();
 
   const name = fullName(profile);
   const display = name || profile?.email_id || "Signed in";
@@ -43,12 +43,13 @@ export function UserMenu() {
           title={display}
           className="size-9 rounded-full outline-none ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0 flex items-center justify-center"
         >
-          <Avatar className="size-9 border border-border">
-            {profile?.avatar_url ? <AvatarImage src={profile.avatar_url} alt="" /> : null}
-            <AvatarFallback className="bg-muted text-xs font-semibold">
-              {initialsOf(name, display)}
-            </AvatarFallback>
-          </Avatar>
+          <TierAvatar
+            url={profile?.avatar_url}
+            initials={initialsOf(name, display)}
+            pro={isPro}
+            className="size-9 border border-border"
+            fallbackClassName="bg-muted text-xs font-semibold"
+          />
         </button>
       </DropdownMenuTrigger>
 

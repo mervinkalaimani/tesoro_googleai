@@ -17,6 +17,7 @@ import { assignCarIds, catalogIdFor } from "@/lib/car-id";
 import { sortCars } from "@/lib/status-order";
 import { canonicaliseSpellings } from "@/lib/canonical-spellings";
 import { useAuth } from "@/lib/auth-store";
+import { FREE_CAR_LIMIT } from "@/lib/tiers";
 import { makeGuestCars } from "@/lib/guest-seed";
 import { toast } from "sonner";
 import { syncUserCarImageToCatalog } from "@/lib/catalog";
@@ -271,7 +272,9 @@ function applyRows(prev: Overlay, rows: Diecast[]): Overlay {
 
 type Ctx = {
   cars: Diecast[];
-  addCar: (car: Diecast) => Diecast;
+  /** Null when the free limit refuses it; the toast has already been shown. */
+  addCar: (car: Diecast) => Diecast | null;
+  /** Empty when the free limit refuses the batch. It is all or none. */
   bulkAddCars: (cars: Diecast[]) => Diecast[];
   updateCar: (car: Diecast) => void;
   /** `label` names the change in the undo button ("marking 3 cars delayed"). */
@@ -309,7 +312,7 @@ type Ctx = {
 const CarsCtx = createContext<Ctx | null>(null);
 
 export function CarsProvider({ children }: { children: ReactNode }) {
-  const { user, status: authStatus, isGuest } = useAuth();
+  const { user, status: authStatus, isGuest, isPro } = useAuth();
   // Guests get their own namespace, so their edits never mix with a real
   // account's cache on a shared browser.
   const uid = isGuest ? "guest" : (user?.id ?? "anon");
@@ -712,8 +715,37 @@ export function CarsProvider({ children }: { children: ReactNode }) {
     toast.success(`Undid ${entry.label}`);
   }, [undoStack, base, commit, isGuest]);
 
+  /**
+   * Whether this many more cars would break the free ceiling.
+   *
+   * The RLS policy is the actual wall. This exists so somebody meets a sentence
+   * instead of `new row violates row-level security policy`, and so a bulk
+   * import is refused whole rather than half-written.
+   */
+  const refusedByLimit = useCallback(
+    (adding: number) => {
+      if (isPro || isGuest) return false;
+      if (cars.length + adding <= FREE_CAR_LIMIT) return false;
+      const room = Math.max(0, FREE_CAR_LIMIT - cars.length);
+      toast.error(
+        room === 0
+          ? `A free account keeps ${FREE_CAR_LIMIT} cars`
+          : `Room for ${room} more car${room === 1 ? "" : "s"}`,
+        {
+          description:
+            adding === 1
+              ? "Ask an admin to turn on Pro to keep adding."
+              : `This would add ${adding}. Ask an admin to turn on Pro for an unlimited collection.`,
+        },
+      );
+      return true;
+    },
+    [isPro, isGuest, cars.length],
+  );
+
   const addCar = useCallback(
-    (car: Diecast) => {
+    (car: Diecast): Diecast | null => {
+      if (refusedByLimit(1)) return null;
       // Both IDs are derived, never typed: the car ID from brand and
       // assortment, the shipping ID from seller and dates. The car ID is
       // assigned first so the shipping rank is computed against the final row.
@@ -748,12 +780,13 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       if (next.imageUrl) void syncUserCarImageToCatalog(next, next.imageUrl);
       return next;
     },
-    [commit, cars, persist, pushUndo],
+    [commit, cars, persist, pushUndo, refusedByLimit],
   );
 
   const bulkAddCars = useCallback(
     (newCars: Diecast[]): Diecast[] => {
       if (!newCars.length) return [];
+      if (refusedByLimit(newCars.length)) return [];
       // Numbered as a batch, so two cars sharing a brand and assortment cannot
       // both claim the same number. Rows that arrive with a real ID — a CSV
       // re-import, say — keep the one they came with.
@@ -785,7 +818,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       }
       return fresh;
     },
-    [commit, persist, cars, pushUndo],
+    [commit, persist, cars, pushUndo, refusedByLimit],
   );
 
   const updateCar = useCallback(

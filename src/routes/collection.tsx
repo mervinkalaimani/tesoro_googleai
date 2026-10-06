@@ -14,6 +14,7 @@ import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { inr } from "@/lib/format";
+import { ProGate } from "@/components/pro-gate";
 
 export const Route = createFileRoute("/collection")({
   head: () => ({
@@ -34,7 +35,11 @@ export const Route = createFileRoute("/collection")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: CollectionPage,
+  component: () => (
+    <ProGate title="Collection">
+      <CollectionPage />
+    </ProGate>
+  ),
 });
 
 type GroupBy = "series" | "set" | "brand" | "assortment" | "maker" | "seller" | "size";

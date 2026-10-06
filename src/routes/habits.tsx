@@ -27,6 +27,7 @@ import { PageHeading } from "@/components/page-header";
 import { StatusPill, carSubLine } from "@/components/cars-table";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { MonthlySpending } from "@/components/monthly-spending";
+import { ProGate } from "@/components/pro-gate";
 
 export const Route = createFileRoute("/habits")({
   head: () => ({
@@ -47,7 +48,11 @@ export const Route = createFileRoute("/habits")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: HabitsPage,
+  component: () => (
+    <ProGate title="Habit">
+      <HabitsPage />
+    </ProGate>
+  ),
 });
 
 type Mode = "ordered" | "delivered";

@@ -124,6 +124,7 @@ import {
   Loader2,
   BookOpen,
   Link2,
+  Lock,
 } from "lucide-react";
 
 const STATUS_OPTIONS = STATUSES;
@@ -495,7 +496,7 @@ export function CarFormDialog({
   // Read here rather than beside the pack fields below: the assortment options
   // narrow by what the catalogue holds, and those memos run before that point.
   const { catalog, addCatalogCar, updateCatalogCar, packMembers, setPackMembers } = useCatalog();
-  const { isGuest, isAdmin } = useAuth();
+  const { isGuest, isAdmin, isPro } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
   // A broken image is the photo field's business now — it shows the failure in
@@ -1764,6 +1765,9 @@ export function CarFormDialog({
     // The store's copy, not the payload: it carries the IDs that were assigned
     // on the way in, which is what a caller waiting on the casting needs.
     const saved = mode === "add" ? addCar(payload) : (updateCar(payload), payload);
+    // Null means the free limit refused it, and the toast has already said so.
+    // The form stays open with everything typed still in it.
+    if (!saved) return;
     onSaved?.(saved);
 
     // The car is saved; the draft has nothing left to protect.
@@ -2659,17 +2663,26 @@ export function CarFormDialog({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
+                  {/* The route refuses a free account before it spends a model
+                      call. This is so the refusal is read before the camera
+                      opens rather than after. */}
                   <button
                     type="button"
+                    disabled={!isPro}
                     onClick={() => setScanOpen(true)}
-                    className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                    title={isPro ? undefined : "Scanning a card is part of Pro"}
+                    className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
                   >
                     <span className="flex items-center gap-2 text-sm font-semibold">
-                      <ScanLine className="size-4 text-primary" />
+                      {isPro ? (
+                        <ScanLine className="size-4 text-primary" />
+                      ) : (
+                        <Lock className="size-4 text-muted-foreground" />
+                      )}
                       Scan a card
                     </span>
                     <span className="text-[11px] text-muted-foreground">
-                      Read make, model and series off the card
+                      {isPro ? "Read make, model and series off the card" : "Part of Pro"}
                     </span>
                   </button>
                   {onSwitchToBulk && (
