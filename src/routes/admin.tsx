@@ -72,6 +72,8 @@ type AdminUser = {
   pro_requested_at: string | null;
   /** Which one: "plus" (100 more cars) or "pro". */
   pro_requested_plan: string | null;
+  /** And for how long: "month", "half" or "year". */
+  pro_requested_term: string | null;
   created_at: string;
   car_count: number;
   last_sign_in: string | null;

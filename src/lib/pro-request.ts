@@ -2,7 +2,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { authHeader } from "@/lib/api-auth";
-import type { PaidPlan } from "@/lib/tiers";
+import type { PaidPlan, PlanTerm } from "@/lib/tiers";
 
 /**
  * Asking an admin to turn Pro on.
@@ -17,9 +17,16 @@ import type { PaidPlan } from "@/lib/tiers";
  * no `getUser` on it, so working out who was asking failed and every press came
  * back refused.
  */
-export async function requestPro(plan: PaidPlan = "pro", remind = false): Promise<boolean> {
+export async function requestPro(
+  plan: PaidPlan = "pro",
+  term: PlanTerm = "month",
+  remind = false,
+): Promise<boolean> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc("tesoro_request_pro", { _plan: plan });
+  const { data, error } = await (supabase as any).rpc("tesoro_request_pro", {
+    _plan: plan,
+    _term: term,
+  });
 
   if (error) {
     toast.error("Could not raise that request", {
@@ -29,7 +36,13 @@ export async function requestPro(plan: PaidPlan = "pro", remind = false): Promis
   }
 
   const row = (Array.isArray(data) ? data[0] : data) as
-    { requested_at: string | null; requested_plan: string | null; was_new: boolean } | undefined;
+    | {
+        requested_at: string | null;
+        requested_plan: string | null;
+        requested_term: string | null;
+        was_new: boolean;
+      }
+    | undefined;
 
   // Already on Pro: the database says so rather than recording an ask nobody
   // will act on.

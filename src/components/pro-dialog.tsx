@@ -2,8 +2,15 @@ import { useEffect, useState } from "react";
 import { BellRing, Check, Loader2, Minus, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-store";
-import { FREE_CAR_LIMIT, PLUS_CAR_LIMIT, PLUS_EXTRA_CARS, type PaidPlan } from "@/lib/tiers";
+import {
+  FREE_CAR_LIMIT,
+  PLUS_CAR_LIMIT,
+  PLUS_EXTRA_CARS,
+  monthlyPrice,
+  type PaidPlan,
+} from "@/lib/tiers";
 import { requestPro } from "@/lib/pro-request";
+import { openPlanTermDialog } from "@/components/plan-term-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -81,7 +88,7 @@ const PLANS: Plan[] = [
   {
     key: "plus",
     title: "Plus",
-    price: "₹50",
+    price: `₹${monthlyPrice("plus")}`,
     per: "per month",
     subtitle: `${PLUS_EXTRA_CARS} more cars`,
     lines: [
@@ -94,7 +101,7 @@ const PLANS: Plan[] = [
   {
     key: "pro",
     title: "Pro",
-    price: "₹99",
+    price: `₹${monthlyPrice("pro")}`,
     per: "per month",
     subtitle: "Everything, no ceiling",
     featured: true,
@@ -142,13 +149,18 @@ export function ProDialog() {
   const [reminded, setReminded] = useState<PaidPlan | null>(null);
 
   const ask = async (plan: PaidPlan) => {
-    const remind = askedPlan === plan;
-    setBusy(plan);
-    const ok = await requestPro(plan, remind);
-    setBusy(null);
-    if (!ok) return;
-    if (remind) setReminded(plan);
-    else setOpen(false);
+    // Already asked for this one: the button is a nudge, and the term was
+    // settled the first time round.
+    if (askedPlan === plan) {
+      setBusy(plan);
+      const ok = await requestPro(plan, (profile?.pro_requested_term as never) ?? "month", true);
+      setBusy(null);
+      if (ok) setReminded(plan);
+      return;
+    }
+    // Otherwise this is only half the question. Close, and ask the other half.
+    setOpen(false);
+    openPlanTermDialog(plan);
   };
 
   return (

@@ -6,6 +6,7 @@ import { TopBar } from "./top-bar";
 import { MobileNav } from "./mobile-nav";
 import { TierBanner } from "./tier-banner";
 import { ProDialog } from "./pro-dialog";
+import { PlanTermDialog } from "./plan-term-dialog";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -37,6 +38,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <MobileNav />
         {/* Once per sign-in, and never for an account already on Pro. */}
         <ProDialog />
+        {/* The second half of the question, opened when the first closes. */}
+        <PlanTermDialog />
       </ExportScopeProvider>
     </SidebarProvider>
   );

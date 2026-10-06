@@ -18,6 +18,57 @@ export const PLUS_CAR_LIMIT = FREE_CAR_LIMIT + PLUS_EXTRA_CARS;
 
 /** The two plans somebody can ask for. Free is not asked for; it is where you start. */
 export type PaidPlan = "plus" | "pro";
+
+/** How long a plan is bought for. */
+export type PlanTerm = "month" | "half" | "year";
+
+export type PlanPrice = {
+  term: PlanTerm;
+  /** What it is called on the button. */
+  label: string;
+  /** Rupees, whole. */
+  price: number;
+  months: number;
+};
+
+/**
+ * What each plan costs, by how long it is bought for.
+ *
+ * Monthly first, and it is the only one the comparison shows: three prices in
+ * a column somebody is still deciding between two plans in is three decisions
+ * at once. The longer terms are the second question, asked once the plan is
+ * chosen.
+ */
+export const PLAN_PRICES: Record<PaidPlan, PlanPrice[]> = {
+  plus: [
+    { term: "month", label: "Monthly", price: 49, months: 1 },
+    { term: "half", label: "6 months", price: 249, months: 6 },
+    { term: "year", label: "A year", price: 499, months: 12 },
+  ],
+  pro: [
+    { term: "month", label: "Monthly", price: 99, months: 1 },
+    { term: "half", label: "6 months", price: 499, months: 6 },
+    { term: "year", label: "A year", price: 999, months: 12 },
+  ],
+};
+
+/** The monthly price, which is the one the comparison prints. */
+export function monthlyPrice(plan: PaidPlan): number {
+  return PLAN_PRICES[plan][0]!.price;
+}
+
+/**
+ * What a longer term saves against paying monthly, in rupees.
+ *
+ * Worked out rather than written down, so a price change cannot leave a saving
+ * behind claiming something that is no longer true. Zero or less is no saving,
+ * and the screen says nothing rather than "save ₹0".
+ */
+export function savingVsMonthly(plan: PaidPlan, term: PlanTerm): number {
+  const option = PLAN_PRICES[plan].find((p) => p.term === term);
+  if (!option || option.months < 2) return 0;
+  return Math.max(0, monthlyPrice(plan) * option.months - option.price);
+}
 /** Days of notice before Pro ends. */
 export const EXPIRY_WARNING_DAYS = 5;
 /** Days between dropping to free over the limit and the trim. */

@@ -42,6 +42,8 @@ export type Profile = {
   pro_requested_at?: string | null;
   /** Which plan was asked for: "plus" or "pro". */
   pro_requested_plan?: string | null;
+  /** And for how long: "month", "half" or "year". */
+  pro_requested_term?: string | null;
   /** Starts every Car ID in this collection, e.g. "MKCCB". Assigned once, never changed. */
   id_prefix?: string | null;
   created_at: string;

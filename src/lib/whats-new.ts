@@ -26,6 +26,20 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 280,
+    at: "2026-10-07T02:15",
+    changes: [
+      {
+        key: true,
+        text: "Plus and Pro can be bought by the month, the half year or the year — Plus at ₹49, ₹249 and ₹499, Pro at ₹99, ₹499 and ₹999. The comparison shows the monthly price only; choosing a plan closes it and asks how long for, with what each longer term saves.",
+      },
+      {
+        admin: true,
+        text: "A request now says both which plan and how long for, so the payment link can be written without asking.",
+      },
+    ],
+  },
+  {
     build: 279,
     at: "2026-10-07T01:30",
     changes: [
