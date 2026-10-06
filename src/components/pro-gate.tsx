@@ -1,9 +1,8 @@
-import { useState } from "react";
-import { Loader2, Lock, Sparkles } from "lucide-react";
+import { Lock, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-store";
 import { FREE_CAR_LIMIT } from "@/lib/tiers";
-import { requestPro } from "@/lib/pro-request";
+import { openProDialog } from "@/components/pro-dialog";
 import { SampleCars } from "@/components/sample-cars";
 import { Button } from "@/components/ui/button";
 
@@ -28,17 +27,9 @@ export function ProGate({
   title: string;
   children: React.ReactNode;
 }) {
-  const { isPro, profile } = useAuth();
-  const [busy, setBusy] = useState(false);
-  const [asked, setAsked] = useState(Boolean(profile?.pro_requested_at));
+  const { isPro } = useAuth();
 
   if (isPro) return <>{children}</>;
-
-  const ask = async () => {
-    setBusy(true);
-    if (await requestPro()) setAsked(true);
-    setBusy(false);
-  };
 
   return (
     <div className="relative">
@@ -67,20 +58,16 @@ export function ProGate({
           <p className="mt-2 text-[11px] text-muted-foreground">
             Free keeps My Cars, the catalogue and up to {FREE_CAR_LIMIT} cars.
           </p>
+          {/* The comparison rather than a single button: there are three
+              plans now, and only two of them open this section. */}
           <Button
             type="button"
             className="mt-4 w-full gap-1.5 font-semibold"
-            disabled={busy || asked}
-            onClick={() => void ask()}
+            onClick={() => openProDialog()}
           >
-            {busy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-            {asked ? "Already asked" : "Ask for Pro"}
+            <Sparkles className="size-4" />
+            See the plans
           </Button>
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            {asked
-              ? "Your request is with the admins. The payment link comes by email."
-              : "The admins are told, and a payment link comes back by email."}
-          </p>
         </div>
       </div>
     </div>

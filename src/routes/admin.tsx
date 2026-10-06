@@ -70,6 +70,8 @@ type AdminUser = {
   over_limit_since: string | null;
   /** When this account asked for Pro. Cleared when it is granted. */
   pro_requested_at: string | null;
+  /** Which one: "plus" (100 more cars) or "pro". */
+  pro_requested_plan: string | null;
   created_at: string;
   car_count: number;
   last_sign_in: string | null;
@@ -203,6 +205,7 @@ function AdminPage() {
                 pro_since: startOn || new Date().toISOString().slice(0, 10),
                 // Granting it answers the ask, so the row stops waiting.
                 pro_requested_at: null,
+                pro_requested_plan: null,
               }
             : { is_pro: false },
         )
@@ -478,7 +481,7 @@ function AdminPage() {
                         ) : u.pro_requested_at ? (
                           <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
                             <Sparkles className="size-3" />
-                            Wants Pro
+                            Wants {u.pro_requested_plan === "plus" ? "Plus" : "Pro"}
                           </Badge>
                         ) : (
                           "Free"
@@ -691,7 +694,7 @@ function AdminPage() {
                             title={`Asked on ${new Date(u.pro_requested_at).toLocaleDateString()}`}
                           >
                             <Sparkles className="size-3" />
-                            Wants Pro
+                            Wants {u.pro_requested_plan === "plus" ? "Plus" : "Pro"}
                           </Badge>
                         )}
                         {u.is_pro && !u.is_owner && (

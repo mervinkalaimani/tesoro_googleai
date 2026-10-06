@@ -492,11 +492,61 @@ input[type="date"]::-webkit-date-and-time-value {
 .animate-nav-home {
   animation: nav-home-pop 0.35s cubic-bezier(0.3, 1.4, 0.5, 1) backwards;
 }
+/* The Get Pro button in the sidebar. A light travels round the frame rather
+   than the whole thing pulsing: a pulse at the bottom of a column you are
+   reading is a thing to look away from, and this is meant to be noticed once
+   and then tolerated for as long as somebody is not paying.
+
+   The frame is a conic gradient on the parent and the face is an opaque inset
+   child, so the gradient only shows as a 1px edge. Rotating the gradient needs
+   an angle that animates, which is what @property buys -- without it the
+   browser swaps from 0deg to 360deg in one step and nothing moves. */
+@property --tesoro-sheen {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes tesoro-sheen-spin {
+  to {
+    --tesoro-sheen: 360deg;
+  }
+}
+.pro-sheen {
+  /* One radius, inherited from the button, rather than an outer frame and an
+     inner face a pixel smaller: two rounded rectangles that differ by a pixel
+     do not read as concentric at the corner, which is where the eye checks.
+     The mask cuts the middle out of this one element instead, so the frame is
+     a uniform 1px all the way round a single curve. */
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from var(--tesoro-sheen),
+    transparent 0deg,
+    var(--primary) 40deg,
+    transparent 120deg,
+    transparent 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: tesoro-sheen-spin 4s linear infinite;
+}
 @media (prefers-reduced-motion: reduce) {
   #tesoro-splash .tesoro-splash-mark,
   .animate-nav-split,
   .animate-nav-merge,
   .animate-nav-home {
     animation: none;
+  }
+  /* Still a frame, just a still one. */
+  .pro-sheen {
+    animation: none;
+    background: var(--primary);
+    opacity: 0.5;
   }
 }

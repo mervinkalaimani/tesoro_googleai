@@ -26,6 +26,23 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 279,
+    at: "2026-10-07T01:30",
+    changes: [
+      {
+        key: true,
+        text: "Three plans, with prices: Free at ₹0, Plus at ₹50 a month for another 100 cars, and Pro at ₹99 a month for everything and no ceiling. Choosing one tells the admins which, and a payment link comes back by email.",
+      },
+      {
+        text: "A Get Pro button sits at the foot of the sidebar with a light going round it, and opens the comparison. Once a request is in, the button on that plan becomes Remind again.",
+      },
+      {
+        text: "At the car limit, Add car opens the comparison saying “Max cars reached for your plan” rather than a form the database would refuse. Filing a casting in the catalogue is unaffected.",
+      },
+      { text: "Your plan is named beside you in the account menu." },
+    ],
+  },
+  {
     build: 278,
     at: "2026-10-07T00:30",
     changes: [

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Settings } from "lucide-react";
 
-import { TierAvatar } from "@/components/tier-avatar";
+import { ProChip, TierAvatar } from "@/components/tier-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,7 +57,18 @@ export function UserMenu() {
         {/* The name is the heading, not a menu item: it is what the avatar
             stands for, and there is nothing to do to it here. */}
         <div className="px-2 py-1.5">
-          <div className="truncate text-sm font-medium">{display}</div>
+          {/* The tier beside the name: this menu is the one place the account
+              is named, so it is where "which account is this" belongs. */}
+          <div className="flex items-center gap-1.5">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{display}</span>
+            {isPro ? (
+              <ProChip inline className="shrink-0" />
+            ) : (
+              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                Free
+              </span>
+            )}
+          </div>
           {secondary && secondary !== display && (
             <div className="truncate text-xs text-muted-foreground">{secondary}</div>
           )}

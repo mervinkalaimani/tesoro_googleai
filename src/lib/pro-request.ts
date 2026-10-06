@@ -2,6 +2,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { authHeader } from "@/lib/api-auth";
+import type { PaidPlan } from "@/lib/tiers";
 
 /**
  * Asking an admin to turn Pro on.
@@ -16,9 +17,9 @@ import { authHeader } from "@/lib/api-auth";
  * no `getUser` on it, so working out who was asking failed and every press came
  * back refused.
  */
-export async function requestPro(): Promise<boolean> {
+export async function requestPro(plan: PaidPlan = "pro", remind = false): Promise<boolean> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any).rpc("tesoro_request_pro");
+  const { data, error } = await (supabase as any).rpc("tesoro_request_pro", { _plan: plan });
 
   if (error) {
     toast.error("Could not raise that request", {
@@ -28,7 +29,7 @@ export async function requestPro(): Promise<boolean> {
   }
 
   const row = (Array.isArray(data) ? data[0] : data) as
-    { requested_at: string | null; was_new: boolean } | undefined;
+    { requested_at: string | null; requested_plan: string | null; was_new: boolean } | undefined;
 
   // Already on Pro: the database says so rather than recording an ask nobody
   // will act on.
@@ -37,18 +38,21 @@ export async function requestPro(): Promise<boolean> {
     return false;
   }
 
-  toast.success("Pro request has been raised", {
-    description: row.was_new
-      ? "The admins have been told. You will get a payment link by email."
-      : "It was already with the admins. The payment link comes by email.",
+  const name = row.requested_plan === "plus" ? "Plus" : "Pro";
+  toast.success(remind ? "Reminder sent" : `${name} request has been raised`, {
+    description: remind
+      ? `The admins have been nudged about your ${name} request.`
+      : "The admins have been told. You will get a payment link by email.",
   });
 
-  // The courtesy. It can fail — the request is already recorded, and the admin
-  // screen is where it is read.
-  if (row.was_new) {
+  // The courtesy, and the only thing a reminder actually does: the request
+  // itself was recorded the first time and keeps its date. It can fail — the
+  // admin screen is where a request is read, not the notification.
+  if (row.was_new || remind) {
     void fetch("/api/push/upgrade", {
       method: "POST",
       headers: { "content-type": "application/json", ...(await authHeader()) },
+      body: JSON.stringify({ remind }),
     }).catch(() => {});
   }
 

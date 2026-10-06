@@ -12,6 +12,12 @@ import { parseDMY } from "@/lib/format";
  */
 
 export const FREE_CAR_LIMIT = 50;
+/** What Plus buys: the free ceiling and another hundred on top of it. */
+export const PLUS_EXTRA_CARS = 100;
+export const PLUS_CAR_LIMIT = FREE_CAR_LIMIT + PLUS_EXTRA_CARS;
+
+/** The two plans somebody can ask for. Free is not asked for; it is where you start. */
+export type PaidPlan = "plus" | "pro";
 /** Days of notice before Pro ends. */
 export const EXPIRY_WARNING_DAYS = 5;
 /** Days between dropping to free over the limit and the trim. */

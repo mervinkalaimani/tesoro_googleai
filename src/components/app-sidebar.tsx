@@ -15,6 +15,8 @@ import {
   Store,
   Database,
   Lock,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { filterRows } from "@/lib/search";
@@ -37,6 +39,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import { isPackMember, packMemberIds } from "@/lib/pack";
 import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { openProDialog } from "@/components/pro-dialog";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
@@ -176,6 +179,31 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+        {/* Only for somebody who could act on it, and only where there is
+            room for words: the collapsed rail is icons, and a bare sparkle
+            there would say nothing. */}
+        {!isPro && !isGuest && (
+          // Sticky to the foot of the scrolling column: the sections above it
+          // are a list that grows, and an upsell that scrolls away is one that
+          // is only there for people who were not reading anything.
+          <div className="sticky bottom-0 z-10 mt-auto bg-sidebar px-2 pb-2 pt-2 group-data-[collapsible=icon]:hidden">
+            <button
+              type="button"
+              onClick={() => openProDialog()}
+              className="group/pro relative block w-full rounded-xl text-left"
+            >
+              {/* The frame, as a masked ring on one element: it takes the
+                  button’s own radius, so there is nothing for a second curve
+                  to disagree with. */}
+              <span aria-hidden className="pro-sheen pointer-events-none absolute inset-0" />
+              <span className="relative flex items-center gap-2 rounded-xl px-2.5 py-2 transition-colors group-hover/pro:bg-sidebar-accent">
+                <Sparkles className="size-3.5 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">Get Pro</span>
+                <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
+              </span>
+            </button>
+          </div>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">

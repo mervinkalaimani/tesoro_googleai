@@ -4,7 +4,10 @@ import { Plus, RefreshCw, Store, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
+import { useCars, useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
+import { useAuth } from "@/lib/auth-store";
+import { FREE_CAR_LIMIT } from "@/lib/tiers";
+import { openProDialog } from "@/components/pro-dialog";
 import { useCatalog } from "@/lib/catalog-store";
 import type { Diecast } from "@/lib/types";
 import { HomeScreenMark } from "@/components/brand-mark";
@@ -29,6 +32,10 @@ export function TopBar() {
   // carries its own picture and falls back to its casting's.
   const refreshAll = () => Promise.all([refresh(), refreshCatalog()]);
   const syncing = refreshing || catalogLoading;
+  const { isPro } = useAuth();
+  const allCars = useCars();
+  /** A free collection at its ceiling. The database refuses the row anyway. */
+  const atCarLimit = !isPro && allCars.length >= FREE_CAR_LIMIT;
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkSeed, setBulkSeed] = useState<Diecast[] | undefined>(undefined);
@@ -136,7 +143,19 @@ export function TopBar() {
             // go where the work is: a bulk table is not reachable from the
             // single-car form, and clicking + used to open a blank one and
             // leave the badge lit for ever.
-            onClick={() => (pendingDraft === "bulk" ? setBulkOpen(true) : setAddOpen(true))}
+            onClick={() => {
+              // A free collection at its ceiling is told here rather than after
+              // the form has been filled in: the database would refuse the row
+              // either way, and finding that out at the end is the worse way to
+              // find out. The catalogue is untouched by this — filing a casting
+              // is not adding a car.
+              if (atCarLimit) {
+                openProDialog("Max cars reached for your plan");
+                return;
+              }
+              if (pendingDraft === "bulk") setBulkOpen(true);
+              else setAddOpen(true);
+            }}
             aria-label="Add car"
             className="relative size-9 rounded-full shrink-0 flex items-center justify-center p-0"
             title={

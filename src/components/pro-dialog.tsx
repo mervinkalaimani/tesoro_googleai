@@ -1,48 +1,128 @@
 import { useEffect, useState } from "react";
-import { Check, Loader2, Minus, Sparkles } from "lucide-react";
+import { BellRing, Check, Loader2, Minus, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-store";
-import { FREE_CAR_LIMIT } from "@/lib/tiers";
+import { FREE_CAR_LIMIT, PLUS_CAR_LIMIT, PLUS_EXTRA_CARS, type PaidPlan } from "@/lib/tiers";
 import { requestPro } from "@/lib/pro-request";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 /**
- * What the two tiers are, side by side, once per sign-in.
+ * The three plans side by side, once per sign-in and whenever something stops
+ * somebody.
  *
- * Once per session rather than once ever: somebody who is not paying should be
- * reminded what they are not getting, and somebody who closed it has closed it
- * until next time. It never appears for an account that is already on Pro, so
- * the only people who ever see it are the people it is for.
+ * Once per session rather than once ever: a person who is not paying should be
+ * reminded what they are not getting, and a person who closed it has closed it
+ * until next time. It never opens for an account already on Pro.
  */
 
 const SESSION_KEY = "dg.proDialogSeen";
 
 /**
- * What each tier gets, in the order the sections appear in the sidebar.
+ * Opening it from somewhere else — the Get Pro button, or the car ceiling.
  *
- * `freeOnly` is the ceiling, and it is left out of the Pro column rather than
- * ticked there: "up to 50 cars" and "unlimited cars" with a tick beside each
- * is two answers to one question.
+ * A module-level handle rather than a context: there is exactly one dialog,
+ * mounted once in the shell, and a provider wrapping the whole app to carry a
+ * single boolean would be more moving parts than the thing it moves.
  */
-const LINES: { label: string; free: boolean; freeOnly?: boolean }[] = [
-  { label: "My Cars", free: true },
-  { label: "The full catalogue", free: true },
-  { label: `Up to ${FREE_CAR_LIMIT} cars`, free: true, freeOnly: true },
-  { label: "Unlimited cars", free: false },
-  { label: "Favourites", free: false },
-  { label: "Collection", free: false },
-  { label: "My Orders, Pre Orders, Duplicates", free: false },
-  { label: "Habit and Sellers", free: false },
-  { label: "Scan a card", free: false },
+let openFromAnywhere: ((reason?: string) => void) | null = null;
+
+/**
+ * Opens the comparison, optionally with the thing that just stopped somebody.
+ *
+ * "Max cars reached for your plan" is not a different dialog from "here is what
+ * Pro is" — it is this one with a sentence at the top saying why it opened now.
+ * Two dialogs would be two places to keep the plans in step.
+ */
+export function openProDialog(reason?: string) {
+  openFromAnywhere?.(reason);
+}
+
+type Line = { label: string; yes: boolean };
+
+type Plan = {
+  key: "free" | PaidPlan;
+  title: string;
+  price: string;
+  per?: string;
+  subtitle: string;
+  lines: Line[];
+  featured?: boolean;
+};
+
+/** The sections Pro opens. Free and Plus are the same list, unticked. */
+const SECTIONS = [
+  "Favourites and Collection",
+  "Orders, Pre Orders, Duplicates",
+  "Habit and Sellers",
+  "Scan a card",
+];
+
+/**
+ * Each plan states its own list rather than a shared matrix with exceptions.
+ * The ceiling is a different sentence in every column — fifty, a hundred and
+ * fifty, none — which is the one thing a matrix cannot say without a special
+ * case on its only interesting row.
+ */
+const PLANS: Plan[] = [
+  {
+    key: "free",
+    title: "Free",
+    price: "₹0",
+    subtitle: "What you have now",
+    lines: [
+      { label: "My Cars", yes: true },
+      { label: "The full catalogue", yes: true },
+      { label: `Up to ${FREE_CAR_LIMIT} cars`, yes: true },
+      ...SECTIONS.map((label) => ({ label, yes: false })),
+    ],
+  },
+  {
+    key: "plus",
+    title: "Plus",
+    price: "₹50",
+    per: "per month",
+    subtitle: `${PLUS_EXTRA_CARS} more cars`,
+    lines: [
+      { label: "My Cars", yes: true },
+      { label: "The full catalogue", yes: true },
+      { label: `Up to ${PLUS_CAR_LIMIT} cars`, yes: true },
+      ...SECTIONS.map((label) => ({ label, yes: false })),
+    ],
+  },
+  {
+    key: "pro",
+    title: "Pro",
+    price: "₹99",
+    per: "per month",
+    subtitle: "Everything, no ceiling",
+    featured: true,
+    lines: [
+      { label: "My Cars", yes: true },
+      { label: "The full catalogue", yes: true },
+      { label: "Unlimited cars", yes: true },
+      ...SECTIONS.map((label) => ({ label, yes: true })),
+    ],
+  },
 ];
 
 export function ProDialog() {
   const { isPro, isGuest, status, profile } = useAuth();
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const asked = Boolean(profile?.pro_requested_at);
+  const [reason, setReason] = useState<string | null>(null);
+  const [busy, setBusy] = useState<PaidPlan | null>(null);
+  const askedPlan = (profile?.pro_requested_plan ?? null) as PaidPlan | null;
+
+  useEffect(() => {
+    openFromAnywhere = (why?: string) => {
+      setReason(why ?? null);
+      setOpen(true);
+    };
+    return () => {
+      openFromAnywhere = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (status !== "ready" || isGuest || isPro) return;
@@ -53,117 +133,144 @@ export function ProDialog() {
       // A browser that refuses session storage shows it once per render of the
       // shell instead, which is still once per visit.
     }
+    setReason(null);
     setOpen(true);
   }, [status, isGuest, isPro]);
 
-  const ask = async () => {
-    setBusy(true);
-    const ok = await requestPro();
-    setBusy(false);
-    if (ok) setOpen(false);
+  // A reminder is per-opening: it stops the button being pressed ten times in
+  // a row, and comes back next time the dialog does.
+  const [reminded, setReminded] = useState<PaidPlan | null>(null);
+
+  const ask = async (plan: PaidPlan) => {
+    const remind = askedPlan === plan;
+    setBusy(plan);
+    const ok = await requestPro(plan, remind);
+    setBusy(null);
+    if (!ok) return;
+    if (remind) setReminded(plan);
+    else setOpen(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="w-full max-w-full sm:max-w-2xl">
+      <DialogContent className="w-full max-w-full sm:max-w-3xl">
         <div className="text-center">
+          {reason && (
+            <p className="mx-auto mb-3 w-fit rounded-full border border-amber-500/50 bg-amber-500/15 px-3 py-1 text-[13px] font-semibold">
+              {reason}
+            </p>
+          )}
           <DialogTitle className="text-xl font-bold tracking-tight">
             Tesoro is better with Pro
           </DialogTitle>
           <DialogDescription className="mt-1 text-sm">
-            Everything you have stays yours. Pro opens the rest of it.
+            Everything you have stays yours. These open the rest of it.
           </DialogDescription>
         </div>
 
-        <div className="mt-2 grid gap-3 sm:grid-cols-2">
-          <Plan title="Free" subtitle="What you have now" lines={LINES} mine />
-          <Plan
-            title="Pro"
-            subtitle="Everything, with no ceiling"
-            lines={LINES}
-            featured
-            action={
-              <Button
-                type="button"
-                className="w-full gap-1.5 font-semibold"
-                disabled={busy || asked}
-                onClick={() => void ask()}
-              >
-                {busy ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Sparkles className="size-4" />
-                )}
-                {asked ? "Already asked" : "Ask for Pro"}
-              </Button>
-            }
-          />
+        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+          {PLANS.map((p) => (
+            <PlanCard
+              key={p.key}
+              plan={p}
+              mine={p.key === "free"}
+              asked={p.key !== "free" && askedPlan === p.key}
+              reminded={reminded === p.key}
+              busy={busy === p.key}
+              disabled={busy !== null}
+              onAsk={() => void ask(p.key as PaidPlan)}
+            />
+          ))}
         </div>
 
         <p className="text-center text-[11px] text-muted-foreground">
-          {asked
-            ? "Your request is with the admins. The payment link comes by email."
-            : "Asking tells the admins. You get a payment link by email — nothing is charged here."}
+          Asking tells the admins. You get a payment link by email — nothing is charged here.
         </p>
       </DialogContent>
     </Dialog>
   );
 }
 
-function Plan({
-  title,
-  subtitle,
-  lines,
-  featured,
+function PlanCard({
+  plan,
   mine,
-  action,
+  asked,
+  reminded,
+  busy,
+  disabled,
+  onAsk,
 }: {
-  title: string;
-  subtitle: string;
-  lines: { label: string; free: boolean; freeOnly?: boolean }[];
-  featured?: boolean;
-  /** The tier this account is on, so one of the two is labelled rather than sold. */
+  plan: Plan;
+  /** The plan this account is on, so one of the three is labelled rather than sold. */
   mine?: boolean;
-  action?: React.ReactNode;
+  /** A request for this plan is already with the admins. */
+  asked?: boolean;
+  /** ...and it has been nudged since this dialog opened. */
+  reminded?: boolean;
+  busy?: boolean;
+  disabled?: boolean;
+  onAsk: () => void;
 }) {
   return (
     <div
       className={cn(
         "flex flex-col rounded-2xl border p-4",
-        featured ? "border-primary/60 bg-primary/5" : "border-border bg-muted/20",
+        plan.featured ? "border-primary/60 bg-primary/5" : "border-border bg-muted/20",
       )}
     >
       <div className="flex items-center gap-2">
-        <h3 className="text-base font-bold tracking-tight">{title}</h3>
+        <h3 className="text-base font-bold tracking-tight">{plan.title}</h3>
         {mine && (
           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             You
           </span>
         )}
       </div>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>
+
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className="text-xl font-bold tracking-tight">{plan.price}</span>
+        {plan.per && <span className="text-[11px] text-muted-foreground">{plan.per}</span>}
+      </div>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{plan.subtitle}</p>
 
       <div className="mt-3 flex-1 space-y-1.5">
-        {lines
-          .filter((l) => !(featured && l.freeOnly))
-          .map((l) => {
-            // In the free column a Pro line is what you do not get, and saying so
-            // with a dash rather than leaving it out is the whole comparison.
-            const has = featured || l.free;
-            return (
-              <div key={l.label} className="flex items-start gap-2 text-[13px]">
-                {has ? (
-                  <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                ) : (
-                  <Minus className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/50" />
-                )}
-                <span className={cn("min-w-0", !has && "text-muted-foreground/60")}>{l.label}</span>
-              </div>
-            );
-          })}
+        {plan.lines.map((l) => (
+          <div key={l.label} className="flex items-start gap-2 text-[13px]">
+            {l.yes ? (
+              <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <Minus className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/50" />
+            )}
+            <span className={cn("min-w-0", !l.yes && "text-muted-foreground/60")}>{l.label}</span>
+          </div>
+        ))}
       </div>
 
-      {action && <div className="mt-4">{action}</div>}
+      {!mine && (
+        <div className="mt-4 space-y-1.5">
+          <Button
+            type="button"
+            variant={plan.featured ? "default" : "outline"}
+            className="w-full gap-1.5 font-semibold"
+            disabled={disabled || reminded}
+            onClick={onAsk}
+          >
+            {busy ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : asked ? (
+              <BellRing className="size-4" />
+            ) : (
+              <Sparkles className="size-4" />
+            )}
+            {reminded ? "Reminder sent" : asked ? "Remind again" : `Choose ${plan.title}`}
+          </Button>
+          {asked && (
+            <p className="text-center text-[10px] text-muted-foreground">
+              Already asked — this nudges the admins.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

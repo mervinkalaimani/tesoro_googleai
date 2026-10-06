@@ -164,6 +164,12 @@ export async function notifyNewUser(request: Request) {
 export async function requestUpgrade(request: Request) {
   const me = await callerProfile(request);
   if (!me) return json({ error: "Sign in first." }, 401);
+  // A nudge on a request that is already recorded: the record is not touched,
+  // only the notification is sent again.
+  const remind = await request
+    .json()
+    .then((b: unknown) => Boolean((b as { remind?: boolean } | null)?.remind))
+    .catch(() => false);
   if (me.is_pro || me.is_owner) {
     return json({ ok: true, already: true, reason: "already on Pro" });
   }
@@ -180,7 +186,7 @@ export async function requestUpgrade(request: Request) {
 
   // The record is the point; the notification is a courtesy. A deployment
   // without VAPID keys still takes the request.
-  if (already || !pushReady()) {
+  if ((already && !remind) || !pushReady()) {
     return json({ ok: true, already, sent: 0 });
   }
 
@@ -198,7 +204,7 @@ export async function requestUpgrade(request: Request) {
   const name = displayName(me);
   const sent = await deliver(subs, () => ({
     kind: "upgrade",
-    title: "Someone is asking for Pro",
+    title: remind ? "Still waiting on Pro" : "Someone is asking for Pro",
     body: name === me.email_id ? name : `${name} · ${me.email_id}`,
     tag: `upgrade-${me.sno}`,
     url: "/admin",
