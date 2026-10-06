@@ -309,7 +309,13 @@ type Ctx = {
   source: "supabase" | "sheet";
 };
 
-const CarsCtx = createContext<Ctx | null>(null);
+/**
+ * Exported so a locked section can be shown over a collection that is nobody’s.
+ * The only other provider is SampleCars, which serves the demo seed and
+ * refuses every write.
+ */
+export type CarsContextValue = Ctx;
+export const CarsCtx = createContext<Ctx | null>(null);
 
 export function CarsProvider({ children }: { children: ReactNode }) {
   const { user, status: authStatus, isGuest, isPro } = useAuth();

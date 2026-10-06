@@ -5,6 +5,7 @@ import { AppSidebar } from "./app-sidebar";
 import { TopBar } from "./top-bar";
 import { MobileNav } from "./mobile-nav";
 import { TierBanner } from "./tier-banner";
+import { ProDialog } from "./pro-dialog";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -34,6 +35,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </SidebarInset>
         </div>
         <MobileNav />
+        {/* Once per sign-in, and never for an account already on Pro. */}
+        <ProDialog />
       </ExportScopeProvider>
     </SidebarProvider>
   );

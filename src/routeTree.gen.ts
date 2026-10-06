@@ -41,6 +41,7 @@ import { Route as ApiPushConfigRouteImport } from './routes/api/push/config'
 import { Route as ApiPushDecideRouteImport } from './routes/api/push/decide'
 import { Route as ApiPushNewUserRouteImport } from './routes/api/push/new-user'
 import { Route as ApiPushTestRouteImport } from './routes/api/push/test'
+import { Route as ApiPushUpgradeRouteImport } from './routes/api/push/upgrade'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -205,6 +206,11 @@ const ApiPushTestRoute = ApiPushTestRouteImport.update({
   path: '/api/push/test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPushUpgradeRoute = ApiPushUpgradeRouteImport.update({
+  id: '/api/push/upgrade',
+  path: '/api/push/upgrade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -239,6 +245,7 @@ export interface FileRoutesByFullPath {
   '/api/push/decide': typeof ApiPushDecideRoute
   '/api/push/new-user': typeof ApiPushNewUserRoute
   '/api/push/test': typeof ApiPushTestRoute
+  '/api/push/upgrade': typeof ApiPushUpgradeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/api/push/decide': typeof ApiPushDecideRoute
   '/api/push/new-user': typeof ApiPushNewUserRoute
   '/api/push/test': typeof ApiPushTestRoute
+  '/api/push/upgrade': typeof ApiPushUpgradeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -308,6 +316,7 @@ export interface FileRoutesById {
   '/api/push/decide': typeof ApiPushDecideRoute
   '/api/push/new-user': typeof ApiPushNewUserRoute
   '/api/push/test': typeof ApiPushTestRoute
+  '/api/push/upgrade': typeof ApiPushUpgradeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -344,6 +353,7 @@ export interface FileRouteTypes {
     | '/api/push/decide'
     | '/api/push/new-user'
     | '/api/push/test'
+    | '/api/push/upgrade'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/api/push/decide'
     | '/api/push/new-user'
     | '/api/push/test'
+    | '/api/push/upgrade'
   id:
     | '__root__'
     | '/'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/api/push/decide'
     | '/api/push/new-user'
     | '/api/push/test'
+    | '/api/push/upgrade'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -447,6 +459,7 @@ export interface RootRouteChildren {
   ApiPushDecideRoute: typeof ApiPushDecideRoute
   ApiPushNewUserRoute: typeof ApiPushNewUserRoute
   ApiPushTestRoute: typeof ApiPushTestRoute
+  ApiPushUpgradeRoute: typeof ApiPushUpgradeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -675,6 +688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPushTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/push/upgrade': {
+      id: '/api/push/upgrade'
+      path: '/api/push/upgrade'
+      fullPath: '/api/push/upgrade'
+      preLoaderRoute: typeof ApiPushUpgradeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -712,6 +732,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPushDecideRoute: ApiPushDecideRoute,
   ApiPushNewUserRoute: ApiPushNewUserRoute,
   ApiPushTestRoute: ApiPushTestRoute,
+  ApiPushUpgradeRoute: ApiPushUpgradeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

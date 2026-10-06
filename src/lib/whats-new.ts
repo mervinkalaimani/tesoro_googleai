@@ -26,6 +26,22 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 277,
+    at: "2026-10-06T23:45",
+    changes: [
+      {
+        text: "A locked section now shows itself working, over a demo collection rather than a padlock — Favourites looks like Favourites, Habit looks like Habit, and none of it is anybody’s real cars.",
+      },
+      {
+        text: "Free accounts get the two tiers side by side once each time they sign in, and an Ask for Pro button. It tells the admins and writes the request down; a payment link comes back by email.",
+      },
+      {
+        admin: true,
+        text: "Somebody asking for Pro arrives as a notification and stays on their row in the admin screen, so a request outlives the notification that announced it.",
+      },
+    ],
+  },
+  {
     build: 276,
     at: "2026-10-06T22:30",
     changes: [

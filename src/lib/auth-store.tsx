@@ -38,6 +38,8 @@ export type Profile = {
   pro_until?: string | null;
   /** When a free account first went over the car limit. Null when no clock is running. */
   over_limit_since?: string | null;
+  /** When this account asked for Pro. Cleared when it is granted. */
+  pro_requested_at?: string | null;
   /** Starts every Car ID in this collection, e.g. "MKCCB". Assigned once, never changed. */
   id_prefix?: string | null;
   created_at: string;

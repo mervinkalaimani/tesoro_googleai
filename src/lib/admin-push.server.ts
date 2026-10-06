@@ -50,10 +50,12 @@ type Profile = {
   is_owner: boolean;
   rejected_at: string | null;
   approval_push_at: string | null;
+  is_pro: boolean | null;
+  pro_requested_at: string | null;
 };
 
 const PROFILE_COLS =
-  "sno, auth_uid, first_name, last_name, email_id, is_admin, is_approved, is_owner, rejected_at, approval_push_at";
+  "sno, auth_uid, first_name, last_name, email_id, is_admin, is_approved, is_owner, rejected_at, approval_push_at, is_pro, pro_requested_at";
 
 const displayName = (p: Pick<Profile, "first_name" | "last_name" | "email_id">) =>
   [p.first_name, p.last_name].filter(Boolean).join(" ").trim() || p.email_id;
@@ -144,6 +146,62 @@ export async function notifyNewUser(request: Request) {
     token: signDecisionToken(me.sno, s.auth_uid),
   }));
   return json({ sent });
+}
+
+/**
+ * A free account asking to be upgraded.
+ *
+ * Two things happen and only one of them can be missed: the admins get a
+ * notification, and the ask is written on the account. The row is what the
+ * admin screen lists, so a request outlives a notification that was dismissed
+ * on the wrong phone — and it is what makes asking twice harmless.
+ *
+ * The reply is a payment link, sent by hand. Nothing here sends email: this
+ * deployment has no mail provider, and inventing one to send a link somebody
+ * has to write anyway would be a provider, a key and a template for one line
+ * of text.
+ */
+export async function requestUpgrade(request: Request) {
+  const me = await callerProfile(request);
+  if (!me) return json({ error: "Sign in first." }, 401);
+  if (me.is_pro || me.is_owner) {
+    return json({ ok: true, already: true, reason: "already on Pro" });
+  }
+
+  // Asking again is not an error, and it does not re-notify: the first ask is
+  // the one with the date on it, and it stays until the tier is granted.
+  const already = Boolean(me.pro_requested_at);
+  if (!already) {
+    await db()
+      .from("tesoro_users")
+      .update({ pro_requested_at: new Date().toISOString() })
+      .eq("sno", me.sno);
+  }
+
+  // The record is the point; the notification is a courtesy. A deployment
+  // without VAPID keys still takes the request.
+  if (already || !pushReady()) {
+    return json({ ok: true, already, sent: 0 });
+  }
+
+  const { data: admins } = await db()
+    .from("tesoro_users")
+    .select("auth_uid")
+    .eq("is_admin", true)
+    .not("auth_uid", "is", null);
+  const subs = await subscriptionsFor(
+    ((admins ?? []) as { auth_uid: string }[]).map((a) => a.auth_uid),
+  );
+
+  const name = displayName(me);
+  const sent = await deliver(subs, () => ({
+    kind: "upgrade",
+    title: "Someone is asking for Pro",
+    body: name === me.email_id ? name : `${name} · ${me.email_id}`,
+    tag: `upgrade-${me.sno}`,
+    url: "/admin",
+  }));
+  return json({ ok: true, already: false, sent });
 }
 
 /** Approve or Reject tapped on the notification; the token stands in for a session. */
