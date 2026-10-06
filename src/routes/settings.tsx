@@ -826,6 +826,22 @@ export function SettingsPage() {
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </Link>
+            {/* PRO USERS */}
+            <Link
+              to="/subscriptions"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <Sparkles className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Subscriptions</span>
+                <p className="text-xs text-muted-foreground">Plans, length &amp; what is owed</p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </Link>
             {/* METADATA EDITOR */}
             <button
               type="button"

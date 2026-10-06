@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCars, useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
 import { useAuth } from "@/lib/auth-store";
-import { FREE_CAR_LIMIT } from "@/lib/tiers";
 import { openProDialog } from "@/components/pro-dialog";
 import { useCatalog } from "@/lib/catalog-store";
 import type { Diecast } from "@/lib/types";
@@ -32,10 +31,10 @@ export function TopBar() {
   // carries its own picture and falls back to its casting's.
   const refreshAll = () => Promise.all([refresh(), refreshCatalog()]);
   const syncing = refreshing || catalogLoading;
-  const { isPro } = useAuth();
+  const { carCeiling } = useAuth();
   const allCars = useCars();
-  /** A free collection at its ceiling. The database refuses the row anyway. */
-  const atCarLimit = !isPro && allCars.length >= FREE_CAR_LIMIT;
+  /** At the ceiling this plan has. The database refuses the row anyway. */
+  const atCarLimit = carCeiling !== null && allCars.length >= carCeiling;
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkSeed, setBulkSeed] = useState<Diecast[] | undefined>(undefined);

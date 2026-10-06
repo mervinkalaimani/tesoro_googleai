@@ -4,8 +4,10 @@ import {
   FREE_CAR_LIMIT,
   EXPIRY_WARNING_DAYS,
   TRIM_GRACE_DAYS,
+  ceilingFor,
   isProPath,
   monthlyPrice,
+  planOf,
   PLAN_PRICES,
   proStatus,
   savingVsMonthly,
@@ -132,5 +134,38 @@ for (const plan of ["plus", "pro"] as const) {
     assert.ok(savingVsMonthly(plan, term) > 0, `${plan} ${term} should beat monthly`);
   }
 }
+
+// ---- which plan an account is on ----
+const nobody = { is_pro: false, is_owner: false, pro_plan: null, pro_until: null };
+assert.equal(planOf(nobody, today), "free");
+assert.equal(planOf(null, today), "free");
+assert.equal(planOf(undefined, today), "free");
+
+// The owner is Pro whatever the row says about paying.
+assert.equal(planOf({ ...nobody, is_owner: true }, today), "pro");
+
+// A plan name without is_pro is not a plan: turning somebody off leaves the
+// name behind, and the switch is what decides.
+assert.equal(planOf({ ...nobody, pro_plan: "pro" }, today), "free");
+assert.equal(planOf({ is_pro: true, pro_plan: "pro", pro_until: null }, today), "pro");
+assert.equal(planOf({ is_pro: true, pro_plan: "plus", pro_until: null }, today), "plus");
+
+// No end date is the comped account, and it never lapses.
+assert.equal(planOf({ is_pro: true, pro_plan: "pro", pro_until: null }, day("2099-01-01")), "pro");
+
+// The last day works; the day after does not.
+assert.equal(planOf({ is_pro: true, pro_plan: "pro", pro_until: "2026-10-06" }, today), "pro");
+assert.equal(planOf({ is_pro: true, pro_plan: "pro", pro_until: "2026-10-05" }, today), "free");
+assert.equal(planOf({ is_pro: true, pro_plan: "plus", pro_until: "2026-10-05" }, today), "free");
+
+// A plan nobody recognises is free rather than a crash.
+assert.equal(planOf({ is_pro: true, pro_plan: "gold", pro_until: null }, today), "free");
+
+// ---- and how many cars it holds ----
+assert.equal(ceilingFor("free"), 50);
+assert.equal(ceilingFor("plus"), 150);
+assert.equal(ceilingFor("pro"), null, "Pro has no ceiling");
+// Plus is the free ceiling and the hundred it advertises, not a number typed twice.
+assert.equal(ceilingFor("plus"), ceilingFor("free")! + 100);
 
 console.log("tiers selfcheck: ok");

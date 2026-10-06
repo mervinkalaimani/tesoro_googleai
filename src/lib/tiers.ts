@@ -22,6 +22,43 @@ export type PaidPlan = "plus" | "pro";
 /** How long a plan is bought for. */
 export type PlanTerm = "month" | "half" | "year";
 
+/** What an account is on today. Free is where everybody starts. */
+export type Plan = "free" | PaidPlan;
+
+/**
+ * Which plan an account is on, from its own row.
+ *
+ * The same three rules the database applies in tesoro_plan(): the owner is
+ * always Pro, a plan with no start date never expires, and the last day it
+ * works is pro_until rather than the day before. Both exist because the policy
+ * cannot ask the browser and the screen should not wait for the database to
+ * say what it can already see.
+ */
+export function planOf(
+  p:
+    | {
+        is_pro?: boolean | null;
+        is_owner?: boolean | null;
+        pro_plan?: string | null;
+        pro_until?: string | null;
+      }
+    | null
+    | undefined,
+  today: Date = new Date(),
+): Plan {
+  if (p?.is_owner) return "pro";
+  if (!p?.is_pro || (p.pro_plan !== "plus" && p.pro_plan !== "pro")) return "free";
+  const until = parseDMY(p.pro_until);
+  if (until && wholeDays(today, until) < 0) return "free";
+  return p.pro_plan;
+}
+
+/** How many cars this plan may hold. Null is no ceiling. */
+export function ceilingFor(plan: Plan): number | null {
+  if (plan === "pro") return null;
+  return plan === "plus" ? PLUS_CAR_LIMIT : FREE_CAR_LIMIT;
+}
+
 export type PlanPrice = {
   term: PlanTerm;
   /** What it is called on the button. */

@@ -17,13 +17,14 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SegmentControl } from "@/components/segment-control";
+import { AdminImageRefresh } from "@/components/admin-image-refresh";
 import { AssortmentManager } from "@/components/assortment-manager";
 import { BrandLogoManager } from "@/components/brand-logo-manager";
 import { CataloguePhotos } from "@/components/catalogue-photos";
 import { useCatalog } from "@/lib/catalog-store";
 import { META_LABEL, metaValues, renameMetaValue, type MetaField } from "@/lib/metadata-fields";
 
-type Tab = MetaField | "assortments" | "entries" | "logos";
+type Tab = MetaField | "assortments" | "entries" | "logos" | "photos";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "brand", label: "Brands" },
@@ -33,10 +34,11 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "assortments", label: "Assortments" },
   { value: "entries", label: "Entries" },
   { value: "logos", label: "Logos" },
+  { value: "photos", label: "Photos" },
 ];
 
 const isMetaField = (t: Tab): t is MetaField =>
-  t !== "assortments" && t !== "entries" && t !== "logos";
+  t !== "assortments" && t !== "entries" && t !== "logos" && t !== "photos";
 
 /** One field's spellings, with a rename each. */
 function ValueList({ field }: { field: MetaField }) {
@@ -168,6 +170,10 @@ export function MetadataEditor() {
       {tab === "assortments" && <AssortmentManager />}
       {tab === "entries" && <CataloguePhotos />}
       {tab === "logos" && <BrandLogoManager />}
+      {/* Finding photographs for castings is work on the catalogue, not on
+          anybody’s account. It sat at the bottom of the Users screen because
+          that was the only admin page there was. */}
+      {tab === "photos" && <AdminImageRefresh />}
     </div>
   );
 }

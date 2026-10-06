@@ -21,6 +21,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -44,7 +46,6 @@ import { PageHeading, PageToolbar } from "@/components/page-header";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { SegmentControl } from "@/components/segment-control";
 import { useApp } from "@/lib/store";
-import { AdminImageRefresh } from "@/components/admin-image-refresh";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -70,7 +71,11 @@ type AdminUser = {
   over_limit_since: string | null;
   /** When this account asked for Pro. Cleared when it is granted. */
   pro_requested_at: string | null;
-  /** Which one: "plus" (100 more cars) or "pro". */
+  /** The plan held: "plus" or "pro". Null is free. */
+  pro_plan: string | null;
+  /** How many months were granted. */
+  pro_months: number | null;
+  /** Which one was asked for: "plus" (100 more cars) or "pro". */
   pro_requested_plan: string | null;
   /** And for how long: "month", "half" or "year". */
   pro_requested_term: string | null;
@@ -88,6 +93,9 @@ const SEGMENTS: { value: UserSegment; label: string }[] = [
   { value: "approved", label: "Approved" },
   { value: "admins", label: "Admins" },
 ];
+
+/** What to call somebody in a label, falling back to the address. */
+const nameOrEmail = (u: AdminUser) => (displayName(u) === "—" ? u.email_id : displayName(u));
 
 function displayName(u: AdminUser): string {
   return [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || "—";
@@ -176,49 +184,6 @@ function AdminPage() {
         return;
       }
       toast.success(makeAdmin ? "Promoted to admin" : "Admin revoked", {
-        description: target.email_id,
-      });
-      void load();
-    },
-    [load],
-  );
-
-  /**
-   * Turns Pro on for a month, or off.
-   *
-   * The start date is what is collected; the end is the database’s arithmetic,
-   * a generated column, so a month is a month everywhere and nobody types a
-   * date that disagrees with the policy enforcing it.
-   *
-   * Turning it off leaves pro_since alone — it is the record of when they last
-   * paid, and clearing it would also, through the generated column, erase the
-   * date the account page is showing them.
-   */
-  const setProTier = useCallback(
-    async (target: AdminUser, makePro: boolean, startOn?: string) => {
-      setBusyId(String(target.sno));
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: proError } = await (supabase as any)
-        .from("tesoro_users")
-        .update(
-          makePro
-            ? {
-                is_pro: true,
-                pro_since: startOn || new Date().toISOString().slice(0, 10),
-                // Granting it answers the ask, so the row stops waiting.
-                pro_requested_at: null,
-                pro_requested_plan: null,
-              }
-            : { is_pro: false },
-        )
-        .eq("sno", target.sno);
-      setBusyId(null);
-
-      if (proError) {
-        toast.error("Could not change the tier", { description: proError.message });
-        return;
-      }
-      toast.success(makePro ? "Pro is on for a month" : "Pro turned off", {
         description: target.email_id,
       });
       void load();
@@ -474,22 +439,6 @@ function AdminPage() {
                           ),
                       },
                       {
-                        label: "Tier",
-                        value: u.is_pro ? (
-                          <Badge className="gap-1">
-                            Pro
-                            {u.pro_until ? ` · to ${u.pro_until}` : ""}
-                          </Badge>
-                        ) : u.pro_requested_at ? (
-                          <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
-                            <Sparkles className="size-3" />
-                            Wants {u.pro_requested_plan === "plus" ? "Plus" : "Pro"}
-                          </Badge>
-                        ) : (
-                          "Free"
-                        ),
-                      },
-                      {
                         label: "Role",
                         value: u.is_owner ? (
                           <Badge className="gap-1">
@@ -560,43 +509,34 @@ function AdminPage() {
                           Owner account — cannot be changed
                         </p>
                       ) : (
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex items-center gap-4">
+                          <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-medium">
+                            <Checkbox
+                              checked={u.is_admin}
+                              disabled={busy || isSelf}
+                              onCheckedChange={(v) => void setAdminRole(u, v === true)}
+                            />
+                            Admin
+                          </label>
                           <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
+                            variant="ghost"
+                            size="icon"
+                            className={cn(
+                              "ml-auto size-8",
+                              u.is_approved
+                                ? "text-muted-foreground hover:text-rose-500"
+                                : "text-emerald-500",
+                            )}
                             disabled={busy || isSelf}
                             onClick={() => void setApproval(u, !u.is_approved)}
+                            aria-label={`${u.is_approved ? "Suspend" : "Approve"} ${nameOrEmail(u)}`}
+                            title={u.is_approved ? "Suspend this account" : "Approve this account"}
                           >
                             {u.is_approved ? (
-                              <>
-                                <UserX className="size-3.5" />
-                                Suspend
-                              </>
+                              <UserX className="size-3.5" />
                             ) : (
-                              <>
-                                <UserCheck className="size-3.5" />
-                                Approve
-                              </>
+                              <UserCheck className="size-3.5" />
                             )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="flex-1"
-                            disabled={busy || isSelf}
-                            onClick={() => void setAdminRole(u, !u.is_admin)}
-                          >
-                            {u.is_admin ? "Revoke admin" : "Make admin"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="flex-1"
-                            disabled={busy}
-                            onClick={() => void setProTier(u, !u.is_pro)}
-                          >
-                            {u.is_pro ? "Remove Pro" : "Make Pro"}
                           </Button>
                         </div>
                       )
@@ -616,7 +556,7 @@ function AdminPage() {
               <TableHead>User</TableHead>
               <TableHead>User ID</TableHead>
               <TableHead>Access</TableHead>
-              <TableHead>Role</TableHead>
+              <TableHead>Admin</TableHead>
               <TableHead className="text-right">Cars</TableHead>
               <TableHead>Joined</TableHead>
               <TableHead>Last seen</TableHead>
@@ -672,39 +612,25 @@ function AdminPage() {
                         </Badge>
                       )}
                     </TableCell>
+                    {/* Two switches rather than two buttons that each said
+                        their own opposite: "Revoke admin" on a row and "Make
+                        admin" on the next is a state you have to read the verb
+                        to work out. A box is either ticked or it is not. */}
                     <TableCell>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        {u.is_owner ? (
-                          <Badge className="gap-1">
-                            <Crown className="size-3" />
-                            Owner
-                          </Badge>
-                        ) : u.is_admin ? (
-                          <Badge className="gap-1">
-                            <ShieldCheck className="size-3" />
-                            Admin
-                          </Badge>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">User</span>
-                        )}
-                        {/* Somebody is waiting on a payment link. It stays until
-                            Pro is granted, so it outlives the notification. */}
-                        {!u.is_pro && u.pro_requested_at && (
-                          <Badge
-                            variant="outline"
-                            className="gap-1 border-primary/50 text-primary"
-                            title={`Asked on ${new Date(u.pro_requested_at).toLocaleDateString()}`}
-                          >
-                            <Sparkles className="size-3" />
-                            Wants {u.pro_requested_plan === "plus" ? "Plus" : "Pro"}
-                          </Badge>
-                        )}
-                        {u.is_pro && !u.is_owner && (
-                          <Badge variant="outline" className="border-border text-muted-foreground">
-                            Pro{u.pro_until ? ` · to ${u.pro_until}` : ""}
-                          </Badge>
-                        )}
-                      </div>
+                      {u.is_owner ? (
+                        <Badge className="gap-1">
+                          <Crown className="size-3" />
+                          Owner
+                        </Badge>
+                      ) : (
+                        <Checkbox
+                          checked={u.is_admin}
+                          disabled={busy || isSelf}
+                          onCheckedChange={(v) => void setAdminRole(u, v === true)}
+                          aria-label={`Admin: ${nameOrEmail(u)}`}
+                          title={isSelf ? "You can't change your own role" : "Admin"}
+                        />
+                      )}
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {u.car_count.toLocaleString()}
@@ -723,49 +649,6 @@ function AdminPage() {
                           </span>
                         ) : (
                           <>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={busy || isSelf}
-                              onClick={() => void setApproval(u, !u.is_approved)}
-                              title={isSelf ? "You can't change your own access" : undefined}
-                            >
-                              {u.is_approved ? (
-                                <>
-                                  <UserX className="size-3.5" />
-                                  Suspend
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="size-3.5" />
-                                  Approve
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busy || isSelf}
-                              onClick={() => void setAdminRole(u, !u.is_admin)}
-                              title={isSelf ? "You can't change your own role" : undefined}
-                            >
-                              {u.is_admin ? "Revoke admin" : "Make admin"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={busy}
-                              onClick={() => void setProTier(u, !u.is_pro)}
-                              title={
-                                u.is_pro
-                                  ? u.pro_until
-                                    ? `Pro until ${u.pro_until}`
-                                    : "Pro, no end date"
-                                  : "Turn Pro on for a month"
-                              }
-                            >
-                              {u.is_pro ? "Remove Pro" : "Make Pro"}
-                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -793,6 +676,35 @@ function AdminPage() {
                                 <Loader2 className="size-3.5 animate-spin" />
                               ) : (
                                 <KeyRound className="size-3.5" />
+                              )}
+                            </Button>
+                            {/* Suspending is as heavy as deleting and belongs
+                                beside it, not at the front of the row where it
+                                was the first thing a cursor met. */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "size-8",
+                                u.is_approved
+                                  ? "text-muted-foreground hover:text-rose-500"
+                                  : "text-emerald-500",
+                              )}
+                              disabled={busy || isSelf}
+                              onClick={() => void setApproval(u, !u.is_approved)}
+                              aria-label={`${u.is_approved ? "Suspend" : "Approve"} ${nameOrEmail(u)}`}
+                              title={
+                                isSelf
+                                  ? "You can't change your own access"
+                                  : u.is_approved
+                                    ? "Suspend this account"
+                                    : "Approve this account"
+                              }
+                            >
+                              {u.is_approved ? (
+                                <UserX className="size-3.5" />
+                              ) : (
+                                <UserCheck className="size-3.5" />
                               )}
                             </Button>
                             {/* Deleting an account is the owner's alone. */}
@@ -829,8 +741,6 @@ function AdminPage() {
         unreadable immediately, even through the API. Collections are never deleted by these
         actions.
       </p>
-
-      <AdminImageRefresh />
 
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent className="sm:max-w-md">

@@ -26,6 +26,28 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 281,
+    at: "2026-10-07T03:30",
+    changes: [
+      {
+        admin: true,
+        key: true,
+        text: "Subscriptions is its own screen. One line an account: who they are, the plan, cars against their ceiling, when it ends and how long is left — and on the right a Free / Plus / Pro control and a length, from one month to forever. Changing either grants it.",
+      },
+      {
+        admin: true,
+        text: "Users is about signing in again. The plan and its dates have gone to Subscriptions, Admin is a checkbox, and suspending is an icon beside delete rather than the first button a cursor meets.",
+      },
+      {
+        admin: true,
+        text: "Refresh car photos has moved to the metadata editor, under Photos. It is work on the catalogue, and it was only on Users because that was the only admin screen there was.",
+      },
+      {
+        text: "Plus is a real plan now, not just a price: 150 cars, with the Pro sections still closed. A plan that has ended keeps its place on Subscriptions for the 15 days before anything is trimmed, so it can be renewed.",
+      },
+    ],
+  },
+  {
     build: 280,
     at: "2026-10-07T02:15",
     changes: [

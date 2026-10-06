@@ -17,7 +17,6 @@ import { assignCarIds, catalogIdFor } from "@/lib/car-id";
 import { sortCars } from "@/lib/status-order";
 import { canonicaliseSpellings } from "@/lib/canonical-spellings";
 import { useAuth } from "@/lib/auth-store";
-import { FREE_CAR_LIMIT } from "@/lib/tiers";
 import { makeGuestCars } from "@/lib/guest-seed";
 import { toast } from "sonner";
 import { syncUserCarImageToCatalog } from "@/lib/catalog";
@@ -318,7 +317,7 @@ export type CarsContextValue = Ctx;
 export const CarsCtx = createContext<Ctx | null>(null);
 
 export function CarsProvider({ children }: { children: ReactNode }) {
-  const { user, status: authStatus, isGuest, isPro } = useAuth();
+  const { user, status: authStatus, isGuest, carCeiling } = useAuth();
   // Guests get their own namespace, so their edits never mix with a real
   // account's cache on a shared browser.
   const uid = isGuest ? "guest" : (user?.id ?? "anon");
@@ -730,23 +729,23 @@ export function CarsProvider({ children }: { children: ReactNode }) {
    */
   const refusedByLimit = useCallback(
     (adding: number) => {
-      if (isPro || isGuest) return false;
-      if (cars.length + adding <= FREE_CAR_LIMIT) return false;
-      const room = Math.max(0, FREE_CAR_LIMIT - cars.length);
+      if (isGuest || carCeiling === null) return false;
+      if (cars.length + adding <= carCeiling) return false;
+      const room = Math.max(0, carCeiling - cars.length);
       toast.error(
         room === 0
-          ? `A free account keeps ${FREE_CAR_LIMIT} cars`
+          ? `Your plan keeps ${carCeiling} cars`
           : `Room for ${room} more car${room === 1 ? "" : "s"}`,
         {
           description:
             adding === 1
-              ? "Ask an admin to turn on Pro to keep adding."
-              : `This would add ${adding}. Ask an admin to turn on Pro for an unlimited collection.`,
+              ? "Upgrade to keep adding."
+              : `This would add ${adding}. Upgrade for a bigger collection.`,
         },
       );
       return true;
     },
-    [isPro, isGuest, cars.length],
+    [carCeiling, isGuest, cars.length],
   );
 
   const addCar = useCallback(
