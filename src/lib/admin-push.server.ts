@@ -184,10 +184,12 @@ export async function requestUpgrade(request: Request) {
     return json({ ok: true, already, sent: 0 });
   }
 
+  // Owner as well as admin: the owner is the one who sends the payment link,
+  // and an owner nobody thought to tick "admin" on would never hear about it.
   const { data: admins } = await db()
     .from("tesoro_users")
     .select("auth_uid")
-    .eq("is_admin", true)
+    .or("is_admin.eq.true,is_owner.eq.true")
     .not("auth_uid", "is", null);
   const subs = await subscriptionsFor(
     ((admins ?? []) as { auth_uid: string }[]).map((a) => a.auth_uid),

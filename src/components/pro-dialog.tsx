@@ -19,11 +19,17 @@ import { cn } from "@/lib/utils";
 
 const SESSION_KEY = "dg.proDialogSeen";
 
-/** What each tier gets, in the order the sections appear in the sidebar. */
-const LINES: { label: string; free: boolean }[] = [
+/**
+ * What each tier gets, in the order the sections appear in the sidebar.
+ *
+ * `freeOnly` is the ceiling, and it is left out of the Pro column rather than
+ * ticked there: "up to 50 cars" and "unlimited cars" with a tick beside each
+ * is two answers to one question.
+ */
+const LINES: { label: string; free: boolean; freeOnly?: boolean }[] = [
   { label: "My Cars", free: true },
   { label: "The full catalogue", free: true },
-  { label: `Up to ${FREE_CAR_LIMIT} cars`, free: true },
+  { label: `Up to ${FREE_CAR_LIMIT} cars`, free: true, freeOnly: true },
   { label: "Unlimited cars", free: false },
   { label: "Favourites", free: false },
   { label: "Collection", free: false },
@@ -114,7 +120,7 @@ function Plan({
 }: {
   title: string;
   subtitle: string;
-  lines: { label: string; free: boolean }[];
+  lines: { label: string; free: boolean; freeOnly?: boolean }[];
   featured?: boolean;
   /** The tier this account is on, so one of the two is labelled rather than sold. */
   mine?: boolean;
@@ -138,21 +144,23 @@ function Plan({
       <p className="mt-0.5 text-[11px] text-muted-foreground">{subtitle}</p>
 
       <div className="mt-3 flex-1 space-y-1.5">
-        {lines.map((l) => {
-          // In the free column a Pro line is what you do not get, and saying so
-          // with a dash rather than leaving it out is the whole comparison.
-          const has = featured || l.free;
-          return (
-            <div key={l.label} className="flex items-start gap-2 text-[13px]">
-              {has ? (
-                <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              ) : (
-                <Minus className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/50" />
-              )}
-              <span className={cn("min-w-0", !has && "text-muted-foreground/60")}>{l.label}</span>
-            </div>
-          );
-        })}
+        {lines
+          .filter((l) => !(featured && l.freeOnly))
+          .map((l) => {
+            // In the free column a Pro line is what you do not get, and saying so
+            // with a dash rather than leaving it out is the whole comparison.
+            const has = featured || l.free;
+            return (
+              <div key={l.label} className="flex items-start gap-2 text-[13px]">
+                {has ? (
+                  <Check className="mt-0.5 size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                ) : (
+                  <Minus className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/50" />
+                )}
+                <span className={cn("min-w-0", !has && "text-muted-foreground/60")}>{l.label}</span>
+              </div>
+            );
+          })}
       </div>
 
       {action && <div className="mt-4">{action}</div>}

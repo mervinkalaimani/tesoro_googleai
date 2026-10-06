@@ -26,6 +26,20 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 278,
+    at: "2026-10-07T00:30",
+    changes: [
+      {
+        text: "Ask for Pro works. It was refusing every press: the request went through a route that needs a service key this deployment does not have, so working out who was asking failed. The ask is written through your own session now, and it says “Pro request has been raised”.",
+      },
+      {
+        admin: true,
+        text: "An account waiting on Pro carries a Wants Pro badge on its row until the tier is granted, and granting it clears the badge.",
+      },
+      { text: "The Pro column no longer claims both “up to 50 cars” and “unlimited cars”." },
+    ],
+  },
+  {
     build: 277,
     at: "2026-10-06T23:45",
     changes: [

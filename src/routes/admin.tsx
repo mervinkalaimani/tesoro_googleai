@@ -14,6 +14,7 @@ import {
   UserCheck,
   Users,
   UserX,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -67,6 +68,8 @@ type AdminUser = {
   pro_until: string | null;
   /** When this free account first went over the car limit. */
   over_limit_since: string | null;
+  /** When this account asked for Pro. Cleared when it is granted. */
+  pro_requested_at: string | null;
   created_at: string;
   car_count: number;
   last_sign_in: string | null;
@@ -195,7 +198,12 @@ function AdminPage() {
         .from("tesoro_users")
         .update(
           makePro
-            ? { is_pro: true, pro_since: startOn || new Date().toISOString().slice(0, 10) }
+            ? {
+                is_pro: true,
+                pro_since: startOn || new Date().toISOString().slice(0, 10),
+                // Granting it answers the ask, so the row stops waiting.
+                pro_requested_at: null,
+              }
             : { is_pro: false },
         )
         .eq("sno", target.sno);
@@ -461,6 +469,22 @@ function AdminPage() {
                           ),
                       },
                       {
+                        label: "Tier",
+                        value: u.is_pro ? (
+                          <Badge className="gap-1">
+                            Pro
+                            {u.pro_until ? ` · to ${u.pro_until}` : ""}
+                          </Badge>
+                        ) : u.pro_requested_at ? (
+                          <Badge variant="outline" className="gap-1 border-primary/50 text-primary">
+                            <Sparkles className="size-3" />
+                            Wants Pro
+                          </Badge>
+                        ) : (
+                          "Free"
+                        ),
+                      },
+                      {
                         label: "Role",
                         value: u.is_owner ? (
                           <Badge className="gap-1">
@@ -644,19 +668,38 @@ function AdminPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {u.is_owner ? (
-                        <Badge className="gap-1">
-                          <Crown className="size-3" />
-                          Owner
-                        </Badge>
-                      ) : u.is_admin ? (
-                        <Badge className="gap-1">
-                          <ShieldCheck className="size-3" />
-                          Admin
-                        </Badge>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">User</span>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {u.is_owner ? (
+                          <Badge className="gap-1">
+                            <Crown className="size-3" />
+                            Owner
+                          </Badge>
+                        ) : u.is_admin ? (
+                          <Badge className="gap-1">
+                            <ShieldCheck className="size-3" />
+                            Admin
+                          </Badge>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">User</span>
+                        )}
+                        {/* Somebody is waiting on a payment link. It stays until
+                            Pro is granted, so it outlives the notification. */}
+                        {!u.is_pro && u.pro_requested_at && (
+                          <Badge
+                            variant="outline"
+                            className="gap-1 border-primary/50 text-primary"
+                            title={`Asked on ${new Date(u.pro_requested_at).toLocaleDateString()}`}
+                          >
+                            <Sparkles className="size-3" />
+                            Wants Pro
+                          </Badge>
+                        )}
+                        {u.is_pro && !u.is_owner && (
+                          <Badge variant="outline" className="border-border text-muted-foreground">
+                            Pro{u.pro_until ? ` · to ${u.pro_until}` : ""}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
                       {u.car_count.toLocaleString()}
