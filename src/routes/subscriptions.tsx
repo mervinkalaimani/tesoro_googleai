@@ -6,7 +6,15 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { formatDayMonthYear } from "@/lib/format";
-import { TRIM_GRACE_DAYS, ceilingFor, planOf, type PaidPlan, type Plan } from "@/lib/tiers";
+import {
+  TRIM_GRACE_DAYS,
+  ceilingFor,
+  planOf,
+  trialDaysLeft,
+  trialLastDay,
+  type PaidPlan,
+  type Plan,
+} from "@/lib/tiers";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -41,6 +49,7 @@ type Row = {
   pro_months: number | null;
   pro_since: string | null;
   pro_until: string | null;
+  trial_started_on: string | null;
   pro_requested_at: string | null;
   pro_requested_plan: string | null;
   pro_requested_term: string | null;
@@ -351,9 +360,14 @@ function SubscriptionRow({
   onRenew: () => void;
   onRemove: () => void;
 }) {
-  const left = daysLeft(u.pro_until);
+  // A trial is Pro for a fortnight and nobody paid for it, so it is said as
+  // itself here: an admin reading "Pro, ends never" about a trial would be
+  // reading the wrong thing about the one row that is about to change.
+  const trialLeft = u.is_pro || u.is_owner ? null : trialDaysLeft(u);
+  const trialEnd = trialLastDay(u);
+  const left = trialLeft ?? daysLeft(u.pro_until);
   const ceiling = ceilingFor(plan);
-  const noEnd = plan !== "free" && !u.pro_since;
+  const noEnd = trialLeft === null && plan !== "free" && !u.pro_since;
   const grace = inGracePeriod(u);
   // The control shows what they are on, free included: taking somebody off a
   // plan is the same kind of act as putting them on one, and hiding it behind
@@ -388,14 +402,22 @@ function SubscriptionRow({
           <Badge
             className={cn(
               "w-fit",
-              plan === "pro"
-                ? ""
-                : plan === "plus"
-                  ? "bg-sky-500/15 text-sky-600 hover:bg-sky-500/15 dark:text-sky-400"
-                  : "bg-muted text-muted-foreground hover:bg-muted",
+              trialLeft !== null
+                ? "bg-amber-500/15 text-amber-600 hover:bg-amber-500/15 dark:text-amber-400"
+                : plan === "pro"
+                  ? ""
+                  : plan === "plus"
+                    ? "bg-sky-500/15 text-sky-600 hover:bg-sky-500/15 dark:text-sky-400"
+                    : "bg-muted text-muted-foreground hover:bg-muted",
             )}
           >
-            {plan === "free" ? "Free" : plan === "plus" ? "Plus" : "Pro"}
+            {trialLeft !== null
+              ? "Trial"
+              : plan === "free"
+                ? "Free"
+                : plan === "plus"
+                  ? "Plus"
+                  : "Pro"}
           </Badge>
           <Fact label="Cars">
             {u.car_count.toLocaleString()}
@@ -404,7 +426,13 @@ function SubscriptionRow({
             )}
           </Fact>
           <Fact label="Ends">
-            {noEnd ? "never" : u.pro_until ? formatDayMonthYear(u.pro_until) : "—"}
+            {trialEnd && trialLeft !== null
+              ? formatDayMonthYear(trialEnd)
+              : noEnd
+                ? "never"
+                : u.pro_until
+                  ? formatDayMonthYear(u.pro_until)
+                  : "—"}
           </Fact>
           <Fact label="Left">
             {left === null ? (

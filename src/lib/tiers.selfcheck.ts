@@ -4,6 +4,8 @@ import {
   FREE_CAR_LIMIT,
   EXPIRY_WARNING_DAYS,
   TRIM_GRACE_DAYS,
+  TRIAL_DAYS,
+  canStartTrial,
   ceilingFor,
   isProPath,
   monthlyPrice,
@@ -11,6 +13,7 @@ import {
   PLAN_PRICES,
   proStatus,
   savingVsMonthly,
+  trialDaysLeft,
   trimWarning,
 } from "./tiers";
 
@@ -167,5 +170,47 @@ assert.equal(ceilingFor("plus"), 150);
 assert.equal(ceilingFor("pro"), null, "Pro has no ceiling");
 // Plus is the free ceiling and the hundred it advertises, not a number typed twice.
 assert.equal(ceilingFor("plus"), ceilingFor("free")! + 100);
+
+// ---- the trial: fifteen days counting the first ----
+assert.equal(TRIAL_DAYS, 15);
+assert.equal(trialDaysLeft({ trial_started_on: null }, today), null, "no trial is no clock");
+
+// Started today: all fifteen, today included.
+assert.equal(trialDaysLeft({ trial_started_on: "2026-10-06" }, today), 15);
+// Day fourteen and day fifteen are the two the screen asks on.
+assert.equal(trialDaysLeft({ trial_started_on: "2026-09-23" }, today), 2);
+assert.equal(trialDaysLeft({ trial_started_on: "2026-09-22" }, today), 1);
+// The sixteenth day is free again, and nothing had to run for it to be.
+assert.equal(trialDaysLeft({ trial_started_on: "2026-09-21" }, today), null);
+assert.equal(trialDaysLeft({ trial_started_on: "2026-01-01" }, today), null);
+
+// A running trial is Pro, and the day after it is not.
+assert.equal(planOf({ ...nobody, trial_started_on: "2026-09-22" }, today), "pro");
+assert.equal(planOf({ ...nobody, trial_started_on: "2026-09-21" }, today), "free");
+assert.equal(ceilingFor(planOf({ ...nobody, trial_started_on: "2026-10-06" }, today)), null);
+
+// A plan beats a trial, so buying Plus mid-trial is Plus rather than a
+// fortnight of accidental Pro.
+assert.equal(
+  planOf(
+    { is_pro: true, pro_plan: "plus", pro_until: null, trial_started_on: "2026-10-06" },
+    today,
+  ),
+  "plus",
+);
+// ...and a trial still running outlives a plan that has ended.
+assert.equal(
+  planOf(
+    { is_pro: true, pro_plan: "pro", pro_until: "2026-09-01", trial_started_on: "2026-10-06" },
+    today,
+  ),
+  "pro",
+);
+
+// Once per account: the date is the record, and it is never cleared.
+assert.equal(canStartTrial({ ...nobody, trial_started_on: null }), true);
+assert.equal(canStartTrial({ ...nobody, trial_started_on: "2026-01-01" }), false, "already used");
+assert.equal(canStartTrial({ is_pro: true, pro_plan: "pro", pro_until: null }), false, "on a plan");
+assert.equal(canStartTrial({ ...nobody, is_owner: true }), false);
 
 console.log("tiers selfcheck: ok");

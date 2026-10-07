@@ -2,7 +2,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { authHeader } from "@/lib/api-auth";
-import type { PaidPlan, PlanTerm } from "@/lib/tiers";
+import { TRIAL_DAYS, type PaidPlan, type PlanTerm } from "@/lib/tiers";
 
 /**
  * Asking an admin to turn Pro on.
@@ -69,5 +69,40 @@ export async function requestPro(
     }).catch(() => {});
   }
 
+  return true;
+}
+
+/**
+ * Turning on the one free trial.
+ *
+ * Nobody is asked and nothing is granted: the account writes its own start
+ * date through its own session, and every tier question answers differently
+ * from the next read onwards. It happens once, which the database decides —
+ * a second press gets the first date back and says so.
+ */
+export async function startTrial(): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("tesoro_start_trial");
+
+  if (error) {
+    toast.error("Could not start the trial", {
+      description: error.message || "Try again in a moment.",
+    });
+    return false;
+  }
+
+  const row = (Array.isArray(data) ? data[0] : data) as
+    { started_on: string | null; was_new: boolean } | undefined;
+
+  if (!row?.was_new) {
+    toast.info("This account has already had its trial", {
+      description: "One per account. Choosing a plan is the way back to Pro.",
+    });
+    return false;
+  }
+
+  toast.success(`${TRIAL_DAYS} days of Pro, starting now`, {
+    description: "Everything is open. Nothing is charged, and nothing is owed at the end of it.",
+  });
   return true;
 }

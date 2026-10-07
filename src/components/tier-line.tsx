@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth-store";
 import { formatDayMonthYear } from "@/lib/format";
-import { FREE_CAR_LIMIT, planOf } from "@/lib/tiers";
+import { FREE_CAR_LIMIT, planOf, trialDaysLeft } from "@/lib/tiers";
 import { ProChip } from "@/components/tier-avatar";
 
 /**
@@ -14,6 +14,21 @@ import { ProChip } from "@/components/tier-avatar";
 export function TierLine({ className }: { className?: string }) {
   const { profile } = useAuth();
   const plan = planOf(profile);
+  const trialLeft = trialDaysLeft(profile);
+
+  // A trial reads as Pro everywhere the locks are, and as a trial everywhere
+  // the account is named: it is Pro that runs out, and the number of days is
+  // the only part worth saying.
+  if (trialLeft !== null && !profile?.is_pro && !profile?.is_owner) {
+    return (
+      <span className={className}>
+        <ProChip label="Trial" />
+        <span className="ml-2 text-[11px] text-muted-foreground">
+          {trialLeft === 1 ? "last day" : `${trialLeft} days left`}
+        </span>
+      </span>
+    );
+  }
 
   if (plan === "free") {
     return (

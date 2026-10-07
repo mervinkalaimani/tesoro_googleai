@@ -1,15 +1,19 @@
 import { useEffect, useState } from "react";
-import { BellRing, Check, Loader2, Minus, Sparkles } from "lucide-react";
+import { BellRing, Check, Loader2, Minus, Rocket, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-store";
 import {
   FREE_CAR_LIMIT,
   PLUS_CAR_LIMIT,
   PLUS_EXTRA_CARS,
+  TRIAL_DAYS,
+  TRIAL_REMIND_DAYS,
+  canStartTrial,
   monthlyPrice,
+  trialDaysLeft,
   type PaidPlan,
 } from "@/lib/tiers";
-import { requestPro } from "@/lib/pro-request";
+import { requestPro, startTrial } from "@/lib/pro-request";
 import { openPlanTermDialog } from "@/components/plan-term-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -25,6 +29,8 @@ import { cn } from "@/lib/utils";
  */
 
 const SESSION_KEY = "dg.proDialogSeen";
+/** The trial nag is per day, not per session: the last two days each get one. */
+const TRIAL_KEY = "dg.trialNagOn";
 
 /**
  * Opening it from somewhere else — the Get Pro button, or the car ceiling.
@@ -112,7 +118,9 @@ const PLANS: Plan[] = [
 ];
 
 export function ProDialog() {
-  const { isPro, isGuest, status, profile } = useAuth();
+  const { isPro, isGuest, status, profile, reloadProfile } = useAuth();
+  const trialLeft = trialDaysLeft(profile);
+  const canTrial = canStartTrial(profile);
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
   const [busy, setBusy] = useState<PaidPlan | null>(null);
@@ -129,7 +137,29 @@ export function ProDialog() {
   }, []);
 
   useEffect(() => {
-    if (status !== "ready" || isGuest || isPro) return;
+    if (status !== "ready" || isGuest) return;
+
+    // The last two days of a trial. Once a day rather than once a session,
+    // because the thing being asked for is a decision and the deadline moves.
+    if (trialLeft !== null && trialLeft <= TRIAL_REMIND_DAYS) {
+      const today = new Date().toDateString();
+      try {
+        if (localStorage.getItem(TRIAL_KEY) === today) return;
+        localStorage.setItem(TRIAL_KEY, today);
+      } catch {
+        // Storage refused: it asks once per load instead, which on the last
+        // two days of a trial is the side to err on.
+      }
+      setReason(
+        trialLeft === 1
+          ? "Your trial ends today — pick a plan to keep everything"
+          : `Your trial ends in ${trialLeft} days — pick a plan to keep everything`,
+      );
+      setOpen(true);
+      return;
+    }
+
+    if (isPro) return;
     try {
       if (sessionStorage.getItem(SESSION_KEY)) return;
       sessionStorage.setItem(SESSION_KEY, "1");
@@ -139,11 +169,24 @@ export function ProDialog() {
     }
     setReason(null);
     setOpen(true);
-  }, [status, isGuest, isPro]);
+  }, [status, isGuest, isPro, trialLeft]);
 
   // A reminder is per-opening: it stops the button being pressed ten times in
   // a row, and comes back next time the dialog does.
   const [reminded, setReminded] = useState<PaidPlan | null>(null);
+
+  const [trialBusy, setTrialBusy] = useState(false);
+
+  const takeTrial = async () => {
+    setTrialBusy(true);
+    const ok = await startTrial();
+    setTrialBusy(false);
+    if (!ok) return;
+    // The plan is read off the profile, so it has to be read again before the
+    // locks come off.
+    await reloadProfile();
+    setOpen(false);
+  };
 
   const ask = async (plan: PaidPlan) => {
     // Already asked for this one: the button is a nudge, and the term was
@@ -185,8 +228,9 @@ export function ProDialog() {
               mine={p.key === "free"}
               asked={p.key !== "free" && askedPlan === p.key}
               reminded={reminded === p.key}
-              busy={busy === p.key}
-              disabled={busy !== null}
+              busy={p.key === "free" ? trialBusy : busy === p.key}
+              disabled={busy !== null || trialBusy}
+              onTrial={p.key === "free" && canTrial ? () => void takeTrial() : undefined}
               onAsk={() => void ask(p.key as PaidPlan)}
             />
           ))}
@@ -207,6 +251,7 @@ function PlanCard({
   reminded,
   busy,
   disabled,
+  onTrial,
   onAsk,
 }: {
   plan: Plan;
@@ -218,6 +263,8 @@ function PlanCard({
   reminded?: boolean;
   busy?: boolean;
   disabled?: boolean;
+  /** Set on the Free column when this account still has its trial to take. */
+  onTrial?: () => void;
   onAsk: () => void;
 }) {
   return (
@@ -254,6 +301,29 @@ function PlanCard({
           </div>
         ))}
       </div>
+
+      {/* The free column's own offer: everything, for a fortnight, decided
+          here rather than asked for. */}
+      {mine && onTrial && (
+        <div className="mt-4 space-y-1.5">
+          {/* The terms first, then the button: what a trial costs is the
+              question anybody has before pressing it, and an answer printed
+              underneath is an answer given after the fact. */}
+          <p className="text-center text-[10px] text-muted-foreground">
+            Everything Pro has. No card, once per account.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full gap-1.5 font-semibold"
+            disabled={disabled}
+            onClick={onTrial}
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
+            Start {TRIAL_DAYS}-day trial
+          </Button>
+        </div>
+      )}
 
       {!mine && (
         <div className="mt-4 space-y-1.5">

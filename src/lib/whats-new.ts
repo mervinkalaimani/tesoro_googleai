@@ -26,6 +26,23 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 283,
+    at: "2026-10-07T05:30",
+    changes: [
+      {
+        key: true,
+        text: "Fifteen days of everything, free, decided by you. Start trial is on the Free column of the plans: no card, no admin, once per account. Every Pro section opens and the car ceiling comes off for a fortnight.",
+      },
+      {
+        text: "On the last two days the app asks for a decision — a banner naming exactly what locks and how many cars get put away, and the plans once a day rather than once a session. On the sixteenth day the account is free again; nothing had to run for that, the date simply stops counting.",
+      },
+      {
+        admin: true,
+        text: "A trial reads as a trial on Subscriptions — its own badge, the day it ends, the days left — rather than as Pro that never ends.",
+      },
+    ],
+  },
+  {
     build: 282,
     at: "2026-10-07T04:45",
     changes: [

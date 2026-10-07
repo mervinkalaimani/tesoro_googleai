@@ -34,23 +34,71 @@ export type Plan = "free" | PaidPlan;
  * cannot ask the browser and the screen should not wait for the database to
  * say what it can already see.
  */
-export function planOf(
-  p:
-    | {
-        is_pro?: boolean | null;
-        is_owner?: boolean | null;
-        pro_plan?: string | null;
-        pro_until?: string | null;
-      }
-    | null
-    | undefined,
-  today: Date = new Date(),
-): Plan {
+export function planOf(p: TierFields | null | undefined, today: Date = new Date()): Plan {
   if (p?.is_owner) return "pro";
-  if (!p?.is_pro || (p.pro_plan !== "plus" && p.pro_plan !== "pro")) return "free";
-  const until = parseDMY(p.pro_until);
-  if (until && wholeDays(today, until) < 0) return "free";
-  return p.pro_plan;
+  // A paid plan before a trial, deliberately: somebody who buys Plus halfway
+  // through a trial is on Plus. Reading the trial first would quietly give
+  // them Pro for the rest of the fortnight and take it away when it ended.
+  if (p?.is_pro && (p.pro_plan === "plus" || p.pro_plan === "pro")) {
+    const until = parseDMY(p.pro_until);
+    if (!until || wholeDays(today, until) >= 0) return p.pro_plan;
+  }
+  return trialDaysLeft(p, today) === null ? "free" : "pro";
+}
+
+/** The columns every tier question is answered from. */
+export type TierFields = {
+  is_pro?: boolean | null;
+  is_owner?: boolean | null;
+  pro_plan?: string | null;
+  pro_until?: string | null;
+  trial_started_on?: string | null;
+};
+
+/**
+ * Days of trial left, counting today. Null when none is running.
+ *
+ * The day it starts counts as the first, so a trial started today has all
+ * fifteen and one started fifteen days ago has none — which is the sixteenth
+ * day, the one the account is free again on. Nothing expires it: the
+ * arithmetic stops saying Pro, the same way the database does.
+ */
+export function trialDaysLeft(
+  p: { trial_started_on?: string | null } | null | undefined,
+  today: Date = new Date(),
+): number | null {
+  const over = trialOverOn(p);
+  if (!over) return null;
+  const left = wholeDays(today, over);
+  return left > 0 ? left : null;
+}
+
+/** The first day a trial does not work. Null when there never was one. */
+export function trialOverOn(
+  p: { trial_started_on?: string | null } | null | undefined,
+): Date | null {
+  const start = parseDMY(p?.trial_started_on);
+  if (!start) return null;
+  return new Date(start.getFullYear(), start.getMonth(), start.getDate() + TRIAL_DAYS);
+}
+
+/** The last day it does work — what a date on the screen should say. */
+export function trialLastDay(
+  p: { trial_started_on?: string | null } | null | undefined,
+): Date | null {
+  const over = trialOverOn(p);
+  if (!over) return null;
+  return new Date(over.getFullYear(), over.getMonth(), over.getDate() - 1);
+}
+
+/**
+ * Whether this account may start one.
+ *
+ * Once ever, and only while nothing better is running: the column is never
+ * cleared, so it is both the start date and the record that a trial was used.
+ */
+export function canStartTrial(p: TierFields | null | undefined): boolean {
+  return !p?.trial_started_on && planOf(p) === "free";
 }
 
 /** How many cars this plan may hold. Null is no ceiling. */
@@ -108,6 +156,10 @@ export function savingVsMonthly(plan: PaidPlan, term: PlanTerm): number {
 }
 /** Days of notice before Pro ends. */
 export const EXPIRY_WARNING_DAYS = 5;
+/** How long a trial runs, counting the day it starts. tesoro_trial_days() in the database. */
+export const TRIAL_DAYS = 15;
+/** The last days of a trial, when the screen starts asking for a decision. */
+export const TRIAL_REMIND_DAYS = 2;
 /** Days between dropping to free over the limit and the trim. */
 export const TRIM_GRACE_DAYS = 15;
 

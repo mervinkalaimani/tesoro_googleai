@@ -1,9 +1,18 @@
 import { AlertTriangle, Clock } from "lucide-react";
 
+import { openProDialog } from "@/components/pro-dialog";
+
 import { useAuth } from "@/lib/auth-store";
 import { useCars } from "@/lib/cars-store";
 import { formatDayMonthYear } from "@/lib/format";
-import { FREE_CAR_LIMIT, proStatus, trimWarning } from "@/lib/tiers";
+import {
+  FREE_CAR_LIMIT,
+  TRIM_GRACE_DAYS,
+  TRIAL_REMIND_DAYS,
+  proStatus,
+  trialDaysLeft,
+  trimWarning,
+} from "@/lib/tiers";
 
 /**
  * The two things a subscription has to say out loud.
@@ -35,6 +44,30 @@ export function TierBanner() {
         {trim.daysLeft > 0 && ` — ${trim.daysLeft} day${trim.daysLeft === 1 ? "" : "s"} from now`}.
         A free account keeps {FREE_CAR_LIMIT}; the oldest {FREE_CAR_LIMIT} stay. Nothing is deleted,
         and every car comes back the moment this account is on Pro.
+      </Bar>
+    );
+  }
+
+  // The last days of a trial, and only those: a fortnight of being told the
+  // fortnight is running is a fortnight of being told nothing.
+  const trialLeft = trialDaysLeft(profile);
+  if (trialLeft !== null && trialLeft <= TRIAL_REMIND_DAYS && !profile.is_pro) {
+    return (
+      <Bar tone="loud" icon={<AlertTriangle className="size-4 shrink-0" />}>
+        <strong className="font-semibold">
+          Your trial ends {trialLeft === 1 ? "today" : `in ${trialLeft} days`}
+        </strong>{" "}
+        — after that, Favourites, Collection, Duplicates, Habit, Sellers, My Orders, Pre Orders and
+        the card scanner lock, and anything above {FREE_CAR_LIMIT} cars is put away (not deleted,
+        and not for {TRIM_GRACE_DAYS} days).{" "}
+        <button
+          type="button"
+          onClick={() => openProDialog("Your trial is ending — pick a plan to keep everything")}
+          className="font-semibold underline underline-offset-2"
+        >
+          Pick a plan
+        </button>
+        .
       </Bar>
     );
   }
