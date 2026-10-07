@@ -9,6 +9,7 @@ import {
   ceilingFor,
   isProPath,
   monthlyPrice,
+  paidPlanOf,
   planOf,
   PLAN_PRICES,
   proStatus,
@@ -187,7 +188,17 @@ assert.equal(trialDaysLeft({ trial_started_on: "2026-01-01" }, today), null);
 // A running trial is Pro, and the day after it is not.
 assert.equal(planOf({ ...nobody, trial_started_on: "2026-09-22" }, today), "pro");
 assert.equal(planOf({ ...nobody, trial_started_on: "2026-09-21" }, today), "free");
-assert.equal(ceilingFor(planOf({ ...nobody, trial_started_on: "2026-10-06" }, today)), null);
+// A trial opens the sections and leaves the shelf alone: the ceiling is read
+// off what was paid for, so nothing added on a trial is over the line when it
+// ends.
+assert.equal(ceilingFor(paidPlanOf({ ...nobody, trial_started_on: "2026-10-06" }, today)), 50);
+assert.equal(paidPlanOf({ ...nobody, trial_started_on: "2026-10-06" }, today), "free");
+assert.equal(
+  ceilingFor(paidPlanOf({ is_pro: true, pro_plan: "plus", pro_until: null }, today)),
+  150,
+  "a paid plan still raises it",
+);
+assert.equal(ceilingFor(paidPlanOf({ ...nobody, is_owner: true }, today)), null);
 
 // A plan beats a trial, so buying Plus mid-trial is Plus rather than a
 // fortnight of accidental Pro.

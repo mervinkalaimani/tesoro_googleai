@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { rememberProfile } from "@/lib/known-profiles";
 import { setUserIdPrefix } from "@/lib/car-id";
 import { clearAllDrafts } from "@/lib/form-draft";
-import { ceilingFor, planOf, type Plan } from "@/lib/tiers";
+import { ceilingFor, paidPlanOf, planOf, type Plan } from "@/lib/tiers";
 
 export type Profile = {
   sno: number;
@@ -766,7 +766,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // screens: there is nothing to sell to somebody who cannot sign up yet.
       isPro: isGuest ? true : planOf(profile) === "pro",
       plan: isGuest ? "pro" : planOf(profile),
-      carCeiling: isGuest ? null : ceilingFor(planOf(profile)),
+      // What was paid for, not what the sections read: a trial does not raise
+      // the ceiling, so nothing added during one is above the line afterwards.
+      carCeiling: isGuest ? null : ceilingFor(paidPlanOf(profile)),
       demoKind,
       signIn,
       signUp,

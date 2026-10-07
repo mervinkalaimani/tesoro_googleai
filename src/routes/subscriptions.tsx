@@ -9,6 +9,7 @@ import { formatDayMonthYear } from "@/lib/format";
 import {
   TRIM_GRACE_DAYS,
   ceilingFor,
+  paidPlanOf,
   planOf,
   trialDaysLeft,
   trialLastDay,
@@ -366,7 +367,7 @@ function SubscriptionRow({
   const trialLeft = u.is_pro || u.is_owner ? null : trialDaysLeft(u);
   const trialEnd = trialLastDay(u);
   const left = trialLeft ?? daysLeft(u.pro_until);
-  const ceiling = ceilingFor(plan);
+  const ceiling = ceilingFor(paidPlanOf(u));
   const noEnd = trialLeft === null && plan !== "free" && !u.pro_since;
   const grace = inGracePeriod(u);
   // The control shows what they are on, free included: taking somebody off a

@@ -35,15 +35,29 @@ export type Plan = "free" | PaidPlan;
  * say what it can already see.
  */
 export function planOf(p: TierFields | null | undefined, today: Date = new Date()): Plan {
-  if (p?.is_owner) return "pro";
   // A paid plan before a trial, deliberately: somebody who buys Plus halfway
   // through a trial is on Plus. Reading the trial first would quietly give
   // them Pro for the rest of the fortnight and take it away when it ended.
+  const paid = paidPlanOf(p, today);
+  if (paid !== "free") return paid;
+  return trialDaysLeft(p, today) === null ? "free" : "pro";
+}
+
+/**
+ * What this account has actually paid for, ignoring any trial.
+ *
+ * The ceiling is read off this rather than off the tier, and that is the whole
+ * point of having two answers: a trial opens the Pro sections, and leaving the
+ * car limit where it is means a trial that is not taken up cannot leave
+ * somebody with cars to lose. tesoro_paid_plan() in the database.
+ */
+export function paidPlanOf(p: TierFields | null | undefined, today: Date = new Date()): Plan {
+  if (p?.is_owner) return "pro";
   if (p?.is_pro && (p.pro_plan === "plus" || p.pro_plan === "pro")) {
     const until = parseDMY(p.pro_until);
     if (!until || wholeDays(today, until) >= 0) return p.pro_plan;
   }
-  return trialDaysLeft(p, today) === null ? "free" : "pro";
+  return "free";
 }
 
 /** The columns every tier question is answered from. */

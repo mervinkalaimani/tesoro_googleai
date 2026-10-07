@@ -310,7 +310,7 @@ function PlanCard({
               question anybody has before pressing it, and an answer printed
               underneath is an answer given after the fact. */}
           <p className="text-center text-[10px] text-muted-foreground">
-            Everything Pro has. No card, once per account.
+            Every Pro section, still {FREE_CAR_LIMIT} cars. No card, once per account.
           </p>
           <Button
             type="button"

@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 284,
+    at: "2026-10-07T06:10",
+    changes: [
+      {
+        key: true,
+        text: "A trial opens the Pro sections and leaves the car limit where it is. Fifty cars added on a trial that is not taken up would be fifty cars put away a fortnight later, and a trial that hands your collection back missing is not a trial.",
+      },
+      {
+        text: "A locked section shows its example in full, with the explanation underneath it rather than a card parked in the middle of the thing being shown.",
+      },
+    ],
+  },
+  {
     build: 283,
     at: "2026-10-07T05:30",
     changes: [

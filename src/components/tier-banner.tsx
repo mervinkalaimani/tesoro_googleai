@@ -7,7 +7,6 @@ import { useCars } from "@/lib/cars-store";
 import { formatDayMonthYear } from "@/lib/format";
 import {
   FREE_CAR_LIMIT,
-  TRIM_GRACE_DAYS,
   TRIAL_REMIND_DAYS,
   proStatus,
   trialDaysLeft,
@@ -58,8 +57,8 @@ export function TierBanner() {
           Your trial ends {trialLeft === 1 ? "today" : `in ${trialLeft} days`}
         </strong>{" "}
         — after that, Favourites, Collection, Duplicates, Habit, Sellers, My Orders, Pre Orders and
-        the card scanner lock, and anything above {FREE_CAR_LIMIT} cars is put away (not deleted,
-        and not for {TRIM_GRACE_DAYS} days).{" "}
+        the card scanner lock. Your cars are not affected: a trial keeps the same {FREE_CAR_LIMIT}
+        -car limit, so there is nothing above the line to lose.{" "}
         <button
           type="button"
           onClick={() => openProDialog("Your trial is ending — pick a plan to keep everything")}

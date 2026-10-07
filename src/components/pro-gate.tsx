@@ -32,21 +32,23 @@ export function ProGate({
   if (isPro) return <>{children}</>;
 
   return (
-    <div className="relative">
+    <div>
       {/* THE EXAMPLE. Hidden from the reading order as well as from the
           pointer: a screen reader walking a page of cars that are not the
           listener's is worse than one that skips them. */}
       <div
         aria-hidden
         inert
-        className="pointer-events-none select-none [mask-image:linear-gradient(to_bottom,black,black_28rem,transparent_42rem)]"
+        className="pointer-events-none max-h-[26rem] select-none overflow-hidden [mask-image:linear-gradient(to_bottom,black,black_16rem,transparent_26rem)]"
       >
         <SampleCars>{children}</SampleCars>
       </div>
 
-      {/* THE PANEL, over the top of it. */}
-      <div className="absolute inset-x-0 top-24 flex justify-center px-4">
-        <div className="w-full max-w-sm rounded-2xl border border-border bg-card/95 p-5 text-center shadow-xl backdrop-blur">
+      {/* THE PANEL, under it rather than over it: a card floating in the
+          middle of the example covers the half of it worth looking at, and
+          what is being sold here is the look of the thing. */}
+      <div className="flex justify-center px-4 pb-6">
+        <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 text-center shadow-lg">
           <div className="mx-auto grid size-11 place-items-center rounded-2xl bg-primary/10">
             <Lock className="size-5 text-primary" />
           </div>
