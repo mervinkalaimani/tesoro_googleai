@@ -100,22 +100,31 @@ function EmptyDashboard() {
   const [addOpen, setAddOpen] = useState(false);
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center p-6">
-      <div className="max-w-sm text-center">
-        <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-          <Boxes className="size-7" />
+    <div className="mx-auto w-full max-w-3xl space-y-4 p-4 md:p-6">
+      {/* Above the empty state, not instead of it. Somebody who has just
+          joined and just asked for a plan has no cars by definition, and the
+          QR they are waiting for cannot live only on a screen they will not
+          see until they have some. */}
+      <MySubscriptionRequest />
+      <SubscriptionRequests />
+
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="max-w-sm text-center">
+          <div className="mx-auto grid size-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <Boxes className="size-7" />
+          </div>
+          <h1 className="text-display mt-5 text-2xl font-semibold tracking-tight">
+            Your collection is empty
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Add your first car and the dashboard fills in — spending, brands, transit and buying
+            habits all follow from what you log here.
+          </p>
+          <Button size="lg" className="mt-6 gap-2" onClick={() => setAddOpen(true)}>
+            <Plus className="size-4" />
+            Add a car
+          </Button>
         </div>
-        <h1 className="text-display mt-5 text-2xl font-semibold tracking-tight">
-          Your collection is empty
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Add your first car and the dashboard fills in — spending, brands, transit and buying
-          habits all follow from what you log here.
-        </p>
-        <Button size="lg" className="mt-6 gap-2" onClick={() => setAddOpen(true)}>
-          <Plus className="size-4" />
-          Add a car
-        </Button>
       </div>
       <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />
     </div>

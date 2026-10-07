@@ -26,6 +26,26 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 301,
+    at: "2026-10-07T19:00",
+    changes: [
+      {
+        key: true,
+        text: "Choosing a length and paying are two steps now. Pick one, then Pay — or Pay directly instead, which has no card fee and goes through an admin. A card adds 2% on top of the plan price, said on the button before it is pressed rather than found on the receipt.",
+      },
+      {
+        text: "A brand new account sees its subscription section on the empty dashboard. Somebody who has just joined and just asked for a plan has no cars by definition, and the QR they are waiting for cannot live only on a screen they will not see until they have some.",
+      },
+      {
+        admin: true,
+        text: "Payments has its own row in the Admin Console, and a Razorpay panel that says whether cards are being taken, with which key, and whether those keys are live or test.",
+      },
+      {
+        text: "What is new drops the date — the build number already orders them — and VIIV is 0.9.0 (beta).",
+      },
+    ],
+  },
+  {
     build: 300,
     at: "2026-10-07T17:30",
     changes: [

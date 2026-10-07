@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { callerFrom, serverSupabase } from "@/lib/supabase-server";
+import { withGatewayFee } from "@/lib/tiers";
 
 /**
  * Taking money, and turning it into a plan.
@@ -105,7 +106,13 @@ export async function createOrder(request: Request) {
   if (!Number.isFinite(rupees) || rupees <= 0) {
     return json({ error: "That plan is not for sale at that length." }, 400);
   }
-  const amount = Math.round(rupees * 100);
+  // The card fee goes on here, where the price is read — not in the browser,
+  // which is not allowed to decide what anything costs. The screen shows the
+  // same sum because it uses the same function.
+  const amount = Math.round(withGatewayFee(rupees) * 100);
+  // Razorpay refuses anything under a rupee, and so should we rather than
+  // handing them an error to render.
+  if (amount < 100) return json({ error: "That plan costs too little to charge for." }, 400);
 
   const made = await fetch(`${API}/orders`, {
     method: "POST",

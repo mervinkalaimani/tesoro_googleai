@@ -4,6 +4,8 @@ import {
   FREE_CAR_LIMIT,
   EXPIRY_WARNING_DAYS,
   TRIM_GRACE_DAYS,
+  GATEWAY_FEE_PCT,
+  withGatewayFee,
   TRIAL_DAYS,
   canStartTrial,
   ceilingFor,
@@ -259,5 +261,21 @@ assert.equal(
 );
 assert.equal(scansLeft({ ...nobody, trial_started_on: "2026-10-06" }, today), null);
 assert.equal(scansLeft({ ...nobody, is_owner: true }, today), null);
+
+// ---- what a card adds ----
+// The screen prints this and the server charges it, from the same function:
+// two copies of a percentage is how a receipt stops matching a price.
+assert.equal(GATEWAY_FEE_PCT, 2);
+assert.equal(withGatewayFee(100), 102);
+assert.equal(withGatewayFee(999), 1019, "999 + 2% is 1018.98, which bills as 1019");
+assert.equal(withGatewayFee(49), 50);
+assert.equal(withGatewayFee(0), 0, "nothing plus a fee is still nothing");
+// Always whole rupees: a gateway counts paise, and a price ending .98 is a
+// price nobody can read back off a statement.
+for (const p of [1, 7, 49, 99, 149, 249, 399, 499, 599, 799, 999, 1199]) {
+  assert.equal(withGatewayFee(p), Math.round(p * 1.02));
+  assert.ok(Number.isInteger(withGatewayFee(p)), p + " plus the fee is a whole number");
+  assert.ok(withGatewayFee(p) >= p, "the fee never makes a plan cheaper");
+}
 
 console.log("tiers selfcheck: ok");

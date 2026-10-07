@@ -19,7 +19,6 @@ import {
   readSeen,
   releasesFor,
   releasesSince,
-  stamp,
   writeSeen,
   type Release,
 } from "@/lib/whats-new";
@@ -109,10 +108,7 @@ export function WhatsNewList() {
 function ReleaseBlock({ release }: { release: Release }) {
   return (
     <div>
-      <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-        <h3 className="text-sm font-semibold text-foreground">Build {release.build}</h3>
-        <span className="text-[11px] tabular-nums text-muted-foreground">{stamp(release.at)}</span>
-      </div>
+      <h3 className="text-sm font-semibold text-foreground">Build {release.build}</h3>
       <ul className="mt-2 space-y-1.5">
         {release.changes.map((c, i) => (
           <li key={i} className="flex gap-2">

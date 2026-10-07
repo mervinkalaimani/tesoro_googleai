@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
-import { Check, CreditCard, Loader2 } from "lucide-react";
+import { Check, CreditCard, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
-import { termFromMonths, type PaidPlan } from "@/lib/tiers";
+import { GATEWAY_FEE_PCT, termFromMonths, withGatewayFee, type PaidPlan } from "@/lib/tiers";
 import { monthlyOf, monthsLabel, pricesFor, savingOf, usePlanPrices } from "@/lib/plan-prices";
 import { requestPro } from "@/lib/pro-request";
 import { payConfig, payForPlan } from "@/lib/pay-client";
 import { useAuth, fullName } from "@/lib/auth-store";
+import { inrFull } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -17,8 +18,10 @@ import { cn } from "@/lib/utils";
  * A second dialog rather than nine prices in the comparison: choosing between
  * Plus and Pro is one decision and choosing between a month and a year is
  * another, and asking both at once is how a price table turns into a puzzle.
- * The comparison closes before this opens, so there is only ever one question
- * on the screen.
+ *
+ * Picking a length no longer does anything on its own. It used to open the
+ * checkout on the press, which made choosing and paying the same gesture —
+ * fine until there is a fee to read first, and a second way to pay underneath.
  */
 
 let openFromAnywhere: ((plan: PaidPlan) => void) | null = null;
@@ -28,14 +31,12 @@ export function openPlanTermDialog(plan: PaidPlan) {
   openFromAnywhere?.(plan);
 }
 
-const TITLE: Record<PaidPlan, string> = {
-  plus: "Plus",
-  pro: "Pro",
-};
+const TITLE: Record<PaidPlan, string> = { plus: "Plus", pro: "Pro" };
 
 export function PlanTermDialog() {
   const [plan, setPlan] = useState<PaidPlan | null>(null);
-  const [busy, setBusy] = useState<number | null>(null);
+  const [months, setMonths] = useState<number | null>(null);
+  const [busy, setBusy] = useState<"card" | "direct" | null>(null);
   const prices = usePlanPrices();
   const { profile, reloadProfile } = useAuth();
   // Whether this deployment can take money at all. Asked once, on open, so the
@@ -47,94 +48,105 @@ export function PlanTermDialog() {
   }, []);
 
   useEffect(() => {
-    openFromAnywhere = (p) => setPlan(p);
+    openFromAnywhere = (p) => {
+      setPlan(p);
+      setMonths(null);
+    };
     return () => {
       openFromAnywhere = null;
     };
   }, []);
 
-  /**
-   * What pressing a length does.
-   *
-   * Where payments are set up it opens the checkout and the plan switches on
-   * by itself. Where they are not — a deployment without the keys — it falls
-   * back to the ask, which is how every plan was granted before any of this
-   * existed. The second path is not a degraded first: it is the one that has
-   * always worked, kept.
-   */
-  const choose = async (months: number) => {
-    if (!plan) return;
-    setBusy(months);
-
-    if (canPay) {
-      const outcome = await payForPlan(plan, months, {
-        name: fullName(profile),
-        email: profile?.email_id,
-      });
-      setBusy(null);
-
-      if (outcome === "paid") {
-        // The tier is read off the profile, so it has to be read again before
-        // anything unlocks.
-        await reloadProfile();
-        toast.success(`${plan === "plus" ? "Plus" : "Pro"} is on`, {
-          description: `Paid for ${months} month${months === 1 ? "" : "s"}. Everything is open.`,
-        });
-        setPlan(null);
-        return;
-      }
-      // Cancelled is somebody changing their mind: leave the dialog where it
-      // is so they can pick a different length without starting again.
-      if (outcome !== "unavailable") return;
-      // Unavailable falls through to the ask below.
-      setBusy(months);
-    }
-
-    const ok = await requestPro(plan, termFromMonths(months));
-    setBusy(null);
-    if (ok) setPlan(null);
-  };
-
   const options = plan ? pricesFor(prices, plan) : [];
   // The best value is whichever is longest, not whichever is a year: the
   // lengths come from a table now and a year may not be one of them.
   const longest = options.length ? options[options.length - 1]!.months : 0;
+  const picked = options.find((o) => o.months === months) ?? null;
+  const name = plan ? TITLE[plan] : "";
+
+  const close = () => {
+    setPlan(null);
+    setMonths(null);
+  };
+
+  /**
+   * Paying by card, which grants the plan itself.
+   *
+   * Nothing here decides the amount — the server reads the price and adds the
+   * fee. What the button says is produced by the same function the server
+   * uses, so the figure on the button is the figure on the receipt.
+   */
+  const payByCard = async () => {
+    if (!plan || !picked) return;
+    setBusy("card");
+    const outcome = await payForPlan(plan, picked.months, {
+      name: fullName(profile),
+      email: profile?.email_id,
+    });
+    setBusy(null);
+
+    if (outcome === "paid") {
+      // The tier is read off the profile, so it has to be read again before
+      // anything unlocks.
+      await reloadProfile();
+      toast.success(`${name} is on`, {
+        description: `Paid for ${picked.months} month${picked.months === 1 ? "" : "s"}. Everything is open.`,
+      });
+      close();
+      return;
+    }
+    // Cancelled is somebody changing their mind: leave the dialog where it is
+    // so they can pick a different length without starting again.
+    if (outcome === "unavailable") {
+      setCanPay(false);
+      toast.info("Card payments are not available", { description: "Asking an admin instead." });
+      void payDirect();
+    }
+  };
+
+  /** The other way: tell the admins, and pay them however you two arrange it. */
+  const payDirect = async () => {
+    if (!plan || !picked) return;
+    setBusy("direct");
+    const ok = await requestPro(plan, termFromMonths(picked.months));
+    setBusy(null);
+    if (ok) close();
+  };
 
   return (
-    <Dialog open={plan !== null} onOpenChange={(v) => !v && !busy && setPlan(null)}>
+    <Dialog open={plan !== null} onOpenChange={(v) => !v && !busy && close()}>
       <DialogContent className="w-full max-w-full sm:max-w-md">
         <div className="text-center">
           <DialogTitle className="text-xl font-bold tracking-tight">
-            {plan ? TITLE[plan] : ""} — how long for?
+            {name} — how long for?
           </DialogTitle>
           <DialogDescription className="mt-1 text-sm">
-            Longer costs less per month.{" "}
-            {canPay
-              ? "Paying switches the plan on straight away."
-              : "Nothing is charged here; a payment link comes by email."}
+            Longer costs less per month. Pick one, then choose how to pay.
           </DialogDescription>
         </div>
 
         <div className="mt-1 space-y-2">
           {options.map((o) => {
             const saving = plan ? savingOf(prices, plan, o.months) : 0;
-            const perMonth = Math.round(o.price / o.months);
-            // The rupees say how much, the percentage says how good. A saving
-            // of ₹15 means nothing until you know what it is off.
             const full = saving + o.price;
             const off = full > 0 ? Math.round((saving / full) * 100) : 0;
+            const perMonth = Math.round(o.price / o.months);
             const best = o.months === longest && options.length > 1;
+            const on = o.months === months;
             return (
               <button
                 key={o.months}
                 type="button"
+                aria-pressed={on}
                 disabled={busy !== null}
-                onClick={() => void choose(o.months)}
+                onClick={() => setMonths(o.months)}
                 className={cn(
                   "flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors disabled:opacity-60",
-                  best
-                    ? "border-primary/60 bg-primary/5 hover:bg-primary/10"
-                    : "border-border bg-muted/20 hover:bg-muted/40",
+                  on
+                    ? "border-primary bg-primary/10 ring-1 ring-primary"
+                    : best
+                      ? "border-primary/60 bg-primary/5 hover:bg-primary/10"
+                      : "border-border bg-muted/20 hover:bg-muted/40",
                 )}
               >
                 <div className="min-w-0 flex-1">
@@ -158,23 +170,72 @@ export function PlanTermDialog() {
                 <div className="shrink-0 text-right">
                   <div className="text-lg font-bold tracking-tight">₹{o.price}</div>
                 </div>
-                {busy === o.months ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
-                ) : canPay ? (
-                  <CreditCard className="size-4 shrink-0 text-muted-foreground/60" />
-                ) : (
-                  <Check className="size-4 shrink-0 text-muted-foreground/40" />
-                )}
+                <span
+                  className={cn(
+                    "grid size-4 shrink-0 place-items-center rounded-full border",
+                    on ? "border-primary bg-primary text-primary-foreground" : "border-border",
+                  )}
+                >
+                  {on && <Check className="size-3" />}
+                </span>
               </button>
             );
           })}
+        </div>
+
+        {/* THE TWO WAYS. Both need a length picked first, so both are quiet
+            until one is. */}
+        <div className="space-y-2">
+          {canPay && (
+            <>
+              <Button
+                type="button"
+                className="w-full gap-1.5 font-semibold"
+                disabled={!picked || busy !== null}
+                onClick={() => void payByCard()}
+              >
+                {busy === "card" ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <CreditCard className="size-4" />
+                )}
+                {picked ? `Pay ${inrFull(withGatewayFee(picked.price))}` : "Pay"}
+              </Button>
+              {/* Said before the press, not discovered on the receipt. */}
+              <p className="text-center text-[11px] text-muted-foreground">
+                {picked
+                  ? `₹${picked.price.toLocaleString()} plus ${GATEWAY_FEE_PCT}% card fee. The plan switches on as soon as it clears.`
+                  : `Card payments add ${GATEWAY_FEE_PCT}%.`}
+              </p>
+            </>
+          )}
+
+          <Button
+            type="button"
+            variant={canPay ? "outline" : "default"}
+            className="w-full gap-1.5 font-semibold"
+            disabled={!picked || busy !== null}
+            onClick={() => void payDirect()}
+          >
+            {busy === "direct" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Send className="size-4" />
+            )}
+            {canPay ? "Pay directly instead" : "Ask an admin"}
+          </Button>
+          <p className="text-center text-[11px] text-muted-foreground">
+            {canPay
+              ? `No card fee. We send you the payment details and switch the plan on once it arrives${picked ? ` — ₹${picked.price.toLocaleString()}` : ""}.`
+              : "Nothing is charged here; the payment details come to you."}
+          </p>
         </div>
 
         <Button
           type="button"
           variant="ghost"
           disabled={busy !== null}
-          onClick={() => setPlan(null)}
+          onClick={close}
           className="text-muted-foreground"
         >
           Back

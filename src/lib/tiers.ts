@@ -222,6 +222,25 @@ export function scansLeft(
   return Math.max(0, allowance - used);
 }
 
+/**
+ * What a card payment adds on top, as a percentage.
+ *
+ * The gateway takes a cut of every transaction, and the plan prices are what
+ * the plan is worth rather than what the card costs. Paying directly is the
+ * way round it, which is why that way is offered beside this one rather than
+ * buried.
+ *
+ * Lives here, with no React and no browser in sight, because the server works
+ * out the real amount from it and the screen only says what the server will
+ * charge. Two copies of a percentage is how a receipt stops matching a price.
+ */
+export const GATEWAY_FEE_PCT = 2;
+
+/** A price with the card fee on it, in whole rupees. */
+export function withGatewayFee(rupees: number): number {
+  return Math.round(rupees * (1 + GATEWAY_FEE_PCT / 100));
+}
+
 /** Days of notice before Pro ends. */
 export const EXPIRY_WARNING_DAYS = 5;
 /** How long a trial runs, counting the day it starts. tesoro_trial_days() in the database. */

@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { PaymentSettings } from "@/components/payment-settings";
 import { PaymentQrCard } from "@/components/payment-qr-card";
+import { RazorpayCard } from "@/components/razorpay-card";
 import { SegmentControl } from "@/components/segment-control";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +37,9 @@ import { cn } from "@/lib/utils";
  */
 
 export const Route = createFileRoute("/subscriptions")({
+  validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
+    tab: typeof search.tab === "string" ? search.tab : undefined,
+  }),
   component: SubscriptionsPage,
 });
 
@@ -111,7 +115,10 @@ function SubscriptionsPage() {
   const { isAdmin, isOwner, status } = useAuth();
   // Two halves of one subject: who is on what, and what that is worth. The
   // prices are the owner's alone, so the tab only exists for them.
-  const [tab, setTab] = useState<"users" | "payment">("users");
+  const search = Route.useSearch();
+  const [tab, setTab] = useState<"users" | "payment">(
+    search.tab === "payment" ? "payment" : "users",
+  );
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busySno, setBusySno] = useState<number | null>(null);
@@ -337,6 +344,7 @@ function SubscriptionsPage() {
 
       {isOwner && tab === "payment" ? (
         <div className="space-y-4">
+          <RazorpayCard />
           <PaymentQrCard />
           <PaymentSettings subscribers={subscribers} />
         </div>

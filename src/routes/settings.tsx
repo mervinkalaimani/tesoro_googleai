@@ -19,6 +19,7 @@ import {
   LifeBuoy,
   Lightbulb,
   Bug,
+  CreditCard,
   FileText,
   Scale,
   MessageCircle,
@@ -129,7 +130,7 @@ type SettingsView =
  * version — a commit, a run number, a timestamp — is for whoever is reading
  * the logs, not for the person looking at Settings.
  */
-const APP_VERSION = (import.meta.env.VITE_APP_VERSION || "0.8.0 (alpha)").split("+")[0].trim();
+const APP_VERSION = (import.meta.env.VITE_APP_VERSION || "0.9.0 (beta)").split("+")[0].trim();
 
 function parseTab(tab?: string): SettingsView {
   if (!tab) return "root";
@@ -892,6 +893,23 @@ export function SettingsPage() {
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
+            </Link>
+            {/* RAZORPAY & PRICES */}
+            <Link
+              to="/subscriptions"
+              search={{ tab: "payment" }}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <CreditCard className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Payments</span>
+                <p className="text-xs text-muted-foreground">
+                  Razorpay, the payment QR, prices &amp; what they earn
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </Link>
             {/* METADATA EDITOR */}
             <button
