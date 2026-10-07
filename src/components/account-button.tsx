@@ -1,8 +1,9 @@
 import { isIso } from "@/lib/status";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronRight, Eye, EyeOff, Settings, Table } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, Settings, Sparkles, Table } from "lucide-react";
 
+import { openProDialog } from "@/components/pro-dialog";
 import { TierAvatar } from "@/components/tier-avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -74,7 +75,6 @@ function MobileAccountMenu() {
         <TierAvatar
           url={profile?.avatar_url}
           initials={initialsOf(name, display)}
-          pro={isPro}
           className="size-9 border border-border"
           fallbackClassName="bg-muted text-xs font-semibold"
         />
@@ -94,10 +94,8 @@ function MobileAccountMenu() {
             <TierAvatar
               url={profile?.avatar_url}
               initials={initialsOf(name, display)}
-              pro={isPro}
               className="size-12 border border-border shadow-xs"
               fallbackClassName="bg-muted text-sm font-semibold"
-              chipClassName="px-1.5 text-[8px]"
             />
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
@@ -123,6 +121,26 @@ function MobileAccountMenu() {
               )}
             </div>
           </div>
+
+          {/* The same offer the sidebar makes, in the only place a phone has
+              a sidebar: under the name, above everything it is not unlocking. */}
+          {!isPro && !isGuest && (
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                openProDialog();
+              }}
+              className="group/pro relative mt-2.5 block w-full rounded-2xl text-left"
+            >
+              <span aria-hidden className="pro-sheen pointer-events-none absolute inset-0" />
+              <span className="relative flex items-center gap-2.5 rounded-2xl px-3.5 py-3 transition-colors group-hover/pro:bg-muted/40">
+                <Sparkles className="size-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">Get Pro</span>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+              </span>
+            </button>
+          )}
 
           {/* 2. Cars list & Cost details */}
           <div className="mt-3 grid grid-cols-2 gap-2.5">

@@ -26,6 +26,22 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 282,
+    at: "2026-10-07T04:45",
+    changes: [
+      {
+        key: true,
+        text: "The tier is a word beside your name, not a chip on your face. A badge small enough not to cover a photograph was too small to read, so the avatar is a picture again and the plan is said where the account is named — with the date it runs to, on Your details.",
+      },
+      {
+        text: "Get Pro is on the phone as well, under your name in the account sheet, where the sidebar's button would be if a phone had a sidebar.",
+      },
+      {
+        text: "The plans lead with what they are actually about: Add up to 50 cars, Add up to 150, Add unlimited. My Cars has gone — every plan has it, so it was a tick in three columns saying nothing.",
+      },
+    ],
+  },
+  {
     build: 281,
     at: "2026-10-07T03:30",
     changes: [

@@ -214,7 +214,7 @@ export function SettingsPage() {
     showNewPreorders,
     setShowNewPreorders,
   } = useApp();
-  const { profile, isGuest, isOwner, isAdmin, isPro, signOut } = useAuth();
+  const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
   const { source } = useCarsSource();
 
   const name = fullName(profile);
@@ -313,10 +313,8 @@ export function SettingsPage() {
             <TierAvatar
               url={profile?.avatar_url}
               initials={initials}
-              pro={isPro}
               className="size-14 border border-border/80 shadow-xs"
               fallbackClassName="bg-muted text-base font-semibold text-foreground"
-              chipClassName="px-1.5 py-0.5 text-[9px]"
             />
 
             <div className="min-w-0 flex-1">

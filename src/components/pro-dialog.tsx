@@ -79,9 +79,8 @@ const PLANS: Plan[] = [
     price: "₹0",
     subtitle: "What you have now",
     lines: [
-      { label: "My Cars", yes: true },
+      { label: `Add up to ${FREE_CAR_LIMIT} cars`, yes: true },
       { label: "The full catalogue", yes: true },
-      { label: `Up to ${FREE_CAR_LIMIT} cars`, yes: true },
       ...SECTIONS.map((label) => ({ label, yes: false })),
     ],
   },
@@ -92,9 +91,8 @@ const PLANS: Plan[] = [
     per: "per month",
     subtitle: `${PLUS_EXTRA_CARS} more cars`,
     lines: [
-      { label: "My Cars", yes: true },
+      { label: `Add up to ${PLUS_CAR_LIMIT} cars`, yes: true },
       { label: "The full catalogue", yes: true },
-      { label: `Up to ${PLUS_CAR_LIMIT} cars`, yes: true },
       ...SECTIONS.map((label) => ({ label, yes: false })),
     ],
   },
@@ -106,9 +104,8 @@ const PLANS: Plan[] = [
     subtitle: "Everything, no ceiling",
     featured: true,
     lines: [
-      { label: "My Cars", yes: true },
+      { label: "Add unlimited cars", yes: true },
       { label: "The full catalogue", yes: true },
-      { label: "Unlimited cars", yes: true },
       ...SECTIONS.map((label) => ({ label, yes: true })),
     ],
   },

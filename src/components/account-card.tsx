@@ -56,7 +56,7 @@ function fieldsOf(
 }
 
 export function AccountCard() {
-  const { profile, session, isGuest, isPro, requestPasswordReset, updatePassword, reloadProfile } =
+  const { profile, session, isGuest, requestPasswordReset, updatePassword, reloadProfile } =
     useAuth();
 
   const baseline = useMemo(() => fieldsOf(profile), [profile]);
@@ -211,10 +211,8 @@ export function AccountCard() {
           <TierAvatar
             url={profile?.avatar_url}
             initials={initials}
-            pro={isPro}
             className="size-16 border border-border"
             fallbackClassName="bg-muted text-lg font-semibold"
-            chipClassName="px-1.5 py-0.5 text-[9px]"
           />
           <div className="min-w-0 space-y-1.5">
             <div className="text-sm font-medium">Profile picture</div>

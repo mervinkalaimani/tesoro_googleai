@@ -1,6 +1,6 @@
 import { useAuth } from "@/lib/auth-store";
 import { formatDayMonthYear } from "@/lib/format";
-import { FREE_CAR_LIMIT, proStatus } from "@/lib/tiers";
+import { FREE_CAR_LIMIT, planOf } from "@/lib/tiers";
 import { ProChip } from "@/components/tier-avatar";
 
 /**
@@ -13,9 +13,9 @@ import { ProChip } from "@/components/tier-avatar";
  */
 export function TierLine({ className }: { className?: string }) {
   const { profile } = useAuth();
-  const { state } = proStatus(profile);
+  const plan = planOf(profile);
 
-  if (state === "lapsed") {
+  if (plan === "free") {
     return (
       <span className={className}>
         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -28,7 +28,7 @@ export function TierLine({ className }: { className?: string }) {
 
   return (
     <span className={className}>
-      <ProChip inline />
+      <ProChip label={plan === "plus" ? "Plus" : "Pro"} />
       {profile?.pro_until && (
         <span className="ml-2 text-[11px] text-muted-foreground">
           until {formatDayMonthYear(profile.pro_until)}

@@ -2,60 +2,44 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 /**
- * Somebody's picture, with a PRO chip on it when they have paid.
+ * Somebody's picture.
  *
  * The five places that drew an avatar drew the same four lines each — the
- * frame, the photograph if there is one, the initials if there is not — so the
- * chip would have been positioned five times and five times slightly
- * differently. One component instead, and the badge is a prop.
- *
- * Bottom-right, overlapping the frame, with a ring in the page's background
- * colour so it reads as sitting on top of the picture rather than inside it.
+ * frame, the photograph if there is one, the initials if there is not — so
+ * they draw this instead. The tier is said in words beside the name, not
+ * stamped on the face: a chip small enough not to cover a photograph was too
+ * small to read.
  */
 export function TierAvatar({
   url,
   initials,
-  pro = false,
   className,
   fallbackClassName,
-  chipClassName,
 }: {
   url?: string | null;
   initials: string;
-  pro?: boolean;
   className?: string;
   fallbackClassName?: string;
-  /** Bigger avatars want a bigger chip. */
-  chipClassName?: string;
 }) {
   return (
-    <span className="relative inline-flex shrink-0">
-      <Avatar className={className}>
-        {url ? <AvatarImage src={url} alt="" /> : null}
-        <AvatarFallback className={fallbackClassName}>{initials}</AvatarFallback>
-      </Avatar>
-      {pro && <ProChip className={chipClassName} />}
-    </span>
+    <Avatar className={cn("shrink-0", className)}>
+      {url ? <AvatarImage src={url} alt="" /> : null}
+      <AvatarFallback className={fallbackClassName}>{initials}</AvatarFallback>
+    </Avatar>
   );
 }
 
-/** The chip on its own, for a row that names a tier without drawing a face. */
-export function ProChip({ className, inline }: { className?: string; inline?: boolean }) {
+/** The tier as a word, for a row that names an account. */
+export function ProChip({ label = "Pro", className }: { label?: string; className?: string }) {
   return (
     <span
-      title="Pro account"
+      title={`${label} account`}
       className={cn(
-        "rounded-full bg-primary font-bold uppercase leading-none text-primary-foreground",
-        inline
-          ? "px-1.5 py-0.5 text-[9px] tracking-wider"
-          : // Half the width of the smallest avatar it sits on, and no wider:
-            // tracking on a three-letter word at 7px bought nothing but a chip
-            // that covered the face it was meant to badge.
-            "absolute -bottom-px -right-px border border-background px-[3px] py-[2px] text-[7px] tracking-tight shadow-sm",
+        "rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider leading-none text-primary-foreground",
         className,
       )}
     >
-      Pro
+      {label}
     </span>
   );
 }

@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth, fullName } from "@/lib/auth-store";
+import { planOf } from "@/lib/tiers";
 
 /** "Mervin Kalaimani" -> "MK"; a single name gives one letter. */
 function initialsOf(name: string, fallback: string): string {
@@ -28,7 +29,8 @@ function initialsOf(name: string, fallback: string): string {
  * anyone looks for Settings, admin, and the way out.
  */
 export function UserMenu() {
-  const { profile, isAdmin, isPro } = useAuth();
+  const { profile, isAdmin } = useAuth();
+  const plan = planOf(profile);
 
   const name = fullName(profile);
   const display = name || profile?.email_id || "Signed in";
@@ -46,7 +48,6 @@ export function UserMenu() {
           <TierAvatar
             url={profile?.avatar_url}
             initials={initialsOf(name, display)}
-            pro={isPro}
             className="size-9 border border-border"
             fallbackClassName="bg-muted text-xs font-semibold"
           />
@@ -61,8 +62,8 @@ export function UserMenu() {
               is named, so it is where "which account is this" belongs. */}
           <div className="flex items-center gap-1.5">
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{display}</span>
-            {isPro ? (
-              <ProChip inline className="shrink-0" />
+            {plan !== "free" ? (
+              <ProChip label={plan === "plus" ? "Plus" : "Pro"} className="shrink-0" />
             ) : (
               <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
                 Free
