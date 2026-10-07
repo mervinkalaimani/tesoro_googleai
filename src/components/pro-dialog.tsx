@@ -11,6 +11,7 @@ import {
   TRIAL_REMIND_DAYS,
   canStartTrial,
   monthlyPrice,
+  paidPlanOf,
   trialDaysLeft,
   type PaidPlan,
 } from "@/lib/tiers";
@@ -54,6 +55,9 @@ export function openProDialog(reason?: string) {
 }
 
 type Line = { label: string; yes: boolean };
+
+/** Where this account's one trial stands: never taken, running, or spent. */
+type TrialState = "none" | "running" | "over";
 
 type Plan = {
   key: "free" | PaidPlan;
@@ -129,7 +133,24 @@ const PLANS: Plan[] = [
 export function ProDialog() {
   const { isPro, isGuest, status, profile, reloadProfile } = useAuth();
   const trialLeft = trialDaysLeft(profile);
-  const canTrial = canStartTrial(profile);
+  /**
+   * Which column is this account's, and where its trial stands.
+   *
+   * The paid plan rather than the tier: during a trial the account reads as
+   * Pro, and marking the Pro column "yours" would take away the button that
+   * buys it — from the one person with a fortnight to decide. So a trial shows
+   * as a trial on the Free column, and every paid column stays for sale.
+   */
+  const mine = paidPlanOf(profile);
+  // Undefined where there is nothing to say: an account on a paid plan is not
+  // offered a fortnight of the thing it is already paying for.
+  const trialState: TrialState | undefined = profile?.trial_started_on
+    ? trialLeft !== null
+      ? "running"
+      : "over"
+    : canStartTrial(profile)
+      ? "none"
+      : undefined;
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
   const [busy, setBusy] = useState<PaidPlan | null>(null);
@@ -245,12 +266,14 @@ export function ProDialog() {
             <PlanCard
               key={p.key}
               plan={p}
-              mine={p.key === "free"}
+              mine={p.key === mine}
               asked={p.key !== "free" && askedPlan === p.key}
               reminded={reminded === p.key}
               busy={p.key === "free" ? trialBusy : busy === p.key}
               disabled={busy !== null || trialBusy}
-              onTrial={p.key === "free" && canTrial ? () => void takeTrial() : undefined}
+              trialState={p.key === "free" ? trialState : undefined}
+              trialLeft={trialLeft}
+              onTrial={() => void takeTrial()}
               onWithdraw={() => void withdraw()}
               onAsk={() => void ask(p.key as PaidPlan)}
             />
@@ -272,8 +295,10 @@ function PlanCard({
   reminded,
   busy,
   disabled,
-  onTrial,
+  trialState,
+  trialLeft,
   onWithdraw,
+  onTrial,
   onAsk,
 }: {
   plan: Plan;
@@ -285,8 +310,11 @@ function PlanCard({
   reminded?: boolean;
   busy?: boolean;
   disabled?: boolean;
-  /** Set on the Free column when this account still has its trial to take. */
-  onTrial?: () => void;
+  /** Only on the Free column: whether the one trial is untouched, running or spent. */
+  trialState?: TrialState;
+  /** Days left on a running one. */
+  trialLeft?: number | null;
+  onTrial: () => void;
   /** Takes the request back. Only ever reached from the column that was asked for. */
   onWithdraw: () => void;
   onAsk: () => void;
@@ -326,9 +354,10 @@ function PlanCard({
         ))}
       </div>
 
-      {/* The free column's own offer: everything, for a fortnight, decided
-          here rather than asked for. */}
-      {mine && onTrial && (
+      {/* The free column's footer is its trial, in whichever of the three
+          states it is. Nothing here sells Free: nobody chooses it, they fall
+          back to it. */}
+      {trialState === "none" && (
         <div className="mt-4 space-y-1.5">
           {/* The terms first, then the button: what a trial costs is the
               question anybody has before pressing it, and an answer printed
@@ -349,7 +378,27 @@ function PlanCard({
         </div>
       )}
 
-      {!mine && (
+      {trialState === "running" && (
+        <div className="mt-4 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-center">
+          <p className="text-[11px] font-semibold text-primary">
+            Trial running — {trialLeft === 1 ? "last day" : `${trialLeft} days left`}
+          </p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            Every Pro section is open. Pick a plan to keep them.
+          </p>
+        </div>
+      )}
+
+      {trialState === "over" && (
+        <div className="mt-4 rounded-xl border border-border bg-muted/30 px-3 py-2 text-center">
+          <p className="text-[11px] font-semibold text-muted-foreground">Trial expired</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground">
+            The {TRIAL_DAYS} days are up — one per account. Your cars are all still here.
+          </p>
+        </div>
+      )}
+
+      {plan.key !== "free" && !mine && (
         <div className="mt-4 space-y-1.5">
           <Button
             type="button"

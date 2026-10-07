@@ -26,6 +26,22 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 287,
+    at: "2026-10-07T08:10",
+    changes: [
+      {
+        key: true,
+        text: "The plans mark the column you are actually on. YOU was pinned to Free whatever the account was paying for, which made a Plus account look free and the missing Start trial button look like a bug.",
+      },
+      {
+        text: "The Free column now says where your trial stands: Start trial if you have never had one, how many days are left while it runs, and Trial expired once the fifteen days are up — with the reminder that none of your cars went anywhere.",
+      },
+      {
+        text: "A trial marks Free as yours rather than Pro, so every paid plan keeps its button. The fortnight is when somebody most needs to be able to buy one.",
+      },
+    ],
+  },
+  {
     build: 286,
     at: "2026-10-07T07:40",
     changes: [
