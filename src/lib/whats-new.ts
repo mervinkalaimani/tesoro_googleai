@@ -26,6 +26,25 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 296,
+    at: "2026-10-07T14:10",
+    changes: [
+      {
+        key: true,
+        text: "Feature request and Report a bug, in Settings. One box and one button — the account is already signed in, so there is nothing to fill in but the sentence. A bug report carries the screen you were on and the build you were running, because nobody writing one thinks to mention either.",
+      },
+      {
+        text: "The privacy policy and the terms are rewritten for the app as it is now: the plans and what happens when one ends, that nothing is charged in the app and no card details are ever held, the trial, where a scanned card goes, and what a feature request stores.",
+      },
+      {
+        text: "/demo opens the sample collection straight away, for handing to somebody who has no account.",
+      },
+      {
+        text: "The bookmark icon is the VIIV tile — one icon for every browser theme, since a tile does not care what colour the tab strip is.",
+      },
+    ],
+  },
+  {
     build: 295,
     at: "2026-10-07T13:10",
     changes: [

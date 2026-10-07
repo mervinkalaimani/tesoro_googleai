@@ -56,15 +56,25 @@ export const HELP_DEFAULTS: HelpContent = {
   phone: "",
   email: "",
 
-  privacy: `VIIV is a private tracker for a diecast collection. It is run by one
-person for a small group of collectors, not by a company, and it does not sell
-anything to anyone.
+  privacy: `VIIV is a tracker for a diecast collection. It is run by one person,
+not by a company, and it does not sell anything about you to anybody.
+
+Last updated: October 2026.
 
 ## What is stored
 Your account holds your name, email address, and anything you choose to add to
 your profile — a phone number, a date of birth, a picture. Your collection
 holds what you have told it: the cars, what you paid, who you bought from, the
 dates, your notes, and your photographs.
+
+If you are on a paid plan, the account also holds which plan, when it started,
+how long it runs for, whether you have asked for one, whether you have said you
+are not renewing, and whether you have used your free trial. No card number,
+expiry date or billing address is ever held, because none is ever typed into
+this app — see Paying in the terms.
+
+Two counts are kept because they are limits: how many card scans you have used
+this month, and the day a collection first went over the free car limit.
 
 ## Who can see it
 Your collection is yours. It is readable and editable by your account alone,
@@ -77,10 +87,41 @@ twice. And a pre-order you place tells other collectors that the casting is
 coming, and later that it has been released. Neither of those carries what you
 paid, who you bought from, when it arrived, or your photographs.
 
+Administrators can see the list of accounts — name, email, when you joined,
+when you last signed in, how many cars you hold and which plan you are on — so
+that accounts can be approved and plans granted. They cannot read your
+collection.
+
 ## Photographs
 Pictures you upload are resized and have their embedded metadata removed before
 they leave your device, so the location your camera recorded is not stored. A
 photo you set on your own car stays on your car.
+
+## Card scanning
+If you scan a card, that photograph is sent to the machine-learning provider
+configured for this deployment, which reads the text off it and returns the
+fields. It is sent for that one request and nothing else about you goes with
+it — not your name, not your collection, not your other cars. Your monthly
+scan count is kept so the allowance can be enforced.
+
+If you would rather no photograph of yours left the app, do not use the
+scanner. Every field it fills can be typed by hand.
+
+## Looking up a photo
+Searching for a picture of a casting sends the search words — make, model and
+so on — to a web search engine. Your account is not named in that request. A
+picture you then choose is copied into this app's own storage rather than
+linked, so the site it came from is not told every time somebody opens the page.
+
+## Feature requests and bug reports
+If you send one, it stores what you wrote, which build you were running and
+which screen you were on, attached to your account so it can be answered. It is
+read by administrators and by nobody else.
+
+## Notifications
+If you turn notifications on, your browser gives this app a subscription
+address for that device, which is stored so something can be sent to it.
+Turning them off removes it.
 
 ## What is not done
 Your data is not sold, rented, or handed to advertisers. There is no tracking
@@ -93,13 +134,24 @@ store the data on their machines under their own security terms. Card scanning
 and photo lookup, when you use them, send the image or the search words to the
 provider configured for that feature, and nothing else.
 
+## How long it is kept
+For as long as you keep the account. Cars put away because a free collection is
+over the limit are not deleted — they are hidden, and they come back in full if
+the account goes onto a paid plan. Feature requests and bug reports are kept so
+there is a record of what was asked for.
+
 ## Your choices
 You can correct anything about yourself from Settings, and you can export your
 collection at any time. Ask and your account and everything in it will be
-deleted — that removal is permanent and cannot be walked back.`,
+deleted — that removal is permanent and cannot be walked back.
 
-  terms: `VIIV is offered to a small group of collectors as-is, free of charge,
-and these terms are meant to be read once and then forgotten.
+Anything about your own data — a correction, an export, or deletion — reaches
+the same person who runs the app, through Contact Us.`,
+
+  terms: `VIIV is offered to collectors as-is, and these terms are meant to be
+read once and then forgotten.
+
+Last updated: October 2026.
 
 ## Your account
 Accounts are approved by hand. Keep your password to yourself, and tell the
@@ -120,6 +172,46 @@ adds it for all of us, so file it as it is on the card rather than as you would
 like it to read. An admin may correct, merge or remove an entry that is wrong
 or duplicated.
 
+## Plans
+There is a free plan and there are paid ones. What each includes — how many
+cars you may add, how many card scans a month, and which sections are open — is
+shown on the plans screen in the app, and that screen is the current answer
+rather than anything written here.
+
+## Paying
+Nothing is charged inside this app. Asking for a plan tells the administrators,
+and a payment link is sent to you by email; the payment itself happens with
+whoever provides that link, under their terms, and this app never sees or holds
+your card details.
+
+A plan runs for the length it was bought for and then ends. It does not renew
+itself and nothing is taken automatically, so there is nothing to cancel in the
+billing sense — telling us you are not renewing simply means nobody asks you
+for the next one.
+
+## The trial
+One free trial per account, once, for fifteen days. It opens the paid sections
+and leaves the car limit exactly where it was, so nothing you add during it can
+be over the line when it ends. On the sixteenth day the account is a free one
+again.
+
+## When a plan ends
+You keep everything until the last day you have paid for. After that the paid
+sections close and the free car limit applies again. Anything above that limit
+is put away rather than deleted: it is hidden from the app after fifteen days,
+and every car comes back in full the moment the account is on a paid plan
+again. Your cars, the catalogue and everything you have logged stay yours
+either way.
+
+## Refunds
+Ask. This is run by one person, and a request made in good faith — a plan
+bought by mistake, or something that did not work — is answered rather than
+argued with. A plan already largely used is not usually refunded.
+
+## Prices
+Prices can change. A change applies to what you buy next, never to a plan you
+have already paid for.
+
 ## What this is not
 VIIV is a record of what you own, not a valuation, not an insurance document,
 and not financial advice. Retail prices in the catalogue are a reference figure
@@ -131,9 +223,16 @@ This is a personal project. It may be offline, it may lose a feature you liked,
 and it may change without notice. Keep your own export if the data matters to
 you — there is one in the app, and using it now and then is a good habit.
 
+Being unable to use the app for a time does not by itself extend a plan,
+though a long outage is the kind of thing worth asking about.
+
 ## Liability
 The app is provided without warranty of any kind. The owner is not liable for
 loss or damage arising from using it, or from being unable to use it.
+
+## Changes to these terms
+They will change as the app does. The date at the top says when they last did,
+and continuing to use the app is how you accept the current ones.
 
 ## Ending it
 You can stop using VIIV at any time and ask for your account to be deleted.

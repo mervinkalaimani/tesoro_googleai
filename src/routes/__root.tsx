@@ -149,22 +149,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
       },
-      // One icon per browser theme, because the mark is lettering with nothing
-      // behind it: the near-black drawing disappears on a dark tab strip and
-      // the white one disappears on a light one. Both are the supplied
-      // artwork — the light-lettered file is the one for dark chrome.
+      // One icon, not one per theme. The earlier marks were lettering with
+      // nothing behind them, so each needed the other to survive the opposite
+      // tab strip; this one brings its own tile, and a tile does not care what
+      // colour the browser is.
       {
         rel: "icon",
-        href: "/viiv_icon.svg",
-        type: "image/svg+xml",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        rel: "icon",
-        href: "/viiv_app_icon_light.png",
+        href: "/viiv_home_icon.png",
         type: "image/png",
         sizes: "360x360",
-        media: "(prefers-color-scheme: dark)",
       },
       // iPhone home screen. Safari takes a PNG and nothing else, and reads it
       // once, when the app is added.
