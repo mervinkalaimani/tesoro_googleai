@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { BellRing, ChevronRight, RefreshCw, XCircle } from "lucide-react";
+import { BellRing, ChevronRight, QrCode, RefreshCw, XCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { timeAgo } from "@/lib/format";
-import { monthsFromTerm } from "@/lib/tiers";
+import { monthsFromTerm, type PaidPlan } from "@/lib/tiers";
+import { PayByQrDialog } from "@/components/pay-by-qr-dialog";
 import { cn } from "@/lib/utils";
 
 /**
@@ -43,6 +44,69 @@ const REFRESH_MS = 120_000;
 function nameOf(u: Row): string {
   const n = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
   return n || u.email_id;
+}
+
+/**
+ * The asker's own side of the same section.
+ *
+ * Rendered above the admin list, and for everybody: the admin who asked for a
+ * plan is also somebody waiting on one. It says nothing at all until an admin
+ * has actually sent the details, because "we have your request" is not news to
+ * the person who made it.
+ */
+export function MySubscriptionRequest() {
+  const { profile, isGuest } = useAuth();
+  const [open, setOpen] = useState(false);
+
+  const asked = profile?.pro_requested_at ?? null;
+  const sent = profile?.pay_info_sent_at ?? null;
+  const receipt = profile?.pay_receipt_url ?? null;
+  const plan: PaidPlan = profile?.pro_requested_plan === "plus" ? "plus" : "pro";
+
+  if (isGuest || !asked || !sent) return null;
+
+  const name = plan === "plus" ? "Plus" : "Pro";
+
+  return (
+    <section className="card-elevated p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="text-display text-lg font-semibold">Your {name} request</h2>
+        <Badge className="shrink-0">{receipt ? "Checking your payment" : "Ready to pay"}</Badge>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mt-3 flex w-full items-start gap-2 rounded-lg border border-primary/40 bg-primary/5 px-2.5 py-2 text-left text-[13px] leading-snug transition-colors hover:bg-primary/10"
+      >
+        <QrCode className="mt-0.5 size-3.5 shrink-0 text-primary" />
+        <span className="min-w-0">
+          <strong className="font-semibold">View payment info</strong>
+          {receipt ? (
+            <span className="text-muted-foreground">
+              {" "}
+              · receipt sent, {timeAgo(new Date(profile?.pay_receipt_at ?? sent))}. Once verified,
+              your {name} plan will be granted.
+            </span>
+          ) : (
+            <span className="text-muted-foreground">
+              {" "}
+              · the QR to pay on, and where to send the receipt
+            </span>
+          )}
+        </span>
+      </button>
+
+      <PayByQrDialog
+        open={open}
+        onOpenChange={setOpen}
+        plan={plan}
+        term={profile?.pro_requested_term ?? null}
+        receiptUrl={receipt}
+        onUploaded={() => setOpen(false)}
+      />
+    </section>
+  );
 }
 
 export function SubscriptionRequests() {

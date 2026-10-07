@@ -153,6 +153,17 @@ export function uploadAvatar(file: File): Promise<PhotoResult | PhotoError> {
   return uploadTo(AVATARS_BUCKET, file, AVATAR_EDGE);
 }
 
+/**
+ * The payment QR, into the same bucket.
+ *
+ * Downscaled far less than an avatar: a QR is read by a camera held at arm's
+ * length, and the thing that makes one unreadable is losing the fine squares
+ * to a resize. 1024 is enough for a full-screen phone view with room over.
+ */
+export function uploadPaymentQr(file: File): Promise<PhotoResult | PhotoError> {
+  return uploadTo(AVATARS_BUCKET, file, 1024);
+}
+
 /** A brand mark: PNG or SVG, the two things a logo actually arrives as. */
 /** SVG on top of the usual three: a logo arrives as any of them. */
 export const BRAND_LOGO_ACCEPT = `${ACCEPT_ATTR},.svg,image/svg+xml`;

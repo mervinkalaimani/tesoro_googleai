@@ -26,6 +26,24 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 300,
+    at: "2026-10-07T17:30",
+    changes: [
+      {
+        key: true,
+        text: "Pay by QR, end to end. Ask for a plan, an admin sends the payment details, and View payment info appears on your home page — the QR, the exact amount for the plan and length you picked, and somewhere to send the screenshot back. Once it is checked, the plan is granted.",
+      },
+      {
+        admin: true,
+        text: "Payment settings holds the QR, and a request row gained Send payment info. The receipt comes back onto the same row, next to Grant it, so the picture is where the decision is made.",
+      },
+      {
+        admin: true,
+        text: "Plus and Pro prices sit side by side on a wide screen, and 3m has gone from the length control.",
+      },
+    ],
+  },
+  {
     build: 299,
     at: "2026-10-07T16:30",
     changes: [

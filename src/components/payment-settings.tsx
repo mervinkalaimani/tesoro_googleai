@@ -266,92 +266,94 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
       </section>
 
       {/* WHAT THEY COST */}
-      {(["plus", "pro"] as const).map((plan) => {
-        const mine = pricesFor(rows, plan);
-        const monthly = mine.find((r) => r.months === 1)?.price ?? 0;
-        return (
-          <section key={plan} className="card-elevated p-4">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-bold tracking-tight">
-                {plan === "plus" ? "Plus" : "Pro"}
-              </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1 text-[11px]"
-                onClick={() => addLength(plan)}
-              >
-                <Plus className="size-3.5" />
-                Add a length
-              </Button>
-            </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {(["plus", "pro"] as const).map((plan) => {
+          const mine = pricesFor(rows, plan);
+          const monthly = mine.find((r) => r.months === 1)?.price ?? 0;
+          return (
+            <section key={plan} className="card-elevated p-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-sm font-bold tracking-tight">
+                  {plan === "plus" ? "Plus" : "Pro"}
+                </h2>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-[11px]"
+                  onClick={() => addLength(plan)}
+                >
+                  <Plus className="size-3.5" />
+                  Add a length
+                </Button>
+              </div>
 
-            <div className="mt-2 space-y-1.5">
-              {/* A row is a length. The per-month figure beside it is what a
-                  buyer actually compares, so it is worked out here rather
-                  than left for them to do in their head. */}
-              {mine.map((r) => {
-                const perMonth = Math.round(r.price / r.months);
-                const savesBy = Math.max(0, monthly * r.months - r.price);
-                const off = monthly > 0 ? Math.round((savesBy / (monthly * r.months)) * 100) : 0;
-                return (
-                  <div
-                    key={`${r.plan}-${r.months}`}
-                    className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-2"
-                  >
-                    <span className="w-24 shrink-0 text-[13px] font-medium">
-                      {monthsLabel(r.months)}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-muted-foreground">₹</span>
-                      <Input
-                        type="number"
-                        min={0}
-                        step={1}
-                        value={String(r.price)}
-                        onChange={(e) => setPrice(r.plan, r.months, Number(e.target.value))}
-                        className="h-8 w-24 tabular-nums"
-                        aria-label={`${plan} for ${r.months} months, in rupees`}
-                      />
-                    </div>
-                    <span className="text-[11px] tabular-nums text-muted-foreground">
-                      ₹{perMonth.toLocaleString()} a month
-                    </span>
-                    {r.months > 1 && (
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
-                          off > 0
-                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                            : "bg-rose-500/15 text-rose-600 dark:text-rose-400",
-                        )}
-                      >
-                        {off > 0
-                          ? `${off}% off · saves ₹${savesBy.toLocaleString()}`
-                          : "costs more"}
+              <div className="mt-2 space-y-1.5">
+                {/* A row is a length. The per-month figure beside it is what a
+                    buyer actually compares, so it is worked out here rather
+                    than left for them to do in their head. */}
+                {mine.map((r) => {
+                  const perMonth = Math.round(r.price / r.months);
+                  const savesBy = Math.max(0, monthly * r.months - r.price);
+                  const off = monthly > 0 ? Math.round((savesBy / (monthly * r.months)) * 100) : 0;
+                  return (
+                    <div
+                      key={`${r.plan}-${r.months}`}
+                      className="flex flex-wrap items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-2"
+                    >
+                      <span className="w-24 shrink-0 text-[13px] font-medium">
+                        {monthsLabel(r.months)}
                       </span>
-                    )}
-                    {r.months !== 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="ml-auto size-7 text-muted-foreground hover:text-rose-500"
-                        disabled={saving}
-                        onClick={() => void removeLength(r.plan, r.months)}
-                        aria-label={`Remove ${monthsLabel(r.months)} from ${plan}`}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground">₹</span>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={String(r.price)}
+                          onChange={(e) => setPrice(r.plan, r.months, Number(e.target.value))}
+                          className="h-8 w-24 tabular-nums"
+                          aria-label={`${plan} for ${r.months} months, in rupees`}
+                        />
+                      </div>
+                      <span className="text-[11px] tabular-nums text-muted-foreground">
+                        ₹{perMonth.toLocaleString()} a month
+                      </span>
+                      {r.months > 1 && (
+                        <span
+                          className={cn(
+                            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                            off > 0
+                              ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                              : "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+                          )}
+                        >
+                          {off > 0
+                            ? `${off}% off · saves ₹${savesBy.toLocaleString()}`
+                            : "costs more"}
+                        </span>
+                      )}
+                      {r.months !== 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="ml-auto size-7 text-muted-foreground hover:text-rose-500"
+                          disabled={saving}
+                          onClick={() => void removeLength(r.plan, r.months)}
+                          aria-label={`Remove ${monthsLabel(r.months)} from ${plan}`}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+      </div>
 
       {/* WHAT THE NUMBERS IMPLY */}
       <section className="card-elevated p-4">

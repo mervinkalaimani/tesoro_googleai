@@ -15,7 +15,7 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { KpiBand, KpiTile } from "@/components/kpi";
-import { SubscriptionRequests } from "@/components/subscription-requests";
+import { MySubscriptionRequest, SubscriptionRequests } from "@/components/subscription-requests";
 import { TrackingLink } from "@/components/tracking-link";
 import { trackingPageFor } from "@/lib/tracking";
 
@@ -358,6 +358,8 @@ function DashboardPage() {
           ))}
         </KpiBand>
       )}
+
+      <MySubscriptionRequest />
 
       {/* Under the numbers, and only for the people who can act on it. It is
           deliberately always there rather than only when somebody is waiting:

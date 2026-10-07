@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, Loader2, RefreshCw, Sparkles, Users } from "lucide-react";
+import { ChevronLeft, Loader2, QrCode, RefreshCw, Sparkles, Users } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { PaymentSettings } from "@/components/payment-settings";
+import { PaymentQrCard } from "@/components/payment-qr-card";
 import { SegmentControl } from "@/components/segment-control";
 import { cn } from "@/lib/utils";
 
@@ -53,13 +54,16 @@ type Row = {
   pro_until: string | null;
   trial_started_on: string | null;
   cancel_requested_at: string | null;
+  pay_info_sent_at: string | null;
+  pay_receipt_url: string | null;
+  pay_receipt_at: string | null;
   pro_requested_at: string | null;
   pro_requested_plan: string | null;
   pro_requested_term: string | null;
   car_count: number;
 };
 
-const MONTH_CHOICES = [1, 3, 6, 12] as const;
+const MONTH_CHOICES = [1, 6, 12] as const;
 
 /**
  * No end date at all.
@@ -129,6 +133,33 @@ function SubscriptionsPage() {
           (s): s is { plan: PaidPlan; months: number; forever: boolean } => s.plan !== "free",
         ),
     [rows],
+  );
+
+  /**
+   * Hands somebody the payment details for the plan they asked for.
+   *
+   * Through a function rather than a column write: it refuses when there is
+   * no open request, so nobody is told to pay for something they never asked
+   * for by a mis-click on the wrong row.
+   */
+  const sendPayInfo = useCallback(
+    async (u: Row) => {
+      setBusySno(u.sno);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).rpc("tesoro_send_pay_info", { _sno: u.sno });
+      setBusySno(null);
+      if (error) {
+        toast.error("Could not send the payment details", { description: error.message });
+        return;
+      }
+      toast.success("Payment details sent", {
+        description: `${nameOf(u)} sees the QR on their home page now.`,
+      });
+      void load();
+    },
+    // load is defined just below; this only ever runs from a click.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
   );
 
   const load = useCallback(async () => {
@@ -305,7 +336,10 @@ function SubscriptionsPage() {
       )}
 
       {isOwner && tab === "payment" ? (
-        <PaymentSettings subscribers={subscribers} />
+        <div className="space-y-4">
+          <PaymentQrCard />
+          <PaymentSettings subscribers={subscribers} />
+        </div>
       ) : (
         <>
           <KpiBand>
@@ -380,6 +414,7 @@ function SubscriptionsPage() {
                   onGrant={(plan, length) => void grant(u, plan, length)}
                   onRenew={() => void renew(u)}
                   onRemove={() => void removePlan(u)}
+                  onSendPayInfo={() => void sendPayInfo(u)}
                 />
               ))}
             </div>
@@ -397,6 +432,7 @@ function SubscriptionRow({
   onGrant,
   onRenew,
   onRemove,
+  onSendPayInfo,
 }: {
   user: Row;
   plan: Plan;
@@ -404,6 +440,7 @@ function SubscriptionRow({
   onGrant: (plan: PaidPlan, length: Length) => void;
   onRenew: () => void;
   onRemove: () => void;
+  onSendPayInfo: () => void;
 }) {
   // A trial is Pro for a fortnight and nobody paid for it, so it is said as
   // itself here: an admin reading "Pro, ends never" about a trial would be
@@ -569,20 +606,66 @@ function SubscriptionRow({
       {/* What they asked for, so granting it is one press rather than a
           reading exercise. */}
       {u.pro_requested_at && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-2.5 py-1.5">
-          <Sparkles className="size-3.5 shrink-0 text-primary" />
-          <span className="text-[11px] font-medium">
-            Asked for {wanted === "plus" ? "Plus" : "Pro"}, {wantedMonths} month
-            {wantedMonths === 1 ? "" : "s"}
-          </span>
-          <Button
-            size="sm"
-            disabled={busy}
-            className="ml-auto h-6 px-2.5 text-[11px]"
-            onClick={() => onGrant(wanted as PaidPlan, wantedMonths)}
-          >
-            Grant it
-          </Button>
+        <div className="mt-2 space-y-1.5 rounded-lg border border-primary/40 bg-primary/5 px-2.5 py-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <Sparkles className="size-3.5 shrink-0 text-primary" />
+            <span className="text-[11px] font-medium">
+              Asked for {wanted === "plus" ? "Plus" : "Pro"}, {wantedMonths} month
+              {wantedMonths === 1 ? "" : "s"}
+            </span>
+
+            {/* The QR goes out from here. Once, and then it says so: pressing
+                it again would only move the date it was first sent on. */}
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy || Boolean(u.pay_info_sent_at)}
+              className="ml-auto h-6 gap-1 px-2.5 text-[11px]"
+              onClick={onSendPayInfo}
+            >
+              <QrCode className="size-3" />
+              {u.pay_info_sent_at ? "Details sent" : "Send payment info"}
+            </Button>
+
+            <Button
+              size="sm"
+              disabled={busy}
+              className="h-6 px-2.5 text-[11px]"
+              onClick={() => onGrant(wanted as PaidPlan, wantedMonths)}
+            >
+              Grant it
+            </Button>
+          </div>
+
+          {/* What they sent back. Granting is still a person looking at a
+              picture and deciding — this only puts the picture where the
+              decision is made. */}
+          {u.pay_receipt_url && (
+            <a
+              href={u.pay_receipt_url}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="flex items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/5 px-2 py-1.5 transition-colors hover:bg-emerald-500/10"
+            >
+              <img
+                src={u.pay_receipt_url}
+                alt=""
+                className="size-9 shrink-0 rounded border border-border object-cover"
+              />
+              <span className="min-w-0 text-[11px]">
+                <strong className="font-semibold">Receipt sent</strong>
+                {u.pay_receipt_at && (
+                  <span className="text-muted-foreground">
+                    {" "}
+                    · {formatDayMonthYear(u.pay_receipt_at)}
+                  </span>
+                )}
+                <span className="block text-muted-foreground">
+                  Open it, check the amount, then Grant it.
+                </span>
+              </span>
+            </a>
+          )}
         </div>
       )}
     </div>
