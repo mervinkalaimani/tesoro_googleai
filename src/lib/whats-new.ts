@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 299,
+    at: "2026-10-07T16:30",
+    changes: [
+      {
+        key: true,
+        text: "You can pay for a plan in the app. Pick a plan, pick a length, and Razorpay opens — the plan switches on the moment the payment is verified, with no admin in the middle. A plan bought while one is still running starts when that one ends, so paying early adds to the run rather than cutting it short.",
+      },
+      {
+        text: "Where payments are not set up, the length chooser still asks an admin, exactly as it did before. Nothing was replaced; a second way was added.",
+      },
+    ],
+  },
+  {
     build: 298,
     at: "2026-10-07T15:40",
     changes: [

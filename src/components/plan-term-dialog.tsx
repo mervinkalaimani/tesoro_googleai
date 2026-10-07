@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, CreditCard, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { termFromMonths, type PaidPlan } from "@/lib/tiers";
 import { monthlyOf, monthsLabel, pricesFor, savingOf, usePlanPrices } from "@/lib/plan-prices";
 import { requestPro } from "@/lib/pro-request";
+import { payConfig, payForPlan } from "@/lib/pay-client";
+import { useAuth, fullName } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -34,6 +37,14 @@ export function PlanTermDialog() {
   const [plan, setPlan] = useState<PaidPlan | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
   const prices = usePlanPrices();
+  const { profile, reloadProfile } = useAuth();
+  // Whether this deployment can take money at all. Asked once, on open, so the
+  // buttons say what will actually happen rather than finding out afterwards.
+  const [canPay, setCanPay] = useState(false);
+
+  useEffect(() => {
+    void payConfig().then((c) => setCanPay(c.enabled));
+  }, []);
 
   useEffect(() => {
     openFromAnywhere = (p) => setPlan(p);
@@ -42,9 +53,43 @@ export function PlanTermDialog() {
     };
   }, []);
 
+  /**
+   * What pressing a length does.
+   *
+   * Where payments are set up it opens the checkout and the plan switches on
+   * by itself. Where they are not — a deployment without the keys — it falls
+   * back to the ask, which is how every plan was granted before any of this
+   * existed. The second path is not a degraded first: it is the one that has
+   * always worked, kept.
+   */
   const choose = async (months: number) => {
     if (!plan) return;
     setBusy(months);
+
+    if (canPay) {
+      const outcome = await payForPlan(plan, months, {
+        name: fullName(profile),
+        email: profile?.email_id,
+      });
+      setBusy(null);
+
+      if (outcome === "paid") {
+        // The tier is read off the profile, so it has to be read again before
+        // anything unlocks.
+        await reloadProfile();
+        toast.success(`${plan === "plus" ? "Plus" : "Pro"} is on`, {
+          description: `Paid for ${months} month${months === 1 ? "" : "s"}. Everything is open.`,
+        });
+        setPlan(null);
+        return;
+      }
+      // Cancelled is somebody changing their mind: leave the dialog where it
+      // is so they can pick a different length without starting again.
+      if (outcome !== "unavailable") return;
+      // Unavailable falls through to the ask below.
+      setBusy(months);
+    }
+
     const ok = await requestPro(plan, termFromMonths(months));
     setBusy(null);
     if (ok) setPlan(null);
@@ -63,7 +108,10 @@ export function PlanTermDialog() {
             {plan ? TITLE[plan] : ""} — how long for?
           </DialogTitle>
           <DialogDescription className="mt-1 text-sm">
-            Longer costs less per month. Nothing is charged here; a payment link comes by email.
+            Longer costs less per month.{" "}
+            {canPay
+              ? "Paying switches the plan on straight away."
+              : "Nothing is charged here; a payment link comes by email."}
           </DialogDescription>
         </div>
 
@@ -112,6 +160,8 @@ export function PlanTermDialog() {
                 </div>
                 {busy === o.months ? (
                   <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
+                ) : canPay ? (
+                  <CreditCard className="size-4 shrink-0 text-muted-foreground/60" />
                 ) : (
                   <Check className="size-4 shrink-0 text-muted-foreground/40" />
                 )}

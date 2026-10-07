@@ -39,6 +39,9 @@ import { Route as ApiSyncCatalogCarRouteImport } from './routes/api/sync-catalog
 import { Route as ApiSyncImagesRouteImport } from './routes/api/sync-images'
 import { Route as CatalogCarIdRouteImport } from './routes/catalog_.$carId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as ApiPayConfigRouteImport } from './routes/api/pay/config'
+import { Route as ApiPayOrderRouteImport } from './routes/api/pay/order'
+import { Route as ApiPayVerifyRouteImport } from './routes/api/pay/verify'
 import { Route as ApiPushConfigRouteImport } from './routes/api/push/config'
 import { Route as ApiPushDecideRouteImport } from './routes/api/push/decide'
 import { Route as ApiPushNewUserRouteImport } from './routes/api/push/new-user'
@@ -198,6 +201,21 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPayConfigRoute = ApiPayConfigRouteImport.update({
+  id: '/api/pay/config',
+  path: '/api/pay/config',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPayOrderRoute = ApiPayOrderRouteImport.update({
+  id: '/api/pay/order',
+  path: '/api/pay/order',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPayVerifyRoute = ApiPayVerifyRouteImport.update({
+  id: '/api/pay/verify',
+  path: '/api/pay/verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPushConfigRoute = ApiPushConfigRouteImport.update({
   id: '/api/push/config',
   path: '/api/push/config',
@@ -255,6 +273,9 @@ export interface FileRoutesByFullPath {
   '/api/sync-images': typeof ApiSyncImagesRoute
   '/catalog/$carId': typeof CatalogCarIdRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/pay/config': typeof ApiPayConfigRoute
+  '/api/pay/order': typeof ApiPayOrderRoute
+  '/api/pay/verify': typeof ApiPayVerifyRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
   '/api/push/new-user': typeof ApiPushNewUserRoute
@@ -292,6 +313,9 @@ export interface FileRoutesByTo {
   '/api/sync-images': typeof ApiSyncImagesRoute
   '/catalog/$carId': typeof CatalogCarIdRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/pay/config': typeof ApiPayConfigRoute
+  '/api/pay/order': typeof ApiPayOrderRoute
+  '/api/pay/verify': typeof ApiPayVerifyRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
   '/api/push/new-user': typeof ApiPushNewUserRoute
@@ -330,6 +354,9 @@ export interface FileRoutesById {
   '/api/sync-images': typeof ApiSyncImagesRoute
   '/catalog_/$carId': typeof CatalogCarIdRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/api/pay/config': typeof ApiPayConfigRoute
+  '/api/pay/order': typeof ApiPayOrderRoute
+  '/api/pay/verify': typeof ApiPayVerifyRoute
   '/api/push/config': typeof ApiPushConfigRoute
   '/api/push/decide': typeof ApiPushDecideRoute
   '/api/push/new-user': typeof ApiPushNewUserRoute
@@ -369,6 +396,9 @@ export interface FileRouteTypes {
     | '/api/sync-images'
     | '/catalog/$carId'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/pay/config'
+    | '/api/pay/order'
+    | '/api/pay/verify'
     | '/api/push/config'
     | '/api/push/decide'
     | '/api/push/new-user'
@@ -406,6 +436,9 @@ export interface FileRouteTypes {
     | '/api/sync-images'
     | '/catalog/$carId'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/pay/config'
+    | '/api/pay/order'
+    | '/api/pay/verify'
     | '/api/push/config'
     | '/api/push/decide'
     | '/api/push/new-user'
@@ -443,6 +476,9 @@ export interface FileRouteTypes {
     | '/api/sync-images'
     | '/catalog_/$carId'
     | '/.mcp/invoke-tool/$tool'
+    | '/api/pay/config'
+    | '/api/pay/order'
+    | '/api/pay/verify'
     | '/api/push/config'
     | '/api/push/decide'
     | '/api/push/new-user'
@@ -481,6 +517,9 @@ export interface RootRouteChildren {
   ApiSyncImagesRoute: typeof ApiSyncImagesRoute
   CatalogCarIdRoute: typeof CatalogCarIdRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  ApiPayConfigRoute: typeof ApiPayConfigRoute
+  ApiPayOrderRoute: typeof ApiPayOrderRoute
+  ApiPayVerifyRoute: typeof ApiPayVerifyRoute
   ApiPushConfigRoute: typeof ApiPushConfigRoute
   ApiPushDecideRoute: typeof ApiPushDecideRoute
   ApiPushNewUserRoute: typeof ApiPushNewUserRoute
@@ -700,6 +739,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/pay/config': {
+      id: '/api/pay/config'
+      path: '/api/pay/config'
+      fullPath: '/api/pay/config'
+      preLoaderRoute: typeof ApiPayConfigRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/pay/order': {
+      id: '/api/pay/order'
+      path: '/api/pay/order'
+      fullPath: '/api/pay/order'
+      preLoaderRoute: typeof ApiPayOrderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/pay/verify': {
+      id: '/api/pay/verify'
+      path: '/api/pay/verify'
+      fullPath: '/api/pay/verify'
+      preLoaderRoute: typeof ApiPayVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/push/config': {
       id: '/api/push/config'
       path: '/api/push/config'
@@ -770,6 +830,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiSyncImagesRoute: ApiSyncImagesRoute,
   CatalogCarIdRoute: CatalogCarIdRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  ApiPayConfigRoute: ApiPayConfigRoute,
+  ApiPayOrderRoute: ApiPayOrderRoute,
+  ApiPayVerifyRoute: ApiPayVerifyRoute,
   ApiPushConfigRoute: ApiPushConfigRoute,
   ApiPushDecideRoute: ApiPushDecideRoute,
   ApiPushNewUserRoute: ApiPushNewUserRoute,
