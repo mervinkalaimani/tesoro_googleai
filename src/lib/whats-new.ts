@@ -26,6 +26,18 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 295,
+    at: "2026-10-07T13:10",
+    changes: [
+      {
+        text: "The public pages name viiv.si as their one address. A casting is served from more than one host now, and a page that lets each host claim it is a page search engines count twice and rank neither — so the canonical, the share card and the structured data all say the same URL, and the sitemap lists that host rather than whichever one asked for it.",
+      },
+      {
+        text: "The Pre Order Calendar names its address too, and robots.txt points at the sitemap on the live domain.",
+      },
+    ],
+  },
+  {
     build: 294,
     at: "2026-10-07T12:20",
     changes: [

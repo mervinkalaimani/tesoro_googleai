@@ -1,4 +1,4 @@
-# Tesoro. The catalogue describes castings and is public; everything else is
+# VIIV. The catalogue describes castings and is public; everything else is
 # somebody's collection and is not.
 
 User-agent: *
@@ -12,10 +12,11 @@ Disallow: /orders
 Disallow: /habits
 Disallow: /settings
 Disallow: /admin
+Disallow: /subscriptions
 Allow: /releases
 Disallow: /login
 Disallow: /reset-password
 Disallow: /api/
 Disallow: /mcp
 
-Sitemap: https://tesoroapp.vercel.app/sitemap.xml
+Sitemap: https://viiv.si/sitemap.xml

@@ -88,7 +88,7 @@ export async function mirrorImage(
     res = await fetch(source, {
       // Wikimedia refuses an anonymous client and says so in the body rather
       // than the status, which looks like a corrupt image later on.
-      headers: { "user-agent": "VIIV/1.0 (diecast catalogue; contact via tesoroapp.vercel.app)" },
+      headers: { "user-agent": "VIIV/1.0 (diecast catalogue; contact via viiv.si)" },
       redirect: "follow",
     });
   } catch (err) {

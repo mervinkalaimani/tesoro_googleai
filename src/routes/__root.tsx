@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { AppProvider } from "@/lib/store";
+import { SITE_NAME, siteUrl } from "@/lib/site";
 import { CarsProvider } from "@/lib/cars-store";
 import { CatalogProvider } from "@/lib/catalog-store";
 import { CarDrawerProvider } from "@/components/car-details-drawer";
@@ -130,6 +131,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "A personal dashboard for tracking a diecast car collection: brands, types, spend, and inventory status.",
       },
       { property: "og:type", content: "website" },
+      { property: "og:url", content: siteUrl("/") },
+      { property: "og:site_name", content: SITE_NAME },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "VIIV — Collection Dashboard" },
       {

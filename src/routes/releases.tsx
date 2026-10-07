@@ -17,6 +17,7 @@ import { CalendarDays, List } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useCars } from "@/lib/cars-store";
+import { SITE_NAME, siteUrl } from "@/lib/site";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import type { Diecast } from "@/lib/types";
 import { isIso } from "@/lib/status";
@@ -315,8 +316,13 @@ export const Route = createFileRoute("/releases")({
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         { property: "og:type", content: "website" },
+        { property: "og:url", content: siteUrl("/releases") },
+        { property: "og:site_name", content: SITE_NAME },
         { name: "twitter:card", content: "summary" },
       ],
+      // The other page a stranger can land on, and the other one that is
+      // served from two hosts.
+      links: [{ rel: "canonical", href: siteUrl("/releases") }],
     };
   },
 

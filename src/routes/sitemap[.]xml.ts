@@ -5,13 +5,16 @@
  * only part listed here. Built from the table rather than kept as a file
  * because it grows every time somebody files a casting nobody had entered.
  *
- * The base URL comes from the request, so a preview deployment advertises its
- * own URLs rather than production's — a sitemap that points somewhere else is
- * worse than none.
+ * The base URL is the site's own, not the request's. It used to be the
+ * request's so a preview would advertise itself, but a sitemap is a list of
+ * canonical addresses and there are two hosts now: the one served from the
+ * vercel.app deployment has to name viiv.si or it contradicts every canonical
+ * tag on the pages it lists.
  */
 import { createFileRoute } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
+import { SITE_ORIGIN } from "@/lib/site";
 
 function xmlEscape(s: string): string {
   return s.replace(/[<>&'"]/g, (c) =>
@@ -19,8 +22,8 @@ function xmlEscape(s: string): string {
   );
 }
 
-async function handler({ request }: { request: Request }) {
-  const origin = new URL(request.url).origin;
+async function handler() {
+  const origin = SITE_ORIGIN;
 
   // PostgREST caps a response at 1,000 rows whatever the limit says, so this
   // asks in pages. The catalogue passed a thousand entries some time ago; a

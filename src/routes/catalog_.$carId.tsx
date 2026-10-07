@@ -18,6 +18,7 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
+import { SITE_NAME, siteUrl } from "@/lib/site";
 import type { CatalogCar } from "@/lib/catalog";
 import {
   castingDescription,
@@ -118,6 +119,8 @@ export const Route = createFileRoute("/catalog_/$carId")({
         { title },
         { name: "description", content: description },
         { property: "og:type", content: "product" },
+        { property: "og:url", content: siteUrl(`/catalog/${car.car_id}`) },
+        { property: "og:site_name", content: SITE_NAME },
         { property: "og:title", content: title },
         { property: "og:description", content: description },
         ...(image ? [{ property: "og:image", content: image }] : []),
@@ -127,9 +130,10 @@ export const Route = createFileRoute("/catalog_/$carId")({
       ],
       // The ID is upper-cased before it is looked up, so /catalog/<lowercase>
       // and any query string a share adds are the same page as this one.
-      // Relative, because the document's own origin is the right answer on
-      // production and on a preview deployment alike.
-      links: [{ rel: "canonical", href: `/catalog/${car.car_id}` }],
+      // Absolute, and always the live domain: this page is served from more
+      // than one host, and a relative canonical would have each of them claim
+      // the casting as its own.
+      links: [{ rel: "canonical", href: siteUrl(`/catalog/${car.car_id}`) }],
     };
   },
 
@@ -203,6 +207,9 @@ function CastingPage() {
     "@context": "https://schema.org",
     "@type": "Product",
     name,
+    // The same address the canonical names. A crawler that reads both and
+    // finds them disagreeing believes neither.
+    url: siteUrl(`/catalog/${car.car_id}`),
     ...(car.brand ? { brand: { "@type": "Brand", name: car.brand } } : {}),
     ...(photo ? { image: photo } : {}),
     ...(car.car_number ? { sku: car.car_number } : {}),
