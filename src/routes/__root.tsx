@@ -146,9 +146,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
       },
-      // One icon per browser theme. The mark is drawn in near-black, which is
-      // invisible on a dark tab strip, so the dark one is the same drawing with
-      // its lettering turned white — a colour swap, not a second icon.
+      // One icon per browser theme, because the mark is lettering with nothing
+      // behind it: the near-black drawing disappears on a dark tab strip and
+      // the white one disappears on a light one. Both are the supplied
+      // artwork — the light-lettered file is the one for dark chrome.
       {
         rel: "icon",
         href: "/viiv_icon.svg",
@@ -157,8 +158,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       {
         rel: "icon",
-        href: "/viiv_icon_dark.svg",
-        type: "image/svg+xml",
+        href: "/viiv_app_icon_light.png",
+        type: "image/png",
+        sizes: "360x360",
         media: "(prefers-color-scheme: dark)",
       },
       // iPhone home screen. Safari takes a PNG and nothing else, and reads it
