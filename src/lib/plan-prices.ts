@@ -125,11 +125,15 @@ export type Subscriber = { plan: PaidPlan; months: number; forever: boolean };
 /**
  * Every way an account can be on the books.
  *
- * One per plan and length that the prices table actually offers, plus the two
- * with no end date, plus free — which earns nothing and is here because a
- * projection that cannot say how many people are not paying is only half an
- * answer. The list grows on its own: adding a length adds two scenarios, so
- * nothing here has to be kept in step by hand.
+ * One per plan and length that the prices table actually offers, plus free —
+ * which earns nothing and is here because a projection that cannot say how
+ * many people are not paying is only half an answer. The list grows on its
+ * own: adding a length adds a scenario, so nothing here has to be kept in step
+ * by hand.
+ *
+ * No end date is not among them. It is not something anybody is sold, and it
+ * is already counted at the monthly price, so it belongs in the monthly field
+ * rather than in one of its own.
  */
 export type Scenario = {
   key: string;
@@ -165,15 +169,6 @@ export function scenarios(rows: PriceRow[]): Scenario[] {
         perMonth: Math.round(r.price / r.months),
       });
     }
-    out.push({
-      key: `${plan}-forever`,
-      plan,
-      months: 1,
-      forever: true,
-      label: `${name} · no end date`,
-      // Counted at the monthly price, which is the least it could be worth.
-      perMonth: monthlyOf(rows, plan),
-    });
   }
   return out;
 }
@@ -194,9 +189,16 @@ export function subscribersFromCounts(
   return out;
 }
 
-/** Which scenario an account that exists today falls into. */
+/**
+ * Which field an account that exists today is counted in.
+ *
+ * An account with no end date lands in its plan's monthly field, which is
+ * where its money is counted anyway: the alternative is a field for a thing
+ * nobody is sold, holding accounts that would otherwise vanish from the
+ * projection entirely.
+ */
 export function scenarioKeyOf(s: Subscriber): string {
-  return s.forever ? `${s.plan}-forever` : `${s.plan}-${s.months}`;
+  return s.forever ? `${s.plan}-1` : `${s.plan}-${s.months}`;
 }
 
 /**

@@ -2,6 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, Loader2, Lightbulb, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -190,84 +196,92 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
           that is spoken for but has not arrived yet.
         </p>
 
-        {/* ONE FIELD PER WAY OF BEING ON THE BOOKS. The table decides how many
-            there are: a length added above is two more here, because a plan
-            can be bought for it or held with no end date. */}
-        <div className="mt-4 border-t border-border/60 pt-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Accounts, by how they pay
-            </h3>
-            <span className="text-[11px] text-muted-foreground">
-              {list.length} ways · {projection.paying.toLocaleString()} paying
-            </span>
-            {touched && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="ml-auto h-7 gap-1 text-[11px]"
-                onClick={() => {
-                  setTouched(false);
-                  setCounts(actual);
-                }}
-              >
-                <RotateCcw className="size-3.5" />
-                Back to today
-              </Button>
-            )}
-          </div>
+        {/* ONE FIELD PER WAY OF BEING ON THE BOOKS, folded away until there
+            is a question to ask of them. The prices table decides how many
+            there are: a length added above is one more here. */}
+        <Accordion type="single" collapsible className="mt-3 border-t border-border/60">
+          <AccordionItem value="counts" className="border-none">
+            <AccordionTrigger className="py-2.5 hover:no-underline">
+              <span className="flex flex-wrap items-center gap-2 text-left">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Accounts, by how they pay
+                </span>
+                <span className="text-[11px] font-normal text-muted-foreground">
+                  {list.length} ways · {projection.paying.toLocaleString()} paying
+                </span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              {touched && (
+                <div className="mb-2 flex justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1 text-[11px]"
+                    onClick={() => {
+                      setTouched(false);
+                      setCounts(actual);
+                    }}
+                  >
+                    <RotateCcw className="size-3.5" />
+                    Back to today
+                  </Button>
+                </div>
+              )}
 
-          <div className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-            {list.map((sc) => {
-              const n = Math.max(0, Math.floor(counts[sc.key] ?? 0));
-              const earns = sc.perMonth * n;
-              const was = actual[sc.key] ?? 0;
-              return (
-                <label
-                  key={sc.key}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg border px-2.5 py-1.5",
-                    sc.plan === "free"
-                      ? "border-border/60 bg-muted/10"
-                      : "border-border/60 bg-muted/20",
-                  )}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[12px] font-medium">{sc.label}</span>
-                    <span className="block text-[10px] tabular-nums text-muted-foreground">
-                      {sc.plan === "free"
-                        ? `${SCANS_PER_MONTH.free} scans a month each, no revenue`
-                        : `₹${sc.perMonth.toLocaleString()} a month each${earns ? ` · ₹${earns.toLocaleString()}` : ""}`}
-                    </span>
-                  </span>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={String(n)}
-                    onChange={(e) => setCount(sc.key, Number(e.target.value))}
-                    className={cn(
-                      "h-8 w-16 shrink-0 text-center tabular-nums",
-                      touched && n !== was && "border-primary/60",
-                    )}
-                    aria-label={`Accounts on ${sc.label}`}
-                  />
-                </label>
-              );
-            })}
-          </div>
+              <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                {list.map((sc) => {
+                  const n = Math.max(0, Math.floor(counts[sc.key] ?? 0));
+                  const earns = sc.perMonth * n;
+                  const was = actual[sc.key] ?? 0;
+                  return (
+                    <label
+                      key={sc.key}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border px-2.5 py-1.5",
+                        sc.plan === "free"
+                          ? "border-border/60 bg-muted/10"
+                          : "border-border/60 bg-muted/20",
+                      )}
+                    >
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[12px] font-medium">{sc.label}</span>
+                        <span className="block text-[10px] tabular-nums text-muted-foreground">
+                          {sc.plan === "free"
+                            ? `${SCANS_PER_MONTH.free} scans a month each, no revenue`
+                            : `₹${earns.toLocaleString()} a month`}
+                        </span>
+                      </span>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={String(n)}
+                        onChange={(e) => setCount(sc.key, Number(e.target.value))}
+                        className={cn(
+                          "h-9 w-24 shrink-0 text-center tabular-nums",
+                          touched && n !== was && "border-primary/60",
+                        )}
+                        aria-label={`Accounts on ${sc.label}`}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
 
-          {freeCount > 0 && (
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              {freeCount.toLocaleString()} free {freeCount === 1 ? "account" : "accounts"} earn
-              nothing and can still spend up to{" "}
-              {(freeCount * SCANS_PER_MONTH.free!).toLocaleString()} card scans a month between
-              them. They are here because what a price earns depends on how many people are not
-              paying it.
-            </p>
-          )}
-        </div>
+              {freeCount > 0 && (
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  {freeCount.toLocaleString()} free {freeCount === 1 ? "account" : "accounts"} earn
+                  nothing and can still spend up to{" "}
+                  {(freeCount * SCANS_PER_MONTH.free!).toLocaleString()} card scans a month between
+                  them. They are here because what a price earns depends on how many people are not
+                  paying it.
+                </p>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </section>
 
       {/* WHAT THEY COST */}

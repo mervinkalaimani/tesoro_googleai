@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 290,
+    at: "2026-10-07T10:20",
+    changes: [
+      {
+        admin: true,
+        text: "The accounts breakdown folds away under the totals, which are what the screen is for. No end date has no field of its own — nobody is sold it — so those accounts are counted in their plan’s monthly field, where their money was already being counted. Each field shows what that row earns rather than what one account on it is worth.",
+      },
+    ],
+  },
+  {
     build: 289,
     at: "2026-10-07T09:50",
     changes: [
