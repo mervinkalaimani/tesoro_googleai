@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { BellRing, Check, ChevronRight, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { BellRing, ChevronRight, RefreshCw, XCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
-import { daysAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 import { monthsFromTerm } from "@/lib/tiers";
 import { cn } from "@/lib/utils";
 
@@ -75,7 +75,7 @@ export function SubscriptionRequests() {
     };
   }, [isAdmin, isGuest, load]);
 
-  if (!isAdmin || isGuest) return null;
+  if (!isAdmin || isGuest || rows.length === 0) return null;
 
   const asking = rows.filter((u) => u.pro_requested_at);
   const leaving = rows.filter((u) => u.cancel_requested_at);
@@ -84,9 +84,7 @@ export function SubscriptionRequests() {
     <section className="card-elevated p-4">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-display text-lg font-semibold">Subscription requests</h2>
-        {rows.length > 0 && (
-          <Badge className="shrink-0">{rows.length.toLocaleString()} waiting</Badge>
-        )}
+        <Badge className="shrink-0">{rows.length.toLocaleString()} waiting</Badge>
         <Button
           type="button"
           variant="ghost"
@@ -106,55 +104,40 @@ export function SubscriptionRequests() {
         </Link>
       </div>
 
-      {/* The panel stays whether or not there is anything in it. A section that
-          appears only when something is wrong is a section nobody knows to
-          look at, and its absence reads the same as not having loaded. */}
-      {loading && rows.length === 0 ? (
-        <p className="mt-3 flex items-center gap-2 text-[13px] text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" />
-          Checking…
-        </p>
-      ) : rows.length === 0 ? (
-        <p className="mt-3 flex items-center gap-2 text-[13px] text-muted-foreground">
-          <Check className="size-3.5 text-emerald-500" />
-          Nobody is waiting on a plan.
-        </p>
-      ) : (
-        <div className="mt-3 space-y-1.5">
-          {asking.map((u) => {
-            const plan = u.pro_requested_plan === "plus" ? "Plus" : "Pro";
-            const months = monthsFromTerm(u.pro_requested_term);
-            return (
-              <Row key={`ask-${u.sno}`} tone="ask" icon={<BellRing className="size-3.5" />}>
-                <strong className="font-semibold">{nameOf(u)}</strong> wants{" "}
-                <strong className="font-semibold">{plan}</strong> for {months} month
-                {months === 1 ? "" : "s"}
-                <span className="text-muted-foreground"> · {u.email_id}</span>
-                {u.pro_requested_at && (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {daysAgo(new Date(u.pro_requested_at))}
-                  </span>
-                )}
-              </Row>
-            );
-          })}
-
-          {leaving.map((u) => (
-            <Row key={`go-${u.sno}`} tone="leave" icon={<XCircle className="size-3.5" />}>
-              <strong className="font-semibold">{nameOf(u)}</strong> is not renewing
-              {u.pro_plan && <> their {u.pro_plan === "plus" ? "Plus" : "Pro"} plan</>}
+      <div className="mt-3 space-y-1.5">
+        {asking.map((u) => {
+          const plan = u.pro_requested_plan === "plus" ? "Plus" : "Pro";
+          const months = monthsFromTerm(u.pro_requested_term);
+          return (
+            <Row key={`ask-${u.sno}`} tone="ask" icon={<BellRing className="size-3.5" />}>
+              <strong className="font-semibold">{nameOf(u)}</strong> wants{" "}
+              <strong className="font-semibold">{plan}</strong> for {months} month
+              {months === 1 ? "" : "s"}
               <span className="text-muted-foreground"> · {u.email_id}</span>
-              {u.cancel_requested_at && (
+              {u.pro_requested_at && (
                 <span className="text-muted-foreground">
                   {" "}
-                  · {daysAgo(new Date(u.cancel_requested_at))}
+                  · {timeAgo(new Date(u.pro_requested_at))}
                 </span>
               )}
             </Row>
-          ))}
-        </div>
-      )}
+          );
+        })}
+
+        {leaving.map((u) => (
+          <Row key={`go-${u.sno}`} tone="leave" icon={<XCircle className="size-3.5" />}>
+            <strong className="font-semibold">{nameOf(u)}</strong> is not renewing
+            {u.pro_plan && <> their {u.pro_plan === "plus" ? "Plus" : "Pro"} plan</>}
+            <span className="text-muted-foreground"> · {u.email_id}</span>
+            {u.cancel_requested_at && (
+              <span className="text-muted-foreground">
+                {" "}
+                · {timeAgo(new Date(u.cancel_requested_at))}
+              </span>
+            )}
+          </Row>
+        ))}
+      </div>
     </section>
   );
 }

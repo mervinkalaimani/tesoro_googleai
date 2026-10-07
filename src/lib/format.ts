@@ -213,3 +213,29 @@ export function daysAgo(dt: Date, now = new Date()): string {
   if (diff === 1) return "Yesterday";
   return `${diff} days ago`;
 }
+
+/**
+ * How long ago to the minute: "just now", "30 mins ago", "1 hr ago".
+ *
+ * daysAgo rounds everything inside today down to the single word "Today",
+ * which is the right answer for a shelf of cars and the wrong one for
+ * somebody waiting on a reply — "Today" reads the same at nine in the morning
+ * and at midnight, and the difference is the whole point.
+ *
+ * Past a day it hands back to daysAgo, because by then the hour has stopped
+ * mattering and the day has not.
+ */
+export function timeAgo(dt: Date, now = new Date()): string {
+  const secs = Math.round((now.getTime() - dt.getTime()) / 1000);
+  // A clock a little ahead of the server reads as this moment rather than as
+  // the future, which is not a thing a request can be.
+  if (secs < 60) return "just now";
+
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins} min${mins === 1 ? "" : "s"} ago`;
+
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
+
+  return daysAgo(dt, now);
+}

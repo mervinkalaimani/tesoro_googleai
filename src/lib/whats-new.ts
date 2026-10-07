@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 298,
+    at: "2026-10-07T15:40",
+    changes: [
+      {
+        admin: true,
+        text: "Subscription requests says how long ago to the minute — 30 mins ago, 1 hr ago — rather than Today, which reads the same at nine in the morning and at midnight. The section is gone entirely when nobody is waiting.",
+      },
+    ],
+  },
+  {
     build: 297,
     at: "2026-10-07T15:00",
     changes: [
