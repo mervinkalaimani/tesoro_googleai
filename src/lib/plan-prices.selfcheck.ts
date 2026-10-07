@@ -122,26 +122,25 @@ assert.ok(noMiddle.some((a) => a.key === "pro-no-middle"));
 const good = suggestions(rows(["pro", 1, 100], ["pro", 6, 530], ["pro", 12, 600]));
 assert.equal(good.length, 0, `expected nothing to flag, got ${good.map((a) => a.key).join(", ")}`);
 
-// ---- every way of being on the books ----
-// Free, then each plan's lengths. No end date is not among them: it is not
-// something anybody is sold.
+// ---- every way of paying ----
+// One per plan and length, and nothing else: free earns nothing, and no end
+// date is not something anybody is sold.
 const ways = scenarios(DEFAULT_PRICES);
-assert.equal(ways.length, 7);
-assert.equal(ways[0]!.key, "free");
+assert.equal(ways.length, 6);
+assert.ok(!ways.some((w) => w.key === "free"));
 assert.equal(ways.filter((w) => w.plan === "plus").length, 3);
 assert.equal(ways.filter((w) => w.forever).length, 0);
 assert.equal(new Set(ways.map((w) => w.key)).size, ways.length, "no key twice");
 
 // Adding a length adds a way, without anything being kept in step by hand.
-assert.equal(scenarios([...DEFAULT_PRICES, ...rows(["pro", 3, 280])]).length, 8);
+assert.equal(scenarios([...DEFAULT_PRICES, ...rows(["pro", 3, 280])]).length, 7);
 
 // What one account on each is worth a month.
-assert.equal(ways.find((w) => w.key === "free")!.perMonth, 0);
 assert.equal(ways.find((w) => w.key === "pro-1")!.perMonth, 99);
 assert.equal(ways.find((w) => w.key === "pro-12")!.perMonth, Math.round(999 / 12));
 
-// A count against each turns into that many accounts, and free never becomes
-// one: it earns nothing and would only dilute the paying figure.
+// A count against each turns into that many accounts. A key nothing offers —
+// free, say, or a length that has been deleted — counts for nobody.
 const made = subscribersFromCounts(ways, { free: 50, "pro-12": 2, "plus-1": 1 });
 assert.equal(made.length, 3);
 assert.equal(made.filter((m) => m.plan === "pro" && m.months === 12).length, 2);

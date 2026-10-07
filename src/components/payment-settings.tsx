@@ -24,7 +24,6 @@ import {
   type PriceRow,
   type Subscriber,
 } from "@/lib/plan-prices";
-import { SCANS_PER_MONTH } from "@/lib/tiers";
 import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PaidPlan } from "@/lib/tiers";
@@ -157,7 +156,6 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
 
   const modelled = useMemo(() => subscribersFromCounts(list, counts), [list, counts]);
   const projection = useMemo(() => project(rows, modelled), [rows, modelled]);
-  const freeCount = Math.max(0, Math.floor(counts["free"] ?? 0));
   const advice = useMemo(() => suggestions(rows), [rows]);
 
   if (loading) {
@@ -238,19 +236,12 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
                   return (
                     <label
                       key={sc.key}
-                      className={cn(
-                        "flex items-center gap-2 rounded-lg border px-2.5 py-1.5",
-                        sc.plan === "free"
-                          ? "border-border/60 bg-muted/10"
-                          : "border-border/60 bg-muted/20",
-                      )}
+                      className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-1.5"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12px] font-medium">{sc.label}</span>
                         <span className="block text-[10px] tabular-nums text-muted-foreground">
-                          {sc.plan === "free"
-                            ? `${SCANS_PER_MONTH.free} scans a month each, no revenue`
-                            : `₹${earns.toLocaleString()} a month`}
+                          ₹{earns.toLocaleString()} a month
                         </span>
                       </span>
                       <Input
@@ -269,16 +260,6 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
                   );
                 })}
               </div>
-
-              {freeCount > 0 && (
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  {freeCount.toLocaleString()} free {freeCount === 1 ? "account" : "accounts"} earn
-                  nothing and can still spend up to{" "}
-                  {(freeCount * SCANS_PER_MONTH.free!).toLocaleString()} card scans a month between
-                  them. They are here because what a price earns depends on how many people are not
-                  paying it.
-                </p>
-              )}
             </AccordionContent>
           </AccordionItem>
         </Accordion>

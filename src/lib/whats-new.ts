@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 291,
+    at: "2026-10-07T10:40",
+    changes: [
+      {
+        admin: true,
+        text: "Free is out of the earnings projection. It is one field per plan and length now — a row that is always zero is a number to read with nothing to read it for.",
+      },
+    ],
+  },
+  {
     build: 290,
     at: "2026-10-07T10:20",
     changes: [

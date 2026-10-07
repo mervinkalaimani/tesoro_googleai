@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { PLAN_PRICES, type PaidPlan, type Plan } from "@/lib/tiers";
+import { PLAN_PRICES, type PaidPlan } from "@/lib/tiers";
 
 /**
  * What the plans cost, read from the database rather than compiled in.
@@ -125,38 +125,29 @@ export type Subscriber = { plan: PaidPlan; months: number; forever: boolean };
 /**
  * Every way an account can be on the books.
  *
- * One per plan and length that the prices table actually offers, plus free —
- * which earns nothing and is here because a projection that cannot say how
- * many people are not paying is only half an answer. The list grows on its
- * own: adding a length adds a scenario, so nothing here has to be kept in step
- * by hand.
+ * One per plan and length that the prices table actually offers, and nothing
+ * else. The list grows on its own: adding a length adds a scenario, so nothing
+ * here has to be kept in step by hand.
  *
- * No end date is not among them. It is not something anybody is sold, and it
- * is already counted at the monthly price, so it belongs in the monthly field
- * rather than in one of its own.
+ * Free is not among them, and neither is no end date. This is a projection of
+ * earnings: a row that is always zero adds a number to read and nothing to
+ * read it for, and no end date is not something anybody is sold — those
+ * accounts are counted in their plan's monthly field, where their money was
+ * already going.
  */
 export type Scenario = {
   key: string;
-  plan: Plan;
-  /** Months per run. Zero means no end date, and free has none either. */
+  plan: PaidPlan;
+  /** Months per run. */
   months: number;
   forever: boolean;
   label: string;
-  /** What one account on it is worth a month. Zero for free. */
+  /** What one account on it is worth a month. */
   perMonth: number;
 };
 
 export function scenarios(rows: PriceRow[]): Scenario[] {
-  const out: Scenario[] = [
-    {
-      key: "free",
-      plan: "free",
-      months: 0,
-      forever: false,
-      label: "Free",
-      perMonth: 0,
-    },
-  ];
+  const out: Scenario[] = [];
   for (const plan of ["plus", "pro"] as const) {
     const name = plan === "plus" ? "Plus" : "Pro";
     for (const r of pricesFor(rows, plan)) {
@@ -180,10 +171,9 @@ export function subscribersFromCounts(
 ): Subscriber[] {
   const out: Subscriber[] = [];
   for (const s of list) {
-    if (s.plan === "free") continue;
     const n = Math.max(0, Math.floor(counts[s.key] ?? 0));
     for (let i = 0; i < n; i++) {
-      out.push({ plan: s.plan as PaidPlan, months: s.months, forever: s.forever });
+      out.push({ plan: s.plan, months: s.months, forever: s.forever });
     }
   }
   return out;
