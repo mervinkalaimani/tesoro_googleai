@@ -159,9 +159,6 @@ assert.ok(ways.some((w) => w.key === scenarioKeyOf({ plan: "plus", months: 6, fo
 
 // And the two halves agree: counts in, projection out, same answer as the
 // accounts they stand for.
-assert.equal(
-  project(DEFAULT_PRICES, subscribersFromCounts(ways, { "pro-1": 3 })).monthly,
-  99 * 3,
-);
+assert.equal(project(DEFAULT_PRICES, subscribersFromCounts(ways, { "pro-1": 3 })).monthly, 99 * 3);
 
 console.log("plan prices selfcheck: ok");
