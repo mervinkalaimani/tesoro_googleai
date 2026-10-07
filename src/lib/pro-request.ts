@@ -2,7 +2,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { authHeader } from "@/lib/api-auth";
-import { TRIAL_DAYS, type PaidPlan, type PlanTerm } from "@/lib/tiers";
+import { TRIAL_DAYS, type PaidPlan } from "@/lib/tiers";
 
 /**
  * Asking an admin to turn Pro on.
@@ -19,7 +19,7 @@ import { TRIAL_DAYS, type PaidPlan, type PlanTerm } from "@/lib/tiers";
  */
 export async function requestPro(
   plan: PaidPlan = "pro",
-  term: PlanTerm = "month",
+  term: string = "month",
   remind = false,
 ): Promise<boolean> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

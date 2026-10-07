@@ -19,8 +19,32 @@ export const PLUS_CAR_LIMIT = FREE_CAR_LIMIT + PLUS_EXTRA_CARS;
 /** The two plans somebody can ask for. Free is not asked for; it is where you start. */
 export type PaidPlan = "plus" | "pro";
 
-/** How long a plan is bought for. */
+/** How long a plan is bought for. The three the app shipped with. */
 export type PlanTerm = "month" | "half" | "year";
+
+/**
+ * A length as it is stored, from a number of months.
+ *
+ * The three original names are kept for the lengths that have them, because
+ * rows were written with them and an admin screen reads them back. Anything
+ * else is the number, as text: the prices table decides what lengths exist, so
+ * this has to be able to say "three" without a name being invented for it.
+ */
+export function termFromMonths(months: number): string {
+  if (months === 1) return "month";
+  if (months === 6) return "half";
+  if (months === 12) return "year";
+  return String(months);
+}
+
+/** And back. Anything unrecognised reads as one month rather than as nothing. */
+export function monthsFromTerm(term: string | null | undefined): number {
+  if (term === "month") return 1;
+  if (term === "half") return 6;
+  if (term === "year") return 12;
+  const n = Number(term);
+  return Number.isFinite(n) && n >= 1 ? Math.round(n) : 1;
+}
 
 /** What an account is on today. Free is where everybody starts. */
 export type Plan = "free" | PaidPlan;

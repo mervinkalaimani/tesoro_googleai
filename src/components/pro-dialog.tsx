@@ -10,12 +10,12 @@ import {
   TRIAL_DAYS,
   TRIAL_REMIND_DAYS,
   canStartTrial,
-  monthlyPrice,
   paidPlanOf,
   trialDaysLeft,
   type PaidPlan,
 } from "@/lib/tiers";
 import { cancelProRequest, requestPro, startTrial } from "@/lib/pro-request";
+import { monthlyOf, usePlanPrices, type PriceRow } from "@/lib/plan-prices";
 import { openPlanTermDialog } from "@/components/plan-term-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -88,47 +88,49 @@ function scanLine(plan: Plan["key"]): Line {
  * fifty, none — which is the one thing a matrix cannot say without a special
  * case on its only interesting row.
  */
-const PLANS: Plan[] = [
-  {
-    key: "free",
-    title: "Free",
-    price: "₹0",
-    subtitle: "What you have now",
-    lines: [
-      { label: `Add up to ${FREE_CAR_LIMIT} cars`, yes: true },
-      { label: "The full catalogue", yes: true },
-      scanLine("free"),
-      ...SECTIONS.map((label) => ({ label, yes: false })),
-    ],
-  },
-  {
-    key: "plus",
-    title: "Plus",
-    price: `₹${monthlyPrice("plus")}`,
-    per: "per month",
-    subtitle: `${PLUS_EXTRA_CARS} more cars`,
-    lines: [
-      { label: `Add up to ${PLUS_CAR_LIMIT} cars`, yes: true },
-      { label: "The full catalogue", yes: true },
-      scanLine("plus"),
-      ...SECTIONS.map((label) => ({ label, yes: false })),
-    ],
-  },
-  {
-    key: "pro",
-    title: "Pro",
-    price: `₹${monthlyPrice("pro")}`,
-    per: "per month",
-    subtitle: "Everything, no ceiling",
-    featured: true,
-    lines: [
-      { label: "Add unlimited cars", yes: true },
-      { label: "The full catalogue", yes: true },
-      scanLine("pro"),
-      ...SECTIONS.map((label) => ({ label, yes: true })),
-    ],
-  },
-];
+function plansFor(prices: PriceRow[]): Plan[] {
+  return [
+    {
+      key: "free",
+      title: "Free",
+      price: "₹0",
+      subtitle: "What you have now",
+      lines: [
+        { label: `Add up to ${FREE_CAR_LIMIT} cars`, yes: true },
+        { label: "The full catalogue", yes: true },
+        scanLine("free"),
+        ...SECTIONS.map((label) => ({ label, yes: false })),
+      ],
+    },
+    {
+      key: "plus",
+      title: "Plus",
+      price: `₹${monthlyOf(prices, "plus")}`,
+      per: "per month",
+      subtitle: `${PLUS_EXTRA_CARS} more cars`,
+      lines: [
+        { label: `Add up to ${PLUS_CAR_LIMIT} cars`, yes: true },
+        { label: "The full catalogue", yes: true },
+        scanLine("plus"),
+        ...SECTIONS.map((label) => ({ label, yes: false })),
+      ],
+    },
+    {
+      key: "pro",
+      title: "Pro",
+      price: `₹${monthlyOf(prices, "pro")}`,
+      per: "per month",
+      subtitle: "Everything, no ceiling",
+      featured: true,
+      lines: [
+        { label: "Add unlimited cars", yes: true },
+        { label: "The full catalogue", yes: true },
+        scanLine("pro"),
+        ...SECTIONS.map((label) => ({ label, yes: true })),
+      ],
+    },
+  ];
+}
 
 export function ProDialog() {
   const { isPro, isGuest, status, profile, reloadProfile } = useAuth();
@@ -154,6 +156,9 @@ export function ProDialog() {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
   const [busy, setBusy] = useState<PaidPlan | null>(null);
+  // What the plans cost is set by the owner, so the columns are built from
+  // what was loaded rather than from a constant compiled in.
+  const PLANS = plansFor(usePlanPrices());
   const askedPlan = (profile?.pro_requested_plan ?? null) as PaidPlan | null;
 
   useEffect(() => {

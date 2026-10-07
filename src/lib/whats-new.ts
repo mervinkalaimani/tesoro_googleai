@@ -26,6 +26,28 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 288,
+    at: "2026-10-07T09:20",
+    changes: [
+      {
+        admin: true,
+        key: true,
+        text: "What the plans cost is data, not code. Subscriptions has a Payment settings tab for the owner: a price per plan per length, the per-month figure a buyer actually compares it against, and lengths that can be added or removed — a row is what makes a length buyable, so three months is a row rather than a deploy.",
+      },
+      {
+        admin: true,
+        text: "Beside the prices, what they are worth: the run rate a month and a year, what the longer runs already sold still owe, and a split by plan. Under them, arithmetic rather than opinion — a longer run that is not actually cheaper, a middle length nobody will reach past, or a middle too close to the longest to read as a choice.",
+      },
+      {
+        admin: true,
+        text: "Advanced is the Admin Console.",
+      },
+      {
+        text: "The Subscription row in Settings puts your plan and its date on the right, where the build number sits on What is new.",
+      },
+    ],
+  },
+  {
     build: 287,
     at: "2026-10-07T08:10",
     changes: [

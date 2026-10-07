@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { KpiBand, KpiTile } from "@/components/kpi";
+import { PaymentSettings } from "@/components/payment-settings";
 import { SegmentControl } from "@/components/segment-control";
 import { cn } from "@/lib/utils";
 
@@ -103,12 +104,32 @@ function daysLeft(until: string | null): number | null {
 }
 
 function SubscriptionsPage() {
-  const { isAdmin, status } = useAuth();
+  const { isAdmin, isOwner, status } = useAuth();
+  // Two halves of one subject: who is on what, and what that is worth. The
+  // prices are the owner's alone, so the tab only exists for them.
+  const [tab, setTab] = useState<"users" | "payment">("users");
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busySno, setBusySno] = useState<number | null>(null);
   const [segment, setSegment] = useState<"paying" | "asked" | "all">("paying");
   const [query, setQuery] = useState("");
+
+  /**
+   * Who is paying, and for how long at a time.
+   *
+   * The owner is left out deliberately: nobody is billing them, and counting
+   * their plan would put a price on the one account that will never pay it.
+   */
+  const subscribers = useMemo(
+    () =>
+      rows
+        .filter((u) => !u.is_owner)
+        .map((u) => ({ plan: planOf(u), months: u.pro_months ?? 1, forever: !u.pro_since }))
+        .filter(
+          (s): s is { plan: PaidPlan; months: number; forever: boolean } => s.plan !== "free",
+        ),
+    [rows],
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -272,76 +293,98 @@ function SubscriptionsPage() {
         <div className="w-16" aria-hidden />
       </div>
 
-      <KpiBand>
-        <KpiTile
-          label="Paying"
-          value={paying.toLocaleString()}
-          sub="Plus and Pro, not counting the owner"
-          icon={<Sparkles className="size-4" />}
-        />
-        <KpiTile
-          label="Waiting"
-          value={waiting.toLocaleString()}
-          sub={waiting ? "Asked and not yet granted" : "Nobody waiting"}
-          icon={<Users className="size-4" />}
-          tone="amber"
-          valueTone={waiting ? "amber" : undefined}
-        />
-        <KpiTile
-          label="Ending soon"
-          value={expiring.toLocaleString()}
-          sub="Within a week"
-          icon={<RefreshCw className="size-4" />}
-          tone="sky"
-        />
-      </KpiBand>
-
-      <div className="flex flex-wrap items-center gap-2">
+      {isOwner && (
         <SegmentControl
-          value={segment}
-          onChange={(v) => setSegment(v as typeof segment)}
+          value={tab}
+          onChange={(v) => setTab(v as typeof tab)}
           options={[
-            { value: "paying", label: `Paying (${paying})` },
-            { value: "asked", label: `Asked (${waiting})` },
-            { value: "all", label: `Everyone (${rows.length})` },
+            { value: "users", label: "Users" },
+            { value: "payment", label: "Payment settings" },
           ]}
         />
-        <Input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search name or email"
-          className="h-9 max-w-xs bg-muted/30 text-xs"
-        />
-        <Button variant="outline" size="sm" onClick={() => void load()} className="ml-auto gap-1.5">
-          <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
-          Reload
-        </Button>
-      </div>
+      )}
 
-      {loading ? (
-        <Loader2 className="mx-auto my-16 size-5 animate-spin text-muted-foreground" />
-      ) : shown.length === 0 ? (
-        <p className="py-16 text-center text-sm text-muted-foreground">
-          {segment === "paying"
-            ? "Nobody is on a paid plan yet."
-            : segment === "asked"
-              ? "Nobody has asked."
-              : "No accounts match."}
-        </p>
+      {isOwner && tab === "payment" ? (
+        <PaymentSettings subscribers={subscribers} />
       ) : (
-        <div className="space-y-2">
-          {shown.map((u) => (
-            <SubscriptionRow
-              key={u.sno}
-              user={u}
-              plan={planNow(u)}
-              busy={busySno === u.sno}
-              onGrant={(plan, length) => void grant(u, plan, length)}
-              onRenew={() => void renew(u)}
-              onRemove={() => void removePlan(u)}
+        <>
+          <KpiBand>
+            <KpiTile
+              label="Paying"
+              value={paying.toLocaleString()}
+              sub="Plus and Pro, not counting the owner"
+              icon={<Sparkles className="size-4" />}
             />
-          ))}
-        </div>
+            <KpiTile
+              label="Waiting"
+              value={waiting.toLocaleString()}
+              sub={waiting ? "Asked and not yet granted" : "Nobody waiting"}
+              icon={<Users className="size-4" />}
+              tone="amber"
+              valueTone={waiting ? "amber" : undefined}
+            />
+            <KpiTile
+              label="Ending soon"
+              value={expiring.toLocaleString()}
+              sub="Within a week"
+              icon={<RefreshCw className="size-4" />}
+              tone="sky"
+            />
+          </KpiBand>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <SegmentControl
+              value={segment}
+              onChange={(v) => setSegment(v as typeof segment)}
+              options={[
+                { value: "paying", label: `Paying (${paying})` },
+                { value: "asked", label: `Asked (${waiting})` },
+                { value: "all", label: `Everyone (${rows.length})` },
+              ]}
+            />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search name or email"
+              className="h-9 max-w-xs bg-muted/30 text-xs"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void load()}
+              className="ml-auto gap-1.5"
+            >
+              <RefreshCw className={cn("size-3.5", loading && "animate-spin")} />
+              Reload
+            </Button>
+          </div>
+
+          {loading ? (
+            <Loader2 className="mx-auto my-16 size-5 animate-spin text-muted-foreground" />
+          ) : shown.length === 0 ? (
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              {segment === "paying"
+                ? "Nobody is on a paid plan yet."
+                : segment === "asked"
+                  ? "Nobody has asked."
+                  : "No accounts match."}
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {shown.map((u) => (
+                <SubscriptionRow
+                  key={u.sno}
+                  user={u}
+                  plan={planNow(u)}
+                  busy={busySno === u.sno}
+                  onGrant={(plan, length) => void grant(u, plan, length)}
+                  onRenew={() => void renew(u)}
+                  onRemove={() => void removePlan(u)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

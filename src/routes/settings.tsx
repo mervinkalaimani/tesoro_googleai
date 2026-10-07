@@ -130,6 +130,7 @@ function parseTab(tab?: string): SettingsView {
   if (!tab) return "root";
   const t = tab.toLowerCase().trim();
   if (t === "account" || t === "profile") return "account";
+  if (t === "admin_console" || t === "admin-console" || t === "console") return "advanced";
   if (t === "subscription" || t === "subscriptions" || t === "plan" || t === "billing") {
     return "subscription";
   }
@@ -361,12 +362,12 @@ export function SettingsPage() {
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Sparkles className="size-4" />
               </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Subscription</span>
-                <p className="truncate text-xs text-muted-foreground">
-                  <PlanSummary />
-                </p>
-              </div>
+              <span className="min-w-0 flex-1 text-[15px] font-medium text-foreground">
+                Subscription
+              </span>
+              <span className="shrink-0 text-right text-xs text-muted-foreground">
+                <PlanSummary />
+              </span>
               <ChevronRight className="size-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
           )}
@@ -450,7 +451,7 @@ export function SettingsPage() {
                   <Wrench className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[15px] font-medium text-foreground">Advanced</span>
+                  <span className="text-[15px] font-medium text-foreground">Admin Console</span>
                   <p className="text-xs text-muted-foreground">
                     Search engine, diagnostics, users, catalogue photos &amp; database
                   </p>
@@ -460,7 +461,7 @@ export function SettingsPage() {
             </div>
           )}
 
-          {/* HELP — everybody's, unlike Advanced. The policy has to be
+          {/* HELP — everybody's, unlike the Admin Console. The policy has to be
               readable by the people it is about, and the phone number is no
               use to the one person who already knows it. */}
           <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
@@ -796,7 +797,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {view === "advanced" && isOwner && (
         <div className="space-y-6">
-          <SubpageHeader title="Advanced" onBack={() => changeView("root")} />
+          <SubpageHeader title="Admin Console" onBack={() => changeView("root")} />
           <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
             {/* SEARCH ENGINE */}
             <button
@@ -1203,7 +1204,7 @@ export function SettingsPage() {
           <SubpageHeader
             title="Authentication"
             onBack={() => changeView("advanced")}
-            backLabel="Advanced"
+            backLabel="Admin Console"
           />
           <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
             <OAuthProvidersCard />
