@@ -474,40 +474,6 @@ export function SettingsPage() {
           <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
             <button
               type="button"
-              onClick={() => changeView("feature_request")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
-                <Lightbulb className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Feature request</span>
-                <p className="text-xs text-muted-foreground">
-                  Tell us what you would like VIIV to do
-                </p>
-              </div>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => changeView("report_bug")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
-                <Bug className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Report a bug</span>
-                <p className="text-xs text-muted-foreground">
-                  Something that does not work the way it should
-                </p>
-              </div>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-            </button>
-
-            <button
-              type="button"
               onClick={() => changeView("help")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
@@ -517,7 +483,7 @@ export function SettingsPage() {
               <div className="min-w-0 flex-1">
                 <span className="text-[15px] font-medium text-foreground">Help</span>
                 <p className="text-xs text-muted-foreground">
-                  Privacy policy, terms &amp; conditions and how to reach us
+                  Ask for something, report a bug, policies and how to reach us
                 </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -579,14 +545,14 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {view === "feature_request" && (
         <div className="space-y-4">
-          <SubpageHeader title="Feature request" onBack={() => changeView("root")} />
+          <SubpageHeader title="Feature request" onBack={() => changeView("help")} />
           <FeedbackPanel kind="feature" />
         </div>
       )}
 
       {view === "report_bug" && (
         <div className="space-y-4">
-          <SubpageHeader title="Report a bug" onBack={() => changeView("root")} />
+          <SubpageHeader title="Report a bug" onBack={() => changeView("help")} />
           <FeedbackPanel kind="bug" />
         </div>
       )}
@@ -1006,13 +972,25 @@ export function SettingsPage() {
           <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
             {(
               [
-                ["help_privacy", "privacy", FileText],
-                ["help_terms", "terms", Scale],
-                ["help_contact", "contact", MessageCircle],
+                [
+                  "feature_request",
+                  "Feature request",
+                  "Tell us what you would like VIIV to do",
+                  Lightbulb,
+                ],
+                [
+                  "report_bug",
+                  "Report a bug",
+                  "Something that does not work the way it should",
+                  Bug,
+                ],
+                ["help_privacy", HELP_TITLES.privacy, HELP_BLURBS.privacy, FileText],
+                ["help_terms", HELP_TITLES.terms, HELP_BLURBS.terms, Scale],
+                ["help_contact", HELP_TITLES.contact, HELP_BLURBS.contact, MessageCircle],
               ] as const
-            ).map(([target, key, Icon]) => (
+            ).map(([target, label, blurb, Icon]) => (
               <button
-                key={key}
+                key={target}
                 type="button"
                 onClick={() => changeView(target)}
                 className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
@@ -1021,10 +999,8 @@ export function SettingsPage() {
                   <Icon className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[15px] font-medium text-foreground">
-                    {HELP_TITLES[key]}
-                  </span>
-                  <p className="text-xs text-muted-foreground">{HELP_BLURBS[key]}</p>
+                  <span className="text-[15px] font-medium text-foreground">{label}</span>
+                  <p className="text-xs text-muted-foreground">{blurb}</p>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </button>

@@ -26,6 +26,24 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 297,
+    at: "2026-10-07T15:00",
+    changes: [
+      {
+        admin: true,
+        key: true,
+        text: "Subscription requests has its own section on the dashboard, under the numbers, and it is there whether or not anybody is waiting. Who asked, for which plan and how long, and who has said they are not renewing — read from the table rather than pushed, so it cannot go quiet the way a notification can.",
+      },
+      {
+        admin: true,
+        text: "Admin Console is in the account menu above Settings, on the desktop and on the phone, rather than three taps down a list of preferences.",
+      },
+      {
+        text: "Feature request and Report a bug moved into Help, beside the policies and how to reach us — which is where somebody already goes when the app has not done what they wanted.",
+      },
+    ],
+  },
+  {
     build: 296,
     at: "2026-10-07T14:10",
     changes: [

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Settings } from "lucide-react";
+import { Settings, Wrench } from "lucide-react";
 
 import { ProChip, TierAvatar } from "@/components/tier-avatar";
 import {
@@ -76,6 +76,19 @@ export function UserMenu() {
         </div>
 
         <DropdownMenuSeparator />
+
+        {isAdmin && (
+          <DropdownMenuItem asChild>
+            <Link
+              to="/settings"
+              search={{ tab: "advanced" }}
+              className="cursor-pointer gap-2 font-medium text-primary"
+            >
+              <Wrench className="size-4" />
+              Admin Console
+            </Link>
+          </DropdownMenuItem>
+        )}
 
         <DropdownMenuItem asChild>
           <Link to="/settings" className="cursor-pointer gap-2">

@@ -1,7 +1,7 @@
 import { isIso } from "@/lib/status";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronRight, Eye, EyeOff, Settings, Sparkles, Table } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, Settings, Sparkles, Table, Wrench } from "lucide-react";
 
 import { openProDialog } from "@/components/pro-dialog";
 import { paidPlanOf } from "@/lib/tiers";
@@ -186,6 +186,23 @@ function MobileAccountMenu() {
               <div className="mt-0.5 text-[11px] text-muted-foreground">Total spent on cars</div>
             </div>
           </div>
+
+          {isAdmin && (
+            <Link
+              to="/settings"
+              search={{ tab: "advanced" }}
+              onClick={close}
+              className="group mt-2.5 flex items-center gap-3.5 rounded-2xl border border-border/80 bg-card px-3.5 py-3 shadow-xs transition-colors hover:bg-muted/40 active:scale-[0.98]"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <Wrench className="size-4" />
+              </div>
+              <span className="min-w-0 flex-1 text-sm font-semibold text-primary">
+                Admin Console
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
+            </Link>
+          )}
 
           {/* 3. Settings */}
           <div className="mt-3 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
