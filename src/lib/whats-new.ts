@@ -26,6 +26,15 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 293,
+    at: "2026-10-07T12:00",
+    changes: [
+      {
+        text: "The VIIV mark is the browser tab icon and the bookmark icon, and it stands in for the wordmark when the left panel is closed. Nothing sits beside the wordmark when the panel is open — one logo at a time.",
+      },
+    ],
+  },
+  {
     build: 292,
     at: "2026-10-07T11:30",
     changes: [

@@ -146,23 +146,25 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
       },
-      // One icon per browser theme: the light one carries a white tile, the
-      // dark one is the bare diamond for a dark tab strip.
+      // One icon per browser theme. The mark is drawn in near-black, which is
+      // invisible on a dark tab strip, so the dark one is the same drawing with
+      // its lettering turned white — a colour swap, not a second icon.
       {
         rel: "icon",
-        href: "/tesoro_app_icon_light.svg",
+        href: "/viiv_icon.svg",
         type: "image/svg+xml",
         media: "(prefers-color-scheme: light)",
       },
       {
         rel: "icon",
-        href: "/tesoro_app_icon_dark.svg",
+        href: "/viiv_icon_dark.svg",
         type: "image/svg+xml",
         media: "(prefers-color-scheme: dark)",
       },
-      // iPhone home screen, light or dark to match the phone. Safari only takes
-      // a PNG (tesoro_app_icon_light.png is the light SVG rendered at the dark
-      // icon's size), and reads the icon once, when the app is added.
+      // iPhone home screen. Safari takes a PNG and nothing else, and reads it
+      // once, when the app is added — so this stays pointing at the old mark
+      // until there is a VIIV one rendered out. A link to an SVG here is not a
+      // fallback: Safari ignores it and screenshots the page instead.
       {
         rel: "apple-touch-icon",
         href: "/tesoro_app_icon_dark.png",

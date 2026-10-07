@@ -44,7 +44,7 @@ import { paidPlanOf } from "@/lib/tiers";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
-import { HomeScreenMark } from "@/components/brand-mark";
+import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
 
 const NAV_GROUPS: {
   title: string;
@@ -108,11 +108,12 @@ export function AppSidebar() {
           sidebar's edge are one line across the whole application, and a header
           sized by its own contents lined up with nothing. */}
       <SidebarHeader className="h-14 justify-center">
-        <div className="flex items-center px-2">
-          {/* The wordmark alone. The square icon beside it was the old mark's
-              diamond, which beside VIIV was two logos for one application —
-              and the one that was no longer the application's. */}
+        <div className="flex items-center px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          {/* The wordmark when there is room for it, the single mark when there
+              is not. Never both: beside each other they were two logos for one
+              application. */}
           <HomeScreenMark className="w-[84px] shrink-0 group-data-[collapsible=icon]:hidden" />
+          <MonogramMark className="hidden w-7 shrink-0 group-data-[collapsible=icon]:block" />
         </div>
       </SidebarHeader>
 

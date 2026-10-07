@@ -1,4 +1,5 @@
 import wordmarkSvg from "../../public/viiv_home_icon.svg?raw";
+import monogramSvg from "../../public/viiv_icon.svg?raw";
 
 /**
  * The wordmark is drawn with near-black lettering, which vanishes on the dark
@@ -32,6 +33,7 @@ const themed = (svg: string, id: string) =>
  */
 export const HOME_MARK_SVG = themed(wordmarkSvg, "viiv-home-clip");
 export const SPLASH_MARK_SVG = themed(wordmarkSvg, "viiv-splash-clip");
+export const MONOGRAM_SVG = themed(monogramSvg, "viiv-mono-clip");
 
 /** The splash stays up at least this long from page start, so it reads as a splash rather than a flicker. */
 const SPLASH_MIN_MS = 900;
@@ -69,6 +71,24 @@ export function HomeScreenMark({ className = "" }: { className?: string }) {
       aria-label="VIIV"
       className={`block text-foreground [&>svg]:block ${className}`}
       dangerouslySetInnerHTML={{ __html: HOME_MARK_SVG }}
+    />
+  );
+}
+
+/**
+ * The single mark, for somewhere four letters will not fit.
+ *
+ * Inlined like the wordmark rather than loaded as an <img>, for the same
+ * reason: its V is near-black, and on the dark sidebar an <img> of it is an
+ * orange stroke with nothing attached to it.
+ */
+export function MonogramMark({ className = "" }: { className?: string }) {
+  return (
+    <span
+      role="img"
+      aria-label="VIIV"
+      className={`block text-foreground [&>svg]:block ${className}`}
+      dangerouslySetInnerHTML={{ __html: MONOGRAM_SVG }}
     />
   );
 }
