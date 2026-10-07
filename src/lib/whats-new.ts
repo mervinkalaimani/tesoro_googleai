@@ -26,6 +26,15 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 294,
+    at: "2026-10-07T12:20",
+    changes: [
+      {
+        text: "Adding VIIV to a phone’s home screen now puts the VIIV mark there. Every icon the app hands out — tab, bookmark, home screen, installed app — is the new one.",
+      },
+    ],
+  },
+  {
     build: 293,
     at: "2026-10-07T12:00",
     changes: [

@@ -162,20 +162,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         media: "(prefers-color-scheme: dark)",
       },
       // iPhone home screen. Safari takes a PNG and nothing else, and reads it
-      // once, when the app is added — so this stays pointing at the old mark
-      // until there is a VIIV one rendered out. A link to an SVG here is not a
-      // fallback: Safari ignores it and screenshots the page instead.
+      // once, when the app is added.
+      //
+      // One file for both appearances, where the old mark had two: this one is
+      // drawn on a white tile, and a tile sits on the wallpaper rather than on
+      // the system's background — so there is nothing for a dark phone to make
+      // it disappear against, and a second copy would be the same picture.
       {
         rel: "apple-touch-icon",
-        href: "/tesoro_app_icon_dark.png",
-        sizes: "398x398",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        rel: "apple-touch-icon",
-        href: "/tesoro_app_icon_light.png",
-        sizes: "398x398",
-        media: "(prefers-color-scheme: light)",
+        href: "/viiv_app_icon_dark.png",
+        sizes: "360x360",
       },
       { rel: "manifest", href: "/site.webmanifest" },
     ],

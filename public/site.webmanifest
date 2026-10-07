@@ -7,11 +7,6 @@
   "theme_color": "#1b1b1b",
   "icons": [
     { "src": "/viiv_icon.svg", "type": "image/svg+xml", "sizes": "any" },
-    {
-      "src": "/viiv_icon.svg",
-      "type": "image/svg+xml",
-      "sizes": "any",
-      "purpose": "maskable"
-    }
+    { "src": "/viiv_app_icon_dark.png", "type": "image/png", "sizes": "360x360" }
   ]
 }
