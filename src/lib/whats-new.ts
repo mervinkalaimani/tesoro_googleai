@@ -26,6 +26,15 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 286,
+    at: "2026-10-07T07:40",
+    changes: [
+      {
+        text: "A request for a plan can be taken back. It could be made and nudged but never withdrawn, so changing your mind left it sitting on an admin’s screen; Withdraw the request is under Remind again on the plan you asked for.",
+      },
+    ],
+  },
+  {
     build: 285,
     at: "2026-10-07T07:00",
     changes: [

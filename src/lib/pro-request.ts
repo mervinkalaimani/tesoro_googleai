@@ -106,3 +106,27 @@ export async function startTrial(): Promise<boolean> {
   });
   return true;
 }
+
+/**
+ * Taking a request back.
+ *
+ * The ask could be made and nudged but not withdrawn, so changing your mind
+ * meant leaving a request on somebody's screen forever. Cleared through the
+ * account's own session, like the ask itself; no notification follows, because
+ * the admin screen is where a request is read and an absent one reads as
+ * absent.
+ */
+export async function cancelProRequest(): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("tesoro_cancel_pro_request");
+
+  if (error) {
+    toast.error("Could not withdraw that request", {
+      description: error.message || "Try again in a moment.",
+    });
+    return false;
+  }
+
+  toast.success(data === true ? "Request withdrawn" : "There was no request to withdraw");
+  return true;
+}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BellRing, Check, Loader2, Minus, Rocket, Sparkles } from "lucide-react";
+import { BellRing, Check, Loader2, Minus, Rocket, Sparkles, X } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-store";
 import {
@@ -14,7 +14,7 @@ import {
   trialDaysLeft,
   type PaidPlan,
 } from "@/lib/tiers";
-import { requestPro, startTrial } from "@/lib/pro-request";
+import { cancelProRequest, requestPro, startTrial } from "@/lib/pro-request";
 import { openPlanTermDialog } from "@/components/plan-term-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -197,6 +197,17 @@ export function ProDialog() {
     setOpen(false);
   };
 
+  const withdraw = async () => {
+    setBusy(askedPlan);
+    const ok = await cancelProRequest();
+    setBusy(null);
+    if (!ok) return;
+    // The button reads off the profile, so it has to be read again before the
+    // card stops saying a request is with the admins.
+    await reloadProfile();
+    setReminded(null);
+  };
+
   const ask = async (plan: PaidPlan) => {
     // Already asked for this one: the button is a nudge, and the term was
     // settled the first time round.
@@ -240,6 +251,7 @@ export function ProDialog() {
               busy={p.key === "free" ? trialBusy : busy === p.key}
               disabled={busy !== null || trialBusy}
               onTrial={p.key === "free" && canTrial ? () => void takeTrial() : undefined}
+              onWithdraw={() => void withdraw()}
               onAsk={() => void ask(p.key as PaidPlan)}
             />
           ))}
@@ -261,6 +273,7 @@ function PlanCard({
   busy,
   disabled,
   onTrial,
+  onWithdraw,
   onAsk,
 }: {
   plan: Plan;
@@ -274,6 +287,8 @@ function PlanCard({
   disabled?: boolean;
   /** Set on the Free column when this account still has its trial to take. */
   onTrial?: () => void;
+  /** Takes the request back. Only ever reached from the column that was asked for. */
+  onWithdraw: () => void;
   onAsk: () => void;
 }) {
   return (
@@ -353,9 +368,25 @@ function PlanCard({
             {reminded ? "Reminder sent" : asked ? "Remind again" : `Choose ${plan.title}`}
           </Button>
           {asked && (
-            <p className="text-center text-[10px] text-muted-foreground">
-              Already asked — this nudges the admins.
-            </p>
+            <>
+              <p className="text-center text-[10px] text-muted-foreground">
+                Already asked — this nudges the admins.
+              </p>
+              {/* Changing your mind is the other half of asking. Quiet, and
+                  under the nudge: the common thing to do with a request is
+                  wait for it, not withdraw it. */}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={disabled}
+                onClick={onWithdraw}
+                className="h-7 w-full gap-1.5 text-[11px] text-muted-foreground hover:text-rose-500"
+              >
+                <X className="size-3.5" />
+                Withdraw the request
+              </Button>
+            </>
           )}
         </div>
       )}
