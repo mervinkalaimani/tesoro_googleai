@@ -659,7 +659,7 @@ function LoginPage() {
               onClick={() => enterGuest("full")}
               className="underline underline-offset-2 transition-colors hover:text-muted-foreground"
             >
-              Mr Tesoro
+              Mr VIIV
             </button>
           </>
         )}

@@ -32,13 +32,13 @@ import { ProGate } from "@/components/pro-gate";
 export const Route = createFileRoute("/habits")({
   head: () => ({
     meta: [
-      { title: "Habit Tracker | Tesoro" },
+      { title: "Habit Tracker | VIIV" },
       {
         name: "description",
         content:
           "Track your diecast ordering and delivery habits day by day with an activity heatmap and collecting insights.",
       },
-      { property: "og:title", content: "Habit Tracker | Tesoro" },
+      { property: "og:title", content: "Habit Tracker | VIIV" },
       {
         property: "og:description",
         content:

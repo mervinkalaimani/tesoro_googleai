@@ -304,7 +304,7 @@ const DEMO_PROFILE: Profile = {
   user_id: "mr-tesoro",
   auth_uid: null,
   first_name: "Mr",
-  last_name: "Tesoro",
+  last_name: "VIIV",
   email_id: "Demo session — full access",
   phone: null,
   dob: null,

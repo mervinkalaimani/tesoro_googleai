@@ -117,13 +117,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover",
       },
-      { title: "Tesoro — Collection Dashboard" },
+      { title: "VIIV — Collection Dashboard" },
       {
         name: "description",
         content:
           "A personal dashboard for tracking a diecast car collection: brands, types, spend, and inventory status.",
       },
-      { property: "og:title", content: "Tesoro — Collection Dashboard" },
+      { property: "og:title", content: "VIIV — Collection Dashboard" },
       {
         property: "og:description",
         content:
@@ -131,7 +131,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Tesoro — Collection Dashboard" },
+      { name: "twitter:title", content: "VIIV — Collection Dashboard" },
       {
         name: "twitter:description",
         content:

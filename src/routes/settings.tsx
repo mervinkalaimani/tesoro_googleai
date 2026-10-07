@@ -81,13 +81,13 @@ export const Route = createFileRoute("/settings")({
   },
   head: () => ({
     meta: [
-      { title: "Settings | Tesoro" },
+      { title: "Settings | VIIV" },
       {
         name: "description",
         content:
           "Configure diecast dashboard Supabase database connection, URLs, table names, theme, and settings.",
       },
-      { property: "og:title", content: "Settings | Tesoro" },
+      { property: "og:title", content: "Settings | VIIV" },
       {
         property: "og:description",
         content:
@@ -976,7 +976,7 @@ export function SettingsPage() {
             ))}
           </div>
           <p className="px-1 text-[11px] text-muted-foreground">
-            Tesoro {APP_VERSION} · a personal project, not a company.
+            VIIV {APP_VERSION} · a personal project, not a company.
           </p>
         </div>
       )}

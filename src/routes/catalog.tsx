@@ -79,12 +79,12 @@ import {
 export const Route = createFileRoute("/catalog")({
   head: () => ({
     meta: [
-      { title: "Catalogue | Tesoro" },
+      { title: "Catalogue | VIIV" },
       {
         name: "description",
         content: "Browse every casting in the catalogue and add one to your collection.",
       },
-      { property: "og:title", content: "Catalogue | Tesoro" },
+      { property: "og:title", content: "Catalogue | VIIV" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

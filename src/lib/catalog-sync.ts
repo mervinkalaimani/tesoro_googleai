@@ -401,7 +401,7 @@ export function startCatalogRealtimeListener(
  */
 export function generateSupabaseTriggerSql(): string {
   return `-- ====================================================================
--- Tesoro Database Trigger: Auto-sync tesoro_car_catalog to tesoro_raw
+-- VIIV Database Trigger: Auto-sync tesoro_car_catalog to tesoro_raw
 -- When an entry in tesoro_car_catalog is edited, update all matching cars
 -- in user collections and pre-orders instantly.
 -- ====================================================================

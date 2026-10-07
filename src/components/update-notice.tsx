@@ -105,7 +105,7 @@ export function UpdateNotice() {
     >
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Tesoro has been updated</DialogTitle>
+          <DialogTitle>VIIV has been updated</DialogTitle>
           <DialogDescription>
             This tab is running an older version. Refresh to pick up the new one — you may be asked
             to sign in again.

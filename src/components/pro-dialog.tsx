@@ -259,7 +259,7 @@ export function ProDialog() {
             </p>
           )}
           <DialogTitle className="text-xl font-bold tracking-tight">
-            Tesoro is better with Pro
+            VIIV is better with Pro
           </DialogTitle>
           <DialogDescription className="mt-1 text-sm">
             Everything you have stays yours. These open the rest of it.

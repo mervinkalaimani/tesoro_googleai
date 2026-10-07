@@ -305,7 +305,7 @@ export const Route = createFileRoute("/releases")({
   }),
 
   head: () => {
-    const title = "Pre Order Calendar — upcoming diecast releases | Tesoro";
+    const title = "Pre Order Calendar — upcoming diecast releases | VIIV";
     const description =
       "Upcoming die-cast releases by month: Mini GT, Kaido House, Greenlight, Hot Wheels and more, with the date each is expected.";
     return {

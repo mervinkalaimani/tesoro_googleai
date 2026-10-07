@@ -37,7 +37,7 @@ export function castingName(c: Pick<CatalogCar, "name" | "make" | "model" | "var
  */
 export function castingTitle(c: CatalogCar): string {
   const tail = [clean(c.brand), clean(c.assortment), clean(c.car_number)].filter(Boolean).join(" ");
-  return [castingName(c), tail].filter(Boolean).join(" — ") + " | Tesoro";
+  return [castingName(c), tail].filter(Boolean).join(" — ") + " | VIIV";
 }
 
 /**
@@ -63,7 +63,7 @@ export function castingDescription(c: CatalogCar): string {
   if (series) bits.push(`from the ${series} series`);
   if (number) bits.push(`numbered ${number}`);
   if (year) bits.push(`released in ${year}`);
-  return `${bits.join(", ")}. Catalogued on Tesoro.`;
+  return `${bits.join(", ")}. Catalogued on VIIV.`;
 }
 
 /**

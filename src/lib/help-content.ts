@@ -41,8 +41,8 @@ export const HELP_TITLES: Record<HelpDocKey, string> = {
 };
 
 export const HELP_BLURBS: Record<HelpDocKey, string> = {
-  privacy: "What Tesoro stores about you, and what it never does with it",
-  terms: "What you can expect from Tesoro, and what it expects of you",
+  privacy: "What VIIV stores about you, and what it never does with it",
+  terms: "What you can expect from VIIV, and what it expects of you",
   contact: "Phone, email and when to expect an answer",
 };
 
@@ -56,7 +56,7 @@ export const HELP_DEFAULTS: HelpContent = {
   phone: "",
   email: "",
 
-  privacy: `Tesoro is a private tracker for a diecast collection. It is run by one
+  privacy: `VIIV is a private tracker for a diecast collection. It is run by one
 person for a small group of collectors, not by a company, and it does not sell
 anything to anyone.
 
@@ -98,7 +98,7 @@ You can correct anything about yourself from Settings, and you can export your
 collection at any time. Ask and your account and everything in it will be
 deleted — that removal is permanent and cannot be walked back.`,
 
-  terms: `Tesoro is offered to a small group of collectors as-is, free of charge,
+  terms: `VIIV is offered to a small group of collectors as-is, free of charge,
 and these terms are meant to be read once and then forgotten.
 
 ## Your account
@@ -121,7 +121,7 @@ like it to read. An admin may correct, merge or remove an entry that is wrong
 or duplicated.
 
 ## What this is not
-Tesoro is a record of what you own, not a valuation, not an insurance document,
+VIIV is a record of what you own, not a valuation, not an insurance document,
 and not financial advice. Retail prices in the catalogue are a reference figure
 somebody typed in, not an appraisal, and nothing here is an offer to buy or
 sell anything.
@@ -136,11 +136,11 @@ The app is provided without warranty of any kind. The owner is not liable for
 loss or damage arising from using it, or from being unable to use it.
 
 ## Ending it
-You can stop using Tesoro at any time and ask for your account to be deleted.
+You can stop using VIIV at any time and ask for your account to be deleted.
 An account may be closed if it is used to harm somebody else or to damage the
 shared catalogue.`,
 
-  contact: `Tesoro is looked after by one person, so an answer usually arrives
+  contact: `VIIV is looked after by one person, so an answer usually arrives
 within a day or two rather than within minutes.
 
 ## Worth getting in touch about

@@ -75,13 +75,13 @@ import { catalogIdFor } from "@/lib/car-id";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Home | Tesoro" },
+      { title: "Home | VIIV" },
       {
         name: "description",
         content:
           "Track diecast KPIs, transit shipments, recent arrivals, monthly spending, peak purchase periods, and top collection stats.",
       },
-      { property: "og:title", content: "Home | Tesoro" },
+      { property: "og:title", content: "Home | VIIV" },
       {
         property: "og:description",
         content:

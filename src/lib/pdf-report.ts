@@ -101,7 +101,7 @@ export function buildReportHtml(
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>${esc(meta.title)} — Tesoro</title>
+<title>${esc(meta.title)} — VIIV</title>
 <style>
   @page { size: A4 landscape; margin: 14mm 12mm 16mm; }
 
@@ -222,7 +222,7 @@ export function buildReportHtml(
   }
 
   <footer>
-    <span>Tesoro collection report</span>
+    <span>VIIV collection report</span>
     <span>${rows.length.toLocaleString()} castings · ${esc(generated)}</span>
   </footer>
 </body>

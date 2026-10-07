@@ -19,13 +19,13 @@ import { ProGate } from "@/components/pro-gate";
 export const Route = createFileRoute("/collection")({
   head: () => ({
     meta: [
-      { title: "Collection | Tesoro" },
+      { title: "Collection | VIIV" },
       {
         name: "description",
         content:
           "Explore diecast collection groups by series, set, brand, assortment, maker, seller, and size.",
       },
-      { property: "og:title", content: "Collection | Tesoro" },
+      { property: "og:title", content: "Collection | VIIV" },
       {
         property: "og:description",
         content:

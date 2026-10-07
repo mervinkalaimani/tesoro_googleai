@@ -89,7 +89,7 @@ export function TopBar() {
           anyone who has learned it. */}
       <SidebarTrigger className="hidden md:inline-flex" />
       {/* A phone's wordmark. On a desktop it lives in the sidebar's header. */}
-      <Link to="/" aria-label="Tesoro home" className="shrink-0 md:hidden">
+      <Link to="/" aria-label="VIIV home" className="shrink-0 md:hidden">
         <HomeScreenMark className="w-[80px]" />
       </Link>
       {/* Desktop searches here, live. A phone searches from the bottom bar. */}

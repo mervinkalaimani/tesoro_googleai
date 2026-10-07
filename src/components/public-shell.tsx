@@ -20,7 +20,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-3">
           <Link to="/" className="flex items-center gap-2">
             <HomeScreenMark className="size-7" />
-            <span className="text-display text-sm font-semibold tracking-tight">Tesoro</span>
+            <span className="text-display text-sm font-semibold tracking-tight">VIIV</span>
           </Link>
           <Link
             to="/releases"
@@ -44,7 +44,7 @@ export function PublicShell({ children }: { children: React.ReactNode }) {
           does inside the app shell, so a page looks the same signed in as out. */}
       <main>{children}</main>
       <footer className="mx-auto max-w-[1600px] px-3 pb-10 md:px-6 text-[11px] text-muted-foreground">
-        Tesoro is a collection tracker. Catalogue entries are contributed by its collectors.
+        VIIV is a collection tracker. Catalogue entries are contributed by its collectors.
       </footer>
     </div>
   );

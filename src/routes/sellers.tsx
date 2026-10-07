@@ -33,13 +33,13 @@ import { ProGate } from "@/components/pro-gate";
 export const Route = createFileRoute("/sellers")({
   head: () => ({
     meta: [
-      { title: "Sellers | Tesoro" },
+      { title: "Sellers | VIIV" },
       {
         name: "description",
         content:
           "Every seller the collection was bought from, with what they sold, what it cost, and what is still owed.",
       },
-      { property: "og:title", content: "Sellers | Tesoro" },
+      { property: "og:title", content: "Sellers | VIIV" },
       {
         property: "og:description",
         content: "Every seller the collection was bought from, and what came from each.",

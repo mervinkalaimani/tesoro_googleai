@@ -34,7 +34,7 @@ const excavator = {
   type: "Construction Vehicle",
 } as CatalogCar;
 
-assert.equal(castingTitle(excavator), "'24 MBX Excavator 890M — Matchbox Mainline 11/12 | Tesoro");
+assert.equal(castingTitle(excavator), "'24 MBX Excavator 890M — Matchbox Mainline 11/12 | VIIV");
 assert.match(castingDescription(excavator), /^'24 MBX Excavator 890M is a yellow Matchbox/);
 assert.match(castingDescription(excavator), /Matchbox The Movie series/);
 assert.match(castingDescription(excavator), /numbered 11\/12/);
@@ -43,8 +43,8 @@ assert.match(castingDescription(excavator), /numbered 11\/12/);
 // a string of commas — 389 of them have no photo and plenty have no type.
 const bare = { car_id: "X", brand: "", make: "Ford", model: "Bronco", name: "" } as CatalogCar;
 assert.equal(castingName(bare), "Ford Bronco");
-assert.equal(castingTitle(bare), "Ford Bronco | Tesoro");
-assert.equal(castingDescription(bare), "Ford Bronco is a die-cast model. Catalogued on Tesoro.");
+assert.equal(castingTitle(bare), "Ford Bronco | VIIV");
+assert.equal(castingDescription(bare), "Ford Bronco is a die-cast model. Catalogued on VIIV.");
 
 // Only a copy on our own storage may be published. The wikis' links are the
 // common case and must not pass.

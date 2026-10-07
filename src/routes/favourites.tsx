@@ -59,13 +59,13 @@ const MODE_TEXT: Record<Mode, { title: string; subtitle: string; empty: string; 
 export const Route = createFileRoute("/favourites")({
   head: () => ({
     meta: [
-      { title: "Favourites | Tesoro" },
+      { title: "Favourites | VIIV" },
       {
         name: "description",
         content:
           "View diecast cars marked as favourites or chase pieces with model, brand, seller, colour, and status details.",
       },
-      { property: "og:title", content: "Favourites | Tesoro" },
+      { property: "og:title", content: "Favourites | VIIV" },
       {
         property: "og:description",
         content:

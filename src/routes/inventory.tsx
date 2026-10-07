@@ -48,12 +48,12 @@ import {
 export const Route = createFileRoute("/inventory")({
   head: () => ({
     meta: [
-      { title: "My Cars | Tesoro" },
+      { title: "My Cars | VIIV" },
       {
         name: "description",
         content: "Browse your diecast cars with filters, car details, status, seller and spend.",
       },
-      { property: "og:title", content: "My Cars | Tesoro" },
+      { property: "og:title", content: "My Cars | VIIV" },
       {
         property: "og:description",
         content: "Browse your diecast cars with filters, car details, status, seller and spend.",

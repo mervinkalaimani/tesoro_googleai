@@ -30,7 +30,7 @@ export type CarImageCandidate = {
   kind: "card" | "car";
 };
 
-const USER_AGENT = "Tesoro/1.0 (personal diecast collection app)";
+const USER_AGENT = "VIIV/1.0 (personal diecast collection app)";
 
 const WIKIS: { match: RegExp; host: string; name: string }[] = [
   { match: /hot\s*wheels|^hw$/i, host: "hotwheels.fandom.com", name: "Hot Wheels Wiki" },

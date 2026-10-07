@@ -301,7 +301,7 @@ function AdminPage() {
           </div>
           <h1 className="text-display mt-5 text-xl font-semibold tracking-tight">Admins only</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            This page manages who can use Tesoro. Your account doesn't have the admin role.
+            This page manages who can use VIIV. Your account doesn't have the admin role.
           </p>
         </div>
       </div>

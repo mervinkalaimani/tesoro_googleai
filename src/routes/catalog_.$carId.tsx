@@ -107,7 +107,7 @@ export const Route = createFileRoute("/catalog_/$carId")({
     const car = loaderData?.car;
     if (!car) {
       return {
-        meta: [{ title: "Casting not found | Tesoro" }, { name: "robots", content: "noindex" }],
+        meta: [{ title: "Casting not found | VIIV" }, { name: "robots", content: "noindex" }],
       };
     }
     const title = castingTitle(car);

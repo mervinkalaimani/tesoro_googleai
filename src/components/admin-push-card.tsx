@@ -15,12 +15,12 @@ const HINT: Record<PushState, string> = {
   on: "This device gets a notification when someone new signs up, with Approve and Reject on it.",
   off: "Get a notification on this device when someone new signs up, with Approve and Reject on it.",
   "needs-install":
-    "On iPhone and iPad, add Tesoro to your Home Screen first (Share → Add to Home Screen), then open it from there and turn this on.",
+    "On iPhone and iPad, add VIIV to your Home Screen first (Share → Add to Home Screen), then open it from there and turn this on.",
   unsupported: "This browser can't receive push notifications.",
   "not-configured":
     "Push isn't set up on this deployment yet: it needs VAPID keys and the service role key in the server environment.",
   denied:
-    "Notifications are blocked for Tesoro. Allow them in your browser or phone settings, then come back here.",
+    "Notifications are blocked for VIIV. Allow them in your browser or phone settings, then come back here.",
 };
 
 /** Settings → Notifications → Admin: new-account push, per device. */

@@ -257,7 +257,7 @@ export const RELEASES: Release[] = [
     changes: [
       {
         key: true,
-        text: "Tesoro has a Pro tier. Everybody already here is on it, with no end date — nothing you can see or do has changed, and nothing of yours is going anywhere. A PRO chip sits on your picture.",
+        text: "VIIV has a Pro tier. Everybody already here is on it, with no end date — nothing you can see or do has changed, and nothing of yours is going anywhere. A PRO chip sits on your picture.",
       },
       {
         text: "A free account gets My Cars, the catalogue and up to 50 cars. Favourites, Collection, Duplicates, Habit, Sellers, My Orders and Pre Orders are Pro, and so is the card scanner.",
@@ -750,7 +750,7 @@ export const RELEASES: Release[] = [
       { text: "Add in bulk is a computer's job, and says so on a phone instead of half working." },
       { text: "The search field on a phone has its top edge back." },
       {
-        text: "Tesoro has been updated stops appearing when nothing has been deployed.",
+        text: "VIIV has been updated stops appearing when nothing has been deployed.",
       },
       {
         admin: true,
@@ -841,7 +841,7 @@ export const RELEASES: Release[] = [
         text: "Assortments read as a table, and a pack counts as one box by definition.",
       },
       {
-        text: "The calendar is a Tesoro page now: it carries what each day cost and reads as a month when you want one.",
+        text: "The calendar is a VIIV page now: it carries what each day cost and reads as a month when you want one.",
       },
       { text: "A pre-order is due in a month rather than on a day it was never promised on." },
       { text: "A casting says what it typically sold for, or its MRP." },

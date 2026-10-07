@@ -288,7 +288,7 @@ ALTER TABLE public.${table} ADD COLUMN IF NOT EXISTS "Shipping Cost" NUMERIC;`;
   const createCatalogTableSql = useMemo(() => {
     const table = config.tableName.trim() || "tesoro_raw";
     return `-- =============================================================================
--- Tesoro Car Catalog Backend Table (public.tesoro_car_catalog)
+-- VIIV Car Catalog Backend Table (public.tesoro_car_catalog)
 -- Run in Supabase SQL Editor:
 -- =============================================================================
 

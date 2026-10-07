@@ -266,7 +266,7 @@ export async function sendTest(request: Request) {
   if (!subs.length) return json({ error: "Turn notifications on for this device first." }, 400);
   const sent = await deliver(subs, () => ({
     kind: "test",
-    title: "Tesoro notifications are on",
+    title: "VIIV notifications are on",
     body: "New accounts will show up here with Approve and Reject.",
     tag: "test",
     url: "/settings?tab=notifications",

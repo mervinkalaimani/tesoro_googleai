@@ -19,13 +19,13 @@ import { ProGate } from "@/components/pro-gate";
 export const Route = createFileRoute("/duplicates")({
   head: () => ({
     meta: [
-      { title: "Duplicates | Tesoro" },
+      { title: "Duplicates | VIIV" },
       {
         name: "description",
         content:
           "Find repeated diecast cars using your own matching attributes such as make, model, variant, year, brand, and colour.",
       },
-      { property: "og:title", content: "Duplicates | Tesoro" },
+      { property: "og:title", content: "Duplicates | VIIV" },
       {
         property: "og:description",
         content:

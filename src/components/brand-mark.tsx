@@ -54,7 +54,7 @@ export function HomeScreenMark({ className = "" }: { className?: string }) {
   return (
     <span
       role="img"
-      aria-label="Tesoro"
+      aria-label="VIIV"
       className={`block text-foreground [&>svg]:block ${className}`}
       dangerouslySetInnerHTML={{ __html: HOME_MARK_SVG }}
     />
@@ -65,7 +65,7 @@ export function SplashMark({ className = "" }: { className?: string }) {
   return (
     <span
       role="img"
-      aria-label="Tesoro"
+      aria-label="VIIV"
       className={`block text-foreground [&>svg]:block ${className}`}
       dangerouslySetInnerHTML={{ __html: SPLASH_MARK_SVG }}
     />
