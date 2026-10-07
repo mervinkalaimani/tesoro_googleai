@@ -26,6 +26,20 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 289,
+    at: "2026-10-07T09:50",
+    changes: [
+      {
+        admin: true,
+        key: true,
+        text: "Projected earnings is a what-if. One field per way of being on the books — free, then every plan and length, then each plan with no end date — seeded from the accounts that exist and typed over to ask what something else would earn. Three lengths a plan makes nine of them, and adding a length adds two more on its own.",
+      },
+      {
+        text: "A saving says how good it is as well as how much: Save ₹15 · 3% off rather than Save ₹15, which means nothing until you know what it is off.",
+      },
+    ],
+  },
+  {
     build: 288,
     at: "2026-10-07T09:20",
     changes: [

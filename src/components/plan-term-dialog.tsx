@@ -71,6 +71,10 @@ export function PlanTermDialog() {
           {options.map((o) => {
             const saving = plan ? savingOf(prices, plan, o.months) : 0;
             const perMonth = Math.round(o.price / o.months);
+            // The rupees say how much, the percentage says how good. A saving
+            // of ₹15 means nothing until you know what it is off.
+            const full = saving + o.price;
+            const off = full > 0 ? Math.round((saving / full) * 100) : 0;
             const best = o.months === longest && options.length > 1;
             return (
               <button
@@ -90,7 +94,8 @@ export function PlanTermDialog() {
                     <span className="text-sm font-semibold">{monthsLabel(o.months)}</span>
                     {saving > 0 && (
                       <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
-                        Save ₹{saving}
+                        Save ₹{saving.toLocaleString()}
+                        {off > 0 && ` · ${off}% off`}
                       </span>
                     )}
                   </div>

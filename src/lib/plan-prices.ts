@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { supabase } from "@/integrations/supabase/client";
-import { PLAN_PRICES, type PaidPlan } from "@/lib/tiers";
+import { PLAN_PRICES, type PaidPlan, type Plan } from "@/lib/tiers";
 
 /**
  * What the plans cost, read from the database rather than compiled in.
@@ -121,6 +121,83 @@ export function monthsLabel(months: number): string {
 
 /** Who is on what, for the projection. */
 export type Subscriber = { plan: PaidPlan; months: number; forever: boolean };
+
+/**
+ * Every way an account can be on the books.
+ *
+ * One per plan and length that the prices table actually offers, plus the two
+ * with no end date, plus free — which earns nothing and is here because a
+ * projection that cannot say how many people are not paying is only half an
+ * answer. The list grows on its own: adding a length adds two scenarios, so
+ * nothing here has to be kept in step by hand.
+ */
+export type Scenario = {
+  key: string;
+  plan: Plan;
+  /** Months per run. Zero means no end date, and free has none either. */
+  months: number;
+  forever: boolean;
+  label: string;
+  /** What one account on it is worth a month. Zero for free. */
+  perMonth: number;
+};
+
+export function scenarios(rows: PriceRow[]): Scenario[] {
+  const out: Scenario[] = [
+    {
+      key: "free",
+      plan: "free",
+      months: 0,
+      forever: false,
+      label: "Free",
+      perMonth: 0,
+    },
+  ];
+  for (const plan of ["plus", "pro"] as const) {
+    const name = plan === "plus" ? "Plus" : "Pro";
+    for (const r of pricesFor(rows, plan)) {
+      out.push({
+        key: `${plan}-${r.months}`,
+        plan,
+        months: r.months,
+        forever: false,
+        label: `${name} · ${monthsLabel(r.months).toLowerCase()}`,
+        perMonth: Math.round(r.price / r.months),
+      });
+    }
+    out.push({
+      key: `${plan}-forever`,
+      plan,
+      months: 1,
+      forever: true,
+      label: `${name} · no end date`,
+      // Counted at the monthly price, which is the least it could be worth.
+      perMonth: monthlyOf(rows, plan),
+    });
+  }
+  return out;
+}
+
+/** A count against each scenario, as the accounts the projection takes. */
+export function subscribersFromCounts(
+  list: Scenario[],
+  counts: Record<string, number>,
+): Subscriber[] {
+  const out: Subscriber[] = [];
+  for (const s of list) {
+    if (s.plan === "free") continue;
+    const n = Math.max(0, Math.floor(counts[s.key] ?? 0));
+    for (let i = 0; i < n; i++) {
+      out.push({ plan: s.plan as PaidPlan, months: s.months, forever: s.forever });
+    }
+  }
+  return out;
+}
+
+/** Which scenario an account that exists today falls into. */
+export function scenarioKeyOf(s: Subscriber): string {
+  return s.forever ? `${s.plan}-forever` : `${s.plan}-${s.months}`;
+}
 
 /**
  * What the accounts on the books are worth at these prices.

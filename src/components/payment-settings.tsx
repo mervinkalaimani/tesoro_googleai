@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Lightbulb, Plus, Trash2 } from "lucide-react";
+import { Check, Loader2, Lightbulb, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,14 @@ import {
   planPrices,
   pricesFor,
   project,
+  scenarioKeyOf,
+  scenarios,
+  subscribersFromCounts,
   suggestions,
   type PriceRow,
   type Subscriber,
 } from "@/lib/plan-prices";
+import { SCANS_PER_MONTH } from "@/lib/tiers";
 import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PaidPlan } from "@/lib/tiers";
@@ -116,7 +120,38 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
     toast.success("Prices saved", { description: "Every plan modal shows them from now on." });
   };
 
-  const projection = useMemo(() => project(rows, subscribers), [rows, subscribers]);
+  /**
+   * How many accounts are on each way of paying.
+   *
+   * Seeded from the accounts that exist, then typed over. The projection reads
+   * these rather than the live list, so the panel answers "what would this
+   * earn" as readily as "what does it earn" — and Reset puts today back.
+   */
+  const list = useMemo(() => scenarios(rows), [rows]);
+  const actual = useMemo(() => {
+    const out: Record<string, number> = {};
+    for (const s of subscribers) {
+      const k = scenarioKeyOf(s);
+      out[k] = (out[k] ?? 0) + 1;
+    }
+    return out;
+  }, [subscribers]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [touched, setTouched] = useState(false);
+
+  // Until somebody types, the fields are what is actually on the books.
+  useEffect(() => {
+    if (!touched) setCounts(actual);
+  }, [actual, touched]);
+
+  const setCount = (key: string, n: number) => {
+    setTouched(true);
+    setCounts((prev) => ({ ...prev, [key]: Math.max(0, Math.floor(n || 0)) }));
+  };
+
+  const modelled = useMemo(() => subscribersFromCounts(list, counts), [list, counts]);
+  const projection = useMemo(() => project(rows, modelled), [rows, modelled]);
+  const freeCount = Math.max(0, Math.floor(counts["free"] ?? 0));
   const advice = useMemo(() => suggestions(rows), [rows]);
 
   if (loading) {
@@ -136,9 +171,10 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
           Projected earnings
         </h2>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          From the {projection.paying} paying {projection.paying === 1 ? "account" : "accounts"} as
-          they stand today, at the prices below. Accounts with no end date are counted at their
-          plan&rsquo;s monthly price.
+          {touched
+            ? "From the numbers typed below, at the prices on this screen."
+            : "From the accounts as they stand today. Change any number below to ask what something else would earn."}{" "}
+          Accounts with no end date are counted at their plan&rsquo;s monthly price.
         </p>
         <div className="mt-3 grid gap-2 sm:grid-cols-3">
           <Money label="A month" value={projection.monthly} tone="strong" />
@@ -150,9 +186,88 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
           <Money label="Pro, a month" value={projection.byPlan.pro} small />
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          <strong>Committed, unbilled</strong> is what the longer runs already sold have left in
-          them — money that is spoken for but has not arrived yet.
+          <strong>Committed, unbilled</strong> is what the longer runs have left in them — money
+          that is spoken for but has not arrived yet.
         </p>
+
+        {/* ONE FIELD PER WAY OF BEING ON THE BOOKS. The table decides how many
+            there are: a length added above is two more here, because a plan
+            can be bought for it or held with no end date. */}
+        <div className="mt-4 border-t border-border/60 pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Accounts, by how they pay
+            </h3>
+            <span className="text-[11px] text-muted-foreground">
+              {list.length} ways · {projection.paying.toLocaleString()} paying
+            </span>
+            {touched && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-7 gap-1 text-[11px]"
+                onClick={() => {
+                  setTouched(false);
+                  setCounts(actual);
+                }}
+              >
+                <RotateCcw className="size-3.5" />
+                Back to today
+              </Button>
+            )}
+          </div>
+
+          <div className="mt-2 grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {list.map((sc) => {
+              const n = Math.max(0, Math.floor(counts[sc.key] ?? 0));
+              const earns = sc.perMonth * n;
+              const was = actual[sc.key] ?? 0;
+              return (
+                <label
+                  key={sc.key}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border px-2.5 py-1.5",
+                    sc.plan === "free"
+                      ? "border-border/60 bg-muted/10"
+                      : "border-border/60 bg-muted/20",
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[12px] font-medium">{sc.label}</span>
+                    <span className="block text-[10px] tabular-nums text-muted-foreground">
+                      {sc.plan === "free"
+                        ? `${SCANS_PER_MONTH.free} scans a month each, no revenue`
+                        : `₹${sc.perMonth.toLocaleString()} a month each${earns ? ` · ₹${earns.toLocaleString()}` : ""}`}
+                    </span>
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={String(n)}
+                    onChange={(e) => setCount(sc.key, Number(e.target.value))}
+                    className={cn(
+                      "h-8 w-16 shrink-0 text-center tabular-nums",
+                      touched && n !== was && "border-primary/60",
+                    )}
+                    aria-label={`Accounts on ${sc.label}`}
+                  />
+                </label>
+              );
+            })}
+          </div>
+
+          {freeCount > 0 && (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              {freeCount.toLocaleString()} free {freeCount === 1 ? "account" : "accounts"} earn
+              nothing and can still spend up to{" "}
+              {(freeCount * SCANS_PER_MONTH.free!).toLocaleString()} card scans a month between
+              them. They are here because what a price earns depends on how many people are not
+              paying it.
+            </p>
+          )}
+        </div>
       </section>
 
       {/* WHAT THEY COST */}

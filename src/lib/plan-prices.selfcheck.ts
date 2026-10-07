@@ -7,6 +7,9 @@ import {
   pricesFor,
   project,
   savingOf,
+  scenarioKeyOf,
+  scenarios,
+  subscribersFromCounts,
   suggestions,
   type PriceRow,
   type Subscriber,
@@ -118,5 +121,47 @@ assert.ok(noMiddle.some((a) => a.key === "pro-no-middle"));
 // Well-priced: a middle at ~88% of the year, and the year cheapest per month.
 const good = suggestions(rows(["pro", 1, 100], ["pro", 6, 530], ["pro", 12, 600]));
 assert.equal(good.length, 0, `expected nothing to flag, got ${good.map((a) => a.key).join(", ")}`);
+
+// ---- every way of being on the books ----
+// Free, then each plan's lengths, then each plan with no end date: three
+// lengths a plan gives nine.
+const ways = scenarios(DEFAULT_PRICES);
+assert.equal(ways.length, 9);
+assert.equal(ways[0]!.key, "free");
+assert.equal(ways.filter((w) => w.plan === "plus").length, 4);
+assert.equal(ways.filter((w) => w.forever).length, 2);
+assert.equal(new Set(ways.map((w) => w.key)).size, ways.length, "no key twice");
+
+// Adding a length adds two ways, one of each plan, without anything being
+// kept in step by hand.
+assert.equal(scenarios([...DEFAULT_PRICES, ...rows(["pro", 3, 280])]).length, 10);
+
+// What one account on each is worth a month.
+assert.equal(ways.find((w) => w.key === "free")!.perMonth, 0);
+assert.equal(ways.find((w) => w.key === "pro-1")!.perMonth, 99);
+assert.equal(ways.find((w) => w.key === "pro-12")!.perMonth, Math.round(999 / 12));
+assert.equal(ways.find((w) => w.key === "pro-forever")!.perMonth, 99, "counted at monthly");
+
+// A count against each turns into that many accounts, and free never becomes
+// one: it earns nothing and would only dilute the paying figure.
+const made = subscribersFromCounts(ways, { free: 50, "pro-12": 2, "plus-forever": 1 });
+assert.equal(made.length, 3);
+assert.equal(made.filter((m) => m.plan === "pro" && m.months === 12).length, 2);
+assert.equal(made.filter((m) => m.forever).length, 1);
+assert.deepEqual(subscribersFromCounts(ways, {}), [], "no counts is nobody");
+assert.deepEqual(subscribersFromCounts(ways, { "pro-1": -5 }), [], "a negative count is none");
+assert.equal(subscribersFromCounts(ways, { "pro-1": 2.7 }).length, 2, "two and a bit is two");
+
+// An account that exists today lands in the field that describes it.
+assert.equal(scenarioKeyOf({ plan: "pro", months: 12, forever: false }), "pro-12");
+assert.equal(scenarioKeyOf({ plan: "plus", months: 6, forever: true }), "plus-forever");
+assert.ok(ways.some((w) => w.key === scenarioKeyOf({ plan: "plus", months: 6, forever: false })));
+
+// And the two halves agree: counts in, projection out, same answer as the
+// accounts they stand for.
+assert.equal(
+  project(DEFAULT_PRICES, subscribersFromCounts(ways, { "pro-1": 3 })).monthly,
+  99 * 3,
+);
 
 console.log("plan prices selfcheck: ok");
