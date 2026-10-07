@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/select";
 import { TierAvatar } from "@/components/tier-avatar";
 import { AccountCard } from "@/components/account-card";
+import { PlanSummary, SubscriptionPanel } from "@/components/subscription-panel";
 import { AdminPushCard } from "@/components/admin-push-card";
 import { FavouriteDetector } from "@/components/favourite-detector";
 import { IdRebuild } from "@/components/shipping-id-rebuild";
@@ -102,6 +103,7 @@ export const Route = createFileRoute("/settings")({
 type SettingsView =
   | "root"
   | "account"
+  | "subscription"
   | "display"
   | "notifications"
   | "diagnostics"
@@ -128,6 +130,9 @@ function parseTab(tab?: string): SettingsView {
   if (!tab) return "root";
   const t = tab.toLowerCase().trim();
   if (t === "account" || t === "profile") return "account";
+  if (t === "subscription" || t === "subscriptions" || t === "plan" || t === "billing") {
+    return "subscription";
+  }
   if (t === "display" || t === "preferences" || t === "appearance") return "display";
   if (t === "notifications" || t === "alerts") return "notifications";
   if (t === "diagnostics" || t === "diag") return "diagnostics";
@@ -347,6 +352,25 @@ export function SettingsPage() {
             <ChevronRight className="size-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
           </button>
 
+          {!isGuest && (
+            <button
+              type="button"
+              onClick={() => changeView("subscription")}
+              className="group flex w-full items-center gap-3.5 rounded-2xl border border-border/80 bg-card px-4 py-3.5 text-left shadow-xs transition-all hover:border-border hover:bg-muted/30 active:scale-[0.995]"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <Sparkles className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Subscription</span>
+                <p className="truncate text-xs text-muted-foreground">
+                  <PlanSummary />
+                </p>
+              </div>
+              <ChevronRight className="size-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </button>
+          )}
+
           {/* Grouped General Settings Card */}
           <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
             {/* HOMEPAGE — above Display, because it is about what you see
@@ -511,6 +535,13 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE 1: ACCOUNT (With Back Button to Settings)                         */}
       {/* ========================================================================= */}
+      {view === "subscription" && (
+        <div className="space-y-4">
+          <SubpageHeader title="Subscription" onBack={() => changeView("root")} />
+          <SubscriptionPanel />
+        </div>
+      )}
+
       {view === "account" && (
         <div className="space-y-5">
           <SubpageHeader title="Account" onBack={() => changeView("root")} />

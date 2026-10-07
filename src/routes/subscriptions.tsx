@@ -51,6 +51,7 @@ type Row = {
   pro_since: string | null;
   pro_until: string | null;
   trial_started_on: string | null;
+  cancel_requested_at: string | null;
   pro_requested_at: string | null;
   pro_requested_plan: string | null;
   pro_requested_term: string | null;
@@ -390,6 +391,18 @@ function SubscriptionRow({
             {u.is_owner && (
               <Badge variant="outline" className="shrink-0 border-border text-muted-foreground">
                 Owner
+              </Badge>
+            )}
+            {/* Said by the account itself. It changes nothing here — the plan
+                runs to its date either way — but renewing somebody who has
+                said they are leaving is the mistake this prevents. */}
+            {u.cancel_requested_at && (
+              <Badge
+                variant="outline"
+                className="shrink-0 border-amber-500/50 text-amber-600 dark:text-amber-400"
+                title="This account has said it is not renewing"
+              >
+                Not renewing
               </Badge>
             )}
           </div>
