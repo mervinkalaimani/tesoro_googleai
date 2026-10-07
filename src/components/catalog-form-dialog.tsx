@@ -58,6 +58,7 @@ import { MergeChoiceDialog } from "@/components/merge-castings";
 import { carSubLineParts } from "@/lib/car-subline";
 import { buildCarName } from "@/lib/car-name";
 import { useAuth } from "@/lib/auth-store";
+import { scansLeft } from "@/lib/tiers";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import { cn } from "@/lib/utils";
@@ -107,7 +108,8 @@ export function CatalogFormDialog({
   canDelete?: boolean;
   onDelete?: () => void;
 }) {
-  const { user, profile, isAdmin, isPro } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
+  const scansRemaining = scansLeft(profile);
   const isNew = entry === "new" || !entry;
   /** The entry being edited, when there is one: what a merge folds away. */
   const entryId = entry && entry !== "new" ? entry.car_id : "";
@@ -1199,12 +1201,22 @@ export function CatalogFormDialog({
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={!isPro}
-                    title={isPro ? undefined : "Scanning a card is part of Pro"}
+                    disabled={scansRemaining === 0}
+                    title={
+                      scansRemaining === null
+                        ? undefined
+                        : scansRemaining === 0
+                          ? "No scans left this month"
+                          : `${scansRemaining} scans left this month`
+                    }
                     className="h-8 shrink-0 gap-1.5 px-3 text-xs"
                     onClick={() => setScanOpen(true)}
                   >
-                    {isPro ? <ScanLine className="size-3.5" /> : <Lock className="size-3.5" />}
+                    {scansRemaining === 0 ? (
+                      <Lock className="size-3.5" />
+                    ) : (
+                      <ScanLine className="size-3.5" />
+                    )}
                     Scan card
                   </Button>
                 )

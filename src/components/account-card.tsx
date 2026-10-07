@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Mail, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+import { PhoneField } from "@/components/phone-field";
 import { TierAvatar } from "@/components/tier-avatar";
 import { TierLine } from "@/components/tier-line";
 import { Button } from "@/components/ui/button";
@@ -280,12 +281,7 @@ export function AccountCard() {
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Phone</Label>
-            <Input
-              value={fields.phone}
-              onChange={(e) => set("phone", e.target.value)}
-              placeholder="+91 98765 43210"
-              autoComplete="tel"
-            />
+            <PhoneField value={fields.phone} onChange={(v) => set("phone", v)} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Date of birth</Label>

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { callerFrom } from "@/lib/supabase-server";
+import { callerFrom, callerSupabase } from "@/lib/supabase-server";
 import { GoogleGenAI, Type } from "@google/genai";
 
 import { fieldsFromChatCompletion } from "@/lib/scan-reply";
@@ -181,10 +181,29 @@ async function handler({ request }: { request: Request }) {
   if (!caller) {
     return json({ error: "Sign in to scan a card." }, 401);
   }
-  if (!caller.isPro) {
+  /**
+   * And what it costs them.
+   *
+   * The claim is written as the caller through their own token, so the count
+   * cannot be spent on somebody else's account, and it happens before the
+   * model call rather than after: a scan that failed to be paid for should not
+   * have been taken.
+   */
+  const { data: claim, error: claimError } = await callerSupabase(caller.token).rpc(
+    "tesoro_claim_scan",
+  );
+  if (claimError) {
+    return json({ error: "Could not check your scan allowance. Try again in a moment." }, 503);
+  }
+  const taken = (Array.isArray(claim) ? claim[0] : claim) as
+    { allowed: boolean; used: number; allowance: number | null } | undefined;
+  if (!taken?.allowed) {
+    const n = taken?.allowance ?? 0;
     return json(
-      { error: "Scanning a card is part of Pro. Ask an admin to turn it on for your account." },
-      403,
+      {
+        error: `That is all ${n} scans for this month. The count resets on the 1st, and a bigger plan lifts it.`,
+      },
+      429,
     );
   }
 

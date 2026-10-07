@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import { catalogueKey, useCatalogueSearch, type CatalogueCar } from "@/lib/catalogue-search";
 import { useAuth } from "@/lib/auth-store";
+import { scansLeft } from "@/lib/tiers";
 import { RARITIES, RARITY_LABEL, rarityOf, type Rarity } from "@/lib/rarity";
 import { CAR_CONDITIONS, CARD_CONDITIONS, cardGradeForCarGrade, describe } from "@/lib/condition";
 import { formatDayMonthYear, inrFull } from "@/lib/format";
@@ -496,7 +497,8 @@ export function CarFormDialog({
   // Read here rather than beside the pack fields below: the assortment options
   // narrow by what the catalogue holds, and those memos run before that point.
   const { catalog, addCatalogCar, updateCatalogCar, packMembers, setPackMembers } = useCatalog();
-  const { isGuest, isAdmin, isPro } = useAuth();
+  const { isGuest, isAdmin, profile } = useAuth();
+  const scansRemaining = scansLeft(profile);
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
   // A broken image is the photo field's business now — it shows the failure in
@@ -2663,26 +2665,34 @@ export function CarFormDialog({
                 </div>
 
                 <div className="grid grid-cols-2 gap-2.5">
-                  {/* The route refuses a free account before it spends a model
-                      call. This is so the refusal is read before the camera
-                      opens rather than after. */}
+                  {/* The route counts the scan before it spends a model call.
+                      This is so what is left is read before the camera opens
+                      rather than after. */}
                   <button
                     type="button"
-                    disabled={!isPro}
+                    disabled={scansRemaining === 0}
                     onClick={() => setScanOpen(true)}
-                    title={isPro ? undefined : "Scanning a card is part of Pro"}
+                    title={
+                      scansRemaining === 0
+                        ? "No scans left this month"
+                        : "Read make, model and series off the card"
+                    }
                     className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
                   >
                     <span className="flex items-center gap-2 text-sm font-semibold">
-                      {isPro ? (
-                        <ScanLine className="size-4 text-primary" />
-                      ) : (
+                      {scansRemaining === 0 ? (
                         <Lock className="size-4 text-muted-foreground" />
+                      ) : (
+                        <ScanLine className="size-4 text-primary" />
                       )}
                       Scan a card
                     </span>
                     <span className="text-[11px] text-muted-foreground">
-                      {isPro ? "Read make, model and series off the card" : "Part of Pro"}
+                      {scansRemaining === null
+                        ? "Read make, model and series off the card"
+                        : scansRemaining === 0
+                          ? "None left this month"
+                          : `${scansRemaining} left this month`}
                     </span>
                   </button>
                   {onSwitchToBulk && (

@@ -16,6 +16,7 @@ import {
 import { useOAuthProviders } from "@/lib/deployment-settings";
 import { rememberSession, setRememberSession } from "@/integrations/supabase/session-storage";
 import { SplashMark } from "@/components/brand-mark";
+import { PhoneField } from "@/components/phone-field";
 import { Face, ProfilePicker } from "@/components/profile-picker";
 import { forgetProfile, knownProfiles, type KnownProfile } from "@/lib/known-profiles";
 
@@ -433,15 +434,7 @@ function LoginPage() {
               <Label htmlFor="phone">
                 Phone number <span className="text-muted-foreground">(optional)</span>
               </Label>
-              <Input
-                id="phone"
-                type="tel"
-                autoComplete="tel"
-                inputMode="tel"
-                placeholder="+91 98765 43210"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
+              <PhoneField id="phone" value={phone} onChange={setPhone} />
               <p className="text-xs text-muted-foreground">
                 Stored for later — sign-in by one-time code isn&apos;t switched on yet.
               </p>

@@ -28,7 +28,32 @@ export type Caller = {
   uid: string;
   /** Whether this account is on Pro today, straight from the database. */
   isPro: boolean;
+  /** Their own access token, for anything that must be written as them. */
+  token: string;
 };
+
+/**
+ * A client that acts as the caller rather than as the deployment.
+ *
+ * Needed by anything that writes through a security definer function keyed on
+ * auth.uid(): the server's own client has no session, so auth.uid() there is
+ * null. Passing the uid as an argument instead would let one account spend
+ * another's allowance, which is the whole thing worth preventing.
+ */
+export function callerSupabase(token: string): SupabaseClient {
+  const url =
+    (process.env["SUPABASE_URL"] && !process.env["SUPABASE_URL"].includes("pllpyzsfuhpsmqbxgarw")
+      ? process.env["SUPABASE_URL"]
+      : null) || PROJECT_URL;
+  const key =
+    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
+    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    "sb_publishable_t8mahOsDrNTnt-YeFGkgTA_ugnPJrpu";
+  return createClient(url, key, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
 
 /**
  * Who sent this request, from the bearer token they sent with it.
@@ -54,5 +79,5 @@ export async function callerFrom(request: Request): Promise<Caller | null> {
   if (error || !uid) return null;
 
   const { data: pro } = await client.rpc("is_tesoro_pro", { _uid: uid });
-  return { uid, isPro: pro === true };
+  return { uid, isPro: pro === true, token };
 }

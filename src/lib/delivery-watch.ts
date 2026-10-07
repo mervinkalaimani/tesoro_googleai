@@ -70,18 +70,22 @@ export function arrivingWithin(
   horizon.setDate(horizon.getDate() + days);
   const last = localDay(horizon);
 
-  return cars
-    .flatMap((car) => {
-      if (!isOpenOrder(car.status)) return [];
-      const day = expectedDay(car);
-      if (!day || day < today || day > last) return [];
-      return [{ car, day }];
-    })
-    // Closest to your hands first, then soonest. A parcel already with a
-    // courier belongs at the head of the shelf even when a pre-order two days
-    // further out has the earlier date: one is arriving, the other is a guess
-    // at a release. Within a status the day still decides.
-    .sort((a, b) => statusRank(a.car.status) - statusRank(b.car.status) || a.day.localeCompare(b.day));
+  return (
+    cars
+      .flatMap((car) => {
+        if (!isOpenOrder(car.status)) return [];
+        const day = expectedDay(car);
+        if (!day || day < today || day > last) return [];
+        return [{ car, day }];
+      })
+      // Closest to your hands first, then soonest. A parcel already with a
+      // courier belongs at the head of the shelf even when a pre-order two days
+      // further out has the earlier date: one is arriving, the other is a guess
+      // at a release. Within a status the day still decides.
+      .sort(
+        (a, b) => statusRank(a.car.status) - statusRank(b.car.status) || a.day.localeCompare(b.day),
+      )
+  );
 }
 
 export type DeliveryGroup = {

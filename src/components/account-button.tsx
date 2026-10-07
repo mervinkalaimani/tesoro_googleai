@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { ChevronRight, Eye, EyeOff, Settings, Sparkles, Table } from "lucide-react";
 
 import { openProDialog } from "@/components/pro-dialog";
+import { paidPlanOf } from "@/lib/tiers";
 import { TierAvatar } from "@/components/tier-avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -124,7 +125,7 @@ function MobileAccountMenu() {
 
           {/* The same offer the sidebar makes, in the only place a phone has
               a sidebar: under the name, above everything it is not unlocking. */}
-          {!isPro && !isGuest && (
+          {paidPlanOf(profile) !== "pro" && !isGuest && (
             <button
               type="button"
               onClick={() => {
@@ -136,7 +137,7 @@ function MobileAccountMenu() {
               <span aria-hidden className="pro-sheen pointer-events-none absolute inset-0" />
               <span className="relative flex items-center gap-2.5 rounded-2xl px-3.5 py-3 transition-colors group-hover/pro:bg-muted/40">
                 <Sparkles className="size-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold">Get Pro</span>
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold">Subscribe now</span>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
               </span>
             </button>

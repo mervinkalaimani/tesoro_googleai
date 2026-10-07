@@ -168,6 +168,36 @@ export function savingVsMonthly(plan: PaidPlan, term: PlanTerm): number {
   if (!option || option.months < 2) return 0;
   return Math.max(0, monthlyPrice(plan) * option.months - option.price);
 }
+/**
+ * Card scans a month, by tier. Null is no limit.
+ *
+ * Every scan spends an API key, so the database counts them — tesoro_claim_scan()
+ * — and this is only what the screen says about it. A scanner nobody free may
+ * touch was a feature most people never saw; ten a month is enough to find out
+ * whether it is worth paying for.
+ */
+export const SCANS_PER_MONTH: Record<Plan, number | null> = {
+  free: 10,
+  plus: 20,
+  pro: null,
+};
+
+/** How many scans are left this month. Null is unlimited; 0 is none. */
+export function scansLeft(
+  p: (TierFields & { scan_month?: string | null; scans_used?: number | null }) | null | undefined,
+  today: Date = new Date(),
+): number | null {
+  const allowance = SCANS_PER_MONTH[planOf(p, today)];
+  if (allowance === null) return null;
+  // A count from another month is a count of nothing: the database zeroes it
+  // on the next claim, and showing it until then would be showing last month's.
+  const month = parseDMY(p?.scan_month ?? null);
+  const stale =
+    !month || month.getMonth() !== today.getMonth() || month.getFullYear() !== today.getFullYear();
+  const used = stale ? 0 : (p?.scans_used ?? 0);
+  return Math.max(0, allowance - used);
+}
+
 /** Days of notice before Pro ends. */
 export const EXPIRY_WARNING_DAYS = 5;
 /** How long a trial runs, counting the day it starts. tesoro_trial_days() in the database. */

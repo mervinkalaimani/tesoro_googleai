@@ -26,6 +26,22 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 285,
+    at: "2026-10-07T07:00",
+    changes: [
+      {
+        key: true,
+        text: "The card scanner is on every plan now, as an allowance rather than a lock: ten scans a month on Free, twenty on Plus, as many as you like on Pro. The count is kept by the database, resets on the 1st, and the button says how many are left before the camera opens.",
+      },
+      {
+        text: "Phone numbers are a country and a number. Pick the country, type the digits — the field takes as many as that country uses, and what is stored is the full international number whether or not anybody typed a code.",
+      },
+      {
+        text: "Get Pro is Subscribe now, and it is shown to anyone who has not bought Pro — including during a trial, which is when there is a fortnight to decide.",
+      },
+    ],
+  },
+  {
     build: 284,
     at: "2026-10-07T06:10",
     changes: [

@@ -22,6 +22,9 @@ export type Country = {
 
 export const COUNTRIES: Country[] = [
   { iso2: "IN", name: "India", dial: "91", min: 10, max: 10 },
+  // Out of alphabetical order on purpose: the United States and Canada share
+  // +1, and whichever is listed first is the one a stored +1 number reads as.
+  { iso2: "US", name: "United States", dial: "1", min: 10, max: 10 },
   { iso2: "AE", name: "United Arab Emirates", dial: "971", min: 9, max: 9 },
   { iso2: "AU", name: "Australia", dial: "61", min: 9, max: 9 },
   { iso2: "BD", name: "Bangladesh", dial: "880", min: 10, max: 10 },
@@ -60,7 +63,6 @@ export const COUNTRIES: Country[] = [
   { iso2: "TH", name: "Thailand", dial: "66", min: 9, max: 9 },
   { iso2: "TR", name: "Turkey", dial: "90", min: 10, max: 10 },
   { iso2: "TW", name: "Taiwan", dial: "886", min: 9, max: 9 },
-  { iso2: "US", name: "United States", dial: "1", min: 10, max: 10 },
   { iso2: "VN", name: "Vietnam", dial: "84", min: 9, max: 10 },
   { iso2: "ZA", name: "South Africa", dial: "27", min: 9, max: 9 },
 ];

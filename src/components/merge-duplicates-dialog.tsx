@@ -297,7 +297,11 @@ function GroupRow({ group, onOpen }: { group: DuplicateGroup; onOpen: () => void
     >
       <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded bg-muted">
         {group.cars[0].image_url ? (
-          <img src={transformImageUrl(group.cars[0].image_url, "thumb")} alt="" className="size-full object-cover" />
+          <img
+            src={transformImageUrl(group.cars[0].image_url, "thumb")}
+            alt=""
+            className="size-full object-cover"
+          />
         ) : (
           <Car className="size-4 text-muted-foreground" />
         )}

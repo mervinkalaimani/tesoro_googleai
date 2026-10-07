@@ -14,6 +14,8 @@ import {
   PLAN_PRICES,
   proStatus,
   savingVsMonthly,
+  SCANS_PER_MONTH,
+  scansLeft,
   trialDaysLeft,
   trimWarning,
 } from "./tiers";
@@ -223,5 +225,39 @@ assert.equal(canStartTrial({ ...nobody, trial_started_on: null }), true);
 assert.equal(canStartTrial({ ...nobody, trial_started_on: "2026-01-01" }), false, "already used");
 assert.equal(canStartTrial({ is_pro: true, pro_plan: "pro", pro_until: null }), false, "on a plan");
 assert.equal(canStartTrial({ ...nobody, is_owner: true }), false);
+
+// ---- scans, counted by the month ----
+assert.equal(SCANS_PER_MONTH.free, 10);
+assert.equal(SCANS_PER_MONTH.plus, 20);
+assert.equal(SCANS_PER_MONTH.pro, null, "Pro is not counted");
+
+const thisMonth = "2026-10-01";
+assert.equal(scansLeft({ ...nobody, scan_month: thisMonth, scans_used: 0 }, today), 10);
+assert.equal(scansLeft({ ...nobody, scan_month: thisMonth, scans_used: 7 }, today), 3);
+assert.equal(scansLeft({ ...nobody, scan_month: thisMonth, scans_used: 10 }, today), 0);
+// Never negative: an allowance that drops mid-month should read as spent, not
+// as a number the screen has to explain.
+assert.equal(scansLeft({ ...nobody, scan_month: thisMonth, scans_used: 99 }, today), 0);
+
+// Last month's count is not this month's. The database zeroes it on the next
+// claim; until then the screen must not show it.
+assert.equal(scansLeft({ ...nobody, scan_month: "2026-09-01", scans_used: 10 }, today), 10);
+assert.equal(scansLeft({ ...nobody, scan_month: "2025-10-01", scans_used: 10 }, today), 10);
+assert.equal(
+  scansLeft({ ...nobody, scan_month: null, scans_used: 4 }, today),
+  10,
+  "no month, no count",
+);
+
+// The tier decides the allowance, and a trial gets the Pro one.
+assert.equal(
+  scansLeft(
+    { is_pro: true, pro_plan: "plus", pro_until: null, scan_month: thisMonth, scans_used: 5 },
+    today,
+  ),
+  15,
+);
+assert.equal(scansLeft({ ...nobody, trial_started_on: "2026-10-06" }, today), null);
+assert.equal(scansLeft({ ...nobody, is_owner: true }, today), null);
 
 console.log("tiers selfcheck: ok");

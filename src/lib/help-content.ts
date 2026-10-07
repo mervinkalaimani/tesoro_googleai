@@ -225,11 +225,12 @@ export async function saveHelpDoc(
       ? { body: patch.body, phone: patch.phone ?? "", email: patch.email ?? "" }
       : { body: patch.body };
 
-  const { error } = await db()
-    .from(TABLE)
-    .upsert({ key: ROW_KEY[key], value, updated_at: new Date().toISOString() }, {
+  const { error } = await db().from(TABLE).upsert(
+    { key: ROW_KEY[key], value, updated_at: new Date().toISOString() },
+    {
       onConflict: "key",
-    });
+    },
+  );
   if (error) return { error: error.message };
 
   cached = null;

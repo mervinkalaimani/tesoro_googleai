@@ -9,10 +9,10 @@
 export type ImageSize = "thumb" | "card" | "detail" | "full";
 
 const SIZES: Record<ImageSize, number> = {
-  thumb: 160,  // grid tiles, tiny previews
-  card: 320,   // list rows, compact cards
+  thumb: 160, // grid tiles, tiny previews
+  card: 320, // list rows, compact cards
   detail: 640, // dialog hero, full card
-  full: 1600,  // original (already downscaled at upload)
+  full: 1600, // original (already downscaled at upload)
 };
 
 /**
@@ -21,7 +21,10 @@ const SIZES: Record<ImageSize, number> = {
  * Only transforms images in our own Supabase storage; external URLs (wikis,
  * marketplaces) are returned unchanged since they can't be transformed.
  */
-export function transformImageUrl(url: string | null | undefined, size: ImageSize = "card"): string {
+export function transformImageUrl(
+  url: string | null | undefined,
+  size: ImageSize = "card",
+): string {
   if (!url) return "";
 
   try {
@@ -49,7 +52,10 @@ export function transformImageUrl(url: string | null | undefined, size: ImageSiz
  * Preload hint for the largest contentful paint image.
  * Add to <head> for above-the-fold hero images.
  */
-export function imageLinkPreload(url: string | null | undefined, size: ImageSize = "detail"): string {
+export function imageLinkPreload(
+  url: string | null | undefined,
+  size: ImageSize = "detail",
+): string {
   const transformed = transformImageUrl(url, size);
   if (!transformed) return "";
   return `<link rel="preload" as="image" href="${transformed}" />`;

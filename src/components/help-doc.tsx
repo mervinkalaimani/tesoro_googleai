@@ -169,7 +169,10 @@ export function HelpDoc({ docKey }: { docKey: HelpDocKey }) {
         {isContact && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <label className="px-1 text-xs font-medium text-muted-foreground" htmlFor="help-phone">
+              <label
+                className="px-1 text-xs font-medium text-muted-foreground"
+                htmlFor="help-phone"
+              >
                 Phone
               </label>
               <Input
@@ -182,7 +185,10 @@ export function HelpDoc({ docKey }: { docKey: HelpDocKey }) {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="px-1 text-xs font-medium text-muted-foreground" htmlFor="help-email">
+              <label
+                className="px-1 text-xs font-medium text-muted-foreground"
+                htmlFor="help-email"
+              >
                 Email
               </label>
               <Input

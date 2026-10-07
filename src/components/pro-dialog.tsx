@@ -6,6 +6,7 @@ import {
   FREE_CAR_LIMIT,
   PLUS_CAR_LIMIT,
   PLUS_EXTRA_CARS,
+  SCANS_PER_MONTH,
   TRIAL_DAYS,
   TRIAL_REMIND_DAYS,
   canStartTrial,
@@ -69,8 +70,13 @@ const SECTIONS = [
   "Favourites and Collection",
   "Orders, Pre Orders, Duplicates",
   "Habit and Sellers",
-  "Scan a card",
 ];
+
+/** The scanner is on every plan now; what differs is how much of it. */
+function scanLine(plan: Plan["key"]): Line {
+  const n = SCANS_PER_MONTH[plan];
+  return { label: n === null ? "Unlimited card scans" : `${n} card scans a month`, yes: true };
+}
 
 /**
  * Each plan states its own list rather than a shared matrix with exceptions.
@@ -87,6 +93,7 @@ const PLANS: Plan[] = [
     lines: [
       { label: `Add up to ${FREE_CAR_LIMIT} cars`, yes: true },
       { label: "The full catalogue", yes: true },
+      scanLine("free"),
       ...SECTIONS.map((label) => ({ label, yes: false })),
     ],
   },
@@ -99,6 +106,7 @@ const PLANS: Plan[] = [
     lines: [
       { label: `Add up to ${PLUS_CAR_LIMIT} cars`, yes: true },
       { label: "The full catalogue", yes: true },
+      scanLine("plus"),
       ...SECTIONS.map((label) => ({ label, yes: false })),
     ],
   },
@@ -112,6 +120,7 @@ const PLANS: Plan[] = [
     lines: [
       { label: "Add unlimited cars", yes: true },
       { label: "The full catalogue", yes: true },
+      scanLine("pro"),
       ...SECTIONS.map((label) => ({ label, yes: true })),
     ],
   },

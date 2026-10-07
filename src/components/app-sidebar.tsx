@@ -40,6 +40,7 @@ import { isPackMember, packMemberIds } from "@/lib/pack";
 import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { openProDialog } from "@/components/pro-dialog";
+import { paidPlanOf } from "@/lib/tiers";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
@@ -77,7 +78,7 @@ const NAV_GROUPS: {
 export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, query } = useApp();
-  const { isOwner, isGuest, isPro } = useAuth();
+  const { isOwner, isGuest, isPro, profile } = useAuth();
   const { source } = useCarsSource();
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
   const { packMembers } = useCatalog();
@@ -182,7 +183,7 @@ export function AppSidebar() {
         {/* Only for somebody who could act on it, and only where there is
             room for words: the collapsed rail is icons, and a bare sparkle
             there would say nothing. */}
-        {!isPro && !isGuest && (
+        {paidPlanOf(profile) !== "pro" && !isGuest && (
           // Sticky to the foot of the scrolling column: the sections above it
           // are a list that grows, and an upsell that scrolls away is one that
           // is only there for people who were not reading anything.
@@ -198,7 +199,7 @@ export function AppSidebar() {
               <span aria-hidden className="pro-sheen pointer-events-none absolute inset-0" />
               <span className="relative flex items-center gap-2 rounded-xl px-2.5 py-2 transition-colors group-hover/pro:bg-sidebar-accent">
                 <Sparkles className="size-3.5 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 truncate text-xs font-semibold">Get Pro</span>
+                <span className="min-w-0 flex-1 truncate text-xs font-semibold">Subscribe now</span>
                 <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />
               </span>
             </button>
