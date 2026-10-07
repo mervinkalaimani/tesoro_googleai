@@ -22,7 +22,7 @@ export type ThemePreference = "light" | "dark" | "oled" | "system";
 /** What actually gets painted, once "system" and "oled" have been resolved. */
 export type Theme = "light" | "dark";
 
-export type AccentColor = "crimson" | "blue" | "emerald" | "violet" | "amber";
+export type AccentColor = "viiv" | "crimson" | "blue" | "emerald" | "violet" | "amber";
 
 export const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "light", label: "Light" },
@@ -35,7 +35,14 @@ export const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
 export const themeOptionsFor = (phone: boolean) =>
   phone ? THEME_OPTIONS : THEME_OPTIONS.filter((o) => o.value !== "oled");
 
+/** What a browser that has never been told shows. */
+export const DEFAULT_ACCENT: AccentColor = "viiv";
+
 export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
+  // The colour the logo is drawn in, and what the app looks like out of the
+  // box. Crimson stays below it: it was the default until the rebrand, and
+  // everybody who has one stored keeps it.
+  { value: "viiv", label: "ViiV Orange" },
   { value: "crimson", label: "Crimson" },
   { value: "blue", label: "Blue" },
   { value: "emerald", label: "Emerald" },
@@ -215,7 +222,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState("");
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>("dark");
   const [systemTheme, setSystemTheme] = useState<Theme>("dark");
-  const [accentColor, setAccentColorState] = useState<AccentColor>("crimson");
+  const [accentColor, setAccentColorState] = useState<AccentColor>(DEFAULT_ACCENT);
   const [fontSize, setFontSizeState] = useState<FontSizePreference>("0");
   const [hideInvestment, setHideInvestmentState] = useState(true);
   const [transitEtaDays, setTransitEtaDaysState] = useState(21);
@@ -241,10 +248,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Load from localStorage on mount (avoids SSR hydration mismatch)
   useEffect(() => {
     const storedTheme = readLS<unknown>("dg.theme", "dark");
-    const storedAccent = readLS<unknown>("dg.accentColor", "crimson");
+    const storedAccent = readLS<unknown>("dg.accentColor", DEFAULT_ACCENT);
     const storedFontSize = readLS<unknown>("dg.fontSize", "0");
     setThemePreferenceState(isThemePreference(storedTheme) ? storedTheme : "dark");
-    setAccentColorState(isAccentColor(storedAccent) ? storedAccent : "crimson");
+    setAccentColorState(isAccentColor(storedAccent) ? storedAccent : DEFAULT_ACCENT);
     setFontSizeState(isFontSizePreference(storedFontSize) ? storedFontSize : "0");
     setHideInvestmentState(readLS<boolean>("dg.hideInvestment", true));
     setTransitEtaDaysState(readLS<number>("dg.transitEta", 21));

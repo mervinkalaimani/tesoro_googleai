@@ -195,8 +195,8 @@ try {
   }
   if (t === 'oled') { t = 'dark'; if (window.innerWidth < 768) document.documentElement.dataset.oled = 'on'; }
   document.documentElement.classList.toggle('dark', t === 'dark');
-  var a = JSON.parse(localStorage.getItem('dg.accentColor') || '"crimson"');
-  if (['crimson','blue','emerald','violet','amber'].indexOf(a) !== -1) document.documentElement.dataset.accent = a;
+  var a = JSON.parse(localStorage.getItem('dg.accentColor') || '"viiv"');
+  if (['viiv','crimson','blue','emerald','violet','amber'].indexOf(a) !== -1) document.documentElement.dataset.accent = a;
   var f = JSON.parse(localStorage.getItem('dg.fontSize') || '"0"');
   if (['-2','-1','0','+1','+2'].indexOf(f) !== -1) document.documentElement.dataset.fontSize = f;
   else document.documentElement.dataset.fontSize = '0';
@@ -243,13 +243,7 @@ try {
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html
-      lang="en"
-      className="dark"
-      data-accent="crimson"
-      data-font-size="0"
-      suppressHydrationWarning
-    >
+    <html lang="en" className="dark" data-accent="viiv" data-font-size="0" suppressHydrationWarning>
       <head>
         <HeadContent />
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />

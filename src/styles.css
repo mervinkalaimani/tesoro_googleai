@@ -50,6 +50,19 @@
 }
 
 /* Base Font Size Configuration (Reduced by 2pt by default across the app) */
+/*
+   ViiV Orange: the colour the logo is drawn in, #EF6413, as the app's own.
+
+   Written once here and referred to everywhere else, because a brand colour
+   typed out in nine places is a brand colour that drifts in one of them. The
+   ink that goes on top of it is near-black rather than white: white on this
+   orange is 3.2:1, which is enough for a border and not enough for a word.
+*/
+:root {
+  --viiv-orange: oklch(0.67 0.19 44);
+  --viiv-orange-ink: oklch(0.22 0.02 50);
+}
+
 :root {
   --font-size-base: 10pt;
   --font-pt-offset: -2pt;
@@ -60,8 +73,8 @@
   --card-foreground: oklch(0.2 0.014 245);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.014 245);
-  --primary: oklch(0.6 0.22 25);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: var(--viiv-orange);
+  --primary-foreground: var(--viiv-orange-ink);
   --secondary: oklch(0.94 0.008 245);
   --secondary-foreground: oklch(0.2 0.014 245);
   --muted: oklch(0.95 0.008 245);
@@ -72,22 +85,37 @@
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.9 0.008 245);
   --input: oklch(0.9 0.008 245);
-  --ring: oklch(0.6 0.22 25);
-  --chart-1: oklch(0.6 0.22 25);
+  --ring: var(--viiv-orange);
+  --chart-1: var(--viiv-orange);
   --chart-2: oklch(0.7 0.16 60);
   --chart-3: oklch(0.62 0.15 200);
   --chart-4: oklch(0.65 0.18 145);
   --chart-5: oklch(0.62 0.18 300);
   --sidebar: oklch(0.99 0.004 240);
   --sidebar-foreground: oklch(0.2 0.014 245);
-  --sidebar-primary: oklch(0.6 0.22 25);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-primary: var(--viiv-orange);
+  --sidebar-primary-foreground: var(--viiv-orange-ink);
   --sidebar-accent: oklch(0.95 0.008 245);
   --sidebar-accent-foreground: oklch(0.2 0.014 245);
   --sidebar-border: oklch(0.9 0.008 245);
-  --sidebar-ring: oklch(0.6 0.22 25);
+  --sidebar-ring: var(--viiv-orange);
   --scrollbar-thumb: oklch(0.2 0.014 245 / 0.25);
   --scrollbar-thumb-active: oklch(0.2 0.014 245 / 0.45);
+}
+
+/*
+   Crimson, which was the default until the app became VIIV. Still a choice,
+   and still what everybody who picked it keeps: their stored preference names
+   it, so it has to go on meaning what it meant.
+*/
+:root[data-accent="crimson"] {
+  --primary: oklch(0.6 0.22 25);
+  --primary-foreground: oklch(0.99 0 0);
+  --ring: oklch(0.6 0.22 25);
+  --chart-1: oklch(0.6 0.22 25);
+  --sidebar-primary: oklch(0.6 0.22 25);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-ring: oklch(0.6 0.22 25);
 }
 
 :root[data-accent="blue"] {
@@ -129,8 +157,8 @@
   --card-foreground: oklch(0.96 0.006 240);
   --popover: oklch(0.21 0.014 245);
   --popover-foreground: oklch(0.96 0.006 240);
-  --primary: oklch(0.68 0.22 25);
-  --primary-foreground: oklch(0.99 0 0);
+  --primary: var(--viiv-orange);
+  --primary-foreground: var(--viiv-orange-ink);
   --secondary: oklch(0.28 0.02 245);
   --secondary-foreground: oklch(0.96 0.006 240);
   --muted: oklch(0.25 0.015 245);
@@ -141,20 +169,20 @@
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.28 0.02 245);
   --input: oklch(0.28 0.02 245);
-  --ring: oklch(0.68 0.22 25);
-  --chart-1: oklch(0.68 0.22 25);
+  --ring: var(--viiv-orange);
+  --chart-1: var(--viiv-orange);
   --chart-2: oklch(0.78 0.16 85);
   --chart-3: oklch(0.7 0.15 200);
   --chart-4: oklch(0.72 0.18 145);
   --chart-5: oklch(0.7 0.18 300);
   --sidebar: oklch(0.18 0.014 245);
   --sidebar-foreground: oklch(0.96 0.006 240);
-  --sidebar-primary: oklch(0.68 0.22 25);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-primary: var(--viiv-orange);
+  --sidebar-primary-foreground: var(--viiv-orange-ink);
   --sidebar-accent: oklch(0.25 0.015 245);
   --sidebar-accent-foreground: oklch(0.96 0.006 240);
   --sidebar-border: oklch(0.28 0.02 245);
-  --sidebar-ring: oklch(0.68 0.22 25);
+  --sidebar-ring: var(--viiv-orange);
   --scrollbar-thumb: oklch(0.96 0.006 240 / 0.22);
   --scrollbar-thumb-active: oklch(0.96 0.006 240 / 0.4);
 }
@@ -179,6 +207,16 @@
   --sidebar: oklch(0 0 0);
   --sidebar-accent: oklch(0.17 0.011 245);
   --sidebar-border: oklch(0.25 0.016 245);
+}
+
+:root.dark[data-accent="crimson"] {
+  --primary: oklch(0.68 0.22 25);
+  --primary-foreground: oklch(0.99 0 0);
+  --ring: oklch(0.68 0.22 25);
+  --chart-1: oklch(0.68 0.22 25);
+  --sidebar-primary: oklch(0.68 0.22 25);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-ring: oklch(0.68 0.22 25);
 }
 
 :root.dark[data-accent="blue"] {

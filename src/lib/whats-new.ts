@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 292,
+    at: "2026-10-07T11:30",
+    changes: [
+      {
+        key: true,
+        text: "The VIIV wordmark is in, in the header and on the splash, and the colour it is drawn in is the app’s own: ViiV Orange, the default accent everywhere. Crimson is still there to pick, and anybody who had chosen it keeps it.",
+      },
+      {
+        text: "The old diamond has gone from the sidebar header. Beside the wordmark it was two logos for one application, and the one that was no longer the application’s.",
+      },
+    ],
+  },
+  {
     build: 291,
     at: "2026-10-07T10:40",
     changes: [

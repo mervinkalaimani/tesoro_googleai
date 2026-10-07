@@ -1,14 +1,19 @@
-import homeScreenSvg from "../../public/tesoro_home_screen_icon.svg?raw";
-import splashScreenSvg from "../../public/tesoro_splash_screen_icon.svg?raw";
+import wordmarkSvg from "../../public/viiv_home_icon.svg?raw";
 
 /**
- * The wordmarks are drawn with near-black lettering, which vanishes on the dark
+ * The wordmark is drawn with near-black lettering, which vanishes on the dark
  * theme. Inlined rather than loaded through <img>, the lettering can follow the
- * text colour while the gold diamond keeps its own.
+ * text colour while the orange letters keep theirs.
+ *
+ * Two near-blacks because two marks were drawn in two sittings: #0A0A0A was
+ * Tesoro's, #090908 is VIIV's. Both are listed rather than one being rounded
+ * to the other, since a hex that misses by a digit fails silently — as an
+ * invisible logo on the dark theme.
  */
 const themed = (svg: string, id: string) =>
   svg
     .replace(/#0A0A0A/gi, "currentColor")
+    .replace(/#090908/gi, "currentColor")
     // Both files come out of the same editor, so their clip-path ids can collide
     // when two marks are on one page.
     .replace(/clip0_[0-9_]+/g, id)
@@ -18,8 +23,15 @@ const themed = (svg: string, id: string) =>
       '<svg$1 style="width:100%;height:auto"',
     );
 
-export const HOME_MARK_SVG = themed(homeScreenSvg, "tesoro-home-clip");
-export const SPLASH_MARK_SVG = themed(splashScreenSvg, "tesoro-splash-clip");
+/**
+ * One drawing for both marks.
+ *
+ * Tesoro had a wordmark for the header and another for the splash, drawn at
+ * different weights. VIIV is one file, so the two names are kept — every call
+ * site asks for the mark it means — and both resolve to it.
+ */
+export const HOME_MARK_SVG = themed(wordmarkSvg, "viiv-home-clip");
+export const SPLASH_MARK_SVG = themed(wordmarkSvg, "viiv-splash-clip");
 
 /** The splash stays up at least this long from page start, so it reads as a splash rather than a flicker. */
 const SPLASH_MIN_MS = 900;

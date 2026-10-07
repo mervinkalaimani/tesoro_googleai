@@ -108,11 +108,11 @@ export function AppSidebar() {
           sidebar's edge are one line across the whole application, and a header
           sized by its own contents lined up with nothing. */}
       <SidebarHeader className="h-14 justify-center">
-        <div className="flex items-center gap-2 px-1">
-          <img src="/tesoro_app_icon_dark.svg" alt="" className="size-9 shrink-0" />
-          {/* "Personal collection" said nothing the rest of the screen does not
-              — a subtitle under a one-word name. */}
-          <HomeScreenMark className="w-[76px] shrink-0 group-data-[collapsible=icon]:hidden" />
+        <div className="flex items-center px-2">
+          {/* The wordmark alone. The square icon beside it was the old mark's
+              diamond, which beside VIIV was two logos for one application —
+              and the one that was no longer the application's. */}
+          <HomeScreenMark className="w-[84px] shrink-0 group-data-[collapsible=icon]:hidden" />
         </div>
       </SidebarHeader>
 
