@@ -969,43 +969,63 @@ export function SettingsPage() {
       {view === "help" && (
         <div className="space-y-6">
           <SubpageHeader title="Help" onBack={() => changeView("root")} />
-          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-            {(
+
+          {/* Two cards, because they are two different acts. The first pair
+              sends us something and expects an answer; the rest is reading.
+              In one list the policies made the box you type into look like
+              another document. */}
+          {(
+            [
               [
+                "say",
                 [
-                  "feature_request",
-                  "Feature request",
-                  "Tell us what you would like VIIV to do",
-                  Lightbulb,
+                  [
+                    "feature_request",
+                    "Feature request",
+                    "Tell us what you would like VIIV to do",
+                    Lightbulb,
+                  ],
+                  [
+                    "report_bug",
+                    "Report a bug",
+                    "Something that does not work the way it should",
+                    Bug,
+                  ],
                 ],
+              ],
+              [
+                "read",
                 [
-                  "report_bug",
-                  "Report a bug",
-                  "Something that does not work the way it should",
-                  Bug,
+                  ["help_privacy", HELP_TITLES.privacy, HELP_BLURBS.privacy, FileText],
+                  ["help_terms", HELP_TITLES.terms, HELP_BLURBS.terms, Scale],
+                  ["help_contact", HELP_TITLES.contact, HELP_BLURBS.contact, MessageCircle],
                 ],
-                ["help_privacy", HELP_TITLES.privacy, HELP_BLURBS.privacy, FileText],
-                ["help_terms", HELP_TITLES.terms, HELP_BLURBS.terms, Scale],
-                ["help_contact", HELP_TITLES.contact, HELP_BLURBS.contact, MessageCircle],
-              ] as const
-            ).map(([target, label, blurb, Icon]) => (
-              <button
-                key={target}
-                type="button"
-                onClick={() => changeView(target)}
-                className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
-              >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
-                  <Icon className="size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="text-[15px] font-medium text-foreground">{label}</span>
-                  <p className="text-xs text-muted-foreground">{blurb}</p>
-                </div>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </button>
-            ))}
-          </div>
+              ],
+            ] as const
+          ).map(([group, items]) => (
+            <div
+              key={group}
+              className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs"
+            >
+              {items.map(([target, label, blurb, Icon]) => (
+                <button
+                  key={target}
+                  type="button"
+                  onClick={() => changeView(target)}
+                  className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+                >
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                    <Icon className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[15px] font-medium text-foreground">{label}</span>
+                    <p className="text-xs text-muted-foreground">{blurb}</p>
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                </button>
+              ))}
+            </div>
+          ))}
           <p className="px-1 text-[11px] text-muted-foreground">
             VIIV {APP_VERSION} · a personal project, not a company.
           </p>
