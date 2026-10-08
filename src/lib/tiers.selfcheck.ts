@@ -5,6 +5,8 @@ import {
   EXPIRY_WARNING_DAYS,
   TRIM_GRACE_DAYS,
   GATEWAY_FEE_PCT,
+  RECEIPT_GOOD_FOR_DAYS,
+  receiptInDate,
   withGatewayFee,
   TRIAL_DAYS,
   canStartTrial,
@@ -277,5 +279,22 @@ for (const p of [1, 7, 49, 99, 149, 249, 399, 499, 599, 799, 999, 1199]) {
   assert.ok(Number.isInteger(withGatewayFee(p)), p + " plus the fee is a whole number");
   assert.ok(withGatewayFee(p) >= p, "the fee never makes a plan cheaper");
 }
+
+// ---- a receipt stops counting ----
+assert.equal(RECEIPT_GOOD_FOR_DAYS, 25);
+assert.equal(receiptInDate(null), false, "no account, no receipt");
+assert.equal(receiptInDate({}), false, "never sent one");
+assert.equal(receiptInDate({ pay_receipt_at: null }), false);
+
+// Today counts, and so does the twenty-fifth day. The twenty-sixth does not:
+// after that the screen offers the upload again rather than saying a payment
+// nobody acted on is in hand.
+assert.equal(receiptInDate({ pay_receipt_at: "2026-10-06" }, today), true, "sent today");
+assert.equal(receiptInDate({ pay_receipt_at: "2026-09-11" }, today), true, "25 days ago");
+assert.equal(receiptInDate({ pay_receipt_at: "2026-09-10" }, today), false, "26 days ago");
+assert.equal(receiptInDate({ pay_receipt_at: "2026-01-01" }, today), false, "months ago");
+
+// A clock slightly ahead of the server is not a reason to throw one away.
+assert.equal(receiptInDate({ pay_receipt_at: "2026-10-07" }, today), true, "dated tomorrow");
 
 console.log("tiers selfcheck: ok");

@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import { Check, CreditCard, Loader2, Send } from "lucide-react";
 import { toast } from "sonner";
 
-import { GATEWAY_FEE_PCT, termFromMonths, withGatewayFee, type PaidPlan } from "@/lib/tiers";
+import {
+  GATEWAY_FEE_PCT,
+  receiptInDate,
+  termFromMonths,
+  withGatewayFee,
+  type PaidPlan,
+} from "@/lib/tiers";
 import { monthlyOf, monthsLabel, pricesFor, savingOf, usePlanPrices } from "@/lib/plan-prices";
 import { requestPro } from "@/lib/pro-request";
 import { payConfig, payForPlan } from "@/lib/pay-client";
@@ -153,7 +159,7 @@ export function PlanTermDialog() {
         onOpenChange={(v) => !v && setQrFor(null)}
         plan={qrFor.plan}
         term={qrFor.term}
-        receiptUrl={profile?.pay_receipt_url ?? null}
+        receiptUrl={receiptInDate(profile) ? (profile?.pay_receipt_url ?? null) : null}
         onUploaded={() => setQrFor(null)}
       />
     );

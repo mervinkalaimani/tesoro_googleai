@@ -26,6 +26,15 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 305,
+    at: "2026-10-08T12:40",
+    changes: [
+      {
+        text: "Receipt received stops being said after 25 days. It is true for a day or two and then stops being news — an admin who was going to act on it has, and one who did not is not about to — so the screen forgets it and offers the upload again. Twenty-five days rather than a month, so it has always lapsed before the next monthly payment is due.",
+      },
+    ],
+  },
+  {
     build: 304,
     at: "2026-10-08T12:10",
     changes: [

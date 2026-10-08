@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { timeAgo } from "@/lib/format";
-import { monthsFromTerm, type PaidPlan } from "@/lib/tiers";
+import { monthsFromTerm, receiptInDate, type PaidPlan } from "@/lib/tiers";
 import { PayByQrDialog } from "@/components/pay-by-qr-dialog";
 import { cn } from "@/lib/utils";
 
@@ -61,7 +61,10 @@ export function MySubscriptionRequest() {
 
   const asked = profile?.pro_requested_at ?? null;
   const sent = profile?.pay_info_sent_at ?? null;
-  const receipt = profile?.pay_receipt_url ?? null;
+  // A receipt older than its window reads as no receipt at all: the panel
+  // offers the upload again rather than telling somebody their payment is
+  // already in hand when nobody has acted on it for weeks.
+  const receipt = receiptInDate(profile) ? (profile?.pay_receipt_url ?? null) : null;
   const plan: PaidPlan = profile?.pro_requested_plan === "plus" ? "plus" : "pro";
 
   if (isGuest || !asked || !sent) return null;

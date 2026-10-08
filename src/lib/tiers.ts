@@ -241,6 +241,31 @@ export function withGatewayFee(rupees: number): number {
   return Math.round(rupees * (1 + GATEWAY_FEE_PCT / 100));
 }
 
+/**
+ * How long a sent receipt still means anything.
+ *
+ * "Receipt received" is true for a day or two and then stops being news: an
+ * admin who was going to act on it has, and one who did not is not about to.
+ * After this the screen forgets it and offers the upload again, so somebody
+ * paying next month is not told their payment is already in hand.
+ *
+ * Twenty-five days rather than a month, so it has always lapsed before the
+ * next monthly payment is due.
+ */
+export const RECEIPT_GOOD_FOR_DAYS = 25;
+
+/** Whether a receipt is recent enough to still be worth showing. */
+export function receiptInDate(
+  p: { pay_receipt_at?: string | null } | null | undefined,
+  today: Date = new Date(),
+): boolean {
+  const sent = parseDMY(p?.pay_receipt_at ?? null);
+  if (!sent) return false;
+  // No lower bound: a receipt dated an hour into the future is a clock that
+  // is a little fast, not a receipt to throw away.
+  return wholeDays(sent, today) <= RECEIPT_GOOD_FOR_DAYS;
+}
+
 /** Days of notice before Pro ends. */
 export const EXPIRY_WARNING_DAYS = 5;
 /** How long a trial runs, counting the day it starts. tesoro_trial_days() in the database. */
