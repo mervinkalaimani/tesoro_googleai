@@ -33,6 +33,7 @@ import { useCarDrawer } from "@/components/car-details-drawer";
 import { useApp } from "@/lib/store";
 import { CarThumb } from "@/components/car-thumb";
 import { ACCEPT_ATTR, imageToBase64 } from "@/lib/car-photos";
+import { authHeader } from "@/lib/api-auth";
 import type { Diecast } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -262,9 +263,12 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
 
     try {
       const imagePayload = await imageToBase64(file);
+      // Who is asking, same as the card scanner sends. The route refuses a
+      // request without it — the model call is spent on somebody's key — and
+      // the answer came back as "Sign in to scan a card" to a signed-in person.
       const res = await fetch("/api/scan-car", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await authHeader()) },
         body: JSON.stringify(imagePayload),
       });
 

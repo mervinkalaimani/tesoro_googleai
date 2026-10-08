@@ -26,6 +26,15 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 307,
+    at: "2026-10-08T14:00",
+    changes: [
+      {
+        text: "Search by image works again. It asked the scanner without saying who was asking, so a signed-in person was told to sign in — the card scanner has always sent that, and now both do.",
+      },
+    ],
+  },
+  {
     build: 306,
     at: "2026-10-08T13:30",
     changes: [
