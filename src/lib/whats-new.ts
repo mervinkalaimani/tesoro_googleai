@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 303,
+    at: "2026-10-08T11:40",
+    changes: [
+      {
+        key: true,
+        text: "The card checkout no longer freezes. It draws on this page rather than in a popup, and the dialog it opened from was holding every click — so that dialog now steps aside first, and comes back with your length still picked if you close the checkout without paying.",
+      },
+    ],
+  },
+  {
     build: 302,
     at: "2026-10-08T11:00",
     changes: [

@@ -78,8 +78,23 @@ export function PlanTermDialog() {
    */
   const payByCard = async () => {
     if (!plan || !picked) return;
+    const want = { plan, months: picked.months };
+
+    /**
+     * This dialog closes before the checkout opens, and that is the whole fix
+     * for the window that froze.
+     *
+     * Razorpay's checkout is an overlay in an iframe on this page, not a
+     * popup. Ours is a Radix dialog, and a Radix dialog holds the page while
+     * it is open: pointer-events go to none on the body and focus is trapped
+     * inside it. The checkout drew on top and then ignored every click,
+     * because the clicks never reached it.
+     *
+     * So we get out of its way first, and come back if they change their mind.
+     */
+    setPlan(null);
     setBusy("card");
-    const outcome = await payForPlan(plan, picked.months, {
+    const outcome = await payForPlan(want.plan, want.months, {
       name: fullName(profile),
       email: profile?.email_id,
     });
@@ -89,18 +104,20 @@ export function PlanTermDialog() {
       // The tier is read off the profile, so it has to be read again before
       // anything unlocks.
       await reloadProfile();
-      toast.success(`${name} is on`, {
-        description: `Paid for ${picked.months} month${picked.months === 1 ? "" : "s"}. Everything is open.`,
+      toast.success(`${TITLE[want.plan]} is on`, {
+        description: `Paid for ${want.months} month${want.months === 1 ? "" : "s"}. Everything is open.`,
       });
       close();
       return;
     }
-    // Cancelled is somebody changing their mind: leave the dialog where it is
-    // so they can pick a different length without starting again.
+
+    // Cancelled, failed, or not available: put the chooser back exactly as
+    // they left it rather than making them start again.
+    setPlan(want.plan);
+    setMonths(want.months);
     if (outcome === "unavailable") {
       setCanPay(false);
-      toast.info("Card payments are not available", { description: "Asking an admin instead." });
-      void payDirect();
+      toast.info("Card payments are not available", { description: "Ask an admin instead." });
     }
   };
 
