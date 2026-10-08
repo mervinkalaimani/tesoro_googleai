@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 304,
+    at: "2026-10-08T12:10",
+    changes: [
+      {
+        key: true,
+        text: "Pay directly instead shows you the QR straight away — the amount for the plan and length you picked, the code to pay against, and the button to send the screenshot back. It used to record the request, say the admins had been told, and close on a screen with nothing to do.",
+      },
+    ],
+  },
+  {
     build: 303,
     at: "2026-10-08T11:40",
     changes: [

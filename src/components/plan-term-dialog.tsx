@@ -7,6 +7,7 @@ import { monthlyOf, monthsLabel, pricesFor, savingOf, usePlanPrices } from "@/li
 import { requestPro } from "@/lib/pro-request";
 import { payConfig, payForPlan } from "@/lib/pay-client";
 import { useAuth, fullName } from "@/lib/auth-store";
+import { PayByQrDialog } from "@/components/pay-by-qr-dialog";
 import { inrFull } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -37,6 +38,8 @@ export function PlanTermDialog() {
   const [plan, setPlan] = useState<PaidPlan | null>(null);
   const [months, setMonths] = useState<number | null>(null);
   const [busy, setBusy] = useState<"card" | "direct" | null>(null);
+  /** What to pay for by QR, once the request has been recorded. */
+  const [qrFor, setQrFor] = useState<{ plan: PaidPlan; term: string } | null>(null);
   const prices = usePlanPrices();
   const { profile, reloadProfile } = useAuth();
   // Whether this deployment can take money at all. Asked once, on open, so the
@@ -124,11 +127,37 @@ export function PlanTermDialog() {
   /** The other way: tell the admins, and pay them however you two arrange it. */
   const payDirect = async () => {
     if (!plan || !picked) return;
+    const want = { plan, months: picked.months, term: termFromMonths(picked.months) };
     setBusy("direct");
-    const ok = await requestPro(plan, termFromMonths(picked.months));
+    const ok = await requestPro(want.plan, want.term);
     setBusy(null);
-    if (ok) close();
+    if (!ok) return;
+
+    // The ask is not the end of it. Recording the request also sends the
+    // payment details, so the next thing to show is those details — the QR,
+    // the amount, and somewhere to send the receipt back. Telling somebody
+    // "the admins have been told" and closing was leaving them on a screen
+    // with nothing to do.
+    await reloadProfile();
+    close();
+    setQrFor(want);
   };
+
+  // The QR lives outside the chooser rather than inside it: the chooser is
+  // closed by the time this opens, and a dialog rendered by a closed dialog is
+  // a dialog nobody sees.
+  if (qrFor) {
+    return (
+      <PayByQrDialog
+        open
+        onOpenChange={(v) => !v && setQrFor(null)}
+        plan={qrFor.plan}
+        term={qrFor.term}
+        receiptUrl={profile?.pay_receipt_url ?? null}
+        onUploaded={() => setQrFor(null)}
+      />
+    );
+  }
 
   return (
     <Dialog open={plan !== null} onOpenChange={(v) => !v && !busy && close()}>
