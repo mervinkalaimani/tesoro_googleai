@@ -26,6 +26,15 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 312,
+    at: "2026-10-08T18:30",
+    changes: [
+      {
+        text: "My Cars is a line shorter per car on a phone: the seller, what was paid and how it sat against the MRP now read as one line separated by dots, instead of the last two having a line of their own.",
+      },
+    ],
+  },
+  {
     build: 311,
     at: "2026-10-08T18:00",
     changes: [

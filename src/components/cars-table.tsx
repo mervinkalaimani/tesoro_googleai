@@ -188,16 +188,25 @@ export function CarListCard({
             The seller was not on this card at all, which made a phone the one
             place you could not answer "where did I get this". */}
         <div className="flex items-end justify-between gap-3">
-          <span className="min-w-0">
-            <span className="block truncate text-xs text-muted-foreground">
-              {car.seller || "—"}
-            </span>
-            {(pay || showMrpNote) && (
-              <span className="block truncate text-[11px] text-muted-foreground">
-                {pay}
-                {pay && showMrpNote ? " · " : ""}
-                {showMrpNote && <MrpNote spent={spent} mrp={mrp} />}
-              </span>
+          {/* One line, not two. The seller, what was paid and how it sat
+              against the MRP are three short facts about the same purchase,
+              and giving the last two a line of their own made every card in
+              the list a line taller to say half a sentence. */}
+          <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
+            <span className="truncate">{car.seller || "—"}</span>
+            {pay && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="shrink-0">{pay}</span>
+              </>
+            )}
+            {showMrpNote && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="shrink-0">
+                  <MrpNote spent={spent} mrp={mrp} />
+                </span>
+              </>
             )}
           </span>
           <span className="shrink-0">
