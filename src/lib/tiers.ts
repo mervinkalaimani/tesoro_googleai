@@ -295,7 +295,40 @@ export const PRO_PATHS = [
  * would also lock a future `/ordersomething`, which nobody put there.
  */
 export function isProPath(pathname: string): boolean {
-  return PRO_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+  return under(PRO_PATHS, pathname);
+}
+
+/**
+ * The paid sections Plus opens as well.
+ *
+ * Plus was a bigger shelf and nothing else, which made it the plan nobody
+ * could name a reason for. My Orders is the reason: what you have bought and
+ * what is still on its way, which is what somebody with a hundred and fifty
+ * cars actually wants to look at. The rest stays Pro.
+ */
+export const PLUS_PATHS = ["/orders"] as const;
+
+/** Whether this plan opens that route. A route nobody paid for is open. */
+export function planOpensPath(plan: Plan, pathname: string): boolean {
+  if (plan === "pro") return true;
+  if (!isProPath(pathname)) return true;
+  return plan === "plus" && under(PLUS_PATHS, pathname);
+}
+
+/** The cheapest plan that opens a route, or null when it is open to everyone. */
+export function planForPath(pathname: string): PaidPlan | null {
+  if (!isProPath(pathname)) return null;
+  return under(PLUS_PATHS, pathname) ? "plus" : "pro";
+}
+
+/** Whether a plan is the one asked for or better. free < plus < pro. */
+export function planIncludes(plan: Plan, need: PaidPlan): boolean {
+  return plan === "pro" || plan === need;
+}
+
+/** Exact match or a path segment below it, never a bare `startsWith`. */
+function under(paths: readonly string[], pathname: string): boolean {
+  return paths.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 export type ProState =

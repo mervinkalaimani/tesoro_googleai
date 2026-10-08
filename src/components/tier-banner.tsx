@@ -8,6 +8,7 @@ import { formatDayMonthYear } from "@/lib/format";
 import {
   FREE_CAR_LIMIT,
   TRIAL_REMIND_DAYS,
+  paidPlanOf,
   proStatus,
   trialDaysLeft,
   trimWarning,
@@ -73,13 +74,21 @@ export function TierBanner() {
 
   const { state, daysLeft } = proStatus(profile);
   if (state !== "expiring") return null;
+  // Named for the plan that is ending. Plus only ever opened My Orders, so
+  // listing the Pro sections here would warn somebody about losing what they
+  // never had.
+  const plus = paidPlanOf(profile) === "plus";
   return (
     <Bar tone="quiet" icon={<Clock className="size-4 shrink-0" />}>
       <strong className="font-semibold">
-        Pro ends {daysLeft === 0 ? "today" : `in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
+        {plus ? "Plus" : "Pro"} ends{" "}
+        {daysLeft === 0 ? "today" : `in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}
       </strong>{" "}
-      — {formatDayMonthYear(profile.pro_until)}. After that, Favourites, Collection, Duplicates,
-      Habit, Sellers and My Orders lock, and the collection is capped at {FREE_CAR_LIMIT} cars.
+      — {formatDayMonthYear(profile.pro_until)}. After that,{" "}
+      {plus
+        ? "My Orders locks"
+        : "Favourites, Collection, Duplicates, Habit, Sellers and My Orders lock"}
+      , and the collection is capped at {FREE_CAR_LIMIT} cars.
     </Bar>
   );
 }

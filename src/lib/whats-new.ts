@@ -26,6 +26,20 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 306,
+    at: "2026-10-08T13:30",
+    changes: [
+      {
+        key: true,
+        text: "Plus opens My Orders. It was a bigger shelf and nothing else, which made it the plan nobody could name a reason for; what you have bought and what is still on its way is the reason. The rest of the locked sections stay Pro.",
+      },
+      {
+        key: true,
+        text: "A seller now reads as a page rather than a form: the shop across the top at headline size, the ten numbers in one band under it, and the orders filling everything below. Each order carries the state it is still waiting on, and the states present can be tapped to show only those. On a phone the orders are cards.",
+      },
+    ],
+  },
+  {
     build: 305,
     at: "2026-10-08T12:40",
     changes: [

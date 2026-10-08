@@ -12,6 +12,9 @@ import {
   canStartTrial,
   ceilingFor,
   isProPath,
+  planForPath,
+  planIncludes,
+  planOpensPath,
   monthlyPrice,
   paidPlanOf,
   planOf,
@@ -296,5 +299,23 @@ assert.equal(receiptInDate({ pay_receipt_at: "2026-01-01" }, today), false, "mon
 
 // A clock slightly ahead of the server is not a reason to throw one away.
 assert.equal(receiptInDate({ pay_receipt_at: "2026-10-07" }, today), true, "dated tomorrow");
+
+// WHO OPENS WHAT. My Orders is the one paid section Plus opens, so a plan is no
+// longer a single yes or no over the whole locked list.
+assert.equal(planOpensPath("plus", "/orders"), true, "Plus opens My Orders");
+assert.equal(planOpensPath("plus", "/orders/9"), true, "and a car inside it");
+assert.equal(planOpensPath("plus", "/preorders"), false, "Pre Orders stays Pro");
+assert.equal(planOpensPath("plus", "/sellers"), false, "Sellers stays Pro");
+assert.equal(planOpensPath("plus", "/inventory"), true, "nobody paid for My Cars");
+assert.equal(planOpensPath("free", "/orders"), false, "free does not");
+assert.equal(planOpensPath("pro", "/sellers"), true, "Pro opens everything");
+
+assert.equal(planForPath("/orders"), "plus");
+assert.equal(planForPath("/preorders"), "pro");
+assert.equal(planForPath("/inventory"), null);
+
+assert.equal(planIncludes("pro", "plus"), true, "Pro includes what Plus has");
+assert.equal(planIncludes("plus", "pro"), false);
+assert.equal(planIncludes("free", "plus"), false);
 
 console.log("tiers selfcheck: ok");

@@ -11,6 +11,7 @@ import {
   TRIAL_REMIND_DAYS,
   canStartTrial,
   paidPlanOf,
+  planIncludes,
   trialDaysLeft,
   type PaidPlan,
 } from "@/lib/tiers";
@@ -69,12 +70,28 @@ type Plan = {
   featured?: boolean;
 };
 
-/** The sections Pro opens. Free and Plus are the same list, unticked. */
-const SECTIONS = [
-  "Favourites and Collection",
-  "Orders, Pre Orders, Duplicates",
-  "Habit and Sellers",
+/**
+ * The paid sections, each against the cheapest plan that opens it.
+ *
+ * My Orders is Plus, the rest are Pro, so the three columns are no longer one
+ * list ticked or not ticked. Written once here rather than per column: the
+ * same section claimed by two lists is how a plan ends up promising something
+ * it does not open.
+ */
+const SECTIONS: { label: string; from: PaidPlan }[] = [
+  { label: "My Orders", from: "plus" },
+  { label: "Favourites and Collection", from: "pro" },
+  { label: "Pre Orders and Duplicates", from: "pro" },
+  { label: "Habit and Sellers", from: "pro" },
 ];
+
+/** That list as one column's worth of ticks. */
+function sectionLines(key: Plan["key"]): Line[] {
+  return SECTIONS.map(({ label, from }) => ({
+    label,
+    yes: key !== "free" && planIncludes(key, from),
+  }));
+}
 
 /** The scanner is on every plan now; what differs is how much of it. */
 function scanLine(plan: Plan["key"]): Line {
@@ -99,7 +116,7 @@ function plansFor(prices: PriceRow[]): Plan[] {
         { label: `Add up to ${FREE_CAR_LIMIT} cars`, yes: true },
         { label: "The full catalogue", yes: true },
         scanLine("free"),
-        ...SECTIONS.map((label) => ({ label, yes: false })),
+        ...sectionLines("free"),
       ],
     },
     {
@@ -107,12 +124,12 @@ function plansFor(prices: PriceRow[]): Plan[] {
       title: "Plus",
       price: `₹${monthlyOf(prices, "plus")}`,
       per: "per month",
-      subtitle: `${PLUS_EXTRA_CARS} more cars`,
+      subtitle: `${PLUS_EXTRA_CARS} more cars and My Orders`,
       lines: [
         { label: `Add up to ${PLUS_CAR_LIMIT} cars`, yes: true },
         { label: "The full catalogue", yes: true },
         scanLine("plus"),
-        ...SECTIONS.map((label) => ({ label, yes: false })),
+        ...sectionLines("plus"),
       ],
     },
     {
@@ -126,7 +143,7 @@ function plansFor(prices: PriceRow[]): Plan[] {
         { label: "Add unlimited cars", yes: true },
         { label: "The full catalogue", yes: true },
         scanLine("pro"),
-        ...SECTIONS.map((label) => ({ label, yes: true })),
+        ...sectionLines("pro"),
       ],
     },
   ];

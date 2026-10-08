@@ -31,16 +31,17 @@ import { cn } from "@/lib/utils";
  * thing only they can say: that they are not renewing.
  */
 
-/** Everything a paid plan opens, said in the order the sidebar lists it. */
-const PRO_SECTIONS = [
-  "Favourites",
-  "Collection",
-  "Duplicates",
-  "Habit",
-  "Sellers",
-  "My Orders",
-  "Pre Orders",
-];
+/**
+ * What each plan opens, in the order the sidebar lists it.
+ *
+ * Plus opens one section, so the list of what stopping costs has to be the
+ * list for the plan being stopped. One list for both would have told somebody
+ * on Plus they were about to lose Favourites, which they never had.
+ */
+const SECTIONS_BY_PLAN: Record<PaidPlan, string[]> = {
+  plus: ["My Orders"],
+  pro: ["Favourites", "Collection", "Duplicates", "Habit", "Sellers", "My Orders", "Pre Orders"],
+};
 
 /**
  * Stopping, or changing your mind about stopping.
@@ -232,7 +233,7 @@ export function SubscriptionPanel() {
           <div className="rounded-xl border border-border bg-muted/30 p-3">
             <p className="text-[12px] font-semibold">After that day you would lose</p>
             <ul className="mt-1.5 space-y-1 text-[12px] text-muted-foreground">
-              <li>· {PRO_SECTIONS.join(", ")} — all locked</li>
+              <li>· {SECTIONS_BY_PLAN[paid === "plus" ? "plus" : "pro"].join(", ")} — locked</li>
               <li>· The card scanner drops to {SCANS_PER_MONTH.free} scans a month</li>
               <li>
                 · Anything above {FREE_CAR_LIMIT} cars is put away — not deleted, and it all comes

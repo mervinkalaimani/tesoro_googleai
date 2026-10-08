@@ -40,7 +40,7 @@ import { isPackMember, packMemberIds } from "@/lib/pack";
 import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { openProDialog } from "@/components/pro-dialog";
-import { paidPlanOf } from "@/lib/tiers";
+import { paidPlanOf, planIncludes, type PaidPlan } from "@/lib/tiers";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
@@ -48,29 +48,29 @@ import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
 
 const NAV_GROUPS: {
   title: string;
-  items: { title: string; url: string; icon: LucideIcon; pro?: boolean }[];
+  items: { title: string; url: string; icon: LucideIcon; needs?: PaidPlan }[];
 }[] = [
   {
     title: "My Cars",
     items: [
       { title: "My Cars", url: "/inventory", icon: Car },
-      { title: "Favourites", url: "/favourites", icon: Star, pro: true },
-      { title: "Collection", url: "/collection", icon: Boxes, pro: true },
+      { title: "Favourites", url: "/favourites", icon: Star, needs: "pro" },
+      { title: "Collection", url: "/collection", icon: Boxes, needs: "pro" },
     ],
   },
   {
     title: "My Orders",
     items: [
-      { title: "My Orders", url: "/orders", icon: Truck, pro: true },
-      { title: "Pre Orders", url: "/preorders", icon: ShoppingBag, pro: true },
-      { title: "Duplicates", url: "/duplicates", icon: Copy, pro: true },
+      { title: "My Orders", url: "/orders", icon: Truck, needs: "plus" },
+      { title: "Pre Orders", url: "/preorders", icon: ShoppingBag, needs: "pro" },
+      { title: "Duplicates", url: "/duplicates", icon: Copy, needs: "pro" },
     ],
   },
   {
     title: "Habit",
     items: [
-      { title: "Habit", url: "/habits", icon: CalendarDays, pro: true },
-      { title: "Sellers", url: "/sellers", icon: Store, pro: true },
+      { title: "Habit", url: "/habits", icon: CalendarDays, needs: "pro" },
+      { title: "Sellers", url: "/sellers", icon: Store, needs: "pro" },
     ],
   },
 ];
@@ -78,7 +78,7 @@ const NAV_GROUPS: {
 export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, query } = useApp();
-  const { isOwner, isGuest, isPro, profile } = useAuth();
+  const { isOwner, isGuest, plan, profile } = useAuth();
   const { source } = useCarsSource();
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
   const { packMembers } = useCatalog();
@@ -154,7 +154,7 @@ export function AppSidebar() {
               <SidebarMenu className="gap-1">
                 {group.items.map((item) => {
                   const active = pathname.startsWith(item.url);
-                  const locked = item.pro && !isPro;
+                  const locked = item.needs !== undefined && !planIncludes(plan, item.needs);
                   return (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton

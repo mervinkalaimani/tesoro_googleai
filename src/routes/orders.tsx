@@ -47,7 +47,7 @@ export const Route = createFileRoute("/orders")({
     return typeof tab === "string" && TABS.some((t) => t.value === tab) ? { tab: tab as Tab } : {};
   },
   component: () => (
-    <ProGate title="My Orders">
+    <ProGate title="My Orders" needs="plus">
       <OrdersPage />
     </ProGate>
   ),

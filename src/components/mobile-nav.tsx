@@ -15,7 +15,7 @@ import {
 
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
-import { isProPath } from "@/lib/tiers";
+import { isProPath, planOpensPath } from "@/lib/tiers";
 import {
   MobileSearchBar,
   openSearch,
@@ -136,7 +136,7 @@ function HomeCircle({
 export function MobileNav() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   const { query, navAnimation } = useApp();
-  const { isPro } = useAuth();
+  const { plan } = useAuth();
   const searchOpen = useSearchOpen();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const keyboard = useKeyboardInset(searchOpen);
@@ -192,7 +192,7 @@ export function MobileNav() {
         : navMode === "habit"
           ? HABIT_TABS
           : ORDERS_TABS;
-  const open = allTabs.filter((t) => isPro || !isProPath(t.url));
+  const open = allTabs.filter((t) => planOpensPath(plan, t.url));
   // Every tab of a section being Pro would leave an empty bar. Fall back to the
   // one page a free account always has, so there is still somewhere to tap.
   const tabs = open.length > 0 ? open : DEFAULT_TABS.filter((t) => !isProPath(t.url));

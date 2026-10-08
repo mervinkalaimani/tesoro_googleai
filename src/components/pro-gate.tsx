@@ -1,7 +1,7 @@
 import { Lock, Sparkles } from "lucide-react";
 
 import { useAuth } from "@/lib/auth-store";
-import { FREE_CAR_LIMIT } from "@/lib/tiers";
+import { FREE_CAR_LIMIT, planIncludes, type PaidPlan } from "@/lib/tiers";
 import { openProDialog } from "@/components/pro-dialog";
 import { SampleCars } from "@/components/sample-cars";
 import { Button } from "@/components/ui/button";
@@ -21,15 +21,18 @@ import { Button } from "@/components/ui/button";
  */
 export function ProGate({
   title,
+  needs = "pro",
   children,
 }: {
   /** The section's name, for the panel over the example. */
   title: string;
+  /** The cheapest plan that opens it. Pro unless a section is cheaper. */
+  needs?: PaidPlan;
   children: React.ReactNode;
 }) {
-  const { isPro } = useAuth();
+  const { plan } = useAuth();
 
-  if (isPro) return <>{children}</>;
+  if (planIncludes(plan, needs)) return <>{children}</>;
 
   return (
     <div>
@@ -52,10 +55,14 @@ export function ProGate({
           <div className="mx-auto grid size-11 place-items-center rounded-2xl bg-primary/10">
             <Lock className="size-5 text-primary" />
           </div>
-          <h2 className="mt-3 text-lg font-bold tracking-tight">{title} is part of Pro</h2>
+          <h2 className="mt-3 text-lg font-bold tracking-tight">
+            {title} is part of {needs === "plus" ? "Plus" : "Pro"}
+          </h2>
           <p className="mt-1.5 text-[13px] text-muted-foreground">
-            This is {title} with somebody else&rsquo;s cars in it. Pro fills it with yours, along
-            with every other section and no limit on how many you log.
+            This is {title} with somebody else&rsquo;s cars in it.{" "}
+            {needs === "plus"
+              ? "Plus fills it with yours and raises the shelf to 150 cars; Pro opens every other section too."
+              : "Pro fills it with yours, along with every other section and no limit on how many you log."}
           </p>
           <p className="mt-2 text-[11px] text-muted-foreground">
             Free keeps My Cars, the catalogue and up to {FREE_CAR_LIMIT} cars.
