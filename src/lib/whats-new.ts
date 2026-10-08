@@ -26,6 +26,24 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 302,
+    at: "2026-10-08T11:00",
+    changes: [
+      {
+        key: true,
+        text: "The payment QR arrives with the request. Pick a plan and the details are there — nobody is waiting on an admin to release a picture of where the money goes. Changing the length re-sends it, because the amount changed.",
+      },
+      {
+        admin: true,
+        text: "A request on the dashboard opens the Asked list rather than the paying one, and Send again sits beside it so the details can be re-sent without leaving the page.",
+      },
+      {
+        admin: true,
+        text: "A receipt opens where the decision is made, at a size you can read an amount off, with Grant it and Delete it under it. Deleting removes the stored picture too — it is a screenshot of somebody’s bank app, and keeping it after it has been read is keeping it for nothing.",
+      },
+    ],
+  },
+  {
     build: 301,
     at: "2026-10-07T19:00",
     changes: [

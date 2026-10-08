@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { BellRing, ChevronRight, QrCode, RefreshCw, XCircle } from "lucide-react";
+import { BellRing, ChevronRight, Loader2, QrCode, RefreshCw, XCircle } from "lucide-react";
+import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -114,6 +115,21 @@ export function SubscriptionRequests() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [sending, setSending] = useState<number | null>(null);
+
+  /** Sends the payment details again, without leaving the dashboard. */
+  const resend = async (u: Row) => {
+    setSending(u.sno);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("tesoro_send_pay_info", { _sno: u.sno });
+    setSending(null);
+    if (error) {
+      toast.error("Could not send those details", { description: error.message });
+      return;
+    }
+    toast.success("Payment details sent again", { description: nameOf(u) });
+  };
+
   const load = useCallback(async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await (supabase as any).rpc("admin_list_users");
@@ -161,6 +177,7 @@ export function SubscriptionRequests() {
         </Button>
         <Link
           to="/subscriptions"
+          search={{ show: "asked" }}
           className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-primary hover:underline"
         >
           Subscriptions
@@ -173,7 +190,29 @@ export function SubscriptionRequests() {
           const plan = u.pro_requested_plan === "plus" ? "Plus" : "Pro";
           const months = monthsFromTerm(u.pro_requested_term);
           return (
-            <Row key={`ask-${u.sno}`} tone="ask" icon={<BellRing className="size-3.5" />}>
+            <Row
+              key={`ask-${u.sno}`}
+              tone="ask"
+              icon={<BellRing className="size-3.5" />}
+              action={
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-auto shrink-0 gap-1 px-2 text-[11px]"
+                  disabled={sending === u.sno}
+                  onClick={() => void resend(u)}
+                  title="Send the payment details again"
+                >
+                  {sending === u.sno ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <QrCode className="size-3" />
+                  )}
+                  Send again
+                </Button>
+              }
+            >
               <strong className="font-semibold">{nameOf(u)}</strong> wants{" "}
               <strong className="font-semibold">{plan}</strong> for {months} month
               {months === 1 ? "" : "s"}
@@ -209,31 +248,38 @@ export function SubscriptionRequests() {
 function Row({
   tone,
   icon,
+  action,
   children,
 }: {
   tone: "ask" | "leave";
   icon: React.ReactNode;
+  /** Something to do without leaving the dashboard. */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <Link
-      to="/subscriptions"
-      className={cn(
-        "flex items-start gap-2 rounded-lg border px-2.5 py-2 text-[13px] leading-snug transition-colors",
-        tone === "ask"
-          ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
-          : "border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10",
-      )}
-    >
-      <span
+    <div className="flex items-stretch gap-1.5">
+      <Link
+        to="/subscriptions"
+        search={{ show: "asked" }}
         className={cn(
-          "mt-0.5 shrink-0",
-          tone === "ask" ? "text-primary" : "text-amber-600 dark:text-amber-400",
+          "flex min-w-0 flex-1 items-start gap-2 rounded-lg border px-2.5 py-2 text-[13px] leading-snug transition-colors",
+          tone === "ask"
+            ? "border-primary/40 bg-primary/5 hover:bg-primary/10"
+            : "border-amber-500/40 bg-amber-500/5 hover:bg-amber-500/10",
         )}
       >
-        {icon}
-      </span>
-      <span className="min-w-0">{children}</span>
-    </Link>
+        <span
+          className={cn(
+            "mt-0.5 shrink-0",
+            tone === "ask" ? "text-primary" : "text-amber-600 dark:text-amber-400",
+          )}
+        >
+          {icon}
+        </span>
+        <span className="min-w-0">{children}</span>
+      </Link>
+      {action}
+    </div>
   );
 }

@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ChevronLeft, Loader2, QrCode, RefreshCw, Sparkles, Users } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  Loader2,
+  QrCode,
+  RefreshCw,
+  Sparkles,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +31,8 @@ import { Input } from "@/components/ui/input";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { PaymentSettings } from "@/components/payment-settings";
 import { PaymentQrCard } from "@/components/payment-qr-card";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { AVATARS_BUCKET, pathFromPublicUrl } from "@/lib/car-photos";
 import { RazorpayCard } from "@/components/razorpay-card";
 import { SegmentControl } from "@/components/segment-control";
 import { cn } from "@/lib/utils";
@@ -37,8 +48,9 @@ import { cn } from "@/lib/utils";
  */
 
 export const Route = createFileRoute("/subscriptions")({
-  validateSearch: (search: Record<string, unknown>): { tab?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { tab?: string; show?: string } => ({
     tab: typeof search.tab === "string" ? search.tab : undefined,
+    show: typeof search.show === "string" ? search.show : undefined,
   }),
   component: SubscriptionsPage,
 });
@@ -122,7 +134,9 @@ function SubscriptionsPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busySno, setBusySno] = useState<number | null>(null);
-  const [segment, setSegment] = useState<"paying" | "asked" | "all">("paying");
+  const [segment, setSegment] = useState<"paying" | "asked" | "all">(
+    search.show === "asked" || search.show === "all" ? search.show : "paying",
+  );
   const [query, setQuery] = useState("");
 
   /**
@@ -162,6 +176,37 @@ function SubscriptionsPage() {
       toast.success("Payment details sent", {
         description: `${nameOf(u)} sees the QR on their home page now.`,
       });
+      void load();
+    },
+    // load is defined just below; this only ever runs from a click.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  /**
+   * Throws the receipt away once it has been read.
+   *
+   * Both halves: the row stops pointing at it, and the file itself goes. A
+   * bucket quietly filling with other people's bank screenshots is the kind
+   * of thing nobody notices until it matters.
+   */
+  const clearReceipt = useCallback(
+    async (u: Row) => {
+      setBusySno(u.sno);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("tesoro_clear_receipt", { _sno: u.sno });
+      setBusySno(null);
+      if (error) {
+        toast.error("Could not delete that receipt", { description: error.message });
+        return;
+      }
+      if (typeof data === "string" && data) {
+        const path = pathFromPublicUrl(data, AVATARS_BUCKET);
+        // Best effort: the row no longer points at it either way, and a file
+        // left behind is tidier than a reference to a file that is gone.
+        if (path) await supabase.storage.from(AVATARS_BUCKET).remove([path]);
+      }
+      toast.success("Receipt deleted");
       void load();
     },
     // load is defined just below; this only ever runs from a click.
@@ -423,6 +468,7 @@ function SubscriptionsPage() {
                   onRenew={() => void renew(u)}
                   onRemove={() => void removePlan(u)}
                   onSendPayInfo={() => void sendPayInfo(u)}
+                  onClearReceipt={() => void clearReceipt(u)}
                 />
               ))}
             </div>
@@ -441,6 +487,7 @@ function SubscriptionRow({
   onRenew,
   onRemove,
   onSendPayInfo,
+  onClearReceipt,
 }: {
   user: Row;
   plan: Plan;
@@ -449,6 +496,7 @@ function SubscriptionRow({
   onRenew: () => void;
   onRemove: () => void;
   onSendPayInfo: () => void;
+  onClearReceipt: () => void;
 }) {
   // A trial is Pro for a fortnight and nobody paid for it, so it is said as
   // itself here: an admin reading "Pro, ends never" about a trial would be
@@ -459,6 +507,7 @@ function SubscriptionRow({
   const ceiling = ceilingFor(paidPlanOf(u));
   const noEnd = trialLeft === null && plan !== "free" && !u.pro_since;
   const grace = inGracePeriod(u);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   // The control shows what they are on, free included: taking somebody off a
   // plan is the same kind of act as putting them on one, and hiding it behind
   // its own icon made the way back the only unlabelled thing on the row.
@@ -627,12 +676,13 @@ function SubscriptionRow({
             <Button
               size="sm"
               variant="outline"
-              disabled={busy || Boolean(u.pay_info_sent_at)}
+              disabled={busy}
               className="ml-auto h-6 gap-1 px-2.5 text-[11px]"
               onClick={onSendPayInfo}
+              title="They already have it; this sends it again"
             >
               <QrCode className="size-3" />
-              {u.pay_info_sent_at ? "Details sent" : "Send payment info"}
+              {u.pay_info_sent_at ? "Send again" : "Send payment info"}
             </Button>
 
             <Button
@@ -649,11 +699,10 @@ function SubscriptionRow({
               picture and deciding — this only puts the picture where the
               decision is made. */}
           {u.pay_receipt_url && (
-            <a
-              href={u.pay_receipt_url}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="flex items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/5 px-2 py-1.5 transition-colors hover:bg-emerald-500/10"
+            <button
+              type="button"
+              onClick={() => setReceiptOpen(true)}
+              className="flex w-full items-center gap-2 rounded-md border border-emerald-500/40 bg-emerald-500/5 px-2 py-1.5 text-left transition-colors hover:bg-emerald-500/10"
             >
               <img
                 src={u.pay_receipt_url}
@@ -672,8 +721,58 @@ function SubscriptionRow({
                   Open it, check the amount, then Grant it.
                 </span>
               </span>
-            </a>
+            </button>
           )}
+
+          {/* The picture, and what to do with it once it has been read. */}
+          <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
+            <DialogContent className="w-full max-w-full sm:max-w-lg">
+              <DialogTitle className="text-base font-semibold">
+                Receipt from {nameOf(u)}
+              </DialogTitle>
+              <DialogDescription className="text-[12px]">
+                {wanted === "plus" ? "Plus" : "Pro"}, {wantedMonths} month
+                {wantedMonths === 1 ? "" : "s"}
+                {u.pay_receipt_at ? ` · sent ${formatDayMonthYear(u.pay_receipt_at)}` : ""}
+              </DialogDescription>
+
+              {u.pay_receipt_url && (
+                <div className="max-h-[60vh] overflow-auto rounded-xl border border-border bg-muted/20">
+                  <img src={u.pay_receipt_url} alt="" className="w-full object-contain" />
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  className="flex-1 gap-1.5"
+                  disabled={busy}
+                  onClick={() => {
+                    setReceiptOpen(false);
+                    onGrant(wanted as PaidPlan, wantedMonths);
+                  }}
+                >
+                  <Check className="size-4" />
+                  Grant it
+                </Button>
+                {/* Separate from granting on purpose: a receipt that does not
+                    match should be deleted and the plan not granted. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-1.5 text-rose-500 hover:bg-rose-500/10 hover:text-rose-400"
+                  disabled={busy}
+                  onClick={() => {
+                    setReceiptOpen(false);
+                    onClearReceipt();
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                  Delete it
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>
