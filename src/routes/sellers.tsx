@@ -103,7 +103,11 @@ const dayOf = (r: Diecast) => clean(r.orderDate) || clean(r.date);
 function SellersPage() {
   const { query } = useApp();
   const cars = useCars();
-  const { isAdmin } = useAuth();
+  // Who may correct a shop's details. Pro, not admins: the person who bought
+  // from the shop is the one who knows its name, its number and its town, and
+  // a correction used to be a message to somebody else.
+  const { isPro, isGuest } = useAuth();
+  const canEdit = isPro && !isGuest;
   const shops = useSellerDetails();
   const [sortField, setSortField] = useState<SortField>("spent");
   const [dir, setDir] = useState<SortDir>("desc");
@@ -318,7 +322,7 @@ function SellersPage() {
                   >
                     <Receipt className="size-3.5" />
                   </Button>
-                  {isAdmin && (
+                  {canEdit && (
                     <Button
                       size="icon"
                       variant="ghost"

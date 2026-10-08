@@ -26,6 +26,23 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 308,
+    at: "2026-10-08T15:00",
+    changes: [
+      {
+        key: true,
+        text: "The scanner is called VIIV Scan, and searching by camera spends the same monthly credit a card scan does — the dialog says how many are left before you point it at anything, and stops when there are none.",
+      },
+      {
+        key: true,
+        text: "Scan to Search opens looking through the lens. The camera starts itself, the shutter sits under the picture with Upload an image instead beneath it, and on a phone the window fills the screen. The device-camera option and the QR tab have gone: one way in, and it is the one that works everywhere.",
+      },
+      {
+        text: "A shop's details — its store name, number, WhatsApp, town and picture — can be corrected by anyone on Pro, from the seller page itself as well as the list. It used to be admins only, which made every correction somebody else's job.",
+      },
+    ],
+  },
+  {
     build: 307,
     at: "2026-10-08T14:00",
     changes: [

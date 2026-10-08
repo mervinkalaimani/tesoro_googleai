@@ -233,7 +233,7 @@ export function SearchBox({ className }: { className?: string }) {
             <button
               type="button"
               aria-label="Search by image"
-              title="Search by image (AI attribute search) or barcode"
+              title="Scan to search with VIIV Scan, or read a barcode"
               onClick={() => setScanOpen(true)}
               className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
             >

@@ -18,12 +18,14 @@
  * inside.
  */
 import { useMemo, useState } from "react";
-import { ChevronRight, MapPin, Phone, Store } from "lucide-react";
+import { ChevronRight, MapPin, Pencil, Phone, Store } from "lucide-react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { SegmentControl } from "@/components/segment-control";
 import { StatusPill } from "@/components/status-pill";
+import { useAuth } from "@/lib/auth-store";
 import { useCars } from "@/lib/cars-store";
+import { SellerEditDialog } from "@/components/seller-edit-dialog";
 import { carSubLine } from "@/lib/car-subline";
 import { formatDayMonthYear, inrFull, parseDMY } from "@/lib/format";
 import { transformImageUrl } from "@/lib/image-transform";
@@ -159,10 +161,12 @@ export function SellerOrdersDialog({
 }) {
   const cars = useCars();
   const shops = useSellerDetails();
+  const { isPro, isGuest } = useAuth();
   const shop = shops.get(sellerKey(seller)) || null;
   const [by, setBy] = useState<GroupBy>("orderId");
   const [only, setOnly] = useState<string>("");
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
+  const [editing, setEditing] = useState(false);
 
   const mine = useMemo(() => bySeller(cars, seller), [cars, seller]);
   const all = useMemo(() => bundle(mine, by), [mine, by]);
@@ -257,6 +261,19 @@ export function SellerOrdersDialog({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            {/* The shop's own details, corrected by the person who bought from
+                it. Pro writes this table; everybody signed in reads it. */}
+            {isPro && !isGuest && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                aria-label={`Edit ${name}`}
+                title={`Edit ${name}`}
+                className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <Pencil className="size-4" />
+              </button>
+            )}
             {shop?.phone && (
               <Action href={`tel:${shop.phone.replace(/\s+/g, "")}`} label={`Call ${name}`}>
                 <Phone className="size-4" />
@@ -505,6 +522,10 @@ export function SellerOrdersDialog({
           </div>
         </div>
       </DialogContent>
+
+      {/* Rendered inside this Dialog's tree but as its own portal: it is the
+          same seller, opened from the page about them. */}
+      <SellerEditDialog open={editing} onOpenChange={setEditing} seller={seller} details={shop} />
     </Dialog>
   );
 }

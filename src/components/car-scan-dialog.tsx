@@ -249,7 +249,7 @@ export function CarScanDialog({
     }
 
     // Default: AI Vision with automatic model fallback
-    setBusyMessage("Analyzing card with AI Vision…");
+    setBusyMessage("Reading the card with VIIV Scan…");
     try {
       const image = await imageToBase64(file);
       // The route checks who is asking before it spends a model call on them.
@@ -346,7 +346,7 @@ export function CarScanDialog({
             )}
           >
             <Sparkles className="size-3.5 text-primary" />
-            AI Vision
+            VIIV Scan
           </button>
           <button
             type="button"
