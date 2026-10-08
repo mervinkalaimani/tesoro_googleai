@@ -26,6 +26,18 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 311,
+    at: "2026-10-08T18:00",
+    changes: [
+      {
+        text: "One row of camera controls in both scanners: flip on the left, shutter in the middle, upload on the right. Save and Recheck stay away until there is a reading to save or a failure to recheck — they had nothing to do with a live viewfinder.",
+      },
+      {
+        text: "A card you may already own now lists what actually agreed, field by field, with the catalogue ID the copy would be filed under and the button underneath. On a phone the collection matches fill the screen instead of scrolling inside a small window.",
+      },
+    ],
+  },
+  {
     build: 310,
     at: "2026-10-08T17:00",
     changes: [

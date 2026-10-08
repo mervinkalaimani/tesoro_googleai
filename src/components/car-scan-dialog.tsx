@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Camera, Check, Copy, Loader2, RefreshCw, ScanLine, Sparkles, Upload } from "lucide-react";
+import {
+  Camera,
+  Check,
+  Copy,
+  Loader2,
+  RefreshCw,
+  ScanLine,
+  Sparkles,
+  SwitchCamera,
+  Upload,
+} from "lucide-react";
 
 import {
   Dialog,
@@ -101,6 +111,7 @@ export function CarScanDialog({
 
   /** The live camera, when one is running. Null the rest of the time. */
   const [cam, setCam] = useState<MediaStream | null>(null);
+  const [facing, setFacing] = useState<"environment" | "user">("environment");
 
   const lastFileRef = useRef<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -115,12 +126,13 @@ export function CarScanDialog({
     setCam(null);
   };
 
-  const startCamera = async () => {
+  const startCamera = async (want: "environment" | "user" = facing) => {
     setError("");
+    stopCamera();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        // The back camera on anything that has two; ignored where there is one.
-        video: { facingMode: "environment", width: { ideal: 1920 } },
+        // The back camera unless asked otherwise; ignored where there is one.
+        video: { facingMode: want, width: { ideal: 1920 } },
       });
       camRef.current = stream;
       setCam(stream);
@@ -356,6 +368,24 @@ export function CarScanDialog({
           {/* The shutter, and the upload under it. One column: they are two
               ways to do the same thing, not two halves of a row. */}
           <div className="flex shrink-0 items-center justify-center gap-4">
+            {cam && (
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="size-11 shrink-0 rounded-full"
+                disabled={busy}
+                onClick={() => {
+                  const next = facing === "environment" ? "user" : "environment";
+                  setFacing(next);
+                  void startCamera(next);
+                }}
+                title="Switch camera"
+                aria-label="Switch camera"
+              >
+                <SwitchCamera className="size-4" />
+              </Button>
+            )}
             {cam ? (
               <button
                 type="button"
@@ -378,8 +408,8 @@ export function CarScanDialog({
                 {preview ? "Scan another card" : "Open camera"}
               </Button>
             )}
-            {/* Beside the shutter, not under it: on a phone the two live in
-                the same reach of a thumb. */}
+            {/* One row: flip on the left, shutter in the middle, upload on
+                the right. */}
             <Button
               type="button"
               variant="outline"
@@ -435,24 +465,47 @@ export function CarScanDialog({
               </p>
               <ul className="divide-y divide-border/60 rounded-lg border border-border">
                 {already.map(({ car, matched }) => (
-                  <li key={car.id} className="flex items-center gap-2.5 px-3 py-2">
-                    <span className="size-10 shrink-0 overflow-hidden rounded-md border border-border/50 bg-muted/50">
-                      <CarThumb car={car} className="size-full object-cover" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium">
+                  <li key={car.id} className="space-y-1.5 px-3 py-2.5">
+                    {/* Name, then everything that agreed, then the catalogue
+                        ID the copy would be filed under, then the button. Four
+                        short lines rather than one line and a count: "5 fields
+                        agree" is not something anybody can check. */}
+                    <div className="flex items-center gap-2.5">
+                      <span className="size-10 shrink-0 overflow-hidden rounded-md border border-border/50 bg-muted/50">
+                        <CarThumb car={car} className="size-full object-cover" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">
                         {car.name || `${car.make ?? ""} ${car.model ?? ""}`.trim()}
                       </span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
-                        {[car.brand, car.colour, car.catalogId].filter(Boolean).join(" · ")}
-                        {matched.length > 0 && ` · ${matched.length} fields agree`}
-                      </span>
-                    </span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1">
+                      {matched.map((m) => (
+                        <span
+                          key={m.label}
+                          className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                        >
+                          <Check className="size-2.5" />
+                          {m.label}: {m.value}
+                        </span>
+                      ))}
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground">
+                      {car.catalogId ? (
+                        <>
+                          Catalogue ID <span className="font-mono">{car.catalogId}</span>
+                        </>
+                      ) : (
+                        "No catalogue ID on this one"
+                      )}
+                    </p>
+
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      className="shrink-0 gap-1.5 text-xs"
+                      className="w-full gap-1.5 text-xs"
                       onClick={() => setCopying(car)}
                     >
                       <Copy className="size-3.5" />
@@ -469,34 +522,41 @@ export function CarScanDialog({
             opinion on a photograph that read fine is a credit spent to be told
             the same thing. Save on the right, where the thing you came to do
             ends up. */}
-        <DialogFooter className="shrink-0 flex-row items-center justify-between gap-2 border-t border-border/60 p-4 pt-3 sm:justify-between">
-          {error && lastFileRef.current ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void scan(lastFileRef.current)}
-              disabled={busy || spent}
-              className="gap-1.5 text-xs"
-              title="Read the same picture again"
-            >
-              <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
-              Recheck
-            </Button>
-          ) : (
-            <span />
-          )}
+        {/* Nothing in the footer until there is something to do with it:
+            a Save needs a reading, and a Recheck needs a picture that failed.
+            An empty bar under a viewfinder is a bar that means nothing. */}
+        {!cam && (found || (error && lastFileRef.current)) && (
+          <DialogFooter className="shrink-0 flex-row items-center justify-between gap-2 border-t border-border/60 p-4 pt-3 sm:justify-between">
+            {error && lastFileRef.current ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void scan(lastFileRef.current)}
+                disabled={busy || spent}
+                className="gap-1.5 text-xs"
+                title="Read the same picture again"
+              >
+                <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
+                Recheck
+              </Button>
+            ) : (
+              <span />
+            )}
 
-          <Button
-            type="button"
-            onClick={apply}
-            disabled={take.size === 0 || busy}
-            className="gap-1.5 text-xs font-semibold"
-          >
-            <Check className="size-4" />
-            Save {take.size ? `(${take.size})` : ""}
-          </Button>
-        </DialogFooter>
+            {found && (
+              <Button
+                type="button"
+                onClick={apply}
+                disabled={take.size === 0 || busy}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                <Check className="size-4" />
+                Save {take.size ? `(${take.size})` : ""}
+              </Button>
+            )}
+          </DialogFooter>
+        )}
 
         <AddAnotherCarDialog
           car={copying}

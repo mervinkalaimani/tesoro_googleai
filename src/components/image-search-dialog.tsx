@@ -545,6 +545,21 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                 </div>
 
                 <div className="flex shrink-0 items-center justify-center gap-4 pb-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-11 shrink-0 rounded-full"
+                    onClick={() => {
+                      const nextFacing = cameraFacing === "environment" ? "user" : "environment";
+                      setCameraFacing(nextFacing);
+                      void startLiveCamera(nextFacing);
+                    }}
+                    title="Switch camera"
+                    aria-label="Switch camera"
+                  >
+                    <SwitchCamera className="size-4" />
+                  </Button>
                   <button
                     type="button"
                     onClick={captureLivePhoto}
@@ -554,8 +569,8 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                   >
                     <span className="mx-auto block size-11 rounded-full bg-white/90" />
                   </button>
-                  {/* Beside the shutter, not under it: on a phone the two
-                      live in the same reach of a thumb. */}
+                  {/* One row under the picture: flip on the left, shutter
+                      in the middle, upload on the right. */}
                   <Button
                     type="button"
                     variant="outline"
@@ -573,7 +588,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
 
             {/* State 3: Image Captured / Uploaded */}
             {previewUrl && (
-              <div className="space-y-4">
+              <div className="space-y-4 max-sm:flex max-sm:min-h-0 max-sm:flex-1 max-sm:flex-col max-sm:gap-4">
                 {/* Image Preview & Scanning Indicator */}
                 <div className="relative flex items-start gap-3 overflow-hidden rounded-xl border border-border/70 bg-muted/40 p-3 sm:items-center sm:gap-4">
                   <div className="relative size-28 sm:size-32 rounded-lg overflow-hidden shrink-0 border border-border bg-black/5 flex items-center justify-center">
@@ -687,7 +702,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
 
                 {/* Matching Cars List */}
                 {attributes && (
-                  <div className="space-y-2.5">
+                  <div className="space-y-2.5 max-sm:flex max-sm:min-h-0 max-sm:flex-1 max-sm:flex-col max-sm:gap-2.5 max-sm:overflow-y-auto">
                     <div className="flex items-center justify-between px-1">
                       <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <CarIcon className="size-3.5 text-muted-foreground" />
@@ -703,7 +718,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                     </div>
 
                     {matchedCars.length > 0 ? (
-                      <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                      <div className="space-y-2 pr-1 sm:max-h-[260px] sm:overflow-y-auto">
                         {matchedCars.map(({ car, score, matchedAttributes, exactCount }) => (
                           <div
                             key={car.id}
