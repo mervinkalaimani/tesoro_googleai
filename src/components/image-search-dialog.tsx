@@ -29,6 +29,7 @@ import { useApp } from "@/lib/store";
 import { CarThumb } from "@/components/car-thumb";
 import { ACCEPT_ATTR, imageToBase64 } from "@/lib/car-photos";
 import { authHeader } from "@/lib/api-auth";
+import { MAX_MATCHES, matchScannedCar } from "@/lib/scan-match";
 import { useAuth } from "@/lib/auth-store";
 import { scansLeft } from "@/lib/tiers";
 import type { Diecast } from "@/lib/types";
@@ -60,27 +61,6 @@ interface ScoredCar {
   matchedAttributes: { label: string; value: string }[];
   exactCount: number;
 }
-
-const isExactMatch = (a: Diecast, b: Diecast) => {
-  const norm = (s?: string | number | null) =>
-    String(s ?? "")
-      .trim()
-      .toLowerCase();
-  return (
-    norm(a.make) === norm(b.make) &&
-    norm(a.model) === norm(b.model) &&
-    norm(a.variant) === norm(b.variant) &&
-    norm(a.year) === norm(b.year) &&
-    norm(a.colour) === norm(b.colour) &&
-    norm(a.brand) === norm(b.brand) &&
-    norm(a.series) === norm(b.series) &&
-    norm(a.subSeries) === norm(b.subSeries) &&
-    norm(a.carNumber) === norm(b.carNumber) &&
-    norm(a.assortment) === norm(b.assortment) &&
-    norm(a.type) === norm(b.type) &&
-    norm(a.size) === norm(b.size)
-  );
-};
 
 export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps) {
   const cars = useCars();
@@ -350,144 +330,23 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
     return () => window.removeEventListener("paste", onPaste);
   }, [open]);
 
-  // Calculate matching cars against extracted attributes
+  /**
+   * The cars in the collection that are this car.
+   *
+   * The rule lives in scan-match.ts, where it can be tested: the model has to
+   * agree before anything else counts, and at most five come back. What this
+   * screen used to do was score every attribute and keep anything that scored,
+   * which answered a photograph of a black Hot Wheels with 836 cars.
+   */
   const matchedCars = useMemo<ScoredCar[]>(() => {
-    if (!attributes) return [];
-
-    const norm = (s?: string | number | null) =>
-      String(s ?? "")
-        .trim()
-        .toLowerCase();
-
-    const attrMake = norm(attributes.make);
-    const attrModel = norm(attributes.model);
-    const attrVariant = norm(attributes.variant);
-    const attrColour = norm(attributes.colour);
-    const attrBrand = norm(attributes.brand);
-    const attrSeries = norm(attributes.series);
-    const attrCarNumber = norm(attributes.carNumber);
-    const attrYear = norm(attributes.year);
-    const attrType = norm(attributes.type);
-
-    const scored: ScoredCar[] = [];
-
-    for (const car of cars) {
-      let score = 0;
-      const matchedAttrs: { label: string; value: string }[] = [];
-
-      const carMake = norm(car.make);
-      const carModel = norm(car.model);
-      const carName = norm(car.name);
-      const carVariant = norm(car.variant);
-      const carColour = norm(car.colour);
-      const carBrand = norm(car.brand);
-      const carSeries = norm(car.series);
-      const carNum = norm(car.carNumber);
-      const carYear = norm(car.year);
-      const carType = norm(car.type);
-
-      // 1. Model match (highest weight)
-      if (attrModel) {
-        if (carModel === attrModel || carName === attrModel) {
-          score += 45;
-          matchedAttrs.push({ label: "Model", value: car.model || car.name });
-        } else if (carModel.includes(attrModel) || attrModel.includes(carModel)) {
-          score += 30;
-          matchedAttrs.push({ label: "Model", value: car.model || car.name });
-        } else {
-          // Word-by-word match
-          const words = attrModel.split(/\s+/).filter((w) => w.length > 2);
-          const matchedWords = words.filter((w) => carModel.includes(w) || carName.includes(w));
-          if (matchedWords.length > 0) {
-            score += 15 * matchedWords.length;
-            matchedAttrs.push({ label: "Model", value: car.model });
-          }
-        }
-      }
-
-      // 2. Make match
-      if (attrMake && carMake) {
-        if (carMake === attrMake) {
-          score += 30;
-          matchedAttrs.push({ label: "Make", value: car.make });
-        } else if (carMake.includes(attrMake) || attrMake.includes(carMake)) {
-          score += 20;
-          matchedAttrs.push({ label: "Make", value: car.make });
-        }
-      }
-
-      // 3. Brand match
-      if (attrBrand && carBrand) {
-        if (carBrand === attrBrand) {
-          score += 20;
-          matchedAttrs.push({ label: "Brand", value: car.brand });
-        } else if (carBrand.includes(attrBrand) || attrBrand.includes(carBrand)) {
-          score += 12;
-          matchedAttrs.push({ label: "Brand", value: car.brand });
-        }
-      }
-
-      // 4. Colour match
-      if (attrColour && carColour) {
-        if (carColour === attrColour) {
-          score += 20;
-          matchedAttrs.push({ label: "Colour", value: car.colour });
-        } else if (carColour.includes(attrColour) || attrColour.includes(carColour)) {
-          score += 15;
-          matchedAttrs.push({ label: "Colour", value: car.colour });
-        }
-      }
-
-      // 5. Variant match
-      if (attrVariant && carVariant) {
-        if (carVariant === attrVariant || carVariant.includes(attrVariant)) {
-          score += 20;
-          matchedAttrs.push({ label: "Variant", value: car.variant });
-        }
-      }
-
-      // 6. Series match
-      if (attrSeries && carSeries) {
-        if (carSeries === attrSeries || carSeries.includes(attrSeries)) {
-          score += 18;
-          matchedAttrs.push({ label: "Series", value: car.series });
-        }
-      }
-
-      // 7. Car Number match
-      if (attrCarNumber && carNum) {
-        if (carNum === attrCarNumber) {
-          score += 25;
-          matchedAttrs.push({ label: "#", value: car.carNumber });
-        }
-      }
-
-      // 8. Year match
-      if (attrYear && carYear && carYear === attrYear) {
-        score += 12;
-        matchedAttrs.push({ label: "Year", value: String(car.year) });
-      }
-
-      // 9. Type match
-      if (attrType && carType && (carType === attrType || carType.includes(attrType))) {
-        score += 10;
-      }
-
-      if (score > 0) {
-        // Calculate exact duplicates count
-        const exactCount = cars.filter((other) => isExactMatch(car, other)).length;
-        scored.push({
-          car,
-          score,
-          matchedAttributes: matchedAttrs,
-          exactCount,
-        });
-      }
-    }
-
-    // Sort descending by match score
-    scored.sort((a, b) => b.score - a.score);
-    return scored;
+    return matchScannedCar(attributes, cars).map(({ car, score, matched }) => ({
+      car,
+      score,
+      matchedAttributes: matched,
+      // How many of this exact casting are already logged, by catalogue ID —
+      // the same test the duplicates page uses.
+      exactCount: countCopies(cars, car),
+    }));
   }, [attributes, cars]);
 
   // Apply search query from extracted attributes
@@ -685,7 +544,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                   </Button>
                 </div>
 
-                <div className="flex shrink-0 flex-col items-center gap-2 pb-1">
+                <div className="flex shrink-0 items-center justify-center gap-4 pb-1">
                   <button
                     type="button"
                     onClick={captureLivePhoto}
@@ -695,13 +554,18 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                   >
                     <span className="mx-auto block size-11 rounded-full bg-white/90" />
                   </button>
+                  {/* Beside the shutter, not under it: on a phone the two
+                      live in the same reach of a thumb. */}
                   <Button
-                    variant="link"
-                    size="sm"
-                    className="h-auto p-0 text-xs"
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="size-11 shrink-0 rounded-full"
                     onClick={() => fileInputRef.current?.click()}
+                    title="Upload an image instead"
+                    aria-label="Upload an image instead"
                   >
-                    Upload an image instead
+                    <Upload className="size-4" />
                   </Button>
                 </div>
               </div>
@@ -711,7 +575,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
             {previewUrl && (
               <div className="space-y-4">
                 {/* Image Preview & Scanning Indicator */}
-                <div className="relative rounded-xl overflow-hidden bg-muted/40 border border-border/70 flex flex-col md:flex-row gap-4 p-3 items-center">
+                <div className="relative flex items-start gap-3 overflow-hidden rounded-xl border border-border/70 bg-muted/40 p-3 sm:items-center sm:gap-4">
                   <div className="relative size-28 sm:size-32 rounded-lg overflow-hidden shrink-0 border border-border bg-black/5 flex items-center justify-center">
                     <img
                       src={previewUrl}
@@ -777,19 +641,29 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                         </div>
                       </div>
                     ) : attributes ? (
-                      <div className="text-xs text-muted-foreground">
-                        <p className="text-[11px]">
+                      <>
+                        <p className="text-[11px] text-muted-foreground max-sm:hidden">
                           We identified the vehicle below. Matches from your collection are ranked
                           by similarity.
                         </p>
-                      </div>
+                        {/* Shut until asked for: what was read off the card is
+                            the working, and the matches are the answer. */}
+                        <details className="rounded-lg border border-border/70 bg-background sm:hidden">
+                          <summary className="cursor-pointer px-2.5 py-1.5 text-[11px] font-medium">
+                            Extracted attributes
+                          </summary>
+                          <div className="px-2.5 pb-2.5">
+                            <AttributeChips attributes={attributes} />
+                          </div>
+                        </details>
+                      </>
                     ) : null}
                   </div>
                 </div>
 
                 {/* Extracted Attributes Chips */}
                 {attributes && (
-                  <div className="rounded-xl border border-border/70 bg-card p-3.5 space-y-2.5">
+                  <div className="space-y-2.5 rounded-xl border border-border/70 bg-card p-3.5 max-sm:hidden">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                         <Tag className="size-3.5 text-primary" />
@@ -807,79 +681,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                       </Button>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
-                      {attributes.make && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">Make:</span>
-                          <span className="font-medium">{attributes.make}</span>
-                        </Badge>
-                      )}
-                      {attributes.model && (
-                        <Badge
-                          variant="secondary"
-                          className="text-xs gap-1 py-1 px-2.5 bg-primary/10 text-primary border-primary/20"
-                        >
-                          <span className="text-[10px] text-primary/70 uppercase">Model:</span>
-                          <span className="font-semibold">{attributes.model}</span>
-                        </Badge>
-                      )}
-                      {attributes.variant && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">
-                            Variant:
-                          </span>
-                          <span>{attributes.variant}</span>
-                        </Badge>
-                      )}
-                      {attributes.colour && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">
-                            Colour:
-                          </span>
-                          <span>{attributes.colour}</span>
-                        </Badge>
-                      )}
-                      {attributes.brand && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">
-                            Brand:
-                          </span>
-                          <span>{attributes.brand}</span>
-                        </Badge>
-                      )}
-                      {attributes.series && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">
-                            Series:
-                          </span>
-                          <span>{attributes.series}</span>
-                        </Badge>
-                      )}
-                      {attributes.year && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">Year:</span>
-                          <span>{attributes.year}</span>
-                        </Badge>
-                      )}
-                      {attributes.carNumber && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">#:</span>
-                          <span>{attributes.carNumber}</span>
-                        </Badge>
-                      )}
-                      {attributes.assortment && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">Line:</span>
-                          <span>{attributes.assortment}</span>
-                        </Badge>
-                      )}
-                      {attributes.type && (
-                        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-                          <span className="text-[10px] text-muted-foreground uppercase">Type:</span>
-                          <span>{attributes.type}</span>
-                        </Badge>
-                      )}
-                    </div>
+                    <AttributeChips attributes={attributes} />
                   </div>
                 )}
 
@@ -892,11 +694,11 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                         Collection Matches ({matchedCars.length})
                       </span>
                       <span className="text-[11px] text-muted-foreground">
-                        {matchedCars.length === 1
-                          ? "1 car matched"
-                          : matchedCars.length > 1
-                            ? "Click a car to open its details"
-                            : "No matches in your collection"}
+                        {matchedCars.length === 0
+                          ? "No matches in your collection"
+                          : matchedCars.length === MAX_MATCHES
+                            ? `Closest ${MAX_MATCHES} · tap one to open it`
+                            : "Tap one to open it"}
                       </span>
                     </div>
 
@@ -1004,4 +806,93 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
       </DialogContent>
     </Dialog>
   );
+}
+
+/** What the scan read, as chips. Drawn beside the picture and in the card. */
+function AttributeChips({ attributes }: { attributes: ExtractedAttributes }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {attributes.make && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">Make:</span>
+          <span className="font-medium">{attributes.make}</span>
+        </Badge>
+      )}
+      {attributes.model && (
+        <Badge
+          variant="secondary"
+          className="text-xs gap-1 py-1 px-2.5 bg-primary/10 text-primary border-primary/20"
+        >
+          <span className="text-[10px] text-primary/70 uppercase">Model:</span>
+          <span className="font-semibold">{attributes.model}</span>
+        </Badge>
+      )}
+      {attributes.variant && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">Variant:</span>
+          <span>{attributes.variant}</span>
+        </Badge>
+      )}
+      {attributes.colour && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">Colour:</span>
+          <span>{attributes.colour}</span>
+        </Badge>
+      )}
+      {attributes.brand && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">Brand:</span>
+          <span>{attributes.brand}</span>
+        </Badge>
+      )}
+      {attributes.series && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">Series:</span>
+          <span>{attributes.series}</span>
+        </Badge>
+      )}
+      {attributes.year && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">Year:</span>
+          <span>{attributes.year}</span>
+        </Badge>
+      )}
+      {attributes.carNumber && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">#:</span>
+          <span>{attributes.carNumber}</span>
+        </Badge>
+      )}
+      {attributes.assortment && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">Line:</span>
+          <span>{attributes.assortment}</span>
+        </Badge>
+      )}
+      {attributes.type && (
+        <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
+          <span className="text-[10px] text-muted-foreground uppercase">Type:</span>
+          <span>{attributes.type}</span>
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+/**
+ * How many of this casting are already logged.
+ *
+ * By catalogue ID and box, which is what copies.ts calls the same casting —
+ * the screen used to decide it by comparing twelve fields of its own, and two
+ * rows typed slightly differently were two castings to it.
+ */
+function countCopies(cars: Diecast[], car: Diecast): number {
+  const id = (car.catalogId || "").trim().toUpperCase();
+  if (!id) return 1;
+  const box = (car.assortment || "").trim().toLowerCase();
+  return cars.filter(
+    (c) =>
+      (c.catalogId || "").trim().toUpperCase() === id &&
+      (c.assortment || "").trim().toLowerCase() === box,
+  ).length;
 }

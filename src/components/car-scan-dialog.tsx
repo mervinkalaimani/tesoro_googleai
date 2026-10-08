@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Camera, Check, Loader2, RefreshCw, ScanLine, Sparkles, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Camera, Check, Copy, Loader2, RefreshCw, ScanLine, Sparkles, Upload } from "lucide-react";
 
 import {
   Dialog,
@@ -13,6 +13,11 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ACCEPT_ATTR, imageToBase64 } from "@/lib/car-photos";
 import { useImagePaste } from "@/lib/paste-image";
+import { AddAnotherCarDialog } from "@/components/add-another-car-dialog";
+import { CarThumb } from "@/components/car-thumb";
+import { useCars } from "@/lib/cars-store";
+import { matchScannedCar } from "@/lib/scan-match";
+import type { Diecast } from "@/lib/types";
 import { useAuth } from "@/lib/auth-store";
 import { scansLeft } from "@/lib/tiers";
 import { cn } from "@/lib/utils";
@@ -80,6 +85,19 @@ export function CarScanDialog({
   const [preview, setPreview] = useState<string>("");
   const [found, setFound] = useState<ScanResult | null>(null);
   const [take, setTake] = useState<Set<ScanKey>>(new Set());
+  /** The car a second copy is being filed against, once one is chosen. */
+  const [copying, setCopying] = useState<Diecast | null>(null);
+
+  const cars = useCars();
+  /**
+   * The cars already logged that are this card.
+   *
+   * Worth saying before the form is filled in: most of the time somebody
+   * scanning a card they already own meant to buy another one, and filing it
+   * against the row that exists keeps the catalogue ID — so the two copies are
+   * one casting owned twice rather than two castings with the same name.
+   */
+  const already = useMemo(() => matchScannedCar(found, cars), [found, cars]);
 
   /** The live camera, when one is running. Null the rest of the time. */
   const [cam, setCam] = useState<MediaStream | null>(null);
@@ -337,7 +355,7 @@ export function CarScanDialog({
 
           {/* The shutter, and the upload under it. One column: they are two
               ways to do the same thing, not two halves of a row. */}
-          <div className="flex shrink-0 flex-col items-center gap-2">
+          <div className="flex shrink-0 items-center justify-center gap-4">
             {cam ? (
               <button
                 type="button"
@@ -360,16 +378,19 @@ export function CarScanDialog({
                 {preview ? "Scan another card" : "Open camera"}
               </Button>
             )}
+            {/* Beside the shutter, not under it: on a phone the two live in
+                the same reach of a thumb. */}
             <Button
               type="button"
-              variant="link"
-              size="sm"
-              className="h-auto p-0 text-xs"
+              variant="outline"
+              size="icon"
+              className="size-11 shrink-0 rounded-full"
               disabled={busy || spent}
               onClick={() => fileRef.current?.click()}
+              title="Upload an image instead"
+              aria-label="Upload an image instead"
             >
-              <Upload className="mr-1 size-3.5" />
-              Upload an image instead
+              <Upload className="size-4" />
             </Button>
           </div>
 
@@ -400,6 +421,43 @@ export function CarScanDialog({
                         {found?.[f.key]}
                       </span>
                     </label>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {already.length > 0 && (
+            <div className="space-y-1.5 pb-1">
+              <p className="text-xs text-muted-foreground">
+                {already.length === 1 ? "You already have this one" : "You may already have this"}.
+                Filing a copy against it keeps the catalogue ID.
+              </p>
+              <ul className="divide-y divide-border/60 rounded-lg border border-border">
+                {already.map(({ car, matched }) => (
+                  <li key={car.id} className="flex items-center gap-2.5 px-3 py-2">
+                    <span className="size-10 shrink-0 overflow-hidden rounded-md border border-border/50 bg-muted/50">
+                      <CarThumb car={car} className="size-full object-cover" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-medium">
+                        {car.name || `${car.make ?? ""} ${car.model ?? ""}`.trim()}
+                      </span>
+                      <span className="block truncate text-[11px] text-muted-foreground">
+                        {[car.brand, car.colour, car.catalogId].filter(Boolean).join(" · ")}
+                        {matched.length > 0 && ` · ${matched.length} fields agree`}
+                      </span>
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5 text-xs"
+                      onClick={() => setCopying(car)}
+                    >
+                      <Copy className="size-3.5" />
+                      Add a copy
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -439,6 +497,16 @@ export function CarScanDialog({
             Save {take.size ? `(${take.size})` : ""}
           </Button>
         </DialogFooter>
+
+        <AddAnotherCarDialog
+          car={copying}
+          open={copying !== null}
+          onOpenChange={(v) => !v && setCopying(null)}
+          onAdded={() => {
+            setCopying(null);
+            onOpenChange(false);
+          }}
+        />
 
         <input
           ref={fileRef}

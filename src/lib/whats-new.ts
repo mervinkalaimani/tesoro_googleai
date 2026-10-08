@@ -26,6 +26,23 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 310,
+    at: "2026-10-08T17:00",
+    changes: [
+      {
+        key: true,
+        text: "Collection matches are matches again. A photograph of a black Hot Wheels used to come back with 836 cars — every black one, every Hot Wheels one, and any model sharing a letter with what was read off the card. Now the model has to agree before anything else counts, and the five closest are what you get.",
+      },
+      {
+        key: true,
+        text: "Scanning a card you already own says so, and offers to file the new one as another copy of it — same catalogue ID, so it reads as one casting owned twice rather than two castings with the same name.",
+      },
+      {
+        text: "On a phone, what was read off the card folds up beside the picture instead of filling the screen above the matches. Upload sits beside the shutter now rather than under it.",
+      },
+    ],
+  },
+  {
     build: 309,
     at: "2026-10-08T16:00",
     changes: [
