@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 309,
+    at: "2026-10-08T16:00",
+    changes: [
+      {
+        key: true,
+        text: "Scan a card works like Scan to Search: VIIV Scan and nothing else, the camera open the moment it is, the shutter with Upload an image instead underneath, and the credits left said before you point it at anything. On-device OCR and the paste-text box are gone — both read worse than the one that stayed, and picking a reader before seeing a result was a choice nobody had the information to make.",
+      },
+      {
+        text: "Recheck only appears when something went wrong, on the left, with Save at the other end of the same row. A second opinion on a card that read fine was a credit spent to be told the same thing.",
+      },
+    ],
+  },
+  {
     build: 308,
     at: "2026-10-08T15:00",
     changes: [
