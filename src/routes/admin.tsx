@@ -46,6 +46,8 @@ import { PageHeading, PageToolbar } from "@/components/page-header";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { SegmentControl } from "@/components/segment-control";
 import { useApp } from "@/lib/store";
+import { Switch } from "@/components/ui/switch";
+import { AUTO_APPROVE_KEY, useDeploymentFlag } from "@/lib/deployment-settings";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -115,6 +117,7 @@ function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const { query } = useApp();
+  const autoApprove = useDeploymentFlag(AUTO_APPROVE_KEY);
   const [segment, setSegment] = useState<UserSegment>("all");
   const [openSno, setOpenSno] = useState<number | null>(null);
 
@@ -324,6 +327,41 @@ function AdminPage() {
 
         {/* Placeholder to keep title optically centered */}
         <div className="w-16" aria-hidden="true" />
+      </div>
+
+      {/* Who decides. Off, a signup waits in the list below for somebody to
+          press Approve; on, it is let in the moment it is made. A deployment
+          setting rather than a per-account one, which is why only the owner can
+          move it — an admin sees where it stands. */}
+      <div className="card-elevated flex items-center justify-between gap-4 px-4 py-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            <UserCheck className="size-4 text-primary" />
+            Approve new sign-ups automatically
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {autoApprove.on
+              ? "Anyone who signs up can use VIIV straight away."
+              : "Every new account waits here until you approve it."}
+            {!isOwner && " Only the owner can change this."}
+          </p>
+        </div>
+        <Switch
+          checked={autoApprove.on}
+          disabled={!autoApprove.loaded || !isOwner}
+          aria-label="Approve new sign-ups automatically"
+          onCheckedChange={(v) => {
+            void autoApprove.save(Boolean(v)).then((res) => {
+              if (res.error) {
+                toast.error("Could not save that", { description: res.error });
+                return;
+              }
+              toast.success(
+                v ? "New sign-ups are approved on arrival" : "New sign-ups wait for approval",
+              );
+            });
+          }}
+        />
       </div>
 
       <KpiBand>

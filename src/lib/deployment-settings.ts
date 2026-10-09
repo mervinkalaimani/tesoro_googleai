@@ -117,3 +117,54 @@ export function useOAuthProviders() {
 
   return { providers, loaded, save };
 }
+
+/** Whether a new signup is approved the moment it arrives. */
+export const AUTO_APPROVE_KEY = "auto_approve_signups";
+
+/**
+ * A deployment-wide boolean, read and written by key.
+ *
+ * Same table and same shape as the providers above; the value is a bare jsonb
+ * boolean rather than an object because there is nothing else to say. A missing
+ * row, a missing table or a refused read all read as false — the cautious
+ * answer for every flag in here, since each one opens something up.
+ */
+export function useDeploymentFlag(key: string) {
+  const [on, setOn] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      let value = false;
+      try {
+        const { data } = await db().from(TABLE).select("value").eq("key", key).maybeSingle();
+        value = (data as { value?: unknown } | null)?.value === true;
+      } catch {
+        value = false;
+      }
+      if (cancelled) return;
+      setOn(value);
+      setLoaded(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [key]);
+
+  const save = useCallback(
+    async (next: boolean) => {
+      setOn(next);
+      const { error } = await db()
+        .from(TABLE)
+        .upsert({ key, value: next, updated_at: new Date().toISOString() }, { onConflict: "key" });
+      // Put it back rather than leave a switch that says one thing while the
+      // table says another.
+      if (error) setOn(!next);
+      return { error: error?.message };
+    },
+    [key],
+  );
+
+  return { on, loaded, save };
+}

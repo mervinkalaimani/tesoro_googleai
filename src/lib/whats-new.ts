@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 313,
+    at: "2026-10-09T10:00",
+    changes: [
+      {
+        admin: true,
+        text: "Users has a switch for how new sign-ups are handled: hold each one for approval, as it has always worked, or let them in the moment they sign up. It is a setting for the whole install, so only the owner can move it.",
+      },
+    ],
+  },
+  {
     build: 312,
     at: "2026-10-08T18:30",
     changes: [
