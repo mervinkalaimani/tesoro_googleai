@@ -1,8 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   BellRing,
-  Clock3,
   Loader2,
   RefreshCw,
   Rocket,
@@ -17,10 +16,10 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
-import { formatDayMonthYear } from "@/lib/format";
-import { planOf, trialDaysLeft, type Plan } from "@/lib/tiers";
+import { planOf, trialDaysLeft, type PaidPlan, type Plan } from "@/lib/tiers";
 import { Button } from "@/components/ui/button";
 import { KpiBand, KpiTile } from "@/components/kpi";
+import { SubscriptionRequests } from "@/components/subscription-requests";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/dashboard")({
@@ -47,6 +46,7 @@ type Row = {
   is_approved: boolean;
   is_pro: boolean;
   pro_plan: string | null;
+  pro_months: number | null;
   pro_since: string | null;
   pro_until: string | null;
   pro_requested_at: string | null;
@@ -55,6 +55,35 @@ type Row = {
   rejected_at: string | null;
   created_at: string;
 };
+
+/**
+ * The length a subscription was bought for, as something to group by.
+ *
+ * pro_since null is the comped case -- a plan an admin switched on with no
+ * end date -- and it is kept apart from the bought ones rather than counted
+ * as a very long year.
+ */
+function termKey(u: { pro_months: number | null; pro_since: string | null }): string {
+  if (!u.pro_since) return "none";
+  const m = Number(u.pro_months);
+  return Number.isFinite(m) && m > 0 ? String(m) : "1";
+}
+
+/** Monthly, half-yearly and yearly have names; anything else says its months. */
+function termLabel(key: string): string {
+  if (key === "none") return "No end date";
+  if (key === "1") return "Monthly";
+  if (key === "6") return "6 months";
+  if (key === "12") return "Yearly";
+  return `${key} months`;
+}
+
+/** Shortest first, with the open-ended ones last. */
+function termOrder(a: string, b: string): number {
+  if (a === "none") return 1;
+  if (b === "none") return -1;
+  return Number(a) - Number(b);
+}
 
 /** Thirty seconds. Long enough not to hammer, short enough to call it live. */
 const REFRESH_MS = 30_000;
@@ -115,6 +144,11 @@ function DashboardPage() {
 
   const stats = useMemo(() => {
     const tiers: Record<Plan, number> = { free: 0, plus: 0, pro: 0 };
+    // How long each paid plan was bought for. A subscription is a plan and a
+    // length, and the length is the half that says when the money comes back
+    // round -- six people on Pro monthly and six on Pro yearly are the same
+    // number and a different business.
+    const terms: Record<PaidPlan, Record<string, number>> = { plus: {}, pro: {} };
     let trials = 0;
     let paying = 0;
     for (const u of rows) {
@@ -122,11 +156,16 @@ function DashboardPage() {
       tiers[plan] += 1;
       const onTrial = !u.is_pro && !u.is_owner && trialDaysLeft(u) !== null;
       if (onTrial) trials += 1;
-      else if (plan !== "free" && !u.is_owner) paying += 1;
+      else if (plan !== "free" && !u.is_owner) {
+        paying += 1;
+        const key = termKey(u);
+        terms[plan][key] = (terms[plan][key] ?? 0) + 1;
+      }
     }
     return {
       total: rows.length,
       tiers,
+      terms,
       trials,
       paying,
       today: joinedSince(rows, daysAgo(0)),
@@ -156,9 +195,13 @@ function DashboardPage() {
     );
   }
 
+  // Trial on its own, not folded into Pro. It opens the same sections, which
+  // is why planOf() calls it Pro -- but this bar is about who is paying, and
+  // a fortnight that ends on its own is not the same fact as a subscription.
   const bars: { label: string; n: number; className: string }[] = [
-    { label: "Pro", n: stats.tiers.pro, className: "bg-primary" },
+    { label: "Pro", n: stats.tiers.pro - stats.trials, className: "bg-primary" },
     { label: "Plus", n: stats.tiers.plus, className: "bg-violet-500" },
+    { label: "Trial", n: stats.trials, className: "bg-amber-500" },
     { label: "Free", n: stats.tiers.free, className: "bg-muted-foreground/40" },
   ];
 
@@ -264,7 +307,7 @@ function DashboardPage() {
           )}
         </div>
 
-        <dl className="grid grid-cols-3 gap-2">
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {bars.map((b) => (
             <div key={b.label} className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
               <dt className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -276,61 +319,44 @@ function DashboardPage() {
           ))}
         </dl>
 
-        {/* A trial counts as Pro in the bar, because that is what it opens.
-            Saying so is cheaper than a fourth colour nobody asked for. */}
-        {stats.trials > 0 && (
-          <p className="text-[11px] text-muted-foreground">
-            {stats.trials} of the Pro figure {stats.trials === 1 ? "is a trial" : "are trials"}, not
-            a subscription.
-          </p>
-        )}
+        {/* And for the two that are bought, how long for. Drawn under the
+            split rather than beside it: the first question is who is on what,
+            and this is the second one. */}
+        {(["pro", "plus"] as PaidPlan[]).map((plan) => {
+          const entries = Object.entries(stats.terms[plan]).sort(([a], [b]) => termOrder(a, b));
+          if (entries.length === 0) return null;
+          return (
+            <div key={plan} className="space-y-1.5">
+              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <span
+                  className={cn(
+                    "size-2 rounded-full",
+                    plan === "pro" ? "bg-primary" : "bg-violet-500",
+                  )}
+                />
+                {plan === "pro" ? "Pro" : "Plus"} by length
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {entries.map(([key, n]) => (
+                  <span
+                    key={key}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-1 text-[11px]"
+                  >
+                    <span className="text-muted-foreground">{termLabel(key)}</span>
+                    <span className="font-semibold tabular-nums">{n}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </section>
 
-      {/* The asks themselves, because a count of people waiting is only useful
-          next to their names. */}
-      <section className="card-elevated space-y-2 p-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Subscription requests
-          </h2>
-          <Link to="/subscriptions" className="text-[11px] font-medium text-primary">
-            Open Subscriptions
-          </Link>
-        </div>
-
-        {loading && rows.length === 0 ? (
-          <Loader2 className="mx-auto my-6 size-5 animate-spin text-muted-foreground" />
-        ) : stats.asked === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            Nobody is waiting on an answer.
-          </p>
-        ) : (
-          <ul className="divide-y divide-border/60">
-            {rows
-              .filter((u) => u.pro_requested_at)
-              .sort((a, b) => (a.pro_requested_at ?? "").localeCompare(b.pro_requested_at ?? ""))
-              .map((u) => (
-                <li key={u.sno} className="flex items-center gap-3 py-2">
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-medium">
-                      {[u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.email_id}
-                    </span>
-                    <span className="block truncate text-[11px] text-muted-foreground">
-                      {u.email_id}
-                    </span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                    {u.pro_requested_plan === "plus" ? "Plus" : "Pro"}
-                  </span>
-                  <span className="hidden shrink-0 items-center gap-1 text-[11px] text-muted-foreground sm:flex">
-                    <Clock3 className="size-3" />
-                    {formatDayMonthYear(new Date(u.pro_requested_at as string))}
-                  </span>
-                </li>
-              ))}
-          </ul>
-        )}
-      </section>
+      {/* The requests themselves, with the buttons that answer them. Lifted
+          off the home page: an admin opening their own collection was being
+          shown other people's billing, and the one screen that is about
+          everybody else is this one. */}
+      <SubscriptionRequests />
     </div>
   );
 }

@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 318,
+    at: "2026-10-10T18:00",
+    changes: [
+      {
+        admin: true,
+        text: "Subscription requests have moved off the home page and onto the Admin Dashboard, where the rest of everybody-else's business already lives. Trial is its own band in Who is on what rather than being counted as Pro, and Pro and Plus each break down by how long they were bought for.",
+      },
+    ],
+  },
+  {
     build: 317,
     at: "2026-10-10T17:00",
     changes: [

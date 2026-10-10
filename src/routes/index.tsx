@@ -15,7 +15,7 @@ import {
   PackageCheck,
 } from "lucide-react";
 import { KpiBand, KpiTile } from "@/components/kpi";
-import { MySubscriptionRequest, SubscriptionRequests } from "@/components/subscription-requests";
+import { MySubscriptionRequest } from "@/components/subscription-requests";
 import { TrackingLink } from "@/components/tracking-link";
 import { trackingPageFor } from "@/lib/tracking";
 
@@ -106,7 +106,6 @@ function EmptyDashboard() {
           QR they are waiting for cannot live only on a screen they will not
           see until they have some. */}
       <MySubscriptionRequest />
-      <SubscriptionRequests />
 
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="max-w-sm text-center">
@@ -369,12 +368,6 @@ function DashboardPage() {
       )}
 
       <MySubscriptionRequest />
-
-      {/* Under the numbers, and only for the people who can act on it. It is
-          deliberately always there rather than only when somebody is waiting:
-          a panel that appears when there is news is a panel nobody has learned
-          to look at, and its absence reads as "not loaded yet". */}
-      <SubscriptionRequests />
 
       {/* Above the tracker. It is the shortest-lived thing on the page — three
           days and a car drops out of it for good — and it renders nothing at
