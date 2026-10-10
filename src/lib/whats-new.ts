@@ -26,6 +26,20 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 315,
+    at: "2026-10-10T12:30",
+    changes: [
+      {
+        key: true,
+        text: 'A trial no longer blocks buying the thing it is a trial of. Choosing Plus or Pro during the fortnight answered "this account is already on Pro" and recorded nothing — so the two weeks meant to turn somebody into a subscriber were the two weeks they could not become one.',
+      },
+      {
+        admin: true,
+        text: "Subscriptions has Trial in the plan control, between Free and Plus: it starts the fortnight for somebody from today, and shows Trial for anybody already on one instead of reading as Pro. Moving them to Free ends the trial and keeps it spent.",
+      },
+    ],
+  },
+  {
     build: 314,
     at: "2026-10-10T11:00",
     changes: [

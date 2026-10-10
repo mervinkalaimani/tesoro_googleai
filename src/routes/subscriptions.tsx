@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { formatDayMonthYear } from "@/lib/format";
 import {
+  TRIAL_DAYS,
   TRIM_GRACE_DAYS,
   ceilingFor,
   paidPlanOf,
@@ -292,6 +293,34 @@ function SubscriptionsPage() {
   );
 
   /**
+   * Puts an account on the trial, from today.
+   *
+   * The same fortnight somebody can start for themselves, started for them —
+   * for the person who wrote in rather than pressing the button, and for
+   * giving a second one to somebody whose first ran out while they were
+   * deciding. is_pro goes off with it: a trial is what they are on, so a paid
+   * plan left switched on underneath would be the thing actually running.
+   */
+  const startTrialFor = useCallback(
+    async (u: Row) => {
+      setBusySno(u.sno);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from("tesoro_users")
+        .update({ trial_started_on: new Date().toISOString().slice(0, 10), is_pro: false })
+        .eq("sno", u.sno);
+      setBusySno(null);
+      if (error) {
+        toast.error("Could not start the trial", { description: error.message });
+        return;
+      }
+      toast.success(`${TRIAL_DAYS} days of Pro, from today`, { description: u.email_id });
+      void load();
+    },
+    [load],
+  );
+
+  /**
    * Back to free.
    *
    * is_pro alone is turned off: pro_plan, pro_since and pro_months are left
@@ -302,10 +331,20 @@ function SubscriptionsPage() {
   const removePlan = useCallback(
     async (u: Row) => {
       setBusySno(u.sno);
+
+      // A running trial is a second thing that has to stop, and clearing the
+      // date would hand back a trial they have already had. Backdating past
+      // the fortnight ends it and keeps it spent.
+      const running = trialDaysLeft(u) !== null;
+      const spent = new Date();
+      spent.setDate(spent.getDate() - TRIAL_DAYS);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any)
         .from("tesoro_users")
-        .update({ is_pro: false })
+        .update({
+          is_pro: false,
+          ...(running ? { trial_started_on: spent.toISOString().slice(0, 10) } : {}),
+        })
         .eq("sno", u.sno);
       setBusySno(null);
       if (error) {
@@ -465,6 +504,7 @@ function SubscriptionsPage() {
                   plan={planNow(u)}
                   busy={busySno === u.sno}
                   onGrant={(plan, length) => void grant(u, plan, length)}
+                  onTrial={() => void startTrialFor(u)}
                   onRenew={() => void renew(u)}
                   onRemove={() => void removePlan(u)}
                   onSendPayInfo={() => void sendPayInfo(u)}
@@ -484,6 +524,7 @@ function SubscriptionRow({
   plan,
   busy,
   onGrant,
+  onTrial,
   onRenew,
   onRemove,
   onSendPayInfo,
@@ -493,6 +534,7 @@ function SubscriptionRow({
   plan: Plan;
   busy: boolean;
   onGrant: (plan: PaidPlan, length: Length) => void;
+  onTrial: () => void;
   onRenew: () => void;
   onRemove: () => void;
   onSendPayInfo: () => void;
@@ -511,7 +553,9 @@ function SubscriptionRow({
   // The control shows what they are on, free included: taking somebody off a
   // plan is the same kind of act as putting them on one, and hiding it behind
   // its own icon made the way back the only unlabelled thing on the row.
-  const planValue: Plan = plan;
+  // Four states, not three: a trial is neither free nor bought, and showing
+  // it as Pro made the one row that is about to change look settled.
+  const planValue: string = trialLeft !== null ? "trial" : plan;
   const lengthValue: string = noEnd ? FOREVER : String(u.pro_months ?? 1);
   const wanted = u.pro_requested_plan === "plus" ? "plus" : "pro";
   const wantedMonths = TERM_MONTHS[u.pro_requested_term ?? "month"] ?? 1;
@@ -609,15 +653,20 @@ function SubscriptionRow({
           {/* Which plan, then how long. Changing either grants it: there is no
               Apply, because a half-set subscription is not a thing to leave
               lying around. */}
-          <SegmentControl<Plan>
+          <SegmentControl<string>
             value={planValue}
             disabled={busy || u.is_owner}
             onChange={(p) =>
-              p === "free" ? onRemove() : onGrant(p, noEnd ? FOREVER : (u.pro_months ?? 1))
+              p === "free"
+                ? onRemove()
+                : p === "trial"
+                  ? onTrial()
+                  : onGrant(p as PaidPlan, noEnd ? FOREVER : (u.pro_months ?? 1))
             }
             className="h-7"
             options={[
               { value: "free", label: "Free" },
+              { value: "trial", label: "Trial" },
               { value: "plus", label: "Plus" },
               { value: "pro", label: "Pro" },
             ]}
@@ -625,8 +674,10 @@ function SubscriptionRow({
           {/* Nothing to be the length of while they are on free. */}
           <SegmentControl<string>
             value={lengthValue}
-            disabled={busy || plan === "free"}
-            onChange={(v) => onGrant(planValue as PaidPlan, v === FOREVER ? FOREVER : Number(v))}
+            disabled={busy || planValue === "free" || planValue === "trial"}
+            onChange={(v) =>
+              onGrant(plan === "free" ? "pro" : plan, v === FOREVER ? FOREVER : Number(v))
+            }
             className="h-7"
             options={[
               ...MONTH_CHOICES.map((m) => ({ value: String(m), label: `${m}m` })),
