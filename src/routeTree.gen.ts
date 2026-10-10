@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as CollectionRouteImport } from './routes/collection'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as DemoRouteImport } from './routes/demo'
 import { Route as DuplicatesRouteImport } from './routes/duplicates'
 import { Route as FavouritesRouteImport } from './routes/favourites'
@@ -66,6 +67,11 @@ const CatalogRoute = CatalogRouteImport.update({
 const CollectionRoute = CollectionRouteImport.update({
   id: '/collection',
   path: '/collection',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoRoute = DemoRouteImport.update({
@@ -247,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/catalog': typeof CatalogRoute
   '/collection': typeof CollectionRoute
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/duplicates': typeof DuplicatesRoute
   '/favourites': typeof FavouritesRoute
@@ -287,6 +294,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/catalog': typeof CatalogRoute
   '/collection': typeof CollectionRoute
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/duplicates': typeof DuplicatesRoute
   '/favourites': typeof FavouritesRoute
@@ -328,6 +336,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/catalog': typeof CatalogRoute
   '/collection': typeof CollectionRoute
+  '/dashboard': typeof DashboardRoute
   '/demo': typeof DemoRoute
   '/duplicates': typeof DuplicatesRoute
   '/favourites': typeof FavouritesRoute
@@ -370,6 +379,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/catalog'
     | '/collection'
+    | '/dashboard'
     | '/demo'
     | '/duplicates'
     | '/favourites'
@@ -410,6 +420,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/catalog'
     | '/collection'
+    | '/dashboard'
     | '/demo'
     | '/duplicates'
     | '/favourites'
@@ -450,6 +461,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/catalog'
     | '/collection'
+    | '/dashboard'
     | '/demo'
     | '/duplicates'
     | '/favourites'
@@ -491,6 +503,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CatalogRoute: typeof CatalogRoute
   CollectionRoute: typeof CollectionRoute
+  DashboardRoute: typeof DashboardRoute
   DemoRoute: typeof DemoRoute
   DuplicatesRoute: typeof DuplicatesRoute
   FavouritesRoute: typeof FavouritesRoute
@@ -555,6 +568,13 @@ declare module '@tanstack/react-router' {
       path: '/collection'
       fullPath: '/collection'
       preLoaderRoute: typeof CollectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo': {
@@ -803,6 +823,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CatalogRoute: CatalogRoute,
   CollectionRoute: CollectionRoute,
+  DashboardRoute: DashboardRoute,
   DemoRoute: DemoRoute,
   DuplicatesRoute: DuplicatesRoute,
   FavouritesRoute: FavouritesRoute,

@@ -3,6 +3,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import {
   Home,
+  LayoutDashboard,
   Star,
   Boxes,
   Truck,
@@ -78,7 +79,7 @@ const NAV_GROUPS: {
 export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, query } = useApp();
-  const { isOwner, isGuest, plan, profile } = useAuth();
+  const { isAdmin, isOwner, isGuest, plan, profile } = useAuth();
   const { source } = useCarsSource();
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
   const { packMembers } = useCatalog();
@@ -140,6 +141,29 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {/* Under Home, and only for the people it is for: the numbers on
+                  it are everybody's accounts, not the reader's own cars. */}
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/dashboard"}
+                    tooltip="Admin Dashboard"
+                    className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                  >
+                    <Link
+                      to="/dashboard"
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                    >
+                      <LayoutDashboard className="size-4.5" />
+                      <span>Admin Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

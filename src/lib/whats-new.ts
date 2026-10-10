@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 317,
+    at: "2026-10-10T17:00",
+    changes: [
+      {
+        admin: true,
+        text: "Admin Dashboard, under Home in the sidebar: accounts and how many joined today, this week and this month; who is on Free, Plus and Pro as one bar; how many are mid-trial; and every open subscription request by name. It re-reads itself every thirty seconds while the tab is in front.",
+      },
+    ],
+  },
+  {
     build: 316,
     at: "2026-10-10T16:00",
     changes: [
