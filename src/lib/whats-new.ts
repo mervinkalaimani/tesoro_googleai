@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 319,
+    at: "2026-10-10T19:00",
+    changes: [
+      {
+        key: true,
+        text: "The phone number box on sign-up typed numbers that were not the ones you pressed: 9876543210 came out as 9191919876, because the country code was being folded back into the digits on every keystroke. Fixed, and the same box on your account page with it.",
+      },
+    ],
+  },
+  {
     build: 318,
     at: "2026-10-10T18:00",
     changes: [

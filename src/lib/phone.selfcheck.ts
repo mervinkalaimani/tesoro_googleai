@@ -55,4 +55,24 @@ assert.equal(countryOf("IN").max, 10);
 assert.equal(countryOf("SG").max, 8);
 assert.equal(countryOf("nope").iso2, "IN");
 
+// ---- why PhoneField keeps its own state ----
+//
+// A half-typed number cannot be split, and this is the proof: one digit after
+// the dialling code is not an Indian number, so parsePhone cannot take the 91
+// off "+919" and hands the whole thing back as the national part. A field
+// that re-read its value on every keystroke therefore grew a 91 per keypress
+// and turned 9876543210 into 9191919876.
+assert.equal(parsePhone("+919").national, "919", "a partial number is not splittable");
+assert.equal(parsePhone("+9198").national, "9198");
+
+// Typing, the way the field does it now: the country and the digits are held,
+// not re-derived. Ten keypresses, ten digits, in the order they were pressed.
+{
+  const iso2 = "IN";
+  let national = "";
+  for (const key of "9876543210") national = (national + key).slice(0, countryOf(iso2).max);
+  assert.equal(national, "9876543210", "what was typed is what is held");
+  assert.equal(formatPhone(iso2, national), "+919876543210", "and what is stored");
+}
+
 console.log("phone selfcheck: ok");

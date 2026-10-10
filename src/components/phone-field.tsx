@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { COUNTRIES, countryOf, flagOf, formatPhone, parsePhone } from "@/lib/phone";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,40 @@ export function PhoneField({
   id?: string;
   className?: string;
 }) {
-  const { iso2, national } = useMemo(() => parsePhone(value), [value]);
+  /**
+   * The country and the digits are state, not a reading of `value`.
+   *
+   * They used to be parsed back out of the stored string on every render,
+   * which looks tidy and does not work: half a number is not a number anybody
+   * can split. Typing 9 stored "+919", and parsePhone could not take "91" off
+   * that -- one digit is not an Indian number -- so it fell back to calling
+   * the whole thing the national part and the box read 919. The next keypress
+   * stored "+919198", and so on: 9876543210 typed in came out as 9191919876.
+   *
+   * So the split is made once, from whatever arrived, and kept. `value` is
+   * read again only when it changes to something this field did not send --
+   * a form being reset, or a profile loading in late.
+   */
+  const [iso2, setIso2] = useState(() => parsePhone(value).iso2);
+  const [national, setNational] = useState(() => parsePhone(value).national);
+  const sent = useRef(formatPhone(iso2, national));
+
+  useEffect(() => {
+    if (value === sent.current) return;
+    const parsed = parsePhone(value);
+    sent.current = value;
+    setIso2(parsed.iso2);
+    setNational(parsed.national);
+  }, [value]);
+
+  const emit = (nextIso2: string, nextNational: string) => {
+    setIso2(nextIso2);
+    setNational(nextNational);
+    const next = formatPhone(nextIso2, nextNational);
+    sent.current = next;
+    onChange(next);
+  };
+
   const country = countryOf(iso2);
   const typed = national.length;
   // Silent while they are still typing: a number is not wrong for being
@@ -46,7 +79,13 @@ export function PhoneField({
   return (
     <div className={cn("space-y-1", className)}>
       <div className="flex gap-2">
-        <Select value={iso2} onValueChange={(next) => onChange(formatPhone(next, national))}>
+        {/* Changing country keeps the digits, trimmed to what the new one
+            takes -- eleven digits do not become a ten digit country's number
+            by being left there. */}
+        <Select
+          value={iso2}
+          onValueChange={(next) => emit(next, national.slice(0, countryOf(next).max))}
+        >
           <SelectTrigger
             className="w-[7.5rem] shrink-0"
             aria-label={`Country: ${country.name}, +${country.dial}`}
@@ -83,9 +122,7 @@ export function PhoneField({
           maxLength={country.max}
           placeholder={"0".repeat(country.max)}
           value={national}
-          onChange={(e) =>
-            onChange(formatPhone(iso2, e.target.value.replace(/\D/g, "").slice(0, country.max)))
-          }
+          onChange={(e) => emit(iso2, e.target.value.replace(/\D/g, "").slice(0, country.max))}
           className={cn("flex-1 tabular-nums", tooLong && "border-amber-500")}
         />
       </div>
