@@ -121,6 +121,9 @@ export function useOAuthProviders() {
 /** Whether a new signup is approved the moment it arrives. */
 export const AUTO_APPROVE_KEY = "auto_approve_signups";
 
+/** Whether the card checkout is offered at all, keys or no keys. */
+export const PAY_CARD_KEY = "pay_card";
+
 /**
  * A deployment-wide boolean, read and written by key.
  *
@@ -129,19 +132,23 @@ export const AUTO_APPROVE_KEY = "auto_approve_signups";
  * row, a missing table or a refused read all read as false — the cautious
  * answer for every flag in here, since each one opens something up.
  */
-export function useDeploymentFlag(key: string) {
-  const [on, setOn] = useState(false);
+export function useDeploymentFlag(key: string, fallback = false) {
+  const [on, setOn] = useState(fallback);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      let value = false;
+      let value = fallback;
       try {
         const { data } = await db().from(TABLE).select("value").eq("key", key).maybeSingle();
-        value = (data as { value?: unknown } | null)?.value === true;
+        const got = (data as { value?: unknown } | null)?.value;
+        // A row that is not there has never been decided, so the caller says
+        // what that means: false for a flag that opens something up, true for
+        // one that hides something the app already does.
+        value = typeof got === "boolean" ? got : fallback;
       } catch {
-        value = false;
+        value = fallback;
       }
       if (cancelled) return;
       setOn(value);
@@ -150,7 +157,7 @@ export function useDeploymentFlag(key: string) {
     return () => {
       cancelled = true;
     };
-  }, [key]);
+  }, [key, fallback]);
 
   const save = useCallback(
     async (next: boolean) => {

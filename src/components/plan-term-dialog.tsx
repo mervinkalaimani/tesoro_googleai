@@ -12,6 +12,7 @@ import {
 import { monthlyOf, monthsLabel, pricesFor, savingOf, usePlanPrices } from "@/lib/plan-prices";
 import { requestPro } from "@/lib/pro-request";
 import { payConfig, payForPlan } from "@/lib/pay-client";
+import { PAY_CARD_KEY, useDeploymentFlag } from "@/lib/deployment-settings";
 import { useAuth, fullName } from "@/lib/auth-store";
 import { PayByQrDialog } from "@/components/pay-by-qr-dialog";
 import { inrFull } from "@/lib/format";
@@ -50,10 +51,15 @@ export function PlanTermDialog() {
   const { profile, reloadProfile } = useAuth();
   // Whether this deployment can take money at all. Asked once, on open, so the
   // buttons say what will actually happen rather than finding out afterwards.
-  const [canPay, setCanPay] = useState(false);
+  const [configured, setConfigured] = useState(false);
+  // Two gates, and they answer different questions: whether the server can
+  // take a card, and whether we are offering to. Either one closed means the
+  // direct route is the only way, which is a route that always works.
+  const offerCard = useDeploymentFlag(PAY_CARD_KEY, true);
+  const canPay = configured && offerCard.on;
 
   useEffect(() => {
-    void payConfig().then((c) => setCanPay(c.enabled));
+    void payConfig().then((c) => setConfigured(c.enabled));
   }, []);
 
   useEffect(() => {
@@ -125,7 +131,7 @@ export function PlanTermDialog() {
     setPlan(want.plan);
     setMonths(want.months);
     if (outcome === "unavailable") {
-      setCanPay(false);
+      setConfigured(false);
       toast.info("Card payments are not available", { description: "Ask an admin instead." });
     }
   };

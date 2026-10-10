@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { CheckCircle2, CreditCard, Loader2, XCircle } from "lucide-react";
 
 import { payConfig } from "@/lib/pay-client";
+import { Switch } from "@/components/ui/switch";
+import { PAY_CARD_KEY, useDeploymentFlag } from "@/lib/deployment-settings";
+import { toast } from "sonner";
 import { GATEWAY_FEE_PCT } from "@/lib/tiers";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +21,10 @@ import { cn } from "@/lib/utils";
  */
 export function RazorpayCard() {
   const [state, setState] = useState<{ enabled: boolean; keyId: string | null } | null>(null);
+  // Configured and offered are two different things. The keys answer the
+  // first; this answers the second, and it is the one anybody can change
+  // without a redeploy.
+  const offered = useDeploymentFlag(PAY_CARD_KEY, true);
 
   useEffect(() => {
     void payConfig().then(setState);
@@ -57,6 +64,31 @@ export function RazorpayCard() {
             {live ? "Live keys — real money" : "Test keys"}
           </span>
         )}
+      </div>
+
+      <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
+        <div className="min-w-0">
+          <div className="text-[13px] font-medium">Offer card payment</div>
+          <p className="text-[11px] text-muted-foreground">
+            {offered.on
+              ? "The plans screen shows Pay by card alongside paying directly."
+              : "Hidden. Everyone pays directly — we send the details and switch the plan on when it arrives."}
+          </p>
+        </div>
+        <Switch
+          checked={offered.on}
+          disabled={!offered.loaded}
+          aria-label="Offer card payment"
+          onCheckedChange={(v) => {
+            void offered.save(Boolean(v)).then((res) => {
+              if (res.error) {
+                toast.error("Could not save that", { description: res.error });
+                return;
+              }
+              toast.success(v ? "Card payment is offered" : "Card payment is hidden");
+            });
+          }}
+        />
       </div>
 
       {!state ? (

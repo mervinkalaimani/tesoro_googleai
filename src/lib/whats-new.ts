@@ -26,6 +26,16 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 314,
+    at: "2026-10-10T11:00",
+    changes: [
+      {
+        admin: true,
+        text: "Payment settings has a switch for whether card payment is offered. Off, the plans screen shows only paying directly — useful on a day the gateway is misbehaving, without touching the keys or redeploying.",
+      },
+    ],
+  },
+  {
     build: 313,
     at: "2026-10-09T10:00",
     changes: [
