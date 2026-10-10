@@ -57,6 +57,11 @@ const SECURITY_HEADERS: Record<string, string> = {
   // The camera is ours to use -- scanning a card and searching by photograph
   // both ask for it. Nothing else is.
   "permissions-policy": "camera=(self), microphone=(), geolocation=(), payment=()",
+  // Two years, subdomains included. viiv.si is HTTPS-only and has never been
+  // anything else, so there is no http:// visitor to strand -- and the first
+  // request of a session is the one worth not sending in the clear.
+  // Deliberately no `preload`: that is a list you cannot leave quickly.
+  "strict-transport-security": "max-age=63072000; includeSubDomains",
 };
 
 /** Adds them without overwriting anything a route set for itself. */

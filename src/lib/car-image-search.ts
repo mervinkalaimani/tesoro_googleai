@@ -1,3 +1,4 @@
+import { authHeader } from "@/lib/api-auth";
 import { useEffect, useMemo, useState } from "react";
 
 import type { CarImageCandidate } from "@/routes/api/car-images";
@@ -112,7 +113,8 @@ export function searchCarImages(lookup: CarImageLookup): Promise<CarImageCandida
     if (v) params.set(k, v);
   }
   params.set("engine", engine);
-  const request = fetch(`/api/car-images?${params}`)
+  const request = authHeader()
+    .then((headers) => fetch(`/api/car-images?${params}`, { headers }))
     .then((res) => (res.ok ? res.json() : { candidates: [] }))
     .then((body: { candidates?: CarImageCandidate[] }) => body.candidates ?? [])
     .catch(() => {

@@ -117,10 +117,24 @@ async function handler({ request }: { request: Request }) {
   }
 }
 
+/**
+ * Signed in, because the answer is a list of people.
+ *
+ * Names, handles and what each of them owns, read with the service-role key
+ * and keyed by a catalogue id anybody can guess. That is the collector
+ * directory, and it was readable without an account.
+ */
+async function guarded({ request }: { request: Request }) {
+  const { requireCaller } = await import("@/lib/api-guard");
+  const got = await requireCaller(request);
+  if (got.refused) return got.refused;
+  return handler({ request });
+}
+
 export const Route = createFileRoute("/api/catalog-owners")({
   server: {
     handlers: {
-      GET: handler,
+      GET: guarded,
     },
   },
 });

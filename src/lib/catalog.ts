@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { authHeader } from "@/lib/api-auth";
 import type { Database } from "@/integrations/supabase/types";
 import type { Diecast } from "@/lib/types";
 import type { CatalogueCar } from "@/lib/catalogue-search";
@@ -633,7 +634,7 @@ export async function syncCatalogImageToCars(catalogCar: CatalogCar): Promise<vo
 
   // 3. Invoke backend endpoint to ensure service-role execution across all user collections
   try {
-    void fetch("/api/sync-images", {
+    void fetchWithToken("/api/sync-images", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -710,7 +711,7 @@ export async function syncUserCarImageToCatalog(car: Diecast, imageUrl: string):
 
   // 5. Invoke backend endpoint for cross-user persistence
   try {
-    void fetch("/api/sync-images", {
+    void fetchWithToken("/api/sync-images", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -1202,7 +1203,9 @@ export async function getCatalogCarOwners(
         if (options?.catalogCar?.make) urlParams.set("make", options.catalogCar.make);
         if (options?.catalogCar?.model) urlParams.set("model", options.catalogCar.model);
         if (options?.catalogCar?.brand) urlParams.set("brand", options.catalogCar.brand);
-        const res = await fetch(`/api/catalog-owners?${urlParams.toString()}`);
+        const res = await fetch(`/api/catalog-owners?${urlParams.toString()}`, {
+          headers: await authHeader(),
+        });
         if (res.ok) {
           const json = await res.json();
           if (Array.isArray(json.owners)) {
@@ -1407,4 +1410,18 @@ export async function mergeCatalogEntries(
     members: Number(d.members) || 0,
     packs: Number(d.packs) || 0,
   };
+}
+
+/**
+ * A POST that carries the signed-in session.
+ *
+ * The two sync endpoints are admin-only now -- they write with the
+ * service-role key into rows that are not the caller's -- so a call without a
+ * token is refused. Fire-and-forget as before: the client write above it has
+ * already happened, and this is the part that reaches other people's rows.
+ */
+async function fetchWithToken(url: string, init: RequestInit & { headers: HeadersInit }) {
+  return fetch(url, { ...init, headers: { ...init.headers, ...(await authHeader()) } }).catch(
+    () => undefined,
+  );
 }

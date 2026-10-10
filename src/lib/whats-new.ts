@@ -26,6 +26,23 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 316,
+    at: "2026-10-10T16:00",
+    changes: [
+      {
+        key: true,
+        text: "User IDs now need at least six letters and two numbers, in any order — mervink99, 42sanjaybirdar. Existing IDs do not meet that and no longer sign anybody in: your email still does, and the app asks you to pick a new ID once. Nothing else about the account changes.",
+      },
+      {
+        key: true,
+        text: "Four API endpoints that answered anybody now ask who is calling. Two of them could rewrite fields across every collection in the database without signing in, and one listed who owns which casting.",
+      },
+      {
+        text: "HTTPS is now pinned for the whole site, the image search is rate limited, and five unused packages are gone.",
+      },
+    ],
+  },
+  {
     build: 315,
     at: "2026-10-10T12:30",
     changes: [

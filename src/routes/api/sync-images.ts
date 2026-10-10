@@ -111,10 +111,19 @@ async function handler({ request }: { request: Request }) {
   }
 }
 
+/** Admins only, for the same reason sync-catalog-car is: it writes with the
+    service-role key into rows that are not the caller's. */
+async function guarded({ request }: { request: Request }) {
+  const { requireAdmin } = await import("@/lib/api-guard");
+  const got = await requireAdmin(request);
+  if (got.refused) return got.refused;
+  return handler({ request });
+}
+
 export const Route = createFileRoute("/api/sync-images")({
   server: {
     handlers: {
-      POST: handler,
+      POST: guarded,
     },
   },
 });

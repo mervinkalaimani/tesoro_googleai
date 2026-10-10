@@ -155,10 +155,26 @@ async function handler({ request }: { request: Request }) {
   }
 }
 
+/**
+ * Admins only, and the reason is the service-role key below.
+ *
+ * This route updates tesoro_raw by catalogue id across every account that
+ * owns the casting, with the one key RLS does not apply to. Open, it was a
+ * public endpoint for rewriting other people's collections. A catalogue edit
+ * is an admin act -- tesoro_car_catalog's UPDATE policy says so -- and
+ * propagating one is the same act.
+ */
+async function guarded({ request }: { request: Request }) {
+  const { requireAdmin } = await import("@/lib/api-guard");
+  const got = await requireAdmin(request);
+  if (got.refused) return got.refused;
+  return handler({ request });
+}
+
 export const Route = createFileRoute("/api/sync-catalog-car")({
   server: {
     handlers: {
-      POST: handler,
+      POST: guarded,
     },
   },
 });

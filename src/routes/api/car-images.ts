@@ -668,6 +668,23 @@ async function handler({ request }: { request: Request }) {
   return json({ candidates: ranked.slice(0, 48) });
 }
 
+/**
+ * Signed in, and not in a loop.
+ *
+ * It costs nothing of ours per call, but it fans every request out to several
+ * upstream search endpoints under this deployment's address -- so an open one
+ * is somebody else's scraper wearing our IP. Thirty a minute is far above
+ * what the picker does and far below what a loop does.
+ */
+async function guarded({ request }: { request: Request }) {
+  const { requireCaller, tooMany } = await import("@/lib/api-guard");
+  const got = await requireCaller(request);
+  if (got.refused) return got.refused;
+  const slow = tooMany(`car-images:${got.caller.uid}`, 30, 60_000);
+  if (slow) return slow;
+  return handler({ request });
+}
+
 export const Route = createFileRoute("/api/car-images")({
-  server: { handlers: { GET: handler } },
+  server: { handlers: { GET: guarded } },
 });

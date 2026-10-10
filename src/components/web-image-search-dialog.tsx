@@ -1,3 +1,4 @@
+import { authHeader } from "@/lib/api-auth";
 import { useEffect, useState } from "react";
 import { ExternalLink, Globe, ImageOff, Loader2, Search } from "lucide-react";
 
@@ -75,6 +76,7 @@ export function WebImageSearchDialog({
     try {
       const res = await fetch(
         `/api/car-images?text=${encodeURIComponent(clean)}&engine=${encodeURIComponent(eng)}`,
+        { headers: await authHeader() },
       );
       const body = (await res.json()) as { candidates?: CarImageCandidate[] };
       setResults(body.candidates ?? []);

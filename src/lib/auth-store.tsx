@@ -69,17 +69,12 @@ export type Profile = {
   rejected_at?: string | null;
 };
 
-/** Mirrors is_valid_tesoro_handle() in the database. */
-export const HANDLE_PATTERN = /^[a-z0-9_]{3,20}$/;
+/** The charset, for an input that strips as it is typed. The rule itself —
+    six letters, two numbers — lives in handle.ts, tested, and is mirrored by
+    is_valid_tesoro_handle() in the database. */
+export const HANDLE_PATTERN = /^[a-z0-9_]{1,20}$/;
 
-export function handleError(handle: string): string | null {
-  const h = handle.trim().toLowerCase();
-  if (!h) return "Pick a user ID.";
-  if (h.length < 3) return "User ID must be at least 3 characters.";
-  if (h.length > 20) return "User ID must be 20 characters or fewer.";
-  if (!HANDLE_PATTERN.test(h)) return "Use lowercase letters, numbers and underscores only.";
-  return null;
-}
+export { handleError } from "@/lib/handle";
 
 /**
  * Supabase Auth stores phone numbers as digits in E.164 order with no leading

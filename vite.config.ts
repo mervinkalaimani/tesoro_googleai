@@ -91,7 +91,6 @@ function withNativeRoot(plugin: Plugin): Plugin {
 }
 
 const jsxDevShim = path.resolve("./src/lib/jsx-dev-runtime-shim.js");
-const tesseractShim = path.resolve("./src/lib/tesseract-server-shim.js");
 
 export default defineConfig({
   tanstackStart: {
@@ -102,7 +101,6 @@ export default defineConfig({
   nitro: {
     alias: {
       "react/jsx-dev-runtime": jsxDevShim,
-      "tesseract.js": tesseractShim,
     },
   },
   vite: {

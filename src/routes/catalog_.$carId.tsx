@@ -231,9 +231,14 @@ function CastingPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-4 p-3 md:p-6">
+      {/* `<` escaped, because this is a <script> and the only thing that ends
+          one is the characters "</script>" appearing in it. A casting named
+          with those would otherwise close the tag and run whatever followed —
+          the catalogue is admin-written, which makes it unlikely rather than
+          impossible, and < costs nothing. */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
       <div className="grid gap-6 sm:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">

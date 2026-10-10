@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { authHeader } from "@/lib/api-auth";
 import type { CatalogCar } from "@/lib/catalog";
 import type { Diecast } from "@/lib/types";
 import { isCarMatchingCatalog } from "@/lib/catalog";
@@ -257,7 +258,7 @@ export async function syncCatalogCarToUserCars(
     try {
       void fetch("/api/sync-catalog-car", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", ...(await authHeader()) },
         body: JSON.stringify({
           catalog_id: catalogId,
           catalog_car: catalogCar,

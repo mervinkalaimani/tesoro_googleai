@@ -7,6 +7,7 @@ import { MobileNav } from "./mobile-nav";
 import { TierBanner } from "./tier-banner";
 import { ProDialog } from "./pro-dialog";
 import { PlanTermDialog } from "./plan-term-dialog";
+import { HandleFixDialog } from "./handle-fix-dialog";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -40,6 +41,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <ProDialog />
         {/* The second half of the question, opened when the first closes. */}
         <PlanTermDialog />
+        {/* Nothing else matters until this one is answered: an account on an
+            old-style user ID cannot sign in by user ID any more. */}
+        <HandleFixDialog />
       </ExportScopeProvider>
     </SidebarProvider>
   );
