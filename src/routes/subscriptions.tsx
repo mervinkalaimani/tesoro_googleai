@@ -594,7 +594,14 @@ function SubscriptionRow({
   // its own icon made the way back the only unlabelled thing on the row.
   // Four states, not three: a trial is neither free nor bought, and showing
   // it as Pro made the one row that is about to change look settled.
-  const planValue: string = trialLeft !== null ? "trial" : plan;
+  /**
+   * A trial is free. It is the free tier with the paid sections unlocked for a
+   * fortnight, not a fourth plan to sit between them -- so the picker reads
+   * Free while one is running, and the badge beside it says Trial.
+   */
+  const planValue: string = trialLeft !== null ? "free" : plan;
+  /** One trial per account, ever: the start date is also the record of it. */
+  const trialUsed = u.trial_started_on !== null;
   const lengthValue: string = noEnd ? FOREVER : String(u.pro_months ?? 1);
   const wanted = u.pro_requested_plan === "plus" ? "plus" : "pro";
   const wantedMonths = TERM_MONTHS[u.pro_requested_term ?? "month"] ?? 1;
@@ -692,28 +699,51 @@ function SubscriptionRow({
           {/* Which plan, then how long. Changing either grants it: there is no
               Apply, because a half-set subscription is not a thing to leave
               lying around. */}
-          <SegmentControl<string>
+          <Tabs
             value={planValue}
-            disabled={busy || u.is_owner}
-            onChange={(p) =>
+            onValueChange={(p) =>
               p === "free"
                 ? onRemove()
-                : p === "trial"
-                  ? onTrial()
-                  : onGrant(p as PaidPlan, noEnd ? FOREVER : (u.pro_months ?? 1))
+                : onGrant(p as PaidPlan, noEnd ? FOREVER : (u.pro_months ?? 1))
             }
-            className="h-7"
-            options={[
-              { value: "free", label: "Free" },
-              { value: "trial", label: "Trial" },
-              { value: "plus", label: "Plus" },
-              { value: "pro", label: "Pro" },
-            ]}
-          />
+            className="w-auto"
+          >
+            <TabsList
+              className={cn("h-7 p-0.5", (busy || u.is_owner) && "pointer-events-none opacity-50")}
+            >
+              <TabsTrigger value="free" className="h-6 px-2.5 text-xs">
+                Free
+              </TabsTrigger>
+              <TabsTrigger value="plus" className="h-6 px-2.5 text-xs">
+                Plus
+              </TabsTrigger>
+              <TabsTrigger value="pro" className="h-6 px-2.5 text-xs">
+                Pro
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+          {/* The one thing a free account can be given. Only offered where it
+              can be taken: on free, and once. */}
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || u.is_owner || planValue !== "free" || trialUsed}
+            onClick={onTrial}
+            className="h-7 shrink-0 px-2.5 text-xs"
+            title={
+              trialUsed
+                ? trialLeft !== null
+                  ? "Trial already running"
+                  : "Trial already used"
+                : "Start a " + TRIAL_DAYS + "-day trial"
+            }
+          >
+            Trial
+          </Button>
           {/* Nothing to be the length of while they are on free. */}
           <SegmentControl<string>
             value={lengthValue}
-            disabled={busy || planValue === "free" || planValue === "trial"}
+            disabled={busy || planValue === "free"}
             onChange={(v) =>
               onGrant(plan === "free" ? "pro" : plan, v === FOREVER ? FOREVER : Number(v))
             }

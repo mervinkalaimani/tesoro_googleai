@@ -26,7 +26,7 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
-    build: 342,
+    build: 343,
     at: "2026-10-13T22:00",
     changes: [
       {
@@ -36,6 +36,10 @@ export const RELEASES: Release[] = [
       {
         key: true,
         text: "Blister view: a fourth layout in My Cars and the catalogue that shows every car in the shape of the card it came on. Under each one, the name, then the brand, the assortment and the car number.",
+      },
+      {
+        admin: true,
+        text: "The plan picker on Subscriptions is tabs -- Free, Plus, Pro. A trial is not a fourth plan: it is the free tier with the paid sections open for a fortnight, so it lives under Free, started with the button beside the tabs, once per account. The badge still says Trial while one is running.",
       },
       {
         key: true,
