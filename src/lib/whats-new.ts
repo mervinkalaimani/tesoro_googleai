@@ -26,7 +26,7 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
-    build: 347,
+    build: 348,
     at: "2026-10-13T22:00",
     changes: [
       {
@@ -36,6 +36,10 @@ export const RELEASES: Release[] = [
       {
         key: true,
         text: "Blister view: a fourth layout in My Cars and the catalogue that shows every car in the shape of the card it came on. Under each one, the name, then the brand, the assortment and the car number.",
+      },
+      {
+        key: true,
+        text: "Add car opens without the tap itself freezing. Mounting the form is a quarter of a second of work and it was being done inside the click, which is what made the button feel stuck on a big collection.",
       },
       {
         key: true,

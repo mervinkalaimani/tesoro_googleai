@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Plus, RefreshCw, Store, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -125,8 +125,17 @@ export function TopBar() {
                 openProDialog("Max cars reached for your plan");
                 return;
               }
-              if (pendingDraft === "bulk") setBulkOpen(true);
-              else setAddOpen(true);
+              // In a transition, so the press is not what pays for the form.
+              // Mounting Add a car is a quarter of a second of work -- the
+              // catalogue it searches is sixteen hundred castings -- and doing
+              // it inside the click handler meant the tap itself was the thing
+              // that blocked, which is what the browser reports as INP. React
+              // can interrupt a transition to paint; it cannot interrupt this
+              // handler.
+              startTransition(() => {
+                if (pendingDraft === "bulk") setBulkOpen(true);
+                else setAddOpen(true);
+              });
             }}
             aria-label="Add car"
             // Round and wordless where the bar is tight; named where there is
