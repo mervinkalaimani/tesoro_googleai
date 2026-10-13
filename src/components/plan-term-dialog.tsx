@@ -132,7 +132,9 @@ export function PlanTermDialog() {
     setMonths(want.months);
     if (outcome === "unavailable") {
       setConfigured(false);
-      toast.info("Card payments are not available", { description: "Ask an admin instead." });
+      toast.info("Card payments are not available", {
+        description: "Use Make Payment directly instead.",
+      });
     }
   };
 
@@ -280,7 +282,7 @@ export function PlanTermDialog() {
             ) : (
               <Send className="size-4" />
             )}
-            {canPay ? "Pay directly instead" : "Ask an admin"}
+            {canPay ? "Pay directly instead" : "Make Payment directly"}
           </Button>
           <p className="text-center text-[11px] text-muted-foreground">
             {canPay

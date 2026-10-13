@@ -26,7 +26,7 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
-    build: 346,
+    build: 347,
     at: "2026-10-13T22:00",
     changes: [
       {
@@ -36,6 +36,16 @@ export const RELEASES: Release[] = [
       {
         key: true,
         text: "Blister view: a fourth layout in My Cars and the catalogue that shows every car in the shape of the card it came on. Under each one, the name, then the brand, the assortment and the car number.",
+      },
+      {
+        key: true,
+        text: "Picking a plan no longer closes the plan list. The length -- monthly, six months, a year -- opens on top of it, so Back puts you where you were instead of nowhere.",
+      },
+      {
+        text: "All three plan cards are the same height on a phone, so switching between Free, Plus and Pro does not move the buttons under them.",
+      },
+      {
+        text: "Ask an admin now says Make Payment directly, which is what it does.",
       },
       {
         key: true,

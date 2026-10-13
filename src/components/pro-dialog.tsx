@@ -264,8 +264,10 @@ export function ProDialog() {
       if (ok) setReminded(plan);
       return;
     }
-    // Otherwise this is only half the question. Close, and ask the other half.
-    setOpen(false);
+    // Otherwise this is only half the question -- ask the other half on top of
+    // this one. The plan dialog used to close, so Back from the length picker
+    // landed you nowhere and changing your mind about the plan meant finding
+    // your way here again.
     openPlanTermDialog(plan);
   };
 
@@ -299,11 +301,17 @@ export function ProDialog() {
           </TabsList>
         </Tabs>
 
-        <div className="mt-2 grid gap-3 sm:grid-cols-3">
+        {/* On a phone all three sit in the same cell and the tallest sets the
+            height, so switching tabs does not move the buttons under them.
+            They go side by side from sm, where the cell stacking is off. */}
+        <div className="mt-2 grid gap-3 max-sm:grid-rows-1 sm:grid-cols-3">
           {PLANS.map((p) => (
             <PlanCard
               key={p.key}
-              className={p.key === shownPlan ? undefined : "max-sm:hidden"}
+              className={cn(
+                "max-sm:col-start-1 max-sm:row-start-1",
+                p.key !== shownPlan && "max-sm:invisible max-sm:pointer-events-none",
+              )}
               plan={p}
               mine={p.key === mine}
               asked={p.key !== "free" && askedPlan === p.key}
