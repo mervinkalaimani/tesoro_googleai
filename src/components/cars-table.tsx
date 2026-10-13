@@ -12,10 +12,17 @@ import { useCarDrawer } from "@/components/car-details-drawer";
 // this file — reading it from here would close a cycle between them.
 import { StatusPill } from "@/components/status-pill";
 
-import { carSubLine } from "@/lib/car-subline";
+import { carNumberOf, carSubLine, carSubLineParts } from "@/lib/car-subline";
 
 // Re-exported so the pages that import them from here still can.
 export { StatusPill, carSubLine };
+
+/**
+ * What the name sits above in the table: the series, and nothing the Brand
+ * column already carries.
+ */
+const modelLine = (r: Parameters<typeof carSubLineParts>[0]) =>
+  carSubLineParts(r, true, true).join(" · ");
 
 /** Payment status text — only meaningful for Pre Order rows. */
 export function paymentStatusText(r: Diecast): string | null {
@@ -316,16 +323,22 @@ export function CarsTable({
                       <span className="truncate font-medium">{r.name || "—"}</span>
                       <ChangedDot car={r} />
                     </div>
-                    {/* Brand and assortment are the next column along, so the
-                        line under the name carries what that column does not. */}
-                    <div className="truncate text-xs text-muted-foreground">
-                      {carSubLine(r, true)}
-                    </div>
+                    {/* Brand, assortment and the car number are all in the next
+                        column, so this line carries what is left: the series it
+                        belongs to. Printed only when there is one -- an empty
+                        second line used to hold a dash and push the name off
+                        centre for no reason. */}
+                    {modelLine(r) && (
+                      <div className="truncate text-xs text-muted-foreground">{modelLine(r)}</div>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 md:px-4">
                     <div className="truncate">{r.brand || "—"}</div>
+                    {/* The number joins the assortment rather than wearing a
+                        label of its own: "Mainline · 142/250" says what a
+                        column headed Car number said in twice the room. */}
                     <div className="truncate text-xs text-muted-foreground">
-                      {r.assortment || ""}
+                      {[r.assortment, carNumberOf(r)].filter(Boolean).join(" · ")}
                     </div>
                   </td>
                   <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">

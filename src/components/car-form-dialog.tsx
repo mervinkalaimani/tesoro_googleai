@@ -181,23 +181,29 @@ function SegmentOrOther({
 
   return (
     <Field label={label} name={name} error={error} info={info}>
+      {/* Other is pinned and the names scroll past it. In one control the
+          tenth seller pushed Other off the right-hand end, so the way out of
+          the list was the thing you had to scroll the list to reach. Two
+          controls side by side: the names in a track that scrolls, Other
+          always in the same place. */}
       {chips.length > 0 && (
-        <SegmentControl
-          fill
-          value={showList ? OTHER : value}
-          options={[
-            ...chips.map((c) => ({ value: c, label: c })),
-            { value: OTHER, label: "Other" },
-          ]}
-          onChange={(v) => {
-            if (v === OTHER) {
-              setStuck(true);
-              return;
-            }
-            setStuck(false);
-            onChange(v);
-          }}
-        />
+        <div className="flex min-w-0 items-center gap-1.5">
+          <SegmentControl
+            className="min-w-0 flex-1"
+            value={showList ? "" : value}
+            options={chips.map((c) => ({ value: c, label: c }))}
+            onChange={(v) => {
+              setStuck(false);
+              onChange(v);
+            }}
+          />
+          <SegmentControl
+            className="shrink-0"
+            value={showList ? OTHER : ""}
+            options={[{ value: OTHER, label: "Other" }]}
+            onChange={() => setStuck(true)}
+          />
+        </div>
       )}
       {showList && (
         <div className={chips.length > 0 ? "mt-2" : undefined}>
@@ -669,8 +675,13 @@ export function CarFormDialog({
   const mrpSegments = useMemo(() => mrpChoices.slice(0, 4), [mrpChoices]);
   const [mrpTyped, setMrpTyped] = useState(false);
   const mrpIsKnown = !mrpTyped && mrpSegments.includes(Number(form.mrp));
-  /** Who this collection buys from most, for one tap. */
-  const sellerChips = useMemo(() => topSellers(cars, 3), [cars]);
+  /**
+   * Who this collection buys from most, for one tap.
+   *
+   * Ten rather than three: the row scrolls, so a longer list costs no height,
+   * and the fourth-commonest shop was a search away for no reason.
+   */
+  const sellerChips = useMemo(() => topSellers(cars, 10), [cars]);
   // The grades as the segment control wants them. The descriptions stay in the
   // combobox lists the edit rail still uses.
   const carConditionSegments = useMemo(

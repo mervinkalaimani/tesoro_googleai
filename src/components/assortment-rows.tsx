@@ -116,8 +116,10 @@ export function AssortmentRow({
    */
   onDetach?: () => void;
 }) {
+  // Ten prices rather than three, for the same reason the sellers went to
+  // ten: the track scrolls, so the row is no taller for holding more.
   const priced = useMemo(
-    () => mrpOptionsFor(cars, brand, assortment, 3),
+    () => mrpOptionsFor(cars, brand, assortment, 10),
     [cars, brand, assortment],
   );
   const [typed, setTyped] = useState(false);
@@ -193,28 +195,28 @@ export function AssortmentRow({
         )}
 
         <Cell label="Retail / MRP">
-          {/* Other sits beside the prices rather than under them: there are
-              three of them, so the row has the width for it and the list does
-              not grow a second line every time somebody types a price. */}
-          <div className="flex min-w-0 items-center gap-2">
+          {/* The prices scroll; Other stays put beside them, the same shape
+              the seller picker uses. Inside one control the last price pushed
+              Other out of reach of anybody who had not scrolled to it. */}
+          <div className="flex min-w-0 items-center gap-1.5">
             {priced.length > 0 && (
-              <SegmentControl
-                fill
-                className="min-w-0 flex-1"
-                value={known ? String(mrp) : OTHER_MRP}
-                options={[
-                  ...priced.map((v) => ({ value: String(v), label: inrFull(v) })),
-                  { value: OTHER_MRP, label: "Other" },
-                ]}
-                onChange={(v) => {
-                  if (v === OTHER_MRP) {
-                    setTyped(true);
-                    return;
-                  }
-                  setTyped(false);
-                  onMrp(Number(v));
-                }}
-              />
+              <>
+                <SegmentControl
+                  className="min-w-0 flex-1"
+                  value={known ? String(mrp) : ""}
+                  options={priced.map((v) => ({ value: String(v), label: inrFull(v) }))}
+                  onChange={(v) => {
+                    setTyped(false);
+                    onMrp(Number(v));
+                  }}
+                />
+                <SegmentControl
+                  className="shrink-0"
+                  value={known ? "" : OTHER_MRP}
+                  options={[{ value: OTHER_MRP, label: "Other" }]}
+                  onChange={() => setTyped(true)}
+                />
+              </>
             )}
             {showInput && (
               <div className={priced.length > 0 ? "w-24 shrink-0" : "min-w-0 flex-1"}>

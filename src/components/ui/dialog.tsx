@@ -181,7 +181,7 @@ const DialogContent = React.forwardRef<
           {!hideClose && (
             <DialogPrimitive.Close
               ref={sheet.closeRef}
-              className="absolute right-3 top-3 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground sm:right-5 sm:top-5"
+              className="absolute right-3 top-3 grid size-8 cursor-pointer place-items-center rounded-md text-muted-foreground opacity-70 ring-offset-background transition-opacity hover:bg-muted hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-muted data-[state=open]:text-muted-foreground sm:right-5 sm:top-5"
             >
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>

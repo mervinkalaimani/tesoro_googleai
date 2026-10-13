@@ -26,6 +26,26 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 322,
+    at: "2026-10-13T19:00",
+    changes: [
+      {
+        key: true,
+        text: "Buttons no longer turn amber when the pointer is over them. Hovering used the accent colour, which is the brand orange — a quiet grey is what a hover is for.",
+      },
+      {
+        text: "Add a car offers ten sellers and ten prices instead of three, in a strip that scrolls, with Other pinned where it has always been rather than pushed off the end by the list.",
+      },
+      {
+        text: "My Cars reads better across: the car number joins the assortment after a middle dot instead of taking a column heading of its own, and a car with no series left behind an empty second line under its name — now it has one line, centred.",
+      },
+      {
+        admin: true,
+        text: "Adding a casting asks for the colour in a section of its own above the boxes, rather than as the tenth of thirteen fields.",
+      },
+    ],
+  },
+  {
     build: 321,
     at: "2026-10-13T16:00",
     changes: [
