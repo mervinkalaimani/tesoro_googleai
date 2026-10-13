@@ -261,9 +261,6 @@ export function CatalogFormDialog({
   const [showRelease, setShowRelease] = useState(true);
   const [showPack, setShowPack] = useState(true);
   const [showPhoto, setShowPhoto] = useState(true);
-  const [showColour, setShowColour] = useState(true);
-  /** Every colour already in use, so a release joins one rather than coining it. */
-  const colourOptions = useMemo(() => optionsFor("colour", cars), [cars]);
   /** Whether the photos found for this casting are open under the header card. */
   /** Whether a second copy of this dialog is open, filing a pack member. */
   const [addingMember, setAddingMember] = useState(false);
@@ -1270,14 +1267,12 @@ export function CatalogFormDialog({
                     component — so a brand narrows its assortments here too, and
                     the labels cannot drift apart again. The assortment is
                     omitted: it has a section of its own, because a casting can
-                    be sold in more than one box. Colour has one too — it is
-                    the thing that tells two otherwise identical releases apart,
-                    and it was the tenth field down a list of thirteen. */}
+                    be sold in more than one box. */}
                 <CatalogueFields
                   values={catalogueValues}
                   onChange={setCatalogueValue}
                   cars={cars}
-                  omit={["assortment", "colour"]}
+                  omit={["assortment"]}
                   disabled={isImageOnly}
                   errorFor={(k) => errorFor(k)}
                 />
@@ -1296,33 +1291,6 @@ export function CatalogFormDialog({
                     </p>
                   </Field>
                 </div>
-              </FormSection>
-
-              {/* Above the boxes, because it is a fact about the casting and
-                  they are facts about the packaging. Two cars with the same
-                  make, model and series are told apart by this one field, and
-                  it used to be the tenth row of thirteen. */}
-              <FormSection
-                id="colour"
-                title="Colour"
-                description="What this release was painted."
-                badge={form.colour?.trim() || "not set"}
-                badgeTone={form.colour?.trim() ? "muted" : "warn"}
-                open={showColour}
-                onToggle={() => setShowColour((v) => !v)}
-              >
-                <Field label="Colour" name="colour" error={errorFor("colour")}>
-                  <Combobox
-                    clearable
-                    disabled={isImageOnly}
-                    value={form.colour || ""}
-                    onChange={(v) => set("colour", v)}
-                    options={colourOptions}
-                    placeholder="e.g. Spectraflame Red"
-                    searchPlaceholder="Search colours, or type a new one…"
-                    ariaLabel="Colour"
-                  />
-                </Field>
               </FormSection>
 
               {/* One casting, every box it is sold in. Deliberately before
