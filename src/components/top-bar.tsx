@@ -126,7 +126,7 @@ export function TopBar() {
           disabled={syncing}
           title="Refresh cars and catalogue from the database"
           aria-label="Refresh from the database"
-          className="hidden size-9 rounded-full shrink-0 md:inline-flex"
+          className="hidden size-9 shrink-0 rounded-full bg-muted/60 hover:bg-muted md:inline-flex"
         >
           <RefreshCw className={cn("size-4.5", syncing && "animate-spin")} />
         </Button>

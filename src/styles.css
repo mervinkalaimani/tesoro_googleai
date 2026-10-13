@@ -312,6 +312,19 @@
     overflow-x: clip;
   }
 
+  /* A date input on iOS takes its width from the format it is showing and
+     will not go below it, whatever the box around it says. In a narrow column
+     that is how the order date ended up hanging off the right of the card.
+     The native picker and its calendar glyph are untouched -- this only lets
+     the control shrink. */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="time"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   /* Scale custom fixed-pixel font utility classes with the user font size preference */
   .text-\[8px\] {
     font-size: max(7px, calc(8px + var(--font-pt-offset, -2pt)));

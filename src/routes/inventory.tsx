@@ -1,10 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronUp, Filter, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Filter, RefreshCw, Search, X } from "lucide-react";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
+import { applyCatalogToCar } from "@/lib/catalog-sync";
+import { useCarsActions } from "@/lib/cars-store";
+import { toast } from "sonner";
 import { isPackMember, packMemberIds } from "@/lib/pack";
 import { FilterChipDropdown, ToggleChip } from "@/components/filter-chips";
 import { filterRows } from "@/lib/search";
@@ -311,7 +314,8 @@ function InventoryCard({
 function InventoryPage() {
   const { query } = useApp();
   const data = useCars();
-  const { packMembers } = useCatalog();
+  const { packMembers, catalog } = useCatalog();
+  const { bulkUpdateCars } = useCarsActions();
   const { open: openDrawer } = useCarDrawer();
 
   const [filters, setFilters] = useState<Record<FilterKey, string>>(EMPTY_FILTERS);
@@ -337,6 +341,44 @@ function InventoryPage() {
   const [sort, setSort] = useState<SortKey>("added");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [view, setView] = useState<ViewMode>("table");
+  const [syncing, setSyncing] = useState(false);
+
+  /**
+   * The car form's Refresh button, applied to the whole collection.
+   *
+   * A row filed before its catalogue entry was corrected keeps the old
+   * spelling: the propagate trigger skips any row whose name or price has
+   * drifted, so a correction never reaches it. This is that correction, asked
+   * for rather than applied, for every row at once.
+   *
+   * It reads the catalogue already in memory rather than fetching it first --
+   * the realtime listener keeps that current, and a fetch would hand back a
+   * list this closure could not see anyway.
+   */
+  const syncFromCatalogue = () => {
+    setSyncing(true);
+    try {
+      const byId = new Map(catalog.map((c) => [c.car_id.toUpperCase(), c]));
+      const changed: Diecast[] = [];
+      for (const car of data) {
+        const entry = car.catalogId ? byId.get(car.catalogId.toUpperCase()) : undefined;
+        if (!entry) continue;
+        const next = applyCatalogToCar(car, entry);
+        if (next.changed) changed.push(next.car);
+      }
+      if (changed.length === 0) {
+        toast.success("Every car already matches the catalogue");
+        return;
+      }
+      bulkUpdateCars(changed, `Updated ${changed.length} from the catalogue`);
+      toast.success(
+        `${changed.length} ${changed.length === 1 ? "car" : "cars"} updated from the catalogue`,
+        { description: "What you paid, who you bought from and every date are untouched." },
+      );
+    } finally {
+      setSyncing(false);
+    }
+  };
   const [chaseOnly, setChaseOnly] = useState(false);
   const [favOnly, setFavOnly] = useState(false);
 
@@ -722,6 +764,22 @@ function InventoryPage() {
                   {activeCount}
                 </span>
               ) : null}
+            </Button>
+
+            {/* The Refresh button on a single car, for all of them at once:
+                every row that points at a catalogue entry takes that entry's
+                description again. What you paid, who you bought it from and
+                every date are untouched, here as there. */}
+            <Button
+              size="icon"
+              variant="outline"
+              className="size-8 shrink-0"
+              onClick={syncFromCatalogue}
+              disabled={syncing}
+              title="Update every car from its catalogue entry"
+              aria-label="Update every car from its catalogue entry"
+            >
+              <RefreshCw className={cn("size-3.5 shrink-0", syncing && "animate-spin")} />
             </Button>
 
             <SortSelect

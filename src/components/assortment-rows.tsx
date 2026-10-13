@@ -148,7 +148,13 @@ export function AssortmentRow({
           cols(money),
         )}
       >
-        <Cell label="Assortment" className="col-span-1">
+        {/* On a phone the field shares its row with the button beside it, and
+            takes the whole width when there is no button -- an empty 2.25rem
+            column was holding a gap at the end of the field for nothing. */}
+        <Cell
+          label="Assortment"
+          className={onDetach || onRemove ? "col-span-1" : "col-span-2 sm:col-span-1"}
+        >
           <Combobox
             clearable
             allowCustom={allowCustom}
@@ -191,7 +197,8 @@ export function AssortmentRow({
             <Trash2 className="size-4" />
           </Button>
         ) : (
-          <span aria-hidden className="sm:order-last" />
+          // Nothing to put here on a phone: the field took the column.
+          <span aria-hidden className="hidden sm:order-last sm:block" />
         )}
 
         <Cell label="Retail / MRP">

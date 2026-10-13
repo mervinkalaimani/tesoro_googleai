@@ -455,7 +455,9 @@ export function NotificationCenter() {
           <Button
             variant="ghost"
             size="icon"
-            className="relative"
+            // A fill, faint enough to stay quiet: three bare icons in a row
+            // read as decoration until you learn they are buttons.
+            className="relative size-9 shrink-0 rounded-full bg-muted/60 hover:bg-muted"
             aria-label={
               count ? `Notifications — ${count} waiting` : "Notifications — nothing waiting"
             }

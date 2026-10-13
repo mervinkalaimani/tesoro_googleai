@@ -336,13 +336,18 @@ export function ThingsLeft({
       <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
         {items.length} thing{items.length > 1 ? "s" : ""} left
       </p>
-      <div className="mt-1 max-h-28 overflow-y-auto lg:max-h-none">
+      {/* Three rows, then scroll. Eight things left used to push the Add car
+          button off a phone screen -- the list of what is missing was taking
+          the room from the button that cares. 4.5rem is exactly three of these
+          rows: leading-5 plus py-0.5 is 1.5rem each, in rem rather than em, so
+          the count holds at every font size setting. */}
+      <div className="mt-1 max-h-[4.5rem] overflow-y-auto">
         {items.map((i) => (
           <button
             key={i.label}
             type="button"
             onClick={i.onJump}
-            className="flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left text-[11px] font-medium text-primary hover:bg-primary/10"
+            className="flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left text-[11px] font-medium leading-5 text-primary hover:bg-primary/10"
           >
             <span className="min-w-0 flex-1 truncate">{i.label}</span>
             {i.onJump && <ChevronRight className="size-3.5 shrink-0" />}

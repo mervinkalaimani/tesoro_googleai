@@ -174,16 +174,28 @@ export function FormSection({
       data-section={id}
       // Scrolled to by the rail, so it stops clear of the top of the scroller
       // rather than flush against it.
-      className="scroll-mt-2 overflow-hidden rounded-xl border border-border/70 bg-muted/30"
+      //
+      // No `overflow-hidden`: it would make this section the sticky header's
+      // scrollport, and a box that never scrolls is a box a header never
+      // sticks inside. The corners are rounded on the header and the body
+      // instead, which is what the clip was doing.
+      className="scroll-mt-2 rounded-xl border border-border/70 bg-muted/30"
     >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-start gap-2 px-3.5 py-3 text-left hover:bg-muted/50"
+        // Rides the top of the form while its own fields are on screen, the
+        // way a grouped table's header does on iOS — so you can always see
+        // which section you are filling in.
+        className="sticky top-0 z-10 flex w-full items-start gap-2 rounded-t-xl border-b border-transparent bg-muted/80 px-3.5 py-2.5 text-left backdrop-blur-sm hover:bg-muted/50"
       >
         <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold tracking-tight">{title}</span>
+          {/* Small, grey and in caps: a label for what follows rather than a
+              title competing with the field names under it. */}
+          <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {title}
+          </span>
           {description && (
             <span className="mt-0.5 block text-[11px] text-muted-foreground">{description}</span>
           )}
@@ -207,7 +219,9 @@ export function FormSection({
           )}
         />
       </button>
-      {open && <div className="border-t border-border/70 bg-card p-3.5">{children}</div>}
+      {open && (
+        <div className="rounded-b-xl border-t border-border/70 bg-card p-3.5">{children}</div>
+      )}
     </section>
   );
 }

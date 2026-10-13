@@ -26,7 +26,7 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
-    build: 343,
+    build: 344,
     at: "2026-10-13T22:00",
     changes: [
       {
@@ -36,6 +36,23 @@ export const RELEASES: Release[] = [
       {
         key: true,
         text: "Blister view: a fourth layout in My Cars and the catalogue that shows every car in the shape of the card it came on. Under each one, the name, then the brand, the assortment and the car number.",
+      },
+      {
+        key: true,
+        text: "My Cars has a sync button beside sort. It does to every car what Refresh does to one: each row that points at a catalogue entry takes that entry's description again. What you paid, who you bought from and every date are untouched.",
+      },
+      {
+        key: true,
+        text: "Section titles in Add a car, Update a car and the casting forms ride the top of the screen as you scroll, small and in caps, so you always know which part you are filling in.",
+      },
+      {
+        text: "The list of what is still missing shows three rows and scrolls. Eight things left used to push the Add car button off the bottom of a phone.",
+      },
+      {
+        text: "The assortment field takes the whole width on a phone -- an empty column was holding a gap at the end of it -- and a date field can no longer hang off the right of the card on an iPhone.",
+      },
+      {
+        text: "The refresh, bell and what's-new buttons in the top bar sit on a faint fill, so they read as buttons rather than decoration.",
       },
       {
         admin: true,
