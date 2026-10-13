@@ -51,36 +51,52 @@ assert.equal(catalogIdFor({ ...asFiled, mrp: 400 }), ENTRY.car_id);
 assert.equal(findCatalogEntry({ ...asFiled, mrp: 450, model: "Corvette" }), undefined);
 assert.equal(findCatalogEntry({ ...asFiled, mrp: 450, brand: "Matchbox" }), undefined);
 
-// A colour is not one of them. The same tooling comes out red as well as
-// yellow, and it is the same casting: the colour joins the entry's list rather
-// than minting a second ID for it.
+// Colour IS one of them. The same tooling in red and in yellow is two
+// releases, two entries and two IDs -- which is how a collector counts them,
+// and what the copy digit at the end of the ID is for.
 assert.equal(
-  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Red" })?.car_id,
-  ENTRY.car_id,
-  "a colour the entry has not seen is still this casting",
+  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Red" }),
+  undefined,
+  "a colour this entry is not is not this entry",
 );
-assert.equal(catalogIdFor({ ...asFiled, mrp: 450, colour: "Red" }), ENTRY.car_id);
+assert.notEqual(
+  catalogIdFor({ ...asFiled, mrp: 450, colour: "Red" }),
+  ENTRY.car_id,
+  "so Add a car files it under an ID of its own",
+);
 
-// Where the catalogue does hold one casting under two entries, the colour is
-// what picks between them.
+// A row that says nothing about colour still finds the casting: a blank column
+// is the absence of evidence, not evidence of a different car.
+assert.equal(
+  findCatalogEntry({ ...asFiled, mrp: 450, colour: "" })?.car_id,
+  ENTRY.car_id,
+  "no colour stated still matches",
+);
+
+// Two colours of one casting, each its own entry, told apart by the copy digit.
 setCatalogIdEntries([
   { ...ENTRY, car_id: "010506-01-0000-1", colour: "Yellow" },
-  { ...ENTRY, car_id: "010506-01-0000-2", colour: "Red", colours: ["Red", "Crimson"] },
+  { ...ENTRY, car_id: "010506-01-0000-2", colour: "Red" },
 ]);
 assert.equal(
   findCatalogEntry({ ...asFiled, mrp: 450, colour: "Red" })?.car_id,
   "010506-01-0000-2",
-  "the entry that knows this colour wins",
+  "the red one is the red entry",
 );
 assert.equal(
-  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Crimson" })?.car_id,
-  "010506-01-0000-2",
-  "including a colour a collector added to it",
-);
-assert.equal(
-  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Green" })?.car_id,
+  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Yellow" })?.car_id,
   "010506-01-0000-1",
-  "and a colour neither knows takes the first rather than a new entry",
+  "and the yellow one is the yellow entry",
+);
+assert.equal(
+  findCatalogEntry({ ...asFiled, mrp: 450, colour: "Green" }),
+  undefined,
+  "a third colour is a third entry, not whichever of these came first",
+);
+assert.equal(
+  findCatalogEntry({ ...asFiled, mrp: 450 })?.car_id,
+  "010506-01-0000-1",
+  "and a row with no colour at all still takes the first rather than nothing",
 );
 setCatalogIdEntries([ENTRY]);
 
