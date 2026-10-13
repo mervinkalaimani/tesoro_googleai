@@ -26,6 +26,23 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 336,
+    at: "2026-10-13T22:00",
+    changes: [
+      {
+        key: true,
+        text: "Pull down from the top of any page on a phone to reload. It buzzes once when you have pulled far enough, so you can let go without watching.",
+      },
+      {
+        key: true,
+        text: "Blister view: a fourth layout in My Cars and the catalogue that shows every car in the shape of the card it came on. The icon next to the other three.",
+      },
+      {
+        text: "A colour is now part of what makes a casting its own entry. The same tooling in red and in yellow are two releases, two catalogue entries and two IDs — which is how they are counted on a shelf.",
+      },
+    ],
+  },
+  {
     build: 322,
     at: "2026-10-13T19:00",
     changes: [

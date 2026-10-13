@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { Car, Loader2 } from "lucide-react";
 import { findCarImage } from "@/lib/car-image";
 import { transformImageUrl } from "@/lib/image-transform";
@@ -8,7 +8,20 @@ import type { Diecast } from "@/lib/types";
  * Card thumbnail for a car. Prefers the saved image URL, otherwise falls back to
  * the lookup used by the details drawer.
  */
-export function CarThumb({ car, className = "" }: { car: Diecast; className?: string }) {
+export function CarThumb({
+  car,
+  className = "",
+  fallback,
+}: {
+  car: Diecast;
+  className?: string;
+  /**
+   * What to show where there is no photograph, in place of the small car
+   * outline. A tall window wants something that fills it — an outline floating
+   * in the middle of a blister tile reads as a tile that failed to load.
+   */
+  fallback?: ReactNode;
+}) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +64,7 @@ export function CarThumb({ car, className = "" }: { car: Diecast; className?: st
           onError={() => setSrc(null)}
         />
       ) : (
-        <Car className="size-8 text-muted-foreground/40" />
+        (fallback ?? <Car className="size-8 text-muted-foreground/40" />)
       )}
     </div>
   );

@@ -46,7 +46,18 @@ export function BlisterTile({
           below each one stops reading as a shelf. `object-cover` is CarThumb's
           own default, so there is nothing to override. */}
       <div className="relative shrink-0">
-        <CarThumb car={car} className="aspect-[534/658] w-full" />
+        <CarThumb
+          car={car}
+          className="aspect-[534/658] w-full"
+          // No photograph still fills the window, top to bottom: the car's own
+          // name across a tinted panel. A small outline floating in the middle
+          // of a tile this tall reads as a tile that failed to load.
+          fallback={
+            <span className="flex size-full items-center justify-center bg-gradient-to-b from-muted/60 to-muted/20 p-3 text-center text-xs font-semibold leading-tight text-muted-foreground">
+              {title}
+            </span>
+          }
+        />
 
         {copies > 1 && (
           <div className="pointer-events-none absolute bottom-1 left-1">
