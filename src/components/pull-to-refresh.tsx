@@ -1,5 +1,5 @@
 import { type ReactNode, useEffect, useRef } from "react";
-import { Loader2, ArrowDown } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 import { useCarsRefresh } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
@@ -9,6 +9,22 @@ const TRIGGER_PX = 64;
 /** The furthest the page will come down, however hard it is pulled. */
 const MAX_PULL_PX = 96;
 const SPRING = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+/**
+ * A short tap through the phone's motor, where there is one.
+ *
+ * Android fires it; iOS Safari has never implemented `vibrate` and simply has
+ * no `navigator.vibrate` to call, which is why this is a feature test and not
+ * a platform check. Wrapped because a browser that exposes it can still refuse
+ * — a page that has not been touched yet throws rather than returning false.
+ */
+function tap(ms: number) {
+  try {
+    navigator.vibrate?.(ms);
+  } catch {
+    /* no motor, or the page is not allowed to use it */
+  }
+}
 
 /**
  * Pull down to reload, on touch screens only.
@@ -44,6 +60,8 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
     let pulling = false;
     let startY = 0;
     let amount = 0;
+    /** Latched, so the threshold taps once on the way down and not per frame. */
+    let armed = false;
 
     const draw = (px: number, animate: boolean) => {
       const t = animate ? `300ms ${SPRING}` : "0s";
@@ -58,6 +76,7 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
       // Only from the very top, and only while nothing is already loading.
       tracking = e.touches.length === 1 && window.scrollY <= 0 && !busy.current;
       pulling = false;
+      armed = false;
       amount = 0;
       if (tracking) startY = e.touches[0].clientY;
     };
@@ -77,6 +96,14 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
       if (e.cancelable) e.preventDefault();
       // Gives less the further it goes, so the end of the travel is felt.
       amount = MAX_PULL_PX * (1 - Math.exp(-Math.max(0, dy) / (MAX_PULL_PX * 1.4)));
+      // One tap at the moment letting go would reload, and another if the
+      // finger comes back up past it: the point of the threshold is that it is
+      // felt rather than guessed at.
+      const past = amount >= TRIGGER_PX;
+      if (past !== armed) {
+        armed = past;
+        tap(past ? 12 : 6);
+      }
       draw(amount, false);
     };
 
@@ -85,6 +112,7 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
       tracking = false;
       const fire = pulling && amount >= TRIGGER_PX;
       pulling = false;
+      armed = false;
       amount = 0;
       if (!fire) {
         draw(0, true);
@@ -116,11 +144,9 @@ export function PullToRefresh({ children }: { children: ReactNode }) {
         className="pointer-events-none absolute inset-x-0 top-0 z-10 flex justify-center opacity-0 md:hidden"
       >
         <span className="-mt-9 grid size-8 place-items-center rounded-full border border-border/60 bg-background/95 text-muted-foreground shadow-sm backdrop-blur">
-          {refreshing ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <ArrowDown className="size-4" />
-          )}
+          {/* The same spinner throughout: the pull turns it by hand, and
+              letting go hands it over to the animation. */}
+          <Loader2 className={refreshing ? "size-4 animate-spin text-primary" : "size-4"} />
         </span>
       </div>
       <div ref={contentRef} className="will-change-transform">

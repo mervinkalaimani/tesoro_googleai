@@ -20,7 +20,14 @@ import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
-import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
+import { CarCardTile } from "@/components/car-card-tile";
+import {
+  CARD_GRID_COLS,
+  COMPACT_GRID_COLS,
+  GRID_COLS,
+  ViewToggle,
+  type ViewMode,
+} from "@/components/view-toggle";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio, formatDayMonthYear } from "@/lib/format";
 import { sortCars } from "@/lib/status-order";
@@ -913,9 +920,25 @@ function InventoryPage() {
 
       {view !== "table" ? (
         <>
-          <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
+          <div
+            className={
+              view === "compact"
+                ? COMPACT_GRID_COLS
+                : view === "card"
+                  ? CARD_GRID_COLS
+                  : GRID_COLS
+            }
+          >
             {shown.map(({ car: r, n, total, lead }, i) =>
-              view === "compact" ? (
+              view === "card" ? (
+                <CarCardTile
+                  key={(r.id || "") + i}
+                  car={r}
+                  copies={lead ? n : 1}
+                  caption={r.spent ? inr(r.spent) : undefined}
+                  onOpen={() => openDrawer(r)}
+                />
+              ) : view === "compact" ? (
                 <CompactCarCard
                   key={(r.id || "") + i}
                   car={r}
