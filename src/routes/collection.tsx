@@ -132,7 +132,7 @@ function CollectionPage() {
     });
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
+    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
       <PageHeading
         title="Collection"
         subtitle={`${groups.length} ${group} · ${filtered.length.toLocaleString()} cars`}

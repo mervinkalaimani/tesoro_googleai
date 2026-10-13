@@ -820,7 +820,7 @@ function CatalogPage() {
     );
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
+    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
       <PageHeading
         title="Catalogue"
         // A card is a casting while the boxes ride together and a box when they
@@ -1034,7 +1034,11 @@ function CatalogPage() {
                 </span>
               )}
             </Button>
-            <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "blister", "table"]} />
+            <ViewToggle
+              value={view}
+              onChange={setView}
+              modes={["grid", "compact", "blister", "table"]}
+            />
           </>
         }
       />

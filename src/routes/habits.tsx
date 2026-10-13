@@ -365,7 +365,7 @@ function HabitsPage() {
   }, [view, range, mode, grid, matrix]);
 
   return (
-    <div className="mx-auto min-w-0 max-w-[1600px] space-y-4 overflow-x-hidden p-3 md:p-6">
+    <div className="mx-auto min-w-0 max-w-[1600px] space-y-3 overflow-x-hidden p-3 md:p-6">
       <PageHeading title="Buying habits">
         <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/80 px-2.5 py-1.5 shadow-xs">
           <Switch

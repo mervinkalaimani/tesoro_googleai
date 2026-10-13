@@ -28,6 +28,7 @@ import {
   ViewToggle,
   type ViewMode,
 } from "@/components/view-toggle";
+import { PageHeading } from "@/components/page-header";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio, formatDayMonthYear } from "@/lib/format";
 import { sortCars } from "@/lib/status-order";
@@ -603,13 +604,7 @@ function InventoryPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
-      {/* Page title */}
-      <div className="flex items-baseline justify-between gap-2 pb-0.5">
-        <div>
-          <h1 className="text-display text-xl sm:text-2xl font-semibold tracking-tight">My Cars</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">{countCaption}</p>
-        </div>
-      </div>
+      <PageHeading title="My Cars" subtitle={countCaption} />
 
       {/* Filter & Actions section below title - sticky below top bar */}
       <div

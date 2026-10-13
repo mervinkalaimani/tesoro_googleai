@@ -354,7 +354,7 @@ function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto min-w-0 max-w-[1600px] space-y-2.5 overflow-x-hidden p-2.5 md:space-y-4 md:p-6">
+    <div className="mx-auto min-w-0 max-w-[1600px] space-y-3 overflow-x-hidden p-3 md:p-6">
       <PageHeading title={greeting} subtitle={subNote} />
 
       {/* A release landing this week now lives behind the bell in the top bar,

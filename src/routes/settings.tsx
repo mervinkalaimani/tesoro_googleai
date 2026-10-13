@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PageHeading } from "@/components/page-header";
 import { useEffect, useMemo, useState } from "react";
 import {
   ChevronLeft,
@@ -310,19 +311,10 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {view === "root" && (
         <div className="space-y-6">
-          {/* Title and count, in the shape My Cars uses: the same size, the same
-              weight and the same gap under it, so stepping between the two does
-              not move the heading. */}
-          <div className="flex items-baseline justify-between gap-2 pb-0.5">
-            <div>
-              <h1 className="text-display text-xl font-semibold tracking-tight sm:text-2xl">
-                Settings
-              </h1>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Manage your profile, preferences, and diecast collection system.
-              </p>
-            </div>
-          </div>
+          <PageHeading
+            title="Settings"
+            subtitle="Manage your profile, preferences, and diecast collection system."
+          />
 
           {/* Top Account Card (Separate Apple ID style card) */}
           <button

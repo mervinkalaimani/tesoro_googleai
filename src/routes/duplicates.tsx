@@ -100,7 +100,7 @@ function DuplicatesPage() {
   const surplusCount = groups.reduce((s, g) => s + (g.length - 1), 0);
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-4 p-3 md:p-6">
+    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
       <PageHeading
         title="Duplicates"
         subtitle={`${surplusCount} ${surplusCount === 1 ? "casting" : "castings"} across ${groups.length} ${groups.length === 1 ? "model" : "models"}`}

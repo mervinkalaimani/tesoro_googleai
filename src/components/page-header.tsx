@@ -30,7 +30,11 @@ export function PageHeading({
   return (
     <div className="flex items-center justify-between gap-2 min-w-0 max-w-full">
       <div className="min-w-0 flex-1 overflow-hidden">
-        <h1 className="text-display truncate text-lg sm:text-xl font-semibold">{title}</h1>
+        {/* The size My Cars has always used. Every other page opened a step
+            smaller, which read as My Cars being the important one. */}
+        <h1 className="text-display truncate text-xl font-semibold tracking-tight sm:text-2xl">
+          {title}
+        </h1>
         {subtitle && (
           <p className="mt-0.5 text-xs text-muted-foreground truncate block max-w-full">
             {subtitle}

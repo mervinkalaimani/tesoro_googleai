@@ -403,7 +403,7 @@ function SubscriptionsPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] space-y-4 px-3 py-4 md:px-6">
+    <div className="mx-auto w-full max-w-[1600px] space-y-3 p-3 md:p-6">
       <div className="flex items-center justify-between border-b border-border/60 pb-3">
         <Link
           to="/settings"
