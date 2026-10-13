@@ -26,7 +26,7 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
-    build: 340,
+    build: 341,
     at: "2026-10-13T22:00",
     changes: [
       {
@@ -38,7 +38,7 @@ export const RELEASES: Release[] = [
         text: "Blister view: a fourth layout in My Cars and the catalogue that shows every car in the shape of the card it came on. Under each one, the name, then the brand, the assortment and the car number.",
       },
       {
-        text: "Settings, Users, Subscriptions and the Admin Dashboard are all the same width now. Walking between them no longer moves the page under you.",
+        text: "Settings, Users, Subscriptions and the Admin Dashboard are all the same width now, and the Settings title and the line under it are the size My Cars uses. Walking between them no longer moves the page under you.",
       },
       {
         admin: true,

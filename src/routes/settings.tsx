@@ -304,18 +304,24 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-5 md:py-8">
+    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
       {/* ========================================================================= */}
       {/* ROOT SETTINGS SCREEN (Apple Inset Grouped Table View)                    */}
       {/* ========================================================================= */}
       {view === "root" && (
         <div className="space-y-6">
-          {/* Header */}
-          <div className="px-1">
-            <h1 className="text-display text-2xl font-bold tracking-tight md:text-3xl">Settings</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Manage your profile, preferences, and diecast collection system.
-            </p>
+          {/* Title and count, in the shape My Cars uses: the same size, the same
+              weight and the same gap under it, so stepping between the two does
+              not move the heading. */}
+          <div className="flex items-baseline justify-between gap-2 pb-0.5">
+            <div>
+              <h1 className="text-display text-xl font-semibold tracking-tight sm:text-2xl">
+                Settings
+              </h1>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Manage your profile, preferences, and diecast collection system.
+              </p>
+            </div>
           </div>
 
           {/* Top Account Card (Separate Apple ID style card) */}
