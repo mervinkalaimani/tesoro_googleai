@@ -924,17 +924,24 @@ export type CatalogCarOwner = {
 const norm = (v?: string | null) => (v || "").trim().toLowerCase();
 
 /**
- * Every colour a catalogue entry is known in: the one it was filed under, and
- * the ones collectors have since filed a copy in. The database keeps the list;
- * this only reads it.
+ * The colour a catalogue entry is: one, or none.
+ *
+ * This used to return the entry's colour plus every colour a collector had
+ * filed a copy in, because a casting was taken to be one thing that came out
+ * in several colours. It is not: the red one and the yellow one are two
+ * releases, two entries and two IDs, which is how they are counted on a shelf
+ * and what the copy digit at the end of the ID is for.
+ *
+ * `colours` is still on the row and still written by two database triggers.
+ * Nothing here reads it any more, and nothing owns what is in it -- not one
+ * car in the collection carries a colour its entry does not. It is residue.
+ *
+ * Kept as a function rather than inlined: four call sites want a list, and a
+ * list of one is the honest answer to "which colours is this entry".
  */
 export const catalogColours = (c: CatalogCar): string[] => {
-  const out: string[] = [];
-  for (const v of [c.colour, ...(c.colours ?? [])]) {
-    const value = (v || "").trim();
-    if (value && !out.some((x) => x.toLowerCase() === value.toLowerCase())) out.push(value);
-  }
-  return out;
+  const value = (c.colour || "").trim();
+  return value ? [value] : [];
 };
 
 /**

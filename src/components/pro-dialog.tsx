@@ -21,6 +21,7 @@ import { openPlanTermDialog } from "@/components/plan-term-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /**
  * The three plans side by side, once per sign-in and whenever something stops
@@ -173,6 +174,8 @@ export function ProDialog() {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState<string | null>(null);
   const [busy, setBusy] = useState<PaidPlan | null>(null);
+  /** Which card a phone is showing. Starts on the plan this account is on. */
+  const [shownPlan, setShownPlan] = useState<string>(mine);
   // What the plans cost is set by the owner, so the columns are built from
   // what was loaded rather than from a constant compiled in.
   const PLANS = plansFor(usePlanPrices());
@@ -283,10 +286,24 @@ export function ProDialog() {
           </DialogDescription>
         </div>
 
+        {/* Three cards side by side is a comparison; three cards stacked is a
+            long scroll where the third one is never seen. On a phone they take
+            turns, starting on the plan you are on. */}
+        <Tabs value={shownPlan} onValueChange={setShownPlan} className="sm:hidden">
+          <TabsList className="grid w-full grid-cols-3">
+            {PLANS.map((p) => (
+              <TabsTrigger key={p.key} value={p.key} className="px-1 text-xs">
+                {p.title}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
         <div className="mt-2 grid gap-3 sm:grid-cols-3">
           {PLANS.map((p) => (
             <PlanCard
               key={p.key}
+              className={p.key === shownPlan ? undefined : "max-sm:hidden"}
               plan={p}
               mine={p.key === mine}
               asked={p.key !== "free" && askedPlan === p.key}
@@ -322,8 +339,11 @@ function PlanCard({
   onWithdraw,
   onTrial,
   onAsk,
+  className,
 }: {
   plan: Plan;
+  /** Hidden on a phone when another plan's tab is the one showing. */
+  className?: string;
   /** The plan this account is on, so one of the three is labelled rather than sold. */
   mine?: boolean;
   /** A request for this plan is already with the admins. */
@@ -346,6 +366,7 @@ function PlanCard({
       className={cn(
         "flex flex-col rounded-2xl border p-4",
         plan.featured ? "border-primary/60 bg-primary/5" : "border-border bg-muted/20",
+        className,
       )}
     >
       <div className="flex items-center gap-2">

@@ -26,7 +26,7 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
-    build: 345,
+    build: 346,
     at: "2026-10-13T22:00",
     changes: [
       {
@@ -36,6 +36,13 @@ export const RELEASES: Release[] = [
       {
         key: true,
         text: "Blister view: a fourth layout in My Cars and the catalogue that shows every car in the shape of the card it came on. Under each one, the name, then the brand, the assortment and the car number.",
+      },
+      {
+        key: true,
+        text: "A catalogue entry shows the one colour it is, not a list. The red one and the yellow one are two releases and two entries -- which is how they are counted on a shelf.",
+      },
+      {
+        text: "The plans compare as tabs on a phone: Free, Plus and Pro take turns instead of stacking into a scroll where the third one is never reached.",
       },
       {
         key: true,
