@@ -25,12 +25,6 @@ const UNDO_WINDOW_MS = 30_000;
 
 export function TopBar() {
   const { undo, undoLabel, undoAt } = useCarsUndo();
-  const { refresh, refreshing } = useCarsRefresh();
-  const { refreshCatalog, isLoading: catalogLoading } = useCatalog();
-  // Both, because "it is not showing my photo" can be either of them: the row
-  // carries its own picture and falls back to its casting's.
-  const refreshAll = () => Promise.all([refresh(), refreshCatalog()]);
-  const syncing = refreshing || catalogLoading;
   const { carCeiling } = useAuth();
   const allCars = useCars();
   /** At the ceiling this plan has. The database refuses the row anyway. */
@@ -109,27 +103,6 @@ export function TopBar() {
             <Undo2 className="size-4" /> <span className="hidden sm:inline">Undo</span>
           </Button>
         )}
-
-        {/* Desktop only, because a phone is where the change is usually made
-            and the other machine is the one holding a stale copy.
-
-            There used to be a comment here explaining why no such button was
-            needed: cars re-read every 15 seconds, so a manual refresh could
-            reveal nothing. True of cars, and wrong about the catalogue, which
-            was read once on mount and then trusted to a realtime subscription
-            that has never delivered a row. Coming back to the tab now refetches
-            it on its own; this is for when you are already looking at it. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => void refreshAll()}
-          disabled={syncing}
-          title="Refresh cars and catalogue from the database"
-          aria-label="Refresh from the database"
-          className="hidden size-9 shrink-0 rounded-full bg-muted/60 hover:bg-muted md:inline-flex"
-        >
-          <RefreshCw className={cn("size-4.5", syncing && "animate-spin")} />
-        </Button>
 
         <WhatsNewStar />
         <NotificationCenter />

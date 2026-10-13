@@ -26,7 +26,7 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
-    build: 344,
+    build: 345,
     at: "2026-10-13T22:00",
     changes: [
       {
@@ -39,7 +39,14 @@ export const RELEASES: Release[] = [
       },
       {
         key: true,
-        text: "My Cars has a sync button beside sort. It does to every car what Refresh does to one: each row that points at a catalogue entry takes that entry's description again. What you paid, who you bought from and every date are untouched.",
+        text: "Sync with Catalogue sits beside the My Cars title now, named rather than an icon. Every row that points at a catalogue entry takes that entry's description again; what you paid, who you bought from and every date are untouched.",
+      },
+      {
+        text: "Pull to refresh is gone from the phone. Cars re-read themselves every fifteen seconds and the catalogue listens for changes, so the gesture was a thing to learn for nothing.",
+      },
+      {
+        text: "The refresh button has left the top bar, and Find photos has left the catalogue.",
+        admin: true,
       },
       {
         key: true,

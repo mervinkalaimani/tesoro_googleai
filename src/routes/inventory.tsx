@@ -646,7 +646,24 @@ function InventoryPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
-      <PageHeading title="My Cars" subtitle={countCaption} />
+      <PageHeading title="My Cars" subtitle={countCaption}>
+        {/* The Refresh button on a single car, for all of them at once: every
+            row that points at a catalogue entry takes that entry's description
+            again. What you paid, who you bought it from and every date are
+            untouched, here as there. Beside the title, where the catalogue
+            keeps Push to all and Duplicates. */}
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-1.5"
+          onClick={syncFromCatalogue}
+          disabled={syncing}
+          title="Sync with Catalogue — update every car from its catalogue entry"
+        >
+          <RefreshCw className={cn("size-4", syncing && "animate-spin")} />
+          <span className="max-sm:sr-only">Sync with Catalogue</span>
+        </Button>
+      </PageHeading>
 
       {/* Filter & Actions section below title - sticky below top bar */}
       <div
@@ -764,22 +781,6 @@ function InventoryPage() {
                   {activeCount}
                 </span>
               ) : null}
-            </Button>
-
-            {/* The Refresh button on a single car, for all of them at once:
-                every row that points at a catalogue entry takes that entry's
-                description again. What you paid, who you bought it from and
-                every date are untouched, here as there. */}
-            <Button
-              size="icon"
-              variant="outline"
-              className="size-8 shrink-0"
-              onClick={syncFromCatalogue}
-              disabled={syncing}
-              title="Update every car from its catalogue entry"
-              aria-label="Update every car from its catalogue entry"
-            >
-              <RefreshCw className={cn("size-3.5 shrink-0", syncing && "animate-spin")} />
             </Button>
 
             <SortSelect

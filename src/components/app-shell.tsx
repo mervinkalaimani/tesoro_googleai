@@ -8,7 +8,6 @@ import { TierBanner } from "./tier-banner";
 import { ProDialog } from "./pro-dialog";
 import { PlanTermDialog } from "./plan-term-dialog";
 import { HandleFixDialog } from "./handle-fix-dialog";
-import { PullToRefresh } from "./pull-to-refresh";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -32,10 +31,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                 phone reserves for its own home indicator. The bar is glass, so
                 it has to be scrolled *past* rather than merely avoided — the
                 padding is what lets the final card clear it. */}
-            {/* `relative` so the pull indicator can be hidden behind the top
-                bar and dragged out from under it. */}
-            <main className="relative flex-1 pb-[calc(6.75rem+env(safe-area-inset-bottom))] md:pb-0">
-              <PullToRefresh>{children}</PullToRefresh>
+            <main className="flex-1 pb-[calc(6.75rem+env(safe-area-inset-bottom))] md:pb-0">
+              {children}
             </main>
           </SidebarInset>
         </div>
