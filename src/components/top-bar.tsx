@@ -156,7 +156,10 @@ export function TopBar() {
               else setAddOpen(true);
             }}
             aria-label="Add car"
-            className="relative size-9 rounded-full shrink-0 flex items-center justify-center p-0"
+            // Round and wordless where the bar is tight; named where there is
+            // room for it. Two unlabelled icons side by side is a guess, and
+            // the desktop bar has the width to say which is which.
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-full p-0 md:w-auto md:gap-1.5 md:px-3.5"
             title={
               pendingDraft === "bulk"
                 ? "You have an unfinished table of cars — pick up where you left off"
@@ -166,6 +169,7 @@ export function TopBar() {
             }
           >
             <Plus className="size-4.5" />
+            <span className="max-md:sr-only">Add car</span>
             {pendingDraft && (
               <span
                 aria-label="Unfinished car saved"
@@ -178,11 +182,15 @@ export function TopBar() {
             asChild
             variant="outline"
             size="icon"
-            className="size-9 rounded-full shrink-0 flex items-center justify-center p-0"
+            // Outlined in the accent rather than the border grey: it sits
+            // beside a solid primary Add car, and a plain grey outline read as
+            // the disabled one of the pair.
+            className="flex size-9 shrink-0 items-center justify-center rounded-full border-primary/60 p-0 text-primary hover:bg-primary/10 hover:text-primary md:w-auto md:gap-1.5 md:px-3.5"
             title="Catalogue"
           >
             <Link to="/catalog" aria-label="Catalogue">
               <Store className="size-4.5" />
+              <span className="max-md:sr-only">Catalogue</span>
             </Link>
           </Button>
           <AccountButton />

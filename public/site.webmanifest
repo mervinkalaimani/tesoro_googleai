@@ -6,7 +6,16 @@
   "background_color": "#1b1b1b",
   "theme_color": "#1b1b1b",
   "icons": [
-    { "src": "/viiv_icon.svg", "type": "image/svg+xml", "sizes": "any" },
-    { "src": "/viiv_app_icon_dark.png", "type": "image/png", "sizes": "360x360" }
+    {
+      "src": "/viiv_app_icon_white.png",
+      "type": "image/png",
+      "sizes": "360x360",
+      "purpose": "any"
+    },
+    {
+      "src": "/viiv_icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
   ]
 }

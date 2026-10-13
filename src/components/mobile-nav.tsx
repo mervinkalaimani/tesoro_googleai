@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Boxes,
@@ -18,6 +18,7 @@ import { useAuth } from "@/lib/auth-store";
 import { isProPath, planOpensPath } from "@/lib/tiers";
 import {
   MobileSearchBar,
+  closeSearch,
   openSearch,
   useKeyboardInset,
   useSearchOpen,
@@ -125,8 +126,27 @@ function HomeCircle({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  const navigate = useNavigate();
   return (
-    <Link to="/" aria-label="Home" className={`${HOME_CIRCLE} ${className}`} style={style}>
+    <Link
+      to="/"
+      aria-label="Home"
+      // Acted on as the finger lands, not when it lifts.
+      //
+      // While the search field has focus the whole bar is riding on top of the
+      // keyboard. Touching anything outside the field dismisses the keyboard
+      // first, the bar drops by its height, and the click that follows lands
+      // on whatever has slid into that spot — so Home took two taps, and the
+      // first one looked like nothing happening at all.
+      onPointerDown={(e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        closeSearch();
+        void navigate({ to: "/" });
+      }}
+      className={`${HOME_CIRCLE} ${className}`}
+      style={style}
+    >
       <Home className="size-5" />
       <span className="text-[10px] font-medium leading-none">Home</span>
     </Link>

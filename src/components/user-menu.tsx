@@ -77,19 +77,11 @@ export function UserMenu() {
 
         <DropdownMenuSeparator />
 
-        {isAdmin && (
-          <DropdownMenuItem asChild>
-            <Link
-              to="/settings"
-              search={{ tab: "advanced" }}
-              className="cursor-pointer gap-2 font-medium text-primary"
-            >
-              <Wrench className="size-4" />
-              Admin Console
-            </Link>
-          </DropdownMenuItem>
-        )}
-
+        {/* Admin Console used to be here. It lives in the sidebar's own
+            Admin section now, next to the dashboard it belongs with -- two
+            doors to one room, one of them behind an avatar, was one too many.
+            The phone keeps its copy in the account sheet, which is the only
+            way there without a sidebar. */}
         <DropdownMenuItem asChild>
           <Link to="/settings" className="cursor-pointer gap-2">
             <Settings className="size-4" />

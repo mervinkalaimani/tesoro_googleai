@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Boxes,
@@ -123,6 +123,21 @@ function EmptyDashboard() {
             <Plus className="size-4" />
             Add a car
           </Button>
+
+          {/* The other way in, and for somebody who has just arrived it is the
+              easier one: the catalogue already knows every casting, so adding
+              from it is picking rather than typing. Quiet, under the primary
+              action, because logging a car you own is still the point. */}
+          <p className="mt-4 text-sm text-muted-foreground">
+            Not sure what to type?{" "}
+            <Link
+              to="/catalog"
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Browse the catalogue
+            </Link>{" "}
+            and add one from there.
+          </p>
         </div>
       </div>
       <CarFormDialog open={addOpen} onOpenChange={setAddOpen} mode="add" />

@@ -18,9 +18,26 @@
  * inside.
  */
 import { useMemo, useState } from "react";
-import { ChevronRight, MapPin, Pencil, Phone, Store } from "lucide-react";
+import {
+  Banknote,
+  CalendarRange,
+  Car,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  MapPin,
+  Package,
+  Pencil,
+  Phone,
+  Receipt,
+  Scale,
+  ShoppingBag,
+  Store,
+  Truck,
+} from "lucide-react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { KpiTile } from "@/components/kpi";
 import { SegmentControl } from "@/components/segment-control";
 import { StatusPill } from "@/components/status-pill";
 import { useAuth } from "@/lib/auth-store";
@@ -111,15 +128,6 @@ function bundle(cars: Diecast[], by: GroupBy): Bundle[] {
     const y = parseDMY(b.day)?.getTime() ?? 0;
     return y - x || b.cars.length - a.cars.length;
   });
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-0 px-3 py-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="mt-1 truncate text-base font-bold tracking-tight tabular-nums">{value}</div>
-    </div>
-  );
 }
 
 /** A round action beside the name: a call, a message. */
@@ -222,7 +230,7 @@ export function SellerOrdersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[calc(100dvh-3rem)] w-full max-w-full flex-col gap-4 overflow-hidden sm:max-w-5xl max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none">
+      <DialogContent className="flex max-h-[calc(100dvh-3rem)] w-full max-w-full flex-col gap-4 overflow-hidden sm:max-w-6xl max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none">
         {/* THE SHOP, at the size of a title. The picture is a tile rather than a
             circle: a shop is a place, and the round frame is what accounts
             wear everywhere else in the app. */}
@@ -288,26 +296,67 @@ export function SellerOrdersDialog({
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-          {/* THE BAND. Ten numbers in one block, two abreast on a phone and
-              five across a desktop, so the money reads as one set of facts
-              about the shop rather than ten little cards. */}
-          <div className="grid grid-cols-2 divide-x divide-y divide-border overflow-hidden rounded-2xl border border-border bg-muted/20 sm:grid-cols-3 lg:grid-cols-5">
-            <Stat label="Cars" value={String(mine.length)} />
-            <Stat label="Orders" value={String(totals.orders)} />
-            <Stat label="Shipments" value={String(totals.shipments)} />
-            <Stat label="Pre-orders" value={String(totals.po)} />
-            <Stat label="Pending" value={String(totals.pending)} />
-            <Stat label="Spent" value={inrFull(totals.spent)} />
-            <Stat label="Shipping" value={inrFull(totals.shipping)} />
-            <Stat label="Paid" value={inrFull(totals.paid)} />
-            <Stat label="Balance" value={inrFull(totals.owed)} />
-            <Stat
+          {/* THE BAND, in the same tiles every other screen opens with: an
+              icon chip, the label, the number. It used to be its own thing --
+              ten cells divided by hairlines -- which made the one screen about
+              a shop's money look unlike every screen about yours. */}
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:gap-3 lg:grid-cols-5">
+            <KpiTile label="Cars" value={String(mine.length)} icon={<Car className="size-4" />} />
+            <KpiTile
+              label="Orders"
+              value={String(totals.orders)}
+              icon={<Receipt className="size-4" />}
+            />
+            <KpiTile
+              label="Shipments"
+              value={String(totals.shipments)}
+              icon={<Truck className="size-4" />}
+              tone="sky"
+            />
+            <KpiTile
+              label="Pre-orders"
+              value={String(totals.po)}
+              icon={<ShoppingBag className="size-4" />}
+              tone="violet"
+            />
+            <KpiTile
+              label="Pending"
+              value={String(totals.pending)}
+              icon={<Clock3 className="size-4" />}
+              tone="amber"
+              valueTone={totals.pending ? "amber" : undefined}
+            />
+            <KpiTile
+              label="Spent"
+              value={inrFull(totals.spent)}
+              icon={<Banknote className="size-4" />}
+            />
+            <KpiTile
+              label="Shipping"
+              value={inrFull(totals.shipping)}
+              icon={<Package className="size-4" />}
+            />
+            <KpiTile
+              label="Paid"
+              value={inrFull(totals.paid)}
+              icon={<CheckCircle2 className="size-4" />}
+              tone="emerald"
+            />
+            <KpiTile
+              label="Balance"
+              value={inrFull(totals.owed)}
+              icon={<Scale className="size-4" />}
+              tone={totals.owed > 0 ? "amber" : "emerald"}
+              valueTone={totals.owed > 0 ? "amber" : undefined}
+            />
+            <KpiTile
               label="Bought between"
               value={
                 totals.first && totals.last
                   ? `${formatDayMonthYear(totals.first)} – ${formatDayMonthYear(totals.last)}`
                   : "—"
               }
+              icon={<CalendarRange className="size-4" />}
             />
           </div>
 

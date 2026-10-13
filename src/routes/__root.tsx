@@ -162,13 +162,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       // iPhone home screen. Safari takes a PNG and nothing else, and reads it
       // once, when the app is added.
       //
-      // One file for both appearances, where the old mark had two: this one is
-      // drawn on a white tile, and a tile sits on the wallpaper rather than on
-      // the system's background — so there is nothing for a dark phone to make
-      // it disappear against, and a second copy would be the same picture.
+      // Opaque, and that is the whole point of this file. iOS does not honour
+      // transparency in a home screen icon -- it fills it with black -- and
+      // the mark it was given was 79% transparent, so the black half of the V
+      // vanished into the tile and what was left looked like an orange slash
+      // on a black square. The white here is painted into the picture.
       {
         rel: "apple-touch-icon",
-        href: "/viiv_app_icon_dark.png",
+        href: "/viiv_app_icon_white.png",
         sizes: "360x360",
       },
       { rel: "manifest", href: "/site.webmanifest" },

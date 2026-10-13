@@ -26,6 +26,29 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 321,
+    at: "2026-10-13T16:00",
+    changes: [
+      {
+        key: true,
+        text: "The home screen icon on iPhone is right. The picture it was given was mostly transparent and iOS fills transparency with black, so the dark half of the V vanished into the tile and what was left looked like an orange slash. The white is painted into the file now.",
+      },
+      {
+        text: "Add car and Catalogue are named on a desktop instead of being two unlabelled circles, and Catalogue wears the accent outline.",
+      },
+      {
+        text: "Tapping Home from an open search bar works on the first tap. The bar rides on the keyboard, and the tap that dismissed the keyboard moved the button out from under your finger.",
+      },
+      {
+        text: "A collection with nothing in it points at the catalogue, which is the easier way to add the first car.",
+      },
+      {
+        admin: true,
+        text: "Admin Dashboard and Admin Console have a section of their own at the foot of the sidebar; the Console has gone from the account menu beside it. The seller detail opens wider, with the same number tiles every other screen uses.",
+      },
+    ],
+  },
+  {
     build: 320,
     at: "2026-10-13T12:00",
     changes: [

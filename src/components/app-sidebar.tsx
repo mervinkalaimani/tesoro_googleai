@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   Home,
   LayoutDashboard,
+  Wrench,
   Star,
   Boxes,
   Truck,
@@ -141,29 +142,6 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-
-              {/* Under Home, and only for the people it is for: the numbers on
-                  it are everybody's accounts, not the reader's own cars. */}
-              {isAdmin && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === "/dashboard"}
-                    tooltip="Admin Dashboard"
-                    className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
-                  >
-                    <Link
-                      to="/dashboard"
-                      onClick={() => {
-                        if (isMobile) setOpenMobile(false);
-                      }}
-                    >
-                      <LayoutDashboard className="size-4.5" />
-                      <span>Admin Dashboard</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -229,6 +207,57 @@ export function AppSidebar() {
               </span>
             </button>
           </div>
+        )}
+        {/* Last, and separate. Everything above is the reader's own
+            collection; these two are everybody else's accounts and the
+            install's own settings, which is a different subject and belongs
+            under its own heading rather than tucked beside Home. */}
+        {isAdmin && (
+          <SidebarGroup className="py-1">
+            <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+              Admin
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === "/dashboard"}
+                    tooltip="Admin Dashboard"
+                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                  >
+                    <Link
+                      to="/dashboard"
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                    >
+                      <LayoutDashboard className="size-4.5" />
+                      <span>Admin Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip="Admin Console"
+                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                  >
+                    <Link
+                      to="/settings"
+                      search={{ tab: "advanced" }}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                    >
+                      <Wrench className="size-4.5" />
+                      <span>Admin Console</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
       </SidebarContent>
 
