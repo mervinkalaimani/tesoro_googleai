@@ -231,6 +231,12 @@ export function CarScanDialog({
 
   const scan = async (file: File | undefined | null) => {
     if (!file) return;
+    // The lens closes the moment there is a picture to read, wherever the
+    // picture came from. shoot() did this for itself, so a photograph taken
+    // here behaved; a file chosen with the upload button -- or pasted -- left
+    // the camera running, and the footer is deliberately hidden while it is.
+    // The reading appeared with no Save under it and no way to get one.
+    stopCamera();
     if (spent) {
       setError("That is all your scans for this month. The count resets on the 1st.");
       return;
@@ -518,30 +524,28 @@ export function CarScanDialog({
           )}
         </div>
 
-        {/* Recheck on the left and only when something went wrong — a second
-            opinion on a photograph that read fine is a credit spent to be told
-            the same thing. Save on the right, where the thing you came to do
-            ends up. */}
-        {/* Nothing in the footer until there is something to do with it:
-            a Save needs a reading, and a Recheck needs a picture that failed.
-            An empty bar under a viewfinder is a bar that means nothing. */}
+        {/* Nothing in the footer until there is something to do with it: a
+            Save needs a reading, and a Recheck needs a picture that failed. An
+            empty bar under a viewfinder is a bar that means nothing.
+
+            The buttons themselves are the ones every other form in the app
+            ends with -- full height, not the small variant, sharing the width
+            when there are two. They were sm and text-xs, which made the one
+            button somebody came here to press the smallest on the screen. */}
         {!cam && (found || (error && lastFileRef.current)) && (
-          <DialogFooter className="shrink-0 flex-row items-center justify-between gap-2 border-t border-border/60 p-4 pt-3 sm:justify-between">
-            {error && lastFileRef.current ? (
+          <DialogFooter className="shrink-0 flex-row items-center gap-2 border-t border-border/60 p-4 pt-3">
+            {error && lastFileRef.current && (
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={() => void scan(lastFileRef.current)}
                 disabled={busy || spent}
-                className="gap-1.5 text-xs"
+                className="flex-1 gap-1.5"
                 title="Read the same picture again"
               >
-                <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
+                <RefreshCw className={cn("size-4", busy && "animate-spin")} />
                 Recheck
               </Button>
-            ) : (
-              <span />
             )}
 
             {found && (
@@ -549,7 +553,7 @@ export function CarScanDialog({
                 type="button"
                 onClick={apply}
                 disabled={take.size === 0 || busy}
-                className="gap-1.5 text-xs font-semibold"
+                className="flex-1 gap-1.5 font-semibold"
               >
                 <Check className="size-4" />
                 Save {take.size ? `(${take.size})` : ""}

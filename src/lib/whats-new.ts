@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 320,
+    at: "2026-10-13T12:00",
+    changes: [
+      {
+        key: true,
+        text: "Scanning a card by uploading a picture left the camera running underneath, and the Save button stays hidden while the camera is open — so the details were read off the card with no way to keep them. The lens now closes the moment there is a picture to read, however it arrived.",
+      },
+      {
+        text: "Save and Recheck in the card scanner are the size every other form in the app uses, instead of the smallest buttons on the screen.",
+      },
+    ],
+  },
+  {
     build: 319,
     at: "2026-10-10T19:00",
     changes: [
