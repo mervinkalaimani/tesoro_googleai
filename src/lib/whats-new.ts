@@ -26,7 +26,7 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
-    build: 338,
+    build: 339,
     at: "2026-10-13T22:00",
     changes: [
       {
@@ -36,6 +36,10 @@ export const RELEASES: Release[] = [
       {
         key: true,
         text: "Blister view: a fourth layout in My Cars and the catalogue that shows every car in the shape of the card it came on. Under each one, the name, then the brand, the assortment and the car number.",
+      },
+      {
+        admin: true,
+        text: "Back out of an Admin Console screen and you land on the Admin Console, not on Settings. Diagnostics, DB Connection, Search Engine, the metadata editor, Users and Subscriptions all climbed two steps at once.",
       },
       {
         admin: true,

@@ -317,10 +317,11 @@ function AdminPage() {
       <div className="flex items-center justify-between border-b border-border/60 pb-3">
         <Link
           to="/settings"
+          search={{ tab: "advanced" }}
           className="inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50"
         >
           <ChevronLeft className="-ml-1 size-5" />
-          <span>Settings</span>
+          <span>Admin Console</span>
         </Link>
 
         <h1 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">Users</h1>

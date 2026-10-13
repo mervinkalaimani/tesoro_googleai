@@ -1222,7 +1222,11 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {view === "diagnostics" && (
         <div className="space-y-6">
-          <SubpageHeader title="Diagnostics" onBack={() => changeView("root")} />
+          <SubpageHeader
+            title="Diagnostics"
+            onBack={() => changeView("advanced")}
+            backLabel="Admin Console"
+          />
 
           <div className="space-y-1.5">
             <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -1257,7 +1261,11 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {view === "metadata" && (
         <div className="space-y-6">
-          <SubpageHeader title="Metadata editor" onBack={() => changeView("advanced")} />
+          <SubpageHeader
+            title="Metadata editor"
+            onBack={() => changeView("advanced")}
+            backLabel="Admin Console"
+          />
           {isAdmin ? (
             <MetadataEditor />
           ) : (
@@ -1283,7 +1291,11 @@ export function SettingsPage() {
 
       {view === "database" && (
         <div className="space-y-6">
-          <SubpageHeader title="DB Connection" onBack={() => changeView("root")} />
+          <SubpageHeader
+            title="DB Connection"
+            onBack={() => changeView("advanced")}
+            backLabel="Admin Console"
+          />
 
           {/* Connection Status Banner */}
           <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
@@ -1354,7 +1366,11 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {view === "search_engine" && (
         <div className="space-y-6">
-          <SubpageHeader title="Search Engine" onBack={() => changeView("root")} />
+          <SubpageHeader
+            title="Search Engine"
+            onBack={() => changeView("advanced")}
+            backLabel="Admin Console"
+          />
 
           <div className="space-y-1.5">
             <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
