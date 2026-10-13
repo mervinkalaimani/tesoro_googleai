@@ -349,12 +349,16 @@ export function SellerOrdersDialog({
               tone={totals.owed > 0 ? "amber" : "emerald"}
               valueTone={totals.owed > 0 ? "amber" : undefined}
             />
+            {/* Two dates rather than a number. At the tile's own size they
+                fill the card and clip, so this one value steps down. */}
             <KpiTile
               label="Bought between"
               value={
-                totals.first && totals.last
-                  ? `${formatDayMonthYear(totals.first)} – ${formatDayMonthYear(totals.last)}`
-                  : "—"
+                <span className="block truncate text-xs font-semibold leading-snug md:text-sm">
+                  {totals.first && totals.last
+                    ? `${formatDayMonthYear(totals.first)} – ${formatDayMonthYear(totals.last)}`
+                    : "—"}
+                </span>
               }
               icon={<CalendarRange className="size-4" />}
             />
