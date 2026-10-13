@@ -2,6 +2,7 @@ import { CopiesBadge } from "@/components/copies-badge";
 import { ChaseMark, FavouriteMark, ChangedDot } from "@/components/car-marks";
 import { StatusPill } from "@/components/status-pill";
 import { CarThumb } from "@/components/car-thumb";
+import { carNumberOf } from "@/lib/car-subline";
 import { rarityOf } from "@/lib/rarity";
 import { cn } from "@/lib/utils";
 
@@ -65,14 +66,21 @@ export function BlisterTile({
           </div>
         )}
 
-        {car.status && (
-          <div className="pointer-events-none absolute bottom-1 right-1">
+        {/* The foot of the card is spoken for — name, then brand, assortment
+            and number — so the status and the catalogue's Owned / ISO go on
+            the photograph instead of taking a third line. */}
+        <div className="pointer-events-none absolute bottom-1 right-1">
+          {car.status ? (
             <StatusPill
               status={car.status}
               className="px-1.5 py-0 text-[9px] leading-tight shadow-sm backdrop-blur-sm"
             />
-          </div>
-        )}
+          ) : caption ? (
+            <span className="rounded-full bg-black/75 px-1.5 text-[9px] font-medium leading-tight text-white backdrop-blur-sm">
+              {caption}
+            </span>
+          ) : null}
+        </div>
 
         {(car.chase || car.favourite) && (
           <div className="pointer-events-none absolute right-1 top-1 flex items-center gap-1">
@@ -97,13 +105,10 @@ export function BlisterTile({
           </span>
           <ChangedDot car={car} />
         </div>
-        <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
-          <span className="truncate text-[10px] text-muted-foreground">{car.brand || "—"}</span>
-          {caption && (
-            <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/80">
-              {caption}
-            </span>
-          )}
+        {/* One line, in the order the card itself prints them. Middle dots,
+            and nothing left standing where a part is missing. */}
+        <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
+          {[car.brand, car.assortment, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
         </div>
       </div>
     </button>
