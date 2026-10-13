@@ -36,6 +36,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { AVATARS_BUCKET, pathFromPublicUrl } from "@/lib/car-photos";
 import { RazorpayCard } from "@/components/razorpay-card";
 import { SegmentControl } from "@/components/segment-control";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 
 /**
@@ -415,15 +416,28 @@ function SubscriptionsPage() {
         <div className="w-16" aria-hidden />
       </div>
 
+      {/* Tabs on a phone, a segment control on a desktop. The same two choices
+          either way — but a strip of chips at the top of a page is read as a
+          filter on what is below it, and these two swap the page out. At this
+          width that difference has to be drawn rather than inferred. */}
       {isOwner && (
-        <SegmentControl
-          value={tab}
-          onChange={(v) => setTab(v as typeof tab)}
-          options={[
-            { value: "users", label: "Users" },
-            { value: "payment", label: "Payment settings" },
-          ]}
-        />
+        <>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)} className="md:hidden">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="users">Users</TabsTrigger>
+              <TabsTrigger value="payment">Payment</TabsTrigger>
+            </TabsList>
+          </Tabs>
+          <SegmentControl
+            className="max-md:hidden"
+            value={tab}
+            onChange={(v) => setTab(v as typeof tab)}
+            options={[
+              { value: "users", label: "Users" },
+              { value: "payment", label: "Payment settings" },
+            ]}
+          />
+        </>
       )}
 
       {isOwner && tab === "payment" ? (
@@ -458,8 +472,32 @@ function SubscriptionsPage() {
             />
           </KpiBand>
 
+          {/* The three groups, full width and evenly split on a phone. They
+              were a chip strip that ran off the right-hand edge as soon as the
+              counts grew to three digits. */}
+          <Tabs
+            value={segment}
+            onValueChange={(v) => setSegment(v as typeof segment)}
+            className="md:hidden"
+          >
+            <TabsList className="grid w-full grid-cols-3">
+              {/* Narrower than the default trigger: three of these share 375px,
+                  and a count that reaches three digits has to fit inside one. */}
+              <TabsTrigger value="paying" className="px-1 text-xs">
+                Paying ({paying})
+              </TabsTrigger>
+              <TabsTrigger value="asked" className="px-1 text-xs">
+                Asked ({waiting})
+              </TabsTrigger>
+              <TabsTrigger value="all" className="px-1 text-xs">
+                All ({rows.length})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <div className="flex flex-wrap items-center gap-2">
             <SegmentControl
+              className="max-md:hidden"
               value={segment}
               onChange={(v) => setSegment(v as typeof segment)}
               options={[
@@ -472,7 +510,7 @@ function SubscriptionsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search name or email"
-              className="h-9 max-w-xs bg-muted/30 text-xs"
+              className="h-9 bg-muted/30 text-xs max-md:flex-1 md:max-w-xs"
             />
             <Button
               variant="outline"
