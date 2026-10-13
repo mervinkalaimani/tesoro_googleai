@@ -20,9 +20,9 @@ import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
-import { CarCardTile } from "@/components/car-card-tile";
+import { BlisterTile } from "@/components/blister-tile";
 import {
-  CARD_GRID_COLS,
+  BLISTER_GRID_COLS,
   COMPACT_GRID_COLS,
   GRID_COLS,
   ViewToggle,
@@ -924,14 +924,14 @@ function InventoryPage() {
             className={
               view === "compact"
                 ? COMPACT_GRID_COLS
-                : view === "card"
-                  ? CARD_GRID_COLS
+                : view === "blister"
+                  ? BLISTER_GRID_COLS
                   : GRID_COLS
             }
           >
             {shown.map(({ car: r, n, total, lead }, i) =>
-              view === "card" ? (
-                <CarCardTile
+              view === "blister" ? (
+                <BlisterTile
                   key={(r.id || "") + i}
                   car={r}
                   copies={lead ? n : 1}

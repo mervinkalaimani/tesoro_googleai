@@ -44,10 +44,10 @@ import {
   ViewToggle,
   GRID_COLS,
   COMPACT_GRID_COLS,
-  CARD_GRID_COLS,
+  BLISTER_GRID_COLS,
   type ViewMode,
 } from "@/components/view-toggle";
-import { CarCardTile } from "@/components/car-card-tile";
+import { BlisterTile } from "@/components/blister-tile";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -778,12 +778,12 @@ function CatalogPage() {
           );
         })}
       </div>
-    ) : view === "card" ? (
-      <div className={CARD_GRID_COLS}>
+    ) : view === "blister" ? (
+      <div className={BLISTER_GRID_COLS}>
         {list.map((c) => {
           const cid = c.car_id.toUpperCase();
           return (
-            <CarCardTile
+            <BlisterTile
               key={c.car_id}
               car={asCar(c)}
               onOpen={() => setViewing(c)}
@@ -1034,7 +1034,7 @@ function CatalogPage() {
                 </span>
               )}
             </Button>
-            <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "card", "table"]} />
+            <ViewToggle value={view} onChange={setView} modes={["grid", "compact", "blister", "table"]} />
           </>
         }
       />

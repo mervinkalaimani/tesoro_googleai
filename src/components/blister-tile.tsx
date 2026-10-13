@@ -8,14 +8,14 @@ import { cn } from "@/lib/utils";
 import type { Diecast } from "@/lib/types";
 
 /**
- * Card view: the photograph in the shape of the packaging.
+ * Blister view: the photograph in the shape of the packaging.
  *
  * 534 × 658 is the blister card this was drawn from, and it is the picture
  * that takes that ratio — the name and the brand sit underneath it, the way
  * they do in every other grid here. The other views crop the same photograph
  * to a landscape window, which is the car; this one is the card.
  */
-export function CarCardTile({
+export function BlisterTile({
   car,
   onOpen,
   caption,
