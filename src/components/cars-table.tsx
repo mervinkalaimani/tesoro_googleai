@@ -3,7 +3,7 @@ import { isPreOrder } from "@/lib/status";
 import type { ReactNode } from "react";
 
 import type { Diecast } from "@/lib/types";
-import { inr, mrpRatio } from "@/lib/format";
+import { inr, inrFull, mrpRatio, inrPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 import { CarMarks, ChangedDot } from "@/components/car-marks";
@@ -32,7 +32,7 @@ export function paymentStatusText(r: Diecast): string | null {
   if (!payment && !paid) return null;
   const p = payment.toLowerCase();
   if (p === "paid") return "Fully paid";
-  if (paid > 0) return `₹${paid.toLocaleString("en-IN")} advance paid`;
+  if (paid > 0) return `${inrFull(paid)} advance paid`;
   return "Adv not paid";
 }
 
@@ -60,7 +60,7 @@ export function MrpNote({ spent, mrp }: { spent: number; mrp: number }) {
 
   return (
     <>
-      MRP {inr(mrp)}
+      MRP {inrPrice(mrp)}
       {ratio && (
         <span
           className={cn(

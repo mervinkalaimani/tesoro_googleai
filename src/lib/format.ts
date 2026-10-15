@@ -1,4 +1,22 @@
+// What you paid is masked when "Hide cost information" is on (Settings ->
+// Display). A module flag rather than a hook so the hundred call sites, a fair
+// few of them in template strings and titles, need no changes. Prices that are
+// not yours -- MRP, catalogue, plan prices -- go through inrPrice/inrPriceFull.
+let costHidden = false;
+export function setCostHidden(b: boolean) {
+  costHidden = b;
+}
+const COST_MASK = "₹•••";
+
 export function inr(n: number): string {
+  return costHidden ? COST_MASK : inrPrice(n);
+}
+
+export function inrFull(n: number): string {
+  return costHidden ? COST_MASK : inrPriceFull(n);
+}
+
+export function inrPrice(n: number): string {
   if (!Number.isFinite(n)) return "₹0";
   if (n >= 1e7) return `₹${(n / 1e7).toFixed(2)}Cr`;
   if (n >= 1e5) return `₹${(n / 1e5).toFixed(2)}L`;
@@ -6,7 +24,7 @@ export function inr(n: number): string {
   return `₹${n.toFixed(0)}`;
 }
 
-export function inrFull(n: number): string {
+export function inrPriceFull(n: number): string {
   if (!Number.isFinite(n)) return "₹0";
   return "₹" + Math.round(n).toLocaleString("en-IN");
 }
@@ -178,7 +196,8 @@ export function monthLabel(key: number): string {
  * meaningful to compare.
  */
 export function mrpRatio(spent: number, mrp: number): { text: string; over: boolean } | null {
-  if (!mrp || !spent) return null;
+  // The ratio is the price paid, divided by MRP. Hidden along with it.
+  if (costHidden || !mrp || !spent) return null;
   const ratio = spent / mrp;
   if (!Number.isFinite(ratio) || ratio <= 0) return null;
 

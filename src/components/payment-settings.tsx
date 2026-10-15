@@ -24,7 +24,7 @@ import {
   type PriceRow,
   type Subscriber,
 } from "@/lib/plan-prices";
-import { inrFull } from "@/lib/format";
+import { inrPriceFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { PaidPlan } from "@/lib/tiers";
 
@@ -432,7 +432,7 @@ function Money({
           tone === "strong" && "text-primary",
         )}
       >
-        {inrFull(value)}
+        {inrPriceFull(value)}
       </div>
     </div>
   );

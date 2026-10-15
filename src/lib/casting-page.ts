@@ -6,7 +6,7 @@
  * be published, and whether there is enough purchase history to quote a price
  * without quoting a person.
  */
-import { inrFull } from "@/lib/format";
+import { inrPriceFull } from "@/lib/format";
 import type { CatalogCar } from "@/lib/catalog";
 
 /** What the database's public stats function returns, one row. */
@@ -94,8 +94,8 @@ export function isPublishablePhoto(url: unknown): boolean {
  */
 export function typicalPrice(s: CastingStats | null | undefined): string | null {
   if (!s || s.paid_min == null || s.paid_max == null || !s.prices) return null;
-  if (s.paid_min === s.paid_max) return inrFull(s.paid_min);
-  return `${inrFull(s.paid_min)} – ${inrFull(s.paid_max)}`;
+  if (s.paid_min === s.paid_max) return inrPriceFull(s.paid_min);
+  return `${inrPriceFull(s.paid_min)} – ${inrPriceFull(s.paid_max)}`;
 }
 
 /** "over 4 purchases · last seen Apr 2026", the footnote under that figure. */

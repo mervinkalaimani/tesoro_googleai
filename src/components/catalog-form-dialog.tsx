@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
 import { generateCatalogCarId } from "@/lib/car-id";
-import { formatDayMonthYear, inrFull } from "@/lib/format";
+import { formatDayMonthYear, inrPriceFull } from "@/lib/format";
 import { catalogMergePreview, mergeCatalogEntries, resolveCatalogUserId } from "@/lib/catalog";
 import type { MergePreview } from "@/lib/catalog";
 import { localDay } from "@/lib/delivery-watch";
@@ -882,8 +882,8 @@ export function CatalogFormDialog({
   );
   const assortmentsBadge =
     boxes.length > 1
-      ? `${boxes.length} boxes · ${inrFull(Math.min(...boxes.map((x) => x.mrp)))} – ${inrFull(Math.max(...boxes.map((x) => x.mrp)))}`
-      : `${boxes[0].assortment || "not set"} · ${inrFull(boxes[0].mrp)}`;
+      ? `${boxes.length} boxes · ${inrPriceFull(Math.min(...boxes.map((x) => x.mrp)))} – ${inrPriceFull(Math.max(...boxes.map((x) => x.mrp)))}`
+      : `${boxes[0].assortment || "not set"} · ${inrPriceFull(boxes[0].mrp)}`;
   const photoBadge = form.image_url ? "photo set" : "no photo";
 
   /** Everything still to answer, each one a tap from the field that fixes it. */
@@ -945,7 +945,7 @@ export function CatalogFormDialog({
       <div className="mt-2.5">
         <SummaryRow label="Brand" value={form.brand} />
         <SummaryRow label="Assortment" value={form.assortment} />
-        <SummaryRow label="Retail / MRP" value={form.mrp ? inrFull(Number(form.mrp)) : ""} />
+        <SummaryRow label="Retail / MRP" value={form.mrp ? inrPriceFull(Number(form.mrp)) : ""} />
         <SummaryRow label="Release" value={form.release_status} />
         <SummaryRow label="Rarity" value={form.rarity} />
         {entryId && (
@@ -1593,7 +1593,7 @@ export function CatalogFormDialog({
                     {[c.assortment, c.series, c.sub_series].filter(Boolean).join(" · ") || "—"}
                   </div>
                   <div className="truncate font-mono text-[10px] text-muted-foreground/75">
-                    {c.car_id} · {inrFull(Number(c.mrp) || 0)}
+                    {c.car_id} · {inrPriceFull(Number(c.mrp) || 0)}
                   </div>
                 </div>
                 {/* A different box is not always a duplicate. Two entries of
@@ -1749,7 +1749,7 @@ export function CatalogFormDialog({
               <ul className="space-y-1">
                 {namedExtras.map((x) => (
                   <li key={x.car_id ?? x.assortment} className="text-foreground">
-                    {x.assortment} · {inrFull(x.mrp)}
+                    {x.assortment} · {inrPriceFull(x.mrp)}
                     {x.car_id ? (
                       <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">
                         {x.car_id}

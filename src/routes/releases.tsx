@@ -23,7 +23,7 @@ import type { Diecast } from "@/lib/types";
 import { isIso } from "@/lib/status";
 import { PageHeading } from "@/components/page-header";
 import { castingName } from "@/lib/casting-page";
-import { inrFull } from "@/lib/format";
+import { inrFull, inrPriceFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import type { CatalogCar } from "@/lib/catalog";
@@ -455,7 +455,7 @@ function ReleasesPage() {
                       the whole point, and five more columns would crush them. */}
                     <span className="hidden shrink-0 items-baseline gap-4 lg:flex">
                       <Stat label="Seller" value={owned?.seller || "—"} />
-                      <Stat label="MRP" value={row.mrp > 0 ? inrFull(row.mrp) : "—"} />
+                      <Stat label="MRP" value={row.mrp > 0 ? inrPriceFull(row.mrp) : "—"} />
                       <Stat label="Spent" value={owned?.spent ? inrFull(owned.spent) : "—"} />
                       <Stat label="Paid" value={owned?.paid ? inrFull(owned.paid) : "—"} />
                       <Stat

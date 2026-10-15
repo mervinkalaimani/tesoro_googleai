@@ -1,6 +1,6 @@
 import type { Diecast } from "@/lib/types";
 import type { CsvColumn } from "@/lib/csv";
-import { inrFull } from "@/lib/format";
+import { inrFull, inrPriceFull } from "@/lib/format";
 
 /**
  * A printable collection report.
@@ -201,7 +201,7 @@ export function buildReportHtml(
   <div class="stats">
     ${stat("Castings", rows.length.toLocaleString())}
     ${stat("Total spend", inrFull(spend))}
-    ${stat("Total MRP", inrFull(mrp))}
+    ${stat("Total MRP", inrPriceFull(mrp))}
     ${stat("Average spend", inrFull(rows.length ? spend / rows.length : 0))}
     ${stat("Brands", String(brands))}
   </div>

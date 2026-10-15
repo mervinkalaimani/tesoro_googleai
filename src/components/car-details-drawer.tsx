@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { findCarImage } from "@/lib/car-image";
-import { formatDayMonthYear, inr, inrFull } from "@/lib/format";
+import { formatDayMonthYear, inr, inrFull, inrPriceFull } from "@/lib/format";
 import { trackingPageFor } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import {
@@ -1327,7 +1327,7 @@ function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
               </div>
               <div className="truncate text-[10px] text-muted-foreground">
                 {because}
-                {Number(car.mrp) ? ` · ${inrFull(Math.round(Number(car.mrp)))}` : ""}
+                {Number(car.mrp) ? ` · ${inrPriceFull(Math.round(Number(car.mrp)))}` : ""}
               </div>
             </div>
             <Button
@@ -2023,7 +2023,7 @@ function CatalogDetailsTab({
 }) {
   const boxPrice = (c: CatalogCar) =>
     Number(c.mrp)
-      ? `${c.assortment || "—"} · ${inrFull(Math.round(Number(c.mrp)))}`
+      ? `${c.assortment || "—"} · ${inrPriceFull(Math.round(Number(c.mrp)))}`
       : c.assortment || "—";
 
   return (

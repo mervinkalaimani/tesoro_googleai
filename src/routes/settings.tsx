@@ -216,6 +216,8 @@ export function SettingsPage() {
     setFontSize,
     hideInvestment,
     setHideInvestment,
+    hideCost,
+    setHideCost,
     navAnimation,
     setNavAnimation,
     arrivingSoon,
@@ -685,6 +687,18 @@ export function SettingsPage() {
                   </div>
                 </div>
                 <Switch checked={hideInvestment} onCheckedChange={setHideInvestment} />
+              </div>
+              <div className="mt-4 flex items-center justify-between gap-4 border-t border-border/70 pt-4">
+                <div>
+                  <div className="text-[15px] font-medium text-foreground">
+                    Hide Cost Information
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Hide what you paid for every car, across the app. MRP and catalogue prices stay
+                    visible.
+                  </div>
+                </div>
+                <Switch checked={hideCost} onCheckedChange={setHideCost} />
               </div>
             </div>
           </div>

@@ -31,7 +31,7 @@ import {
   type CastingStats,
 } from "@/lib/casting-page";
 import { carSubLine } from "@/lib/car-subline";
-import { inrFull } from "@/lib/format";
+import { inrPriceFull } from "@/lib/format";
 import { RARITY_LABEL, rarityOf } from "@/lib/rarity";
 
 type Sibling = Pick<CatalogCar, "car_id" | "name" | "make" | "model" | "variant" | "car_number">;
@@ -196,7 +196,7 @@ function CastingPage() {
   // maker's list price, which belongs to the casting rather than to anybody.
   const typical = typicalPrice(stats);
   const typicalNote = typicalPriceNote(stats);
-  const mrp = !typical && car.mrp > 0 ? inrFull(car.mrp) : "";
+  const mrp = !typical && car.mrp > 0 ? inrPriceFull(car.mrp) : "";
   const owners = ownersLine(stats);
   const rarity = rarityOf({ rarity: car.rarity } as never);
 

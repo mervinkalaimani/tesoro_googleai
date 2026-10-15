@@ -3,7 +3,7 @@ import { AlertTriangle, Car, ChevronRight, Link2, Merge, Plus } from "lucide-rea
 import type { CatalogCar } from "@/lib/catalog";
 import type { DuplicateHit } from "@/lib/duplicate";
 import { carSubLine } from "@/lib/car-subline";
-import { formatDayMonthYear, inrFull } from "@/lib/format";
+import { formatDayMonthYear, inrPriceFull } from "@/lib/format";
 import { transformImageUrl } from "@/lib/image-transform";
 import { Button } from "@/components/ui/button";
 import {
@@ -265,7 +265,7 @@ function EntryRow({
             <Cell label="Catalogue ID" value={car.car_id} mono />
             <Cell label="Colour" value={car.colour} />
             <Cell label="Year" value={car.year} />
-            <Cell label="Retail" value={car.mrp ? inrFull(Number(car.mrp)) : ""} />
+            <Cell label="Retail" value={car.mrp ? inrPriceFull(Number(car.mrp)) : ""} />
             <Cell label="Rarity" value={car.rarity} />
             <Cell label="Filed" value={formatDayMonthYear(car.created_at)} />
           </div>

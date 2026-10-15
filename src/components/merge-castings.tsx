@@ -3,7 +3,7 @@ import { Car, Check, Loader2, Merge, Users } from "lucide-react";
 import type { CatalogCar, MergePreview } from "@/lib/catalog";
 import { resolveCatalogUserId } from "@/lib/catalog";
 import { carSubLine } from "@/lib/car-subline";
-import { formatDayMonthYear, inrFull } from "@/lib/format";
+import { formatDayMonthYear, inrPriceFull } from "@/lib/format";
 import { transformImageUrl } from "@/lib/image-transform";
 import { Button } from "@/components/ui/button";
 import {
@@ -100,7 +100,7 @@ export function MergePanel({
                   {mergeSubLine(c)}
                 </div>
                 <div className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground/75">
-                  {c.car_id} · {inrFull(Number(c.mrp) || 0)} ·{" "}
+                  {c.car_id} · {inrPriceFull(Number(c.mrp) || 0)} ·{" "}
                   {formatDayMonthYear(c.created_at) || "no date"}
                   {!c.image_url && " · no photo"}
                 </div>

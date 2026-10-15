@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/auth-store";
 import { scansLeft } from "@/lib/tiers";
 import { RARITIES, RARITY_LABEL, rarityOf, type Rarity } from "@/lib/rarity";
 import { CAR_CONDITIONS, CARD_CONDITIONS, cardGradeForCarGrade, describe } from "@/lib/condition";
-import { formatDayMonthYear, inrFull } from "@/lib/format";
+import { formatDayMonthYear, inrFull, inrPriceFull } from "@/lib/format";
 import { ChaseMark } from "@/components/car-marks";
 import { StarRating } from "@/components/star-rating";
 import type { Diecast } from "@/lib/types";
@@ -1070,7 +1070,7 @@ export function CarFormDialog({
   const seriesOptions = useMemo(() => optionsFor("series", pool), [pool]);
   const subSeriesOptions = useMemo(() => optionsFor("subSeries", pool), [pool]);
   /** The box your copy came out of, which is the only one this form is about. */
-  const assortmentsBadge = `${form.assortment.trim() || "not set"} · ${inrFull(Number(form.mrp) || 0)}`;
+  const assortmentsBadge = `${form.assortment.trim() || "not set"} · ${inrPriceFull(Number(form.mrp) || 0)}`;
   // Sellers are never seeded — the list is only ever the ones this collection
   // has actually bought from.
   const sellerOptions = useMemo(
@@ -1960,7 +1960,7 @@ export function CarFormDialog({
             <SummaryRow label="Payment" value={form.payment} />
             <SummaryRow
               label="Retail / MRP"
-              value={form.mrp === "" || form.mrp === null ? "" : inrFull(Number(form.mrp))}
+              value={form.mrp === "" || form.mrp === null ? "" : inrPriceFull(Number(form.mrp))}
             />
             <SummaryRow label="Condition" value={form.carCondition} />
             {/* Last, and the only row that leaves the form: which casting this
@@ -2149,7 +2149,7 @@ export function CarFormDialog({
               onChange={pickBox}
               options={boxes.map((b) => ({
                 value: b.assortment,
-                label: b.mrp > 0 ? `${b.assortment} · ${inrFull(b.mrp)}` : b.assortment,
+                label: b.mrp > 0 ? `${b.assortment} · ${inrPriceFull(b.mrp)}` : b.assortment,
               }))}
             />
           </div>

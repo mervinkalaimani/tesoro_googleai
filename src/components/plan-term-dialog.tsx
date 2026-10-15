@@ -15,7 +15,7 @@ import { payConfig, payForPlan } from "@/lib/pay-client";
 import { PAY_CARD_KEY, useDeploymentFlag } from "@/lib/deployment-settings";
 import { useAuth, fullName } from "@/lib/auth-store";
 import { PayByQrDialog } from "@/components/pay-by-qr-dialog";
-import { inrFull } from "@/lib/format";
+import { inrPriceFull } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -259,7 +259,7 @@ export function PlanTermDialog() {
                 ) : (
                   <CreditCard className="size-4" />
                 )}
-                {picked ? `Pay ${inrFull(withGatewayFee(picked.price))}` : "Pay"}
+                {picked ? `Pay ${inrPriceFull(withGatewayFee(picked.price))}` : "Pay"}
               </Button>
               {/* Said before the press, not discovered on the receipt. */}
               <p className="text-center text-[11px] text-muted-foreground">

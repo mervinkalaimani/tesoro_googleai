@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ACCEPT_ATTR, uploadPaymentQr } from "@/lib/car-photos";
 import { usePaymentInfo } from "@/lib/payment-info";
 import { useAuth } from "@/lib/auth-store";
-import { inrFull } from "@/lib/format";
+import { inrPriceFull } from "@/lib/format";
 import { monthsFromTerm, type PaidPlan } from "@/lib/tiers";
 import { pricesFor, usePlanPrices } from "@/lib/plan-prices";
 
@@ -80,7 +80,7 @@ export function PayByQrDialog({
       <DialogContent className="w-full max-w-full sm:max-w-md">
         <div className="text-center">
           <DialogTitle className="text-xl font-bold tracking-tight">
-            Send {inrFull(amount)} on the QR
+            Send {inrPriceFull(amount)} on the QR
           </DialogTitle>
           <DialogDescription className="mt-1 text-sm">
             {name} · {months} month{months === 1 ? "" : "s"}

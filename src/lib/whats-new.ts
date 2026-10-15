@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 351,
+    at: "2026-10-15T19:00",
+    changes: [
+      {
+        key: true,
+        text: "Hide Cost Information, in Settings → Display. It hides what you paid for every car across the app. MRP and catalogue prices stay visible. Off unless you turn it on.",
+      },
+      {
+        text: "The eye beside Total investment in the sidebar now points you to that setting.",
+      },
+    ],
+  },
+  {
     build: 348,
     at: "2026-10-13T22:00",
     changes: [

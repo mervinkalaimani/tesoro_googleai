@@ -37,6 +37,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { useCars, useCarsSource } from "@/lib/cars-store";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCatalog } from "@/lib/catalog-store";
 import { isPackMember, packMemberIds } from "@/lib/pack";
 import { inrFull } from "@/lib/format";
@@ -79,7 +80,7 @@ const NAV_GROUPS: {
 
 export function AppSidebar() {
   const allCars = useCars();
-  const { hideInvestment, setHideInvestment, query } = useApp();
+  const { hideInvestment, setHideInvestment, hideCost, query } = useApp();
   const { isAdmin, isOwner, isGuest, plan, profile } = useAuth();
   const { source } = useCarsSource();
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
@@ -314,18 +315,40 @@ export function AppSidebar() {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                 Total investment
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-6"
-                onClick={() => {
-                  if (hideInvestment) setLocalReveal((v) => !v);
-                  else setHideInvestment(true);
-                }}
-                aria-label={hidden ? "Show investment" : "Hide investment"}
-              >
-                {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-              </Button>
+              {/* With every cost hidden there is nothing for the eye to reveal. */}
+              {!hideCost && (
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6"
+                      onClick={() => {
+                        if (hideInvestment) setLocalReveal((v) => !v);
+                        else setHideInvestment(true);
+                      }}
+                      aria-label={hidden ? "Show investment" : "Hide investment"}
+                    >
+                      {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="end" className="w-64 p-3 text-xs">
+                    <div className="font-semibold text-foreground">Did you know?</div>
+                    <p className="mt-1 text-muted-foreground">
+                      You can hide all cost information in Settings. Go to Settings → Display to
+                      hide your cost info across the app.
+                    </p>
+                    <Link
+                      to="/settings"
+                      search={{ tab: "display" }}
+                      onClick={() => isMobile && setOpenMobile(false)}
+                      className="mt-2 inline-block font-medium text-primary hover:underline"
+                    >
+                      Open Display settings
+                    </Link>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
             <div className="text-display text-lg font-semibold tabular-nums">
               {hidden ? "••••••" : inrFull(stats.spent)}

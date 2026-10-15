@@ -8,7 +8,7 @@ import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { SegmentControl } from "@/components/segment-control";
-import { formatDayMonthYear, inr, inrFull, parseDMY } from "@/lib/format";
+import { formatDayMonthYear, inr, inrFull, parseDMY, inrPrice } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { StatusUpdateDialog, type StatusBatch } from "@/components/status-update-dialog";
@@ -318,7 +318,7 @@ function ContentsItem({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
         <span className="shrink-0 tabular-nums">
           <span className="font-medium text-foreground">{inr(car.spent || 0)}</span>
           {" / "}
-          {car.mrp ? inr(car.mrp) : "—"}
+          {car.mrp ? inrPrice(car.mrp) : "—"}
         </span>
       </div>
     </div>

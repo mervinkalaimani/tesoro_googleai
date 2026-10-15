@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { setCostHidden } from "@/lib/format";
 
 /**
  * What the person chose. "system" hands the decision to the operating system,
@@ -143,6 +144,9 @@ type AppState = {
   setFontSize: (s: FontSizePreference) => void;
   hideInvestment: boolean;
   setHideInvestment: (b: boolean) => void;
+  /** Mask every amount you paid across the app. MRP and catalogue prices stay. */
+  hideCost: boolean;
+  setHideCost: (b: boolean) => void;
   transitEtaDays: number;
   setTransitEtaDays: (n: number) => void;
   /** Phone only: the bottom bar shrinks while scrolling down. Per device. */
@@ -218,6 +222,10 @@ function writeLS(key: string, value: unknown) {
   }
 }
 
+// Before the first client render, so nothing paints an amount it should have
+// hidden. The server never has the cars, so it has no amounts to disagree with.
+setCostHidden(readLS<boolean>("dg.hideCost", false));
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState("");
   const [themePreference, setThemePreferenceState] = useState<ThemePreference>("dark");
@@ -225,6 +233,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [accentColor, setAccentColorState] = useState<AccentColor>(DEFAULT_ACCENT);
   const [fontSize, setFontSizeState] = useState<FontSizePreference>("0");
   const [hideInvestment, setHideInvestmentState] = useState(true);
+  const [hideCost, setHideCostState] = useState(false);
   const [transitEtaDays, setTransitEtaDaysState] = useState(21);
   const [navAnimation, setNavAnimationState] = useState(true);
   const [arrivingSoon, setArrivingSoonState] = useState<ArrivingSoonPreference>("auto");
@@ -254,6 +263,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAccentColorState(isAccentColor(storedAccent) ? storedAccent : DEFAULT_ACCENT);
     setFontSizeState(isFontSizePreference(storedFontSize) ? storedFontSize : "0");
     setHideInvestmentState(readLS<boolean>("dg.hideInvestment", true));
+    setHideCostState(readLS<boolean>("dg.hideCost", false));
     setTransitEtaDaysState(readLS<number>("dg.transitEta", 21));
     setNavAnimationState(readLS<boolean>("dg.navAnimation", true));
     const storedArriving = readLS<unknown>("dg.arrivingSoon", "auto");
@@ -411,6 +421,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setThemePreference(next);
   }, [themePreference, setThemePreference]);
 
+  const setHideCost = useCallback((b: boolean) => {
+    setCostHidden(b);
+    setHideCostState(b);
+    writeLS("dg.hideCost", b);
+  }, []);
+
   const setHideInvestment = useCallback((b: boolean) => {
     setHideInvestmentState(b);
     writeLS("dg.hideInvestment", b);
@@ -471,6 +487,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFontSize,
       hideInvestment,
       setHideInvestment,
+      hideCost,
+      setHideCost,
       transitEtaDays,
       setTransitEtaDays,
       navAnimation,
@@ -510,6 +528,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setFontSize,
       hideInvestment,
       setHideInvestment,
+      hideCost,
+      setHideCost,
       transitEtaDays,
       setTransitEtaDays,
     ],

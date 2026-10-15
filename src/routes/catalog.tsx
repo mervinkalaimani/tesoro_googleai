@@ -32,7 +32,7 @@ import {
 } from "@/lib/catalog";
 import { catalogueKey, type CatalogueCar } from "@/lib/catalogue-search";
 import { carSubLine } from "@/lib/car-subline";
-import { inr, formatDayMonthYear } from "@/lib/format";
+import { formatDayMonthYear, inrPrice } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { logoMap, useBrandLogos } from "@/lib/brand-logos";
@@ -1331,9 +1331,9 @@ function CatalogCard({
                 are still separate entries underneath one card. */}
             <div className="truncate text-sm font-semibold tabular-nums">
               {span && span.low !== span.high
-                ? `${inr(span.low)}–${inr(span.high)}`
+                ? `${inrPrice(span.low)}–${inrPrice(span.high)}`
                 : c.mrp
-                  ? inr(c.mrp)
+                  ? inrPrice(c.mrp)
                   : "—"}
             </div>
           </div>
@@ -1411,7 +1411,7 @@ function CatalogTable({
                     )}
                   </span>
                   <span className="shrink-0 text-sm font-semibold tabular-nums">
-                    {c.mrp ? inr(c.mrp) : "—"}
+                    {c.mrp ? inrPrice(c.mrp) : "—"}
                   </span>
                 </div>
 
@@ -1523,7 +1523,9 @@ function CatalogTable({
                     <span className="block truncate">{c.series || "—"}</span>
                     <span className="block truncate text-xs">{c.sub_series || ""}</span>
                   </td>
-                  <td className="px-3 py-2 text-right tabular-nums">{c.mrp ? inr(c.mrp) : "—"}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    {c.mrp ? inrPrice(c.mrp) : "—"}
+                  </td>
                   <td className="truncate px-3 py-2 text-xs text-muted-foreground">
                     {resolveCatalogUserFirstName(c.created_by)}
                   </td>

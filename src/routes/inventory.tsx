@@ -33,7 +33,7 @@ import {
 } from "@/components/view-toggle";
 import { PageHeading } from "@/components/page-header";
 import { useRegisterExportScope } from "@/lib/export-scope";
-import { inr, mrpRatio, formatDayMonthYear } from "@/lib/format";
+import { inr, mrpRatio, formatDayMonthYear, inrPrice } from "@/lib/format";
 import { sortCars } from "@/lib/status-order";
 import { STATUSES, normaliseStatus } from "@/lib/status";
 import { groupCopies } from "@/lib/copies";
@@ -202,7 +202,7 @@ function PriceStrip({ car, spentOverride }: { car: Diecast; spentOverride?: numb
       <div className="min-w-0">
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground">MRP</div>
         <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-foreground">
-          {mrp ? inr(mrp) : "—"}
+          {mrp ? inrPrice(mrp) : "—"}
         </div>
       </div>
       <div className="min-w-0">

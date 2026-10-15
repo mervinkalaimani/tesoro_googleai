@@ -15,7 +15,7 @@ import { catalogueCandidates } from "@/lib/catalogue-candidates";
 import { catalogColours, type CatalogCar } from "@/lib/catalog";
 import { carSubLine } from "@/lib/car-subline";
 import { cn } from "@/lib/utils";
-import { inrFull } from "@/lib/format";
+import { inrPriceFull } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
 
 /**
@@ -196,7 +196,7 @@ export function CatalogueLinkDialog({
                   </p>
                 </div>
                 <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {inrFull(entry.mrp)}
+                  {inrPriceFull(entry.mrp)}
                 </span>
               </button>
             ))

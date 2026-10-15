@@ -19,7 +19,7 @@ import { Combobox } from "@/components/ui/combobox";
 import { ClearableInput } from "@/components/form-parts";
 import { SegmentControl } from "@/components/segment-control";
 import { mrpOptionsFor } from "@/lib/car-prices";
-import { inrFull } from "@/lib/format";
+import { inrPriceFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Diecast } from "@/lib/types";
 
@@ -211,7 +211,7 @@ export function AssortmentRow({
                 <SegmentControl
                   className="min-w-0 flex-1"
                   value={known ? String(mrp) : ""}
-                  options={priced.map((v) => ({ value: String(v), label: inrFull(v) }))}
+                  options={priced.map((v) => ({ value: String(v), label: inrPriceFull(v) }))}
                   onChange={(v) => {
                     setTyped(false);
                     onMrp(Number(v));
