@@ -370,7 +370,7 @@ function CatalogPage() {
   const inSomePack = useMemo(() => packMemberIds(packMembers), [packMembers]);
   const [sort, setSort] = useState<Sort>({ key: "added", dir: "desc" });
   const [group, setGroup] = useState<GroupKey>("none");
-  const [view, setView] = useState<ViewMode>("grid");
+  const [view, setView] = useState<ViewMode>("blister");
   const [adding, setAdding] = useState<CatalogCar | null>(null);
   /**
    * Whether the add dialog was opened to file a wish rather than a purchase.
@@ -947,11 +947,7 @@ function CatalogPage() {
                 </span>
               )}
             </Button>
-            <ViewToggle
-              value={view}
-              onChange={setView}
-              modes={["grid", "compact", "blister", "table"]}
-            />
+            <ViewToggle value={view} onChange={setView} />
           </>
         }
       />

@@ -26,6 +26,26 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 355,
+    at: "2026-10-27T21:00",
+    changes: [
+      {
+        key: true,
+        text: "The first time you open VIIV, a short tour shows what it does: scanning a card, importing a spreadsheet, shipments, spending, duplicates and your collection, each with a picture made from real cars in the catalogue.",
+      },
+      {
+        key: true,
+        text: "My Cars, Favourites and the catalogue open in Blister view. The views now run Blister, Grid, Compact grid, List.",
+      },
+      {
+        text: "Setting up a new account: a brand stays where it is when you pick it, and the cars offered are only the brands and makes you picked. Pick nothing and you see a bit of everything instead.",
+      },
+      {
+        text: "Favourites shows Blister view properly. Choosing it used to show the ordinary grid.",
+      },
+    ],
+  },
+  {
     build: 353,
     at: "2026-10-27T18:00",
     changes: [

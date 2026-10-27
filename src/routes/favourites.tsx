@@ -11,7 +11,14 @@ import { rarityOf } from "@/lib/rarity";
 import { inrFull } from "@/lib/format";
 import { CarThumb } from "@/components/car-thumb";
 import { CompactCarCard } from "@/components/compact-car-card";
-import { COMPACT_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
+import {
+  BLISTER_GRID_COLS,
+  COMPACT_GRID_COLS,
+  GRID_COLS,
+  ViewToggle,
+  type ViewMode,
+} from "@/components/view-toggle";
+import { BlisterTile } from "@/components/blister-tile";
 import { SegmentControl } from "@/components/segment-control";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { ExportButton } from "@/components/export-button";
@@ -151,7 +158,7 @@ function FavouritesPage() {
   const { open } = useCarDrawer();
   const { updateCar } = useCarsActions();
   const [mode, setMode] = useState<Mode>("favourite");
-  const [view, setView] = useState<ViewMode>("table");
+  const [view, setView] = useState<ViewMode>("blister");
 
   // TH and STH only get a segment when the collection has one. Judged on the
   // whole collection, not the search, so the control does not jump while typing.
@@ -208,9 +215,19 @@ function FavouritesPage() {
           {text.empty}
         </div>
       ) : view !== "table" ? (
-        <div className={view === "compact" ? COMPACT_GRID_COLS : GRID_COLS}>
+        <div
+          className={
+            view === "compact"
+              ? COMPACT_GRID_COLS
+              : view === "blister"
+                ? BLISTER_GRID_COLS
+                : GRID_COLS
+          }
+        >
           {rows.map((r, i) =>
-            view === "compact" ? (
+            view === "blister" ? (
+              <BlisterTile key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
+            ) : view === "compact" ? (
               <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
             ) : (
               <GalleryCard

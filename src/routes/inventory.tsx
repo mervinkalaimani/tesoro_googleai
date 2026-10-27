@@ -340,7 +340,7 @@ function InventoryPage() {
   }, [search.status]);
   const [sort, setSort] = useState<SortKey>("added");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [view, setView] = useState<ViewMode>("table");
+  const [view, setView] = useState<ViewMode>("blister");
   const [syncing, setSyncing] = useState(false);
 
   /**

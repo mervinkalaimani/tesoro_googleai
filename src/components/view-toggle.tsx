@@ -11,10 +11,10 @@ import { cn } from "@/lib/utils";
 export type ViewMode = "table" | "grid" | "compact" | "blister";
 
 const MODES: { value: ViewMode; label: string; icon: typeof List }[] = [
-  { value: "table", label: "Table view", icon: List },
+  { value: "blister", label: "Blister view", icon: RectangleVertical },
   { value: "grid", label: "Grid view", icon: LayoutGrid },
   { value: "compact", label: "Compact grid view", icon: Grid3x3 },
-  { value: "blister", label: "Blister view", icon: RectangleVertical },
+  { value: "table", label: "Table view", icon: List },
 ];
 
 /** Column counts for the two grids, shared so every page matches: 2 cols for grid and 3 cols for compact on phone */
@@ -40,9 +40,8 @@ export function ViewToggle({
   className?: string;
   /**
    * Limit the choices, for a page with no table to show — and order them: the
-   * icons come out in the order given. The catalogue puts its list last because
-   * the grids are what people browse it with; the collection leaves this unset
-   * and gets the table first, which is what it is read through.
+   * icons come out in the order given. Unset is every view, blister first, which
+   * is also the one every page opens on.
    */
   modes?: ViewMode[];
 }) {
