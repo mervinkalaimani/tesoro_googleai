@@ -65,3 +65,20 @@ export function newestFirst<T extends { created_at?: string }>(rows: T[]): T[] {
   const t = (r: T) => (r.created_at ? Date.parse(r.created_at) || 0 : 0);
   return [...rows].sort((a, b) => t(b) - t(a));
 }
+
+/**
+ * The order the welcome wizard offers castings in, to find the ones somebody
+ * already owns. Their brands and makes first, and within each group the ones
+ * with a photo first: a car is recognised by its picture, not its name. After
+ * those, the rest of the catalogue that has a photo, so a narrow taste does not
+ * run out after one set. Nothing they already own.
+ */
+export function ownedCandidates<
+  T extends Pick<CatalogCar, "car_id" | "brand" | "make" | "image_url" | "created_at">,
+>(castings: T[], taste: Taste, owned: Set<string>): T[] {
+  const fresh = newestFirst(castings).filter((c) => !owned.has(c.car_id.trim().toUpperCase()));
+  const photo = (c: T) => Boolean(c.image_url);
+  const liked = fresh.filter((c) => matchesTaste(c, taste));
+  const rest = fresh.filter((c) => !matchesTaste(c, taste) && photo(c));
+  return [...liked.filter(photo), ...liked.filter((c) => !photo(c)), ...rest];
+}

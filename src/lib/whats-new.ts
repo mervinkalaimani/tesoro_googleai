@@ -26,6 +26,19 @@ export type Release = {
 /** Newest first. */
 export const RELEASES: Release[] = [
   {
+    build: 353,
+    at: "2026-10-27T18:00",
+    changes: [
+      {
+        key: true,
+        text: "A new account starts with a tour of what VIIV does, then picks its brands by their logos, then finds the cars it already owns from sets of castings in those brands. Tap the ones you have and add them in one go. Seven fills the first shelf.",
+      },
+      {
+        text: "If two sets in a row have nothing of yours, VIIV says so and offers a scan, adding a car by hand, or the catalogue instead.",
+      },
+    ],
+  },
+  {
     build: 351,
     at: "2026-10-15T19:00",
     changes: [

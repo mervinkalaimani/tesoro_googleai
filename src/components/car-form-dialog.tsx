@@ -466,6 +466,7 @@ export function CarFormDialog({
   prefillStatus = "",
   onSaved,
   draftScope,
+  startWithScan = false,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
@@ -494,6 +495,8 @@ export function CarFormDialog({
    * dialog opened over the top of another needs one.
    */
   draftScope?: string;
+  /** Add mode only: open the card scanner straight away, over the form. */
+  startWithScan?: boolean;
 }) {
   const { addCar, updateCar } = useCarsActions();
   const cars = useCars();
@@ -523,6 +526,9 @@ export function CarFormDialog({
   const [confirmDelete, setConfirmDelete] = useState(false);
   /** The card scanner, raised from the catalogue fields it fills in. */
   const [scanOpen, setScanOpen] = useState(false);
+  useEffect(() => {
+    if (open && startWithScan && scansRemaining !== 0) setScanOpen(true);
+  }, [open, startWithScan, scansRemaining]);
   const isMobile = useIsMobile();
   /**
    * Step two's three groups. The catalogue fields start shut because a picked car
