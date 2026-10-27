@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Boxes,
   Truck,
@@ -41,6 +41,7 @@ import { SegmentControl } from "@/components/segment-control";
 import { PageHeading } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { WelcomeWizard } from "@/components/welcome-wizard";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
@@ -92,8 +93,34 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary" },
     ],
   }),
-  component: DashboardPage,
+  component: HomePage,
 });
+
+/**
+ * The welcome wizard for somebody who owns nothing yet, otherwise the dashboard.
+ *
+ * Latched rather than derived from the car count: the first car saved makes the
+ * count one, and a wizard that vanished the moment it did its job would cut off
+ * the second car, the third, and the step that shows what is new. It is only
+ * armed after a load has been seen to finish with nothing, so an account whose
+ * cars simply have not arrived yet never meets it.
+ */
+function HomePage() {
+  const cars = useCars();
+  const { refreshing } = useCarsRefresh();
+  const { isGuest } = useAuth();
+  const sawLoad = useRef(false);
+  const [armed, setArmed] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (refreshing) sawLoad.current = true;
+    else if (sawLoad.current && cars.length === 0 && !isGuest) setArmed(true);
+  }, [refreshing, cars.length, isGuest]);
+
+  if (armed && !done) return <WelcomeWizard onDone={() => setDone(true)} />;
+  return <DashboardPage />;
+}
 
 /** Shown to an account whose collection is still empty. */
 function EmptyDashboard() {

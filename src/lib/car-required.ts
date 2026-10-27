@@ -37,8 +37,6 @@ const FIELDS: (RequiredField & { has: (c: Diecast) => boolean })[] = [
     has: (c) => !needsCarNumber(c.brand || "") || Boolean((c.carNumber || "").trim()),
   },
   { key: "status", label: "Status", has: (c) => Boolean((c.status || "").trim()) },
-  { key: "seller", label: "Seller", has: (c) => Boolean((c.seller || "").trim()) },
-  { key: "orderDate", label: "Order date", has: (c) => Boolean((c.orderDate || "").trim()) },
   { key: "mrp", label: "MRP", has: (c) => Number.isFinite(Number(c.mrp)) && c.mrp !== undefined },
   {
     key: "spent",
@@ -51,10 +49,11 @@ const FIELDS: (RequiredField & { has: (c: Diecast) => boolean })[] = [
 /** Which of them this car is missing, in the order the form asks for them. */
 export function missingRequired(car: Diecast): RequiredField[] {
   // Everything below the status describes a purchase, and a car you are only
-  // looking for is not one.
+  // looking for is not one. Seller and order date are not on the list at all:
+  // somebody logging cars they already own may not know either.
   const purchase = !isIso(car.status);
   return FIELDS.filter((f) => {
-    if (!purchase && ["seller", "orderDate", "mrp", "spent", "payment"].includes(f.key)) {
+    if (!purchase && ["mrp", "spent", "payment"].includes(f.key)) {
       return false;
     }
     return !f.has(car);

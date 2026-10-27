@@ -706,8 +706,8 @@ export function CarFormDialog({
   // them there is, rather than a dangling separator over an empty form.
   const purchaseBadge = isIso
     ? "NA — still looking"
-    : [form.payment.trim(), form.seller.trim() || "seller needed"].filter(Boolean).join(" · ");
-  const purchaseBadgeTone: "muted" | "warn" = !isIso && !form.seller.trim() ? "warn" : "muted";
+    : [form.payment.trim(), form.seller.trim()].filter(Boolean).join(" · ");
+  const purchaseBadgeTone: "muted" | "warn" = "muted";
   const conditionBadge =
     [form.carCondition, form.cardCondition].filter(Boolean).length > 0
       ? `${[form.carCondition, form.cardCondition].filter(Boolean).length} of 2 set`
@@ -1449,9 +1449,10 @@ export function CarFormDialog({
       if (!form.status.trim()) need("status", "Pick a status.", "Pick a status");
       // Everything below describes a purchase, and an ISO row is not one.
       if (isIso) return out;
-      if (!form.seller.trim())
-        need("seller", `Pick a seller, or "${NO_SELLER}" if there wasn't one.`, "Pick a seller");
-      if (!form.orderDate.trim()) need("orderDate", "Pick the order date.", "Pick the order date");
+      // Seller and order date are not asked for. Somebody adding the cars they
+      // already own often cannot say who sold one or when it was ordered, and
+      // a blank for either is already read everywhere (no order ID, no shipping
+      // group) rather than treated as an error.
       if (form.mrp === "" || form.mrp === null)
         need("mrp", "Enter the MRP.", "Pick the retail price");
       if (form.spent === "" || form.spent === null)
@@ -2256,14 +2257,14 @@ export function CarFormDialog({
 
           {!isIso && (
             <SegmentOrOther
-              label="Seller *"
+              label="Seller"
               name="seller"
               error={errorFor("seller")}
               value={form.seller}
               onChange={(v) => set("seller", v)}
               chips={sellerChips}
               // "No seller" always first in the list: a gift or a swap is a
-              // real answer, and the field is required.
+              // real answer, and so is leaving it blank.
               options={[NO_SELLER, ...sellerOptions]}
               placeholder="Who sold it?"
               searchPlaceholder="Search sellers, or type a new one…"
@@ -2271,7 +2272,7 @@ export function CarFormDialog({
           )}
 
           {!isIso && (
-            <Field label="Order date *" name="orderDate" error={errorFor("orderDate")}>
+            <Field label="Order date" name="orderDate" error={errorFor("orderDate")}>
               <ClearableInput
                 type="date"
                 value={form.orderDate}
