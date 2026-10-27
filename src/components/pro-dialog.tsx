@@ -21,6 +21,7 @@ import { openPlanTermDialog } from "@/components/plan-term-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useTourSettled } from "@/components/feature-tour";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 /**
@@ -180,6 +181,7 @@ export function ProDialog() {
   // what was loaded rather than from a constant compiled in.
   const PLANS = plansFor(usePlanPrices());
   const askedPlan = (profile?.pro_requested_plan ?? null) as PaidPlan | null;
+  const tourSettled = useTourSettled();
 
   useEffect(() => {
     openFromAnywhere = (why?: string) => {
@@ -192,7 +194,7 @@ export function ProDialog() {
   }, []);
 
   useEffect(() => {
-    if (status !== "ready" || isGuest) return;
+    if (status !== "ready" || isGuest || !tourSettled) return;
 
     // The last two days of a trial. Once a day rather than once a session,
     // because the thing being asked for is a decision and the deadline moves.
@@ -224,7 +226,7 @@ export function ProDialog() {
     }
     setReason(null);
     setOpen(true);
-  }, [status, isGuest, isPro, trialLeft]);
+  }, [status, isGuest, isPro, trialLeft, tourSettled]);
 
   // A reminder is per-opening: it stops the button being pressed ten times in
   // a row, and comes back next time the dialog does.

@@ -6,6 +6,7 @@ import { TopBar } from "./top-bar";
 import { MobileNav } from "./mobile-nav";
 import { TierBanner } from "./tier-banner";
 import { ProDialog } from "./pro-dialog";
+import { FeatureTour } from "./feature-tour";
 import { PlanTermDialog } from "./plan-term-dialog";
 import { HandleFixDialog } from "./handle-fix-dialog";
 
@@ -37,7 +38,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </SidebarInset>
         </div>
         <MobileNav />
-        {/* Once per sign-in, and never for an account already on Pro. */}
+        {/* Once per account per device, before anything else asks for attention. */}
+        <FeatureTour />
+        {/* Once per sign-in, and never for an account already on Pro. Waits for the tour. */}
         <ProDialog />
         {/* The second half of the question, opened when the first closes. */}
         <PlanTermDialog />

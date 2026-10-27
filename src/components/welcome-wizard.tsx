@@ -6,10 +6,7 @@ import {
   ArrowRight,
   Check,
   Compass,
-  Copy,
-  FileSpreadsheet,
   Heart,
-  LayoutGrid,
   Loader2,
   Plus,
   RefreshCw,
@@ -17,8 +14,6 @@ import {
   Search,
   ShoppingBag,
   Sparkles,
-  Truck,
-  Wallet,
 } from "lucide-react";
 
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -43,43 +38,9 @@ import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
-  { label: "What VIIV does", icon: Sparkles },
   { label: "Your taste", icon: Heart },
   { label: "Your cars", icon: Plus },
   { label: "What's new", icon: ShoppingBag },
-] as const;
-
-const FEATURES = [
-  {
-    icon: ScanLine,
-    title: "Scan to add a car",
-    text: "Point the camera at the card. Make, model and series are read off it for you.",
-  },
-  {
-    icon: FileSpreadsheet,
-    title: "Bulk import",
-    text: "Already keep a spreadsheet? Save it as CSV and bring the whole collection in at once.",
-  },
-  {
-    icon: Truck,
-    title: "Track shipments",
-    text: "Every order in transit, who it is coming from, and when it should arrive.",
-  },
-  {
-    icon: Wallet,
-    title: "Track spending",
-    text: "What you spend each month, against MRP, by seller and by brand.",
-  },
-  {
-    icon: Copy,
-    title: "Find duplicates",
-    text: "See the castings you have bought twice before you buy a third.",
-  },
-  {
-    icon: LayoutGrid,
-    title: "See your collection",
-    text: "Every car you own, in a grid, a list, or the shape of the card it came on.",
-  },
 ] as const;
 
 /** How many cars somebody is asked to find before the wizard moves on. */
@@ -304,7 +265,13 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
     );
     // The catalogue may be thin on a new deployment; the seed list is not.
     const fill = topValues([...BRAND_SEED], 18);
-    return [...new Set([...taste.brands, ...seen, ...fill])].slice(0, 22);
+    // Picking a brand does not move it: the list holds still under the finger,
+    // and a stored pick the list no longer has goes on the end.
+    const base = [...new Set([...seen, ...fill])].slice(0, 22);
+    return [
+      ...base,
+      ...taste.brands.filter((b) => !base.some((o) => o.toLowerCase() === b.toLowerCase())),
+    ];
   }, [castings, taste.brands]);
 
   const makeOptions = useMemo(() => {
@@ -322,7 +289,11 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
       24,
     );
     const fill = common.length < 12 ? topValues([...MAKE_SEED], 24) : [];
-    return [...new Set([...taste.makes, ...common, ...fill])].slice(0, 30);
+    const base = [...new Set([...common, ...fill])].slice(0, 30);
+    return [
+      ...base,
+      ...taste.makes.filter((m) => !base.some((o) => o.toLowerCase() === m.toLowerCase())),
+    ];
   }, [castings, taste.brands, taste.makes, makeQuery]);
 
   const owned = useMemo(
@@ -423,7 +394,7 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
   };
 
   const empty = cars.length === 0;
-  const carsStep = 2;
+  const carsStep = 1;
 
   return (
     <div ref={top} className="mx-auto w-full max-w-4xl space-y-5 p-4 md:p-6">
@@ -468,22 +439,6 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
       </ol>
 
       {step === 0 && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="card-elevated flex gap-3 p-4">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                <f.icon className="size-5" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-sm font-semibold">{f.title}</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">{f.text}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {step === 1 && (
         <div className="card-elevated space-y-6 p-5">
           <section>
             <h2 className="text-display text-lg font-semibold">Favourite brands</h2>
@@ -664,7 +619,7 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
-      {step === 3 && (
+      {step === 2 && (
         <div className="space-y-4">
           <Shelf
             title="New Pre Orders"
@@ -736,7 +691,7 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
           </Button>
         ) : step < STEPS.length - 1 ? (
           <Button className="gap-2" onClick={() => goTo(step + 1)}>
-            {step === 0 ? "Get started" : "Continue"}
+            Continue
             <ArrowRight className="size-4" />
           </Button>
         ) : (

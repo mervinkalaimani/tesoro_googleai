@@ -601,3 +601,43 @@ input[type="date"]::-webkit-date-and-time-value {
     opacity: 0.5;
   }
 }
+
+/* The feature tour's pictures. Each one moves a little, and none of them does
+   for somebody who asked the system for less motion. */
+@keyframes tour-scan {
+  0%,
+  100% {
+    top: 8%;
+  }
+  50% {
+    top: 88%;
+  }
+}
+@keyframes tour-drive {
+  0% {
+    left: 0%;
+  }
+  100% {
+    left: 66%;
+  }
+}
+@keyframes tour-rise {
+  from {
+    transform: scaleY(0.15);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tour-scan {
+    animation: tour-scan 2.6s ease-in-out infinite;
+  }
+  .tour-drive {
+    animation: tour-drive 2.8s ease-out forwards;
+  }
+  .tour-rise {
+    transform-origin: bottom;
+    animation: tour-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}

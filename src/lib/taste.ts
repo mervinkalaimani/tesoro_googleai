@@ -53,13 +53,6 @@ export function topValues(values: (string | null | undefined)[], limit: number):
     .map((x) => x.label);
 }
 
-/** Whether a casting is by a brand or make they picked. Nothing picked matches nothing. */
-export function matchesTaste(c: Pick<CatalogCar, "brand" | "make">, taste: Taste): boolean {
-  const brands = new Set(taste.brands.map(norm));
-  const makes = new Set(taste.makes.map(norm));
-  return brands.has(norm(c.brand)) || makes.has(norm(c.make));
-}
-
 /** Newest first by the day it was filed; entries with no date go last. */
 export function newestFirst<T extends { created_at?: string }>(rows: T[]): T[] {
   const t = (r: T) => (r.created_at ? Date.parse(r.created_at) || 0 : 0);
@@ -67,18 +60,22 @@ export function newestFirst<T extends { created_at?: string }>(rows: T[]): T[] {
 }
 
 /**
- * The order the welcome wizard offers castings in, to find the ones somebody
- * already owns. Their brands and makes first, and within each group the ones
- * with a photo first: a car is recognised by its picture, not its name. After
- * those, the rest of the catalogue that has a photo, so a narrow taste does not
- * run out after one set. Nothing they already own.
+ * The castings the welcome wizard offers, to find the ones somebody already
+ * owns. Only what they picked: a brand and a make both picked means that make
+ * by that brand. Nothing picked, and it is every casting with a photo instead.
+ * Photographed ones first either way -- a car is recognised by its picture,
+ * not its name. Nothing they already own.
  */
 export function ownedCandidates<
   T extends Pick<CatalogCar, "car_id" | "brand" | "make" | "image_url" | "created_at">,
 >(castings: T[], taste: Taste, owned: Set<string>): T[] {
-  const fresh = newestFirst(castings).filter((c) => !owned.has(c.car_id.trim().toUpperCase()));
+  const brands = new Set(taste.brands.map(norm));
+  const makes = new Set(taste.makes.map(norm));
   const photo = (c: T) => Boolean(c.image_url);
-  const liked = fresh.filter((c) => matchesTaste(c, taste));
-  const rest = fresh.filter((c) => !matchesTaste(c, taste) && photo(c));
-  return [...liked.filter(photo), ...liked.filter((c) => !photo(c)), ...rest];
+  const fresh = newestFirst(castings).filter((c) => !owned.has(c.car_id.trim().toUpperCase()));
+  if (!brands.size && !makes.size) return fresh.filter(photo);
+  const liked = fresh.filter(
+    (c) => (!brands.size || brands.has(norm(c.brand))) && (!makes.size || makes.has(norm(c.make))),
+  );
+  return [...liked.filter(photo), ...liked.filter((c) => !photo(c))];
 }
