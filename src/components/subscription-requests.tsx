@@ -202,7 +202,7 @@ export function SubscriptionRequests() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-auto shrink-0 gap-1 px-2 text-[11px]"
+                  className="h-auto shrink-0 gap-1 px-2 text-xs"
                   disabled={sending === u.sno}
                   onClick={() => void resend(u)}
                   title="Send the payment details again"

@@ -103,7 +103,7 @@ export function CompactCarCard({
           <div className="pointer-events-none absolute bottom-1 right-1">
             <StatusPill
               status={car.status}
-              className="text-[9px] px-1.5 py-0 leading-tight shadow-sm backdrop-blur-sm"
+              className="text-xs px-1.5 py-0 leading-tight shadow-sm backdrop-blur-sm"
             />
           </div>
         )}
@@ -135,16 +135,16 @@ export function CompactCarCard({
         </div>
         {/* Second line: who made it, and which box it came in. */}
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
-          <span className="flex items-center gap-1 min-w-0 truncate text-[10px]">
+          <span className="flex items-center gap-1 min-w-0 truncate text-xs">
             {!statusInPhoto && !hideStatus && car.status && (
               <StatusPill
                 status={car.status}
-                className="text-[9px] px-1.5 py-0 leading-tight shrink-0"
+                className="text-xs px-1.5 py-0 leading-tight shrink-0"
               />
             )}
             <span className="truncate text-muted-foreground">{car.brand || "—"}</span>
           </span>
-          <span className="shrink-0 truncate text-[10px] text-muted-foreground/80">
+          <span className="shrink-0 truncate text-xs text-muted-foreground/80">
             {car.assortment || ""}
           </span>
         </div>
@@ -153,10 +153,10 @@ export function CompactCarCard({
             has no use for the name of it, and a catalogue card has no price of
             its own, so the day or the Owned badge goes there instead. */}
         <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
-          <span className="truncate text-[10px] text-muted-foreground">
+          <span className="truncate text-xs text-muted-foreground">
             {detail || car.series || "—"}
           </span>
-          <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/80">
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground/80">
             {caption || (car.spent ? inr(car.spent) : "—")}
           </span>
         </div>

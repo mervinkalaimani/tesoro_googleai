@@ -82,7 +82,7 @@ function ScanPicture({ car }: { car?: CatalogCar }) {
           (v, i) => (
             <div
               key={i}
-              className="flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[11px] font-medium shadow-md"
+              className="flex items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-xs font-medium shadow-md"
             >
               <Check className="size-3 text-emerald-500" />
               <span className="max-w-28 truncate">{v}</span>
@@ -98,12 +98,12 @@ function ImportPicture({ cars }: { cars: CatalogCar[] }) {
   return (
     <div className="flex items-center gap-3">
       <div className="w-40 overflow-hidden rounded-xl border border-emerald-600/40 bg-card shadow-xl">
-        <div className="flex items-center gap-1.5 bg-emerald-600 px-2 py-1 text-[10px] font-semibold text-white">
+        <div className="flex items-center gap-1.5 bg-emerald-600 px-2 py-1 text-xs font-semibold text-white">
           <FileSpreadsheet className="size-3" />
           my-collection.csv
         </div>
         {cars.slice(0, 5).map((c, i) => (
-          <div key={i} className="flex border-t border-border text-[9px]">
+          <div key={i} className="flex border-t border-border text-xs">
             <span className="w-5 shrink-0 border-r border-border bg-muted/50 text-center text-muted-foreground">
               {i + 1}
             </span>
@@ -131,7 +131,7 @@ function ShipmentPicture({ car }: { car?: CatalogCar }) {
           <div className="truncate text-xs font-semibold">
             {car?.name || "'71 Datsun 510 Wagon"}
           </div>
-          <div className="text-[10px] text-muted-foreground">Arriving in 2 days</div>
+          <div className="text-xs text-muted-foreground">Arriving in 2 days</div>
         </div>
       </div>
       <div className="relative px-1">
@@ -145,7 +145,7 @@ function ShipmentPicture({ car }: { car?: CatalogCar }) {
             <span
               key={s}
               className={cn(
-                "w-14 text-center text-[10px]",
+                "w-14 text-center text-xs",
                 i < 3 ? "font-medium text-foreground" : "text-muted-foreground",
               )}
             >
@@ -164,7 +164,7 @@ function SpendingPicture() {
   const months = ["May", "Jun", "Jul", "Aug", "Sep", "Oct"];
   return (
     <div className="w-full max-w-xs rounded-xl bg-card p-4 shadow-xl">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+      <div className="flex items-center gap-1.5 text-xs font-semibold">
         <Wallet className="size-3.5 text-primary" />
         Spent each month
       </div>
@@ -180,7 +180,7 @@ function SpendingPicture() {
                 style={{ height: `${h}%`, animationDelay: `${i * 80}ms` }}
               />
             </div>
-            <span className="text-[9px] text-muted-foreground">{months[i]}</span>
+            <span className="text-xs text-muted-foreground">{months[i]}</span>
           </div>
         ))}
       </div>
@@ -200,7 +200,7 @@ function DuplicatesPicture({ car }: { car?: CatalogCar }) {
           )}
         >
           <Photo car={car} className="aspect-[534/658] w-full" />
-          <div className="truncate px-0.5 pt-1 text-[10px] font-medium">
+          <div className="truncate px-0.5 pt-1 text-xs font-medium">
             {car?.name || "Nissan Skyline GT-R"}
           </div>
         </div>
@@ -326,7 +326,7 @@ export function FeatureTour() {
         </div>
 
         <div className="space-y-2 p-5">
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-primary">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
             <slide.icon className="size-3.5" />
             {i + 1} of {slides.length}
           </div>

@@ -119,11 +119,11 @@ export function PayBalanceDialog({
 
         <div className="grid grid-cols-3 gap-2 rounded-lg border border-border bg-muted/30 p-3 text-center">
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Cost</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Cost</div>
             <div className="mt-0.5 text-sm font-semibold tabular-nums">{inrFull(cost)}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
               Paid so far
             </div>
             <div className="mt-0.5 text-sm font-semibold tabular-nums text-emerald-500">
@@ -131,7 +131,7 @@ export function PayBalanceDialog({
             </div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
               Balance
             </div>
             <div className="mt-0.5 text-sm font-semibold tabular-nums text-amber-500">

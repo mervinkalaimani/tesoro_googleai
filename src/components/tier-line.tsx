@@ -23,7 +23,7 @@ export function TierLine({ className }: { className?: string }) {
     return (
       <span className={className}>
         <ProChip label="Trial" />
-        <span className="ml-2 text-[11px] text-muted-foreground">
+        <span className="ml-2 text-xs text-muted-foreground">
           {trialLeft === 1 ? "last day" : `${trialLeft} days left`}
         </span>
       </span>
@@ -33,10 +33,10 @@ export function TierLine({ className }: { className?: string }) {
   if (plan === "free") {
     return (
       <span className={className}>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Free
         </span>
-        <span className="ml-2 text-[11px] text-muted-foreground">up to {FREE_CAR_LIMIT} cars</span>
+        <span className="ml-2 text-xs text-muted-foreground">up to {FREE_CAR_LIMIT} cars</span>
       </span>
     );
   }
@@ -45,7 +45,7 @@ export function TierLine({ className }: { className?: string }) {
     <span className={className}>
       <ProChip label={plan === "plus" ? "Plus" : "Pro"} />
       {profile?.pro_until && (
-        <span className="ml-2 text-[11px] text-muted-foreground">
+        <span className="ml-2 text-xs text-muted-foreground">
           until {formatDayMonthYear(profile.pro_until)}
         </span>
       )}

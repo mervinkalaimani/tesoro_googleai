@@ -76,7 +76,7 @@ export function PaymentQrCard() {
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Payment QR
         </h2>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           What somebody scans to pay you. Nobody sees it until you send payment details on their
           request.
         </p>
@@ -135,7 +135,7 @@ export function PaymentQrCard() {
             className="h-8 text-xs"
           />
 
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             JPG, PNG or WebP. Kept at a size a phone camera can still read.
           </p>
         </div>

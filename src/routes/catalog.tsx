@@ -320,7 +320,7 @@ function BrandTray({
               // Until a brand has a mark, its name is the mark. Inside the
               // square rather than under it, so the row stays one line of
               // tiles.
-              <span className="px-1 text-center text-[10px] font-semibold leading-tight text-neutral-700">
+              <span className="px-1 text-center text-xs font-semibold leading-tight text-neutral-700">
                 {b.value}
               </span>
             )}
@@ -795,7 +795,7 @@ function CatalogPage() {
             <SegmentControl
               value={segment}
               onChange={setSegment}
-              className="h-8 w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
+              className="h-8 w-auto max-sm:text-xs max-sm:[&>button]:px-2"
               options={[
                 { value: "all", label: "All" },
                 { value: "released", label: "Released" },
@@ -942,7 +942,7 @@ function CatalogPage() {
             >
               <Filter className="size-4" />
               {activeCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-background text-[10px] font-bold text-foreground ring-1 ring-border">
+                <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-background text-xs font-bold text-foreground ring-1 ring-border">
                   {activeCount}
                 </span>
               )}
@@ -1156,7 +1156,7 @@ function CatalogPage() {
                 <span className="block text-sm font-medium text-foreground">
                   Combine multi pack
                 </span>
-                <span className="block text-[11px] text-muted-foreground">
+                <span className="block text-xs text-muted-foreground">
                   Show the box, not the five cars inside it.
                 </span>
               </span>
@@ -1174,7 +1174,7 @@ function CatalogPage() {
             <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 transition-colors hover:bg-muted/50">
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-foreground">Hide owned</span>
-                <span className="block text-[11px] text-muted-foreground">
+                <span className="block text-xs text-muted-foreground">
                   Leave out castings already in your collection.
                 </span>
               </span>
@@ -1193,7 +1193,7 @@ function CatalogPage() {
                 const filterOpts = draftOptions[d.key] || [];
                 return (
                   <div key={d.key} className="space-y-1">
-                    <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block truncate">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block truncate">
                       {d.label}
                     </label>
                     <select
@@ -1270,7 +1270,7 @@ function CatalogCard({
       <button type="button" onClick={onOpen} className="relative block w-full">
         <CarThumb car={car} className="aspect-[16/10] w-full" />
         {isPreOrder(c) && (
-          <span className="absolute left-2 top-2 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-amber-400 backdrop-blur-sm">
+          <span className="absolute left-2 top-2 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-amber-400 backdrop-blur-sm">
             PO
           </span>
         )}
@@ -1278,13 +1278,13 @@ function CatalogCard({
           {isCarIso && (
             <span
               title="On your ISO list"
-              className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-sky-400 backdrop-blur-sm ring-1 ring-sky-500/40"
+              className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-sky-400 backdrop-blur-sm ring-1 ring-sky-500/40"
             >
               <Search className="size-3" /> ISO
             </span>
           )}
           {owned && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-emerald-400 backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-emerald-400 backdrop-blur-sm">
               <Check className="size-3" /> Owned
             </span>
           )}
@@ -1295,7 +1295,7 @@ function CatalogCard({
         {boxes && (
           <span
             title={`Sold as ${boxes.assortments.join(", ")}`}
-            className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-[10px] font-semibold text-foreground ring-1 ring-white/20 backdrop-blur-sm"
+            className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-foreground ring-1 ring-white/20 backdrop-blur-sm"
           >
             <Layers className="size-3" />
             {boxes.assortments.length} assortments
@@ -1304,7 +1304,7 @@ function CatalogCard({
         {/* A box, not a casting. It earns the primary colour because it changes
             what the card means: one of these is several cars. */}
         {c.is_multipack && (
-          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground shadow-sm">
+          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground shadow-sm">
             <Package className="size-3" />
             {packLabel(c)}
           </span>
@@ -1322,7 +1322,7 @@ function CatalogCard({
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
           <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">MRP</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">MRP</div>
             {/* A range when the boxes disagree, which is the whole reason they
                 are still separate entries underneath one card. */}
             <div className="truncate text-sm font-semibold tabular-nums">
@@ -1389,18 +1389,18 @@ function CatalogTable({
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
                     {isPreOrder(c) && (
-                      <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.2 text-[10px] font-semibold text-amber-500">
+                      <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.2 text-xs font-semibold text-amber-500">
                         PO
                       </span>
                     )}
                     {isoSet.has(cid) && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.2 text-[10px] font-semibold text-sky-500">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.2 text-xs font-semibold text-sky-500">
                         <Search className="size-3" />
                         <span>ISO</span>
                       </span>
                     )}
                     {owned.has(cid) && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[10px] font-semibold text-emerald-500">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-xs font-semibold text-emerald-500">
                         <Check className="size-3" />
                         <span>Owned</span>
                       </span>
@@ -1419,7 +1419,7 @@ function CatalogTable({
                   <span className="min-w-0 truncate">
                     {[c.brand, c.assortment].filter(Boolean).join(" · ") || "—"}
                   </span>
-                  <span className="shrink-0 truncate text-[11px]">
+                  <span className="shrink-0 truncate text-xs">
                     {c.series ? `Series: ${c.series}` : c.car_id}
                   </span>
                 </div>
@@ -1482,12 +1482,12 @@ function CatalogTable({
                         <span className="flex min-w-0 items-center gap-1.5">
                           <span className="truncate font-medium">{car.name}</span>
                           {isPreOrder(c) && (
-                            <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-[10px] font-semibold text-amber-500">
+                            <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-xs font-semibold text-amber-500">
                               PO
                             </span>
                           )}
                           {c.is_multipack && (
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-1.5 text-[10px] font-bold text-primary">
+                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-1.5 text-xs font-bold text-primary">
                               <Package className="size-3" />
                               {packLabel(c)}
                             </span>
@@ -1495,7 +1495,7 @@ function CatalogTable({
                           {isoSet.has(cid) && (
                             <span
                               title="On your ISO list"
-                              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 text-[10px] font-semibold text-sky-500"
+                              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 text-xs font-semibold text-sky-500"
                             >
                               <Search className="size-3" />
                               ISO

@@ -213,7 +213,7 @@ export function PlanTermDialog() {
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-semibold">{monthsLabel(o.months)}</span>
                     {saving > 0 && (
-                      <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                         Save ₹{saving.toLocaleString()}
                         {off > 0 && ` · ${off}% off`}
                       </span>
@@ -221,7 +221,7 @@ export function PlanTermDialog() {
                   </div>
                   {/* The per-month figure is what makes three prices
                       comparable; the months are what was actually bought. */}
-                  <div className="text-[11px] text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     {o.months === 1
                       ? `₹${monthlyOf(prices, plan ?? "pro")} every month`
                       : `₹${perMonth} a month, paid once`}
@@ -262,7 +262,7 @@ export function PlanTermDialog() {
                 {picked ? `Pay ${inrPriceFull(withGatewayFee(picked.price))}` : "Pay"}
               </Button>
               {/* Said before the press, not discovered on the receipt. */}
-              <p className="text-center text-[11px] text-muted-foreground">
+              <p className="text-center text-xs text-muted-foreground">
                 {picked
                   ? `₹${picked.price.toLocaleString()} plus ${GATEWAY_FEE_PCT}% card fee. The plan switches on as soon as it clears.`
                   : `Card payments add ${GATEWAY_FEE_PCT}%.`}
@@ -284,7 +284,7 @@ export function PlanTermDialog() {
             )}
             {canPay ? "Pay directly instead" : "Make Payment directly"}
           </Button>
-          <p className="text-center text-[11px] text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             {canPay
               ? `No card fee. We send you the payment details and switch the plan on once it arrives${picked ? ` — ₹${picked.price.toLocaleString()}` : ""}.`
               : "Nothing is charged here; the payment details come to you."}

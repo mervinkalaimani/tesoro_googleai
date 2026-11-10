@@ -346,7 +346,7 @@ function DashboardPage() {
       },
       {
         key: "po",
-        label: "Pre-ordered",
+        label: "Pre-order",
         tone: "violet",
         icon: <ShoppingBag className="size-4" />,
         value: countOf("PO"),
@@ -682,13 +682,13 @@ function TransitTracker({
                           {s.brands.slice(0, 4).map((b) => (
                             <span
                               key={b}
-                              className="rounded-full bg-muted px-1.5 py-0.5 text-[10px]"
+                              className="rounded-full bg-muted px-1.5 py-0.5 text-xs"
                             >
                               {b}
                             </span>
                           ))}
                           {s.brands.length > 4 && (
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               +{s.brands.length - 4}
                             </span>
                           )}
@@ -1232,7 +1232,7 @@ function TopTenGrid({
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
       {/* Title and control share the line at every width: the control is
           capped and scrolls sideways rather than dropping underneath. */}
-      <div className="mb-1 flex items-center justify-between gap-3">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 shrink-0">
           <h2 className="text-display text-lg font-semibold">Top 5</h2>
           <p className="truncate text-xs text-muted-foreground">Leading {label.toLowerCase()}</p>
@@ -1241,7 +1241,7 @@ function TopTenGrid({
           value={key}
           onChange={setKey}
           options={TOP_OPTIONS}
-          className="max-w-[62%] sm:max-w-none"
+          className="w-full sm:w-auto"
         />
       </div>
 
@@ -1254,7 +1254,7 @@ function TopTenGrid({
           <div className="relative pt-6">
             {active !== null && items[active] && (
               <div
-                className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-0.5 text-[11px] font-medium shadow-md"
+                className="pointer-events-none absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-md border border-border bg-popover px-2 py-0.5 text-xs font-medium shadow-md"
                 style={{
                   left: `clamp(3rem, ${
                     items.slice(0, active).reduce((s, it) => s + share(it.value), 0) +
@@ -1297,7 +1297,7 @@ function TopTenGrid({
                   onClick={() => setSelected(it.name)}
                   onMouseEnter={() => setActive(i)}
                   onMouseLeave={() => setActive(null)}
-                  className="flex w-full min-w-0 items-center gap-1.5 text-left text-[11px] text-muted-foreground hover:text-foreground"
+                  className="flex w-full min-w-0 items-center gap-1.5 text-left text-xs text-muted-foreground hover:text-foreground"
                 >
                   <span
                     className="size-2 shrink-0 rounded-full"

@@ -120,12 +120,12 @@ export function MultipackField({
             This is a multipack
           </span>
         </label>
-        <span className="flex-1 text-[11px] text-muted-foreground">
+        <span className="flex-1 text-xs text-muted-foreground">
           A box of cars sold together, bought once, for one price.
         </span>
         {isPack && (
           <div className="flex items-center gap-2">
-            <Label className="text-[11px] text-muted-foreground">Cars in the box</Label>
+            <Label className="text-xs text-muted-foreground">Cars in the box</Label>
             <Input
               type="number"
               min={2}
@@ -144,7 +144,7 @@ export function MultipackField({
         <div className="space-y-2 border-t border-border/50 pt-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold">What&rsquo;s inside</span>
-            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold tabular-nums text-primary">
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold tabular-nums text-primary">
               {packSize ? `${members.length} of ${packSize} listed` : `${members.length} listed`}
             </span>
           </div>
@@ -156,12 +156,12 @@ export function MultipackField({
                 key={id}
                 className="flex items-center gap-2 rounded-md border border-border bg-background/60 p-1.5"
               >
-                <span className="w-5 shrink-0 text-center text-[11px] font-semibold tabular-nums text-muted-foreground">
+                <span className="w-5 shrink-0 text-center text-xs font-semibold tabular-nums text-muted-foreground">
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xs font-medium">{m?.name || id}</div>
-                  <div className="truncate text-[10px] text-muted-foreground">
+                  <div className="truncate text-xs text-muted-foreground">
                     {m ? subLineOf(m) : "Not in the catalogue"}
                   </div>
                 </div>
@@ -200,7 +200,7 @@ export function MultipackField({
                     variant="outline"
                     disabled={disabled}
                     onClick={onAddNew}
-                    className="h-8 shrink-0 gap-1 px-2 text-[11px]"
+                    className="h-8 shrink-0 gap-1 px-2 text-xs"
                   >
                     <Plus className="size-3" />
                     {addNewLabel}
@@ -226,7 +226,7 @@ export function MultipackField({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-xs font-medium">{c.name}</div>
-                        <div className="truncate text-[10px] text-muted-foreground">
+                        <div className="truncate text-xs text-muted-foreground">
                           {subLineOf(c)}
                         </div>
                       </div>
@@ -236,21 +236,21 @@ export function MultipackField({
                 </div>
               )}
               {query.trim().length >= 2 && choices.length === 0 && (
-                <p className="px-1 text-[11px] text-muted-foreground">
+                <p className="px-1 text-xs text-muted-foreground">
                   Nothing in the catalogue matches that
                   {onAddNew ? ` — ${addNewLabel.toLowerCase()} to file it.` : "."}
                 </p>
               )}
             </div>
           ) : (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               What is in the box is part of the shared catalogue, so it is listed there rather than
               here. The pack saves either way.
             </p>
           )}
 
           {packSize > 0 && members.length !== packSize && canEditMembers && (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {members.length < packSize
                 ? `${packSize - members.length} still to add — you can finish this later.`
                 : `${members.length - packSize} more than the box holds.`}

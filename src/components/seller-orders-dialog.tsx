@@ -418,7 +418,7 @@ export function SellerOrdersDialog({
                 <col className="w-[6rem]" />
                 <col className="w-[7rem]" />
               </colgroup>
-              <thead className="bg-muted/60 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-muted/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2.5 font-medium">{idLabel}</th>
                   <th className="px-3 py-2.5 font-medium">Date</th>
@@ -478,7 +478,7 @@ export function SellerOrdersDialog({
                           >
                             <td className="py-2 pl-8 pr-3" colSpan={2}>
                               <div className="truncate text-xs font-medium">{car.name || "—"}</div>
-                              <div className="truncate text-[11px] text-muted-foreground">
+                              <div className="truncate text-xs text-muted-foreground">
                                 {carSubLine(car)}
                               </div>
                             </td>
@@ -528,12 +528,12 @@ export function SellerOrdersDialog({
                         {inrFull(b.spent)}
                       </span>
                     </div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    <div className="mt-0.5 text-xs text-muted-foreground">
                       {formatDayMonthYear(b.day) || "—"} · {b.cars.length}{" "}
                       {b.cars.length === 1 ? "car" : "cars"}
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         Shipping {b.shipping ? inrFull(b.shipping) : "—"}
                       </span>
                       {b.status && <StatusPill status={b.status} />}
@@ -552,7 +552,7 @@ export function SellerOrdersDialog({
                               <span className="block truncate text-xs font-medium">
                                 {car.name || "—"}
                               </span>
-                              <span className="block truncate text-[11px] text-muted-foreground">
+                              <span className="block truncate text-xs text-muted-foreground">
                                 {carSubLine(car)}
                               </span>
                             </span>

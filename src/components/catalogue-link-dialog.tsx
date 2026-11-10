@@ -188,7 +188,7 @@ export function CatalogueLinkDialog({
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-foreground">{entry.name}</p>
                   <p className="truncate text-xs text-muted-foreground">{subLineOf(entry)}</p>
-                  <p className="truncate font-mono text-[11px] text-muted-foreground/80">
+                  <p className="truncate font-mono text-xs text-muted-foreground/80">
                     {entry.car_id}
                     {agrees.length > 0 && !query && (
                       <span className="ml-1.5 font-sans">· same {agrees.length} details</span>

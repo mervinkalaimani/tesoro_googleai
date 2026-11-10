@@ -194,7 +194,7 @@ export function CataloguePhotos() {
         />
       </div>
 
-      <p className="px-1 text-[11px] text-muted-foreground">{rows.length.toLocaleString()} shown</p>
+      <p className="px-1 text-xs text-muted-foreground">{rows.length.toLocaleString()} shown</p>
 
       <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
         {shown.map((c) => {
@@ -226,7 +226,7 @@ export function CataloguePhotos() {
                         worth noticing while you are already looking. */}
                     <span
                       className={cn(
-                        "shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold",
+                        "shrink-0 rounded-full border px-1.5 py-0.5 text-xs font-semibold",
                         clean(c.colour)
                           ? "border-border bg-muted/50 text-foreground"
                           : "border-dashed border-border/70 text-muted-foreground/70",
@@ -237,17 +237,17 @@ export function CataloguePhotos() {
                     {isShared && (
                       <span
                         title="Another casting uses this same photo"
-                        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-500"
+                        className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-xs font-semibold text-amber-500"
                       >
                         <TriangleAlert className="size-2.5" />
                         shared
                       </span>
                     )}
                   </div>
-                  <p className="truncate text-[11px] text-muted-foreground">
+                  <p className="truncate text-xs text-muted-foreground">
                     {carSubLine(catalogCarToDiecast(c))}
                   </p>
-                  <p className="truncate font-mono text-[10px] text-muted-foreground/70">
+                  <p className="truncate font-mono text-xs text-muted-foreground/70">
                     {c.car_id}
                   </p>
                 </div>
@@ -297,7 +297,7 @@ export function CataloguePhotos() {
                     placeholder="https://…"
                     aria-label={`Photo link for ${c.name || c.car_id}`}
                     className={cn(
-                      "h-8 font-mono text-[11px]",
+                      "h-8 font-mono text-xs",
                       draft !== undefined && draft !== url && "border-primary/60",
                     )}
                   />

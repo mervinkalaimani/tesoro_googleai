@@ -176,7 +176,7 @@ export function Combobox({
                     <span className="flex min-w-0 flex-col">
                       <span className="truncate">{option}</span>
                       {descriptions?.[option.toLowerCase()] && (
-                        <span className="truncate text-[11px] text-muted-foreground">
+                        <span className="truncate text-xs text-muted-foreground">
                           {descriptions[option.toLowerCase()]}
                         </span>
                       )}

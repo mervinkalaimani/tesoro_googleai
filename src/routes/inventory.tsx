@@ -171,7 +171,7 @@ function priceDelta(spent: number, mrp: number) {
 function Metric({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
     <div className="min-w-0">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className={`mt-0.5 truncate text-sm font-semibold tabular-nums ${className ?? ""}`}>
         {value}
       </div>
@@ -194,19 +194,19 @@ function PriceStrip({ car, spentOverride }: { car: Diecast; spentOverride?: numb
   return (
     <div className="grid grid-cols-3 gap-2 text-left">
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">spent</div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">spent</div>
         <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-foreground">
           {spent ? inr(spent) : "—"}
         </div>
       </div>
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">MRP</div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">MRP</div>
         <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-foreground">
           {mrp ? inrPrice(mrp) : "—"}
         </div>
       </div>
       <div className="min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">delta</div>
+        <div className="text-xs uppercase tracking-wider text-muted-foreground">delta</div>
         <div
           className={cn(
             "mt-0.5 truncate text-xs font-semibold tabular-nums",
@@ -289,7 +289,7 @@ function InventoryCard({
         </div>
 
         {/* series (left) and sub series (right) (even smaller) */}
-        <div className="mt-0.5 flex items-baseline justify-between gap-2 text-[11px] text-muted-foreground/80">
+        <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xs text-muted-foreground/80">
           <span className="truncate" title={car.series || undefined}>
             {car.series || "—"}
           </span>
@@ -777,7 +777,7 @@ function InventoryPage() {
             >
               <Filter className="size-3.5 shrink-0" />
               {activeCount ? (
-                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold leading-none">
+                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-bold leading-none">
                   {activeCount}
                 </span>
               ) : null}
@@ -849,7 +849,7 @@ function InventoryPage() {
             <button
               type="button"
               onClick={clearAllFilters}
-              className="text-[11px] text-muted-foreground hover:text-foreground shrink-0 underline underline-offset-2 pl-1 cursor-pointer"
+              className="text-xs text-muted-foreground hover:text-foreground shrink-0 underline underline-offset-2 pl-1 cursor-pointer"
             >
               Clear
             </button>
@@ -865,7 +865,7 @@ function InventoryPage() {
               <Filter className="size-4 text-primary" />
               <DrawerTitle className="text-base font-semibold">Filters</DrawerTitle>
               {activeCount > 0 && (
-                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
                   {activeCount} active
                 </span>
               )}
@@ -883,7 +883,7 @@ function InventoryPage() {
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* Quick multi-select toggle chips */}
             <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+              <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
                 Toggles
               </label>
               <div className="flex flex-wrap items-center gap-2">
@@ -930,7 +930,7 @@ function InventoryPage() {
                       <button
                         type="button"
                         onClick={() => setFilters((prev) => ({ ...prev, [d.key]: "all" }))}
-                        className="text-[11px] text-muted-foreground hover:text-foreground cursor-pointer"
+                        className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                       >
                         Reset
                       </button>

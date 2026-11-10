@@ -173,7 +173,7 @@ export function FilterChipDropdown({
                 )}
               >
                 <span className="truncate pr-2">{opt.name}</span>
-                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/70">
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground/70">
                   {opt.value}
                 </span>
               </button>

@@ -111,10 +111,10 @@ export function FeedbackPanel({ kind }: { kind: "feature" | "bug" }) {
         {/* What is sent besides the words, said rather than hidden: it is their
             account and their address, and a form that collects quietly is a
             form that collected something somebody did not expect. */}
-        <p className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
           Sent from your account, so we can reply. Nothing else about your collection goes with it.
         </p>
-        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
           {body.length}/{MAX}
         </span>
         <Button type="button" disabled={busy || !body.trim()} onClick={() => void send()}>

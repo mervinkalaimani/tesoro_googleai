@@ -118,7 +118,7 @@ export function PayByQrDialog({
               type="button"
               variant="ghost"
               size="sm"
-              className="gap-1.5 text-[11px]"
+              className="gap-1.5 text-xs"
               disabled={busy}
               onClick={() => fileRef.current?.click()}
             >

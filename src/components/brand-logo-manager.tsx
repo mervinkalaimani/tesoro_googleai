@@ -155,7 +155,7 @@ export function BrandLogoManager() {
                     }}
                   />
                 ) : (
-                  <span className="text-[10px] uppercase text-muted-foreground">none</span>
+                  <span className="text-xs uppercase text-muted-foreground">none</span>
                 )}
               </span>
               <span className="min-w-0 flex-1">

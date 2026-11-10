@@ -212,7 +212,7 @@ function DashboardPage() {
           Admin Dashboard
         </h1>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground max-sm:hidden">
+          <span className="text-xs text-muted-foreground max-sm:hidden">
             {at ? `Read at ${at.toLocaleTimeString()}` : "Reading…"}
           </span>
           <Button
@@ -289,7 +289,7 @@ function DashboardPage() {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Who is on what
           </h2>
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-xs text-muted-foreground">
             {stats.total} account{stats.total === 1 ? "" : "s"}
           </span>
         </div>
@@ -310,7 +310,7 @@ function DashboardPage() {
         <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {bars.map((b) => (
             <div key={b.label} className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-              <dt className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <dt className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
                 <span className={cn("size-2 rounded-full", b.className)} />
                 {b.label}
               </dt>
@@ -327,7 +327,7 @@ function DashboardPage() {
           if (entries.length === 0) return null;
           return (
             <div key={plan} className="space-y-1.5">
-              <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground">
                 <span
                   className={cn(
                     "size-2 rounded-full",
@@ -340,7 +340,7 @@ function DashboardPage() {
                 {entries.map(([key, n]) => (
                   <span
                     key={key}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-1 text-[11px]"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-muted/20 px-2.5 py-1 text-xs"
                   >
                     <span className="text-muted-foreground">{termLabel(key)}</span>
                     <span className="font-semibold tabular-nums">{n}</span>

@@ -371,7 +371,7 @@ export function StatusUpdateDialog({
                     <Icon className="size-3.5 shrink-0" />
                     <span className="leading-tight">{isInHand(s) ? "Delivered" : s}</span>
                     {isCurrent && (
-                      <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-muted-foreground">
+                      <span className="text-xs font-semibold uppercase leading-none tracking-wide text-muted-foreground">
                         Current
                       </span>
                     )}
@@ -392,7 +392,7 @@ export function StatusUpdateDialog({
                 onChange={(e) => setCarNumber(e.target.value)}
                 placeholder="e.g. 1133 or KHMG217"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {current.brand} collector number printed on the box.
               </p>
             </div>
@@ -467,7 +467,7 @@ export function StatusUpdateDialog({
                         key={d}
                         type="button"
                         onClick={() => setExpectedIn(d)}
-                        className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground"
+                        className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
                       >
                         {d === 0 ? "Today" : `+${d}d`}
                       </button>

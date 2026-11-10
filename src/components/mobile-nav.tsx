@@ -148,7 +148,7 @@ function HomeCircle({
       style={style}
     >
       <Home className="size-5" />
-      <span className="text-[10px] font-medium leading-none">Home</span>
+      <span className="text-xs font-medium leading-none">Home</span>
     </Link>
   );
 }
@@ -282,7 +282,7 @@ export function MobileNav() {
                 }`}
               >
                 <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
-                <span className="truncate text-[10px] font-medium leading-none">{t.title}</span>
+                <span className="truncate text-xs font-medium leading-none">{t.title}</span>
               </Link>
             );
           })}

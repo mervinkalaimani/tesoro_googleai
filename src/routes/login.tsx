@@ -538,7 +538,7 @@ function LoginPage() {
 
                 <div className="my-5 flex items-center gap-3">
                   <span className="h-px flex-1 bg-border" />
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <span className="text-xs uppercase tracking-wider text-muted-foreground">
                     or use a password
                   </span>
                   <span className="h-px flex-1 bg-border" />
@@ -627,6 +627,16 @@ function LoginPage() {
                 </p>
               ) : null}
             </form>
+            {view === "signin" && (
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-4 w-full"
+                onClick={() => enterGuest("guest")}
+              >
+                Try the demo
+              </Button>
+            )}
           </>
         )}
       </div>
@@ -635,7 +645,7 @@ function LoginPage() {
           around before signing up. All three are deliberately faint: none of
           them competes with the form above. Both documents are readable without
           an account, which is the point of asking somebody to accept them. */}
-      <div className="absolute inset-x-0 bottom-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 text-[11px] text-muted-foreground/45">
+      <div className="absolute inset-x-0 bottom-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 text-xs text-muted-foreground/45">
         <Link to="/privacy" className="underline underline-offset-2 hover:text-muted-foreground">
           Privacy Policy
         </Link>

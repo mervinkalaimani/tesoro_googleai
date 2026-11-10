@@ -127,7 +127,7 @@ export function PhoneField({
         />
       </div>
       {typed > 0 && typed < country.min && (
-        <p className="px-1 text-[11px] text-muted-foreground">
+        <p className="px-1 text-xs text-muted-foreground">
           {country.name} numbers are{" "}
           {country.min === country.max ? country.max : `${country.min}–${country.max}`} digits.
         </p>

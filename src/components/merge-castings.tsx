@@ -62,7 +62,7 @@ export function MergePanel({
 }) {
   return (
     <div className="space-y-2">
-      {because && <p className="text-[11px] text-muted-foreground">{because}</p>}
+      {because && <p className="text-xs text-muted-foreground">{because}</p>}
 
       {cars.map((c) => {
         const keeping = c.car_id === keepId;
@@ -96,10 +96,10 @@ export function MergePanel({
                 {/* Wraps rather than truncates: brand, box, series, sub-series
                     and number is the whole of what tells two near-identical
                     entries apart, and it was the line being cut off. */}
-                <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+                <div className="mt-0.5 text-xs leading-snug text-muted-foreground">
                   {mergeSubLine(c)}
                 </div>
-                <div className="mt-0.5 break-all font-mono text-[10px] text-muted-foreground/75">
+                <div className="mt-0.5 break-all font-mono text-xs text-muted-foreground/75">
                   {c.car_id} · {inrPriceFull(Number(c.mrp) || 0)} ·{" "}
                   {formatDayMonthYear(c.created_at) || "no date"}
                   {!c.image_url && " · no photo"}
@@ -108,7 +108,7 @@ export function MergePanel({
             </div>
             <div className="mt-2 flex items-center gap-2 border-t border-border/50 pt-2">
               {keeping ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
                   <Check className="size-3" /> Keeping this one
                 </span>
               ) : (
@@ -117,7 +117,7 @@ export function MergePanel({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-7 px-2 text-[11px]"
+                    className="h-7 px-2 text-xs"
                     onClick={() => onKeep(c.car_id)}
                   >
                     Keep this instead
@@ -129,7 +129,7 @@ export function MergePanel({
                       onChange={() => onToggleDrop(c.car_id)}
                       className="size-3.5 rounded border-input accent-primary"
                     />
-                    <span className="text-[11px] text-muted-foreground">Merge into the keeper</span>
+                    <span className="text-xs text-muted-foreground">Merge into the keeper</span>
                   </label>
                 </>
               )}
@@ -146,28 +146,28 @@ export function MergePanel({
           What this moves
         </div>
         {loadingPreview ? (
-          <p className="mt-1 text-[11px] text-muted-foreground">Checking…</p>
+          <p className="mt-1 text-xs text-muted-foreground">Checking…</p>
         ) : !preview ? (
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Pick at least one entry to merge in.
           </p>
         ) : preview.cars === 0 ? (
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground">
             Nobody owns the entries being merged, so no collection changes.
           </p>
         ) : (
           <div className="mt-1 space-y-0.5">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               {preview.cars} car{preview.cars === 1 ? " moves" : "s move"} onto the entry you keep.
               Every other car is left alone.
             </p>
             {preview.owners.map((o) => (
-              <p key={o.user_id} className="text-[11px] text-foreground">
+              <p key={o.user_id} className="text-xs text-foreground">
                 {resolveCatalogUserId(o.user_id)} — {o.cars} car{o.cars === 1 ? "" : "s"}
               </p>
             ))}
             {preview.packs > 0 && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 {preview.packs} multipack link{preview.packs === 1 ? "" : "s"} repointed.
               </p>
             )}

@@ -115,7 +115,7 @@ function PreOrderFact({
 }) {
   return (
     <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
-      <dt className="truncate text-[10px] uppercase tracking-wider text-muted-foreground">
+      <dt className="truncate text-xs uppercase tracking-wider text-muted-foreground">
         {label}
       </dt>
       <dd
@@ -159,7 +159,7 @@ function PreOrderCard({
             {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
           </span>
           <span
-            className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+            className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${
               settled
                 ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
                 : "border-amber-500/40 bg-amber-500/10 text-amber-400"
@@ -280,13 +280,13 @@ function OrderGroupCard({
 
         <div className="flex shrink-0 items-start gap-6 text-right">
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
               Deposit paid
             </div>
             <div className="text-sm font-semibold tabular-nums">{inrFull(g.paid)}</div>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">
               Balance due
             </div>
             <div
@@ -308,7 +308,7 @@ function OrderGroupCard({
           className="flex w-full items-center justify-between text-left"
           aria-expanded={carsOpen}
         >
-          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             {g.items.length} casting{g.items.length === 1 ? "" : "s"} · {inrFull(g.value)} committed
           </div>
           <div className="flex items-center gap-1 text-xs font-medium text-primary">
@@ -544,7 +544,7 @@ function PreOrdersPage() {
           <SegmentControl
             value={grouping}
             onChange={setGrouping}
-            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
+            className="w-auto max-sm:text-xs max-sm:[&>button]:px-2"
             options={[
               { value: "car", label: "By car" },
               { value: "order", label: "By order ID" },

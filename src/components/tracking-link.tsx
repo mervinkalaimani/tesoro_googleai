@@ -74,7 +74,7 @@ export function TrackingLink({
     >
       <span className="min-w-0 truncate text-left">
         Track on {name}
-        <span className="block text-[10px] font-normal opacity-80">
+        <span className="block text-xs font-normal opacity-80">
           Copies {id} to paste into their form
         </span>
       </span>

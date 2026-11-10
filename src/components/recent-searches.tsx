@@ -15,7 +15,7 @@ export function RecentSearches({ onPick }: { onPick: (q: string) => void }) {
 
   return (
     <section>
-      <div className="mb-1.5 flex items-center gap-1 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <Clock className="size-3" />
         <span>Recent</span>
       </div>
@@ -46,7 +46,7 @@ export function RecentSearches({ onPick }: { onPick: (q: string) => void }) {
         <button
           type="button"
           onClick={clear}
-          className="cursor-pointer rounded-full px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="cursor-pointer rounded-full px-2 py-1 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           Clear
         </button>

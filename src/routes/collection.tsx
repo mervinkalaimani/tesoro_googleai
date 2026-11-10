@@ -232,7 +232,7 @@ function CollectionPage() {
                     <td className="px-3 py-2 text-right text-xs tabular-nums">
                       {r.spent ? inr(r.spent) : "—"}
                       {r.mrp ? (
-                        <span className="block text-[11px] font-normal text-muted-foreground">
+                        <span className="block text-xs font-normal text-muted-foreground">
                           <MrpNote spent={r.spent || 0} mrp={r.mrp} />
                         </span>
                       ) : null}

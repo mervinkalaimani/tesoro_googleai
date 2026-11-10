@@ -104,7 +104,7 @@ export function DeleteMyData({ blocked = false }: { blocked?: boolean }) {
           </Button>
         </div>
         {blocked && (
-          <p className="border-t border-border/60 px-4 py-2.5 text-[11px] text-muted-foreground">
+          <p className="border-t border-border/60 px-4 py-2.5 text-xs text-muted-foreground">
             You are the owner of this catalogue, so this is switched off: deleting it would leave
             the shared catalogue with nobody to keep it. Make another admin the owner first.
           </p>

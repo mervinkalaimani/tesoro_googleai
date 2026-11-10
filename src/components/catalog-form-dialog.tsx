@@ -941,7 +941,7 @@ export function CatalogFormDialog({
       <p className="truncate text-base font-bold tracking-tight">
         {form.name?.trim() || autoName || "New casting"}
       </p>
-      <p className="truncate text-[11px] text-muted-foreground">{identityLine}</p>
+      <p className="truncate text-xs text-muted-foreground">{identityLine}</p>
       <div className="mt-2.5">
         <SummaryRow label="Brand" value={form.brand} />
         <SummaryRow label="Assortment" value={form.assortment} />
@@ -1233,7 +1233,7 @@ export function CatalogFormDialog({
                       data-duplicate-confirm
                       className="space-y-2.5 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3"
                     >
-                      <p className="text-[11px] font-medium text-foreground">
+                      <p className="text-xs font-medium text-foreground">
                         This casting matches one the catalogue already has. Add that one instead, or
                         say below that this is a different release.
                       </p>
@@ -1243,7 +1243,7 @@ export function CatalogFormDialog({
                           onCheckedChange={(checked) => setConfirmNotDuplicate(checked === true)}
                           className="mt-0.5"
                         />
-                        <span className="text-[11px] font-semibold leading-tight text-foreground">
+                        <span className="text-xs font-semibold leading-tight text-foreground">
                           This is not a duplicate — it is a genuinely different release
                         </span>
                       </label>
@@ -1286,7 +1286,7 @@ export function CatalogFormDialog({
                       placeholder={autoName || "Make Model Variant"}
                       aria-label="Display name"
                     />
-                    <p className="pt-1 text-[11px] text-muted-foreground">
+                    <p className="pt-1 text-xs text-muted-foreground">
                       Built from make, model and variant if you leave it blank.
                     </p>
                   </Field>
@@ -1389,7 +1389,7 @@ export function CatalogFormDialog({
                     Add from catalogue
                   </Button>
                 )}
-                <p className="mt-2 text-[11px] text-muted-foreground">
+                <p className="mt-2 text-xs text-muted-foreground">
                   {isPack
                     ? "A multipack is the product, so it has one assortment and one price. Untick Multipack below to file this casting in more than one box."
                     : "Each box is its own catalogue entry with its own ID and price, and they read as one casting in the catalogue. Everything above — colour, series, car number — is shared by all of them."}
@@ -1466,7 +1466,7 @@ export function CatalogFormDialog({
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                      <p className="px-1 pt-1 text-xs text-muted-foreground">
                         Saved as the 1st of that month, which is where the calendar puts it.
                       </p>
                     </Field>
@@ -1480,7 +1480,7 @@ export function CatalogFormDialog({
                         onChange={(e) => set("released_at", e.target.value || null)}
                         aria-label="Released on"
                       />
-                      <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                      <p className="px-1 pt-1 text-xs text-muted-foreground">
                         What Recently Released dates this by. Left empty, the day the first
                         collector receives one fills it in.
                       </p>
@@ -1501,7 +1501,7 @@ export function CatalogFormDialog({
                       placeholder="e.g. 2026 K Case"
                       searchPlaceholder="Search cases, or type a new one…"
                     />
-                    <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                    <p className="px-1 pt-1 text-xs text-muted-foreground">
                       The case this release shipped in. A collector&rsquo;s own Case / Mix is on
                       their car and is not set from here.
                     </p>
@@ -1568,7 +1568,7 @@ export function CatalogFormDialog({
                     the duplicate notice shows, so the two read alike. */}
                 <span
                   className={cn(
-                    "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                    "shrink-0 rounded px-1.5 py-0.5 text-xs font-bold tabular-nums",
                     match >= 90
                       ? "bg-amber-500/25 text-amber-800 dark:text-amber-300"
                       : "bg-muted text-muted-foreground",
@@ -1589,10 +1589,10 @@ export function CatalogFormDialog({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xs font-semibold">{c.name || "—"}</div>
-                  <div className="truncate text-[11px] text-muted-foreground">
+                  <div className="truncate text-xs text-muted-foreground">
                     {[c.assortment, c.series, c.sub_series].filter(Boolean).join(" · ") || "—"}
                   </div>
-                  <div className="truncate font-mono text-[10px] text-muted-foreground/75">
+                  <div className="truncate font-mono text-xs text-muted-foreground/75">
                     {c.car_id} · {inrPriceFull(Number(c.mrp) || 0)}
                   </div>
                 </div>
@@ -1751,7 +1751,7 @@ export function CatalogFormDialog({
                   <li key={x.car_id ?? x.assortment} className="text-foreground">
                     {x.assortment} · {inrPriceFull(x.mrp)}
                     {x.car_id ? (
-                      <span className="ml-1.5 font-mono text-[11px] text-muted-foreground">
+                      <span className="ml-1.5 font-mono text-xs text-muted-foreground">
                         {x.car_id}
                       </span>
                     ) : null}

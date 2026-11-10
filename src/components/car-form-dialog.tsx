@@ -219,7 +219,7 @@ function SegmentOrOther({
           />
         </div>
       )}
-      {hint && <p className="mt-1 text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
     </Field>
   );
 }
@@ -1947,14 +1947,14 @@ export function CarFormDialog({
           <p className="truncate text-base font-bold tracking-tight">
             {previewName || "New casting"}
           </p>
-          <p className="truncate text-[11px] text-muted-foreground">
+          <p className="truncate text-xs text-muted-foreground">
             {[form.brand, form.assortment, form.carNumber]
               .map((x) => x?.trim())
               .filter(Boolean)
               .join(" · ") || "—"}
           </p>
           {[form.series, form.subSeries].some((x) => x?.trim()) && (
-            <p className="truncate text-[11px] text-muted-foreground">
+            <p className="truncate text-xs text-muted-foreground">
               {[form.series, form.subSeries]
                 .map((x) => x?.trim())
                 .filter(Boolean)
@@ -1980,7 +1980,7 @@ export function CarFormDialog({
       ) : (
         <>
           <p className="text-base font-bold tracking-tight">No car picked yet</p>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             Search the catalogue and pick a car. Its details appear here.
           </p>
         </>
@@ -2073,7 +2073,7 @@ export function CarFormDialog({
       onToggle={() => setShowIdentity((v) => !v)}
     >
       {held && initial && (
-        <p className="mb-3 inline-flex rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+        <p className="mb-3 inline-flex rounded bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
           Editable {heldLabel(initial).replace(/^in /, "for another ")}
         </p>
       )}
@@ -2101,13 +2101,13 @@ export function CarFormDialog({
               placeholder={derivedName(form) || "Make Model"}
               aria-label="Display name"
             />
-            <p className="pt-1 text-[11px] text-muted-foreground">
+            <p className="pt-1 text-xs text-muted-foreground">
               What you call this one. Blank builds it from make and model. Yours only — the
               catalogue and other collections are not touched.
             </p>
           </Field>
         </div>
-        <p className="mt-2.5 text-[11px] text-muted-foreground">
+        <p className="mt-2.5 text-xs text-muted-foreground">
           {held && initial
             ? `This casting is not in the shared catalogue yet. It is filed ${heldLabel(initial)}, and what you type until then is what gets filed.`
             : isEdit
@@ -2148,7 +2148,7 @@ export function CarFormDialog({
             in. Picking one brings its price with it. */}
         {boxes.length > 1 && (
           <div className="mb-3">
-            <p className="mb-1.5 text-[11px] text-muted-foreground">
+            <p className="mb-1.5 text-xs text-muted-foreground">
               Which box is yours? This casting is sold in {boxes.length}.
             </p>
             <SegmentControl
@@ -2185,7 +2185,7 @@ export function CarFormDialog({
             onSpent={isIso ? undefined : handleSpentChange}
           />
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           {!form.brand
             ? "Pick a brand first — an assortment is one maker's own range."
             : boxes.length > 1
@@ -2223,7 +2223,7 @@ export function CarFormDialog({
           onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
           selfCarId={derivedCatalogCarId}
         />
-        <p className="mt-2.5 text-[11px] text-muted-foreground">
+        <p className="mt-2.5 text-xs text-muted-foreground">
           {!isPack && boxes.length > 1
             ? "The catalogue has this casting in more than one box, so it is not itself a box. That is changed in the catalogue's own window."
             : isAdmin
@@ -2300,7 +2300,7 @@ export function CarFormDialog({
         </div>
 
         {isIso && (
-          <p className="mt-3 border-l-2 border-primary/60 pl-3 text-[11px] text-muted-foreground">
+          <p className="mt-3 border-l-2 border-primary/60 pl-3 text-xs text-muted-foreground">
             An ISO entry is a car you are looking for, so seller, order date, spent, payment and
             shipping do not apply — the two text ones are saved as NA rather than left blank. Its
             MRP is worth noting, but not owed.
@@ -2314,7 +2314,7 @@ export function CarFormDialog({
             Paid" over an empty balance, before anybody had said anything. */}
         {!isIso && form.payment.trim() !== "" && form.payment !== "Paid" && (
           <div className="mt-3 border-l-2 border-amber-500/60 pl-3">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Shown because payment is not Paid
             </p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -2340,7 +2340,7 @@ export function CarFormDialog({
                 <div className="flex h-9 items-center rounded-md border border-dashed border-input px-3 text-sm font-semibold tabular-nums">
                   {inrFull(Number(form.balance) || 0)}
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Spent {inrFull(Number(form.spent) || 0)} − paid {inrFull(Number(form.paid) || 0)}
                 </p>
               </Field>
@@ -2352,7 +2352,7 @@ export function CarFormDialog({
                     month instead of a date, and no courier or tracking. */}
         {(stillComing || hasArrived) && (
           <div className="mt-3 border-l-2 border-sky-500/60 pl-3">
-            <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {isPreOrder
                 ? "A pre-order has a release window, not a shipping date"
                 : hasArrived
@@ -2402,7 +2402,7 @@ export function CarFormDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+                  <p className="px-1 pt-1 text-xs text-muted-foreground">
                     Saved as the 1st of that month, and the day you will be reminded.
                   </p>
                 </Field>
@@ -2501,7 +2501,7 @@ export function CarFormDialog({
             />
           </Field>
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           Only meaningful once the car is in hand. Tap the chosen grade again to clear it.
         </p>
       </FormSection>
@@ -2676,7 +2676,7 @@ export function CarFormDialog({
                     wide
                     autoFocus
                   />
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Pick a car and the fourteen fields that describe the casting fill themselves in.
                     Your collection first, then every collection.
                   </p>
@@ -2705,7 +2705,7 @@ export function CarFormDialog({
                       )}
                       Scan a card
                     </span>
-                    <span className="text-[11px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {scansRemaining === null
                         ? "Read make, model and series off the card"
                         : scansRemaining === 0
@@ -2739,7 +2739,7 @@ export function CarFormDialog({
                           Add in bulk
                         </span>
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {isMobile ? "Available on a computer" : "Several at once, or a CSV"}
                       </span>
                     </button>
@@ -2965,12 +2965,12 @@ function CollectionSearch({
         <span className="truncate">{car.name || `${car.make} ${car.model}`}</span>
         <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
         {hint && (
-          <span className="ml-auto shrink-0 text-[10px] font-normal text-muted-foreground">
+          <span className="ml-auto shrink-0 text-xs font-normal text-muted-foreground">
             {hint}
           </span>
         )}
       </span>
-      <span className="w-full truncate text-[11px] text-muted-foreground">
+      <span className="w-full truncate text-xs text-muted-foreground">
         {[
           car.brand,
           car.assortment,
@@ -3036,7 +3036,7 @@ function CollectionSearch({
             </>
           )}
           {searchAll && remote.loading && (
-            <p className="flex items-center justify-center gap-1.5 px-2 py-2 text-[11px] text-muted-foreground">
+            <p className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs text-muted-foreground">
               <Loader2 className="size-3 animate-spin" />
               Searching all collections…
             </p>
@@ -3054,7 +3054,7 @@ function CollectionSearch({
 
 function SearchGroupLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-2 pb-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="px-2 pb-0.5 pt-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
       {children}
     </div>
   );

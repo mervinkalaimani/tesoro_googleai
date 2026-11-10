@@ -102,17 +102,17 @@ function MobileAccountMenu() {
               <div className="flex items-center gap-2">
                 <span className="truncate text-sm font-semibold text-foreground">{display}</span>
                 {isOwner && (
-                  <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[9px] font-medium text-primary">
+                  <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
                     Owner
                   </span>
                 )}
                 {!isOwner && isAdmin && (
-                  <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-medium text-sky-500">
+                  <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-xs font-medium text-sky-500">
                     Admin
                   </span>
                 )}
                 {isGuest && (
-                  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-500">
+                  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-xs font-medium text-amber-500">
                     Demo
                   </span>
                 )}
@@ -151,7 +151,7 @@ function MobileAccountMenu() {
               className="group block rounded-2xl border border-border/80 bg-card p-3.5 shadow-xs transition-colors hover:bg-muted/40 active:scale-[0.98]"
             >
               <div className="flex items-center justify-between">
-                <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Cars list
                 </div>
                 <Table className="size-3.5 text-muted-foreground transition-colors group-hover:text-primary" />
@@ -159,12 +159,12 @@ function MobileAccountMenu() {
               <div className="text-display mt-1 text-xl font-bold tabular-nums text-foreground">
                 {stats.total.toLocaleString()}
               </div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">View diecast inventory</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">View diecast inventory</div>
             </Link>
 
             <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-xs">
               <div className="flex items-center justify-between gap-1">
-                <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Cost details
                 </div>
                 <Button
@@ -183,7 +183,7 @@ function MobileAccountMenu() {
               <div className="text-display mt-1 truncate text-xl font-bold tabular-nums text-foreground">
                 {hidden ? "••••••" : inrFull(stats.spent)}
               </div>
-              <div className="mt-0.5 text-[11px] text-muted-foreground">Total spent on cars</div>
+              <div className="mt-0.5 text-xs text-muted-foreground">Total spent on cars</div>
             </div>
           </div>
 

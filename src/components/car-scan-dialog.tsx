@@ -318,11 +318,11 @@ export function CarScanDialog({
                 Scan the card
                 <span className="ml-auto flex shrink-0 items-center gap-2">
                   {left !== null && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                       {left} left
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
                     <Sparkles className="size-3" />
                     VIIV Scan
                   </span>
@@ -450,7 +450,7 @@ export function CarScanDialog({
                         onCheckedChange={() => toggle(f.key)}
                         aria-label={`Use the scanned ${f.label.toLowerCase()}`}
                       />
-                      <span className="w-24 shrink-0 text-[11px] text-muted-foreground">
+                      <span className="w-24 shrink-0 text-xs text-muted-foreground">
                         {f.label}
                       </span>
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">
@@ -489,7 +489,7 @@ export function CarScanDialog({
                       {matched.map((m) => (
                         <span
                           key={m.label}
-                          className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400"
+                          className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
                         >
                           <Check className="size-2.5" />
                           {m.label}: {m.value}
@@ -497,7 +497,7 @@ export function CarScanDialog({
                       ))}
                     </div>
 
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {car.catalogId ? (
                         <>
                           Catalogue ID <span className="font-mono">{car.catalogId}</span>

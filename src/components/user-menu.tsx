@@ -65,7 +65,7 @@ export function UserMenu() {
             {plan !== "free" ? (
               <ProChip label={plan === "plus" ? "Plus" : "Pro"} className="shrink-0" />
             ) : (
-              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Free
               </span>
             )}

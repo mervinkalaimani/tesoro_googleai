@@ -138,7 +138,7 @@ function BrandLogos({
                 }}
               />
             ) : (
-              <span className="px-1 text-center text-[10px] font-semibold leading-tight text-neutral-700">
+              <span className="px-1 text-center text-xs font-semibold leading-tight text-neutral-700">
                 {o}
               </span>
             )}

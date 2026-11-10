@@ -96,7 +96,7 @@ export function GroupRow({
           <span className="min-w-0">
             <span className="block truncate font-medium">{title}</span>
             {sub ? (
-              <span className="block truncate text-[11px] text-muted-foreground">{sub}</span>
+              <span className="block truncate text-xs text-muted-foreground">{sub}</span>
             ) : null}
           </span>
         </div>
@@ -138,7 +138,7 @@ export function CarSubRow({
           {lead}
           <span className="min-w-0">
             <span className="block truncate text-xs font-medium">{car.name || "—"}</span>
-            <span className="block truncate text-[11px] text-muted-foreground">
+            <span className="block truncate text-xs text-muted-foreground">
               {sub ?? carSubLine(car)}
             </span>
           </span>

@@ -329,7 +329,7 @@ export function ProDialog() {
           ))}
         </div>
 
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground">
           Asking tells the admins. You get a payment link by email — nothing is charged here.
         </p>
       </DialogContent>
@@ -382,7 +382,7 @@ function PlanCard({
       <div className="flex items-center gap-2">
         <h3 className="text-base font-bold tracking-tight">{plan.title}</h3>
         {mine && (
-          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             You
           </span>
         )}
@@ -390,9 +390,9 @@ function PlanCard({
 
       <div className="mt-1 flex items-baseline gap-1.5">
         <span className="text-xl font-bold tracking-tight">{plan.price}</span>
-        {plan.per && <span className="text-[11px] text-muted-foreground">{plan.per}</span>}
+        {plan.per && <span className="text-xs text-muted-foreground">{plan.per}</span>}
       </div>
-      <p className="mt-0.5 text-[11px] text-muted-foreground">{plan.subtitle}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{plan.subtitle}</p>
 
       <div className="mt-3 flex-1 space-y-1.5">
         {plan.lines.map((l) => (
@@ -415,7 +415,7 @@ function PlanCard({
           {/* The terms first, then the button: what a trial costs is the
               question anybody has before pressing it, and an answer printed
               underneath is an answer given after the fact. */}
-          <p className="text-center text-[10px] text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground">
             Every Pro section, still {FREE_CAR_LIMIT} cars. No card, once per account.
           </p>
           <Button
@@ -433,10 +433,10 @@ function PlanCard({
 
       {trialState === "running" && (
         <div className="mt-4 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2 text-center">
-          <p className="text-[11px] font-semibold text-primary">
+          <p className="text-xs font-semibold text-primary">
             Trial running — {trialLeft === 1 ? "last day" : `${trialLeft} days left`}
           </p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             Every Pro section is open. Pick a plan to keep them.
           </p>
         </div>
@@ -444,8 +444,8 @@ function PlanCard({
 
       {trialState === "over" && (
         <div className="mt-4 rounded-xl border border-border bg-muted/30 px-3 py-2 text-center">
-          <p className="text-[11px] font-semibold text-muted-foreground">Trial expired</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground">
+          <p className="text-xs font-semibold text-muted-foreground">Trial expired</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
             The {TRIAL_DAYS} days are up — one per account. Your cars are all still here.
           </p>
         </div>
@@ -471,7 +471,7 @@ function PlanCard({
           </Button>
           {asked && (
             <>
-              <p className="text-center text-[10px] text-muted-foreground">
+              <p className="text-center text-xs text-muted-foreground">
                 Already asked — this nudges the admins.
               </p>
               {/* Changing your mind is the other half of asking. Quiet, and
@@ -483,7 +483,7 @@ function PlanCard({
                 size="sm"
                 disabled={disabled}
                 onClick={onWithdraw}
-                className="h-7 w-full gap-1.5 text-[11px] text-muted-foreground hover:text-rose-500"
+                className="h-7 w-full gap-1.5 text-xs text-muted-foreground hover:text-rose-500"
               >
                 <X className="size-3.5" />
                 Withdraw the request

@@ -679,7 +679,7 @@ function CarPopupContent({
           <div className="flex min-w-0 items-start justify-between gap-4">
             <div className="min-w-0">
               {kicker.length > 0 && (
-                <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                   {kicker.map((part, i) => (
                     <span key={`${part}-${i}`} className="flex items-center gap-2">
                       {i > 0 && <span className="text-primary/40">·</span>}
@@ -788,7 +788,7 @@ function CarPopupContent({
                 <div className="relative space-y-5">
                   <div className="min-w-0">
                     {kicker.length > 0 && (
-                      <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                         {kicker.map((part, i) => (
                           <span key={`${part}-${i}`} className="flex items-center gap-2">
                             {i > 0 && <span className="text-primary/40">·</span>}
@@ -945,7 +945,7 @@ function InfoRow({
         stacked ? "" : "flex items-baseline justify-between gap-4",
       )}
     >
-      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </span>
       <span
@@ -1033,7 +1033,7 @@ function CarDetailActions({
  * dialog, the second cycles Normal → TH → STH → Chase, the third toggles.
  */
 const CHIP =
-  "inline-flex cursor-pointer select-none items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors active:scale-95";
+  "inline-flex cursor-pointer select-none items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold transition-colors active:scale-95";
 
 function CarChips({
   car,
@@ -1202,7 +1202,7 @@ function CarInTheBoxTab({ packCarId }: { packCarId?: string | null }) {
             <span className="min-w-0 truncate text-[15px] font-bold text-foreground">
               {entry?.name || id}
             </span>
-            <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{id}</span>
+            <span className="shrink-0 font-mono text-xs text-muted-foreground">{id}</span>
           </div>
         ))
       )}
@@ -1292,7 +1292,7 @@ function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
 
   return (
     <div className="mt-3 rounded-lg border border-border/80 bg-muted/20 p-2.5">
-      <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <Layers className="size-3.5" />
         Possible other boxes
       </p>
@@ -1304,7 +1304,7 @@ function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
           >
             <span
               className={cn(
-                "shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                "shrink-0 rounded px-1.5 py-0.5 text-xs font-bold tabular-nums",
                 definite
                   ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
                   : "bg-muted text-muted-foreground",
@@ -1322,10 +1322,10 @@ function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
             </span>
             <div className="min-w-0 flex-1">
               <div className="truncate text-xs font-semibold">{car.assortment || "No box"}</div>
-              <div className="truncate font-mono text-[10px] text-muted-foreground">
+              <div className="truncate font-mono text-xs text-muted-foreground">
                 {car.car_id}
               </div>
-              <div className="truncate text-[10px] text-muted-foreground">
+              <div className="truncate text-xs text-muted-foreground">
                 {because}
                 {Number(car.mrp) ? ` · ${inrPriceFull(Math.round(Number(car.mrp)))}` : ""}
               </div>
@@ -1545,11 +1545,11 @@ function CarRecordTab({ car, onViewInCatalog }: { car: Diecast; onViewInCatalog:
       {copies.length > 1 && (
         <div className="pt-6">
           <div className="flex items-baseline justify-between gap-4 pb-1">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Purchased {copies.length} times
             </p>
             {lines.some((l) => l.n > 1) && (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 Purchased multiple times
               </p>
             )}
@@ -1566,10 +1566,10 @@ function CarRecordTab({ car, onViewInCatalog }: { car: Diecast; onViewInCatalog:
                 </span>
                 {/* Which of them you are looking at. */}
                 {l.day === thisDay && l.shippingId === thisShipment && (
-                  <span className="text-[11px] font-medium text-muted-foreground">This one</span>
+                  <span className="text-xs font-medium text-muted-foreground">This one</span>
                 )}
                 {l.estimated && (
-                  <span className="text-[10px] italic text-muted-foreground">received</span>
+                  <span className="text-xs italic text-muted-foreground">received</span>
                 )}
               </span>
               <span className="shrink-0 text-[15px] font-bold text-primary">
@@ -1591,7 +1591,7 @@ function NameOnDate({ name, date }: { name: string; date: string }) {
       {name || "—"}
       {date && (
         <>
-          <span className="mx-1.5 text-[11px] font-normal text-muted-foreground">on</span>
+          <span className="mx-1.5 text-xs font-normal text-muted-foreground">on</span>
           {date}
         </>
       )}
@@ -1621,7 +1621,7 @@ function CarShelfRow({
   return (
     <section className="flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
       <div className="flex items-baseline justify-between gap-3 md:block md:w-40 md:shrink-0">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground max-md:hidden">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground max-md:hidden">
           More from
         </p>
         <p
@@ -1702,7 +1702,7 @@ function RelatedCarCard({
         <div className="line-clamp-2 text-xs font-semibold leading-snug text-foreground group-hover:text-primary transition-colors min-h-[2.1rem]">
           {title}
         </div>
-        <div className="mt-1 flex items-baseline justify-between gap-1 text-[10px] text-muted-foreground">
+        <div className="mt-1 flex items-baseline justify-between gap-1 text-xs text-muted-foreground">
           <span className="truncate">{subtitle}</span>
           {car.spent ? (
             <span className="shrink-0 tabular-nums font-medium text-foreground/80">
@@ -2133,7 +2133,7 @@ function CatalogRecordTab({
         const edited = Boolean(sib.updated_by);
         return (
           <div key={sib.car_id} className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               {sib.assortment || "Entry"}
             </p>
             <InfoRow stacked={stacked} label="Catalogue ID" accent>
@@ -2568,7 +2568,7 @@ function CatalogDetailsContent({
           <div className="flex min-w-0 items-start justify-between gap-4">
             <div className="min-w-0">
               {kicker.length > 0 && (
-                <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                   {kicker.map((part, i) => (
                     <span key={`${part}-${i}`} className="flex items-center gap-2">
                       {i > 0 && <span className="text-primary/40">·</span>}
@@ -2661,7 +2661,7 @@ function CatalogDetailsContent({
                 <div className="relative space-y-5">
                   <div className="min-w-0">
                     {kicker.length > 0 && (
-                      <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-primary">
+                      <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
                         {kicker.map((part, i) => (
                           <span key={`${part}-${i}`} className="flex items-center gap-2">
                             {i > 0 && <span className="text-primary/40">·</span>}
@@ -2805,7 +2805,7 @@ function PackContents({ packCarId }: { packCarId?: string | null }) {
             {count} car{count === 1 ? "" : "s"}
           </span>
           {declared > 0 && members.length !== declared && (
-            <span className="text-[11px] text-muted-foreground/80">{members.length} listed</span>
+            <span className="text-xs text-muted-foreground/80">{members.length} listed</span>
           )}
         </div>
 
@@ -2822,12 +2822,12 @@ function PackContents({ packCarId }: { packCarId?: string | null }) {
                 key={id}
                 className="flex min-w-0 items-center gap-2 rounded-lg border border-border bg-muted/20 px-2 py-1.5"
               >
-                <span className="w-4 shrink-0 text-center text-[11px] font-semibold tabular-nums text-muted-foreground">
+                <span className="w-4 shrink-0 text-center text-xs font-semibold tabular-nums text-muted-foreground">
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-xs font-semibold">{entry?.name || id}</div>
-                  <div className="truncate text-[10px] text-muted-foreground">
+                  <div className="truncate text-xs text-muted-foreground">
                     {entry
                       ? carSubLine({
                           brand: entry.brand,

@@ -24,7 +24,7 @@ export function CopiesBadge({
 
   const look =
     "inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-1.5 " +
-    "text-[11px] font-bold leading-[1.4] tabular-nums text-primary";
+    "text-xs font-bold leading-[1.4] tabular-nums text-primary";
 
   if (!onToggle) {
     return (

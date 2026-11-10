@@ -85,7 +85,7 @@ export function HandleFixDialog() {
             aria-label="New user ID"
             className="font-mono"
           />
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {problem ?? "Looks good. Lowercase letters, numbers and underscores."}
           </p>
         </div>
@@ -100,7 +100,7 @@ export function HandleFixDialog() {
           Save it
         </Button>
 
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground">
           Your email still signs you in either way. Nothing else about the account changes.
         </p>
       </DialogContent>
