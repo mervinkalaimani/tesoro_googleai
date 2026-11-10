@@ -32,6 +32,8 @@ import { writeFileSync } from "node:fs";
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
 const onlyNew = args.includes("--only-new"); // the daily run: skip rows already synced
+const ci = args.indexOf("--cars"); // --cars ID,ID: only these catalogue ids
+const only = ci >= 0 ? new Set(args[ci + 1].split(",")) : null;
 const li = args.indexOf("--limit");
 const limit = li >= 0 ? Number(args[li + 1]) || Infinity : Infinity;
 
@@ -86,12 +88,21 @@ function parseDetail(h) {
   const item = /Item No\.\s*(.+?)\s+Scale\b/.exec(flat)?.[1]?.trim() ?? "";
   const desc =
     /Description\s+(.+?)\s+(?:Categories|Select Categories)\b/.exec(flat)?.[1]?.trim() ?? "";
-  // Gallery: the cover (picfile/), then picfile_list/ extras. The second
-  // picture is the first extra.
-  const extras = [
-    ...new Set([...h.matchAll(/src="(upload\/picfile_list\/[^"]+)"/g)].map((m) => m[1])),
+  // Gallery: the cover first, then the extras in page order. Newer pages keep
+  // the extras in picfile_list/, older ones in mini_gt/products_gif/; either
+  // way the second picture is the second one listed. Only what comes before
+  // "Item No." is the gallery: after it are other products' thumbnails.
+  const head = h.slice(0, Math.max(0, h.indexOf("Item No.")));
+  const pics = [
+    ...new Set(
+      [
+        ...head.matchAll(
+          /src="(upload\/(?:picfile|picfile_list|mini_gt\/products_gif\/product_pic_big)\/[^"]+)"/g,
+        ),
+      ].map((m) => m[1]),
+    ),
   ];
-  const second = extras[0] ? `${SITE}/${extras[0]}` : null;
+  const second = pics[1] ? `${SITE}/${pics[1]}` : null;
   return { item, desc, second };
 }
 
@@ -168,7 +179,7 @@ async function rows() {
 }
 
 const report = { when: new Date().toISOString(), apply, updated: [], skipped: [] };
-const all = (await rows()).slice(0, limit);
+const all = (await rows()).filter((r) => !only || only.has(r.car_id)).slice(0, limit);
 console.log(
   `${all.length} catalogue rows (Mini GT, Kaido House, Qube Carz). ${apply ? "APPLYING" : "dry run"}`,
 );
