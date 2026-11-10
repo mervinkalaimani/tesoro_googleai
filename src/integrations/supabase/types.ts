@@ -113,6 +113,8 @@ export type Database = {
           created_by: string | null;
           expected_date: string | null;
           image_source_url: string | null;
+          synced_at: string | null;
+          synced_source: string | null;
           image_url: string | null;
           is_multipack: boolean;
           make: string;
@@ -144,6 +146,8 @@ export type Database = {
           created_by?: string | null;
           expected_date?: string | null;
           image_source_url?: string | null;
+          synced_at?: string | null;
+          synced_source?: string | null;
           image_url?: string | null;
           is_multipack?: boolean;
           make?: string;
@@ -175,6 +179,8 @@ export type Database = {
           created_by?: string | null;
           expected_date?: string | null;
           image_source_url?: string | null;
+          synced_at?: string | null;
+          synced_source?: string | null;
           image_url?: string | null;
           is_multipack?: boolean;
           make?: string;

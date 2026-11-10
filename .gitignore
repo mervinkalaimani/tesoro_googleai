@@ -45,3 +45,4 @@ dist-ssr
 
 # Brag videos: render output, not source.
 brag-output/
+sync-report-*.json

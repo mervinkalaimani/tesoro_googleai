@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
+  BadgeCheck,
   Check,
   Filter,
   Layers,
@@ -48,6 +49,7 @@ import {
 } from "@/components/view-toggle";
 import { BlisterTile } from "@/components/blister-tile";
 import { CompactCarCard } from "@/components/compact-car-card";
+import { SyncedBadge } from "@/components/synced-badge";
 import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
@@ -1275,6 +1277,7 @@ function CatalogCard({
           </span>
         )}
         <div className="absolute right-2 top-2 flex items-center gap-1">
+          <SyncedBadge car={c} />
           {isCarIso && (
             <span
               title="On your ISO list"
@@ -1388,6 +1391,9 @@ function CatalogTable({
                 <div className="flex items-start justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
+                    {c.synced_at && (
+                      <BadgeCheck aria-label="Synced" className="size-3.5 shrink-0 text-sky-400" />
+                    )}
                     {isPreOrder(c) && (
                       <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.2 text-xs font-semibold text-amber-500">
                         PO
