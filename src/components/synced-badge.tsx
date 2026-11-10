@@ -29,3 +29,16 @@ export function SyncedBadge({
     </span>
   );
 }
+
+/** The same mark as an icon on a photograph, for tiles with no room for a word. */
+export function SyncedMark({ synced }: { synced?: boolean }) {
+  if (!synced) return null;
+  return (
+    <span
+      title="Synced: photo and details checked against the maker's site"
+      className="pointer-events-auto absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-sky-500 text-white shadow-sm"
+    >
+      <BadgeCheck aria-label="Synced" className="size-3.5" />
+    </span>
+  );
+}

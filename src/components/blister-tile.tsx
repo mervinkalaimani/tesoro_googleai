@@ -1,3 +1,4 @@
+import { SyncedMark } from "@/components/synced-badge";
 import { CopiesBadge } from "@/components/copies-badge";
 import { ChaseMark, FavouriteMark, ChangedDot } from "@/components/car-marks";
 import { StatusPill } from "@/components/status-pill";
@@ -20,6 +21,7 @@ export function BlisterTile({
   car,
   onOpen,
   caption,
+  synced,
   copies = 1,
   className = "",
 }: {
@@ -27,6 +29,8 @@ export function BlisterTile({
   onOpen: () => void;
   /** One short word at the end of the second line — "Owned", a price, a day. */
   caption?: string;
+  /** The catalogue entry has been checked against the maker's site. */
+  synced?: boolean;
   copies?: number;
   className?: string;
 }) {
@@ -60,6 +64,7 @@ export function BlisterTile({
           }
         />
 
+        <SyncedMark synced={synced} />
         {copies > 1 && (
           <div className="pointer-events-none absolute bottom-1 left-1">
             <CopiesBadge n={copies} className="bg-black/75 backdrop-blur-sm" />
