@@ -283,9 +283,7 @@ export function AppSidebar() {
               owner's, not every admin's. */}
           {isOwner && (
             <div className="border-b border-sidebar-border pb-3">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">
-                Database
-              </div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Database</div>
               <Link
                 to="/settings"
                 className="mt-1 flex items-center gap-1.5 text-sm text-foreground transition-colors hover:text-primary"
@@ -303,9 +301,7 @@ export function AppSidebar() {
           )}
 
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              Total cars
-            </div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Total cars</div>
             <div className="text-display text-lg font-semibold tabular-nums">
               {stats.total.toLocaleString()}
             </div>
@@ -322,7 +318,7 @@ export function AppSidebar() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-6"
+                      className="size-8"
                       onClick={() => {
                         if (hideInvestment) setLocalReveal((v) => !v);
                         else setHideInvestment(true);

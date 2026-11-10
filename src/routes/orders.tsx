@@ -192,7 +192,12 @@ function ShipmentCard({
           <HeaderFact
             label={s.delivered ? "Delivered" : "Expected"}
             value={shortDate(s.eta)}
-            className="text-amber-500"
+            // Colour means something here: only an ETA that has passed is red.
+            className={
+              !s.delivered && Date.parse(s.eta) < Date.now() - 864e5
+                ? "text-destructive"
+                : undefined
+            }
           />
           <HeaderFact label="Total cost" value={inrFull(s.value)} align="right" />
         </dl>

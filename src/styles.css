@@ -588,6 +588,16 @@ input[type="date"]::-webkit-date-and-time-value {
   animation: tesoro-sheen-spin 4s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
+  /* Everything else that moves: still reaches its end state, just without the
+     travel. Spinners keep turning, because a stopped one reads as a hang. */
+  *:not(.animate-spin),
+  *:not(.animate-spin)::before,
+  *:not(.animate-spin)::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
   #tesoro-splash .tesoro-splash-mark,
   .animate-nav-split,
   .animate-nav-merge,
