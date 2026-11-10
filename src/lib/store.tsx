@@ -69,7 +69,7 @@ export const FONT_SIZE_OPTIONS: {
  * When the home page shows "Arriving soon".
  *
  * "auto" is the useful one: the section is a stand-in, filling the gap left by
- * Recently added and New Pre Orders on a quiet week rather than competing with
+ * Recently added and New pre-orders on a quiet week rather than competing with
  * them on a busy one. The other two are there because a preference that can
  * only mean one thing is not a preference.
  */

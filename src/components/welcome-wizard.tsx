@@ -622,7 +622,7 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
       {step === 2 && (
         <div className="space-y-4">
           <Shelf
-            title="New Pre Orders"
+            title="New pre-orders"
             hint="The newest castings other collectors have pre-ordered"
             icon={<ShoppingBag className="size-4 text-accent" />}
           >

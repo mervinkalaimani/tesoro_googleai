@@ -65,7 +65,7 @@ const NAV_GROUPS: {
     title: "My Orders",
     items: [
       { title: "My Orders", url: "/orders", icon: Truck, needs: "plus" },
-      { title: "Pre Orders", url: "/preorders", icon: ShoppingBag, needs: "pro" },
+      { title: "Pre-orders", url: "/preorders", icon: ShoppingBag, needs: "pro" },
       { title: "Duplicates", url: "/duplicates", icon: Copy, needs: "pro" },
     ],
   },

@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
  */
 const SECTIONS_BY_PLAN: Record<PaidPlan, string[]> = {
   plus: ["My Orders"],
-  pro: ["Favourites", "Collection", "Duplicates", "Habit", "Sellers", "My Orders", "Pre Orders"],
+  pro: ["Favourites", "Collection", "Duplicates", "Habit", "Sellers", "My Orders", "Pre-orders"],
 };
 
 /**

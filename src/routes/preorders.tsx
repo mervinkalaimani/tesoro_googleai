@@ -36,13 +36,13 @@ import { ProGate } from "@/components/pro-gate";
 export const Route = createFileRoute("/preorders")({
   head: () => ({
     meta: [
-      { title: "Pre Orders | VIIV" },
+      { title: "Pre-orders | VIIV" },
       {
         name: "description",
         content:
           "Track diecast pre-orders with seller, order date, ETA, payment status, cost, advance paid and remaining balance.",
       },
-      { property: "og:title", content: "Pre Orders | VIIV" },
+      { property: "og:title", content: "Pre-orders | VIIV" },
       {
         property: "og:description",
         content:
@@ -53,7 +53,7 @@ export const Route = createFileRoute("/preorders")({
     ],
   }),
   component: () => (
-    <ProGate title="Pre Orders">
+    <ProGate title="Pre-orders">
       <PreOrdersPage />
     </ProGate>
   ),
@@ -498,7 +498,7 @@ function PreOrdersPage() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
       <PageHeading
-        title="Pre Orders"
+        title="Pre-orders"
         subtitle={`${rows.length} ${rows.length === 1 ? "car" : "cars"} on pre-order`}
       />
 

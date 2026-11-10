@@ -337,7 +337,7 @@ export function FeatureTour() {
             {slide.text}
           </DialogDescription>
 
-          <div className="flex items-center gap-1.5 pt-2" role="tablist" aria-label="Slides">
+          <div className="flex items-center gap-2 pt-2" role="tablist" aria-label="Slides">
             {slides.map((s, n) => (
               <button
                 key={s.title}
@@ -347,11 +347,20 @@ export function FeatureTour() {
                 aria-label={s.title}
                 onClick={() => setI(n)}
                 className={cn(
-                  "h-1.5 rounded-full transition-all",
+                  "relative h-1.5 rounded-full transition-all before:absolute before:-inset-x-1 before:-inset-y-3.5 before:content-['']",
                   n === i ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/30",
                 )}
               />
             ))}
+            {i > 0 && !last && (
+              <button
+                type="button"
+                onClick={close}
+                className="ml-auto px-2 py-2 text-xs text-muted-foreground hover:text-foreground"
+              >
+                Skip tour
+              </button>
+            )}
           </div>
 
           <div className="flex items-center justify-between gap-2 pt-3">

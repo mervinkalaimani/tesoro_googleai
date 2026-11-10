@@ -49,7 +49,7 @@ const HABIT_TABS = [
 /** Sub-tabs shown when navigating into My Orders. */
 const ORDERS_TABS = [
   { title: "My Orders", url: "/orders", icon: Truck },
-  { title: "Pre Orders", url: "/preorders", icon: ShoppingBag },
+  { title: "Pre-orders", url: "/preorders", icon: ShoppingBag },
   { title: "Duplicates", url: "/duplicates", icon: Copy },
 ] as const;
 

@@ -1013,7 +1013,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
-          <h2 className="text-display text-lg font-semibold">New Pre Orders</h2>
+          <h2 className="text-display text-lg font-semibold">New pre-orders</h2>
           <p className="text-xs text-muted-foreground">
             The newest castings other collectors have pre-ordered
           </p>
@@ -1388,7 +1388,7 @@ function TopDetailDialog({
 /**
  * Castings that have just come out.
  *
- * The other shelf on this page is "New Pre Orders" — what people have started
+ * The other shelf on this page is "New pre-orders" — what people have started
  * waiting for. This is the other end of that: what the waiting was for. It
  * fills itself in, because the database marks a casting released the first time
  * anybody's copy of it arrives, so the first person to receive one tells

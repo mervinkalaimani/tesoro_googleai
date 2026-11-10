@@ -83,7 +83,7 @@ type Plan = {
 const SECTIONS: { label: string; from: PaidPlan }[] = [
   { label: "My Orders", from: "plus" },
   { label: "Favourites and Collection", from: "pro" },
-  { label: "Pre Orders and Duplicates", from: "pro" },
+  { label: "Pre-orders and Duplicates", from: "pro" },
   { label: "Habit and Sellers", from: "pro" },
 ];
 

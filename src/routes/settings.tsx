@@ -759,7 +759,7 @@ export function SettingsPage() {
                     {arrivingSoon === "auto"
                       ? "Shown only on a week with nothing recently added and no new pre-orders."
                       : arrivingSoon === "always"
-                        ? "Always shown, alongside Recently added and New Pre Orders."
+                        ? "Always shown, alongside Recently added and New pre-orders."
                         : arrivingSoon === "custom"
                           ? "Always shown, over the window you pick below."
                           : "Hidden."}{" "}
@@ -810,7 +810,7 @@ export function SettingsPage() {
 
               <div className="flex items-center justify-between gap-4 p-4">
                 <div className="min-w-0">
-                  <div className="text-[15px] font-medium text-foreground">New Pre Orders</div>
+                  <div className="text-[15px] font-medium text-foreground">New pre-orders</div>
                   <div className="text-xs text-muted-foreground">
                     What other collectors have pre-ordered in the last three days, ready to add.
                   </div>
