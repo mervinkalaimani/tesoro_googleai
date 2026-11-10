@@ -680,10 +680,7 @@ function TransitTracker({
                       <td className="px-4 py-2.5">
                         <div className="flex flex-wrap gap-1">
                           {s.brands.slice(0, 4).map((b) => (
-                            <span
-                              key={b}
-                              className="rounded-full bg-muted px-1.5 py-0.5 text-xs"
-                            >
+                            <span key={b} className="rounded-full bg-muted px-1.5 py-0.5 text-xs">
                               {b}
                             </span>
                           ))}
