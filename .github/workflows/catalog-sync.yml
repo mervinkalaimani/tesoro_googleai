@@ -1,0 +1,55 @@
+# Every day, look for catalogue cars the maker's site now knows about.
+#
+# Mini GT, Kaido House and Qube Carz are filled from minigt.tsm-models.com by
+# scripts/sync-catalog-makers.mjs. Only rows not yet synced are visited, so a
+# car the site does not list yet is simply tried again tomorrow, and one that
+# has been synced is never touched twice.
+#
+# Setup (once): save the Supabase service-role key as the repository secret
+# SUPABASE_SERVICE_ROLE_KEY. Without it the job skips cleanly.
+
+name: Catalogue maker sync
+
+on:
+  schedule:
+    - cron: "30 21 * * *" # 03:00 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Skip without the key
+        if: env.SUPABASE_SERVICE_ROLE_KEY == ''
+        run: echo "SUPABASE_SERVICE_ROLE_KEY is not set; nothing to do."
+      - uses: actions/checkout@v4
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+      - uses: actions/setup-node@v4
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+        run: npm ci --ignore-scripts
+      - name: Sync new cars
+        if: env.SUPABASE_SERVICE_ROLE_KEY != ''
+        run: node scripts/sync-catalog-makers.mjs --apply --only-new
+      - name: Keep the report
+        if: always() && env.SUPABASE_SERVICE_ROLE_KEY != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: sync-report
+          path: sync-report-applied.json
+          if-no-files-found: ignore
+          retention-days: 30

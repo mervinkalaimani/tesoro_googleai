@@ -15,6 +15,7 @@
  * drawn from what people own, by `tesoro_casting_public_stats` in the database:
  * counts and a price band over at least three buyers, and never a name.
  */
+import { SyncedBadge } from "@/components/synced-badge";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -272,6 +273,11 @@ function CastingPage() {
               No photograph of this casting yet.
             </div>
           )}
+          {car.synced_at ? (
+            <div className="mt-2">
+              <SyncedBadge car={car} className="!bg-card !text-sky-500" />
+            </div>
+          ) : null}
         </div>
 
         <div className="min-w-0">

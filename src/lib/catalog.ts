@@ -47,6 +47,9 @@ export type CatalogCar = {
    * not free to serve without saying whose they are.
    */
   image_source_url?: string | null;
+  /** When the maker-site job last checked this entry, and against which site. */
+  synced_at?: string | null;
+  synced_source?: string | null;
   /**
    * The assortment case or mix this casting shipped in, e.g. "2024 L".
    *
