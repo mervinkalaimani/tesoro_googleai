@@ -156,7 +156,7 @@ export function KpiTile({
       <Link
         to="/orders"
         search={{ tab: ordersTab }}
-        className={cn(shell, "transition-colors hover:border-primary/40 hover:bg-muted/40")}
+        className={cn(shell, "transition-all hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98]")}
         title={`Show ${label.toLowerCase()} orders`}
       >
         {body}
@@ -170,7 +170,7 @@ export function KpiTile({
     <Link
       to="/inventory"
       search={{ status }}
-      className={cn(shell, "transition-colors hover:border-primary/40 hover:bg-muted/40")}
+      className={cn(shell, "transition-all hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98]")}
       title={`Show ${label.toLowerCase()} cars in inventory`}
     >
       {body}

@@ -240,13 +240,13 @@ function ShipmentCard({
         />
         {s.shippingId ? (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onEdit}
             className="min-w-0 flex-1 gap-1.5 sm:flex-none"
           >
             <Pencil className="size-3.5" />
-            Update Order
+            Edit details
           </Button>
         ) : null}
         {!s.delivered && s.shippingId ? (

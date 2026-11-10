@@ -1304,6 +1304,9 @@ function TopTenGrid({
                     style={{ background: TOP_COLOURS[i] }}
                   />
                   <span className="truncate">{it.name}</span>
+                  <span className="shrink-0 font-medium tabular-nums text-foreground">
+                    {fmt(it.value)}
+                  </span>
                 </button>
               </li>
             ))}
