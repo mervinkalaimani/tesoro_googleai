@@ -18,6 +18,7 @@
  *
  *   node scripts/sync-catalog-makers.mjs                 # dry run, writes nothing
  *   node scripts/sync-catalog-makers.mjs --limit 10      # first ten rows only
+ *   node scripts/sync-catalog-makers.mjs --only-new      # skip rows already synced (the daily run)
  *   SUPABASE_SERVICE_ROLE_KEY=… node scripts/sync-catalog-makers.mjs --apply
  *
  * Run the migration that adds synced_at / synced_source first.
@@ -30,6 +31,7 @@ import { writeFileSync } from "node:fs";
 
 const args = process.argv.slice(2);
 const apply = args.includes("--apply");
+const onlyNew = args.includes("--only-new"); // the daily run: skip rows already synced
 const li = args.indexOf("--limit");
 const limit = li >= 0 ? Number(args[li + 1]) || Infinity : Infinity;
 
@@ -97,13 +99,19 @@ async function findByItemNo(itemNo) {
   const h = await get(`action=product-search&keywords=${encodeURIComponent(itemNo)}`);
   if (!h) return null;
   const ids = [...new Set([...h.matchAll(/product-detail&id=(\d+)/g)].map((m) => m[1]))];
-  for (const id of ids.slice(0, 3)) {
+  // The site lists a blister release as MGT01250-BL, and an event exclusive of
+  // the same casting as -BL2. The plain number wins; -BL is the fallback;
+  // -BL2 and the rest are somebody else's car.
+  let blister = null;
+  for (const id of ids.slice(0, 6)) {
     const d = await get(`action=product-detail&id=${id}`);
     if (!d) continue;
     const p = parseDetail(d);
-    if (p.item.toUpperCase() === itemNo.toUpperCase()) return p;
+    const got = p.item.toUpperCase();
+    if (got === itemNo.toUpperCase()) return p;
+    if (got === `${itemNo.toUpperCase()}-BL`) blister = p;
   }
-  return null;
+  return blister;
 }
 
 /** Qube Carz items read "027 - QZ01401": the catalogue's number is the first part. */
@@ -146,12 +154,12 @@ function plan(row) {
 async function rows() {
   const out = [];
   for (let from = 0; ; from += 1000) {
-    const { data, error } = await db
+    let q = db
       .from("tesoro_car_catalog")
       .select("car_id,brand,name,colour,car_number,image_url")
-      .in("brand", ["Mini GT", "Qube Carz"])
-      .order("car_id")
-      .range(from, from + 999);
+      .in("brand", ["Mini GT", "Qube Carz"]);
+    if (onlyNew) q = q.is("synced_at", null);
+    const { data, error } = await q.order("car_id").range(from, from + 999);
     if (error) throw error;
     out.push(...data);
     if (data.length < 1000) break;
