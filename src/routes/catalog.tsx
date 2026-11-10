@@ -699,6 +699,7 @@ function CatalogPage() {
               car={asCar(c)}
               onOpen={() => setViewing(c)}
               caption={caption}
+              synced={Boolean(c.synced_at)}
             />
           );
         })}
@@ -713,6 +714,7 @@ function CatalogPage() {
               car={asCar(c)}
               onOpen={() => setViewing(c)}
               caption={myIso.has(cid) ? "ISO" : owned.has(cid) ? "Owned" : undefined}
+              synced={Boolean(c.synced_at)}
             />
           );
         })}

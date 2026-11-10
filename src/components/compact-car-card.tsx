@@ -1,3 +1,4 @@
+import { SyncedMark } from "@/components/synced-badge";
 import { CopiesBadge } from "@/components/copies-badge";
 import { ChaseMark, FavouriteMark, ChangedDot } from "@/components/car-marks";
 import { StatusPill } from "@/components/status-pill";
@@ -21,6 +22,7 @@ export function CompactCarCard({
   car,
   onOpen,
   caption,
+  synced,
   detail,
   statusInPhoto = false,
   hideStatus = false,
@@ -38,6 +40,8 @@ export function CompactCarCard({
    * on some cards and not others is what makes a row of them ragged.
    */
   caption?: string;
+  /** The catalogue entry has been checked against the maker's site. */
+  synced?: boolean;
   /**
    * The third line, in place of the assortment. A shelf where every card is
    * the same kind of thing has better uses for that line — who it is coming
@@ -92,6 +96,8 @@ export function CompactCarCard({
           their height disagrees on where the photograph ends. */}
       <div className="relative shrink-0">
         <CarThumb car={car} className="aspect-[16/10] w-full" />
+
+        <SyncedMark synced={synced} />
 
         {copies > 1 && (
           <div className="pointer-events-none absolute bottom-1 left-1">

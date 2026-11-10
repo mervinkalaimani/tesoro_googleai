@@ -476,6 +476,8 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         is_multipack: Boolean(row.is_multipack),
         pack_size: row.pack_size ?? null,
         standalone: Boolean((row as { standalone?: boolean }).standalone),
+        synced_at: row.synced_at ?? null,
+        synced_source: row.synced_source ?? null,
       }));
       saveLocalCatalog(formatted);
       return formatted;
