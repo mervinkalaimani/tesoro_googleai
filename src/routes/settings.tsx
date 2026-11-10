@@ -337,17 +337,17 @@ export function SettingsPage() {
                   {display}
                 </span>
                 {isOwner && (
-                  <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                     Owner
                   </span>
                 )}
                 {!isOwner && isAdmin && (
-                  <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-500">
+                  <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-500">
                     Admin
                   </span>
                 )}
                 {isGuest && (
-                  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500">
+                  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500">
                     Demo
                   </span>
                 )}
@@ -601,7 +601,7 @@ export function SettingsPage() {
 
           {/* Appearance Group */}
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Appearance
             </div>
             <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
@@ -672,7 +672,7 @@ export function SettingsPage() {
 
           {/* Privacy Group */}
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Privacy
             </div>
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
@@ -714,7 +714,7 @@ export function SettingsPage() {
 
           {/* Released pre-orders */}
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Released PO
             </div>
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
@@ -748,7 +748,7 @@ export function SettingsPage() {
           {/* Arriving soon — moved here from Display, where it sat under a
               "Home" heading inside a page about theme and text size. */}
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Arriving Soon
             </div>
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
@@ -759,7 +759,7 @@ export function SettingsPage() {
                     {arrivingSoon === "auto"
                       ? "Shown only on a week with nothing recently added and no new pre-orders."
                       : arrivingSoon === "always"
-                        ? "Always shown, alongside Recently added and New Pre Orders."
+                        ? "Always shown, alongside Recently added and New pre-orders."
                         : arrivingSoon === "custom"
                           ? "Always shown, over the window you pick below."
                           : "Hidden."}{" "}
@@ -794,7 +794,7 @@ export function SettingsPage() {
           {/* The other two shelves. Switches rather than a segment each,
               because there is nothing to choose: they are on or they are not. */}
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Other shelves
             </div>
             <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
@@ -810,7 +810,7 @@ export function SettingsPage() {
 
               <div className="flex items-center justify-between gap-4 p-4">
                 <div className="min-w-0">
-                  <div className="text-[15px] font-medium text-foreground">New Pre Orders</div>
+                  <div className="text-[15px] font-medium text-foreground">New pre-orders</div>
                   <div className="text-xs text-muted-foreground">
                     What other collectors have pre-ordered in the last three days, ready to add.
                   </div>
@@ -818,7 +818,7 @@ export function SettingsPage() {
                 <Switch checked={showNewPreorders} onCheckedChange={setShowNewPreorders} />
               </div>
             </div>
-            <p className="px-1 pt-1 text-[11px] text-muted-foreground">
+            <p className="px-1 pt-1 text-xs text-muted-foreground">
               Switching one off also makes Arriving Soon&rsquo;s &ldquo;Auto&rdquo; treat it as
               empty, so the shelf still stands in on a quiet week.
             </p>
@@ -1056,7 +1056,7 @@ export function SettingsPage() {
               ))}
             </div>
           ))}
-          <p className="px-1 text-[11px] text-muted-foreground">
+          <p className="px-1 text-xs text-muted-foreground">
             VIIV {APP_VERSION} · a personal project, not a company.
           </p>
         </div>
@@ -1108,7 +1108,7 @@ export function SettingsPage() {
           {/* Admin: push to this device when someone new asks to join */}
           {(isAdmin || isOwner) && !isGuest && (
             <div className="space-y-1.5">
-              <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Admin
               </div>
               <AdminPushCard />
@@ -1117,7 +1117,7 @@ export function SettingsPage() {
 
           {/* Delivery Alerts */}
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Deliveries &amp; Shipments
             </div>
             <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
@@ -1176,7 +1176,7 @@ export function SettingsPage() {
 
           {/* In-App Alerts */}
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Banner Alerts
             </div>
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
@@ -1202,7 +1202,7 @@ export function SettingsPage() {
 
           {/* Notification Management */}
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               History &amp; Dismissals
             </div>
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
@@ -1241,7 +1241,7 @@ export function SettingsPage() {
           />
 
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Data Health &amp; Identifiers
             </div>
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
@@ -1258,7 +1258,7 @@ export function SettingsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Collection Integrity
             </div>
             <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
@@ -1354,7 +1354,7 @@ export function SettingsPage() {
           {isOwner ? (
             <div className="space-y-6">
               <div className="space-y-1.5">
-                <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Supabase Synchronization
                 </div>
                 <SupabaseSyncCard />
@@ -1385,7 +1385,7 @@ export function SettingsPage() {
           />
 
           <div className="space-y-1.5">
-            <div className="px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Web Image Lookup Provider
             </div>
             <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
@@ -1408,12 +1408,12 @@ export function SettingsPage() {
                           {engine.label}
                         </span>
                         {engine.value === "bing" && (
-                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                             Recommended
                           </span>
                         )}
                         {engine.value === "auto" && (
-                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
                             Smart Fallback
                           </span>
                         )}

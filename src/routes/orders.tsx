@@ -176,7 +176,7 @@ function ShipmentCard({
             <p className="truncate text-sm font-semibold text-muted-foreground">{s.seller}</p>
           </div>
           <span
-            className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[11px] ${statusTone(
+            className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-xs ${statusTone(
               s.status,
               s.delivered,
             )}`}
@@ -192,7 +192,12 @@ function ShipmentCard({
           <HeaderFact
             label={s.delivered ? "Delivered" : "Expected"}
             value={shortDate(s.eta)}
-            className="text-amber-500"
+            // Colour means something here: only an ETA that has passed is red.
+            className={
+              !s.delivered && Date.parse(s.eta) < Date.now() - 864e5
+                ? "text-destructive"
+                : undefined
+            }
           />
           <HeaderFact label="Total cost" value={inrFull(s.value)} align="right" />
         </dl>
@@ -205,7 +210,7 @@ function ShipmentCard({
           className="flex w-full items-center justify-between text-left sm:cursor-default"
           aria-expanded={mobileCarsOpen}
         >
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
             Shipment contents ({s.items.length} casting{s.items.length === 1 ? "" : "s"})
           </div>
           <div className="flex items-center gap-1 text-xs font-medium text-primary sm:hidden">
@@ -240,13 +245,13 @@ function ShipmentCard({
         />
         {s.shippingId ? (
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onEdit}
             className="min-w-0 flex-1 gap-1.5 sm:flex-none"
           >
             <Pencil className="size-3.5" />
-            Update Order
+            Edit details
           </Button>
         ) : null}
         {!s.delivered && s.shippingId ? (
@@ -282,7 +287,7 @@ function HeaderFact({
 }) {
   return (
     <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
-      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd className={`truncate text-sm font-semibold tabular-nums ${className}`}>{value}</dd>
     </div>
   );
@@ -535,7 +540,7 @@ function OrdersPage() {
             value={tab}
             onChange={setTab}
             options={visibleTabs}
-            className="w-auto max-sm:text-[11px] max-sm:[&>button]:px-2"
+            className="w-auto max-sm:text-xs max-sm:[&>button]:px-2"
           />
         }
         right={
@@ -549,7 +554,7 @@ function OrdersPage() {
                 { value: "shipping", label: "Parcel" },
                 { value: "order", label: "Order" },
               ]}
-              className="w-auto shrink-0 max-sm:text-[11px] max-sm:[&>button]:px-2"
+              className="w-auto shrink-0 max-sm:text-xs max-sm:[&>button]:px-2"
             />
             <FilterSelect
               value={seller}

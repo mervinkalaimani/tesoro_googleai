@@ -146,7 +146,7 @@ function MonthGrid({
         <h2 className="text-display text-base font-semibold tracking-tight">
           {monthLabel(`${month}-01`)}
         </h2>
-        <span className="text-[11px] text-muted-foreground">
+        <span className="text-xs text-muted-foreground">
           {list.length} {list.length === 1 ? "casting" : "castings"}
         </span>
       </header>
@@ -155,7 +155,7 @@ function MonthGrid({
         {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
           <span
             key={d}
-            className="bg-card py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground"
+            className="bg-card py-1.5 text-xs uppercase tracking-wider text-muted-foreground"
           >
             {d}
           </span>
@@ -171,7 +171,7 @@ function MonthGrid({
           const due = byDay.get(day);
           if (!due) {
             return (
-              <span key={day} className="min-h-14 bg-card p-1.5 text-[11px] text-muted-foreground">
+              <span key={day} className="min-h-14 bg-card p-1.5 text-xs text-muted-foreground">
                 {day}
               </span>
             );
@@ -180,14 +180,14 @@ function MonthGrid({
           return (
             <HoverCard key={day} openDelay={80} closeDelay={80}>
               <HoverCardTrigger asChild>
-                <span className="min-h-14 cursor-default bg-card p-1.5 text-[11px] font-medium text-foreground ring-inset hover:ring-1 hover:ring-primary/40">
+                <span className="min-h-14 cursor-default bg-card p-1.5 text-xs font-medium text-foreground ring-inset hover:ring-1 hover:ring-primary/40">
                   {day}
                   <span className="mt-1 flex items-center gap-1">
-                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold text-primary">
+                    <span className="rounded bg-primary/15 px-1.5 py-0.5 text-xs font-semibold text-primary">
                       {due.length}
                     </span>
                     {yours > 0 ? (
-                      <span className="rounded bg-sky-500/15 px-1 py-0.5 text-[9px] font-semibold text-sky-700 dark:text-sky-400">
+                      <span className="rounded bg-sky-500/15 px-1 py-0.5 text-xs font-semibold text-sky-700 dark:text-sky-400">
                         {yours} yours
                       </span>
                     ) : null}
@@ -195,7 +195,7 @@ function MonthGrid({
                 </span>
               </HoverCardTrigger>
               <HoverCardContent align="start" className="w-80 p-0">
-                <p className="border-b border-border px-3 py-2 text-[11px] font-semibold text-foreground">
+                <p className="border-b border-border px-3 py-2 text-xs font-semibold text-foreground">
                   {dayLabel(`${month}-${String(day).padStart(2, "0")}`)} · {due.length}{" "}
                   {due.length === 1 ? "casting" : "castings"}
                 </p>
@@ -207,11 +207,11 @@ function MonthGrid({
                         <span className="block truncate text-xs font-medium text-foreground">
                           {castingName(row as CatalogCar)}
                         </span>
-                        <span className="block truncate text-[10px] text-muted-foreground">
+                        <span className="block truncate text-xs text-muted-foreground">
                           {subtitleOf(row)}
                         </span>
                         {owned ? (
-                          <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                          <span className="mt-0.5 block text-xs text-muted-foreground">
                             {owned.seller || "No seller"} · paid {inrFull(owned.paid || 0)} ·
                             balance {inrFull(balanceOf(owned))}
                           </span>
@@ -258,10 +258,10 @@ function balanceOf(car: Diecast): number {
 function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
   return (
     <span className="min-w-0 text-right">
-      <span className="block text-[9px] uppercase tracking-wider text-muted-foreground">
+      <span className="block text-xs uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
-      <span className={`block truncate text-[11px] font-semibold tabular-nums ${tone}`}>
+      <span className={`block truncate text-xs font-semibold tabular-nums ${tone}`}>
         {value}
       </span>
     </span>
@@ -430,7 +430,7 @@ function ReleasesPage() {
               <h2 className="text-display text-base font-semibold tracking-tight">
                 {monthLabel(`${key}-01`)}
               </h2>
-              <span className="text-[11px] text-muted-foreground">
+              <span className="text-xs text-muted-foreground">
                 {list.length} {list.length === 1 ? "casting" : "castings"}
               </span>
             </header>
@@ -440,14 +440,14 @@ function ReleasesPage() {
                 const owned = ownedByCasting.get(row.car_id.toUpperCase());
                 const inside = (
                   <>
-                    <span className="w-14 shrink-0 text-[11px] font-medium tabular-nums text-muted-foreground">
+                    <span className="w-14 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
                       {dayLabel(String(row.expected_date))}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium text-foreground">
                         {castingName(row as CatalogCar)}
                       </span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
+                      <span className="block truncate text-xs text-muted-foreground">
                         {subtitleOf(row)}
                       </span>
                     </span>
@@ -467,12 +467,12 @@ function ReleasesPage() {
                       />
                     </span>
                     {owned ? (
-                      <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
+                      <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-400">
                         Yours
                       </span>
                     ) : null}
                     {isWanted ? (
-                      <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                      <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
                         On your list
                       </span>
                     ) : null}

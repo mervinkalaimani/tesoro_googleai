@@ -73,10 +73,10 @@ export function BlisterTile({
           {car.status ? (
             <StatusPill
               status={car.status}
-              className="px-1.5 py-0 text-[9px] leading-tight shadow-sm backdrop-blur-sm"
+              className="px-1.5 py-0 text-xs leading-tight shadow-sm backdrop-blur-sm"
             />
           ) : caption ? (
-            <span className="rounded-full bg-black/75 px-1.5 text-[9px] font-medium leading-tight text-white backdrop-blur-sm">
+            <span className="rounded-full bg-black/75 px-1.5 text-xs font-medium leading-tight text-white backdrop-blur-sm">
               {caption}
             </span>
           ) : null}
@@ -100,14 +100,14 @@ export function BlisterTile({
 
       <div className="flex min-w-0 flex-1 flex-col p-2">
         <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-xs font-semibold leading-tight group-hover:text-primary">
+          <span className="line-clamp-2 text-sm font-semibold leading-tight group-hover:text-primary">
             {title}
           </span>
           <ChangedDot car={car} />
         </div>
         {/* One line, in the order the card itself prints them. Middle dots,
             and nothing left standing where a part is missing. */}
-        <div className="mt-0.5 truncate text-[10px] text-muted-foreground">
+        <div className="mt-0.5 truncate text-xs text-muted-foreground">
           {[car.brand, car.assortment, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
         </div>
       </div>

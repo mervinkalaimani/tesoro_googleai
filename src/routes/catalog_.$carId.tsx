@@ -145,7 +145,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
   if (!v) return null;
   return (
     <div className="border-b border-border/60 py-2">
-      <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 text-sm text-foreground">{v}</dd>
     </div>
   );
@@ -253,7 +253,7 @@ function CastingPage() {
                 className="w-full rounded-xl border border-border bg-card object-contain"
               />
               {car.image_source_url ? (
-                <figcaption className="mt-1.5 text-[11px] text-muted-foreground">
+                <figcaption className="mt-1.5 text-xs text-muted-foreground">
                   Photo from{" "}
                   <a
                     href={car.image_source_url}
@@ -297,12 +297,12 @@ function CastingPage() {
                   becomes what it goes for rather than what it lists at. */}
               {typical || mrp ? (
                 <>
-                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">
                     {typical ? "Typically sold for" : "MRP"}
                   </p>
                   <p className="text-lg font-semibold text-foreground">{typical || mrp}</p>
                   {typical && typicalNote ? (
-                    <p className="text-[11px] text-muted-foreground">{typicalNote}</p>
+                    <p className="text-xs text-muted-foreground">{typicalNote}</p>
                   ) : null}
                 </>
               ) : null}

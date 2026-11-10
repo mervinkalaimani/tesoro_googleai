@@ -633,13 +633,13 @@ function SubscriptionRow({
               </Badge>
             )}
           </div>
-          <div className="truncate text-[11px] text-muted-foreground">{u.email_id}</div>
+          <div className="truncate text-xs text-muted-foreground">{u.email_id}</div>
         </div>
 
         {/* A grid rather than a row of whatever width each value happens to
             be: these are read down the list as much as across one, and the
             plan is the first thing the eye goes to, so it is a column too. */}
-        <div className="grid shrink-0 grid-cols-[3.5rem_6.5rem_7rem_5.5rem] items-center text-[11px]">
+        <div className="grid shrink-0 grid-cols-[3.5rem_6.5rem_7rem_5.5rem] items-center text-xs">
           <Badge
             className={cn(
               "w-fit",
@@ -786,7 +786,7 @@ function SubscriptionRow({
         <div className="mt-2 space-y-1.5 rounded-lg border border-primary/40 bg-primary/5 px-2.5 py-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <Sparkles className="size-3.5 shrink-0 text-primary" />
-            <span className="text-[11px] font-medium">
+            <span className="text-xs font-medium">
               Asked for {wanted === "plus" ? "Plus" : "Pro"}, {wantedMonths} month
               {wantedMonths === 1 ? "" : "s"}
             </span>
@@ -797,7 +797,7 @@ function SubscriptionRow({
               size="sm"
               variant="outline"
               disabled={busy}
-              className="ml-auto h-6 gap-1 px-2.5 text-[11px]"
+              className="ml-auto h-6 gap-1 px-2.5 text-xs"
               onClick={onSendPayInfo}
               title="They already have it; this sends it again"
             >
@@ -808,7 +808,7 @@ function SubscriptionRow({
             <Button
               size="sm"
               disabled={busy}
-              className="h-6 px-2.5 text-[11px]"
+              className="h-6 px-2.5 text-xs"
               onClick={() => onGrant(wanted as PaidPlan, wantedMonths)}
             >
               Grant it
@@ -829,7 +829,7 @@ function SubscriptionRow({
                 alt=""
                 className="size-9 shrink-0 rounded border border-border object-cover"
               />
-              <span className="min-w-0 text-[11px]">
+              <span className="min-w-0 text-xs">
                 <strong className="font-semibold">Receipt sent</strong>
                 {u.pay_receipt_at && (
                   <span className="text-muted-foreground">

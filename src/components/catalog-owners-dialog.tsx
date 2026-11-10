@@ -264,7 +264,7 @@ export function CatalogOwnersDialog({
                       {u.display_name}
                     </p>
                     {u.user_id && u.display_name !== u.user_id && (
-                      <p className="text-[11px] text-muted-foreground font-mono truncate">
+                      <p className="text-xs text-muted-foreground font-mono truncate">
                         @{u.user_id}
                       </p>
                     )}
@@ -277,7 +277,7 @@ export function CatalogOwnersDialog({
                         more than one. Everybody owning the same one says nothing,
                         so it only appears where the answers differ. */}
                     {mixedAssortments && u.assortment && (
-                      <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-[11px]">
+                      <span className="rounded-full border border-border/70 bg-muted/40 px-2 py-0.5 text-xs">
                         {u.assortment}
                       </span>
                     )}
@@ -294,13 +294,13 @@ export function CatalogOwnersDialog({
                         type="button"
                         onClick={() => onOpenParcel(myParcel(u))}
                         title={`Everything that came in parcel ${myParcel(u)}`}
-                        className="mt-0.5 inline-flex cursor-pointer items-center gap-1.5 font-mono text-[11px] text-primary transition-colors hover:text-primary/80 hover:underline"
+                        className="mt-0.5 inline-flex cursor-pointer items-center gap-1.5 font-mono text-xs text-primary transition-colors hover:text-primary/80 hover:underline"
                       >
                         <Package className="size-3" />
                         {myParcel(u)}
                       </button>
                     ) : (
-                      <div className="mt-0.5 inline-flex items-center gap-1.5 font-mono text-[11px] text-muted-foreground/80">
+                      <div className="mt-0.5 inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground/80">
                         <Package className="size-3 text-muted-foreground/60" />
                         {myParcel(u)}
                       </div>

@@ -267,13 +267,13 @@ export function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: (
             {matches.length > 0 && (
               <section>
                 <div className="mb-1.5 flex items-baseline justify-between px-1">
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Cars
                   </h2>
                   <button
                     type="button"
                     onClick={onClose}
-                    className="text-[11px] font-medium text-primary hover:underline"
+                    className="text-xs font-medium text-primary hover:underline"
                   >
                     Show all {matches.length.toLocaleString()}
                   </button>
@@ -324,7 +324,7 @@ export function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: (
 
             {groups.map((g) => (
               <section key={g.title}>
-                <h2 className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <h2 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {g.title}
                 </h2>
                 <div className="flex flex-wrap gap-1.5">
@@ -339,7 +339,7 @@ export function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: (
                       className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/80 bg-card px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 active:scale-[0.97]"
                     >
                       <span className="truncate">{it.value}</span>
-                      <span className="text-[10px] tabular-nums text-muted-foreground">
+                      <span className="text-xs tabular-nums text-muted-foreground">
                         {it.count}
                       </span>
                     </button>
@@ -363,7 +363,7 @@ export function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: (
             )}
 
             {/* The syntax, taught rather than offered as things to tap. */}
-            <ul className="flex flex-wrap gap-x-3 gap-y-1 border-t border-border/60 px-1 pt-3 text-[11px] text-muted-foreground">
+            <ul className="flex flex-wrap gap-x-3 gap-y-1 border-t border-border/60 px-1 pt-3 text-xs text-muted-foreground">
               {SEARCH_TIPS.map(([code, text]) => (
                 <li key={code}>
                   Use <b className="font-semibold text-foreground">{code}</b> {text}

@@ -512,7 +512,7 @@ export function ShippingBatchDialog({
                     <button
                       type="button"
                       onClick={() => setUseCustom(!useCustom)}
-                      className="text-[11px] text-primary hover:underline"
+                      className="text-xs text-primary hover:underline"
                     >
                       {useCustom ? "Choose from list" : "+ Enter custom ID"}
                     </button>
@@ -557,7 +557,7 @@ export function ShippingBatchDialog({
                 {/* Delivered cars were previously filtered out with no way back,
                   so a batch that had already arrived could not be corrected —
                   its ID was not even in the list. */}
-                <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-[11px] text-muted-foreground">
+                <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-xs text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={!hideDelivered}
@@ -590,12 +590,12 @@ export function ShippingBatchDialog({
                     for and have now actually bought, had no way in short of
                     editing it and retyping the batch ID by hand. */}
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-auto text-[11px] text-muted-foreground">Add a car</span>
+                    <span className="mr-auto text-xs text-muted-foreground">Add a car</span>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 gap-1 px-2 text-[11px]"
+                      className="h-7 gap-1 px-2 text-xs"
                       onClick={() => setPickerOpen((v) => !v)}
                     >
                       <Sparkles className="size-3" />
@@ -605,7 +605,7 @@ export function ShippingBatchDialog({
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-7 gap-1 px-2 text-[11px]"
+                      className="h-7 gap-1 px-2 text-xs"
                       onClick={() => setNewCarSeed(seedNewCar())}
                     >
                       <Plus className="size-3" />
@@ -635,7 +635,7 @@ export function ShippingBatchDialog({
                             key={car.id}
                             type="button"
                             onClick={() => setPendingCars((prev) => [...prev, car])}
-                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-[11px] hover:bg-muted"
+                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-xs hover:bg-muted"
                           >
                             {/* Name on its own line, brand and series under it:
                               side by side this row was wider than a phone and
@@ -645,12 +645,12 @@ export function ShippingBatchDialog({
                                 {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
                               </span>
                               {carSubLineParts(car).length > 0 && (
-                                <span className="block truncate text-[10px] text-muted-foreground">
+                                <span className="block truncate text-xs text-muted-foreground">
                                   {carSubLine(car)}
                                 </span>
                               )}
                             </span>
-                            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">
+                            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
                               ISO
                             </span>
                             <Plus className="size-3 shrink-0 text-muted-foreground" />
@@ -664,13 +664,13 @@ export function ShippingBatchDialog({
                             key={c.car_id}
                             type="button"
                             onClick={() => setNewCarSeed(seedFromCatalog(c))}
-                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-[11px] hover:bg-muted"
+                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-xs hover:bg-muted"
                           >
                             <span className="min-w-0 flex-1">
                               <span className="block truncate font-medium text-foreground">
                                 {c.name || `${c.make} ${c.model}`.trim() || "Unnamed casting"}
                               </span>
-                              <span className="block truncate text-[10px] text-muted-foreground">
+                              <span className="block truncate text-xs text-muted-foreground">
                                 {carSubLine(catalogCarToCatalogueCar(c))}
                               </span>
                             </span>
@@ -678,7 +678,7 @@ export function ShippingBatchDialog({
                           </button>
                         ))}
                         {isoCandidates.length === 0 && catalogCandidates.length === 0 && (
-                          <p className="px-1 py-2 text-center text-[11px] text-muted-foreground">
+                          <p className="px-1 py-2 text-center text-xs text-muted-foreground">
                             {pickerQuery.trim().length >= 2
                               ? "Nothing on your ISO list or in the catalogue matches that."
                               : "Type a name to search — your ISO list shows first."}
@@ -690,13 +690,13 @@ export function ShippingBatchDialog({
 
                   {pendingCars.length > 0 && (
                     <div className="space-y-1 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.07] p-2">
-                      <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                         Joining on save — takes this order&apos;s status, dates and courier
                       </p>
                       {pendingCars.map((car) => (
                         <div
                           key={car.id}
-                          className="flex items-center justify-between gap-2 rounded bg-background/60 px-2 py-1 text-[11px]"
+                          className="flex items-center justify-between gap-2 rounded bg-background/60 px-2 py-1 text-xs"
                         >
                           <span className="min-w-0 truncate font-medium text-foreground">
                             {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
@@ -728,7 +728,7 @@ export function ShippingBatchDialog({
                         {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in order
                       </span>
                     </span>
-                    <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
                       <span>{carsAccordionOpen ? "Hide list" : "View list"}</span>
                       <ChevronDown
                         className={cn(
@@ -749,25 +749,25 @@ export function ShippingBatchDialog({
                       {matchedCars.map((car) => (
                         <li
                           key={car.id}
-                          className="rounded bg-background/60 px-2 py-1.5 text-[11px]"
+                          className="rounded bg-background/60 px-2 py-1.5 text-xs"
                         >
                           <div className="truncate font-medium text-foreground">
                             {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
                           </div>
                           <div className="mt-0.5 flex items-center justify-between gap-2">
-                            <span className="min-w-0 truncate text-[10px] text-muted-foreground">
+                            <span className="min-w-0 truncate text-xs text-muted-foreground">
                               {[car.brand || car.make, car.expectedDate || car.date || "No ETA"]
                                 .filter(Boolean)
                                 .join(" · ")}
                             </span>
-                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] text-foreground">
+                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
                               {car.status}
                             </span>
                           </div>
                         </li>
                       ))}
                       {matchedCars.length === 0 && (
-                        <li className="px-1 py-3 text-center text-[11px] text-muted-foreground">
+                        <li className="px-1 py-3 text-center text-xs text-muted-foreground">
                           Nothing carries this shipping ID yet.
                         </li>
                       )}
@@ -798,7 +798,7 @@ export function ShippingBatchDialog({
 
                   {/* Quick status presets, one per status a shipment can take. */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    <span className="text-[10px] text-muted-foreground">Quick set:</span>
+                    <span className="text-xs text-muted-foreground">Quick set:</span>
                     {QUICK_SET.map(({ value, label }) => (
                       <button
                         key={value}
@@ -810,7 +810,7 @@ export function ShippingBatchDialog({
                             setNewExpectedDate(new Date().toISOString().slice(0, 10));
                           }
                         }}
-                        className={`rounded border px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                        className={`rounded border px-2 py-0.5 text-xs font-medium transition-colors ${
                           newStatus === value
                             ? `font-semibold ${STATUS_STYLES[value]}`
                             : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -833,7 +833,7 @@ export function ShippingBatchDialog({
                       <button
                         type="button"
                         onClick={() => setNewOrderDate(loadedOrderDate)}
-                        className="text-[10px] text-muted-foreground hover:text-foreground"
+                        className="text-xs text-muted-foreground hover:text-foreground"
                       >
                         Reset
                       </button>
@@ -858,7 +858,7 @@ export function ShippingBatchDialog({
                       <button
                         type="button"
                         onClick={() => setNewExpectedDate("")}
-                        className="text-[10px] text-muted-foreground hover:text-foreground"
+                        className="text-xs text-muted-foreground hover:text-foreground"
                       >
                         Clear
                       </button>
@@ -880,34 +880,34 @@ export function ShippingBatchDialog({
 
                   {/* Quick Date Presets */}
                   <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                    <span className="text-xs text-muted-foreground flex items-center gap-0.5">
                       <Clock className="size-3" /> Quick:
                     </span>
                     <button
                       type="button"
                       onClick={() => handleQuickDate(0)}
-                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
+                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-xs text-foreground hover:bg-muted hover:text-foreground"
                     >
                       Today
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickDate(7)}
-                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
+                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-xs text-foreground hover:bg-muted hover:text-foreground"
                     >
                       +7 Days
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickDate(14)}
-                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
+                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-xs text-foreground hover:bg-muted hover:text-foreground"
                     >
                       +14 Days
                     </button>
                     <button
                       type="button"
                       onClick={() => handleQuickDate(30)}
-                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-[10px] text-foreground hover:bg-muted hover:text-foreground"
+                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-xs text-foreground hover:bg-muted hover:text-foreground"
                     >
                       +1 Month
                     </button>
@@ -922,7 +922,7 @@ export function ShippingBatchDialog({
                       <Truck className="size-3.5 text-sky-500" />
                       <span>Delivery partner &amp; tracking ID</span>
                     </label>
-                    <label className="flex cursor-pointer items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
                       <input
                         type="checkbox"
                         checked={updateTracking}
@@ -961,7 +961,7 @@ export function ShippingBatchDialog({
                       <Truck className="size-3.5 text-muted-foreground" />
                       <span>Notes</span>
                     </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-[11px] text-muted-foreground">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground">
                       <input
                         type="checkbox"
                         checked={updateTransitInfo}

@@ -308,11 +308,11 @@ function GroupRow({ group, onOpen }: { group: DuplicateGroup; onOpen: () => void
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-xs font-medium">{group.label}</div>
-        <div className="text-[10px] leading-snug text-muted-foreground">{group.because}</div>
+        <div className="text-xs leading-snug text-muted-foreground">{group.because}</div>
       </div>
       <span
         className={cn(
-          "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+          "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
           group.level === "certain"
             ? "bg-primary/15 text-primary"
             : "bg-amber-500/15 text-amber-600 dark:text-amber-400",

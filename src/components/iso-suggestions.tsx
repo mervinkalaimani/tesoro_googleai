@@ -91,9 +91,9 @@ export function IsoSuggestions({
                 {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
               </div>
               {carSubLineParts(car).length > 0 && (
-                <div className="truncate text-[11px] text-muted-foreground">{carSubLine(car)}</div>
+                <div className="truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
               )}
-              <div className="truncate text-[11px] text-muted-foreground">
+              <div className="truncate text-xs text-muted-foreground">
                 Matches on {matched.map((f) => FIELD_LABEL[f]).join(", ")}
               </div>
             </div>

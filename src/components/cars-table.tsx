@@ -106,9 +106,9 @@ export function CostCell({
   return (
     <div className={`min-w-0 ${align === "right" ? "text-right" : "text-left"}`}>
       <div className="truncate tabular-nums">{spent ? inr(spent) : "—"}</div>
-      {adv && <div className="truncate text-[11px] text-muted-foreground">{adv}</div>}
+      {adv && <div className="truncate text-xs text-muted-foreground">{adv}</div>}
       {mrp > 0 && (
-        <div className="truncate text-[11px] text-muted-foreground">
+        <div className="truncate text-xs text-muted-foreground">
           <MrpNote spent={spent} mrp={mrp} />
         </div>
       )}
@@ -229,7 +229,7 @@ export function CarListCard({
           type="button"
           aria-expanded={copiesExpanded}
           onClick={onToggleCopies}
-          className="w-full border-t border-border/60 px-3 py-1.5 text-left text-[11px] font-medium text-primary hover:bg-muted/40"
+          className="w-full border-t border-border/60 px-3 py-1.5 text-left text-xs font-medium text-primary hover:bg-muted/40"
         >
           {copiesExpanded ? "Hide the other copies" : `Show all ${copies} copies`}
         </button>
@@ -353,7 +353,7 @@ export function CarsTable({
                   <td className="px-3 py-2.5 md:px-4">
                     <StatusPill status={r.status} />
                     {pay && (
-                      <div className="mt-1 truncate text-[11px] text-muted-foreground">{pay}</div>
+                      <div className="mt-1 truncate text-xs text-muted-foreground">{pay}</div>
                     )}
                   </td>
                   {showBadgeCol && (

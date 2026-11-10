@@ -524,10 +524,10 @@ export function UploadCarsDialog({
             {/* The Template download now lives in the top bar, next to Add car,
                 where it can be reached without opening this dialog first. */}
             <div className="mt-3 flex items-center gap-2">
-              <Badge variant="outline" className="text-[11px] font-normal">
+              <Badge variant="outline" className="text-xs font-normal">
                 .CSV format
               </Badge>
-              <Badge variant="outline" className="text-[11px] font-normal">
+              <Badge variant="outline" className="text-xs font-normal">
                 .JSON format
               </Badge>
             </div>
@@ -583,7 +583,7 @@ export function UploadCarsDialog({
                   Preview ({previewCars.length.toLocaleString()}{" "}
                   {previewCars.length === 1 ? "car" : "cars"} · {CAR_CSV_COLUMNS.length} fields)
                 </span>
-                <span className="text-[11px] text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   {rowsIncomplete > 0 && (
                     <span className="font-medium text-destructive">
                       {rowsIncomplete} {rowsIncomplete === 1 ? "row is" : "rows are"} incomplete
@@ -600,7 +600,7 @@ export function UploadCarsDialog({
               </div>
               <div className="max-h-[55vh] w-full min-w-0 overflow-auto rounded-lg border border-border bg-muted/10 text-xs">
                 <table className="text-left">
-                  <thead className="sticky top-0 bg-muted text-[11px] font-medium text-muted-foreground border-b border-border">
+                  <thead className="sticky top-0 bg-muted text-xs font-medium text-muted-foreground border-b border-border">
                     <tr>
                       <th className="whitespace-nowrap px-2.5 py-1.5">Catalogue</th>
                       {CAR_CSV_COLUMNS.map((col) => (
@@ -634,26 +634,26 @@ export function UploadCarsDialog({
                               type="button"
                               onClick={() => setViewing(car.catalogId ?? "")}
                               title={`Open ${car.catalogId} in the catalogue`}
-                              className="font-mono text-[11px] text-sky-500 hover:underline"
+                              className="font-mono text-xs text-sky-500 hover:underline"
                             >
                               {car.catalogId}
                             </button>
                           ) : (
-                            <span className="font-mono text-[11px] text-foreground">—</span>
+                            <span className="font-mono text-xs text-foreground">—</span>
                           )}
                           {ambiguousById.has(car.id) && (
                             <>
                               <Badge
                                 variant="outline"
                                 title={`This row could be any of ${ambiguousById.get(car.id)} castings — it names no colour or box to tell them apart. Match to choose.`}
-                                className="ml-1.5 border-amber-500/50 px-1 py-0 text-[10px] font-normal text-amber-600 dark:text-amber-400"
+                                className="ml-1.5 border-amber-500/50 px-1 py-0 text-xs font-normal text-amber-600 dark:text-amber-400"
                               >
                                 1 of {ambiguousById.get(car.id)}
                               </Badge>
                               <button
                                 type="button"
                                 onClick={() => setLinking(i)}
-                                className="ml-1.5 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                className="ml-1.5 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                               >
                                 <Link2 className="size-3" />
                                 Match
@@ -664,7 +664,7 @@ export function UploadCarsDialog({
                             <>
                               <Badge
                                 variant="outline"
-                                className="ml-1.5 px-1 py-0 text-[10px] font-normal"
+                                className="ml-1.5 px-1 py-0 text-xs font-normal"
                               >
                                 New
                               </Badge>
@@ -674,7 +674,7 @@ export function UploadCarsDialog({
                               <button
                                 type="button"
                                 onClick={() => setLinking(i)}
-                                className="ml-1.5 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                className="ml-1.5 inline-flex items-center gap-1 rounded border border-border px-1.5 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                               >
                                 <Link2 className="size-3" />
                                 Match

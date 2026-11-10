@@ -213,7 +213,7 @@ function DuplicatesPage() {
                     car={r}
                     onOpen={() => open(r)}
                     lead={
-                      <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                      <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
                         #{n + 1}
                       </span>
                     }

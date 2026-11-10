@@ -194,14 +194,14 @@ export function AddAnotherCarDialog({
             />
             {sellerSuggestions.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                <span className="text-[10px] text-muted-foreground font-medium">Quick pick:</span>
+                <span className="text-xs text-muted-foreground font-medium">Quick pick:</span>
                 {sellerSuggestions.map((s) => (
                   <button
                     key={s}
                     type="button"
                     onClick={() => setSeller(s)}
                     className={cn(
-                      "text-[11px] rounded-md px-2 py-0.5 border transition-all cursor-pointer",
+                      "text-xs rounded-md px-2 py-0.5 border transition-all cursor-pointer",
                       seller === s
                         ? "border-primary bg-primary/10 text-primary font-semibold"
                         : "border-border/70 bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted",
@@ -325,13 +325,13 @@ export function AddAnotherCarDialog({
                 <Truck className="size-3.5" />
                 Additional Logistics / Notes
               </span>
-              <span className="text-[10px]">{showLogistics ? "Hide" : "Show"}</span>
+              <span className="text-xs">{showLogistics ? "Hide" : "Show"}</span>
             </button>
             {showLogistics && (
               <div className="space-y-3 pt-2.5">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Courier</Label>
+                    <Label className="text-xs text-muted-foreground">Courier</Label>
                     <Input
                       placeholder="Delhivery, Bluedart, etc."
                       value={deliveryPartner}
@@ -340,7 +340,7 @@ export function AddAnotherCarDialog({
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[11px] text-muted-foreground">Tracking ID</Label>
+                    <Label className="text-xs text-muted-foreground">Tracking ID</Label>
                     <Input
                       placeholder="Tracking / AWB #"
                       value={trackingId}
@@ -350,7 +350,7 @@ export function AddAnotherCarDialog({
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[11px] text-muted-foreground">Notes / Transit Info</Label>
+                  <Label className="text-xs text-muted-foreground">Notes / Transit Info</Label>
                   <Input
                     placeholder="e.g. Expected with next batch"
                     value={transitInfo}

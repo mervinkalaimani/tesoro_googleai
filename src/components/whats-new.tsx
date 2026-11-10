@@ -73,13 +73,13 @@ export function WhatsNewStar() {
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-popover px-3 py-2.5">
           <h2 className="text-sm font-semibold">What&apos;s new</h2>
-          <span className="text-[11px] text-muted-foreground">Build {LATEST_BUILD}</span>
+          <span className="text-xs text-muted-foreground">Build {LATEST_BUILD}</span>
         </div>
         <div className="space-y-4 px-3 py-3">
           {fresh.map((r) => (
             <ReleaseBlock key={r.build} release={r} />
           ))}
-          <p className="border-t border-border/60 pt-2.5 text-[11px] text-muted-foreground">
+          <p className="border-t border-border/60 pt-2.5 text-xs text-muted-foreground">
             Everything that has changed is in Settings → What&apos;s new.
           </p>
         </div>

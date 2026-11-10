@@ -54,7 +54,7 @@ export function Field({
             as a label and not as the first word of the answer. */}
         <Label
           className={cn(
-            "text-[10px] font-semibold uppercase tracking-wider",
+            "text-xs font-semibold uppercase tracking-wider",
             error ? "text-destructive" : "text-muted-foreground",
           )}
         >
@@ -65,7 +65,7 @@ export function Field({
       </div>
       {children}
       {error && (
-        <p role="alert" className="flex items-center gap-1 text-[11px] text-destructive">
+        <p role="alert" className="flex items-center gap-1 text-xs text-destructive">
           <AlertCircle className="size-3 shrink-0" />
           {error}
         </p>
@@ -193,17 +193,17 @@ export function FormSection({
         <span className="min-w-0 flex-1">
           {/* Small, grey and in caps: a label for what follows rather than a
               title competing with the field names under it. */}
-          <span className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {title}
           </span>
           {description && (
-            <span className="mt-0.5 block text-[11px] text-muted-foreground">{description}</span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
           )}
         </span>
         {badge && (
           <span
             className={cn(
-              "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium",
+              "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
               badgeTone === "warn"
                 ? "bg-primary/12 text-primary"
                 : "bg-background text-muted-foreground",
@@ -270,7 +270,7 @@ export function PillButton({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "h-auto shrink-0 rounded-full border px-2.5 py-0.5 text-[11px] font-medium tabular-nums",
+        "h-auto shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium tabular-nums",
         active
           ? "border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground"
           : "border-border text-muted-foreground hover:border-primary hover:text-foreground",
@@ -293,14 +293,14 @@ export function PillButton({
 export function CatalogueIdValue({ id, href = true }: { id?: string | null; href?: boolean }) {
   const value = (id ?? "").trim();
   if (!value) return null;
-  if (!href) return <span className="font-mono text-[11px]">{value}</span>;
+  if (!href) return <span className="font-mono text-xs">{value}</span>;
   return (
     <a
       href={`/catalog/${encodeURIComponent(value)}`}
       target="_blank"
       rel="noopener noreferrer"
       title="Open this casting's catalogue page"
-      className="inline-flex max-w-full items-center gap-1.5 font-mono text-[11px] text-primary hover:underline"
+      className="inline-flex max-w-full items-center gap-1.5 font-mono text-xs text-primary hover:underline"
     >
       <span className="truncate">{value}</span>
       <ExternalLink className="size-3 shrink-0" />

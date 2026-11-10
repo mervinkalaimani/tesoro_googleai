@@ -396,11 +396,11 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                     feature, not the next word of the title. */}
                 <span className="ml-auto flex shrink-0 items-center gap-2">
                   {left !== null && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                       {left} left
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
                     <Sparkles className="size-3" />
                     VIIV Scan
                   </span>
@@ -483,7 +483,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                   </Button>
                 </div>
 
-                <p className="text-[11px] text-muted-foreground/80 mt-4">
+                <p className="text-xs text-muted-foreground/80 mt-4">
                   Or drag and drop an image here, or paste from clipboard (Ctrl+V)
                 </p>
 
@@ -600,7 +600,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                     {analyzing && (
                       <div className="absolute inset-0 bg-primary/20 backdrop-blur-[1px] flex flex-col items-center justify-center text-primary">
                         <RefreshCw className="size-6 animate-spin mb-1" />
-                        <span className="text-[10px] font-semibold uppercase tracking-wider text-white bg-black/70 px-1.5 py-0.5 rounded">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-white bg-black/70 px-1.5 py-0.5 rounded">
                           Analyzing...
                         </span>
                       </div>
@@ -612,13 +612,13 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-semibold">Analyzed Image</span>
                         {analyzing ? (
-                          <Badge variant="outline" className="text-[10px] animate-pulse">
+                          <Badge variant="outline" className="text-xs animate-pulse">
                             Extracting attributes...
                           </Badge>
                         ) : attributes ? (
                           <Badge
                             variant="secondary"
-                            className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
                           >
                             Attributes Ready
                           </Badge>
@@ -643,7 +643,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                           <Sparkles className="size-3.5 text-primary animate-spin" />
                           Identifying the casting
                         </p>
-                        <p className="text-[11px]">
+                        <p className="text-xs">
                           Reading make, model, variant, series, colour, and collector numbers...
                         </p>
                       </div>
@@ -652,19 +652,19 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                         <AlertCircle className="size-4 shrink-0 mt-0.5" />
                         <div>
                           <p className="font-medium">Analysis couldn't complete</p>
-                          <p className="text-[11px] opacity-90">{analysisError}</p>
+                          <p className="text-xs opacity-90">{analysisError}</p>
                         </div>
                       </div>
                     ) : attributes ? (
                       <>
-                        <p className="text-[11px] text-muted-foreground max-sm:hidden">
+                        <p className="text-xs text-muted-foreground max-sm:hidden">
                           We identified the vehicle below. Matches from your collection are ranked
                           by similarity.
                         </p>
                         {/* Shut until asked for: what was read off the card is
                             the working, and the matches are the answer. */}
                         <details className="rounded-lg border border-border/70 bg-background sm:hidden">
-                          <summary className="cursor-pointer px-2.5 py-1.5 text-[11px] font-medium">
+                          <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-medium">
                             Extracted attributes
                           </summary>
                           <div className="px-2.5 pb-2.5">
@@ -689,7 +689,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                         variant="outline"
                         size="sm"
                         onClick={applyAttributesToSearch}
-                        className="h-6.5 text-[11px] gap-1 px-2"
+                        className="h-6.5 text-xs gap-1 px-2"
                       >
                         <Search className="size-3" />
                         Filter Collection View
@@ -708,7 +708,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                         <CarIcon className="size-3.5 text-muted-foreground" />
                         Collection Matches ({matchedCars.length})
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {matchedCars.length === 0
                           ? "No matches in your collection"
                           : matchedCars.length === MAX_MATCHES
@@ -739,13 +739,13 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                                   {car.name || `${car.make} ${car.model}`}
                                 </span>
                                 {exactCount > 1 && (
-                                  <span className="shrink-0 text-[10px] font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded">
+                                  <span className="shrink-0 text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded">
                                     {exactCount}x
                                   </span>
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-0.5">
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
                                 {car.brand && <span>{car.brand}</span>}
                                 {car.series && <span>· {car.series}</span>}
                                 {car.year && <span>· {car.year}</span>}
@@ -757,14 +757,14 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                                 {matchedAttributes.slice(0, 4).map((m) => (
                                   <span
                                     key={m.label}
-                                    className="inline-flex items-center gap-0.5 text-[9px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded"
+                                    className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded"
                                   >
                                     <Check className="size-2.5" />
                                     {m.label}: {m.value}
                                   </span>
                                 ))}
                                 {matchedAttributes.length > 4 && (
-                                  <span className="text-[9px] text-muted-foreground">
+                                  <span className="text-xs text-muted-foreground">
                                     +{matchedAttributes.length - 4} more
                                   </span>
                                 )}
@@ -772,7 +772,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                             </div>
 
                             <div className="shrink-0 flex items-center gap-2">
-                              <span className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                                 {car.id}
                               </span>
                               <ArrowRight className="size-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
@@ -786,7 +786,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                         <p className="text-xs font-medium text-foreground">
                           No matching cars in your current collection
                         </p>
-                        <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
                           The identified model ({attributes.make} {attributes.model}) is not
                           currently logged in your collection.
                         </p>
@@ -829,7 +829,7 @@ function AttributeChips({ attributes }: { attributes: ExtractedAttributes }) {
     <div className="flex flex-wrap gap-1.5">
       {attributes.make && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">Make:</span>
+          <span className="text-xs text-muted-foreground uppercase">Make:</span>
           <span className="font-medium">{attributes.make}</span>
         </Badge>
       )}
@@ -838,55 +838,55 @@ function AttributeChips({ attributes }: { attributes: ExtractedAttributes }) {
           variant="secondary"
           className="text-xs gap-1 py-1 px-2.5 bg-primary/10 text-primary border-primary/20"
         >
-          <span className="text-[10px] text-primary/70 uppercase">Model:</span>
+          <span className="text-xs text-primary/70 uppercase">Model:</span>
           <span className="font-semibold">{attributes.model}</span>
         </Badge>
       )}
       {attributes.variant && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">Variant:</span>
+          <span className="text-xs text-muted-foreground uppercase">Variant:</span>
           <span>{attributes.variant}</span>
         </Badge>
       )}
       {attributes.colour && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">Colour:</span>
+          <span className="text-xs text-muted-foreground uppercase">Colour:</span>
           <span>{attributes.colour}</span>
         </Badge>
       )}
       {attributes.brand && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">Brand:</span>
+          <span className="text-xs text-muted-foreground uppercase">Brand:</span>
           <span>{attributes.brand}</span>
         </Badge>
       )}
       {attributes.series && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">Series:</span>
+          <span className="text-xs text-muted-foreground uppercase">Series:</span>
           <span>{attributes.series}</span>
         </Badge>
       )}
       {attributes.year && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">Year:</span>
+          <span className="text-xs text-muted-foreground uppercase">Year:</span>
           <span>{attributes.year}</span>
         </Badge>
       )}
       {attributes.carNumber && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">#:</span>
+          <span className="text-xs text-muted-foreground uppercase">#:</span>
           <span>{attributes.carNumber}</span>
         </Badge>
       )}
       {attributes.assortment && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">Line:</span>
+          <span className="text-xs text-muted-foreground uppercase">Line:</span>
           <span>{attributes.assortment}</span>
         </Badge>
       )}
       {attributes.type && (
         <Badge variant="secondary" className="text-xs gap-1 py-1 px-2.5">
-          <span className="text-[10px] text-muted-foreground uppercase">Type:</span>
+          <span className="text-xs text-muted-foreground uppercase">Type:</span>
           <span>{attributes.type}</span>
         </Badge>
       )}

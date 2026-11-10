@@ -407,7 +407,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
             <h2 className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
               Supabase Database
               {isCustomFromDefaults && (
-                <span className="text-[10px] font-normal uppercase tracking-wider rounded bg-primary/10 px-1.5 py-0.5 text-primary border border-primary/20">
+                <span className="text-xs font-normal uppercase tracking-wider rounded bg-primary/10 px-1.5 py-0.5 text-primary border border-primary/20">
                   Custom
                 </span>
               )}
@@ -473,7 +473,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
                   Supabase Project URL
                 </Label>
                 {urlInput && urlInput.includes(".supabase.co") && (
-                  <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                  <span className="text-xs font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                     <Check className="size-3" /> Valid Domain
                   </span>
                 )}
@@ -486,7 +486,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
                 onChange={(e) => setUrlInput(e.target.value)}
                 className="font-mono text-xs"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Found in your Supabase project dashboard under Settings &gt; API (Project URL).
               </p>
             </div>
@@ -501,7 +501,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
                   <TableIcon className="size-3.5 text-primary" />
                   Database Table Name
                 </Label>
-                <span className="text-[11px] font-mono text-muted-foreground">
+                <span className="text-xs font-mono text-muted-foreground">
                   public.{tableInput.trim() || "tesoro_raw"}
                 </span>
               </div>
@@ -513,7 +513,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
                 onChange={(e) => setTableInput(e.target.value)}
                 className="font-mono text-xs"
               />
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 The Postgres table where your collection data lives (default:{" "}
                 <code className="bg-muted px-1 py-0.5 rounded font-mono">tesoro_raw</code>).
               </p>
@@ -532,7 +532,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
                 <button
                   type="button"
                   onClick={() => setShowKey(!showKey)}
-                  className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer"
                 >
                   {showKey ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
                   <span>{showKey ? "Mask" : "Reveal"}</span>
@@ -548,7 +548,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
                   className="font-mono text-xs pr-10"
                 />
               </div>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Both standard anon JWTs and new{" "}
                 <code className="bg-muted px-1 py-0.5 rounded font-mono">sb_publishable_</code> keys
                 are supported.
@@ -637,7 +637,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
               <div className="font-mono font-semibold text-foreground">
                 public.{config.tableName}
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Current live rows:{" "}
                 {checking ? (
                   <span className="animate-pulse">checking...</span>
@@ -657,7 +657,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
               <div className="font-mono font-semibold text-foreground">
                 public.tesoro_car_catalog
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 Master castings:{" "}
                 {catalogCount !== null ? (
                   <span className="font-semibold text-foreground">{catalogCount} unique</span>
@@ -674,7 +674,7 @@ ON CONFLICT (car_id) DO NOTHING;`;
                   ? `Supabase (${config.tableName})`
                   : "Google Sheet (Live Fallback)"}
               </div>
-              <div className="text-[11px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {source === "supabase"
                   ? "All metrics, edits, and adds sync directly through Supabase."
                   : "Using local/sheet dataset until collection is synced."}
@@ -800,11 +800,11 @@ ON CONFLICT (car_id) DO NOTHING;`;
                 )}
               </Button>
             </div>
-            <p className="text-muted-foreground text-[11px]">
+            <p className="text-muted-foreground text-xs">
               If write or read requests return a 401/403 or policy violation, run this SQL script in
               your Supabase SQL Editor:
             </p>
-            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-[11px] text-foreground leading-relaxed">
+            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-xs text-foreground leading-relaxed">
               {sqlSnippet}
             </pre>
           </div>
@@ -838,10 +838,10 @@ ON CONFLICT (car_id) DO NOTHING;`;
                 )}
               </Button>
             </div>
-            <p className="text-muted-foreground text-[11px]">
+            <p className="text-muted-foreground text-xs">
               Stores your collected cars and orders. Execute this in the Supabase SQL Editor:
             </p>
-            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-[11px] text-foreground max-h-40 leading-relaxed">
+            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-xs text-foreground max-h-40 leading-relaxed">
               {createTableSql}
             </pre>
           </div>
@@ -872,12 +872,12 @@ ON CONFLICT (car_id) DO NOTHING;`;
                 )}
               </Button>
             </div>
-            <p className="text-muted-foreground text-[11px]">
+            <p className="text-muted-foreground text-xs">
               Centralizes unique diecast casting specifications (Brand, Make, Model, Assortment,
               Series, Sub Series, Car Number, MRP) for Car ID deduplication without cluttering your
               menu:
             </p>
-            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-[11px] text-foreground max-h-40 leading-relaxed">
+            <pre className="overflow-x-auto rounded bg-muted/60 p-2.5 font-mono text-xs text-foreground max-h-40 leading-relaxed">
               {createCatalogTableSql}
             </pre>
           </div>

@@ -747,7 +747,7 @@ export function BulkAddCarsDialog({
                     <td className="p-1 whitespace-nowrap">
                       {previewCarIds.get(r.key) ? (
                         <span
-                          className="inline-flex items-center gap-1 font-mono text-[11px] font-semibold px-2 py-1 rounded bg-muted/60 text-foreground border border-border/60"
+                          className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-1 rounded bg-muted/60 text-foreground border border-border/60"
                           title={
                             r.isoId
                               ? `Keeps existing ISO ID: ${previewCarIds.get(r.key)}`
@@ -757,7 +757,7 @@ export function BulkAddCarsDialog({
                           <Tag className="size-3 text-primary shrink-0" />
                           {previewCarIds.get(r.key)}
                           {r.isoId && (
-                            <span className="text-[9px] text-muted-foreground font-normal">
+                            <span className="text-xs text-muted-foreground font-normal">
                               (ISO)
                             </span>
                           )}

@@ -42,7 +42,7 @@ export function RazorpayCard() {
         {state && (
           <span
             className={cn(
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wider",
               state.enabled
                 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                 : "bg-muted text-muted-foreground",
@@ -55,7 +55,7 @@ export function RazorpayCard() {
         {state?.enabled && (
           <span
             className={cn(
-              "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+              "rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-wider",
               live
                 ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                 : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
@@ -69,7 +69,7 @@ export function RazorpayCard() {
       <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5">
         <div className="min-w-0">
           <div className="text-[13px] font-medium">Offer card payment</div>
-          <p className="text-[11px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {offered.on
               ? "The plans screen shows Pay by card alongside paying directly."
               : "Hidden. Everyone pays directly — we send the details and switch the plan on when it arrives."}
@@ -135,7 +135,7 @@ export function RazorpayCard() {
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-      <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 font-medium">{children}</dd>
     </div>
   );

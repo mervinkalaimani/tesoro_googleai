@@ -465,7 +465,7 @@ export function NotificationCenter() {
           >
             <Bell className="size-4" />
             {count > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full border-2 border-background bg-violet-500 px-1 text-[9px] font-bold leading-4 text-white">
+              <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full border-2 border-background bg-violet-500 px-1 text-xs font-bold leading-4 text-white">
                 {count > 9 ? "9+" : count}
               </span>
             )}
@@ -483,7 +483,7 @@ export function NotificationCenter() {
                 <button
                   type="button"
                   onClick={() => clear(allKeys)}
-                  className="rounded-md px-2 py-1 text-[11px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                   title="Close every notification — they will not come back"
                 >
                   Clear all
@@ -527,7 +527,7 @@ export function NotificationCenter() {
                   >
                     <div className="min-w-0 flex-1 basis-40">
                       <div className="truncate text-sm font-semibold">{name || u.email_id}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">
+                      <div className="truncate text-xs text-muted-foreground">
                         {name ? `${u.email_id} · ` : ""}joined{" "}
                         {formatDayMonthYear(u.created_at.slice(0, 10))}
                       </div>
@@ -705,7 +705,7 @@ export function NotificationCenter() {
                     onOpen={() => act(() => drawer.open(w.car))}
                     meta={
                       <>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                           <span className="inline-flex items-center gap-1">
                             <Wallet className="size-3" />
                             {w.car.seller
@@ -721,7 +721,7 @@ export function NotificationCenter() {
                             </>
                           )}
                         </div>
-                        <div className="mt-0.5 text-[11px] text-emerald-600 dark:text-emerald-400">
+                        <div className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">
                           {releasedLabel(w.daysAgo)} · {formatDayMonthYear(w.at)}
                         </div>
                       </>
@@ -774,7 +774,7 @@ export function NotificationCenter() {
                   thumb
                   onOpen={() => act(() => drawer.open(c))}
                   meta={
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                       <span>Its casting is filed {heldLabel(c)}</span>
                       <span>·</span>
                       <span>editable until then</span>
@@ -783,7 +783,7 @@ export function NotificationCenter() {
                 />
               ))}
               {held.length > 8 && (
-                <p className="px-1 text-[11px] text-muted-foreground">
+                <p className="px-1 text-xs text-muted-foreground">
                   and {held.length - 8} more waiting.
                 </p>
               )}
@@ -839,7 +839,7 @@ export function NotificationCenter() {
                     onOpen={() => act(() => drawer.open(first))}
                     meta={
                       <>
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                           <span className="inline-flex items-center gap-1">
                             <Wallet className="size-3" />
                             {first.seller || "Seller not recorded"}
@@ -854,7 +854,7 @@ export function NotificationCenter() {
                           )}
                         </div>
                         <div
-                          className={`mt-0.5 text-[11px] tabular-nums ${
+                          className={`mt-0.5 text-xs tabular-nums ${
                             when.overdue ? "text-rose-500" : "text-violet-500"
                           }`}
                         >
@@ -983,7 +983,7 @@ function Section({
           <Link
             to={link.to}
             onClick={link.onClick}
-            className="text-[11px] text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           >
             All
           </Link>
@@ -1025,7 +1025,7 @@ function GroupNotice({
       onOpen={() => onOpen(first)}
       meta={
         <>
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
             {more > 0 && (
               <span className="font-medium text-foreground">+ {plural(more, "more car")}</span>
             )}
@@ -1035,7 +1035,7 @@ function GroupNotice({
             </span>
             {group.shippingId && <span className="font-mono">{group.shippingId}</span>}
           </div>
-          <div className="mt-0.5 text-[11px]">{meta}</div>
+          <div className="mt-0.5 text-xs">{meta}</div>
         </>
       }
       actions={actions}

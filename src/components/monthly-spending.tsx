@@ -270,7 +270,7 @@ export function MonthlySpending({ rows, className = "" }: { rows: Diecast[]; cla
         )}
       </div>
       {labelOnlySelected && selected === null && (
-        <p className="mt-1 text-center text-[11px] text-muted-foreground">
+        <p className="mt-1 text-center text-xs text-muted-foreground">
           Tap a bar to see its value.
         </p>
       )}

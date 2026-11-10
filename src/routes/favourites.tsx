@@ -142,7 +142,7 @@ function GalleryCard({
         </p>
 
         <div className="mt-auto border-t border-border pt-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-xs uppercase tracking-wider text-muted-foreground">
             Market valuation
           </div>
           <div className="mt-0.5 text-sm font-semibold tabular-nums">{inrFull(market)}</div>

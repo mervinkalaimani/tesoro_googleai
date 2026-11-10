@@ -138,7 +138,7 @@ function BrandLogos({
                 }}
               />
             ) : (
-              <span className="px-1 text-center text-[10px] font-semibold leading-tight text-neutral-700">
+              <span className="px-1 text-center text-xs font-semibold leading-tight text-neutral-700">
                 {o}
               </span>
             )}
@@ -622,7 +622,7 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
       {step === 2 && (
         <div className="space-y-4">
           <Shelf
-            title="New Pre Orders"
+            title="New pre-orders"
             hint="The newest castings other collectors have pre-ordered"
             icon={<ShoppingBag className="size-4 text-accent" />}
           >

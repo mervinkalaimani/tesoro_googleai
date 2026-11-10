@@ -63,7 +63,7 @@ const dayKey = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const DAYS = ["M", "T", "W", "T", "F", "S", "S"];
+const DAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const mondayIndex = (d: Date) => (d.getDay() + 6) % 7;
 
 /**
@@ -382,7 +382,7 @@ function HabitsPage() {
           >
             <span>Hide pre-orders</span>
             {preOrderCount > 0 && (
-              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-normal tabular-nums text-muted-foreground">
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-xs font-normal tabular-nums text-muted-foreground">
                 {preOrderCount}
               </span>
             )}
@@ -475,7 +475,7 @@ function HabitsPage() {
                 setRange(v);
                 setSelected(null);
               }}
-              className="grid w-full grid-cols-5 sm:inline-flex sm:w-auto"
+              className="grid w-full grid-cols-[1.5fr_1.5fr_1fr_1fr_1fr] whitespace-nowrap sm:inline-flex sm:w-auto"
               options={[
                 { value: "this", label: "This month" },
                 { value: "last", label: "Last month" },
@@ -491,7 +491,7 @@ function HabitsPage() {
           <div ref={scrollContainerRef} className="overflow-x-auto py-4">
             <div className="inline-flex min-w-full flex-col gap-1.5 pr-4">
               <div className="flex items-center gap-[6px]">
-                <div className="sticky left-0 z-10 mr-1.5 h-4 w-10 shrink-0 bg-card pl-4 pr-2 border-r border-border/40" />
+                <div className="sticky left-0 z-10 mr-1.5 h-4 w-10 shrink-0 bg-card pl-2 pr-1 border-r border-border/40" />
                 {grid.map((week, i) => {
                   const first = week.find(Boolean) as Cell | undefined;
                   const showLabel = first && first.date.getDate() <= 7;
@@ -499,7 +499,7 @@ function HabitsPage() {
                   return (
                     <span
                       key={i}
-                      className="w-5 shrink-0 whitespace-nowrap text-[11px] text-muted-foreground"
+                      className="w-5 shrink-0 whitespace-nowrap text-xs text-muted-foreground"
                     >
                       {showLabel
                         ? showYear
@@ -511,7 +511,7 @@ function HabitsPage() {
                 })}
               </div>
               <div className="flex gap-[6px]">
-                <div className="sticky left-0 z-10 mr-1.5 flex w-10 shrink-0 flex-col gap-[6px] bg-card pl-4 pr-2 text-[11px] font-medium text-muted-foreground border-r border-border/40">
+                <div className="sticky left-0 z-10 mr-1.5 flex w-10 shrink-0 flex-col gap-[6px] bg-card pl-2 pr-1 text-xs font-medium text-muted-foreground border-r border-border/40">
                   {DAYS.map((d, i) => (
                     <span key={i} className="h-5 leading-5 text-center">
                       {d}
@@ -551,7 +551,7 @@ function HabitsPage() {
             <div className="inline-flex min-w-full flex-wrap items-end gap-x-3 gap-y-2">
               {buckets.map((b) => (
                 <div key={b.key} className="flex flex-col items-center gap-1">
-                  <div className="text-[10px] text-muted-foreground">{b.label}</div>
+                  <div className="text-xs text-muted-foreground">{b.label}</div>
                   <PeriodSquare
                     bucket={b}
                     level={level(b.count)}
@@ -585,7 +585,7 @@ function HabitsPage() {
         )}
 
         {view !== "yearly" && (
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 px-4 py-2.5 text-[11px] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-border/40 px-4 py-2.5 text-xs text-muted-foreground">
             <span>Less</span>
             {LEVEL_CLASS.map((c, i) => (
               <span key={i} className={`size-4 rounded-[4px] ${c}`} />
@@ -667,7 +667,7 @@ function PeriodSquare({
 
 function MatrixHeader({ labels }: { labels: string[] }) {
   return (
-    <div className="flex items-center gap-[6px] text-[11px] text-muted-foreground">
+    <div className="flex items-center gap-[6px] text-xs text-muted-foreground">
       <div className="sticky left-0 z-10 mr-1.5 h-4 w-16 shrink-0 bg-card pl-4 pr-2 border-r border-border/40" />
       {labels.map((label, i) => (
         <span key={i} className="w-5 shrink-0 whitespace-nowrap text-center">
@@ -691,7 +691,7 @@ function MatrixRow({
 }) {
   return (
     <div className="flex items-center gap-[6px]">
-      <div className="sticky left-0 z-10 mr-1.5 flex h-5 w-16 shrink-0 items-center bg-card pl-4 pr-2 text-[11px] font-medium leading-5 text-muted-foreground border-r border-border/40">
+      <div className="sticky left-0 z-10 mr-1.5 flex h-5 w-16 shrink-0 items-center bg-card pl-4 pr-2 text-xs font-medium leading-5 text-muted-foreground border-r border-border/40">
         {row.year}
       </div>
       {row.cells.map((bucket, i) =>
@@ -738,7 +738,7 @@ function InsightCard({
   const max = rows[0]?.value || 1;
   return (
     <div className="card-elevated min-w-0 overflow-hidden p-3 sm:p-4">
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider text-muted-foreground sm:gap-2 sm:text-xs">
+      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground sm:gap-2 sm:text-xs">
         <span className="grid size-5 shrink-0 place-items-center rounded-md bg-primary/15 text-primary sm:size-6">
           {icon}
         </span>
@@ -751,7 +751,7 @@ function InsightCard({
               <span className="truncate font-medium text-foreground" title={r.label}>
                 {r.label}
               </span>
-              <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground sm:text-xs">
+              <span className="shrink-0 text-xs tabular-nums text-muted-foreground sm:text-xs">
                 {format(r.value)}
               </span>
             </div>
@@ -815,7 +815,7 @@ function PeriodDetail({
         <DayList items={bucket.items} />
       </div>
       {bucket.items.length > 3 && (
-        <div className="border-t border-border/40 bg-muted/20 px-3 py-1.5 text-center text-[11px] text-muted-foreground">
+        <div className="border-t border-border/40 bg-muted/20 px-3 py-1.5 text-center text-xs text-muted-foreground">
           Showing 3 of {bucket.items.length} cars · scroll to see {bucket.items.length - 3} more
         </div>
       )}

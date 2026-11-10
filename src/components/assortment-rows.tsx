@@ -60,7 +60,7 @@ function Cell({
 }) {
   return (
     <div className={cn("col-span-2 min-w-0 space-y-1 sm:col-span-1 sm:space-y-0", className)}>
-      <span className="block text-[11px] font-medium text-muted-foreground sm:hidden">{label}</span>
+      <span className="block text-xs font-medium text-muted-foreground sm:hidden">{label}</span>
       {children}
     </div>
   );
@@ -271,12 +271,12 @@ export function AssortmentRow({
       </div>
 
       {filedAs ? (
-        <p className="pl-1 pt-1 font-mono text-[10px] text-muted-foreground">{filedAs}</p>
+        <p className="pl-1 pt-1 font-mono text-xs text-muted-foreground">{filedAs}</p>
       ) : null}
       {assortmentError ? (
-        <p className="pl-1 pt-1 text-[11px] text-destructive">{assortmentError}</p>
+        <p className="pl-1 pt-1 text-xs text-destructive">{assortmentError}</p>
       ) : null}
-      {spentError ? <p className="pl-1 pt-1 text-[11px] text-destructive">{spentError}</p> : null}
+      {spentError ? <p className="pl-1 pt-1 text-xs text-destructive">{spentError}</p> : null}
     </div>
   );
 }

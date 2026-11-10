@@ -78,13 +78,13 @@ export function SearchSuggestionsTray({
         {matches.length > 0 && (
           <section>
             <div className="mb-1.5 flex items-baseline justify-between px-1">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Matching Cars ({matches.length.toLocaleString()})
               </span>
               <button
                 type="button"
                 onClick={onClose}
-                className="text-[11px] font-medium text-primary hover:underline"
+                className="text-xs font-medium text-primary hover:underline"
               >
                 View all in list
               </button>
@@ -116,7 +116,7 @@ export function SearchSuggestionsTray({
                       <span className="block truncate text-xs font-semibold text-foreground sm:text-sm">
                         {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
                       </span>
-                      <span className="block truncate text-[11px] text-muted-foreground">
+                      <span className="block truncate text-xs text-muted-foreground">
                         {carSubLine(car)}
                       </span>
                     </span>
@@ -136,7 +136,7 @@ export function SearchSuggestionsTray({
         {/* Dynamic Groups from groupedSuggestions */}
         {groups.map((g) => (
           <section key={g.title}>
-            <h3 className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <h3 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {g.title}
             </h3>
             <div className="flex flex-wrap gap-1.5">
@@ -150,7 +150,7 @@ export function SearchSuggestionsTray({
                   className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/80 bg-card px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 active:scale-[0.97]"
                 >
                   <span className="truncate">{it.value}</span>
-                  <span className="text-[10px] tabular-nums text-muted-foreground">{it.count}</span>
+                  <span className="text-xs tabular-nums text-muted-foreground">{it.count}</span>
                 </button>
               ))}
             </div>
@@ -163,7 +163,7 @@ export function SearchSuggestionsTray({
             <RecentSearches onPick={onSelectQuery} />
 
             <section>
-              <div className="mb-1.5 flex items-center gap-1 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 <Sparkles className="size-3 text-primary" />
                 <span>Quick Filters</span>
               </div>
@@ -182,7 +182,7 @@ export function SearchSuggestionsTray({
             </section>
 
             <section>
-              <h3 className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <h3 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Popular Makes & Brands
               </h3>
               <div className="flex flex-wrap gap-1.5">
@@ -210,10 +210,10 @@ export function SearchSuggestionsTray({
 
         {/* Search Syntax & Tips */}
         <div className="border-t border-border/60 px-1 pt-2.5">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
             Search Syntax Tips
           </div>
-          <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          <ul className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {SEARCH_TIPS.map(([code, text]) => (
               <li key={code}>
                 <b className="font-semibold text-foreground">{code}</b> {text}

@@ -187,7 +187,7 @@ export function CarPhotoField({
               onError={() => setBroken(true)}
             />
             {chosen && (
-              <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white backdrop-blur-sm">
+              <span className="absolute bottom-2 left-2 rounded-md bg-black/60 px-1.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
                 {chosen.kind === "card" ? "Card" : "Photo"} · {chosen.source}
               </span>
             )}
@@ -222,7 +222,7 @@ export function CarPhotoField({
                     : "Drop a photo here, paste one, or click to browse"}
             </span>
             {!touch && !busy && (
-              <span className="text-[10px] text-muted-foreground">JPG, PNG or WebP</span>
+              <span className="text-xs text-muted-foreground">JPG, PNG or WebP</span>
             )}
           </button>
         )}
@@ -242,7 +242,7 @@ export function CarPhotoField({
             split && "min-w-0 lg:col-start-2 lg:row-span-4 lg:row-start-1",
           )}
         >
-          <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             {suggestions.loading ? (
               <Loader2 className="size-3 animate-spin" />
             ) : (
@@ -287,7 +287,7 @@ export function CarPhotoField({
                       className="size-full object-contain"
                     />
                     {c.kind === "card" && (
-                      <span className="absolute inset-x-0 bottom-0 bg-black/60 text-center text-[9px] font-medium text-white">
+                      <span className="absolute inset-x-0 bottom-0 bg-black/60 text-center text-xs font-medium text-white">
                         Card
                       </span>
                     )}

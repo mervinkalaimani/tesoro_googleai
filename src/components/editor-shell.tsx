@@ -119,7 +119,7 @@ export function EditorShell({
             {steps && (
               // A phone has no room for the pills, so the step is said in words
               // where the title is.
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary sm:hidden">
+              <p className="text-xs font-semibold uppercase tracking-wider text-primary sm:hidden">
                 {title} · step {current} of {steps.length}
               </p>
             )}
@@ -187,7 +187,7 @@ export function EditorShell({
       >
         {rail.length > 0 && (
           <nav aria-label="Sections" className="hidden min-w-0 lg:block">
-            <p className="px-2.5 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="px-2.5 pb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Sections
             </p>
             {rail.map((r) => (
@@ -205,7 +205,7 @@ export function EditorShell({
                 {r.status && (
                   <span
                     className={cn(
-                      "block truncate text-[11px]",
+                      "block truncate text-xs",
                       r.tone === "warn" ? "text-primary" : "text-muted-foreground",
                     )}
                   >
@@ -279,7 +279,7 @@ function StepPills({
           >
             <span
               className={cn(
-                "grid size-5 shrink-0 place-items-center rounded-full text-[10px] font-bold",
+                "grid size-5 shrink-0 place-items-center rounded-full text-xs font-bold",
                 here
                   ? "bg-primary text-primary-foreground"
                   : done
@@ -333,7 +333,7 @@ export function ThingsLeft({
   }
   return (
     <div className="rounded-xl bg-primary/10 p-2.5">
-      <p className="px-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+      <p className="px-1 text-xs font-semibold uppercase tracking-wider text-primary">
         {items.length} thing{items.length > 1 ? "s" : ""} left
       </p>
       {/* Three rows, then scroll. Eight things left used to push the Add car
@@ -347,7 +347,7 @@ export function ThingsLeft({
             key={i.label}
             type="button"
             onClick={i.onJump}
-            className="flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left text-[11px] font-medium leading-5 text-primary hover:bg-primary/10"
+            className="flex w-full items-center gap-2 rounded-md px-1 py-0.5 text-left text-xs font-medium leading-5 text-primary hover:bg-primary/10"
           >
             <span className="min-w-0 flex-1 truncate">{i.label}</span>
             {i.onJump && <ChevronRight className="size-3.5 shrink-0" />}

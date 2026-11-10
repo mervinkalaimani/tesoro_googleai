@@ -247,7 +247,7 @@ export function AccountCard() {
                 </Button>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">JPG, PNG or WebP. Shown in the bar.</p>
+            <p className="text-xs text-muted-foreground">JPG, PNG or WebP. Shown in the bar.</p>
           </div>
           <input
             ref={fileRef}
@@ -294,7 +294,7 @@ export function AccountCard() {
               readOnly
               className="cursor-not-allowed bg-muted/60"
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               How you sign in, and how others refer to you. It cannot be changed.
             </p>
           </div>
@@ -305,7 +305,7 @@ export function AccountCard() {
               readOnly
               className="cursor-not-allowed bg-muted/60"
             />
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Changing this changes how you sign in — an admin does it for you.
             </p>
           </div>

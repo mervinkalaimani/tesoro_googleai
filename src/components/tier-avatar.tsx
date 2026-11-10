@@ -35,7 +35,7 @@ export function ProChip({ label = "Pro", className }: { label?: string; classNam
     <span
       title={`${label} account`}
       className={cn(
-        "rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider leading-none text-primary-foreground",
+        "rounded-full bg-primary px-1.5 py-0.5 text-xs font-bold uppercase tracking-wider leading-none text-primary-foreground",
         className,
       )}
     >

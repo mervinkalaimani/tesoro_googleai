@@ -65,7 +65,7 @@ const NAV_GROUPS: {
     title: "My Orders",
     items: [
       { title: "My Orders", url: "/orders", icon: Truck, needs: "plus" },
-      { title: "Pre Orders", url: "/preorders", icon: ShoppingBag, needs: "pro" },
+      { title: "Pre-orders", url: "/preorders", icon: ShoppingBag, needs: "pro" },
       { title: "Duplicates", url: "/duplicates", icon: Copy, needs: "pro" },
     ],
   },
@@ -150,7 +150,7 @@ export function AppSidebar() {
         {/* Sections: My Cars, My Orders, Habit */}
         {NAV_GROUPS.map((group) => (
           <SidebarGroup key={group.title} className="py-1">
-            <SidebarGroupLabel className="text-[11px] font-semibold tracking-wider text-muted-foreground/80 uppercase">
+            <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/80 uppercase">
               {group.title}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -215,7 +215,7 @@ export function AppSidebar() {
             under its own heading rather than tucked beside Home. */}
         {isAdmin && (
           <SidebarGroup className="py-1">
-            <SidebarGroupLabel className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+            <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
               Admin
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -266,10 +266,10 @@ export function AppSidebar() {
         <div className="space-y-3 px-1 py-2 group-data-[collapsible=icon]:hidden">
           {isGuest && (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-amber-500">
+              <div className="text-xs font-medium uppercase tracking-wider text-amber-500">
                 Guest Mode
               </div>
-              <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">
+              <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
                 Sample cars, stored only in this browser. Nothing is saved to the database.
               </p>
             </div>
@@ -283,9 +283,7 @@ export function AppSidebar() {
               owner's, not every admin's. */}
           {isOwner && (
             <div className="border-b border-sidebar-border pb-3">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                Database
-              </div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">Database</div>
               <Link
                 to="/settings"
                 className="mt-1 flex items-center gap-1.5 text-sm text-foreground transition-colors hover:text-primary"
@@ -303,16 +301,14 @@ export function AppSidebar() {
           )}
 
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              Total cars
-            </div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Total cars</div>
             <div className="text-display text-lg font-semibold tabular-nums">
               {stats.total.toLocaleString()}
             </div>
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
                 Total investment
               </div>
               {/* With every cost hidden there is nothing for the eye to reveal. */}
@@ -322,7 +318,7 @@ export function AppSidebar() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-6"
+                      className="size-8"
                       onClick={() => {
                         if (hideInvestment) setLocalReveal((v) => !v);
                         else setHideInvestment(true);

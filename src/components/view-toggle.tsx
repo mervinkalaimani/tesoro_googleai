@@ -1,5 +1,12 @@
 import { LayoutGrid, List, Grid3x3, RectangleVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /**
  * How a list of cars is laid out.
@@ -46,36 +53,63 @@ export function ViewToggle({
   modes?: ViewMode[];
 }) {
   const shown = modes ? modes.flatMap((v) => MODES.filter((m) => m.value === v)) : MODES;
+  const current = shown.find((m) => m.value === value) ?? shown[0];
+  const CurrentIcon = current.icon;
   return (
-    // Same container styling as SegmentControl (rounded-md, border-border, bg-muted/40, p-0.5)
-    <div
-      className={cn(
-        "inline-flex h-8 shrink-0 items-center rounded-md border border-border bg-muted/40 p-0.5",
-        className,
-      )}
-    >
-      {shown.map((m) => {
-        const Icon = m.icon;
-        const active = value === m.value;
-        return (
-          <button
-            key={m.value}
-            type="button"
-            onClick={() => onChange(m.value)}
-            aria-pressed={active}
-            aria-label={m.label}
-            title={m.label}
-            className={cn(
-              "grid size-7 place-items-center rounded-[6px] transition-all",
-              active
-                ? "bg-background text-foreground shadow-sm font-medium"
-                : "text-muted-foreground hover:text-foreground",
-            )}
-          >
-            <Icon className="size-4" />
-          </button>
-        );
-      })}
-    </div>
+    <>
+      {/* On a phone four icons are four 28px targets in one row; one button
+          holding a menu leaves the toolbar room and a proper tap size. */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          aria-label={`View: ${current.label}`}
+          className={cn(
+            "grid size-10 shrink-0 place-items-center rounded-md border border-border bg-muted/40 text-foreground sm:hidden",
+            className,
+          )}
+        >
+          <CurrentIcon className="size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuRadioGroup value={value} onValueChange={(v) => onChange(v as ViewMode)}>
+            {shown.map((m) => (
+              <DropdownMenuRadioItem key={m.value} value={m.value} className="gap-2 py-2.5">
+                <m.icon className="size-4" />
+                {m.label}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {/* Same container styling as SegmentControl (rounded-md, border-border, bg-muted/40, p-0.5) */}
+      <div
+        className={cn(
+          "hidden h-8 shrink-0 items-center rounded-md border sm:inline-flex border-border bg-muted/40 p-0.5",
+          className,
+        )}
+      >
+        {shown.map((m) => {
+          const Icon = m.icon;
+          const active = value === m.value;
+          return (
+            <button
+              key={m.value}
+              type="button"
+              onClick={() => onChange(m.value)}
+              aria-pressed={active}
+              aria-label={m.label}
+              title={m.label}
+              className={cn(
+                "grid size-7 place-items-center rounded-[6px] transition-all",
+                active
+                  ? "bg-background text-foreground shadow-sm font-medium"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon className="size-4" />
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }

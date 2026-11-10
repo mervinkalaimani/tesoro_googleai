@@ -49,7 +49,7 @@ const HABIT_TABS = [
 /** Sub-tabs shown when navigating into My Orders. */
 const ORDERS_TABS = [
   { title: "My Orders", url: "/orders", icon: Truck },
-  { title: "Pre Orders", url: "/preorders", icon: ShoppingBag },
+  { title: "Pre-orders", url: "/preorders", icon: ShoppingBag },
   { title: "Duplicates", url: "/duplicates", icon: Copy },
 ] as const;
 
@@ -148,7 +148,7 @@ function HomeCircle({
       style={style}
     >
       <Home className="size-5" />
-      <span className="text-[10px] font-medium leading-none">Home</span>
+      <span className="text-xs font-medium leading-none">Home</span>
     </Link>
   );
 }
@@ -282,7 +282,7 @@ export function MobileNav() {
                 }`}
               >
                 <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
-                <span className="truncate text-[10px] font-medium leading-none">{t.title}</span>
+                <span className="truncate text-xs font-medium leading-none">{t.title}</span>
               </Link>
             );
           })}

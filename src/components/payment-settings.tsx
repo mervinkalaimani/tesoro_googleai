@@ -174,7 +174,7 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
           Projected earnings
         </h2>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-xs text-muted-foreground">
           {touched
             ? "From the numbers typed below, at the prices on this screen."
             : "From the accounts as they stand today. Change any number below to ask what something else would earn."}{" "}
@@ -189,7 +189,7 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
           <Money label="Plus, a month" value={projection.byPlan.plus} small />
           <Money label="Pro, a month" value={projection.byPlan.pro} small />
         </div>
-        <p className="mt-2 text-[11px] text-muted-foreground">
+        <p className="mt-2 text-xs text-muted-foreground">
           <strong>Committed, unbilled</strong> is what the longer runs have left in them — money
           that is spoken for but has not arrived yet.
         </p>
@@ -201,10 +201,10 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
           <AccordionItem value="counts" className="border-none">
             <AccordionTrigger className="py-2.5 hover:no-underline">
               <span className="flex flex-wrap items-center gap-2 text-left">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Accounts, by how they pay
                 </span>
-                <span className="text-[11px] font-normal text-muted-foreground">
+                <span className="text-xs font-normal text-muted-foreground">
                   {list.length} ways · {projection.paying.toLocaleString()} paying
                 </span>
               </span>
@@ -216,7 +216,7 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1 text-[11px]"
+                    className="h-7 gap-1 text-xs"
                     onClick={() => {
                       setTouched(false);
                       setCounts(actual);
@@ -240,7 +240,7 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[12px] font-medium">{sc.label}</span>
-                        <span className="block text-[10px] tabular-nums text-muted-foreground">
+                        <span className="block text-xs tabular-nums text-muted-foreground">
                           ₹{earns.toLocaleString()} a month
                         </span>
                       </span>
@@ -280,7 +280,7 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 gap-1 text-[11px]"
+                  className="h-7 gap-1 text-xs"
                   onClick={() => addLength(plan)}
                 >
                   <Plus className="size-3.5" />
@@ -316,13 +316,13 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
                           aria-label={`${plan} for ${r.months} months, in rupees`}
                         />
                       </div>
-                      <span className="text-[11px] tabular-nums text-muted-foreground">
+                      <span className="text-xs tabular-nums text-muted-foreground">
                         ₹{perMonth.toLocaleString()} a month
                       </span>
                       {r.months > 1 && (
                         <span
                           className={cn(
-                            "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                            "rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums",
                             off > 0
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                               : "bg-rose-500/15 text-rose-600 dark:text-rose-400",
@@ -384,7 +384,7 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
             ))}
           </ul>
         )}
-        <p className="mt-3 text-[11px] text-muted-foreground">
+        <p className="mt-3 text-xs text-muted-foreground">
           The decoy is the middle length. People do not judge a price on its own — they judge it
           against the one next to it, so a six-month price close to a year&rsquo;s makes the year
           look like the obvious buy. Too cheap and the middle wins instead; too dear and it reads as
@@ -394,7 +394,7 @@ export function PaymentSettings({ subscribers }: { subscribers: Subscriber[] }) 
 
       {/* SAVING */}
       <div className="sticky bottom-0 -mx-1 flex items-center gap-2 border-t border-border bg-background/95 px-1 py-2 backdrop-blur">
-        <p className="min-w-0 flex-1 text-[11px] text-muted-foreground">
+        <p className="min-w-0 flex-1 text-xs text-muted-foreground">
           {dirty ? "Unsaved changes." : "Everything here is saved."}
         </p>
         <Button type="button" disabled={!dirty || saving} onClick={() => void save()}>
@@ -424,7 +424,7 @@ function Money({
         tone === "strong" ? "border-primary/40 bg-primary/5" : "border-border/60 bg-muted/20",
       )}
     >
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-xs uppercase tracking-wider text-muted-foreground">{label}</div>
       <div
         className={cn(
           "font-bold tabular-nums tracking-tight",

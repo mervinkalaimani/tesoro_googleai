@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils";
  */
 const SECTIONS_BY_PLAN: Record<PaidPlan, string[]> = {
   plus: ["My Orders"],
-  pro: ["Favourites", "Collection", "Duplicates", "Habit", "Sellers", "My Orders", "Pre Orders"],
+  pro: ["Favourites", "Collection", "Duplicates", "Habit", "Sellers", "My Orders", "Pre-orders"],
 };
 
 /**
@@ -197,7 +197,7 @@ export function SubscriptionPanel() {
           )}
         </div>
 
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           Nothing is charged here. Asking tells the admins, and a payment link comes by email.
         </p>
       </section>
@@ -240,7 +240,7 @@ export function SubscriptionPanel() {
                 back if you subscribe again
               </li>
             </ul>
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Your cars, the catalogue and everything you have logged stay yours either way.
             </p>
           </div>
@@ -312,7 +312,7 @@ function Until({
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-      <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</dt>
+      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd className="mt-0.5 font-semibold tabular-nums">{children}</dd>
     </div>
   );

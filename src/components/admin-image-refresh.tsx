@@ -181,7 +181,7 @@ export function AdminImageRefresh() {
         <label className="flex items-center justify-between gap-3 rounded-xl border border-border/70 px-3 py-2.5">
           <span className="text-sm">
             Only cars without a photo
-            <span className="block text-[11px] text-muted-foreground">
+            <span className="block text-xs text-muted-foreground">
               Leave existing photos alone
             </span>
           </span>
@@ -190,7 +190,7 @@ export function AdminImageRefresh() {
         <label className="flex items-center justify-between gap-3 rounded-xl border border-border/70 px-3 py-2.5">
           <span className="text-sm">
             Keep photos you uploaded
-            <span className="block text-[11px] text-muted-foreground">
+            <span className="block text-xs text-muted-foreground">
               Your own camera shots are not replaced
             </span>
           </span>
@@ -206,7 +206,7 @@ export function AdminImageRefresh() {
               style={{ width: `${pct}%` }}
             />
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] tabular-nums text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               {running && <Loader2 className="size-3 animate-spin" />}
               {progress.done.toLocaleString()} of {progress.total.toLocaleString()} ({pct}%)

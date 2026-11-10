@@ -85,7 +85,7 @@ export function PhotoCandidateStrip({
 
   return (
     <div className="space-y-1.5 border-t border-border bg-background px-3 py-2.5">
-      <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+      <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         {search.loading ? (
           <Loader2 className="size-3 animate-spin" />
         ) : (
@@ -133,7 +133,7 @@ export function PhotoCandidateStrip({
                   className="size-full object-contain"
                 />
                 {c.kind === "card" && (
-                  <span className="absolute inset-x-0 bottom-0 bg-black/60 text-center text-[9px] font-medium text-white">
+                  <span className="absolute inset-x-0 bottom-0 bg-black/60 text-center text-xs font-medium text-white">
                     Card
                   </span>
                 )}

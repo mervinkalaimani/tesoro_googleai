@@ -97,7 +97,7 @@ export function SortSelect<T extends string>({
                 {o.label}
               </span>
               {active && (
-                <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                <span className="flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground">
                   <Arrow className="size-3" />
                   {dir === "asc" ? "Asc" : "Desc"}
                 </span>

@@ -52,7 +52,7 @@ export function ShipmentItem({
       <div className="flex items-start justify-between gap-3">
         {thumb && <CarThumb car={car} className="size-11 shrink-0 overflow-hidden rounded-md" />}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 truncate font-mono text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-1.5 truncate font-mono text-xs text-muted-foreground">
             {bits.map((bit, i) => (
               <span key={i} className="truncate last:min-w-0">
                 {i > 0 && <span className="mr-1.5">·</span>}

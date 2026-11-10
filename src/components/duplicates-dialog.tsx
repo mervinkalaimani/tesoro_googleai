@@ -119,7 +119,7 @@ export function DuplicatesDialog({
         <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
           <EntryRow car={subject} tone="subject" />
 
-          <p className="px-0.5 pt-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <p className="px-0.5 pt-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Already in the catalogue
           </p>
 
@@ -220,7 +220,7 @@ function EntryRow({
         {match !== undefined && (
           <span
             className={cn(
-              "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+              "mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-xs font-bold tabular-nums",
               match >= 95
                 ? "bg-amber-500/25 text-amber-800 dark:text-amber-300"
                 : "bg-muted text-muted-foreground",
@@ -246,12 +246,12 @@ function EntryRow({
           <div className="flex min-w-0 items-center gap-2">
             <span className="truncate text-sm font-semibold">{car.name?.trim() || "—"}</span>
             {subject && (
-              <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">
+              <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
                 This one
               </span>
             )}
           </div>
-          <div className="text-[11px] leading-snug text-muted-foreground">
+          <div className="text-xs leading-snug text-muted-foreground">
             {carSubLine({
               brand: car.brand ?? "",
               assortment: car.assortment ?? "",
@@ -271,7 +271,7 @@ function EntryRow({
           </div>
 
           {because && (
-            <p className="mt-1.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+            <p className="mt-1.5 text-xs font-medium text-amber-700 dark:text-amber-400">
               {because}
             </p>
           )}
@@ -297,10 +297,10 @@ function Cell({
 }) {
   return (
     <div className="min-w-0">
-      <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
         {label}
       </div>
-      <div className={cn("truncate text-[11px] font-medium", mono && "font-mono")}>
+      <div className={cn("truncate text-xs font-medium", mono && "font-mono")}>
         {String(value ?? "").trim() || "—"}
       </div>
     </div>

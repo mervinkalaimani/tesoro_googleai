@@ -214,7 +214,7 @@ export function HelpDoc({ docKey }: { docKey: HelpDocKey }) {
             className="min-h-[360px] font-mono text-xs leading-relaxed"
             spellCheck
           />
-          <p className="px-1 text-[11px] text-muted-foreground">
+          <p className="px-1 text-xs text-muted-foreground">
             A line starting <code className="font-mono">##</code> is a heading, a line starting{" "}
             <code className="font-mono">-</code> is a bullet, and a blank line starts a new
             paragraph.

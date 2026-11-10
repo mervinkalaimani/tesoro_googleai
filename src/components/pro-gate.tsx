@@ -64,7 +64,7 @@ export function ProGate({
               ? "Plus fills it with yours and raises the shelf to 150 cars; Pro opens every other section too."
               : "Pro fills it with yours, along with every other section and no limit on how many you log."}
           </p>
-          <p className="mt-2 text-[11px] text-muted-foreground">
+          <p className="mt-2 text-xs text-muted-foreground">
             Free keeps My Cars, the catalogue and up to {FREE_CAR_LIMIT} cars.
           </p>
           {/* The comparison rather than a single button: there are three
