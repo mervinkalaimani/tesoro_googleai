@@ -57,7 +57,7 @@ type FieldKey =
 type FieldDef = {
   key: FieldKey;
   label: string;
-  kind: "text" | "number" | "date" | "status" | "combo";
+  kind: "text" | "number" | "date" | "status" | "payment" | "combo";
   placeholder?: string;
   /**
    * Which suggestion list backs a "combo" field. Model has none: its list is
