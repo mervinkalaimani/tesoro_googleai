@@ -197,6 +197,15 @@ function paymentOf(pay: string, advance: string, cost: number, status: string) {
   return { payment: p, paid, balance: cost - paid };
 }
 
+/** Short fields get short columns: a year is 4 characters, a car number 8, an amount 4. */
+const COL_W: Partial<Record<FieldKey, string>> = {
+  year: "min-w-[5rem]",
+  carNumber: "min-w-[8rem]",
+  cost: "min-w-[5rem]",
+  mrp: "min-w-[5rem]",
+  advance: "min-w-[5rem]",
+};
+
 const num = (v: string | undefined) => {
   const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -767,7 +776,7 @@ export function BulkAddCarsDialog({
                   {perCarFields.map((f) => (
                     <th
                       key={f.key}
-                      className="min-w-[10rem] whitespace-nowrap px-2 py-2 text-left font-medium"
+                      className={`${COL_W[f.key] ?? "min-w-[10rem]"} whitespace-nowrap px-2 py-2 text-left font-medium`}
                     >
                       {f.label}
                     </th>
@@ -809,7 +818,7 @@ export function BulkAddCarsDialog({
                       )}
                     </td>
                     {perCarFields.map((f) => (
-                      <td key={f.key} className="min-w-[10rem] p-1">
+                      <td key={f.key} className={`${COL_W[f.key] ?? "min-w-[10rem]"} p-1`}>
                         <FieldInput
                           def={f}
                           compact
