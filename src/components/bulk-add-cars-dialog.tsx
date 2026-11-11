@@ -48,6 +48,7 @@ type FieldKey =
   | "seller"
   | "status"
   | "orderDate"
+  | "expectedDate"
   | "cost"
   | "mrp";
 
@@ -135,6 +136,7 @@ const FIELDS: FieldDef[] = [
   },
   { key: "status", label: "Status", kind: "status", sharedByDefault: true },
   { key: "orderDate", label: "Order date", kind: "date", sharedByDefault: true },
+  { key: "expectedDate", label: "Expected date", kind: "date", sharedByDefault: false },
   { key: "cost", label: "Cost", kind: "number", placeholder: "199", sharedByDefault: true },
   { key: "mrp", label: "MRP", kind: "number", placeholder: "250", sharedByDefault: true },
 ];
@@ -543,6 +545,7 @@ export function BulkAddCarsDialog({
           paid: isPreOrder(status) ? 0 : cost,
           balance: isPreOrder(status) ? cost : 0,
           orderDate,
+          expectedDate: valueOf(r, "expectedDate").trim(),
           orderMonth: month || base.orderMonth,
           date: isInHand(status) ? orderDate : "",
           month: isInHand(status) ? month || base.month : "",
