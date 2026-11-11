@@ -49,13 +49,15 @@ type FieldKey =
   | "status"
   | "orderDate"
   | "expectedDate"
+  | "payment"
+  | "advance"
   | "cost"
   | "mrp";
 
 type FieldDef = {
   key: FieldKey;
   label: string;
-  kind: "text" | "number" | "date" | "status" | "combo";
+  kind: "text" | "number" | "date" | "status" | "payment" | "combo";
   placeholder?: string;
   /**
    * Which suggestion list backs a "combo" field. Model has none: its list is
@@ -137,7 +139,15 @@ const FIELDS: FieldDef[] = [
   { key: "status", label: "Status", kind: "status", sharedByDefault: true },
   { key: "orderDate", label: "Order date", kind: "date", sharedByDefault: true },
   { key: "expectedDate", label: "Expected date", kind: "date", sharedByDefault: false },
+  { key: "payment", label: "Payment status", kind: "payment", sharedByDefault: false },
   { key: "cost", label: "Cost", kind: "number", placeholder: "199", sharedByDefault: true },
+  {
+    key: "advance",
+    label: "Advance amount",
+    kind: "number",
+    placeholder: "0",
+    sharedByDefault: false,
+  },
   { key: "mrp", label: "MRP", kind: "number", placeholder: "250", sharedByDefault: true },
 ];
 
@@ -178,6 +188,15 @@ const defaultShared = (): Values => ({
 
 /** A row nobody has typed into is not worth keeping or restoring. */
 
+/** Blank payment keeps the old rule (pre-orders owe it all); an advance alone means Partial. */
+function paymentOf(pay: string, advance: string, cost: number, status: string) {
+  const adv = Math.min(cost, Math.max(0, num(advance)));
+  const p = pay || (adv > 0 ? "Partial" : "");
+  if (!p) return { paid: isPreOrder(status) ? 0 : cost, balance: isPreOrder(status) ? cost : 0 };
+  const paid = p === "Paid" ? cost : p === "Pending" ? 0 : adv;
+  return { payment: p, paid, balance: cost - paid };
+}
+
 const num = (v: string | undefined) => {
   const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
@@ -210,6 +229,26 @@ function FieldInput({
         ariaLabel={def.label}
         className={cls}
       />
+    );
+  }
+
+  if (def.kind === "payment") {
+    return (
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={def.label}
+        className={`w-full rounded-md border border-input bg-background px-2 text-sm ${
+          compact ? "h-8" : "h-9"
+        }`}
+      >
+        <option value="">Auto</option>
+        {["Paid", "Partial", "Pending"].map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
     );
   }
 
@@ -542,8 +581,7 @@ export function BulkAddCarsDialog({
           status,
           spent: cost,
           mrp,
-          paid: isPreOrder(status) ? 0 : cost,
-          balance: isPreOrder(status) ? cost : 0,
+          ...paymentOf(valueOf(r, "payment"), valueOf(r, "advance"), cost, status),
           orderDate,
           expectedDate: valueOf(r, "expectedDate").trim(),
           orderMonth: month || base.orderMonth,
@@ -720,14 +758,17 @@ export function BulkAddCarsDialog({
           </p>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
+            <table className="w-max min-w-full text-sm">
               <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-2.5 py-2 text-left font-medium whitespace-nowrap">
                     Car ID (Auto)
                   </th>
                   {perCarFields.map((f) => (
-                    <th key={f.key} className="px-2 py-2 text-left font-medium">
+                    <th
+                      key={f.key}
+                      className="min-w-[10rem] whitespace-nowrap px-2 py-2 text-left font-medium"
+                    >
                       {f.label}
                     </th>
                   ))}
@@ -760,9 +801,7 @@ export function BulkAddCarsDialog({
                           <Tag className="size-3 text-primary shrink-0" />
                           {previewCarIds.get(r.key)}
                           {r.isoId && (
-                            <span className="text-xs text-muted-foreground font-normal">
-                              (ISO)
-                            </span>
+                            <span className="text-xs text-muted-foreground font-normal">(ISO)</span>
                           )}
                         </span>
                       ) : (
@@ -770,7 +809,7 @@ export function BulkAddCarsDialog({
                       )}
                     </td>
                     {perCarFields.map((f) => (
-                      <td key={f.key} className="p-1">
+                      <td key={f.key} className="min-w-[10rem] p-1">
                         <FieldInput
                           def={f}
                           compact
