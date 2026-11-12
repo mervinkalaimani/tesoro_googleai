@@ -1,4 +1,0 @@
-<resources>
-    <string name="app_name">Viiv</string>
-    <string name="asset_statements" translatable="false">[{\"relation\": [\"delegate_permission/common.handle_all_urls\"], \"target\": {\"namespace\": \"web\", \"site\": \"https://viiv.si\"}}]</string>
-</resources>

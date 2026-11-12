@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Viiv</string>
-    <string name="title_activity_main">Viiv</string>
-    <string name="package_name">com.mervink.viiv</string>
-    <string name="custom_url_scheme">com.mervink.viiv</string>
-</resources>
