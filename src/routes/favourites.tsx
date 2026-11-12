@@ -10,14 +10,7 @@ import { ChaseMark, FAVOURITE_COLOUR, ChangedDot } from "@/components/car-marks"
 import { rarityOf } from "@/lib/rarity";
 import { inrFull } from "@/lib/format";
 import { CarThumb } from "@/components/car-thumb";
-import { CompactCarCard } from "@/components/compact-car-card";
-import {
-  BLISTER_GRID_COLS,
-  COMPACT_GRID_COLS,
-  GRID_COLS,
-  ViewToggle,
-  type ViewMode,
-} from "@/components/view-toggle";
+import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { BlisterTile } from "@/components/blister-tile";
 import { SegmentControl } from "@/components/segment-control";
 import { PageHeading, PageToolbar } from "@/components/page-header";
@@ -215,20 +208,10 @@ function FavouritesPage() {
           {text.empty}
         </div>
       ) : view !== "table" ? (
-        <div
-          className={
-            view === "compact"
-              ? COMPACT_GRID_COLS
-              : view === "blister"
-                ? BLISTER_GRID_COLS
-                : GRID_COLS
-          }
-        >
+        <div className={view === "blister" ? BLISTER_GRID_COLS : GRID_COLS}>
           {rows.map((r, i) =>
             view === "blister" ? (
               <BlisterTile key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
-            ) : view === "compact" ? (
-              <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
             ) : (
               <GalleryCard
                 key={(r.id || "") + i}

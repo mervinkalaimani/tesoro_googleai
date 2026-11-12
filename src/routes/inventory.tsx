@@ -22,15 +22,8 @@ import {
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog } from "@/components/car-form-dialog";
-import { CompactCarCard } from "@/components/compact-car-card";
 import { BlisterTile } from "@/components/blister-tile";
-import {
-  BLISTER_GRID_COLS,
-  COMPACT_GRID_COLS,
-  GRID_COLS,
-  ViewToggle,
-  type ViewMode,
-} from "@/components/view-toggle";
+import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { PageHeading } from "@/components/page-header";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio, formatDayMonthYear, inrPrice } from "@/lib/format";
@@ -224,6 +217,100 @@ function PriceStrip({ car, spentOverride }: { car: Diecast; spentOverride?: numb
   );
 }
 
+/**
+ * What sits under a car's photograph in the grid and the blister views: the
+ * name, brand and box, series, and the spent / MRP / delta strip.
+ *
+ * `inside` is for a tile that is already one button, where a second one for the
+ * name or the copies mark would be a button in a button.
+ */
+function InventoryFoot({
+  car,
+  onOpen,
+  copies = 1,
+  copiesTotal,
+  expanded = false,
+  onToggleCopies,
+  inside = false,
+}: {
+  car: Diecast;
+  onOpen?: () => void;
+  copies?: number;
+  copiesTotal?: number;
+  expanded?: boolean;
+  onToggleCopies?: () => void;
+  inside?: boolean;
+}) {
+  const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
+  return (
+    <div className="flex flex-1 flex-col p-3">
+      {/* Car Name (regular size) */}
+      <div className="flex items-start justify-between gap-1.5">
+        {inside ? (
+          <span
+            className="text-left text-sm font-semibold leading-snug line-clamp-1 min-w-0"
+            title={title}
+          >
+            {title}
+            <ChangedDot car={car} className="ml-1.5 align-middle" />
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="text-left text-sm font-semibold leading-snug hover:text-primary line-clamp-1 min-w-0"
+            title={title}
+          >
+            {title}
+            <ChangedDot car={car} className="ml-1.5 align-middle" />
+          </button>
+        )}
+        {copies > 1 && (
+          <div className="shrink-0">
+            <CopiesBadge
+              n={copies}
+              expanded={expanded}
+              onToggle={inside ? undefined : onToggleCopies}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* brand (left) and assortment (right) (smaller size) */}
+      <div className="mt-1 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+        <span className="truncate" title={car.brand || undefined}>
+          {car.brand || "—"}
+        </span>
+        <span
+          className="truncate text-right shrink-0 max-w-[50%]"
+          title={car.assortment || undefined}
+        >
+          {car.assortment || "—"}
+        </span>
+      </div>
+
+      {/* series (left) and sub series (right) (even smaller) */}
+      <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xs text-muted-foreground/80">
+        <span className="truncate" title={car.series || undefined}>
+          {car.series || "—"}
+        </span>
+        <span
+          className="truncate text-right shrink-0 max-w-[50%]"
+          title={car.subSeries || undefined}
+        >
+          {car.subSeries || "—"}
+        </span>
+      </div>
+
+      {/* Divider */}
+      <div className="mt-auto border-t border-border pt-2.5">
+        {/* spent, MRP, delta */}
+        <PriceStrip car={car} spentOverride={copies > 1 ? copiesTotal : undefined} />
+      </div>
+    </div>
+  );
+}
+
 function InventoryCard({
   car,
   onOpen,
@@ -256,57 +343,14 @@ function InventoryCard({
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col p-3">
-        {/* Car Name (regular size) */}
-        <div className="flex items-start justify-between gap-1.5">
-          <button
-            type="button"
-            onClick={onOpen}
-            className="text-left text-sm font-semibold leading-snug hover:text-primary line-clamp-1 min-w-0"
-            title={car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-          >
-            {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-            <ChangedDot car={car} className="ml-1.5 align-middle" />
-          </button>
-          {copies > 1 && (
-            <div className="shrink-0">
-              <CopiesBadge n={copies} expanded={expanded} onToggle={onToggleCopies} />
-            </div>
-          )}
-        </div>
-
-        {/* brand (left) and assortment (right) (smaller size) */}
-        <div className="mt-1 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-          <span className="truncate" title={car.brand || undefined}>
-            {car.brand || "—"}
-          </span>
-          <span
-            className="truncate text-right shrink-0 max-w-[50%]"
-            title={car.assortment || undefined}
-          >
-            {car.assortment || "—"}
-          </span>
-        </div>
-
-        {/* series (left) and sub series (right) (even smaller) */}
-        <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xs text-muted-foreground/80">
-          <span className="truncate" title={car.series || undefined}>
-            {car.series || "—"}
-          </span>
-          <span
-            className="truncate text-right shrink-0 max-w-[50%]"
-            title={car.subSeries || undefined}
-          >
-            {car.subSeries || "—"}
-          </span>
-        </div>
-
-        {/* Divider */}
-        <div className="mt-auto border-t border-border pt-2.5">
-          {/* spent, MRP, delta */}
-          <PriceStrip car={car} spentOverride={copies > 1 ? copiesTotal : undefined} />
-        </div>
-      </div>
+      <InventoryFoot
+        car={car}
+        onOpen={onOpen}
+        copies={copies}
+        copiesTotal={copiesTotal}
+        expanded={expanded}
+        onToggleCopies={onToggleCopies}
+      />
     </article>
   );
 }
@@ -675,7 +719,7 @@ function InventoryPage() {
         {/* Main controls row: Status segment control, filter chips, actions and
             views. items-start so the actions stay level with the segment
             control on a narrower screen, where the chips wrap beneath it. */}
-        <div className="flex items-start justify-between gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-2 min-w-0 md:items-start">
           {/* The status segments and the filter chips read as one control —
               status is a filter too — so they share a line wherever there is
               room for them. Below that width the chips wrap underneath, which
@@ -974,36 +1018,14 @@ function InventoryPage() {
 
       {view !== "table" ? (
         <>
-          <div
-            className={
-              view === "compact"
-                ? COMPACT_GRID_COLS
-                : view === "blister"
-                  ? BLISTER_GRID_COLS
-                  : GRID_COLS
-            }
-          >
+          <div className={view === "blister" ? BLISTER_GRID_COLS : GRID_COLS}>
             {shown.map(({ car: r, n, total, lead }, i) =>
               view === "blister" ? (
                 <BlisterTile
                   key={(r.id || "") + i}
                   car={r}
-                  copies={lead ? n : 1}
-                  caption={r.spent ? inr(r.spent) : undefined}
                   onOpen={() => openDrawer(r)}
-                />
-              ) : view === "compact" ? (
-                <CompactCarCard
-                  key={(r.id || "") + i}
-                  car={r}
-                  // The status belongs on the picture here: every card on this
-                  // shelf has one, and the line it used to share now carries
-                  // the series and what the car cost.
-                  statusInPhoto
-                  copies={lead ? n : 1}
-                  copiesExpanded={expanded.has(r.id)}
-                  onToggleCopies={() => toggleExpanded(r.id)}
-                  onOpen={() => openDrawer(r)}
+                  foot={<InventoryFoot inside car={r} copies={lead ? n : 1} copiesTotal={total} />}
                 />
               ) : (
                 <InventoryCard
