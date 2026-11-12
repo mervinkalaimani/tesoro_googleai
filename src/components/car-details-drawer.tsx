@@ -603,13 +603,6 @@ function CarPopupContent({
 
   const trackable = Boolean(trackingPageFor(car.deliveryPartner, car.trackingId));
   const rarity = rarityOf(car);
-  const hasCondition = Boolean(
-    (car.carCondition && car.carCondition.trim()) ||
-    (car.cardCondition && car.cardCondition.trim()) ||
-    (typeof car.carRating === "number" && car.carRating > 0) ||
-    (typeof car.cardRating === "number" && car.cardRating > 0),
-  );
-
   const title = car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car";
 
   /** Status, marks and size: the pills beside the name. */
@@ -671,51 +664,40 @@ function CarPopupContent({
     </>
   );
 
-  /** One card to a fact. */
-  const tiles = (cols: string, merge = false) => (
-    <div className={cn("grid grid-flow-dense gap-3", merge ? "grid-cols-6" : cols)}>
-      {planTiles(
-        [
-          ["Brand", car.brand],
-          ["Number", car.carNumber],
-          ...(merge
-            ? []
-            : ([
-                ["Series", car.series],
-                ["Sub series", car.subSeries],
-              ] as const)),
-          ["Assortment", car.assortment],
-          ["Colour", car.colour],
-          ["Type", car.type],
-        ],
-        merge,
-      ).map(({ label, v, wide }) => (
-        <Stat
-          key={label}
-          label={label}
-          fit={v}
-          narrow={merge && PHONE_THIRDS.has(label)}
-          className={
-            merge
-              ? wide
-                ? "col-span-6"
-                : PHONE_THIRDS.has(label)
-                  ? "col-span-2"
-                  : "col-span-3"
-              : wide
-                ? "col-span-2"
-                : undefined
-          }
-        >
-          <span title={v}>{v}</span>
-        </Stat>
-      ))}
-    </div>
-  );
+  /** The facts, row by row; see PhoneFacts. */
+  const factRows = [
+    {
+      items: [
+        ["Brand", car.brand],
+        ["Number", car.carNumber],
+      ],
+    },
+    {
+      items: [
+        ["Series", car.series],
+        ["Sub series", car.subSeries],
+      ],
+    },
+    {
+      items: [
+        ["Assortment", car.assortment],
+        ["Colour", car.colour],
+        ["Type", car.type],
+      ],
+    },
+  ] as const;
+  const conditionRows = [
+    {
+      items: [
+        ["Car condition", conditionLine(car.carCondition, car.carRating)],
+        ["Card condition", conditionLine(car.cardCondition, car.cardRating)],
+      ],
+    },
+  ] as const;
 
   /** The cards: what it cost, what it is, what is in the box. */
   const panels = (cols: string, phone = false) => (
-    <div className={cn("grid items-start gap-4", cols)}>
+    <div className={cn("grid items-start gap-3", cols)}>
       <CarPurchaseTab
         car={car}
         spent={spent}
@@ -728,9 +710,9 @@ function CarPopupContent({
       />
       {/* Only when there is something to list: a car with no series, case
           number or grading would otherwise get a heading over nothing. */}
-      {(car.caseNumber || hasCondition || (phone && (car.series || car.subSeries))) && (
+      {car.caseNumber && (
         <Panel title="Specification">
-          <CarDetailsTab car={car} hasCondition={hasCondition} compact withSeries={phone} />
+          <CarDetailsTab car={car} hasCondition={false} compact />
         </Panel>
       )}
       {hasPack && (
@@ -763,9 +745,11 @@ function CarPopupContent({
         footerNote={<AddedBy car={car} />}
         headerAction={idButtons()}
         photo={<HeroCarImage car={car} contain />}
-        below={tiles("grid-cols-3")}
+        below={<PhoneFacts rows={factRows} />}
         actions={<CarDetailActions onEdit={onEdit} onAddAnother={onAddAnother} />}
       >
+        <PhoneFacts rows={conditionRows} />
+
         {panels("grid-cols-2")}
 
         <AssortmentSuggestions catalogId={car.catalogId} />
@@ -787,7 +771,7 @@ function CarPopupContent({
           ===================================================================== */}
       <div
         ref={mobile.rootRef}
-        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background"
+        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
         style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
       >
         <div className="relative flex-1 min-h-0">
@@ -833,9 +817,9 @@ function CarPopupContent({
                 ref={mobile.cardRef}
                 className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
               >
-                <div className="relative space-y-5">
+                <div className="relative space-y-3">
                   <div className="min-w-0 space-y-3">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3 pr-11">
                       <h2 className="min-w-0 text-2xl font-bold leading-tight tracking-tight text-foreground">
                         {title}
                       </h2>
@@ -846,7 +830,9 @@ function CarPopupContent({
                     {pillRow(true)}
                   </div>
 
-                  {tiles("grid-cols-2", true)}
+                  <PhoneFacts rows={factRows} />
+
+                  <PhoneFacts rows={conditionRows} />
 
                   {panels("grid-cols-1", true)}
 
@@ -976,7 +962,7 @@ function DesktopShell({
       {below && <div className="col-start-1 row-start-3 min-w-0">{below}</div>}
 
       <div className="col-start-2 row-span-2 row-start-2 flex min-h-0 min-w-0 flex-col">
-        <div className="flex flex-1 flex-col gap-4">{children}</div>
+        <div className="flex flex-1 flex-col gap-3">{children}</div>
       </div>
 
       {/* The whole width of the window, under both columns. */}
@@ -1043,51 +1029,6 @@ function Panel({
   );
 }
 
-/** Longer than this and a fact would be cut off in one tile. */
-const TILE_LONG = 9;
-/** Facts that always take two tiles, long or short. */
-const TILE_DOUBLE = new Set(["Brand"]);
-/** Facts that never take a second tile, however long; their text steps down instead. */
-const TILE_SINGLE = new Set(["Series", "Sub series"]);
-/** The fact cards share eight tiles of room, however wide each one runs. */
-const TILE_BUDGET = 8;
-
-/** On a phone the facts sit on a six-column grid: halves for most, thirds for the short three. */
-const PHONE_THIRDS = new Set(["Assortment", "Colour", "Type"]);
-
-/**
- * Which facts to draw, and which of them run two tiles wide.
- *
- * Empty facts drop out. A long one asks for a second tile; the first fact in
- * the list asks first (Brand), and a request is only granted while the whole
- * set still fits the budget, so a wide Brand is never traded for a wide Type.
- */
-function planTiles(
-  items: readonly (readonly [string, string | null | undefined])[],
-  /** A short Brand and Number each keep one cell, side by side (a phone). */
-  pair = false,
-) {
-  const shown = items
-    .map(([label, v]) => ({ label, v: (v || "").trim() }))
-    .filter((t) => t.v)
-    .slice(0, TILE_BUDGET);
-  const len = (l: string) => shown.find((t) => t.label === l)?.v.length ?? 0;
-  const keepBrand =
-    pair && len("Brand") > 0 && len("Number") > 0 && len("Brand") + len("Number") <= 14;
-  let used = shown.length;
-  return shown.map((t) => {
-    // A pair that fits stays a pair: one cell each, the text stepping down in
-    // size rather than either one taking a second cell.
-    const paired = keepBrand && (t.label === "Brand" || t.label === "Number");
-    const wide =
-      !paired &&
-      (TILE_DOUBLE.has(t.label) || (!TILE_SINGLE.has(t.label) && t.v.length > TILE_LONG)) &&
-      used < TILE_BUDGET;
-    if (wide) used += 1;
-    return { ...t, wide };
-  });
-}
-
 /** One headline fact: a caption over a big answer. */
 function Stat({
   label,
@@ -1097,6 +1038,7 @@ function Stat({
   className,
   fit,
   narrow = false,
+  uniform = false,
 }: {
   label: string;
   children: ReactNode;
@@ -1107,33 +1049,84 @@ function Stat({
   fit?: string;
   /** A third of the row: the text steps down sooner. */
   narrow?: boolean;
+  /** The one size every fact card shares, whatever its row or its text. */
+  uniform?: boolean;
 }) {
   const len = (fit ?? "").length + (narrow ? 5 : 0);
+  const small = uniform || narrow;
   return (
     <div
       className={cn(
-        "min-w-0 rounded-2xl border border-border/60 bg-muted/20 py-3",
-        narrow ? "px-3" : "px-4",
+        "min-w-0 rounded-2xl border border-border/60 bg-muted/20",
+        uniform ? "py-2" : "py-3",
+        small ? "px-3" : "px-4",
         className,
       )}
     >
       <p
         className={cn(
           "truncate font-semibold uppercase text-muted-foreground",
-          narrow ? "text-[10px] tracking-[0.04em]" : "text-xs tracking-[0.14em]",
+          uniform
+            ? "text-[10px] tracking-[0.08em]"
+            : narrow
+              ? "text-[10px] tracking-[0.04em]"
+              : "text-xs tracking-[0.14em]",
         )}
       >
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 truncate font-bold tracking-tight text-foreground",
-          len > 14 ? "text-xs" : len > 10 ? "text-sm" : "text-base",
+          uniform ? "mt-0.5" : "mt-1",
+          "truncate font-bold tracking-tight text-foreground",
+          uniform ? "text-sm" : len > 14 ? "text-xs" : len > 10 ? "text-sm" : "text-base",
         )}
       >
         {children}
       </p>
       {sub && <p className={cn("mt-0.5 text-xs font-medium", tone)}>{sub}</p>}
+    </div>
+  );
+}
+
+/**
+ * The facts as a phone lays them out, row by row:
+ *
+ *   Brand        | Number
+ *   Series       | Sub series
+ *   Assortment   | Colour   | Type
+ *   Car condition | Card condition
+ *
+ * One cell each, every one the same size of type. A
+ * cell with nothing to say is left out and the others fill its space; a row
+ * with none is not drawn.
+ */
+function PhoneFacts({
+  rows,
+}: {
+  rows: readonly { items: readonly (readonly [string, string | null | undefined])[] }[];
+}) {
+  return (
+    <div className="space-y-2">
+      {rows.map((row, i) => {
+        const items = row.items.filter(([, v]) => (v || "").trim());
+        if (items.length === 0) return null;
+        return (
+          // The cells share the row between them, so a fact that is missing
+          // leaves no hole: the ones that are there simply grow into it.
+          <div
+            key={i}
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
+          >
+            {items.map(([label, v]) => (
+              <Stat key={label} label={label} uniform>
+                <span title={v ?? undefined}>{(v || "").trim()}</span>
+              </Stat>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -2781,56 +2774,34 @@ function CatalogDetailsContent({
       </span>
     ) : null;
 
-  /** One card to a fact. */
-  const tiles = (cols: string, merge = false) => (
-    <div className={cn("grid grid-flow-dense gap-3", merge ? "grid-cols-6" : cols)}>
-      {planTiles(
-        [
-          ["Brand", shownCar.brand],
-          ["Number", shownCar.carNumber],
-          ...(merge
-            ? []
-            : ([
-                ["Series", shownCar.series],
-                ["Sub series", shownCar.subSeries],
-              ] as const)),
-          ["Assortment", shownCar.assortment],
-          ["Colour", colour || colours[0] || shownCar.colour],
-          ["Type", shownCar.type],
-          ...(merge ? [] : ([["Case / Mix", shownCar.caseNumber]] as const)),
-        ],
-        merge,
-      ).map(({ label, v, wide }) => (
-        <Stat
-          key={label}
-          label={label}
-          fit={v}
-          narrow={merge && PHONE_THIRDS.has(label)}
-          className={
-            merge
-              ? wide
-                ? "col-span-6"
-                : PHONE_THIRDS.has(label)
-                  ? "col-span-2"
-                  : "col-span-3"
-              : wide
-                ? "col-span-2"
-                : undefined
-          }
-        >
-          <span title={v}>{v}</span>
-        </Stat>
-      ))}
-    </div>
-  );
+  /** The facts, row by row; see PhoneFacts. */
+  const factRows = [
+    {
+      items: [
+        ["Brand", shownCar.brand],
+        ["Number", shownCar.carNumber],
+      ],
+    },
+    {
+      items: [
+        ["Series", shownCar.series],
+        ["Sub series", shownCar.subSeries],
+      ],
+    },
+    {
+      items: [
+        ["Assortment", shownCar.assortment],
+        ["Colour", colour || colours[0] || shownCar.colour],
+        ["Type", shownCar.type],
+      ],
+    },
+  ] as const;
 
   /** The cards: the choices, the description, the box, who filed what. */
   const panels = (cols: string, phone = false) => (
-    <div className={cn("grid items-start gap-4", cols)}>
-      {phone && (shownCar.series || shownCar.subSeries || shownCar.caseNumber) && (
+    <div className={cn("grid items-start gap-3", cols)}>
+      {shownCar.caseNumber && (
         <Panel title="Specification" className="col-span-full">
-          <InfoRow label="Series" value={shownCar.series} />
-          <InfoRow label="Sub series" value={shownCar.subSeries} />
           <InfoRow label="Case / Mix" value={shownCar.caseNumber} />
         </Panel>
       )}
@@ -2986,7 +2957,7 @@ function CatalogDetailsContent({
         subtitle={<div className="mt-3">{pills}</div>}
         footerNote={addedBy}
         photo={<HeroCarImage car={shownCar} contain />}
-        below={tiles("grid-cols-3")}
+        below={<PhoneFacts rows={factRows} />}
         actions={actions}
       >
         {panels("grid-cols-2")}
@@ -3000,7 +2971,7 @@ function CatalogDetailsContent({
           ===================================================================== */}
       <div
         ref={mobile.rootRef}
-        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background"
+        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
         style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
       >
         <div className="relative flex-1 min-h-0">
@@ -3039,13 +3010,13 @@ function CatalogDetailsContent({
                 ref={mobile.cardRef}
                 className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
               >
-                <div className="relative space-y-5">
+                <div className="relative space-y-3">
                   <div className="min-w-0 space-y-3">
                     <h2 className="text-2xl font-bold tracking-tight text-foreground">{title}</h2>
                     {pills}
                   </div>
 
-                  {tiles("grid-cols-2", true)}
+                  <PhoneFacts rows={factRows} />
 
                   {panels("grid-cols-1", true)}
 
