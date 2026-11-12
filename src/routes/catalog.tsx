@@ -40,15 +40,8 @@ import { logoMap, useBrandLogos } from "@/lib/brand-logos";
 import { RARITIES } from "@/lib/rarity";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { SegmentControl } from "@/components/segment-control";
-import {
-  ViewToggle,
-  GRID_COLS,
-  COMPACT_GRID_COLS,
-  BLISTER_GRID_COLS,
-  type ViewMode,
-} from "@/components/view-toggle";
+import { ViewToggle, GRID_COLS, BLISTER_GRID_COLS, type ViewMode } from "@/components/view-toggle";
 import { BlisterTile } from "@/components/blister-tile";
-import { CompactCarCard } from "@/components/compact-car-card";
 import { SyncedBadge } from "@/components/synced-badge";
 import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -677,34 +670,7 @@ function CatalogPage() {
   }, [shown, group]);
 
   const renderRows = (list: CatalogCar[]) =>
-    view === "compact" ? (
-      // Three across on a phone rather than the shared two.
-      <div className={cn(COMPACT_GRID_COLS, "max-sm:grid-cols-3")}>
-        {list.map((c) => {
-          const cid = c.car_id.toUpperCase();
-          const isCarIso = myIso.has(cid);
-          const isCarOwned = owned.has(cid);
-          const caption = isCarIso
-            ? isCarOwned
-              ? "Owned · ISO"
-              : "ISO"
-            : isCarOwned
-              ? "Owned"
-              : isPreOrder(c)
-                ? "PO"
-                : undefined;
-          return (
-            <CompactCarCard
-              key={c.car_id}
-              car={asCar(c)}
-              onOpen={() => setViewing(c)}
-              caption={caption}
-              synced={Boolean(c.synced_at)}
-            />
-          );
-        })}
-      </div>
-    ) : view === "blister" ? (
+    view === "blister" ? (
       <div className={BLISTER_GRID_COLS}>
         {list.map((c) => {
           const cid = c.car_id.toUpperCase();

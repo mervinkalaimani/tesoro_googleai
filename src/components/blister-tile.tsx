@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { SyncedMark } from "@/components/synced-badge";
 import { CopiesBadge } from "@/components/copies-badge";
 import { ChaseMark, FavouriteMark, ChangedDot } from "@/components/car-marks";
@@ -23,6 +24,7 @@ export function BlisterTile({
   caption,
   synced,
   copies = 1,
+  foot,
   className = "",
 }: {
   car: Diecast;
@@ -32,6 +34,8 @@ export function BlisterTile({
   /** The catalogue entry has been checked against the maker's site. */
   synced?: boolean;
   copies?: number;
+  /** Replaces the name and brand line under the photograph. */
+  foot?: ReactNode;
   className?: string;
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
@@ -103,19 +107,21 @@ export function BlisterTile({
         )}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col p-2">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="line-clamp-2 text-sm font-semibold leading-tight group-hover:text-primary">
-            {title}
-          </span>
-          <ChangedDot car={car} />
-        </div>
-        {/* One line, in the order the card itself prints them. Middle dots,
+      {foot ?? (
+        <div className="flex min-w-0 flex-1 flex-col p-2">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className="line-clamp-2 text-sm font-semibold leading-tight group-hover:text-primary">
+              {title}
+            </span>
+            <ChangedDot car={car} />
+          </div>
+          {/* One line, in the order the card itself prints them. Middle dots,
             and nothing left standing where a part is missing. */}
-        <div className="mt-0.5 truncate text-xs text-muted-foreground">
-          {[car.brand, car.assortment, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
+          <div className="mt-0.5 truncate text-xs text-muted-foreground">
+            {[car.brand, car.assortment, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
+          </div>
         </div>
-      </div>
+      )}
     </button>
   );
 }

@@ -1,4 +1,4 @@
-import { LayoutGrid, List, Grid3x3, RectangleVertical } from "lucide-react";
+import { LayoutGrid, List, RectangleVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
@@ -15,19 +15,16 @@ import {
  * cost, who sold it, when did it land — where the grids answer "which one is
  * it". Then the two grids, large to small.
  */
-export type ViewMode = "table" | "grid" | "compact" | "blister";
+export type ViewMode = "table" | "grid" | "blister";
 
 const MODES: { value: ViewMode; label: string; icon: typeof List }[] = [
   { value: "blister", label: "Blister view", icon: RectangleVertical },
   { value: "grid", label: "Grid view", icon: LayoutGrid },
-  { value: "compact", label: "Compact grid view", icon: Grid3x3 },
   { value: "table", label: "Table view", icon: List },
 ];
 
-/** Column counts for the two grids, shared so every page matches: 2 cols for grid and 3 cols for compact on phone */
+/** Column counts for the two grids, shared so every page matches: 2 cols on a phone */
 export const GRID_COLS = "grid gap-2.5 sm:gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
-export const COMPACT_GRID_COLS =
-  "grid gap-1.5 sm:gap-2 grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
 /**
  * Blister view: one column more than the grid at every width, because a blister
  * card is taller than it is wide and a row of them would otherwise run off the
@@ -63,7 +60,7 @@ export function ViewToggle({
         <DropdownMenuTrigger
           aria-label={`View: ${current.label}`}
           className={cn(
-            "grid size-10 shrink-0 place-items-center rounded-md border border-border bg-muted/40 text-foreground sm:hidden",
+            "grid size-8 shrink-0 place-items-center rounded-md border border-border bg-muted/40 text-foreground sm:hidden",
             className,
           )}
         >
