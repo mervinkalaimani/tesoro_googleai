@@ -1,0 +1,5 @@
+<resources>
+    <color name="ic_launcher_background">#1B1B1B</color>
+    <!-- The web app's default (dark) background, for the splash and first paint. -->
+    <color name="viiv_bg">#0A0F14</color>
+</resources>
