@@ -258,12 +258,8 @@ function balanceOf(car: Diecast): number {
 function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
   return (
     <span className="min-w-0 text-right">
-      <span className="block text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      <span className={`block truncate text-xs font-semibold tabular-nums ${tone}`}>
-        {value}
-      </span>
+      <span className="block text-xs uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className={`block truncate text-xs font-semibold tabular-nums ${tone}`}>{value}</span>
     </span>
   );
 }
@@ -318,6 +314,7 @@ export const Route = createFileRoute("/releases")({
         { property: "og:type", content: "website" },
         { property: "og:url", content: siteUrl("/releases") },
         { property: "og:site_name", content: SITE_NAME },
+        { property: "og:image", content: siteUrl("/viiv_app_icon_light.png") },
         { name: "twitter:card", content: "summary" },
       ],
       // The other page a stranger can land on, and the other one that is
@@ -390,6 +387,27 @@ function ReleasesPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
+      {/* Read by crawlers: the dated list the page shows, as an ItemList. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            name: "Upcoming diecast releases",
+            numberOfItems: total,
+            itemListElement: months
+              .flatMap(([, list]) => list)
+              .slice(0, 100)
+              .map((row, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                url: siteUrl(`/catalog/${row.car_id}`),
+                name: `${castingName(row as CatalogCar)} (${row.expected_date})`,
+              })),
+          }).replace(/</g, "\\u003c"),
+        }}
+      />
       <PageHeading
         title="Pre Order Calendar"
         subtitle={
@@ -454,17 +472,21 @@ function ReleasesPage() {
                     {/* Wide screens only: on a phone the name and the date are
                       the whole point, and five more columns would crush them. */}
                     <span className="hidden shrink-0 items-baseline gap-4 lg:flex">
-                      <Stat label="Seller" value={owned?.seller || "—"} />
                       <Stat label="MRP" value={row.mrp > 0 ? inrPriceFull(row.mrp) : "—"} />
-                      <Stat label="Spent" value={owned?.spent ? inrFull(owned.spent) : "—"} />
-                      <Stat label="Paid" value={owned?.paid ? inrFull(owned.paid) : "—"} />
-                      <Stat
-                        label="Balance"
-                        value={owned ? inrFull(balanceOf(owned)) : "—"}
-                        tone={
-                          owned && balanceOf(owned) > 0 ? "text-amber-600 dark:text-amber-400" : ""
-                        }
-                      />
+                      {/* Yours only: signed out, or on a casting you do not own,
+                          four columns of dashes are noise to readers and crawlers. */}
+                      {owned ? (
+                        <>
+                          <Stat label="Seller" value={owned.seller || "—"} />
+                          <Stat label="Spent" value={owned.spent ? inrFull(owned.spent) : "—"} />
+                          <Stat label="Paid" value={owned.paid ? inrFull(owned.paid) : "—"} />
+                          <Stat
+                            label="Balance"
+                            value={inrFull(balanceOf(owned))}
+                            tone={balanceOf(owned) > 0 ? "text-amber-600 dark:text-amber-400" : ""}
+                          />
+                        </>
+                      ) : null}
                     </span>
                     {owned ? (
                       <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-700 dark:text-sky-400">
