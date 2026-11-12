@@ -202,8 +202,9 @@ function CastingPage() {
   const rarity = rarityOf({ rarity: car.rarity } as never);
 
   // Read by search engines, not by people: the same facts the page shows, in
-  // the shape they index. The offer is what the page prints and nothing more —
-  // a range once two collectors have bought one, otherwise the list price.
+  // the shape they index. No `offers`: nothing is sold on this site, and a
+  // price with no availability reads as a merchant listing. The price stays
+  // in the visible page.
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -215,19 +216,6 @@ function CastingPage() {
     ...(photo ? { image: photo } : {}),
     ...(car.car_number ? { sku: car.car_number } : {}),
     description: castingDescription(car),
-    ...(typical && stats?.paid_min != null && stats.paid_max != null
-      ? {
-          offers: {
-            "@type": "AggregateOffer",
-            priceCurrency: "INR",
-            lowPrice: stats.paid_min,
-            highPrice: stats.paid_max,
-            offerCount: stats.prices,
-          },
-        }
-      : car.mrp > 0
-        ? { offers: { "@type": "Offer", priceCurrency: "INR", price: car.mrp } }
-        : {}),
   };
 
   return (
