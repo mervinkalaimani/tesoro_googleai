@@ -651,3 +651,30 @@ input[type="date"]::-webkit-date-and-time-value {
     animation: tour-rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   }
 }
+
+/*
+   Inside the Android app (its WebView says "ViivApp" in the user agent, see
+   __root.tsx). That WebView smears backdrop-filter into a blurred blob that
+   covers the header's buttons, so blur is switched off there and the frosted
+   surfaces go opaque instead: with nothing blurring, a translucent one would
+   just show the page through itself.
+*/
+html.in-app,
+html.in-app *,
+html.in-app *::before,
+html.in-app *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html.in-app [class*="bg-background/"] {
+  background-color: var(--background) !important;
+}
+/* Big soft shadows are repainted on every scroll frame, once per card. A 1,500-car
+   list in a WebView is where that adds up to a hang, so cards get a border only. */
+html.in-app .card-elevated,
+html.in-app [class*="shadow-["],
+html.in-app [class*="shadow-lg"],
+html.in-app [class*="shadow-xl"],
+html.in-app [class*="shadow-2xl"] {
+  box-shadow: none !important;
+}

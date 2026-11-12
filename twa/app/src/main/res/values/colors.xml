@@ -1,4 +1,5 @@
 <resources>
-    <color name="bar">#0A0F14</color>
+    <!-- Status/nav bar and splash: the web app's background in light mode. -->
+    <color name="bar">#F7F9FA</color>
     <color name="ic_launcher_background">#1B1B1B</color>
 </resources>

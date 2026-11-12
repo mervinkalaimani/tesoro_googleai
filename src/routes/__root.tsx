@@ -186,6 +186,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 // query in React instead would show the shell in the wrong theme until hydration.
 const THEME_INIT = `
 try {
+  if (/ViivApp/.test(navigator.userAgent)) document.documentElement.classList.add('in-app');
   var t = JSON.parse(localStorage.getItem('dg.theme') || '"dark"');
   if (t === 'system') {
     t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
