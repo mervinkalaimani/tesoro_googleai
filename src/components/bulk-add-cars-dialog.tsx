@@ -294,6 +294,47 @@ function FieldInput({
 }
 
 /** One table row's worth of values, taken off an existing car. */
+/**
+ * A row from what a scan read off a photograph. Unlike a row from an ISO entry
+ * it names no existing car, so saving adds one; and it carries no price, seller
+ * or date, which are the part a photograph cannot tell.
+ */
+function rowFromScan(
+  c: Partial<
+    Record<
+      | "make"
+      | "model"
+      | "variant"
+      | "year"
+      | "colour"
+      | "type"
+      | "brand"
+      | "series"
+      | "subSeries"
+      | "carNumber"
+      | "assortment"
+      | "size",
+      string
+    >
+  >,
+): Row {
+  return {
+    ...blankRow(),
+    make: c.make || "",
+    model: c.model || "",
+    variant: c.variant || "",
+    year: c.year || "",
+    colour: c.colour || "",
+    type: c.type || "",
+    brand: c.brand || "",
+    series: c.series || "",
+    subSeries: c.subSeries || "",
+    carNumber: c.carNumber || "",
+    assortment: c.assortment || "",
+    size: c.size || "",
+  };
+}
+
 function rowFromCar(car: Diecast): Row {
   return {
     ...blankRow(),
@@ -318,6 +359,7 @@ export function BulkAddCarsDialog({
   open: controlledOpen,
   onOpenChange,
   seed,
+  scanned,
   onSwitchToUpload,
 }: {
   trigger?: ReactNode;
@@ -330,6 +372,12 @@ export function BulkAddCarsDialog({
    * "add all five" is a clear statement of what the table should contain.
    */
   seed?: Diecast[];
+  /**
+   * Cars a scan read off one photograph, as plain attributes. The table opens
+   * with a row for each and the prices left blank: what is shared (seller,
+   * status, order date) is typed once, and what each car cost is typed per row.
+   */
+  scanned?: Parameters<typeof rowFromScan>[0][];
   /** Hands off to the CSV importer: a spreadsheet is a batch like any other. */
   onSwitchToUpload?: () => void;
 }) {
@@ -358,6 +406,16 @@ export function BulkAddCarsDialog({
       setDraftReady(false);
       return;
     }
+    if (scanned?.length) {
+      // Who sold them, and when, is the same for the lot; what each one cost is
+      // not, so cost and MRP stay per car.
+      setSharedKeys(new Set<FieldKey>(["seller", "status", "orderDate"]));
+      setShared(defaultShared());
+      setRows(scanned.map(rowFromScan));
+      setRestored(false);
+      setDraftReady(true);
+      return;
+    }
     if (seed?.length) {
       // The catalogue fields vary per car here, so none of them are shared —
       // otherwise five different castings would collapse into one row's worth
@@ -380,7 +438,7 @@ export function BulkAddCarsDialog({
       setRestored(false);
     }
     setDraftReady(true);
-  }, [open, seed]);
+  }, [open, seed, scanned]);
 
   // Gated on draftReady for the same reason as the single-car form: the restore
   // above only schedules its state, so on that commit this would still see the
