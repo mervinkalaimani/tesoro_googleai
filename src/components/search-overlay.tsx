@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { useRouterState } from "@tanstack/react-router";
-import { ArrowUpRight, Camera, Car as CarIcon, Filter, Images, Search, X } from "lucide-react";
+import { ArrowUpRight, Camera, Car as CarIcon, Filter, Search, X } from "lucide-react";
 
 import { useApp } from "@/lib/store";
 import { useCars } from "@/lib/cars-store";
@@ -13,7 +13,6 @@ import { RecentSearches } from "@/components/recent-searches";
 import { NAV_GLASS } from "@/components/nav-glass";
 import { useRecentSearches } from "@/lib/recent-searches";
 import { inrFull } from "@/lib/format";
-import { toast } from "sonner";
 
 const SEARCH_TIPS: [string, string][] = [
   ["make = toyota", "to search one field"],
@@ -189,29 +188,11 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
               <button
                 type="button"
                 tabIndex={open ? 0 : -1}
-                aria-label="Scan one car"
+                aria-label="Search by image"
                 onClick={() => setScanOpen(true)}
                 className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
               >
                 <Camera className="size-[18px]" />
-              </button>
-              <button
-                type="button"
-                tabIndex={open ? 0 : -1}
-                aria-label="Scan several cars"
-                // Left on the bar so it can say why it does nothing: a phone's
-                // camera frame is one car's worth, and the several-cars read
-                // and the bulk table it ends in are laid out for a wide screen.
-                aria-disabled="true"
-                title="Available on web only"
-                onClick={() =>
-                  toast.info("Scanning several cars is available on the web only", {
-                    description: "Open VIIV on a computer to scan up to 6 cars from one photo.",
-                  })
-                }
-                className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground/40 transition-colors active:scale-95"
-              >
-                <Images className="size-[18px]" />
               </button>
             </>
           )}
