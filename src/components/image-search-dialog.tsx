@@ -332,13 +332,25 @@ export function ImageSearchDialog({ open, onOpenChange, several = false }: Image
     const video = videoRef.current;
     if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
+    // What was framed is what is kept. The picture fills its frame by cropping
+    // (object-cover), and a landscape webcam shown in a portrait frame loses its
+    // sides: taking the whole sensor would hand the scanner cars that were never
+    // on screen, and leave out nothing the person could see.
+    const frameW = video.clientWidth || video.videoWidth;
+    const frameH = video.clientHeight || video.videoHeight;
+    const scale = Math.max(frameW / video.videoWidth, frameH / video.videoHeight);
+    const sw = Math.min(video.videoWidth, Math.round(frameW / scale));
+    const sh = Math.min(video.videoHeight, Math.round(frameH / scale));
+    const sx = Math.round((video.videoWidth - sw) / 2);
+    const sy = Math.round((video.videoHeight - sh) / 2);
+
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = sw;
+    canvas.height = sh;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
     canvas.toBlob(
       (blob) => {
         if (!blob) return;
@@ -589,8 +601,11 @@ export function ImageSearchDialog({ open, onOpenChange, several = false }: Image
 
               {/* State 2: Live Camera Viewfinder */}
               {!previewUrl && isCameraActive && (
-                <div className="flex min-h-0 flex-1 flex-col gap-3">
-                  <div className="relative flex items-center justify-center overflow-hidden rounded-xl bg-black max-sm:min-h-0 max-sm:flex-1 sm:aspect-[4/3]">
+                /* On a phone the frame fills the screen and the controls sit under it.
+                    Wider, it keeps the same portrait shape and the controls move
+                    to its right, one above another, as on a camera. */
+                <div className="flex min-h-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-5">
+                  <div className="relative flex items-center justify-center overflow-hidden rounded-xl bg-black max-sm:min-h-0 max-sm:flex-1 sm:aspect-[3/4] sm:h-[min(68vh,600px)] sm:shrink-0">
                     <video
                       ref={(el) => {
                         videoRef.current = el;
@@ -635,7 +650,7 @@ export function ImageSearchDialog({ open, onOpenChange, several = false }: Image
                     </Button>
                   </div>
 
-                  <div className="flex shrink-0 items-center justify-center gap-4 pb-1">
+                  <div className="flex shrink-0 items-center justify-center gap-4 pb-1 sm:flex-col sm:gap-6 sm:pb-0">
                     <Button
                       type="button"
                       variant="outline"
