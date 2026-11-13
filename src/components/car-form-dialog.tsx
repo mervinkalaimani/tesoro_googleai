@@ -2686,7 +2686,7 @@ export function CarFormDialog({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
                   {/* The route counts the scan before it spends a model call.
                       This is so what is left is read before the camera opens
                       rather than after. */}
