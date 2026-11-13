@@ -206,6 +206,72 @@ async function payForCars(token: string, cars: ScanFields[]) {
   return { cars: cars.slice(0, paid), found: cars.length, trimmed: paid < cars.length };
 }
 
+/** How long one model gets before it is given up on. */
+const MODEL_TIMEOUT_MS = 30_000;
+/** How long one model is left to answer alone before the next is started beside it. */
+const HEDGE_AFTER_MS = 6_000;
+
+/**
+ * Asks the models in turn, but does not wait out a slow one.
+ *
+ * The next is started when the one before it fails, or when it has been silent
+ * for `delayMs`, whichever comes first, and the first reading that `ok` accepts
+ * ends it. Asked strictly one after another, two models answering "high demand"
+ * after twelve and five seconds put the answer of the third thirty seconds
+ * away. The readings that did come back are all returned, so a caller that
+ * wants the fullest of them has them.
+ */
+function hedged<T>(
+  items: string[],
+  run: (item: string) => Promise<T>,
+  ok: (value: T) => boolean,
+  delayMs: number,
+): Promise<{ results: T[]; error: string }> {
+  return new Promise((resolve) => {
+    const results: T[] = [];
+    let next = 0;
+    let active = 0;
+    let finished = false;
+    let error = "";
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      if (timer) clearTimeout(timer);
+      resolve({ results, error });
+    };
+
+    const launch = () => {
+      if (finished) return;
+      if (next >= items.length) {
+        if (active === 0) finish();
+        return;
+      }
+      const item = items[next++];
+      active += 1;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(launch, delayMs);
+      run(item)
+        .then((value) => {
+          results.push(value);
+          if (ok(value)) finish();
+        })
+        .catch((err: unknown) => {
+          error = (err as Error)?.message || error;
+        })
+        .finally(() => {
+          active -= 1;
+          if (finished) return;
+          if (next < items.length) launch();
+          else if (active === 0) finish();
+        });
+    };
+
+    launch();
+  });
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -272,9 +338,11 @@ async function handler({ request }: { request: Request }) {
    * model call rather than after: a scan that failed to be paid for should not
    * have been taken.
    */
+  const started = Date.now();
   const { data: claim, error: claimError } = await callerSupabase(caller.token).rpc(
     "tesoro_claim_scan",
   );
+  console.log(`[scan-car] claim ${claimError ? "failed" : "ok"} in ${Date.now() - started}ms`);
   if (claimError) {
     return json({ error: "Could not check your scan allowance. Try again in a moment." }, 503);
   }
@@ -363,24 +431,25 @@ async function handler({ request }: { request: Request }) {
   const modelsToTry = specifiedModel ? [specifiedModel] : CANDIDATE_MODELS;
   const ai = getGenAI(key!);
 
-  for (const model of modelsToTry) {
+  /** One model's reading of the photograph, or a throw saying why not. */
+  const ask = async (
+    model: string,
+  ): Promise<{ model: string; parsed: Record<string, unknown> }> => {
+    const started = Date.now();
     try {
       const response = await ai.models.generateContent({
         model,
         contents: {
           parts: [
             { text: image.multi ? MULTI_PROMPT : PROMPT },
-            {
-              inlineData: {
-                mimeType: image.mimeType,
-                data: image.data,
-              },
-            },
+            { inlineData: { mimeType: image.mimeType, data: image.data } },
           ],
         },
         config: {
           temperature: 0,
           responseMimeType: "application/json",
+          // A model that has not answered by now is not going to in time to matter.
+          httpOptions: { timeout: MODEL_TIMEOUT_MS },
           responseSchema: image.multi
             ? {
                 type: Type.OBJECT,
@@ -409,60 +478,55 @@ async function handler({ request }: { request: Request }) {
               },
         },
       });
-
+      console.log(`[scan-car] ${model} answered in ${Date.now() - started}ms`);
       const text = response.text;
-      if (!text) {
-        lastError = "Nothing came back from image analysis.";
-        continue;
-      }
-
+      if (!text) throw new Error("Nothing came back from image analysis.");
       let parsed: unknown;
       try {
         parsed = JSON.parse(text);
       } catch {
-        lastError = "The response was in an unexpected format.";
-        continue;
+        throw new Error("The response was in an unexpected format.");
       }
-
       if (!parsed || typeof parsed !== "object") {
-        lastError = "No attributes were detected from the image.";
-        continue;
+        throw new Error("No attributes were detected from the image.");
       }
-
-      if (image.multi) {
-        const cars = carsFrom(parsed);
-        const seen = seenFrom(parsed);
-        if (!cars.length) {
-          lastError = "No cars could be read in that photograph.";
-          continue;
-        }
-        consider(cars, seen, model);
-        // It counted more cars than it described: try the next model, and keep
-        // whichever reading turns out fullest.
-        if (incomplete(cars.length, seen) && model !== modelsToTry[modelsToTry.length - 1]) {
-          lastError = `Only ${cars.length} of ${seen} cars were read.`;
-          continue;
-        }
-        return bestReply();
-      }
-      return json({ fields: cleanFields(parsed as Record<string, unknown>), modelUsed: model });
+      return { model, parsed: parsed as Record<string, unknown> };
     } catch (err: unknown) {
       const detail = (err as Error)?.message || "Image analysis failed.";
-      lastError = `${detail} (model: ${model})`;
-      // If quota exceeded or 429, continue to next model
-      const isQuota = /429|quota|resource_exhausted|rate limit/i.test(detail);
-      if (isQuota) {
-        continue;
-      }
-      // For other critical failures, continue trying next candidate model
-      continue;
+      console.warn(
+        `[scan-car] ${model} failed after ${Date.now() - started}ms: ${detail.slice(0, 160)}`,
+      );
+      throw new Error(`${detail} (model: ${model})`);
     }
+  };
+
+  /** Whether a reading is good enough to stop waiting for the others. */
+  const complete = (r: { parsed: Record<string, unknown> }) => {
+    if (!image.multi) return true;
+    const cars = carsFrom(r.parsed);
+    return cars.length > 0 && !incomplete(cars.length, seenFrom(r.parsed));
+  };
+
+  const run = await hedged(modelsToTry, ask, complete, HEDGE_AFTER_MS);
+
+  if (image.multi) {
+    for (const r of run.results) {
+      const cars = carsFrom(r.parsed);
+      if (cars.length) consider(cars, seenFrom(r.parsed), r.model);
+    }
+    // The fullest reading from whichever models answered.
+    if (best) return bestReply();
+    return json(
+      { error: run.results.length ? "No cars could be read in that photograph." : run.error },
+      502,
+    );
   }
 
-  // Every reader fell short, but one of them read something: that is the answer.
-  if (best) return bestReply();
-
-  return json({ error: lastError }, 502);
+  const first = run.results[0];
+  if (first) {
+    return json({ fields: cleanFields(first.parsed), modelUsed: first.model });
+  }
+  return json({ error: run.error || lastError }, 502);
 }
 
 export const Route = createFileRoute("/api/scan-car")({

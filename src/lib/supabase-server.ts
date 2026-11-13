@@ -11,17 +11,34 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const PROJECT_URL = "https://matekrbcflojjooswoha.supabase.co";
 
+/**
+ * An environment value that is really there.
+ *
+ * `vercel env pull` writes the text "[SENSITIVE]" for a secret it will not
+ * reveal, so a local .env.local can hold a placeholder where a key should be.
+ * A placeholder is not blank, so it beat every fallback below and the server
+ * asked Supabase "who is this" with a key that was never a key: "Invalid API
+ * key", and a 401 for everyone, signed in or not. Treated as unset, the
+ * fallbacks apply.
+ */
+function envValue(name: string): string | undefined {
+  const v = process.env[name]?.trim();
+  return v && v !== "[SENSITIVE]" ? v : undefined;
+}
+
+/** The project URL: the environment's, if it is a URL and not the old project. */
+function projectUrl(): string {
+  const v = envValue("SUPABASE_URL");
+  return v && /^https?:\/\//.test(v) && !v.includes("pllpyzsfuhpsmqbxgarw") ? v : PROJECT_URL;
+}
+
 export function serverSupabase(): SupabaseClient {
-  const url =
-    (process.env["SUPABASE_URL"] && !process.env["SUPABASE_URL"].includes("pllpyzsfuhpsmqbxgarw")
-      ? process.env["SUPABASE_URL"]
-      : null) || PROJECT_URL;
   const key =
-    process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    envValue("SUPABASE_SERVICE_ROLE_KEY") ||
+    envValue("SUPABASE_PUBLISHABLE_KEY") ||
+    envValue("VITE_SUPABASE_PUBLISHABLE_KEY") ||
     "sb_publishable_t8mahOsDrNTnt-YeFGkgTA_ugnPJrpu";
-  return createClient(url, key);
+  return createClient(projectUrl(), key);
 }
 
 export type Caller = {
@@ -41,15 +58,11 @@ export type Caller = {
  * another's allowance, which is the whole thing worth preventing.
  */
 export function callerSupabase(token: string): SupabaseClient {
-  const url =
-    (process.env["SUPABASE_URL"] && !process.env["SUPABASE_URL"].includes("pllpyzsfuhpsmqbxgarw")
-      ? process.env["SUPABASE_URL"]
-      : null) || PROJECT_URL;
   const key =
-    process.env["SUPABASE_PUBLISHABLE_KEY"] ||
-    process.env["VITE_SUPABASE_PUBLISHABLE_KEY"] ||
+    envValue("SUPABASE_PUBLISHABLE_KEY") ||
+    envValue("VITE_SUPABASE_PUBLISHABLE_KEY") ||
     "sb_publishable_t8mahOsDrNTnt-YeFGkgTA_ugnPJrpu";
-  return createClient(url, key, {
+  return createClient(projectUrl(), key, {
     global: { headers: { Authorization: `Bearer ${token}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });
@@ -76,7 +89,13 @@ export async function callerFrom(request: Request): Promise<Caller | null> {
   const client = serverSupabase();
   const { data, error } = await client.auth.getUser(token);
   const uid = data?.user?.id;
-  if (error || !uid) return null;
+  if (error || !uid) {
+    // Said in the logs, never to the caller: "who is this" failing and "this
+    // server cannot ask" failing both come back as a 401, and only one of them
+    // is the person's doing.
+    console.warn(`[caller] token not accepted: ${error?.message ?? "no user returned"}`);
+    return null;
+  }
 
   const { data: pro } = await client.rpc("is_tesoro_pro", { _uid: uid });
   return { uid, isPro: pro === true, token };
