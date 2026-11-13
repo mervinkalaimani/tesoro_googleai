@@ -13,6 +13,7 @@ import { RecentSearches } from "@/components/recent-searches";
 import { NAV_GLASS } from "@/components/nav-glass";
 import { useRecentSearches } from "@/lib/recent-searches";
 import { inrFull } from "@/lib/format";
+import { toast } from "sonner";
 
 const SEARCH_TIPS: [string, string][] = [
   ["make = toyota", "to search one field"],
@@ -86,8 +87,7 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
   const onUsers = useRouterState({ select: (r) => r.location.pathname === "/admin" });
   const ref = useRef<HTMLInputElement>(null);
   const [scanOpen, setScanOpen] = useState(false);
-  /** Which button opened the scanner: one car, or up to six from one photograph. */
-  const [scanSeveral, setScanSeveral] = useState(false);
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   // The drawer is portalled: the bar sits inside the bottom bar's transformed
   // layer, and a fixed element in there would be fixed to that layer instead.
@@ -190,10 +190,7 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
                 type="button"
                 tabIndex={open ? 0 : -1}
                 aria-label="Scan one car"
-                onClick={() => {
-                  setScanSeveral(false);
-                  setScanOpen(true);
-                }}
+                onClick={() => setScanOpen(true)}
                 className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
               >
                 <Camera className="size-[18px]" />
@@ -202,11 +199,17 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
                 type="button"
                 tabIndex={open ? 0 : -1}
                 aria-label="Scan several cars"
-                onClick={() => {
-                  setScanSeveral(true);
-                  setScanOpen(true);
-                }}
-                className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+                // Left on the bar so it can say why it does nothing: a phone's
+                // camera frame is one car's worth, and the several-cars read
+                // and the bulk table it ends in are laid out for a wide screen.
+                aria-disabled="true"
+                title="Available on web only"
+                onClick={() =>
+                  toast.info("Scanning several cars is available on the web only", {
+                    description: "Open VIIV on a computer to scan up to 6 cars from one photo.",
+                  })
+                }
+                className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground/40 transition-colors active:scale-95"
               >
                 <Images className="size-[18px]" />
               </button>
@@ -238,7 +241,7 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
           <SuggestionsDrawer open={open && drawerOpen} onClose={() => setDrawerOpen(false)} />,
           document.body,
         )}
-      <ImageSearchDialog open={scanOpen} onOpenChange={setScanOpen} several={scanSeveral} />
+      <ImageSearchDialog open={scanOpen} onOpenChange={setScanOpen} />
     </>
   );
 }
@@ -356,9 +359,7 @@ export function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: (
                       className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/80 bg-card px-3 py-1.5 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 active:scale-[0.97]"
                     >
                       <span className="truncate">{it.value}</span>
-                      <span className="text-xs tabular-nums text-muted-foreground">
-                        {it.count}
-                      </span>
+                      <span className="text-xs tabular-nums text-muted-foreground">{it.count}</span>
                     </button>
                   ))}
                 </div>
