@@ -35,7 +35,6 @@ import { scansLeft } from "@/lib/tiers";
 import type { Diecast } from "@/lib/types";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SegmentControl } from "@/components/segment-control";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 
 /** The most a scan request can carry, as base64 characters: under the 4.5MB a request is allowed. */
@@ -44,6 +43,11 @@ const MAX_SENT = 4_000_000;
 interface ImageSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * Scan up to six cars from one photograph, rather than one. Chosen by which
+   * button opened the dialog, so there is no switch to miss inside it.
+   */
+  several?: boolean;
 }
 
 export type ExtractedAttributes = {
@@ -68,7 +72,7 @@ interface ScoredCar {
   exactCount: number;
 }
 
-export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps) {
+export function ImageSearchDialog({ open, onOpenChange, several = false }: ImageSearchDialogProps) {
   const cars = useCars();
   const { open: openCar } = useCarDrawer();
   const { profile, isGuest, reloadProfile } = useAuth();
@@ -86,11 +90,6 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [attributes, setAttributes] = useState<ExtractedAttributes | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  /**
-   * Several cars in one photograph, up to six. Each car found takes one scan
-   * credit; the first is taken before the photograph is read.
-   */
-  const [several, setSeveral] = useState(false);
   const [many, setMany] = useState<ExtractedAttributes[] | null>(null);
   /** Which of the cars found are going on to be added. */
   const [picked, setPicked] = useState<Set<number>>(new Set());
@@ -480,7 +479,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
-                  Scan to Search
+                  {several ? "Scan several cars" : "Scan to Search"}
                   {/* Pushed to the far end: what it is called is a label on the
                     feature, not the next word of the title. */}
                   <span className="ml-auto flex shrink-0 items-center gap-2">
@@ -496,8 +495,9 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                   </span>
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-left text-xs text-muted-foreground">
-                  Scan or upload an image to identify the car and see if you have it in your
-                  collection.
+                  {several
+                    ? "Photograph up to 6 cars together to add them in one go. Each car found takes one scan."
+                    : "Scan or upload an image to identify the car and see if you have it in your collection."}
                 </DialogDescription>
                 {left !== null && (
                   <p className="mt-1 text-left text-xs text-muted-foreground">
@@ -521,27 +521,6 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                 className="hidden"
                 onChange={handleFileChange}
               />
-
-              {/* One car, or a table of them. Chosen before the photograph is
-                taken, because it changes what is asked of it. */}
-              {!previewUrl && !spent && (
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <SegmentControl
-                    value={several ? "several" : "one"}
-                    onChange={(v) => setSeveral(v === "several")}
-                    options={[
-                      { value: "one", label: "One car" },
-                      { value: "several", label: "Several cars" },
-                    ]}
-                    className="w-auto"
-                  />
-                  {several && (
-                    <span className="text-xs text-muted-foreground">
-                      Up to 6 cars, side by side. Each car found takes one scan.
-                    </span>
-                  )}
-                </div>
-              )}
 
               {/* State 1: No Image Picked & No Live Camera */}
               {!previewUrl && !isCameraActive && (

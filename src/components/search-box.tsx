@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouterState } from "@tanstack/react-router";
-import { Search, X, Camera, Filter } from "lucide-react";
+import { Search, X, Camera, Images, Filter } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -108,6 +108,8 @@ export function SearchBox({ className }: { className?: string }) {
 
   const { recent, remember } = useRecentSearches();
   const [scanOpen, setScanOpen] = useState(false);
+  /** Which button opened the scanner: one car, or up to six from one photograph. */
+  const [scanSeveral, setScanSeveral] = useState(false);
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -232,12 +234,27 @@ export function SearchBox({ className }: { className?: string }) {
             </button>
             <button
               type="button"
-              aria-label="Search by image"
-              title="Scan to search with VIIV Scan, or read a barcode"
-              onClick={() => setScanOpen(true)}
+              aria-label="Scan one car"
+              title="Scan one car with VIIV Scan, or read a barcode"
+              onClick={() => {
+                setScanSeveral(false);
+                setScanOpen(true);
+              }}
               className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
             >
               <Camera className="size-4" />
+            </button>
+            <button
+              type="button"
+              aria-label="Scan several cars"
+              title="Scan up to 6 cars in one photo"
+              onClick={() => {
+                setScanSeveral(true);
+                setScanOpen(true);
+              }}
+              className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+            >
+              <Images className="size-4" />
             </button>
           </>
         )}
@@ -265,7 +282,7 @@ export function SearchBox({ className }: { className?: string }) {
           setIsFocused(false);
         }}
       />
-      <ImageSearchDialog open={scanOpen} onOpenChange={setScanOpen} />
+      <ImageSearchDialog open={scanOpen} onOpenChange={setScanOpen} several={scanSeveral} />
     </div>
   );
 }
