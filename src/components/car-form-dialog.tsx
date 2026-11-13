@@ -2773,7 +2773,7 @@ export function CarFormDialog({
                       // hidden, so the answer to "where did bulk go" is on
                       // the screen that raises the question.
                       disabled={isMobile}
-                      title={isMobile ? "Add in bulk is available on a computer" : undefined}
+                      title={isMobile ? "Available on web only" : undefined}
                       // Wrapped, not passed directly: onSwitchToBulk takes seed
                       // cars, and a bare handler would hand it the click event
                       // as the batch to prefill.
@@ -2792,7 +2792,7 @@ export function CarFormDialog({
                         </span>
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {isMobile ? "Available on a computer" : "Several at once, or a CSV"}
+                        {isMobile ? "Available on web only" : "Several at once, or a CSV"}
                       </span>
                     </button>
                   )}
