@@ -15,6 +15,7 @@ import {
   Search,
   Image as ImageIcon,
   Home,
+  History,
   PackageCheck,
   Sparkles,
   LifeBuoy,
@@ -66,6 +67,8 @@ import {
 } from "@/components/ui/select";
 import { TierAvatar } from "@/components/tier-avatar";
 import { AccountCard } from "@/components/account-card";
+import { ChangeLog } from "@/components/change-log";
+import { useCarDrawer } from "@/components/car-details-drawer";
 import { FeedbackPanel } from "@/components/feedback-panel";
 import { PlanSummary, SubscriptionPanel } from "@/components/subscription-panel";
 import { AdminPushCard } from "@/components/admin-push-card";
@@ -121,6 +124,7 @@ type SettingsView =
   | "homepage"
   | "advanced"
   | "whats_new"
+  | "activity"
   | "help"
   | "help_privacy"
   | "help_terms"
@@ -167,6 +171,7 @@ function parseTab(tab?: string): SettingsView {
   }
   if (t === "homepage" || t === "home") return "homepage";
   if (t === "advanced") return "advanced";
+  if (t === "activity" || t === "log" || t === "activity_log" || t === "history") return "activity";
   if (t === "whats_new" || t === "whatsnew" || t === "changelog" || t === "updates") {
     return "whats_new";
   }
@@ -232,6 +237,7 @@ export function SettingsPage() {
     setShowNewPreorders,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
+  const drawer = useCarDrawer();
   const { source } = useCarsSource();
 
   const name = fullName(profile);
@@ -485,6 +491,24 @@ export function SettingsPage() {
                 <span className="text-[15px] font-medium text-foreground">Help</span>
                 <p className="text-xs text-muted-foreground">
                   Ask for something, report a bug, policies and how to reach us
+                </p>
+              </div>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+            </button>
+
+            {/* ACTIVITY — who changed what, on which car, and when. */}
+            <button
+              type="button"
+              onClick={() => changeView("activity")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <History className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Activity log</span>
+                <p className="text-xs text-muted-foreground">
+                  Every change to your cars and orders, and who made it
                 </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -1087,6 +1111,17 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: WHAT IS NEW                                                     */}
       {/* ========================================================================= */}
+      {view === "activity" && (
+        <div className="space-y-5">
+          <SubpageHeader title="Activity log" onBack={() => changeView("root")} />
+          <p className="text-xs text-muted-foreground">
+            Every change to your cars, orders and catalogue entries, newest first: what it was, what
+            it became, and who did it.
+          </p>
+          <ChangeLog openCar={(car) => drawer.open(car)} />
+        </div>
+      )}
+
       {view === "whats_new" && (
         <div className="space-y-5">
           <SubpageHeader title="What's new" onBack={() => changeView("root")} />

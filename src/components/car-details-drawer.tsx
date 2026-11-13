@@ -10,6 +10,7 @@ import {
 } from "react";
 import {
   BookOpen,
+  History,
   Car,
   Check,
   CheckCircle2,
@@ -41,6 +42,8 @@ import {
 } from "@/components/car-marks";
 import { RARITY_FLAME, RARITY_LABEL, nextRarity, rarityOf, withRarity } from "@/lib/rarity";
 import { Button } from "@/components/ui/button";
+import { ChangeLog } from "@/components/change-log";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { CatalogCar } from "@/lib/catalog";
 import {
   resolveCatalogUserId,
@@ -122,6 +125,9 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   const [statusCar, setStatusCar] = useState<Diecast | null>(null);
   /** Whose orders are being looked at, from the seller's name on a car. */
   const [sellerOpen, setSellerOpen] = useState<string | null>(null);
+  /** The panel beside the car that shows its activity log. */
+  const [activityOpen, setActivityOpen] = useState(false);
+  const docked = useMinWidth(1180);
 
   const cars = useCars();
   const { updateCar } = useCarsActions();
@@ -140,10 +146,13 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
 
   const open = useCallback((c: Diecast) => {
     setCurrentCarId(c.id);
+    // Another car is another history: the panel starts closed.
+    setActivityOpen(false);
   }, []);
 
   const close = useCallback(() => {
     setCurrentCarId(null);
+    setActivityOpen(false);
   }, []);
 
   const handleViewInCatalog = useCallback(
@@ -226,28 +235,78 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           // The phone layout runs its own gestures: pull the photo to close,
           // pull the card to stretch the photo.
           disableSheetDismiss
-          className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:pb-0 max-sm:flex max-sm:flex-col overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 gap-0 block text-foreground shadow-2xl sm:max-h-[92vh] sm:w-fit sm:max-w-[calc(100vw-2rem)]"
+          // From a tablet up the dialog is only the frame the car's card and the
+          // activity panel sit in, so the panel can grow from the card's edge.
+          // The frame is centred, so as the panel grows the pair slides left to
+          // keep both on screen; the card gives up width when there is not room.
+          style={
+            {
+              "--dock": activityOpen && docked ? `calc(${DOCK_W} + ${DOCK_GAP})` : "0rem",
+            } as React.CSSProperties
+          }
+          className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:pb-0 max-sm:flex max-sm:flex-col overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 gap-0 block text-foreground shadow-2xl sm:max-h-[92vh] sm:w-fit sm:max-w-[calc(100vw-2rem)] sm:flex sm:items-stretch sm:overflow-visible sm:rounded-none sm:border-transparent sm:bg-transparent sm:shadow-none sm:transition-[width] sm:duration-300 sm:ease-out"
         >
           {car && (
-            <CarPopupContent
-              car={car}
-              onClose={close}
-              onEdit={() => handleEdit(car)}
-              onViewInCatalog={() => handleViewInCatalog(car)}
-              onAddAnother={() => handleAddAnother(car)}
-              onOpenBatch={(id, field) => {
-                setBatchShippingId(id);
-                setBatchField(field);
-                setBatchOpen(true);
+            <div className="max-sm:contents sm:max-h-[92vh] sm:overflow-hidden sm:rounded-3xl sm:border sm:border-border sm:bg-background sm:shadow-2xl">
+              <CarPopupContent
+                activity={{
+                  docked,
+                  open: activityOpen,
+                  toggle: () => setActivityOpen((v) => !v),
+                }}
+                car={car}
+                onClose={close}
+                onEdit={() => handleEdit(car)}
+                onViewInCatalog={() => handleViewInCatalog(car)}
+                onAddAnother={() => handleAddAnother(car)}
+                onOpenBatch={(id, field) => {
+                  setBatchShippingId(id);
+                  setBatchField(field);
+                  setBatchOpen(true);
+                }}
+                onOpenSeller={(name) => setSellerOpen(name)}
+                onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
+                // Cycles Normal → TH → STH → Chase → Normal: each tap is the next
+                // colour of flame.
+                onToggleChase={() => updateCar(withRarity(car, nextRarity(rarityOf(car))))}
+                onUpdateStatus={() => setStatusCar(car)}
+                onSelectCar={open}
+              />
+            </div>
+          )}
+          {car && docked && (
+            <aside
+              aria-hidden={!activityOpen}
+              className="hidden shrink-0 overflow-hidden transition-[width,padding,opacity] duration-300 ease-out sm:block"
+              style={{
+                width: activityOpen ? `calc(${DOCK_W} + ${DOCK_GAP})` : 0,
+                paddingLeft: activityOpen ? DOCK_GAP : 0,
+                opacity: activityOpen ? 1 : 0,
               }}
-              onOpenSeller={(name) => setSellerOpen(name)}
-              onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
-              // Cycles Normal → TH → STH → Chase → Normal: each tap is the next
-              // colour of flame.
-              onToggleChase={() => updateCar(withRarity(car, nextRarity(rarityOf(car))))}
-              onUpdateStatus={() => setStatusCar(car)}
-              onSelectCar={open}
-            />
+            >
+              <div
+                className="flex h-full max-h-[92vh] flex-col overflow-hidden rounded-3xl border border-border bg-background text-foreground shadow-2xl"
+                style={{ width: DOCK_W }}
+              >
+                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/60 p-4">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold">Activity</h3>
+                    <p className="truncate text-xs text-muted-foreground">{car.name || car.id}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActivityOpen(false)}
+                    aria-label="Close the activity log"
+                    className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                  {activityOpen && <ChangeLog rowKey={car.id} />}
+                </div>
+              </div>
+            </aside>
           )}
         </DialogContent>
       </Dialog>
@@ -493,7 +552,26 @@ function isExactMatch(a: Diecast, b: Diecast): boolean {
   );
 }
 
+/** True at this width or wider. */
+function useMinWidth(px: number): boolean {
+  const [ok, setOk] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia(`(min-width: ${px}px)`);
+    const sync = () => setOk(m.matches);
+    sync();
+    m.addEventListener("change", sync);
+    return () => m.removeEventListener("change", sync);
+  }, [px]);
+  return ok;
+}
+
+/** How wide the activity panel is, and the gap between it and the car. */
+const DOCK_W = "23rem";
+const DOCK_GAP = "0.75rem";
+
 interface CarPopupContentProps {
+  /** The activity button: it opens a panel beside the car when there is room. */
+  activity: { docked: boolean; open: boolean; toggle: () => void };
   car: Diecast;
   onClose: () => void;
   onEdit: () => void;
@@ -508,6 +586,7 @@ interface CarPopupContentProps {
 }
 
 function CarPopupContent({
+  activity,
   car,
   onClose,
   onEdit,
@@ -606,7 +685,7 @@ function CarPopupContent({
   const title = car.name || `${car.make} ${car.model} ${car.variant || ""}`.trim() || "Unnamed car";
 
   /** Status, marks and size: the pills beside the name. */
-  const pillRow = (withId = false) => (
+  const pillRow = (withId = true) => (
     <CarChips
       car={car}
       rarity={rarity}
@@ -631,20 +710,8 @@ function CarPopupContent({
   const pills = pillRow();
 
   /** The car's ID, and the way to its catalogue entry. */
-  const idButtons = (iconOnly = false, withId = true) => (
+  const idButtons = (iconOnly = false) => (
     <>
-      {withId && car.id && (
-        <span
-          title="Car ID"
-          className={cn(
-            CHIP,
-            "h-9 cursor-default font-mono text-sm font-semibold select-all",
-            iconOnly ? "px-3" : "px-4",
-          )}
-        >
-          {car.id.length > 6 ? car.id.slice(6) : car.id}
-        </span>
-      )}
       {car.catalogId && (
         <Button
           type="button"
@@ -660,6 +727,50 @@ function CarPopupContent({
           <BookOpen className="size-4" />
           {!iconOnly && "Catalogue"}
         </Button>
+      )}
+      {/* What has been done to this car, newest first. A deleted car has no
+          popup, so its history lives only in Settings → Activity log. */}
+      {activity.docked ? (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={activity.toggle}
+          aria-pressed={activity.open}
+          title="Everything that has changed on this car"
+          aria-label="Activity log"
+          className={cn(
+            "h-9 cursor-pointer rounded-full text-sm font-semibold",
+            iconOnly ? "w-9 shrink-0 gap-0 p-0" : "gap-2 px-4",
+            activity.open && "border-primary/60 bg-primary/10 text-primary",
+          )}
+        >
+          <History className="size-4" />
+          {!iconOnly && "Activity"}
+        </Button>
+      ) : (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              title="Everything that has changed on this car"
+              aria-label="Activity log"
+              className={cn(
+                "h-9 cursor-pointer rounded-full text-sm font-semibold",
+                iconOnly ? "w-9 shrink-0 gap-0 p-0" : "gap-2 px-4",
+              )}
+            >
+              <History className="size-4" />
+              {!iconOnly && "Activity"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="max-h-[70vh] w-[min(26rem,calc(100vw-2rem))] overflow-y-auto p-3"
+          >
+            <ChangeLog rowKey={car.id} />
+          </PopoverContent>
+        </Popover>
       )}
     </>
   );
@@ -716,7 +827,7 @@ function CarPopupContent({
         </Panel>
       )}
       {hasPack && (
-        <Panel title="In the Box">
+        <Panel title="In the Box" className="col-span-full">
           <CarInTheBoxTab packCarId={car.catalogId} />
         </Panel>
       )}
@@ -823,9 +934,7 @@ function CarPopupContent({
                       <h2 className="min-w-0 text-2xl font-bold leading-tight tracking-tight text-foreground">
                         {title}
                       </h2>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {idButtons(true, false)}
-                      </div>
+                      <div className="flex shrink-0 items-center gap-2">{idButtons(true)}</div>
                     </div>
                     {pillRow(true)}
                   </div>
@@ -920,7 +1029,7 @@ function DesktopShell({
   children: ReactNode;
 }) {
   return (
-    <div className="hidden md:grid md:max-h-[96vh] md:w-[min(960px,calc(100vw-4rem))] md:grid-cols-[minmax(0,6fr)_minmax(0,7fr)] md:grid-rows-[auto_auto_auto_auto] gap-x-8 gap-y-4 overflow-y-auto p-7">
+    <div className="hidden md:grid md:max-h-[96vh] md:w-[min(960px,calc(100vw-4rem-var(--dock,0rem)))] md:transition-[width] md:duration-300 md:grid-cols-[minmax(0,6fr)_minmax(0,7fr)] md:grid-rows-[auto_auto_auto_auto] gap-x-8 gap-y-4 overflow-y-auto p-7">
       {/* Row 1: the name, left; the close button, right. */}
       <div className="col-span-2 row-start-1 flex min-w-0 items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
@@ -2842,7 +2951,7 @@ function CatalogDetailsContent({
         </Panel>
       )}
       {hasPack && (
-        <Panel title="What's Inside">
+        <Panel title="What's Inside" className="col-span-full">
           <CarInTheBoxTab packCarId={shown?.car_id} />
         </Panel>
       )}

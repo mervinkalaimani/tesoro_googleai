@@ -19,6 +19,8 @@ import { useCarDrawer } from "@/components/car-details-drawer";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
+import { OrdersSheet } from "@/components/orders-sheet";
+import { statusLabel, statusTone } from "@/lib/order-status";
 import { ProGate } from "@/components/pro-gate";
 
 export const Route = createFileRoute("/orders")({
@@ -114,6 +116,7 @@ const isWaitingSide = (status: string) => {
 
 /** Where the grouping choice is remembered. */
 const GROUP_BY_KEY = "dg.ordersGroupBy";
+const SHEET_KEY = "dg.ordersSheet";
 
 type Shipment = {
   key: string;
@@ -137,19 +140,6 @@ function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
     if (v) s.add(v);
   }
   return [...s].sort((a, b) => a.localeCompare(b));
-}
-
-/** Colour the status pill by what the shipment is actually doing. */
-function statusTone(status: string, delivered: boolean): string {
-  if (delivered) return "border-emerald-500/40 bg-emerald-500/10 text-emerald-400";
-  if (normaliseStatus(status) === "In Transit")
-    return "border-blue-500/40 bg-blue-500/10 text-blue-400";
-  return "border-amber-500/40 bg-amber-500/10 text-amber-400";
-}
-
-function statusLabel(status: string, delivered: boolean): string {
-  if (delivered) return "Delivered";
-  return normaliseStatus(status) || status;
 }
 
 function ShipmentCard({
@@ -357,6 +347,24 @@ function OrdersPage() {
       return "shipping";
     }
   });
+  /** The spreadsheet instead of the cards: every car a row, sortable and filterable. */
+  const [asSheet, setAsSheet] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SHEET_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const changeView = (v: "shipping" | "order" | "sheet") => {
+    const sheet = v === "sheet";
+    setAsSheet(sheet);
+    try {
+      localStorage.setItem(SHEET_KEY, sheet ? "1" : "0");
+    } catch {
+      // As below: the preference is lost, not the page.
+    }
+    if (!sheet) changeGroupBy(v);
+  };
   const changeGroupBy = (v: "shipping" | "order") => {
     setGroupBy(v);
     try {
@@ -548,11 +556,12 @@ function OrdersPage() {
             {/* Which ID gathers the cards. Short labels: on a phone this shares
                 one line with the tabs and two filters. */}
             <SegmentControl
-              value={groupBy}
-              onChange={changeGroupBy}
+              value={asSheet ? "sheet" : groupBy}
+              onChange={changeView}
               options={[
                 { value: "shipping", label: "Parcel" },
                 { value: "order", label: "Order" },
+                { value: "sheet", label: "Table" },
               ]}
               className="w-auto shrink-0 max-sm:text-xs max-sm:[&>button]:px-2"
             />
@@ -607,29 +616,33 @@ function OrdersPage() {
         }
       />
 
-      <div className="space-y-3">
-        {shipments.map((s) => (
-          <ShipmentCard
-            key={s.key}
-            s={s}
-            onOpenCar={(car) => drawer.open(car)}
-            onEdit={() => {
-              setSelectedShippingId(s.shippingId);
-              setBatchOpen(true);
-            }}
-            onUpdateStatus={() =>
-              setReconcileFor({ shippingId: s.shippingId, seller: s.seller, items: s.items })
-            }
-          />
-        ))}
-        {shipments.length === 0 && (
-          <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
-            {tab === "delivered"
-              ? `No deliveries in the last ${DELIVERED_WINDOW_DAYS} days.`
-              : "No open orders."}
-          </div>
-        )}
-      </div>
+      {asSheet ? (
+        <OrdersSheet rows={filtered} onOpen={(car) => drawer.open(car)} />
+      ) : (
+        <div className="space-y-3">
+          {shipments.map((s) => (
+            <ShipmentCard
+              key={s.key}
+              s={s}
+              onOpenCar={(car) => drawer.open(car)}
+              onEdit={() => {
+                setSelectedShippingId(s.shippingId);
+                setBatchOpen(true);
+              }}
+              onUpdateStatus={() =>
+                setReconcileFor({ shippingId: s.shippingId, seller: s.seller, items: s.items })
+              }
+            />
+          ))}
+          {shipments.length === 0 && (
+            <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
+              {tab === "delivered"
+                ? `No deliveries in the last ${DELIVERED_WINDOW_DAYS} days.`
+                : "No open orders."}
+            </div>
+          )}
+        </div>
+      )}
 
       <ShippingBatchDialog
         open={batchOpen}
