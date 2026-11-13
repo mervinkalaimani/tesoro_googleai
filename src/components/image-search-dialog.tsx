@@ -34,6 +34,9 @@ import { useAuth } from "@/lib/auth-store";
 import { scansLeft } from "@/lib/tiers";
 import type { Diecast } from "@/lib/types";
 import { toast } from "sonner";
+import { Checkbox } from "@/components/ui/checkbox";
+import { SegmentControl } from "@/components/segment-control";
+import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 
 interface ImageSearchDialogProps {
   open: boolean;
@@ -80,6 +83,16 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [attributes, setAttributes] = useState<ExtractedAttributes | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  /**
+   * Several cars in one photograph, up to six. Each car found takes one scan
+   * credit; the first is taken before the photograph is read.
+   */
+  const [several, setSeveral] = useState(false);
+  const [many, setMany] = useState<ExtractedAttributes[] | null>(null);
+  /** Which of the cars found are going on to be added. */
+  const [picked, setPicked] = useState<Set<number>>(new Set());
+  /** The batch handed to the bulk table: what was read, with every value left to type. */
+  const [bulkCars, setBulkCars] = useState<ExtractedAttributes[] | null>(null);
 
   // Video & Stream refs for live camera photo capture
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -193,6 +206,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
       }
       setPreviewUrl(null);
       setAttributes(null);
+      setMany(null);
       setAnalyzing(false);
       setAnalysisError(null);
       setIsCameraActive(false);
@@ -209,6 +223,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
     setAnalyzing(true);
     setAnalysisError(null);
     setAttributes(null);
+    setMany(null);
 
     // Create preview
     const url = URL.createObjectURL(file);
@@ -222,13 +237,42 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
       const res = await fetch("/api/scan-car", {
         method: "POST",
         headers: { "content-type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify(imagePayload),
+        body: JSON.stringify({ ...imagePayload, multi: several }),
       });
 
       const data = (await res.json().catch(() => null)) as {
         fields?: ExtractedAttributes;
+        cars?: ExtractedAttributes[];
+        /** How many the photograph held, when the allowance covered fewer. */
+        found?: number;
+        trimmed?: boolean;
         error?: string;
       } | null;
+
+      if (several && res.ok && data?.cars) {
+        // Blank fields are not worth carrying: drop them the way a single scan does.
+        const list = data.cars.map((c) =>
+          Object.fromEntries(
+            Object.entries(c).filter(
+              ([, v]) =>
+                typeof v === "string" && v.trim() && !/^(n\/?a|unknown|none|-)$/i.test(v.trim()),
+            ),
+          ),
+        ) as ExtractedAttributes[];
+        setMany(list);
+        setPicked(new Set(list.map((_, i) => i)));
+        void reloadProfile();
+        if (data.trimmed && data.found) {
+          toast.warning(
+            `${data.found} cars found, but only ${list.length} of your scans covered. That is all your scans for this month.`,
+          );
+        } else {
+          toast.success(
+            `${list.length} ${list.length === 1 ? "car" : "cars"} found: ${list.length} ${list.length === 1 ? "scan" : "scans"} used`,
+          );
+        }
+        return;
+      }
 
       if (!res.ok || !data?.fields) {
         const msg = data?.error || "Could not analyze the car in this image.";
@@ -328,7 +372,10 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [open]);
+    // `several` is read by the analysis the paste starts, so a change of mode
+    // has to replace the handler. The rest of what it reads is current each run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, several]);
 
   /**
    * The cars in the collection that are this car.
@@ -371,455 +418,591 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
     }
     setPreviewUrl(null);
     setAttributes(null);
+    setMany(null);
     setAnalysisError(null);
     stopLiveCamera();
   };
 
+  /** Which of the cars found are already in the collection, and how many of each. */
+  const manyOwned = useMemo(
+    () => (many ?? []).map((c) => matchScannedCar(c, cars).length),
+    [many, cars],
+  );
+
+  const togglePicked = (i: number) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+
+  /** The ticked cars go to the bulk table, where the prices are typed in. */
+  const sendToBulk = () => {
+    if (!many) return;
+    const chosen = many.filter((_, i) => picked.has(i));
+    if (chosen.length === 0) return;
+    setBulkCars(chosen);
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex w-full flex-col overflow-hidden bg-background p-0 sm:max-h-[90vh] sm:max-w-xl max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:max-w-full max-sm:rounded-none">
-        {/* Header */}
-        {/* Left aligned at every width: a dialog header centres itself by
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="flex w-full flex-col overflow-hidden bg-background p-0 sm:max-h-[90vh] sm:max-w-xl max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:max-w-full max-sm:rounded-none">
+          {/* Header */}
+          {/* Left aligned at every width: a dialog header centres itself by
             default, and a sentence of description centred under a title it is
             wider than reads as a poster rather than as a caption. */}
-        <DialogHeader className="shrink-0 space-y-0 border-b border-border/70 p-4 pb-3 text-left sm:text-left">
-          <div className="flex items-start gap-2.5">
-            {/* shrink-0, or the tile is squeezed to an oval by the words
+          <DialogHeader className="shrink-0 space-y-0 border-b border-border/70 p-4 pb-3 text-left sm:text-left">
+            <div className="flex items-start gap-2.5">
+              {/* shrink-0, or the tile is squeezed to an oval by the words
                 beside it the moment they wrap. */}
-            <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-              <Camera className="size-[18px]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <DialogTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
-                Scan to Search
-                {/* Pushed to the far end: what it is called is a label on the
+              <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Camera className="size-[18px]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
+                  Scan to Search
+                  {/* Pushed to the far end: what it is called is a label on the
                     feature, not the next word of the title. */}
-                <span className="ml-auto flex shrink-0 items-center gap-2">
-                  {left !== null && (
-                    <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                      {left} left
+                  <span className="ml-auto flex shrink-0 items-center gap-2">
+                    {left !== null && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                        {left} left
+                      </span>
+                    )}
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+                      <Sparkles className="size-3" />
+                      VIIV Scan
+                    </span>
+                  </span>
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-left text-xs text-muted-foreground">
+                  Scan or upload an image to identify the car and see if you have it in your
+                  collection.
+                </DialogDescription>
+                {left !== null && (
+                  <p className="mt-1 text-left text-xs text-muted-foreground">
+                    {spent
+                      ? "No scans left this month. The count resets on the 1st."
+                      : "This will use one of your monthly VIIV Scan credits."}
+                  </p>
+                )}
+              </div>
+            </div>
+          </DialogHeader>
+
+          {/* Content Area */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+            <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
+              {/* Hidden file input for file picker & camera fallback */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={ACCEPT_ATTR}
+                className="hidden"
+                onChange={handleFileChange}
+              />
+
+              {/* One car, or a table of them. Chosen before the photograph is
+                taken, because it changes what is asked of it. */}
+              {!previewUrl && !spent && (
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <SegmentControl
+                    value={several ? "several" : "one"}
+                    onChange={(v) => setSeveral(v === "several")}
+                    options={[
+                      { value: "one", label: "One car" },
+                      { value: "several", label: "Several cars" },
+                    ]}
+                    className="w-auto"
+                  />
+                  {several && (
+                    <span className="text-xs text-muted-foreground">
+                      Up to 6 cars, side by side. Each car found takes one scan.
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
-                    <Sparkles className="size-3" />
-                    VIIV Scan
-                  </span>
-                </span>
-              </DialogTitle>
-              <DialogDescription className="mt-1 text-left text-xs text-muted-foreground">
-                Scan or upload an image to identify the car and see if you have it in your
-                collection.
-              </DialogDescription>
-              {left !== null && (
-                <p className="mt-1 text-left text-xs text-muted-foreground">
-                  {spent
-                    ? "No scans left this month. The count resets on the 1st."
-                    : "This will use one of your monthly VIIV Scan credits."}
-                </p>
+                </div>
+              )}
+
+              {/* State 1: No Image Picked & No Live Camera */}
+              {!previewUrl && !isCameraActive && (
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onDrop={handleDrop}
+                  className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors max-sm:min-h-0 max-sm:flex-1 ${
+                    isDragging
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:border-primary/50 bg-muted/20"
+                  }`}
+                >
+                  <div className="size-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
+                    <Camera className="size-7" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {spent ? "No scans left this month" : "Photograph or upload a die-cast car"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm leading-relaxed">
+                    {spent
+                      ? "The count resets on the 1st, and a bigger plan lifts it. Until then the search box and the catalogue are still there."
+                      : several
+                        ? "Photograph up to 6 cars together, side by side. Each one is read separately, at one scan per car found, and you pick which to add, then type in the prices."
+                        : "Take a photo of a blister card, packaging box, or loose model car. We'll extract its make, model, brand, colour, and series to find matches in your collection."}
+                  </p>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2.5 mt-5">
+                    {!spent && (
+                      <Button
+                        type="button"
+                        onClick={() => startLiveCamera("environment")}
+                        className="gap-1.5 h-9"
+                      >
+                        <Camera className="size-4" />
+                        Open camera
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={spent}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="gap-1.5 h-9"
+                    >
+                      <Upload className="size-4" />
+                      Upload image
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground/80 mt-4">
+                    Or drag and drop an image here, or paste from clipboard (Ctrl+V)
+                  </p>
+
+                  {analysisError && (
+                    <div className="mt-4 p-3 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center gap-2 text-left w-full max-w-md">
+                      <AlertCircle className="size-4 shrink-0" />
+                      <span>{analysisError}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* State 2: Live Camera Viewfinder */}
+              {!previewUrl && isCameraActive && (
+                <div className="flex min-h-0 flex-1 flex-col gap-3">
+                  <div className="relative flex items-center justify-center overflow-hidden rounded-xl bg-black max-sm:min-h-0 max-sm:flex-1 sm:aspect-[4/3]">
+                    <video
+                      ref={(el) => {
+                        videoRef.current = el;
+                        if (el && mediaStreamRef.current) {
+                          attachStreamToVideo(mediaStreamRef.current);
+                        }
+                      }}
+                      autoPlay
+                      playsInline
+                      muted
+                      onLoadedMetadata={(e) => {
+                        (e.target as HTMLVideoElement).play().catch(() => {});
+                        setCameraLoading(false);
+                      }}
+                      onPlay={() => setCameraLoading(false)}
+                      className="size-full object-cover"
+                    />
+
+                    {cameraLoading && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 z-0 text-white">
+                        <Loader2 className="size-8 animate-spin text-primary" />
+                        <span className="text-xs font-medium">Starting camera…</span>
+                      </div>
+                    )}
+
+                    {/* Only the camera switch sits on the picture. The
+                        shutter is under it, where a thumb is, and where it
+                        cannot cover the car being framed. */}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      className="absolute right-3 top-3 z-10 size-10 rounded-full bg-black/60 text-white hover:bg-black/80"
+                      onClick={() => {
+                        const nextFacing = cameraFacing === "environment" ? "user" : "environment";
+                        setCameraFacing(nextFacing);
+                        startLiveCamera(nextFacing);
+                      }}
+                      title="Switch camera"
+                    >
+                      <SwitchCamera className="size-4.5" />
+                    </Button>
+                  </div>
+
+                  <div className="flex shrink-0 items-center justify-center gap-4 pb-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-11 shrink-0 rounded-full"
+                      onClick={() => {
+                        const nextFacing = cameraFacing === "environment" ? "user" : "environment";
+                        setCameraFacing(nextFacing);
+                        void startLiveCamera(nextFacing);
+                      }}
+                      title="Switch camera"
+                      aria-label="Switch camera"
+                    >
+                      <SwitchCamera className="size-4" />
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={captureLivePhoto}
+                      className="size-16 rounded-full border-4 border-white bg-primary shadow-lg transition-transform active:scale-95"
+                      title="Take the photo"
+                      aria-label="Take the photo"
+                    >
+                      <span className="mx-auto block size-11 rounded-full bg-white/90" />
+                    </button>
+                    {/* One row under the picture: flip on the left, shutter
+                      in the middle, upload on the right. */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-11 shrink-0 rounded-full"
+                      onClick={() => fileInputRef.current?.click()}
+                      title="Upload an image instead"
+                      aria-label="Upload an image instead"
+                    >
+                      <Upload className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* State 3: Image Captured / Uploaded */}
+              {previewUrl && (
+                <div className="space-y-4 max-sm:flex max-sm:min-h-0 max-sm:flex-1 max-sm:flex-col max-sm:gap-4">
+                  {/* Image Preview & Scanning Indicator */}
+                  <div className="relative flex items-start gap-3 overflow-hidden rounded-xl border border-border/70 bg-muted/40 p-3 sm:items-center sm:gap-4">
+                    <div className="relative size-28 sm:size-32 rounded-lg overflow-hidden shrink-0 border border-border bg-black/5 flex items-center justify-center">
+                      <img
+                        src={previewUrl}
+                        alt="Captured die-cast"
+                        className="size-full object-contain"
+                      />
+                      {analyzing && (
+                        <div className="absolute inset-0 bg-primary/20 backdrop-blur-[1px] flex flex-col items-center justify-center text-primary">
+                          <RefreshCw className="size-6 animate-spin mb-1" />
+                          <span className="text-xs font-semibold uppercase tracking-wider text-white bg-black/70 px-1.5 py-0.5 rounded">
+                            Analyzing...
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold">Analyzed Image</span>
+                          {analyzing ? (
+                            <Badge variant="outline" className="text-xs animate-pulse">
+                              Extracting attributes...
+                            </Badge>
+                          ) : many ? (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            >
+                              {many.length} {many.length === 1 ? "car" : "cars"} found
+                            </Badge>
+                          ) : attributes ? (
+                            <Badge
+                              variant="secondary"
+                              className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            >
+                              Attributes Ready
+                            </Badge>
+                          ) : null}
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleResetImage}
+                          className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                        >
+                          <RefreshCw className="size-3" />
+                          New Photo
+                        </Button>
+                      </div>
+
+                      {analyzing ? (
+                        <div className="space-y-1.5 text-xs text-muted-foreground">
+                          <p className="flex items-center gap-1.5 text-foreground font-medium">
+                            <Sparkles className="size-3.5 text-primary animate-spin" />
+                            Identifying the casting
+                          </p>
+                          <p className="text-xs">
+                            Reading make, model, variant, series, colour, and collector numbers...
+                          </p>
+                        </div>
+                      ) : analysisError ? (
+                        <div className="text-xs text-destructive flex items-start gap-1.5 bg-destructive/10 p-2 rounded">
+                          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-medium">Analysis couldn't complete</p>
+                            <p className="text-xs opacity-90">{analysisError}</p>
+                          </div>
+                        </div>
+                      ) : attributes ? (
+                        <>
+                          <p className="text-xs text-muted-foreground max-sm:hidden">
+                            We identified the vehicle below. Matches from your collection are ranked
+                            by similarity.
+                          </p>
+                          {/* Shut until asked for: what was read off the card is
+                            the working, and the matches are the answer. */}
+                          <details className="rounded-lg border border-border/70 bg-background sm:hidden">
+                            <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-medium">
+                              Extracted attributes
+                            </summary>
+                            <div className="px-2.5 pb-2.5">
+                              <AttributeChips attributes={attributes} />
+                            </div>
+                          </details>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Several cars found: pick which go on to the bulk table. */}
+                  {many && (
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-xs font-semibold text-foreground">
+                          Cars found ({many.length})
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPicked(
+                              picked.size === many.length
+                                ? new Set()
+                                : new Set(many.map((_, i) => i)),
+                            )
+                          }
+                          className="cursor-pointer text-xs font-medium text-primary hover:underline"
+                        >
+                          {picked.size === many.length ? "Untick all" : "Tick all"}
+                        </button>
+                      </div>
+                      <ul className="space-y-2">
+                        {many.map((c, i) => (
+                          <li key={i}>
+                            <label
+                              className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors ${
+                                picked.has(i)
+                                  ? "border-primary/50 bg-primary/5"
+                                  : "border-border/70 bg-card opacity-70"
+                              }`}
+                            >
+                              <Checkbox
+                                checked={picked.has(i)}
+                                onCheckedChange={() => togglePicked(i)}
+                                className="mt-0.5"
+                              />
+                              <span className="min-w-0 flex-1 space-y-1.5">
+                                <span className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm font-semibold">
+                                    {[c.make, c.model, c.variant].filter(Boolean).join(" ") ||
+                                      "Unnamed car"}
+                                  </span>
+                                  {manyOwned[i] > 0 && (
+                                    <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                      Already in your collection
+                                    </span>
+                                  )}
+                                </span>
+                                <AttributeChips attributes={c} />
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="sticky bottom-0 -mx-1 flex items-center justify-between gap-3 border-t border-border/60 bg-background/95 px-1 pt-3 backdrop-blur">
+                        <span className="text-xs text-muted-foreground">
+                          {picked.size} of {many.length} ticked
+                        </span>
+                        <Button
+                          type="button"
+                          disabled={picked.size === 0}
+                          onClick={sendToBulk}
+                          className="gap-1.5"
+                        >
+                          Add {picked.size} to bulk add
+                          <ArrowRight className="size-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extracted Attributes Chips */}
+                  {attributes && (
+                    <div className="space-y-2.5 rounded-xl border border-border/70 bg-card p-3.5 max-sm:hidden">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <Tag className="size-3.5 text-primary" />
+                          Extracted Attributes
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={applyAttributesToSearch}
+                          className="h-6.5 text-xs gap-1 px-2"
+                        >
+                          <Search className="size-3" />
+                          Filter Collection View
+                        </Button>
+                      </div>
+
+                      <AttributeChips attributes={attributes} />
+                    </div>
+                  )}
+
+                  {/* Matching Cars List */}
+                  {attributes && (
+                    <div className="space-y-2.5 max-sm:flex max-sm:min-h-0 max-sm:flex-1 max-sm:flex-col max-sm:gap-2.5 max-sm:overflow-y-auto">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                          <CarIcon className="size-3.5 text-muted-foreground" />
+                          Collection Matches ({matchedCars.length})
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {matchedCars.length === 0
+                            ? "No matches in your collection"
+                            : matchedCars.length === MAX_MATCHES
+                              ? `Closest ${MAX_MATCHES} · tap one to open it`
+                              : "Tap one to open it"}
+                        </span>
+                      </div>
+
+                      {matchedCars.length > 0 ? (
+                        <div className="space-y-2 pr-1 sm:max-h-[260px] sm:overflow-y-auto">
+                          {matchedCars.map(({ car, score, matchedAttributes, exactCount }) => (
+                            <div
+                              key={car.id}
+                              onClick={() => {
+                                onOpenChange(false);
+                                openCar(car);
+                                toast.success(`Opened: ${car.name || car.model}`);
+                              }}
+                              className="group flex items-center gap-3 p-2.5 rounded-lg border border-border/70 hover:border-primary/60 hover:bg-muted/30 cursor-pointer transition-all active:scale-[0.99]"
+                            >
+                              <div className="size-14 rounded-md overflow-hidden bg-muted/50 shrink-0 border border-border/50">
+                                <CarThumb car={car} className="size-full object-cover" />
+                              </div>
+
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                                    {car.name || `${car.make} ${car.model}`}
+                                  </span>
+                                  {exactCount > 1 && (
+                                    <span className="shrink-0 text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded">
+                                      {exactCount}x
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                                  {car.brand && <span>{car.brand}</span>}
+                                  {car.series && <span>· {car.series}</span>}
+                                  {car.year && <span>· {car.year}</span>}
+                                  {car.colour && <span>· {car.colour}</span>}
+                                </div>
+
+                                {/* Matched attribute tags */}
+                                <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                                  {matchedAttributes.slice(0, 4).map((m) => (
+                                    <span
+                                      key={m.label}
+                                      className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded"
+                                    >
+                                      <Check className="size-2.5" />
+                                      {m.label}: {m.value}
+                                    </span>
+                                  ))}
+                                  {matchedAttributes.length > 4 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      +{matchedAttributes.length - 4} more
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="shrink-0 flex items-center gap-2">
+                                <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                  {car.id}
+                                </span>
+                                <ArrowRight className="size-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-6 rounded-xl border border-dashed border-border/80 bg-muted/10 text-center space-y-2">
+                          <CarIcon className="size-8 text-muted-foreground/50 mx-auto" />
+                          <p className="text-xs font-medium text-foreground">
+                            No matching cars in your current collection
+                          </p>
+                          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                            The identified model ({attributes.make} {attributes.model}) is not
+                            currently logged in your collection.
+                          </p>
+                          <div className="pt-2 flex items-center justify-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="text-xs h-8"
+                              onClick={applyAttributesToSearch}
+                            >
+                              Search anyway
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              className="text-xs h-8"
+                              onClick={handleResetImage}
+                            >
+                              Scan another car
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>
-        </DialogHeader>
+        </DialogContent>
+      </Dialog>
 
-        {/* Content Area */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <div className="flex min-h-0 flex-1 flex-col gap-4 p-4">
-            {/* Hidden file input for file picker & camera fallback */}
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPT_ATTR}
-              className="hidden"
-              onChange={handleFileChange}
-            />
-
-            {/* State 1: No Image Picked & No Live Camera */}
-            {!previewUrl && !isCameraActive && (
-              <div
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragging(true);
-                }}
-                onDragLeave={() => setIsDragging(false)}
-                onDrop={handleDrop}
-                className={`flex flex-col items-center justify-center rounded-xl border-2 border-dashed p-8 text-center transition-colors max-sm:min-h-0 max-sm:flex-1 ${
-                  isDragging
-                    ? "border-primary bg-primary/5"
-                    : "border-border/80 hover:border-primary/50 bg-muted/20"
-                }`}
-              >
-                <div className="size-14 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3">
-                  <Camera className="size-7" />
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  {spent ? "No scans left this month" : "Photograph or upload a die-cast car"}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1 max-w-sm leading-relaxed">
-                  {spent
-                    ? "The count resets on the 1st, and a bigger plan lifts it. Until then the search box and the catalogue are still there."
-                    : "Take a photo of a blister card, packaging box, or loose model car. We'll extract its make, model, brand, colour, and series to find matches in your collection."}
-                </p>
-
-                <div className="flex flex-wrap items-center justify-center gap-2.5 mt-5">
-                  {!spent && (
-                    <Button
-                      type="button"
-                      onClick={() => startLiveCamera("environment")}
-                      className="gap-1.5 h-9"
-                    >
-                      <Camera className="size-4" />
-                      Open camera
-                    </Button>
-                  )}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={spent}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="gap-1.5 h-9"
-                  >
-                    <Upload className="size-4" />
-                    Upload image
-                  </Button>
-                </div>
-
-                <p className="text-xs text-muted-foreground/80 mt-4">
-                  Or drag and drop an image here, or paste from clipboard (Ctrl+V)
-                </p>
-
-                {analysisError && (
-                  <div className="mt-4 p-3 rounded-lg bg-destructive/10 text-destructive text-xs flex items-center gap-2 text-left w-full max-w-md">
-                    <AlertCircle className="size-4 shrink-0" />
-                    <span>{analysisError}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* State 2: Live Camera Viewfinder */}
-            {!previewUrl && isCameraActive && (
-              <div className="flex min-h-0 flex-1 flex-col gap-3">
-                <div className="relative flex items-center justify-center overflow-hidden rounded-xl bg-black max-sm:min-h-0 max-sm:flex-1 sm:aspect-[4/3]">
-                  <video
-                    ref={(el) => {
-                      videoRef.current = el;
-                      if (el && mediaStreamRef.current) {
-                        attachStreamToVideo(mediaStreamRef.current);
-                      }
-                    }}
-                    autoPlay
-                    playsInline
-                    muted
-                    onLoadedMetadata={(e) => {
-                      (e.target as HTMLVideoElement).play().catch(() => {});
-                      setCameraLoading(false);
-                    }}
-                    onPlay={() => setCameraLoading(false)}
-                    className="size-full object-cover"
-                  />
-
-                  {cameraLoading && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/80 z-0 text-white">
-                      <Loader2 className="size-8 animate-spin text-primary" />
-                      <span className="text-xs font-medium">Starting camera…</span>
-                    </div>
-                  )}
-
-                  {/* Only the camera switch sits on the picture. The
-                        shutter is under it, where a thumb is, and where it
-                        cannot cover the car being framed. */}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="icon"
-                    className="absolute right-3 top-3 z-10 size-10 rounded-full bg-black/60 text-white hover:bg-black/80"
-                    onClick={() => {
-                      const nextFacing = cameraFacing === "environment" ? "user" : "environment";
-                      setCameraFacing(nextFacing);
-                      startLiveCamera(nextFacing);
-                    }}
-                    title="Switch camera"
-                  >
-                    <SwitchCamera className="size-4.5" />
-                  </Button>
-                </div>
-
-                <div className="flex shrink-0 items-center justify-center gap-4 pb-1">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-11 shrink-0 rounded-full"
-                    onClick={() => {
-                      const nextFacing = cameraFacing === "environment" ? "user" : "environment";
-                      setCameraFacing(nextFacing);
-                      void startLiveCamera(nextFacing);
-                    }}
-                    title="Switch camera"
-                    aria-label="Switch camera"
-                  >
-                    <SwitchCamera className="size-4" />
-                  </Button>
-                  <button
-                    type="button"
-                    onClick={captureLivePhoto}
-                    className="size-16 rounded-full border-4 border-white bg-primary shadow-lg transition-transform active:scale-95"
-                    title="Take the photo"
-                    aria-label="Take the photo"
-                  >
-                    <span className="mx-auto block size-11 rounded-full bg-white/90" />
-                  </button>
-                  {/* One row under the picture: flip on the left, shutter
-                      in the middle, upload on the right. */}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="size-11 shrink-0 rounded-full"
-                    onClick={() => fileInputRef.current?.click()}
-                    title="Upload an image instead"
-                    aria-label="Upload an image instead"
-                  >
-                    <Upload className="size-4" />
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* State 3: Image Captured / Uploaded */}
-            {previewUrl && (
-              <div className="space-y-4 max-sm:flex max-sm:min-h-0 max-sm:flex-1 max-sm:flex-col max-sm:gap-4">
-                {/* Image Preview & Scanning Indicator */}
-                <div className="relative flex items-start gap-3 overflow-hidden rounded-xl border border-border/70 bg-muted/40 p-3 sm:items-center sm:gap-4">
-                  <div className="relative size-28 sm:size-32 rounded-lg overflow-hidden shrink-0 border border-border bg-black/5 flex items-center justify-center">
-                    <img
-                      src={previewUrl}
-                      alt="Captured die-cast"
-                      className="size-full object-contain"
-                    />
-                    {analyzing && (
-                      <div className="absolute inset-0 bg-primary/20 backdrop-blur-[1px] flex flex-col items-center justify-center text-primary">
-                        <RefreshCw className="size-6 animate-spin mb-1" />
-                        <span className="text-xs font-semibold uppercase tracking-wider text-white bg-black/70 px-1.5 py-0.5 rounded">
-                          Analyzing...
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold">Analyzed Image</span>
-                        {analyzing ? (
-                          <Badge variant="outline" className="text-xs animate-pulse">
-                            Extracting attributes...
-                          </Badge>
-                        ) : attributes ? (
-                          <Badge
-                            variant="secondary"
-                            className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                          >
-                            Attributes Ready
-                          </Badge>
-                        ) : null}
-                      </div>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={handleResetImage}
-                        className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
-                      >
-                        <RefreshCw className="size-3" />
-                        New Photo
-                      </Button>
-                    </div>
-
-                    {analyzing ? (
-                      <div className="space-y-1.5 text-xs text-muted-foreground">
-                        <p className="flex items-center gap-1.5 text-foreground font-medium">
-                          <Sparkles className="size-3.5 text-primary animate-spin" />
-                          Identifying the casting
-                        </p>
-                        <p className="text-xs">
-                          Reading make, model, variant, series, colour, and collector numbers...
-                        </p>
-                      </div>
-                    ) : analysisError ? (
-                      <div className="text-xs text-destructive flex items-start gap-1.5 bg-destructive/10 p-2 rounded">
-                        <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-medium">Analysis couldn't complete</p>
-                          <p className="text-xs opacity-90">{analysisError}</p>
-                        </div>
-                      </div>
-                    ) : attributes ? (
-                      <>
-                        <p className="text-xs text-muted-foreground max-sm:hidden">
-                          We identified the vehicle below. Matches from your collection are ranked
-                          by similarity.
-                        </p>
-                        {/* Shut until asked for: what was read off the card is
-                            the working, and the matches are the answer. */}
-                        <details className="rounded-lg border border-border/70 bg-background sm:hidden">
-                          <summary className="cursor-pointer px-2.5 py-1.5 text-xs font-medium">
-                            Extracted attributes
-                          </summary>
-                          <div className="px-2.5 pb-2.5">
-                            <AttributeChips attributes={attributes} />
-                          </div>
-                        </details>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-
-                {/* Extracted Attributes Chips */}
-                {attributes && (
-                  <div className="space-y-2.5 rounded-xl border border-border/70 bg-card p-3.5 max-sm:hidden">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                        <Tag className="size-3.5 text-primary" />
-                        Extracted Attributes
-                      </span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={applyAttributesToSearch}
-                        className="h-6.5 text-xs gap-1 px-2"
-                      >
-                        <Search className="size-3" />
-                        Filter Collection View
-                      </Button>
-                    </div>
-
-                    <AttributeChips attributes={attributes} />
-                  </div>
-                )}
-
-                {/* Matching Cars List */}
-                {attributes && (
-                  <div className="space-y-2.5 max-sm:flex max-sm:min-h-0 max-sm:flex-1 max-sm:flex-col max-sm:gap-2.5 max-sm:overflow-y-auto">
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                        <CarIcon className="size-3.5 text-muted-foreground" />
-                        Collection Matches ({matchedCars.length})
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {matchedCars.length === 0
-                          ? "No matches in your collection"
-                          : matchedCars.length === MAX_MATCHES
-                            ? `Closest ${MAX_MATCHES} · tap one to open it`
-                            : "Tap one to open it"}
-                      </span>
-                    </div>
-
-                    {matchedCars.length > 0 ? (
-                      <div className="space-y-2 pr-1 sm:max-h-[260px] sm:overflow-y-auto">
-                        {matchedCars.map(({ car, score, matchedAttributes, exactCount }) => (
-                          <div
-                            key={car.id}
-                            onClick={() => {
-                              onOpenChange(false);
-                              openCar(car);
-                              toast.success(`Opened: ${car.name || car.model}`);
-                            }}
-                            className="group flex items-center gap-3 p-2.5 rounded-lg border border-border/70 hover:border-primary/60 hover:bg-muted/30 cursor-pointer transition-all active:scale-[0.99]"
-                          >
-                            <div className="size-14 rounded-md overflow-hidden bg-muted/50 shrink-0 border border-border/50">
-                              <CarThumb car={car} className="size-full object-cover" />
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
-                                  {car.name || `${car.make} ${car.model}`}
-                                </span>
-                                {exactCount > 1 && (
-                                  <span className="shrink-0 text-xs font-medium bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded">
-                                    {exactCount}x
-                                  </span>
-                                )}
-                              </div>
-
-                              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                                {car.brand && <span>{car.brand}</span>}
-                                {car.series && <span>· {car.series}</span>}
-                                {car.year && <span>· {car.year}</span>}
-                                {car.colour && <span>· {car.colour}</span>}
-                              </div>
-
-                              {/* Matched attribute tags */}
-                              <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                                {matchedAttributes.slice(0, 4).map((m) => (
-                                  <span
-                                    key={m.label}
-                                    className="inline-flex items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded"
-                                  >
-                                    <Check className="size-2.5" />
-                                    {m.label}: {m.value}
-                                  </span>
-                                ))}
-                                {matchedAttributes.length > 4 && (
-                                  <span className="text-xs text-muted-foreground">
-                                    +{matchedAttributes.length - 4} more
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="shrink-0 flex items-center gap-2">
-                              <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                                {car.id}
-                              </span>
-                              <ArrowRight className="size-4 text-muted-foreground/50 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-6 rounded-xl border border-dashed border-border/80 bg-muted/10 text-center space-y-2">
-                        <CarIcon className="size-8 text-muted-foreground/50 mx-auto" />
-                        <p className="text-xs font-medium text-foreground">
-                          No matching cars in your current collection
-                        </p>
-                        <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-                          The identified model ({attributes.make} {attributes.model}) is not
-                          currently logged in your collection.
-                        </p>
-                        <div className="pt-2 flex items-center justify-center gap-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-8"
-                            onClick={applyAttributesToSearch}
-                          >
-                            Search anyway
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            className="text-xs h-8"
-                            onClick={handleResetImage}
-                          >
-                            Scan another car
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+      {/* The cars that were read, as a table with the values left to type. */}
+      <BulkAddCarsDialog
+        open={bulkCars !== null}
+        onOpenChange={(v) => {
+          if (!v) setBulkCars(null);
+        }}
+        scanned={bulkCars ?? undefined}
+      />
+    </>
   );
 }
 

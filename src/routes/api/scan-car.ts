@@ -70,6 +70,33 @@ Field notes:
 Return an empty string for anything you cannot determine or are uncertain about.
 Do not invent or guess randomly.`;
 
+/** The cap on one photograph, and so on what one multi-car scan can cost. */
+const MAX_CARS = 6;
+
+const MULTI_PROMPT = `You are an expert die-cast model car cataloguer for a collector's database.
+
+The image shows SEVERAL die-cast cars at once, laid out together: blister cards, boxes, loose models, or a mix.
+Identify each distinct car separately, going left to right and then top to bottom. One entry per car.
+If the same casting appears twice, list it twice. Skip anything too cut off or too blurred to read, and
+anything that is not a die-cast car. At most ${MAX_CARS} cars.
+
+For every car, extract these fields:
+- make: the real-world automotive manufacturer (e.g. Nissan, Porsche, Ford). Never the toy brand.
+- model: the base vehicle model name only (e.g. Skyline, Supra, 911).
+- variant: trim or sub-designation (e.g. GT-R, R34, GT3, LBWK).
+- year: real car model year or packaging year if printed. Four digits.
+- colour: the primary body colour and livery finish as a collector describes it.
+- type: body style/category (e.g. Supercar, Race Car, Classic, JDM, Muscle, SUV, Truck).
+- brand: die-cast manufacturer / toy brand (e.g. Hot Wheels, Matchbox, Mini GT, Tarmac Works, Majorette).
+- assortment: product line (e.g. Mainline, Premium, Boulevard, Car Culture, Box).
+- series: named series or collection printed or recognizable.
+- subSeries: narrower run or sub-series if applicable.
+- carNumber: collector number exactly as printed or known.
+- size: scale, usually "1:64" or "1:43" or "1:32" or "1:18".
+
+Return an empty string for anything you cannot determine or are uncertain about.
+Do not invent or guess randomly.`;
+
 let aiClient: GoogleGenAI | null = null;
 function getGenAI(apiKey: string): GoogleGenAI {
   if (!aiClient) {
@@ -89,6 +116,7 @@ function getGenAI(apiKey: string): GoogleGenAI {
 async function scanViaOmniRoute(
   base: string,
   image: { mimeType: string; data: string },
+  multi = false,
 ): Promise<{ fields?: Record<string, unknown>; model: string; error?: string }> {
   const model = process.env["OMNIROUTE_MODEL"] || "auto";
   const apiKey = process.env["OMNIROUTE_API_KEY"];
@@ -111,7 +139,11 @@ async function scanViaOmniRoute(
             content: [
               {
                 type: "text",
-                text: `${PROMPT}
+                text: multi
+                  ? `${MULTI_PROMPT}
+
+Reply with JSON only: an object with one key, "cars", holding an array. Each item has exactly these keys: ${SCAN_FIELDS.join(", ")}.`
+                  : `${PROMPT}
 
 Reply with JSON only, using exactly these keys: ${SCAN_FIELDS.join(", ")}.`,
               },
@@ -143,6 +175,26 @@ Reply with JSON only, using exactly these keys: ${SCAN_FIELDS.join(", ")}.`,
   }
 }
 
+/**
+ * Pays for the cars a photograph turned out to hold: one credit each.
+ *
+ * The first was taken before the model was called, as for any scan, and what
+ * is owed is only known once it has answered. So the rest are claimed one at a
+ * time, each through the same function and so each checked against the
+ * allowance, and if the allowance runs out partway the list is cut to the cars
+ * that were paid for rather than handing over what was not.
+ */
+async function payForCars(token: string, cars: ScanFields[]) {
+  let paid = 1;
+  for (let i = 1; i < cars.length; i++) {
+    const { data, error } = await callerSupabase(token).rpc("tesoro_claim_scan");
+    const taken = (Array.isArray(data) ? data[0] : data) as { allowed: boolean } | undefined;
+    if (error || !taken?.allowed) break;
+    paid += 1;
+  }
+  return { cars: cars.slice(0, paid), found: cars.length, trimmed: paid < cars.length };
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -150,13 +202,24 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function readBody(raw: unknown): { mimeType: string; data: string } | null {
+function readBody(raw: unknown): { mimeType: string; data: string; multi: boolean } | null {
   if (!raw || typeof raw !== "object") return null;
-  const { mimeType, data } = raw as { mimeType?: unknown; data?: unknown };
+  const { mimeType, data, multi } = raw as { mimeType?: unknown; data?: unknown; multi?: unknown };
   if (typeof mimeType !== "string" || typeof data !== "string") return null;
   if (!/^image\/(jpeg|png|webp)$/.test(mimeType)) return null;
   if (!data || data.length > MAX_BASE64) return null;
-  return { mimeType, data };
+  return { mimeType, data, multi: multi === true };
+}
+
+/** Each car the reply listed, cleaned, with the ones that say nothing about a car dropped. */
+function carsFrom(parsed: unknown): ScanFields[] {
+  const list = (parsed as { cars?: unknown } | null)?.cars;
+  if (!Array.isArray(list)) return [];
+  return list
+    .filter((c): c is Record<string, unknown> => Boolean(c) && typeof c === "object")
+    .map(cleanFields)
+    .filter((c) => c.make || c.model || c.brand || c.series)
+    .slice(0, MAX_CARS);
 }
 
 function cleanFields(parsed: Record<string, unknown>): ScanFields {
@@ -235,11 +298,24 @@ async function handler({ request }: { request: Request }) {
 
   // The router first, when there is one.
   if (omniBase) {
-    const attempt = await scanViaOmniRoute(omniBase, image);
+    const attempt = await scanViaOmniRoute(omniBase, image, image.multi);
     if (attempt.fields) {
-      return json({ fields: cleanFields(attempt.fields), modelUsed: `omniroute:${attempt.model}` });
+      if (image.multi) {
+        const cars = carsFrom(attempt.fields);
+        if (cars.length) {
+          const paid = await payForCars(caller.token, cars);
+          return json({ ...paid, modelUsed: `omniroute:${attempt.model}` });
+        }
+        lastError = "No cars could be read in that photograph.";
+      } else {
+        return json({
+          fields: cleanFields(attempt.fields),
+          modelUsed: `omniroute:${attempt.model}`,
+        });
+      }
+    } else {
+      lastError = `${attempt.error} (omniroute: ${attempt.model})`;
     }
-    lastError = `${attempt.error} (omniroute: ${attempt.model})`;
     // Nothing else to fall back to.
     if (!key) return json({ error: lastError }, 502);
   }
@@ -254,7 +330,7 @@ async function handler({ request }: { request: Request }) {
         model,
         contents: {
           parts: [
-            { text: PROMPT },
+            { text: image.multi ? MULTI_PROMPT : PROMPT },
             {
               inlineData: {
                 mimeType: image.mimeType,
@@ -266,11 +342,28 @@ async function handler({ request }: { request: Request }) {
         config: {
           temperature: 0,
           responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: Object.fromEntries(SCAN_FIELDS.map((f) => [f, { type: Type.STRING }])),
-            required: [...SCAN_FIELDS],
-          },
+          responseSchema: image.multi
+            ? {
+                type: Type.OBJECT,
+                properties: {
+                  cars: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: Object.fromEntries(
+                        SCAN_FIELDS.map((f) => [f, { type: Type.STRING }]),
+                      ),
+                      required: [...SCAN_FIELDS],
+                    },
+                  },
+                },
+                required: ["cars"],
+              }
+            : {
+                type: Type.OBJECT,
+                properties: Object.fromEntries(SCAN_FIELDS.map((f) => [f, { type: Type.STRING }])),
+                required: [...SCAN_FIELDS],
+              },
         },
       });
 
@@ -293,6 +386,14 @@ async function handler({ request }: { request: Request }) {
         continue;
       }
 
+      if (image.multi) {
+        const cars = carsFrom(parsed);
+        if (!cars.length) {
+          lastError = "No cars could be read in that photograph.";
+          continue;
+        }
+        return json({ ...(await payForCars(caller.token, cars)), modelUsed: model });
+      }
       return json({ fields: cleanFields(parsed as Record<string, unknown>), modelUsed: model });
     } catch (err: unknown) {
       const detail = (err as Error)?.message || "Image analysis failed.";
