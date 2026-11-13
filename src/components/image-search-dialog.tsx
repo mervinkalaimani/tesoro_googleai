@@ -38,6 +38,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentControl } from "@/components/segment-control";
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 
+/** The most a scan request can carry, as base64 characters: under the 4.5MB a request is allowed. */
+const MAX_SENT = 4_000_000;
+
 interface ImageSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -230,7 +233,15 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
     setPreviewUrl(url);
 
     try {
-      const imagePayload = await imageToBase64(file);
+      // Six cars in one frame get a sixth of it each, so the photograph is kept
+      // at a far larger size than a single card needs: at the usual 1280 a
+      // collector number is a smear. It still has to fit the 4.5MB a request
+      // may carry, so a heavy one is sent smaller until it does.
+      let imagePayload = await imageToBase64(file, several ? 2400 : 1280);
+      for (const edge of [1800, 1400]) {
+        if (!several || imagePayload.data.length <= MAX_SENT) break;
+        imagePayload = await imageToBase64(file, edge);
+      }
       // Who is asking, same as the card scanner sends. The route refuses a
       // request without it — the model call is spent on somebody's key — and
       // the answer came back as "Sign in to scan a card" to a signed-in person.
@@ -246,6 +257,8 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
         /** How many the photograph held, when the allowance covered fewer. */
         found?: number;
         trimmed?: boolean;
+        /** How many cars the reader counted in the photograph. */
+        seen?: number;
         error?: string;
       } | null;
 
@@ -265,6 +278,10 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
         if (data.trimmed && data.found) {
           toast.warning(
             `${data.found} cars found, but only ${list.length} of your scans covered. That is all your scans for this month.`,
+          );
+        } else if (data.seen && data.seen > list.length) {
+          toast.warning(
+            `${data.seen} cars seen, but only ${list.length} could be read. Move closer, or take it in two photos.`,
           );
         } else {
           toast.success(
@@ -551,7 +568,7 @@ export function ImageSearchDialog({ open, onOpenChange }: ImageSearchDialogProps
                     {spent
                       ? "The count resets on the 1st, and a bigger plan lifts it. Until then the search box and the catalogue are still there."
                       : several
-                        ? "Photograph up to 6 cars together, side by side. Each one is read separately, at one scan per car found, and you pick which to add, then type in the prices."
+                        ? "Photograph up to 6 cars together, side by side, close enough that each card or box is readable. Each is read separately, at one scan per car found, and you pick which to add, then type in the prices."
                         : "Take a photo of a blister card, packaging box, or loose model car. We'll extract its make, model, brand, colour, and series to find matches in your collection."}
                   </p>
 

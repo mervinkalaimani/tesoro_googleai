@@ -23,11 +23,20 @@ import { fieldsFromChatCompletion } from "@/lib/scan-reply";
  * the only thing between a photograph and an answer.
  */
 
+/**
+ * Fastest working first.
+ *
+ * gemini-2.5-flash used to lead and is no longer offered to newer keys: it
+ * answers 404, every scan paid a round trip for that before reaching the next
+ * model, and the next was the lite one, which took 32 seconds to read six cards
+ * against 8 for gemini-3.8-flash. A deployment whose key still has 2.5 gets it
+ * third, after the two that read a photograph quickly and well.
+ */
 const CANDIDATE_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-3.1-flash-lite",
   "gemini-3.8-flash",
   "gemini-flash-latest",
+  "gemini-2.5-flash",
+  "gemini-3.1-flash-lite",
 ];
 const MAX_BASE64 = 6_000_000;
 
@@ -76,9 +85,12 @@ const MAX_CARS = 6;
 const MULTI_PROMPT = `You are an expert die-cast model car cataloguer for a collector's database.
 
 The image shows SEVERAL die-cast cars at once, laid out together: blister cards, boxes, loose models, or a mix.
-Identify each distinct car separately, going left to right and then top to bottom. One entry per car.
-If the same casting appears twice, list it twice. Skip anything too cut off or too blurred to read, and
-anything that is not a die-cast car. At most ${MAX_CARS} cars.
+First count every distinct car you can see, then list them: one entry per car, left to right and then top to bottom.
+Count and list EVERY car, including ones that are small, at an angle, partly overlapping or only partly legible.
+Never leave a car out because some of its details are uncertain: include it and leave the uncertain fields as
+empty strings. A car in a package counts as one car, not as the package and the car. If the same casting
+appears twice, list it twice. Leave out only things that are not die-cast cars. At most ${MAX_CARS} cars; if
+there are more, list the ${MAX_CARS} most clearly visible.
 
 For every car, extract these fields:
 - make: the real-world automotive manufacturer (e.g. Nissan, Porsche, Ford). Never the toy brand.
@@ -94,8 +106,7 @@ For every car, extract these fields:
 - carNumber: collector number exactly as printed or known.
 - size: scale, usually "1:64" or "1:43" or "1:32" or "1:18".
 
-Return an empty string for anything you cannot determine or are uncertain about.
-Do not invent or guess randomly.`;
+Return an empty string for any field you cannot determine. Do not invent or guess randomly.`;
 
 let aiClient: GoogleGenAI | null = null;
 function getGenAI(apiKey: string): GoogleGenAI {
@@ -142,7 +153,7 @@ async function scanViaOmniRoute(
                 text: multi
                   ? `${MULTI_PROMPT}
 
-Reply with JSON only: an object with one key, "cars", holding an array. Each item has exactly these keys: ${SCAN_FIELDS.join(", ")}.`
+Reply with JSON only: an object with the key "count" (how many cars you can see) and then the key "cars", holding an array. Each item has exactly these keys: ${SCAN_FIELDS.join(", ")}.`
                   : `${PROMPT}
 
 Reply with JSON only, using exactly these keys: ${SCAN_FIELDS.join(", ")}.`,
@@ -211,6 +222,15 @@ function readBody(raw: unknown): { mimeType: string; data: string; multi: boolea
   return { mimeType, data, multi: multi === true };
 }
 
+/** How many cars the model said it could see, which it is asked for before it lists them. */
+function seenFrom(parsed: unknown): number {
+  const n = Number((parsed as { count?: unknown } | null)?.count);
+  return Number.isFinite(n) && n > 0 ? Math.min(Math.round(n), 99) : 0;
+}
+
+/** A reply that counted more cars than it described, short of the most one photograph can return. */
+const incomplete = (read: number, seen: number) => seen > read && read < MAX_CARS;
+
 /** Each car the reply listed, cleaned, with the ones that say nothing about a car dropped. */
 function carsFrom(parsed: unknown): ScanFields[] {
   const list = (parsed as { cars?: unknown } | null)?.cars;
@@ -218,7 +238,7 @@ function carsFrom(parsed: unknown): ScanFields[] {
   return list
     .filter((c): c is Record<string, unknown> => Boolean(c) && typeof c === "object")
     .map(cleanFields)
-    .filter((c) => c.make || c.model || c.brand || c.series)
+    .filter((c) => Object.values(c).some(Boolean))
     .slice(0, MAX_CARS);
 }
 
@@ -296,17 +316,36 @@ async function handler({ request }: { request: Request }) {
 
   let lastError = "Image analysis failed.";
 
+  /** The fullest multi-car reading so far, kept so a worse retry never replaces it. */
+  let best: { cars: ScanFields[]; seen: number; model: string } | null = null;
+  const consider = (cars: ScanFields[], seen: number, model: string) => {
+    console.log(`[scan-car] multi model=${model} seen=${seen} read=${cars.length}`);
+    if (!best || cars.length > best.cars.length) best = { cars, seen, model };
+  };
+  const bestReply = async () => {
+    const b = best!;
+    return json({
+      ...(await payForCars(caller.token, b.cars)),
+      seen: b.seen,
+      modelUsed: b.model,
+    });
+  };
+
   // The router first, when there is one.
   if (omniBase) {
     const attempt = await scanViaOmniRoute(omniBase, image, image.multi);
     if (attempt.fields) {
       if (image.multi) {
         const cars = carsFrom(attempt.fields);
+        const seen = seenFrom(attempt.fields);
         if (cars.length) {
-          const paid = await payForCars(caller.token, cars);
-          return json({ ...paid, modelUsed: `omniroute:${attempt.model}` });
+          consider(cars, seen, `omniroute:${attempt.model}`);
+          // Counted more than it listed, and there is another reader to ask.
+          if (!(key && incomplete(cars.length, seen))) return bestReply();
+          lastError = "The first reading missed some of the cars.";
+        } else {
+          lastError = "No cars could be read in that photograph.";
         }
-        lastError = "No cars could be read in that photograph.";
       } else {
         return json({
           fields: cleanFields(attempt.fields),
@@ -345,7 +384,11 @@ async function handler({ request }: { request: Request }) {
           responseSchema: image.multi
             ? {
                 type: Type.OBJECT,
+                // The count is asked for first, so the model has numbered the cars
+                // before it describes them rather than stopping at the first few.
+                propertyOrdering: ["count", "cars"],
                 properties: {
+                  count: { type: Type.INTEGER },
                   cars: {
                     type: Type.ARRAY,
                     items: {
@@ -357,7 +400,7 @@ async function handler({ request }: { request: Request }) {
                     },
                   },
                 },
-                required: ["cars"],
+                required: ["count", "cars"],
               }
             : {
                 type: Type.OBJECT,
@@ -388,11 +431,19 @@ async function handler({ request }: { request: Request }) {
 
       if (image.multi) {
         const cars = carsFrom(parsed);
+        const seen = seenFrom(parsed);
         if (!cars.length) {
           lastError = "No cars could be read in that photograph.";
           continue;
         }
-        return json({ ...(await payForCars(caller.token, cars)), modelUsed: model });
+        consider(cars, seen, model);
+        // It counted more cars than it described: try the next model, and keep
+        // whichever reading turns out fullest.
+        if (incomplete(cars.length, seen) && model !== modelsToTry[modelsToTry.length - 1]) {
+          lastError = `Only ${cars.length} of ${seen} cars were read.`;
+          continue;
+        }
+        return bestReply();
       }
       return json({ fields: cleanFields(parsed as Record<string, unknown>), modelUsed: model });
     } catch (err: unknown) {
@@ -407,6 +458,9 @@ async function handler({ request }: { request: Request }) {
       continue;
     }
   }
+
+  // Every reader fell short, but one of them read something: that is the answer.
+  if (best) return bestReply();
 
   return json({ error: lastError }, 502);
 }
