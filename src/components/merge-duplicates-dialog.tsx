@@ -300,6 +300,8 @@ function GroupRow({ group, onOpen }: { group: DuplicateGroup; onOpen: () => void
           <img
             src={transformImageUrl(group.cars[0].image_url, "thumb")}
             alt=""
+            loading="lazy"
+            decoding="async"
             className="size-full object-cover"
           />
         ) : (

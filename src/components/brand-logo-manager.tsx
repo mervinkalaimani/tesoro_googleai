@@ -146,6 +146,8 @@ export function BrandLogoManager() {
                     key={preview}
                     src={preview}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="max-h-7 max-w-14 object-contain"
                     onError={(e) => {
                       e.currentTarget.style.visibility = "hidden";

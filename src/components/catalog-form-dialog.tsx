@@ -1581,6 +1581,8 @@ export function CatalogFormDialog({
                     <img
                       src={transformImageUrl(c.image_url, "thumb")}
                       alt=""
+                      loading="lazy"
+                      decoding="async"
                       className="size-full object-cover"
                     />
                   ) : (

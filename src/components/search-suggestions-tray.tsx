@@ -105,6 +105,8 @@ export function SearchSuggestionsTray({
                         src={car.imageUrl}
                         alt=""
                         referrerPolicy="no-referrer"
+                        loading="lazy"
+                        decoding="async"
                         className="size-9 shrink-0 rounded-md border border-border/50 bg-muted/40 object-cover"
                       />
                     ) : (

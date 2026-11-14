@@ -235,6 +235,8 @@ function EntryRow({
             <img
               src={transformImageUrl(car.image_url, "thumb")}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="size-full object-cover"
             />
           ) : (

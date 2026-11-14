@@ -295,6 +295,8 @@ export function SuggestionsDrawer({ open, onClose }: { open: boolean; onClose: (
                             src={car.imageUrl}
                             alt=""
                             referrerPolicy="no-referrer"
+                            loading="lazy"
+                            decoding="async"
                             className="size-10 shrink-0 rounded-lg border border-border/50 bg-muted/40 object-cover"
                           />
                         ) : (

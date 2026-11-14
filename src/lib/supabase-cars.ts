@@ -415,6 +415,66 @@ export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
 }
 
 /**
+ * One upsert of whole rows, retried without the optional columns when the
+ * deployed schema has not reached them yet. Returns the error, if any.
+ */
+async function upsertRaw(tableName: string, rows: TesoroRawRow[]) {
+  const up = (r: TesoroRawRow[]) =>
+    supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .from(tableName as any)
+      .upsert(r, { onConflict: "Car ID" });
+  let { error } = await up(rows);
+  if (error && isMissingColumnError(error.message)) {
+    error = (
+      await up(
+        rows.map((row) => {
+          const copy = { ...row };
+          for (const key of OPTIONAL_COLUMNS) delete copy[key];
+          return copy;
+        }),
+      )
+    ).error;
+  }
+  return error;
+}
+
+/**
+ * Save many cars in one round trip per 100, instead of one upsert, one session
+ * lookup and one catalogue upsert per car. Same contract as saveCarToSupabase,
+ * one result per car, in order.
+ */
+export async function saveCarsToSupabase(
+  cars: Diecast[],
+): Promise<{ success: boolean; error?: string }[]> {
+  const failAll = (error: string) => cars.map(() => ({ success: false, error }));
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) return failAll("Not signed in");
+
+    const tableName = getSupabaseTableName();
+    const results: { success: boolean; error?: string }[] = [];
+    for (let i = 0; i < cars.length; i += 100) {
+      const slice = cars.slice(i, i + 100);
+      const error = await upsertRaw(
+        tableName,
+        slice.map((c) => ({ ...diecastToTesoroRaw(c), user_id: userId })),
+      );
+      results.push(
+        ...slice.map(() => (error ? { success: false, error: error.message } : { success: true })),
+      );
+    }
+
+    // Held cars keep their casting unfiled, as in saveCarToSupabase.
+    const filed = cars.filter((c, i) => results[i].success && !c.catalogPendingAt);
+    if (filed.length) void seedCatalogToSupabase(extractCatalogFromCars(filed));
+    return results;
+  } catch (err) {
+    return failAll((err as Error).message);
+  }
+}
+
+/**
  * Insert or upsert a car in the configured Supabase table.
  */
 export async function saveCarToSupabase(
@@ -516,25 +576,9 @@ export async function seedCarsToSupabase(
     for (let i = 0; i < cars.length; i += chunkSize) {
       const slice = cars.slice(i, i + chunkSize);
       const rows = slice.map((c) => ({ ...diecastToTesoroRaw(c), user_id: userId }));
-      let { error } = await supabase
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .from(tableName as any)
-        .upsert(rows, { onConflict: "Car ID" });
-
       // Same reasoning as saveCarToSupabase: a column the schema has not caught
       // up to should cost those fields, not the entire sync.
-      if (error && isMissingColumnError(error.message)) {
-        const fallbackRows = rows.map((row) => {
-          const copy = { ...row };
-          for (const key of OPTIONAL_COLUMNS) delete copy[key];
-          return copy;
-        });
-        const res = await supabase
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .from(tableName as any)
-          .upsert(fallbackRows, { onConflict: "Car ID" });
-        error = res.error;
-      }
+      const error = await upsertRaw(tableName, rows);
 
       if (error) {
         return { success: false, count, error: error.message };

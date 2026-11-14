@@ -93,14 +93,15 @@ export function AssortmentManager() {
   };
 
   const retire = async (row: Assortment) => {
-    setBusy(row.id);
+    // Shown at once; put back with a message if the database says no.
+    const flip = (retired: boolean) =>
+      setRows((rs) => rs.map((r) => (r.id === row.id ? { ...r, retired } : r)));
+    flip(!row.retired);
     const res = await setAssortmentRetired(row.id, !row.retired);
-    setBusy(null);
     if (!res.success) {
-      toast.error("Could not change it", { description: res.error });
-      return;
+      flip(row.retired);
+      toast.error("Could not change it, so it was put back", { description: res.error });
     }
-    void load();
   };
 
   const remove = async (row: Assortment) => {

@@ -84,3 +84,52 @@ export function TopListSkeleton() {
     </div>
   );
 }
+
+/** A column of bordered rows: a thumbnail or avatar, two lines, and a trailing control. */
+export function RowListSkeleton({ rows = 6, thumb = true }: { rows?: number; thumb?: boolean }) {
+  return (
+    <div className="space-y-2" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: rows }, (_, i) => (
+        <div key={i} className="card-elevated flex items-center gap-3 p-3">
+          {thumb && <Skeleton className="size-10 shrink-0 rounded-lg" />}
+          <div className="min-w-0 flex-1 space-y-2">
+            <Skeleton className="h-4 w-2/5" />
+            <Skeleton className="h-3 w-3/5" />
+          </div>
+          <Skeleton className="h-7 w-20 shrink-0 rounded-md" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Table body rows for a table whose header is already on screen. */
+export function TableRowsSkeleton({ cols, rows = 6 }: { cols: number; rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }, (_, r) => (
+        <tr key={r} className="border-t border-border/60" aria-busy="true">
+          {Array.from({ length: cols }, (_, c) => (
+            <td key={c} className="px-3 py-3">
+              <Skeleton className={c === 0 ? "h-4 w-32" : "h-4 w-16"} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  );
+}
+
+/** Tiles for a card grid; the caller supplies the grid classes so the columns match. */
+export function TileGridSkeleton({ className, tiles = 12 }: { className: string; tiles?: number }) {
+  return (
+    <div className={className} aria-busy="true" aria-label="Loading">
+      {Array.from({ length: tiles }, (_, i) => (
+        <div key={i} className="space-y-2">
+          <Skeleton className="aspect-[3/4] w-full rounded-xl" />
+          <Skeleton className="h-3 w-3/4" />
+        </div>
+      ))}
+    </div>
+  );
+}

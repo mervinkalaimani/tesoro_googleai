@@ -27,6 +27,7 @@ import {
   type Plan,
 } from "@/lib/tiers";
 import { Button } from "@/components/ui/button";
+import { RowListSkeleton } from "@/components/dashboard-skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { KpiBand, KpiTile } from "@/components/kpi";
@@ -385,8 +386,8 @@ function SubscriptionsPage() {
 
   if (status !== "ready") {
     return (
-      <div className="grid place-items-center py-24">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <div className="mx-auto max-w-5xl p-3 md:p-6">
+        <RowListSkeleton rows={6} />
       </div>
     );
   }
@@ -525,7 +526,7 @@ function SubscriptionsPage() {
           </div>
 
           {loading ? (
-            <Loader2 className="mx-auto my-16 size-5 animate-spin text-muted-foreground" />
+            <RowListSkeleton rows={5} />
           ) : shown.length === 0 ? (
             <p className="py-16 text-center text-sm text-muted-foreground">
               {segment === "paying"
@@ -827,6 +828,8 @@ function SubscriptionRow({
               <img
                 src={u.pay_receipt_url}
                 alt=""
+                loading="lazy"
+                decoding="async"
                 className="size-9 shrink-0 rounded border border-border object-cover"
               />
               <span className="min-w-0 text-xs">

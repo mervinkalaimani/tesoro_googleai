@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
+import { RowListSkeleton, TableRowsSkeleton } from "@/components/dashboard-skeletons";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -420,7 +421,7 @@ function AdminPage() {
           an eight-column table clipped to whatever fits. */}
       <div className="space-y-2 md:hidden">
         {loading ? (
-          <Loader2 className="mx-auto my-10 size-5 animate-spin text-muted-foreground" />
+          <RowListSkeleton rows={5} thumb={false} />
         ) : filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">No accounts match.</p>
         ) : (
@@ -604,11 +605,7 @@ function AdminPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">
-                  <Loader2 className="mx-auto size-5 animate-spin" />
-                </TableCell>
-              </TableRow>
+              <TableRowsSkeleton cols={8} />
             ) : filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="py-10 text-center text-muted-foreground">

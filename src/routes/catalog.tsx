@@ -60,6 +60,7 @@ import { searchCarImages } from "@/lib/car-image-search";
 import { groupCastings, priceRange, type CastingGroup } from "@/lib/casting-group";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { RowListSkeleton, TileGridSkeleton } from "@/components/dashboard-skeletons";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -303,6 +304,7 @@ function BrandTray({
                 src={src}
                 alt={b.value}
                 loading="lazy"
+                decoding="async"
                 // Filling the circle, not sitting inside it: a mark uploaded as a
                 // square fills it exactly, and a wide one is cropped to the
                 // middle, which is where a logo's meaning is.
@@ -923,9 +925,11 @@ function CatalogPage() {
       />
 
       {isLoading && catalog.length === 0 ? (
-        <div className="grid place-items-center py-16 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin" />
-        </div>
+        view === "table" ? (
+          <RowListSkeleton rows={8} />
+        ) : (
+          <TileGridSkeleton className={BLISTER_GRID_COLS} />
+        )
       ) : rows.length === 0 ? (
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
           {segment === "iso"

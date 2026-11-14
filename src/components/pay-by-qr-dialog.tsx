@@ -91,7 +91,11 @@ export function PayByQrDialog({
           <div className="mx-auto w-full max-w-xs overflow-hidden rounded-2xl border border-border bg-white p-3">
             {/* On white whatever the theme is: a QR inverted by a dark card is
                 a QR a camera will not read. */}
-            <img src={info.url} alt="Payment QR code" className="w-full object-contain" />
+            <img
+              src={info.url}
+              alt="Payment QR code"
+              className="aspect-square w-full object-contain"
+            />
           </div>
         ) : (
           <p className="rounded-xl border border-amber-500/40 bg-amber-500/5 px-3 py-2 text-center text-[13px]">

@@ -25,6 +25,7 @@ import { applyCatalogToCar, isCarInstanceOfCatalog, CATALOG_SYNC_EVENT } from "@
 import {
   fetchCarsFromSupabase,
   saveCarToSupabase,
+  saveCarsToSupabase,
   deleteCarFromSupabase,
   seedCarsToSupabase,
   savedFieldsMatch,
@@ -37,14 +38,20 @@ import {
  * masking `base`, that let the app show an edit as applied for as long as
  * localStorage survived while the row never actually moved.
  */
-function reportSaveFailure(scope: string, failures: { error?: string }[], total: number) {
+function reportSaveFailure(
+  scope: string,
+  failures: { error?: string }[],
+  total: number,
+  undone = false,
+) {
   if (!failures.length) return;
   const first = failures[0]?.error ?? "unknown error";
   console.error(`Supabase ${scope} failed (${failures.length}/${total}):`, first);
+  const tail = undone ? " and was undone" : "";
   toast.error(
     failures.length === total
-      ? "Change was not saved to the database"
-      : `${failures.length} of ${total} changes were not saved`,
+      ? `Change was not saved${tail}`
+      : `${failures.length} of ${total} changes were not saved${undone ? " and were undone" : ""}`,
     { description: first },
   );
 }
@@ -53,10 +60,14 @@ async function persistCars(
   cars: Diecast[],
   scope: string,
   report = true,
-): Promise<{ error?: string }[]> {
-  const results = await Promise.all(cars.map((c) => saveCarToSupabase(c)));
-  const failures = results.filter((r) => !r.success);
-  if (report) reportSaveFailure(scope, failures, cars.length);
+  undone = false,
+): Promise<{ error?: string; id: string }[]> {
+  // A lone edit keeps the full per-car path (catalogue write-through, image
+  // broadcast); two or more go in batches rather than one request set each.
+  const results =
+    cars.length === 1 ? [await saveCarToSupabase(cars[0])] : await saveCarsToSupabase(cars);
+  const failures = results.flatMap((r, i) => (r.success ? [] : [{ ...r, id: cars[i].id }]));
+  if (report) reportSaveFailure(scope, failures, cars.length, undone);
   else if (failures.length) console.error(`Supabase ${scope} failed:`, failures[0]?.error);
   return failures;
 }
@@ -655,11 +666,36 @@ export function CarsProvider({ children }: { children: ReactNode }) {
    * nothing a guest does is ever written to Supabase.
    */
   const persist = useCallback(
-    async (toSave: Diecast[], scope: string, report = true): Promise<{ error?: string }[]> => {
+    async (
+      toSave: Diecast[],
+      scope: string,
+      report = true,
+      undone = false,
+    ): Promise<{ error?: string; id: string }[]> => {
       if (isGuest) return [];
-      return persistCars(toSave, scope, report);
+      return persistCars(toSave, scope, report, undone);
     },
     [isGuest],
+  );
+
+  /**
+   * The other half of an optimistic edit: puts back what it replaced, for the
+   * cars whose save the database refused. A car edited again since is left
+   * alone, because what is on screen is then somebody's newer decision.
+   */
+  const rollBack = useCallback(
+    (failures: { id: string }[], sent: Diecast[], before: Diecast[]) => {
+      if (!failures.length) return;
+      const failed = new Set(failures.map((f) => f.id));
+      const o = overlayRef.current;
+      const stillOurs = (id: string) => {
+        const now = o.updated[id] ?? o.added.find((a) => a.id === id);
+        return now === sent.find((c) => c.id === id);
+      };
+      const back = before.filter((c) => failed.has(c.id) && stillOurs(c.id));
+      if (back.length) commit(applyRows(o, back));
+    },
+    [commit],
   );
 
   /**
@@ -840,6 +876,7 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
       const written = needsId ? withRenumbering([car], cars, prev ? [prev] : []) : [car];
 
+      let before: Diecast[] = [];
       if (prev) {
         // Anything else the renumbering moved is part of this edit as far as
         // undo is concerned: reversing it has to put those numbers back too.
@@ -848,14 +885,17 @@ export function CarsProvider({ children }: { children: ReactNode }) {
           .filter((w) => w.id !== car.id)
           .map((w) => byId.get(w.id))
           .filter((c): c is Diecast => Boolean(c));
-        pushUndo(`editing “${prev.name || prev.model || "the car"}”`, [prev, ...alsoMoved]);
+        before = [prev, ...alsoMoved];
+        pushUndo(`editing “${prev.name || prev.model || "the car"}”`, before);
       }
 
       commit(applyRows(overlayRef.current, written));
-      void persist(written, "updateCar");
+      void persist(written, "updateCar", true, before.length > 0).then((failed) =>
+        rollBack(failed, written, before),
+      );
       if (car.imageUrl) void syncUserCarImageToCatalog(car, car.imageUrl);
     },
-    [commit, cars, persist, pushUndo],
+    [commit, cars, persist, pushUndo, rollBack],
   );
 
   /** Applies rows to the local overlay only. Persistence is the caller's job. */
@@ -874,17 +914,20 @@ export function CarsProvider({ children }: { children: ReactNode }) {
 
       const written = withRenumbering(updatedCars, cars, before);
       const renumbered = written.filter((w) => !updatedCars.some((u) => u.id === w.id));
-      pushUndo(label ?? `editing ${before.length} car${before.length === 1 ? "" : "s"}`, [
+      const undoable = [
         ...before,
         ...renumbered.map((r) => byId.get(r.id)).filter((c): c is Diecast => Boolean(c)),
-      ]);
+      ];
+      pushUndo(label ?? `editing ${before.length} car${before.length === 1 ? "" : "s"}`, undoable);
       commitCars(written);
-      void persist(written, "bulkUpdate");
+      void persist(written, "bulkUpdate", true, true).then((failed) =>
+        rollBack(failed, written, undoable),
+      );
       for (const c of written) {
         if (c.imageUrl) void syncUserCarImageToCatalog(c, c.imageUrl);
       }
     },
-    [commitCars, persist, cars, pushUndo],
+    [commitCars, persist, cars, pushUndo, rollBack],
   );
 
   const updateCarsByShippingId = useCallback(

@@ -224,6 +224,8 @@ function SellersPage() {
                       <img
                         src={transformImageUrl(shop.image_url, "thumb")}
                         alt=""
+                        loading="lazy"
+                        decoding="async"
                         className="size-full object-cover"
                       />
                     ) : (

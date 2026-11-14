@@ -60,6 +60,7 @@ export function CarThumb({
           src={src}
           alt={car.name || `${car.make} ${car.model}`}
           loading="lazy"
+          decoding="async"
           className="size-full object-cover"
           onError={() => setSrc(null)}
         />

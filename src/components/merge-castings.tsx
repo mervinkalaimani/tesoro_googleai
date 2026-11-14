@@ -85,6 +85,8 @@ export function MergePanel({
                   <img
                     src={transformImageUrl(c.image_url, "thumb")}
                     alt=""
+                    loading="lazy"
+                    decoding="async"
                     className="size-full object-cover"
                   />
                 ) : (
@@ -148,9 +150,7 @@ export function MergePanel({
         {loadingPreview ? (
           <p className="mt-1 text-xs text-muted-foreground">Checking…</p>
         ) : !preview ? (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Pick at least one entry to merge in.
-          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Pick at least one entry to merge in.</p>
         ) : preview.cars === 0 ? (
           <p className="mt-1 text-xs text-muted-foreground">
             Nobody owns the entries being merged, so no collection changes.

@@ -19,6 +19,7 @@ export const brandKey = (v: string) => (v || "").trim().toLowerCase();
 
 let cache: BrandLogo[] | null = null;
 const waiting = new Set<(rows: BrandLogo[]) => void>();
+let inFlight: Promise<BrandLogo[]> | null = null;
 
 export async function fetchBrandLogos(): Promise<BrandLogo[]> {
   const { data, error } = await supabase
@@ -45,7 +46,10 @@ export function useBrandLogos(): BrandLogo[] {
       return;
     }
     waiting.add(setRows);
-    void fetchBrandLogos();
+    // One read however many components mount before it lands.
+    inFlight ??= fetchBrandLogos().finally(() => {
+      inFlight = null;
+    });
     return () => {
       waiting.delete(setRows);
     };

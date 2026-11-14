@@ -132,28 +132,52 @@ export const PAY_CARD_KEY = "pay_card";
  * row, a missing table or a refused read all read as false — the cautious
  * answer for every flag in here, since each one opens something up.
  */
+const flagCache = new Map<string, boolean | null>();
+const flagInFlight = new Map<string, Promise<boolean | null | undefined>>();
+
+/**
+ * Read once per key per session, shared by every component that asks. null is
+ * "no such row", kept apart from a failed read (undefined), which is not cached
+ * so the next mount tries again.
+ */
+function readFlag(key: string): Promise<boolean | null | undefined> {
+  if (flagCache.has(key)) return Promise.resolve(flagCache.get(key));
+  let read = flagInFlight.get(key);
+  if (!read) {
+    read = (async () => {
+      try {
+        const { data, error } = await db().from(TABLE).select("value").eq("key", key).maybeSingle();
+        if (error) return undefined;
+        const got = (data as { value?: unknown } | null)?.value;
+        const value = typeof got === "boolean" ? got : null;
+        flagCache.set(key, value);
+        return value;
+      } catch {
+        return undefined;
+      } finally {
+        flagInFlight.delete(key);
+      }
+    })();
+    flagInFlight.set(key, read);
+  }
+  return read;
+}
+
 export function useDeploymentFlag(key: string, fallback = false) {
-  const [on, setOn] = useState(fallback);
-  const [loaded, setLoaded] = useState(false);
+  const hit = flagCache.get(key);
+  const [on, setOn] = useState(typeof hit === "boolean" ? hit : fallback);
+  const [loaded, setLoaded] = useState(flagCache.has(key));
 
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      let value = fallback;
-      try {
-        const { data } = await db().from(TABLE).select("value").eq("key", key).maybeSingle();
-        const got = (data as { value?: unknown } | null)?.value;
-        // A row that is not there has never been decided, so the caller says
-        // what that means: false for a flag that opens something up, true for
-        // one that hides something the app already does.
-        value = typeof got === "boolean" ? got : fallback;
-      } catch {
-        value = fallback;
-      }
+    void readFlag(key).then((got) => {
       if (cancelled) return;
-      setOn(value);
+      // A row that is not there has never been decided, so the caller says
+      // what that means: false for a flag that opens something up, true for
+      // one that hides something the app already does.
+      setOn(typeof got === "boolean" ? got : fallback);
       setLoaded(true);
-    })();
+    });
     return () => {
       cancelled = true;
     };
@@ -168,6 +192,7 @@ export function useDeploymentFlag(key: string, fallback = false) {
       // Put it back rather than leave a switch that says one thing while the
       // table says another.
       if (error) setOn(!next);
+      else flagCache.set(key, next);
       return { error: error?.message };
     },
     [key],
