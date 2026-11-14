@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Filter } from "lucide-react";
-import { useCars } from "@/lib/cars-store";
+import { useCars, useCarsRefresh } from "@/lib/cars-store";
+import { TableRowsSkeleton } from "@/components/dashboard-skeletons";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
@@ -81,6 +82,8 @@ function CollectionPage() {
   const { open } = useCarDrawer();
 
   const cars = useCars();
+  // Nothing to show yet because the first read is still on its way.
+  const loading = useCarsRefresh().refreshing && cars.length === 0;
   const filtered = useMemo(() => filterRows(cars, query), [cars, query]);
 
   const groups = useMemo(() => {
@@ -242,7 +245,8 @@ function CollectionPage() {
               : []),
           ];
         })}
-        {visible.length === 0 && (
+        {loading && <TableRowsSkeleton cols={3} rows={8} />}
+        {!loading && visible.length === 0 && (
           <tr>
             <td colSpan={3} className="p-8 text-center text-sm text-muted-foreground">
               No groups.

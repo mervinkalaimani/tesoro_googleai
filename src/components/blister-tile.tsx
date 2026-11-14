@@ -23,6 +23,7 @@ export function BlisterTile({
   onOpen,
   caption,
   synced,
+  syncedSource,
   copies = 1,
   foot,
   className = "",
@@ -33,6 +34,7 @@ export function BlisterTile({
   caption?: string;
   /** The catalogue entry has been checked against the maker's site. */
   synced?: boolean;
+  syncedSource?: string | null;
   copies?: number;
   /** Replaces the name and brand line under the photograph. */
   foot?: ReactNode;
@@ -68,7 +70,7 @@ export function BlisterTile({
           }
         />
 
-        <SyncedMark synced={synced} />
+        <SyncedMark synced={synced} source={syncedSource} />
         {copies > 1 && (
           <div className="pointer-events-none absolute bottom-1 left-1">
             <CopiesBadge n={copies} className="bg-black/75 backdrop-blur-sm" />

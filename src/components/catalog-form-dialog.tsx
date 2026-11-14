@@ -1227,15 +1227,17 @@ export function CatalogFormDialog({
                   {/* Under the preview of the casting being filed, as a count.
                       The entries themselves need the width of a dialog to be
                       worth reading, so that is where they are. */}
-                  <DuplicatesButton count={duplicates.length} onClick={() => setDupesOpen(true)} />
+                  <DuplicatesButton hits={duplicates} onClick={() => setDupesOpen(true)} />
                   {isNew && duplicates.length > 0 && (
                     <div
                       data-duplicate-confirm
                       className="space-y-2.5 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3"
                     >
                       <p className="text-xs font-medium text-foreground">
-                        This casting matches one the catalogue already has. Add that one instead, or
-                        say below that this is a different release.
+                        This casting{" "}
+                        {duplicates.some((d) => d.match >= 100) ? "matches" : "may match"} one the
+                        catalogue already has. Add that one instead, or say below that this is a
+                        different release.
                       </p>
                       <label className="flex cursor-pointer select-none items-start gap-2.5">
                         <Checkbox

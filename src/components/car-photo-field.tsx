@@ -7,6 +7,7 @@ import {
   ImagePlus,
   Link2,
   Loader2,
+  Plus,
   Sparkles,
   Trash2,
   Upload,
@@ -75,6 +76,10 @@ export function CarPhotoField({
   const [linkOpen, setLinkOpen] = useState(false);
   const [link, setLink] = useState("");
   const [webOpen, setWebOpen] = useState(false);
+  /** How many of the found photos are laid out; "More" adds another page of them. */
+  const [shown, setShown] = useState(10);
+  const candidates = suggestions?.candidates;
+  useEffect(() => setShown(10), [candidates]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -142,9 +147,11 @@ export function CarPhotoField({
   };
 
   // The endpoint sends its whole ranked tail so other pickers can page through
-  // it. This strip lays them out side by side beside the frame, so it shows the
-  // head and no more: past ten they stop being a choice and become the section.
-  const found = (suggestions?.candidates ?? []).slice(0, 10);
+  // it. This strip lays them out beside the frame, so it starts with the head;
+  // "More" adds ten at a time.
+  const all = suggestions?.candidates ?? [];
+  const found = all.slice(0, shown);
+  const hasMore = all.length > shown;
   const chosen = found.find((c) => c.url === value);
 
   return (
@@ -359,6 +366,18 @@ export function CarPhotoField({
               Search the web
             </Button>
           )}
+          {hasMore && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              onClick={() => setShown((n) => n + 10)}
+            >
+              <Plus className="size-4" />
+              More photos
+            </Button>
+          )}
         </div>
       ) : (
         <div className="flex flex-wrap gap-1.5">
@@ -409,6 +428,18 @@ export function CarPhotoField({
             >
               <Globe className="size-3.5" />
               Search the web
+            </Button>
+          )}
+          {hasMore && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => setShown((n) => n + 10)}
+            >
+              <Plus className="size-3.5" />
+              More
             </Button>
           )}
         </div>

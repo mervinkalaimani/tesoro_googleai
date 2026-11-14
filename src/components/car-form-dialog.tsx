@@ -2623,7 +2623,7 @@ export function CarFormDialog({
                 {/* Under the picture of the car being described, as a count.
                     Reading the entries is comparing two descriptions field by
                     field, which wants the width of a dialog. */}
-                <DuplicatesButton count={duplicates.length} onClick={() => setDupesOpen(true)} />
+                <DuplicatesButton hits={duplicates} onClick={() => setDupesOpen(true)} />
                 {(isEdit || currentStep === LAST_STEP) && (
                   <ThingsLeft items={thingsLeft} done="Every required field is in" />
                 )}

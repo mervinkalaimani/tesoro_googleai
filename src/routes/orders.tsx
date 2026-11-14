@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Truck, Plus, Pencil, Store, ChevronDown, Filter } from "lucide-react";
-import { useCars } from "@/lib/cars-store";
+import { useCars, useCarsRefresh } from "@/lib/cars-store";
+import { RowListSkeleton } from "@/components/dashboard-skeletons";
 import { isInHand, isOpenOrder, normaliseStatus, statusRank, type Status } from "@/lib/status";
 import { isLate } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
@@ -323,6 +324,7 @@ function ContentsItem({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
 function OrdersPage() {
   const { query } = useApp();
   const cars = useCars();
+  const loading = useCarsRefresh().refreshing && cars.length === 0;
   const drawer = useCarDrawer();
   const search = Route.useSearch();
   const [mode, setMode] = useState<SortMode>("expected");
@@ -616,7 +618,9 @@ function OrdersPage() {
         }
       />
 
-      {asSheet ? (
+      {loading ? (
+        <RowListSkeleton rows={5} thumb={false} />
+      ) : asSheet ? (
         <OrdersSheet rows={filtered} onOpen={(car) => drawer.open(car)} />
       ) : (
         <div className="space-y-3">

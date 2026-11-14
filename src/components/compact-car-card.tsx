@@ -23,6 +23,7 @@ export function CompactCarCard({
   onOpen,
   caption,
   synced,
+  syncedSource,
   detail,
   statusInPhoto = false,
   hideStatus = false,
@@ -42,6 +43,7 @@ export function CompactCarCard({
   caption?: string;
   /** The catalogue entry has been checked against the maker's site. */
   synced?: boolean;
+  syncedSource?: string | null;
   /**
    * The third line, in place of the assortment. A shelf where every card is
    * the same kind of thing has better uses for that line — who it is coming
@@ -97,7 +99,7 @@ export function CompactCarCard({
       <div className="relative shrink-0">
         <CarThumb car={car} className="aspect-[16/10] w-full" />
 
-        <SyncedMark synced={synced} />
+        <SyncedMark synced={synced} source={syncedSource} />
 
         {copies > 1 && (
           <div className="pointer-events-none absolute bottom-1 left-1">

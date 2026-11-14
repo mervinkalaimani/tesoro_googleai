@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Star } from "lucide-react";
-import { useCars, useCarsActions } from "@/lib/cars-store";
+import { useCars, useCarsActions, useCarsRefresh } from "@/lib/cars-store";
+import { RowListSkeleton, TileGridSkeleton } from "@/components/dashboard-skeletons";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
@@ -148,6 +149,7 @@ function GalleryCard({
 function FavouritesPage() {
   const { query } = useApp();
   const cars = useCars();
+  const loading = useCarsRefresh().refreshing && cars.length === 0;
   const { open } = useCarDrawer();
   const { updateCar } = useCarsActions();
   const [mode, setMode] = useState<Mode>("favourite");
@@ -203,7 +205,13 @@ function FavouritesPage() {
         }
       />
 
-      {rows.length === 0 ? (
+      {loading ? (
+        view === "table" ? (
+          <RowListSkeleton rows={8} />
+        ) : (
+          <TileGridSkeleton className={view === "blister" ? BLISTER_GRID_COLS : GRID_COLS} />
+        )
+      ) : rows.length === 0 ? (
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
           {text.empty}
         </div>

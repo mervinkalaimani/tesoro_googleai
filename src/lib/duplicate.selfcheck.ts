@@ -61,15 +61,12 @@ ok(
   "a different series is not offered",
 );
 
-// A different sub-series is a different set, and rule 3 reads both halves of
-// one. Circuit Legends and Le Mans are two Car Culture sets, not one.
 ok(
   findDuplicates(typed({ subSeries: "LeMans Set" }), [entry({})]).length === 0,
   "a different sub-series inside the same series is not offered",
 );
 
-// Said once on either side, the set still speaks: a shared sub-series under a
-// series nobody filed is the same set by the only name it has.
+// A blank on both sides is agreement.
 {
   const hits = findDuplicates(typed({ series: "" }), [entry({ series: "" })]);
   ok(
@@ -77,56 +74,26 @@ ok(
     "a blank series on both sides still matches",
   );
 }
-{
-  const hits = findDuplicates(typed({ series: "", model: "Skyline GT-R" }), [
-    entry({ series: "" }),
-  ]);
-  ok(hits.length === 1 && hits[0].level === "possible", "a shared sub-series alone is a guess");
-}
 
-// Silence on one side is not disagreement.
-{
-  const hits = findDuplicates(typed({ model: "Skyline GT-R" }), [entry({ sub_series: "" })]);
-  ok(hits.length === 1 && hits[0].level === "possible", "a blank sub-series does not block it");
-}
-
-// Rule 3: brand, make and series, with the model free to differ. A glance, not
-// a warning — which is why it never comes back as certain.
-{
-  const hits = findDuplicates(typed({ model: "Skyline GT-R" }), [entry({})]);
-  ok(hits.length === 1 && hits[0].level === "possible", "same make and series is possible");
-  ok(/Same make/.test(hits[0].because), "the reason says the make matched");
-}
-
-// Rule 3 needs a set on both sides. Nothing in common but a make is nothing.
+// A different model is a different car, in the same series or out of it: the
+// Mercedes A35 AMG is not a duplicate of the G63 AMG.
 ok(
-  findDuplicates(typed({ model: "Skyline GT-R", series: "", subSeries: "" }), [
-    entry({ series: "", sub_series: "" }),
-  ]).length === 0,
-  "a shared make with no set is not offered",
-);
-
-// Certain before possible, however the catalogue is ordered: the entry that
-// really is this car must not sit under a series guess.
-{
-  const guess = entry({ car_id: "GUESS", model: "Skyline GT-R" });
-  const real = entry({ car_id: "REAL" });
-  const hits = findDuplicates(typed({}), [guess, real]);
-  ok(hits.length === 2, "both the real match and the guess come back");
-  ok(hits[0].car.car_id === "REAL" && hits[0].level === "certain", "the certain one is first");
-}
-
-// A different model is still never a duplicate. Inside the same series it now
-// comes back as a guess — rule 3, asked for by the person who files these — and
-// outside it as nothing at all, which is the "Porsche 911 returned six castings"
-// case the rules were tightened for.
-ok(
-  findDuplicates(typed({}), [entry({ model: "718" })]).every((h) => h.level === "possible"),
-  "a different model is never certain",
+  findDuplicates(typed({}), [entry({ model: "718" })]).length === 0,
+  "a different model is never offered, even in the same series",
 );
 ok(
-  findDuplicates(typed({}), [entry({ model: "718", series: "Boulevard" })]).length === 0,
-  "a different model in a different series is not offered",
+  findDuplicates(typed({ model: "Skyline GT-R" }), [entry({})]).length === 0,
+  "same make and series with another model is nothing",
+);
+
+// Variant must match as well.
+ok(
+  findDuplicates(typed({ variant: "GT3" }), [entry({ variant: "" })]).length === 0,
+  "a different variant is not offered",
+);
+ok(
+  findDuplicates(typed({ variant: "GT3" }), [entry({ variant: "GT3" })]).length === 1,
+  "the same variant is",
 );
 
 ok(
@@ -134,14 +101,11 @@ ok(
   "a different brand is never offered",
 );
 
-// A blank on one side against a value on the other is not the same casting --
-// but it is not nothing either, now that the set is read as both of its names:
-// these two agree about Circuit Legends and one of them simply never said which
-// series that set belongs to.
-{
-  const hits = findDuplicates(typed({ series: "" }), [entry({ series: "Car Culture" })]);
-  ok(hits.length === 1 && hits[0].level === "possible", "a blank series is a guess, never certain");
-}
+// A blank series against a stated one is not the same casting.
+ok(
+  findDuplicates(typed({ series: "" }), [entry({ series: "Car Culture" })]).length === 0,
+  "a blank series against a value is not offered",
+);
 
 // ------------------------------------------------------------ what must match
 

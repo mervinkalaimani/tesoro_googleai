@@ -31,28 +31,60 @@ import { cn } from "@/lib/utils";
  * same table rather than a thing to remember from the screen behind.
  */
 
+/**
+ * What to call the hits: a duplicate only when one agrees on every field both
+ * sides state, otherwise a potential one. "1 duplicate found" over a different
+ * colour read as a certainty it was not.
+ */
+const duplicateLabel = (hits: { match: number }[]) => {
+  const sure = hits.some((h) => h.match >= 100);
+  const noun = sure ? "duplicate" : "potential duplicate";
+  return {
+    sure,
+    text: sure
+      ? `${hits.length} ${noun}${hits.length === 1 ? "" : "s"} found`
+      : hits.length === 1
+        ? "Potential duplicate"
+        : `${hits.length} potential duplicates`,
+  };
+};
+
 export function DuplicatesButton({
-  count,
+  hits,
   onClick,
   className,
 }: {
-  count: number;
+  hits: { match: number }[];
   onClick: () => void;
   className?: string;
 }) {
-  if (count === 0) return null;
+  if (hits.length === 0) return null;
+  const { sure, text } = duplicateLabel(hits);
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center gap-2 rounded-xl border border-amber-500/60 bg-amber-500/15 px-3 py-2.5 text-left transition-colors hover:bg-amber-500/25",
+        "flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors",
+        sure
+          ? "border-amber-500/60 bg-amber-500/15 hover:bg-amber-500/25"
+          : "border-border/70 bg-muted/20 hover:bg-muted/40",
         className,
       )}
     >
-      <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-      <span className="min-w-0 flex-1 text-xs font-semibold">
-        {count} duplicate{count === 1 ? "" : "s"} found
+      <AlertTriangle
+        className={cn(
+          "size-4 shrink-0",
+          sure ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground",
+        )}
+      />
+      <span
+        className={cn(
+          "min-w-0 flex-1 text-xs",
+          sure ? "font-semibold" : "font-medium text-muted-foreground",
+        )}
+      >
+        {text}
       </span>
       <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
     </button>
@@ -107,9 +139,7 @@ export function DuplicatesDialog({
         )}
       >
         <DialogHeader className="shrink-0 text-left">
-          <DialogTitle>
-            {hits.length} duplicate{hits.length === 1 ? "" : "s"} found
-          </DialogTitle>
+          <DialogTitle>{duplicateLabel(hits).text}</DialogTitle>
           <DialogDescription>
             Entries the catalogue already has that read like this one. Nothing happens to any of
             them until you say so.

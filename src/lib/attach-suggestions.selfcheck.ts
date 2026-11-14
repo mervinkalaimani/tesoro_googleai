@@ -5,10 +5,9 @@
  *   npx esbuild src/lib/attach-suggestions.selfcheck.ts --bundle --format=esm \
  *     --platform=node --alias:@=./src --outfile=<tmp>/attach.mjs && node <tmp>/attach.mjs
  *
- * The rule under test: brand and collector number agree, which is definite, or
- * brand, make and model agree with variant, series and sub-series not
- * contradicting, which is a guess. Hot Wheels and Matchbox get nothing, because
- * their number is a position in a series and not a product.
+ * The rule under test: brand, make, model and variant must match; colour and
+ * number must not contradict, and agreeing on both is definite. Hot Wheels and
+ * Matchbox are offered too, with their number ignored.
  */
 import { attachSuggestions } from "@/lib/casting-group";
 import type { CatalogCar } from "@/lib/catalog";
@@ -40,13 +39,11 @@ const entry = (over: Partial<CatalogCar>): CatalogCar =>
 
 const mine = entry({ car_id: "MINE" });
 
-// 1. Brand and number: the strong rule, and a different box is what makes it a
-// box rather than a duplicate.
+// 1. Same casting in another box, colour and number agreeing: definite.
 const box = entry({ car_id: "BOX", assortment: "Box", mrp: 1599 });
 const hits = attachSuggestions(mine, [mine, box]);
-ok(hits.length === 1 && hits[0].car.car_id === "BOX", "same number in another box is offered");
-ok(hits[0].definite, "brand and number agreeing is definite");
-ok(/#1377/.test(hits[0].because), "the reason names the number");
+ok(hits.length === 1 && hits[0].car.car_id === "BOX", "same casting in another box is offered");
+ok(hits[0].definite, "colour and number agreeing is definite");
 
 // 2. Same box is a second copy of one product, not another package of it.
 ok(
@@ -54,69 +51,85 @@ ok(
   "an entry in the same box is not a box suggestion",
 );
 
-// 3. Another brand is another product however well the rest reads.
-ok(
-  attachSuggestions(mine, [mine, entry({ brand: "Tarmac Works", assortment: "Box" })]).length === 0,
-  "a different brand is never offered",
-);
-
-// 4. Hot Wheels and Matchbox print a position, so the number proves nothing.
-for (const brand of ["Hot Wheels", "Hotwheels", "Matchbox"]) {
-  const hw = entry({ brand, car_number: "3/5", assortment: "Mainline" });
+// 3. Brand, make, model and variant must all match, a blank variant included.
+for (const over of [
+  { brand: "Tarmac Works" },
+  { make: "Ferrari" },
+  { model: "Aventador" },
+  { variant: "SVJ" },
+]) {
   ok(
-    attachSuggestions(hw, [hw, entry({ brand, car_number: "3/5", assortment: "Moving Parts" })])
-      .length === 0,
-    `${brand} gets no suggestions`,
+    attachSuggestions(mine, [mine, entry({ ...over, assortment: "Box" })]).length === 0,
+    `a different ${Object.keys(over)[0]} is never offered`,
   );
 }
 
-// 5. No numbers at all: make and model carry it, and a blank series is silence
-// rather than a difference.
-const bare = entry({ car_id: "BARE", car_number: "", series: "Premium" });
-const bareBox = entry({ car_id: "BAREBOX", car_number: "", series: "", assortment: "Box" });
-const guess = attachSuggestions(bare, [bare, bareBox]);
+// 4. A stated colour or number that differs is a different car; a blank is not.
 ok(
-  guess.length === 1 && !guess[0].definite,
-  "make and model with nothing contradicting is a guess",
+  attachSuggestions(mine, [mine, entry({ colour: "Red", assortment: "Box" })]).length === 0,
+  "colour",
 );
-ok(/Same make and model/.test(guess[0].because), "the reason says what matched");
-
-// 6. A stated series against a different stated series is a contradiction.
-ok(
-  attachSuggestions(bare, [bare, entry({ car_number: "", series: "Mainline", assortment: "Box" })])
-    .length === 0,
-  "two different series are not one casting",
-);
-
-// 7. Two stated numbers that differ are two products, description or not.
 ok(
   attachSuggestions(mine, [mine, entry({ car_number: "1378", assortment: "Box" })]).length === 0,
-  "a different number is not offered on the description alone",
+  "number",
+);
+const blank = attachSuggestions(mine, [
+  mine,
+  entry({ car_number: "-", colour: "", assortment: "Box" }),
+]);
+ok(blank.length === 1 && !blank[0].definite, "blanks are offered as a guess, not definite");
+
+// 4b. A stated series or sub series that differs is a different car; a blank is not.
+const prem = entry({ car_id: "PREM", series: "Premium", sub_series: "Set 1" });
+ok(
+  attachSuggestions(prem, [prem, entry({ series: "Mainline", assortment: "Box" })]).length === 0,
+  "series",
+);
+ok(
+  attachSuggestions(prem, [
+    prem,
+    entry({ series: "Premium", sub_series: "Set 2", assortment: "Box" }),
+  ]).length === 0,
+  "sub series",
+);
+ok(
+  attachSuggestions(prem, [prem, entry({ series: "", sub_series: "", assortment: "Box" })])
+    .length === 1,
+  "blank series is silence",
 );
 
-// 8. Already a box of this casting: the caller says so and it is not re-offered.
+// 5. "-" is not a number, so two dashes do not make a definite match.
+const dash = entry({ car_id: "DASH", car_number: "-" });
+const dashHit = attachSuggestions(dash, [dash, entry({ car_number: "-", assortment: "Box" })]);
+ok(dashHit.length === 1 && !/number/.test(dashHit[0].because), "a dash is no number");
+
+// 6. Hot Wheels and Matchbox are offered, whatever position the box prints.
+for (const brand of ["Hot Wheels", "Hotwheels", "Matchbox"]) {
+  const hw = entry({ brand, car_number: "3/5", assortment: "Mainline" });
+  const other = entry({ brand, car_number: "1/8", assortment: "Moving Parts" });
+  ok(attachSuggestions(hw, [hw, other]).length === 1, `${brand} is offered`);
+}
+
+// 7. Already a box of this casting: the caller says so and it is not re-offered.
 ok(
   attachSuggestions(mine, [mine, box], { exclude: ["BOX"] }).length === 0,
   "an entry already in the group is excluded",
 );
 
-// 9. Definite before guess, whatever order the catalogue is in.
+// 8. Definite before guess, whatever order the catalogue is in.
 const sorted = attachSuggestions(mine, [
   mine,
   entry({ car_number: "", assortment: "Qube Carz" }),
   box,
 ]);
-ok(sorted.length === 2, "both a definite and a guess come back");
-ok(sorted[0].definite && !sorted[1].definite, "the definite match is first");
+ok(sorted.length === 2 && sorted[0].definite && !sorted[1].definite, "definite first");
 
-// 10. The limit is honoured.
+// 9. The limit is honoured.
 ok(
   attachSuggestions(
     mine,
     [mine, box, entry({ assortment: "Box 2" }), entry({ assortment: "Box 3" })],
-    {
-      limit: 2,
-    },
+    { limit: 2 },
   ).length === 2,
   "limit caps the list",
 );

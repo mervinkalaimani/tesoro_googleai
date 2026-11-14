@@ -567,6 +567,12 @@ export async function saveCatalogCarToSupabase(
       // Only when stated, the rule the rest of this payload follows: a casting
       // saved from Add a car knows nothing about the case and must not clear it.
       ...(catalogCar.case_number !== undefined ? { case_number: catalogCar.case_number } : {}),
+      // Only when stated, so an ordinary edit leaves a maker sync or an admin's
+      // verification alone. Null is a statement: it takes the mark off.
+      ...(catalogCar.synced_at !== undefined ? { synced_at: catalogCar.synced_at } : {}),
+      ...(catalogCar.synced_source !== undefined
+        ? { synced_source: catalogCar.synced_source }
+        : {}),
     };
 
     const { error } = await supabase

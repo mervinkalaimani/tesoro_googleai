@@ -42,7 +42,7 @@ import { PageHeading, PageToolbar } from "@/components/page-header";
 import { SegmentControl } from "@/components/segment-control";
 import { ViewToggle, GRID_COLS, BLISTER_GRID_COLS, type ViewMode } from "@/components/view-toggle";
 import { BlisterTile } from "@/components/blister-tile";
-import { SyncedBadge } from "@/components/synced-badge";
+import { SyncedBadge, VERIFIED_BY_ADMIN, isVerifiedByAdmin } from "@/components/synced-badge";
 import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
@@ -683,6 +683,7 @@ function CatalogPage() {
               onOpen={() => setViewing(c)}
               caption={myIso.has(cid) ? "ISO" : owned.has(cid) ? "Owned" : undefined}
               synced={Boolean(c.synced_at)}
+              syncedSource={c.synced_source}
             />
           );
         })}
@@ -1364,7 +1365,14 @@ function CatalogTable({
                   <span className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
                     {c.synced_at && (
-                      <BadgeCheck aria-label="Synced" className="size-3.5 shrink-0 text-sky-400" />
+                      <BadgeCheck
+                        aria-label={isVerifiedByAdmin(c.synced_source) ? "Verified" : "Synced"}
+                        className="size-3.5 shrink-0 text-sky-400"
+                      >
+                        <title>
+                          {isVerifiedByAdmin(c.synced_source) ? VERIFIED_BY_ADMIN : "Synced"}
+                        </title>
+                      </BadgeCheck>
                     )}
                     {isPreOrder(c) && (
                       <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.2 text-xs font-semibold text-amber-500">

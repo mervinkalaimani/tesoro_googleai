@@ -70,10 +70,14 @@ const LABEL: Record<string, string> = {
   car_number: "Car number",
   sub_series: "Sub series",
   release_status: "Release status",
+  synced_at: "Checked on",
+  synced_source: "Verified by",
   expected_date: "Expected on",
   "Car Rating": "Car rating",
   "Card Rating": "Card rating",
 };
+
+const PHOTO_KEYS = new Set(["Image URL", "image_url"]);
 
 const MONEY = new Set(["Spent", "Paid", "MRP", "Shipping Cost", "mrp"]);
 
@@ -89,6 +93,7 @@ function show(key: string, v: unknown): string {
   if (key === "O_Date" || key === "Date" || key === "Expected Date" || key === "expected_date") {
     return formatDayMonthYear(String(v)) || String(v);
   }
+  if (key === "synced_at") return formatDayMonthYear(String(v)) || String(v);
   if (key === "Image URL" || key === "image_url") return "changed";
   return String(v);
 }
@@ -157,11 +162,18 @@ const Bold = ({ children }: { children: ReactNode }) => (
 export function ChangeLog({
   rowKey,
   openCar,
+  origin,
 }: {
   /** One car's own log: only its changes, with no filters and the car left unnamed. */
   rowKey?: string;
   /** Opens a car's full details. The log cannot import the drawer that now shows it. */
   openCar?: (car: Diecast) => void;
+  /**
+   * Who filed the row and when, from the row itself. The log only began when it
+   * was switched on, so an entry filed before then has no "added" line of its
+   * own; this stands in as the oldest one.
+   */
+  origin?: { name: string; at: string };
 }) {
   const single = Boolean(rowKey);
   const { user, isAdmin, isOwner } = useAuth();
@@ -256,16 +268,54 @@ export function ChangeLog({
 
   const byId = useMemo(() => new Map(cars.map((c) => [c.id, c])), [cars]);
 
+  // A photo change is its own line, however many other fields were saved with it.
+  const separated = useMemo(
+    () =>
+      entries.flatMap((e): Entry[] => {
+        if (e.action !== "edit") return [e];
+        const all = Object.entries(e.changes ?? {});
+        const photo = all.filter(([k]) => PHOTO_KEYS.has(k));
+        if (photo.length === 0 || photo.length === all.length) return [e];
+        return [
+          { ...e, changes: Object.fromEntries(all.filter(([k]) => !PHOTO_KEYS.has(k))) },
+          { ...e, id: e.id + 0.5, changes: Object.fromEntries(photo) },
+        ];
+      }),
+    [entries],
+  );
+
+  const shownEntries = useMemo(() => {
+    if (!origin?.at || more || loading || separated.some((e) => e.action === "add")) {
+      return separated;
+    }
+    const filed: Entry = {
+      id: -1,
+      at: origin.at,
+      actor_id: null,
+      actor_name: origin.name || null,
+      owner_id: null,
+      source: "catalogue",
+      action: "add",
+      row_key: rowKey ?? "",
+      catalog_id: null,
+      title: null,
+      order_id: null,
+      shipping_id: null,
+      changes: {},
+    };
+    return [...separated, filed];
+  }, [separated, origin, more, loading, rowKey]);
+
   const days = useMemo(() => {
     const out: { key: string; label: string; items: Entry[] }[] = [];
-    for (const e of entries) {
+    for (const e of shownEntries) {
       const k = dayKey(e.at);
       const last = out[out.length - 1];
       if (last && last.key === k) last.items.push(e);
       else out.push({ key: k, label: dayLabel(e.at), items: [e] });
     }
     return out;
-  }, [entries]);
+  }, [shownEntries]);
 
   const isYou = (e: Entry) => Boolean(e.actor_id && e.actor_id === user?.id);
   const whoName = (e: Entry) => {
@@ -321,6 +371,21 @@ export function ChangeLog({
     const who = you ? null : <Bold>{whoName(e)}</Bold>;
     const verb = (w: string) => (you ? w[0].toUpperCase() + w.slice(1) : w);
     const keys = Object.keys(e.changes ?? {});
+    // Verifying writes two columns; it reads as one act.
+    if (e.action === "edit" && e.changes?.synced_source !== undefined) {
+      const on = Boolean(e.changes.synced_source.to);
+      const act = on ? "verified" : "removed the verification of";
+      return single ? (
+        <>
+          {who} {verb(act)}
+        </>
+      ) : (
+        <>
+          {who} {verb(act)} {noun(e)}
+          {itemName(e)}
+        </>
+      );
+    }
     // A car's own log does not name the car: it is the page it is on.
     if (single) {
       if (e.action === "add") {
@@ -383,6 +448,8 @@ export function ChangeLog({
     const keys = Object.keys(e.changes ?? {});
     if (e.action !== "edit" || keys.length !== 1) return null;
     const k = keys[0];
+    // "changed → changed" says nothing: the sentence already names the photo.
+    if (PHOTO_KEYS.has(k)) return null;
     const c = e.changes[k];
     return (
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
@@ -446,16 +513,24 @@ export function ChangeLog({
       <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
         <div className="flex items-start justify-between gap-3 border-b border-border/60 p-4">
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-foreground">
-              {entry.title || entry.row_key}
-            </h3>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            {/* A car's own log is already on the car: no name or ID to repeat. */}
+            {!single && (
+              <h3 className="truncate text-sm font-semibold text-foreground">
+                {entry.title || entry.row_key}
+              </h3>
+            )}
+            <p
+              className={cn(
+                "text-xs text-muted-foreground",
+                single ? "font-semibold text-foreground" : "mt-0.5",
+              )}
+            >
               {entry.action === "add" ? "Added" : entry.action === "delete" ? "Deleted" : "Updated"}{" "}
               {isYou(entry) ? "" : `by ${whoName(entry)} `}on{" "}
               {formatDayMonthYear(new Date(entry.at))}
               {entry.backfill === "estimated" ? " (estimated)" : ` at ${clock(entry.at)}`}
             </p>
-            {entry.row_key && (
+            {!single && entry.row_key && (
               <p className="mt-0.5 font-mono text-xs text-muted-foreground">{entry.row_key}</p>
             )}
           </div>
@@ -597,7 +672,7 @@ export function ChangeLog({
         </div>
       )}
 
-      {!missing && !error && !loading && entries.length === 0 && (
+      {!missing && !error && !loading && shownEntries.length === 0 && (
         <div className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground">
           {single
             ? "No changes recorded for this car yet."

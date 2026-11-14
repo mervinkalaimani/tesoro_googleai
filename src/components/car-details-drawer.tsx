@@ -1,4 +1,5 @@
 import {
+  Fragment,
   createContext,
   useCallback,
   useContext,
@@ -9,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  BadgeCheck,
   BookOpen,
   History,
   Car,
@@ -17,6 +19,7 @@ import {
   Copy,
   Flame,
   Layers,
+  Users,
   Loader2,
   Pencil,
   Plus,
@@ -56,7 +59,7 @@ import {
   type CatalogCarOwner,
 } from "@/lib/catalog";
 import { useAuth } from "@/lib/auth-store";
-import { CatalogOwnersDialog } from "@/components/catalog-owners-dialog";
+import { CatalogOwnersDialog, ownParcel } from "@/components/catalog-owners-dialog";
 import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
@@ -64,6 +67,7 @@ import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { SellerOrdersDialog } from "@/components/seller-orders-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CarThumb } from "@/components/car-thumb";
+import { SyncedBadge, VERIFIED_BY_ADMIN, isVerifiedByAdmin } from "@/components/synced-badge";
 import { carSubLine } from "@/lib/car-subline";
 import { attachSuggestions, castingId } from "@/lib/casting-group";
 import { boughtOn, purchaseHistory, type Purchase } from "@/lib/copies";
@@ -275,38 +279,15 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
             </div>
           )}
           {car && docked && (
-            <aside
-              aria-hidden={!activityOpen}
-              className="hidden shrink-0 overflow-hidden transition-[width,padding,opacity] duration-300 ease-out sm:block"
-              style={{
-                width: activityOpen ? `calc(${DOCK_W} + ${DOCK_GAP})` : 0,
-                paddingLeft: activityOpen ? DOCK_GAP : 0,
-                opacity: activityOpen ? 1 : 0,
-              }}
+            <DockPanel
+              open={activityOpen}
+              title="Activity"
+              subtitle={car.name || car.id}
+              closeLabel="Close the activity log"
+              onClose={() => setActivityOpen(false)}
             >
-              <div
-                className="flex h-full max-h-[92vh] flex-col overflow-hidden rounded-3xl border border-border bg-background text-foreground shadow-2xl"
-                style={{ width: DOCK_W }}
-              >
-                <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/60 p-4">
-                  <div className="min-w-0">
-                    <h3 className="text-sm font-semibold">Activity</h3>
-                    <p className="truncate text-xs text-muted-foreground">{car.name || car.id}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setActivityOpen(false)}
-                    aria-label="Close the activity log"
-                    className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
-                <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                  {activityOpen && <ChangeLog rowKey={car.id} />}
-                </div>
-              </div>
-            </aside>
+              {activityOpen && <ChangeLog rowKey={car.id} />}
+            </DockPanel>
           )}
         </DialogContent>
       </Dialog>
@@ -563,6 +544,56 @@ function useMinWidth(px: number): boolean {
     return () => m.removeEventListener("change", sync);
   }, [px]);
   return ok;
+}
+
+/** A panel that grows out of the card's right edge: Activity, and the possible boxes. */
+function DockPanel({
+  open,
+  title,
+  subtitle,
+  closeLabel,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  subtitle: string;
+  closeLabel: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <aside
+      aria-hidden={!open}
+      className="relative hidden shrink-0 overflow-hidden transition-[width,padding,opacity] duration-300 ease-out sm:block"
+      style={{
+        width: open ? `calc(${DOCK_W} + ${DOCK_GAP})` : 0,
+        paddingLeft: open ? DOCK_GAP : 0,
+        opacity: open ? 1 : 0,
+      }}
+    >
+      <div
+        className="absolute inset-y-0 right-0 flex flex-col overflow-hidden rounded-3xl border border-border bg-background text-foreground shadow-2xl"
+        style={{ width: DOCK_W }}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-border/60 p-4">
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold">{title}</h3>
+            <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={closeLabel}
+            className="grid size-7 shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4">{children}</div>
+      </div>
+    </aside>
+  );
 }
 
 /** How wide the activity panel is, and the gap between it and the car. */
@@ -1029,9 +1060,9 @@ function DesktopShell({
   children: ReactNode;
 }) {
   return (
-    <div className="hidden md:grid md:max-h-[96vh] md:w-[min(960px,calc(100vw-4rem-var(--dock,0rem)))] md:transition-[width] md:duration-300 md:grid-cols-[minmax(0,6fr)_minmax(0,7fr)] md:grid-rows-[auto_auto_auto_auto] gap-x-8 gap-y-4 overflow-y-auto p-7">
-      {/* Row 1: the name, left; the close button, right. */}
-      <div className="col-span-2 row-start-1 flex min-w-0 items-start justify-between gap-4">
+    <div className="hidden md:flex md:max-h-[92vh] md:w-[min(960px,calc(100vw-4rem-var(--dock,0rem)))] md:transition-[width] md:duration-300 md:flex-col">
+      {/* The name, left; the close button, right. Pinned. */}
+      <div className="flex shrink-0 min-w-0 items-start justify-between gap-4 px-7 pb-4 pt-7">
         <div className="min-w-0 flex-1">
           {kicker.length > 0 && (
             <p className="flex min-w-0 flex-wrap items-center gap-x-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
@@ -1063,21 +1094,23 @@ function DesktopShell({
         </div>
       </div>
 
-      {/* Rows 2-3: the photograph and what sits under it, beside the page,
-          which starts level with the top of the photograph. */}
-      <div className="relative col-start-1 row-start-2 aspect-4/3 w-full self-start overflow-hidden rounded-2xl border border-border/60 bg-white">
-        {photo}
+      {/* Left side stays put; only the right side scrolls, clipped under the title. */}
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,6fr)_minmax(0,7fr)] gap-x-8 px-7 pb-4">
+        <div className="flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden">
+          <div className="relative aspect-4/3 w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-white">
+            {photo}
+          </div>
+          {below && <div className="min-w-0">{below}</div>}
+        </div>
+        <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain pb-2 [&>*]:shrink-0">
+          {children}
+        </div>
       </div>
-      {below && <div className="col-start-1 row-start-3 min-w-0">{below}</div>}
 
-      <div className="col-start-2 row-span-2 row-start-2 flex min-h-0 min-w-0 flex-col">
-        <div className="flex flex-1 flex-col gap-3">{children}</div>
-      </div>
-
-      {/* The whole width of the window, under both columns. */}
-      <div className="col-span-2 row-start-4 flex items-center justify-between gap-6 border-t border-border/60 pt-5">
+      {/* The whole width of the window, under both columns; stays put while the page scrolls. */}
+      <div className="mx-7 flex shrink-0 items-center justify-between gap-6 border-t border-border/60 pb-7 pt-5">
         <div className="min-w-0 text-sm text-muted-foreground">{footerNote}</div>
-        <div className="w-96 shrink-0">{actions}</div>
+        <div className="w-[27rem] shrink-0">{actions}</div>
       </div>
     </div>
   );
@@ -1131,7 +1164,11 @@ function Panel({
       className={cn("min-w-0 rounded-2xl border border-border/60 bg-muted/20 p-5", className)}
     >
       {title && (
-        <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-primary">{title}</h3>
+        // Sticks to the top of the scrolling column; the next section's heading
+        // takes over as this one's panel scrolls out.
+        <h3 className="sticky top-0 z-10 -mx-5 -mt-5 mb-3 rounded-t-2xl bg-[color-mix(in_oklab,var(--muted)_20%,var(--background))] px-5 pb-2 pt-5 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+          {title}
+        </h3>
       )}
       {children}
     </section>
@@ -1588,7 +1625,30 @@ function conditionLine(grade?: string | null, rating?: number | null): string {
  * catalogue entry, so a suggestion nobody can act on is noise on a page that is
  * for looking at a car.
  */
-function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
+/** "Not this car": pairs an admin has said are not boxes of one casting, kept on this device. */
+const DISMISSED_KEY = "tesoro-dismissed-boxes";
+const readDismissed = (): Record<string, string[]> => {
+  try {
+    return JSON.parse(localStorage.getItem(DISMISSED_KEY) || "{}");
+  } catch {
+    return {};
+  }
+};
+const writeDismissed = (a: string, b: string) => {
+  try {
+    const all = readDismissed();
+    for (const [x, y] of [
+      [a, b],
+      [b, a],
+    ])
+      all[x] = [...new Set([...(all[x] || []), y])];
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(all));
+  } catch {
+    /* storage unavailable: it will simply be suggested again */
+  }
+};
+
+function useAssortmentSuggestions(catalogId?: string | null) {
   const { isAdmin } = useAuth();
   const { catalog, updateCatalogCar } = useCatalog();
   const [busy, setBusy] = useState("");
@@ -1599,17 +1659,26 @@ function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
     [catalog, id],
   );
 
+  const [dismissals, setDismissals] = useState(0);
   const suggestions = useMemo(
     () =>
       entry
         ? attachSuggestions(entry, catalog, {
-            exclude: castingSiblings(entry, catalog).map((c) => c.car_id),
+            exclude: [
+              ...castingSiblings(entry, catalog).map((c) => c.car_id),
+              ...(readDismissed()[entry.car_id] || []),
+            ],
           })
         : [],
-    [entry, catalog],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [entry, catalog, dismissals],
   );
 
-  if (!isAdmin || !entry || suggestions.length === 0) return null;
+  const dismiss = (pick: CatalogCar) => {
+    if (!entry) return;
+    writeDismissed(entry.car_id, pick.car_id);
+    setDismissals((n) => n + 1);
+  };
 
   /**
    * Joining a casting means agreeing with it: the entry keeps its own ID, box,
@@ -1617,6 +1686,7 @@ function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
    * thing the grouping reads. The same bargain the catalogue's own form makes.
    */
   const attach = async (pick: CatalogCar) => {
+    if (!entry) return;
     setBusy(pick.car_id);
     const moved = await updateCatalogCar({
       ...pick,
@@ -1642,64 +1712,177 @@ function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
     });
   };
 
+  return {
+    enabled: isAdmin && Boolean(entry) && suggestions.length > 0,
+    suggestions,
+    busy,
+    attach,
+    dismiss,
+  };
+}
+
+type BoxSuggestions = ReturnType<typeof useAssortmentSuggestions>;
+
+/**
+ * Who has this casting. An admin reads every name; anyone else reads only
+ * themselves, by "You", and how many others there are.
+ */
+function BuyersList({
+  owners,
+  myUid,
+  isAdmin,
+  myShipping,
+  onOpenParcel,
+  onOpenMine,
+}: {
+  owners: CatalogCarOwner[];
+  myUid?: string | null;
+  /** Opens the reader's own copy of the box that row is about. */
+  onOpenMine: (owner: CatalogCarOwner) => void;
+  isAdmin: boolean;
+  myShipping: Record<string, string>;
+  onOpenParcel: (shippingId: string) => void;
+}) {
+  const mine = owners.filter((o) => myUid && o.auth_uid === myUid);
+  const others = new Set(owners.filter((o) => o.auth_uid !== myUid).map((o) => o.auth_uid)).size;
+  const rows = isAdmin
+    ? [...owners].sort((a, b) => (a.auth_uid === myUid ? -1 : b.auth_uid === myUid ? 1 : 0))
+    : mine;
+
   return (
-    <div className="mt-3 rounded-lg border border-border/80 bg-muted/20 p-2.5">
-      <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        <Layers className="size-3.5" />
-        Possible other boxes
-      </p>
-      <ul className="mt-2 space-y-1.5">
-        {suggestions.map(({ car, definite, because, match }) => (
+    <ul className="space-y-1.5">
+      {rows.map((o) => {
+        const you = Boolean(myUid) && o.auth_uid === myUid;
+        const parcel = ownParcel(o, myUid, myShipping);
+        const when = o.date_added && o.date_added !== "—" ? formatDayMonthYear(o.date_added) : "";
+        return (
           <li
-            key={car.car_id}
-            className="flex items-center gap-2 rounded-md border border-border bg-background/85 p-2"
+            key={`${o.auth_uid}@${o.assortment}`}
+            className={cn(
+              "flex items-center justify-between gap-3 rounded-xl border border-border bg-background/85 p-3",
+              you && "cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/40",
+            )}
+            // Your own row opens your own car.
+            {...(you
+              ? {
+                  role: "button",
+                  tabIndex: 0,
+                  title: "Open your copy",
+                  onClick: () => onOpenMine(o),
+                  onKeyDown: (ev: React.KeyboardEvent) => {
+                    if (ev.key === "Enter" || ev.key === " ") {
+                      ev.preventDefault();
+                      onOpenMine(o);
+                    }
+                  },
+                }
+              : {})}
           >
-            <span
-              className={cn(
-                "shrink-0 rounded px-1.5 py-0.5 text-xs font-bold tabular-nums",
-                definite
-                  ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
-                  : "bg-muted text-muted-foreground",
-              )}
-              title={
-                definite
-                  ? "The brand and the number agree, which names one product"
-                  : "How much of the description matches"
-              }
-            >
-              {/* A percentage would undersell the strong rule: the Blister of a
-                  Porsche filed under a longer model name shares a third of its
-                  description and is still certainly the same car. */}
-              {definite ? "Number" : `${match}%`}
-            </span>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-semibold">{car.assortment || "No box"}</div>
-              <div className="truncate font-mono text-xs text-muted-foreground">{car.car_id}</div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">
+                {you ? "You" : o.display_name || o.user_id}
+              </div>
               <div className="truncate text-xs text-muted-foreground">
-                {because}
-                {Number(car.mrp) ? ` · ${inrPriceFull(Math.round(Number(car.mrp)))}` : ""}
+                {[o.assortment, when].filter(Boolean).join(" · ")}
               </div>
             </div>
+            {you && parcel && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 shrink-0 px-2.5 text-xs font-semibold"
+                onClick={(ev) => {
+                  ev.stopPropagation();
+                  onOpenParcel(parcel);
+                }}
+              >
+                Parcel
+              </Button>
+            )}
+          </li>
+        );
+      })}
+      {!isAdmin && others > 0 && (
+        <li className="rounded-xl border border-dashed border-border p-3 text-sm text-muted-foreground">
+          {others} other {others === 1 ? "person" : "people"}
+        </li>
+      )}
+    </ul>
+  );
+}
+
+/** The suggested boxes, one row each. */
+function SuggestionList({ boxes }: { boxes: BoxSuggestions }) {
+  return (
+    <ul className="space-y-1.5">
+      {boxes.suggestions.map(({ car, definite, because }) => (
+        <li
+          key={car.car_id}
+          className="space-y-3 rounded-xl border border-border bg-background/85 p-3"
+        >
+          <div className="flex items-start gap-3">
+            <div className="size-16 shrink-0 overflow-hidden rounded-lg border border-border/60 bg-white">
+              <CarThumb car={catalogCarToDiecast(car)} className="size-full object-contain" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold">{car.assortment || "No box"}</div>
+              <div className="truncate font-mono text-xs text-muted-foreground">{car.car_id}</div>
+              <p className="mt-1 text-xs leading-snug text-muted-foreground">
+                {because}
+                {Number(car.mrp) ? ` · ${inrPriceFull(Math.round(Number(car.mrp)))}` : ""}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 flex-1 text-xs font-semibold"
+              disabled={boxes.busy !== ""}
+              onClick={() => boxes.dismiss(car)}
+            >
+              Not this car
+            </Button>
             <Button
               type="button"
               size="sm"
               variant={definite ? "default" : "outline"}
-              className="h-7 shrink-0 gap-1 px-2.5 text-xs font-semibold"
-              disabled={busy !== ""}
-              onClick={() => void attach(car)}
+              className="h-8 flex-1 gap-1.5 text-xs font-semibold"
+              disabled={boxes.busy !== ""}
+              onClick={() => void boxes.attach(car)}
             >
-              {busy === car.car_id ? (
+              {boxes.busy === car.car_id ? (
                 <Loader2 className="size-3.5 animate-spin" />
               ) : (
                 <Plus className="size-3.5" />
               )}
               Attach
             </Button>
-          </li>
-        ))}
-      </ul>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** The same list under its own heading, for where there is no room beside the car. */
+function BoxesInline({ boxes }: { boxes: BoxSuggestions }) {
+  if (!boxes.enabled) return null;
+  return (
+    <div className="mt-3 rounded-lg border border-border/80 bg-muted/20 p-2.5">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <Layers className="size-3.5" />
+        Possible other boxes
+      </p>
+      <SuggestionList boxes={boxes} />
     </div>
   );
+}
+
+function AssortmentSuggestions({ catalogId }: { catalogId?: string | null }) {
+  return <BoxesInline boxes={useAssortmentSuggestions(catalogId)} />;
 }
 
 /**
@@ -2493,12 +2676,9 @@ function CatalogDetailsTab({
 }
 
 /**
- * Where each of this casting's entries came from, one box at a time.
- *
- * The casting ID the boxes share heads the tab; under it, each box's own ID
- * and who filed and corrected it. One entry is the ordinary case and reads as
- * a single block with a heading it does not really need — which is cheaper
- * than a second layout that exists for the common case alone.
+ * The catalogue ID of each box of this casting. One entry is the ordinary case
+ * and its box names the panel; several are one line each, named by their box.
+ * Who filed an entry is in the activity log, not here.
  */
 function CatalogRecordTab({
   siblings,
@@ -2513,47 +2693,34 @@ function CatalogRecordTab({
 }) {
   if (siblings.length === 0) return null;
 
-  return (
-    <div className="min-w-0 space-y-5">
-      {siblings.length > 1 && (
-        <InfoRow stacked={stacked} label="Casting">
-          <span className="font-mono">{castingId(siblings[0])}</span>
-        </InfoRow>
-      )}
+  const idRow = (sib: CatalogCar, label: string) => (
+    <InfoRow stacked={stacked} label={label} accent>
+      <span className="inline-flex max-w-full items-center gap-1.5">
+        <span className="truncate font-mono">{sib.car_id}</span>
+        <CopyId id={sib.car_id} />
+      </span>
+    </InfoRow>
+  );
 
-      {siblings.map((sib) => {
-        const edited = Boolean(sib.updated_by);
-        return (
-          <div key={sib.car_id} className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              {sib.assortment || "Entry"}
-            </p>
-            <InfoRow stacked={stacked} label="Catalogue ID" accent>
-              <span className="inline-flex max-w-full items-center gap-1.5">
-                <span className="truncate font-mono">{sib.car_id}</span>
-                <CopyId id={sib.car_id} />
-              </span>
-            </InfoRow>
-            <InfoRow stacked={stacked} label="Added by">
-              <NameOnDate
-                name={resolveCatalogUserId(sib.created_by)}
-                date={formatDayMonthYear(sib.created_at) || "—"}
-              />
-            </InfoRow>
-            {/* An entry nobody has corrected has no editor and no edit date.
-                Falling back to the creator described an edit that never
-                happened, so the row simply is not drawn. */}
-            {edited && (
-              <InfoRow stacked={stacked} label="Updated by">
-                <NameOnDate
-                  name={resolveCatalogUserId(sib.updated_by)}
-                  date={formatDayMonthYear(sib.updated_at) || "—"}
-                />
-              </InfoRow>
-            )}
-          </div>
-        );
-      })}
+  // The rows carry their own padding and rule; -my-3 takes the first row's top and the
+  // last row's bottom back out, so the panel's padding is all there is.
+  return (
+    <div className="-my-3 min-w-0">
+      {siblings.length > 1 ? (
+        <>
+          <InfoRow stacked={stacked} label="Casting">
+            <span className="font-mono">{castingId(siblings[0])}</span>
+          </InfoRow>
+          {siblings.map((sib) => (
+            <Fragment key={sib.car_id}>{idRow(sib, sib.assortment || "Entry")}</Fragment>
+          ))}
+        </>
+      ) : (
+        <>
+          <InfoRow stacked={stacked} label="Assortment" value={siblings[0].assortment} />
+          {idRow(siblings[0], "Catalogue ID")}
+        </>
+      )}
 
       {preOrder && expectedDate && (
         <InfoRow
@@ -2615,7 +2782,7 @@ export function CatalogCarDetails({
         hideDragHandle
         hideClose
         disableSheetDismiss
-        className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:pb-0 max-sm:flex max-sm:flex-col overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 gap-0 block text-foreground shadow-2xl sm:max-h-[92vh] sm:w-fit sm:max-w-[calc(100vw-2rem)]"
+        className="max-sm:top-0 max-sm:inset-x-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none max-sm:p-0 max-sm:pb-0 max-sm:flex max-sm:flex-col overflow-hidden rounded-3xl border-border bg-background p-0 sm:p-0 gap-0 block text-foreground shadow-2xl sm:max-h-[92vh] sm:w-fit sm:max-w-[calc(100vw-2rem)] sm:flex sm:items-stretch sm:overflow-visible sm:rounded-none sm:border-transparent sm:bg-transparent sm:shadow-none sm:transition-[width] sm:duration-300 sm:ease-out"
       >
         {car && (
           <CatalogDetailsContent
@@ -2666,7 +2833,7 @@ function CatalogDetailsContent({
   onSelectCatalogCar?: (c: CatalogCar) => void;
 }) {
   const mobile = useMobileHeroGestures(onClose);
-  const { isAdmin, user, profile } = useAuth();
+  const { isAdmin, isOwner, user, profile } = useAuth();
   const mine = useCars();
   const { deleteCar } = useCarsActions();
   const { catalog, updateCatalogCar } = useCatalog();
@@ -2797,6 +2964,59 @@ function CatalogDetailsContent({
     );
   }, [catalog, catalogCar, siblings, onSelectCatalogCar]);
 
+  const boxes = useAssortmentSuggestions(shownId);
+  const docked = useMinWidth(1180);
+  /** Which panel sits beside the card, and whether it is out. Kept apart so it can slide shut still showing. */
+  const [panel, setPanel] = useState<"boxes" | "activity" | "buyers">("boxes");
+  const [dockOpen, setDockOpen] = useState(false);
+  const togglePanel = (p: "boxes" | "activity" | "buyers") => {
+    if (dockOpen && panel === p) setDockOpen(false);
+    else {
+      setPanel(p);
+      setDockOpen(true);
+    }
+  };
+  // Who changed a catalogue entry is for the people who run the catalogue.
+  const drawer = useContext(CarDrawerCtx);
+  /** The reader's own copy of the box a "You" row names, in the car window. */
+  const openMine = (o: CatalogCarOwner) => {
+    const box = (o.assortment || "").trim().toLowerCase();
+    const pool = siblings.length ? siblings : catalogCar ? [catalogCar] : [];
+    const copy =
+      mine.find(
+        (c) =>
+          !isIso(c.status) &&
+          pool.some(
+            (e) => (e.assortment || "").trim().toLowerCase() === box && isCarMatchingCatalog(c, e),
+          ),
+      ) ?? matchingUserCar;
+    if (!copy || !drawer) return;
+    onClose();
+    drawer.openCar(copy);
+  };
+  const canLog = Boolean(isAdmin || isOwner);
+  const verified = isVerifiedByAdmin(shown?.synced_source);
+  /**
+   * Verify the entry on show, or take that back. It writes the columns the maker
+   * sync writes, so it overrides a Mini GT sync, and a later sync overrides it.
+   */
+  const toggleVerified = async () => {
+    if (!shown) return;
+    const ok = await updateCatalogCar(
+      verified
+        ? { ...shown, synced_at: null, synced_source: null }
+        : { ...shown, synced_at: new Date().toISOString(), synced_source: VERIFIED_BY_ADMIN },
+    );
+    if (ok) toast.success(verified ? "Verification removed" : "Marked as verified");
+  };
+  const boxesDock = docked && boxes.enabled;
+  const filedBy = shown?.created_at
+    ? { name: resolveCatalogUserId(shown.created_by), at: shown.created_at }
+    : undefined;
+  const buyerCount = ownerCount(owners);
+  const buyersDock = docked && buyerCount > 0;
+  const dock = docked && (boxesDock || canLog || buyersDock);
+
   const shelfRow = shelf ? (
     <CarShelfRow
       heading={shelf.heading}
@@ -2841,13 +3061,11 @@ function CatalogDetailsContent({
         packSize={packSize}
         rarity={rarityOf(shownCar)}
       />
-      {shown?.car_id && (
-        <span
-          title="Catalogue ID"
-          className="inline-flex h-8 items-center rounded-full border border-border/80 px-3 font-mono text-sm font-semibold text-foreground select-all"
-        >
-          {shown.car_id}
-        </span>
+      {shown && (
+        <SyncedBadge
+          car={shown}
+          className="!h-8 !bg-card !px-3 !text-sm !text-sky-500 [&>svg]:!size-4"
+        />
       )}
       {shownCar.size && (
         <span className="inline-flex h-8 items-center rounded-full border border-border/80 px-3 text-sm font-semibold text-foreground">
@@ -2856,32 +3074,6 @@ function CatalogDetailsContent({
       )}
     </div>
   );
-
-  /** Who filed this entry, and when. */
-  const addedBy =
-    shown?.created_by || shown?.created_at ? (
-      <span className="block truncate">
-        Added
-        {shown.created_by && (
-          <>
-            {" "}
-            by{" "}
-            <span className="font-semibold text-foreground">
-              {resolveCatalogUserId(shown.created_by)}
-            </span>
-          </>
-        )}
-        {shown.created_at && (
-          <>
-            {" "}
-            on{" "}
-            <span className="font-semibold text-foreground">
-              {formatDayMonthYear(shown.created_at)}
-            </span>
-          </>
-        )}
-      </span>
-    ) : null;
 
   /** The facts, row by row; see PhoneFacts. */
   const factRows = [
@@ -2905,6 +3097,8 @@ function CatalogDetailsContent({
       ],
     },
   ] as const;
+
+  const recordSiblings = siblings.length ? siblings : catalogCar ? [catalogCar] : [];
 
   /** The cards: the choices, the description, the box, who filed what. */
   const panels = (cols: string, phone = false) => (
@@ -2957,7 +3151,7 @@ function CatalogDetailsContent({
       )}
       <Panel title="Record" className="col-span-full">
         <CatalogRecordTab
-          siblings={siblings.length ? siblings : catalogCar ? [catalogCar] : []}
+          siblings={recordSiblings}
           stacked={false}
           preOrder={preOrder}
           expectedDate={expectedDate}
@@ -2967,7 +3161,7 @@ function CatalogDetailsContent({
   );
 
   /** The count states; "View all" acts. Only an admin has the button. */
-  const owners_ = (
+  const owners_ = buyersDock ? null : (
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
       <p className="text-xs text-muted-foreground">{ownersText}</p>
       {canSeeAllOwners && (
@@ -3034,10 +3228,11 @@ function CatalogDetailsContent({
       <Button
         type="button"
         onClick={() => onAdd(pick)}
-        className="h-11 min-w-0 flex-1 cursor-pointer gap-2 px-2 text-sm font-semibold"
+        // Its words are the ones that must not be cut: the others give way.
+        className="h-11 shrink-0 cursor-pointer gap-2 whitespace-nowrap px-4 text-sm font-semibold"
       >
         <Plus className="size-4 shrink-0" />
-        <span className="truncate">{isActuallyOwned ? "Add another" : "Add"}</span>
+        {isActuallyOwned ? "Add another" : "Add"}
       </Button>
     </div>
   );
@@ -3048,175 +3243,318 @@ function CatalogDetailsContent({
     "Unnamed car";
 
   return (
-    <div className="relative flex h-full w-full min-h-0 flex-1 flex-col overflow-hidden">
-      <DialogTitle className="sr-only">{title} — catalogue</DialogTitle>
-      <DialogDescription className="sr-only">
-        What this casting is, which boxes and colours it comes in, and who filed it.
-      </DialogDescription>
+    <div
+      className="max-sm:contents sm:flex sm:items-stretch"
+      style={
+        {
+          "--dock": dock && dockOpen ? `calc(${DOCK_W} + ${DOCK_GAP})` : "0rem",
+        } as React.CSSProperties
+      }
+    >
+      <div className="relative flex h-full w-full min-h-0 flex-1 flex-col overflow-hidden sm:max-h-[92vh] sm:rounded-3xl sm:border sm:border-border sm:bg-background sm:shadow-2xl">
+        <DialogTitle className="sr-only">{title} — catalogue</DialogTitle>
+        <DialogDescription className="sr-only">
+          What this casting is, which boxes and colours it comes in, and who filed it.
+        </DialogDescription>
 
-      {/* =====================================================================
+        {/* =====================================================================
           1. DESKTOP & TABLET: the same window a car you own opens in — the
           name heads it, the photograph holds the left, and the right is
           whichever reading you asked for.
           ===================================================================== */}
-      <DesktopShell
-        kicker={[]}
-        title={title}
-        onClose={onClose}
-        subtitle={<div className="mt-3">{pills}</div>}
-        footerNote={addedBy}
-        photo={<HeroCarImage car={shownCar} contain />}
-        below={<PhoneFacts rows={factRows} />}
-        actions={actions}
-      >
-        {panels("grid-cols-2")}
-        {owners_}
-        <AssortmentSuggestions catalogId={shownId} />
-        <div className="mt-auto">{shelfRow}</div>
-      </DesktopShell>
+        <DesktopShell
+          kicker={[]}
+          title={title}
+          onClose={onClose}
+          subtitle={<div className="mt-3">{pills}</div>}
+          headerAction={
+            <>
+              {canLog && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void toggleVerified()}
+                  aria-pressed={verified}
+                  title={
+                    verified
+                      ? "Verified by admin: click to remove it"
+                      : "Mark this entry as verified"
+                  }
+                  className={cn(
+                    "h-9 cursor-pointer gap-2 rounded-full px-4 text-sm font-semibold",
+                    verified && "border-sky-500/60 bg-sky-500/10 text-sky-500",
+                  )}
+                >
+                  <BadgeCheck className="size-4" />
+                  {verified ? "Verified" : "Verify"}
+                </Button>
+              )}
+              {canLog &&
+                (docked ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => togglePanel("activity")}
+                    aria-pressed={dockOpen && panel === "activity"}
+                    title="Everything that has changed on this entry"
+                    className={cn(
+                      "h-9 cursor-pointer gap-2 rounded-full px-4 text-sm font-semibold",
+                      dockOpen &&
+                        panel === "activity" &&
+                        "border-primary/60 bg-primary/10 text-primary",
+                    )}
+                  >
+                    <History className="size-4" />
+                    Activity
+                  </Button>
+                ) : (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        title="Everything that has changed on this entry"
+                        className="h-9 cursor-pointer gap-2 rounded-full px-4 text-sm font-semibold"
+                      >
+                        <History className="size-4" />
+                        Activity
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      align="end"
+                      className="max-h-[70vh] w-[min(26rem,calc(100vw-2rem))] overflow-y-auto p-3"
+                    >
+                      <ChangeLog rowKey={shownId} origin={filedBy} />
+                    </PopoverContent>
+                  </Popover>
+                ))}
+            </>
+          }
+          photo={<HeroCarImage car={shownCar} contain />}
+          below={<PhoneFacts rows={factRows} />}
+          actions={actions}
+        >
+          {panels("grid-cols-2")}
+          {(buyersDock || boxesDock) && (
+            <div className="flex items-center gap-2.5">
+              {buyersDock && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => togglePanel("buyers")}
+                  aria-pressed={dockOpen && panel === "buyers"}
+                  title="Collectors who have this in their collection"
+                  className={cn(
+                    "h-11 flex-1 cursor-pointer gap-2 text-sm font-semibold",
+                    dockOpen &&
+                      panel === "buyers" &&
+                      "border-primary/60 bg-primary/10 text-primary",
+                  )}
+                >
+                  <Users className="size-4" />
+                  Bought by
+                  <span className="tabular-nums text-muted-foreground">{buyerCount}</span>
+                </Button>
+              )}
+              {boxesDock && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => togglePanel("boxes")}
+                  aria-pressed={dockOpen && panel === "boxes"}
+                  title="Entries that may be other boxes of this casting"
+                  className={cn(
+                    "h-11 flex-1 cursor-pointer gap-2 text-sm font-semibold",
+                    dockOpen && panel === "boxes" && "border-primary/60 bg-primary/10 text-primary",
+                  )}
+                >
+                  <Layers className="size-4" />
+                  Other boxes
+                  <span className="tabular-nums text-muted-foreground">
+                    {boxes.suggestions.length}
+                  </span>
+                </Button>
+              )}
+            </div>
+          )}
+          {owners_}
+          {!boxesDock && <BoxesInline boxes={boxes} />}
+          <div className="mt-auto">{shelfRow}</div>
+        </DesktopShell>
 
-      {/* =====================================================================
+        {/* =====================================================================
           2. PHONE: the photo, then the same readings stacked over it.
           ===================================================================== */}
-      <div
-        ref={mobile.rootRef}
-        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
-        style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
-      >
-        <div className="relative flex-1 min-h-0">
-          <div
-            ref={mobile.heroRef}
-            className="absolute inset-x-0 top-0 z-0 w-full overflow-hidden bg-white select-none"
-            style={{ height: "var(--hero-h)" }}
-          >
-            <HeroCarImage car={shownCar} />
-          </div>
+        <div
+          ref={mobile.rootRef}
+          className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
+          style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
+        >
+          <div className="relative flex-1 min-h-0">
+            <div
+              ref={mobile.heroRef}
+              className="absolute inset-x-0 top-0 z-0 w-full overflow-hidden bg-white select-none"
+              style={{ height: "var(--hero-h)" }}
+            >
+              <HeroCarImage car={shownCar} />
+            </div>
 
-          {/* The warmth behind the sheet, which is part of the window rather
+            {/* The warmth behind the sheet, which is part of the window rather
               than part of what scrolls in it. */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]"
-            style={{
-              top: "calc(var(--hero-h) - 1.5rem)",
-              background:
-                "radial-gradient(120% 55% at 88% 0%, color-mix(in oklab, var(--accent) 26%, transparent), transparent 70%)",
-            }}
-          />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-[5]"
+              style={{
+                top: "calc(var(--hero-h) - 1.5rem)",
+                background:
+                  "radial-gradient(120% 55% at 88% 0%, color-mix(in oklab, var(--accent) 26%, transparent), transparent 70%)",
+              }}
+            />
 
-          <div
-            ref={mobile.scrollRef}
-            className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden overscroll-contain"
-          >
-            <div ref={mobile.contentRef} className="flex min-h-full flex-col">
-              <div
-                aria-hidden
-                className="shrink-0"
-                style={{ height: "calc(var(--hero-h) - 1.5rem)" }}
-              />
+            <div
+              ref={mobile.scrollRef}
+              className="absolute inset-0 z-10 overflow-y-auto overflow-x-hidden overscroll-contain"
+            >
+              <div ref={mobile.contentRef} className="flex min-h-full flex-col">
+                <div
+                  aria-hidden
+                  className="shrink-0"
+                  style={{ height: "calc(var(--hero-h) - 1.5rem)" }}
+                />
 
-              <div
-                ref={mobile.cardRef}
-                className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
-              >
-                <div className="relative space-y-3">
-                  <div className="min-w-0 space-y-3">
-                    <h2 className="text-2xl font-bold tracking-tight text-foreground">{title}</h2>
-                    {pills}
+                <div
+                  ref={mobile.cardRef}
+                  className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
+                >
+                  <div className="relative space-y-3">
+                    <div className="min-w-0 space-y-3">
+                      <h2 className="text-2xl font-bold tracking-tight text-foreground">{title}</h2>
+                      {pills}
+                    </div>
+
+                    <PhoneFacts rows={factRows} />
+
+                    {panels("grid-cols-1", true)}
+
+                    {owners_}
+
+                    <BoxesInline boxes={boxes} />
+
+                    {shelfRow}
                   </div>
-
-                  <PhoneFacts rows={factRows} />
-
-                  {panels("grid-cols-1", true)}
-
-                  {owners_}
-
-                  <AssortmentSuggestions catalogId={shownId} />
-
-                  {shelfRow}
-
-                  <div className="text-sm text-muted-foreground">{addedBy}</div>
                 </div>
               </div>
             </div>
+
+            <div
+              ref={mobile.pillRef}
+              aria-hidden
+              className="pointer-events-none absolute top-2.5 left-1/2 z-20 -translate-x-1/2 py-1 px-4"
+            >
+              <div className="h-1.5 w-12 rounded-full bg-white/85 shadow-md backdrop-blur-md" />
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close details"
+              aria-label="Close"
+              className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
+            >
+              <X className="size-4" />
+            </button>
           </div>
 
-          <div
-            ref={mobile.pillRef}
-            aria-hidden
-            className="pointer-events-none absolute top-2.5 left-1/2 z-20 -translate-x-1/2 py-1 px-4"
-          >
-            <div className="h-1.5 w-12 rounded-full bg-white/85 shadow-md backdrop-blur-md" />
+          <div className="shrink-0 z-20 border-t border-border bg-background/95 backdrop-blur-md p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
+            {actions}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            title="Close details"
-            aria-label="Close"
-            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
-          >
-            <X className="size-4" />
-          </button>
         </div>
 
-        <div className="shrink-0 z-20 border-t border-border bg-background/95 backdrop-blur-md p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] shadow-[0_-6px_20px_rgba(0,0,0,0.08)]">
-          {actions}
-        </div>
-      </div>
-
-      {/* A wish is not a purchase record, so this asks once rather than making
+        {/* A wish is not a purchase record, so this asks once rather than making
           you type a word — and the row it drops is undoable from the top bar
           like any other car. */}
-      <Dialog open={dropIso} onOpenChange={setDropIso}>
-        <DialogContent className="sm:max-w-md">
-          <DialogTitle className="text-lg font-semibold">Take this off your ISO list?</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground">{title}</span> stays in the catalogue. You
-            are only saying you have stopped looking for it.
-          </DialogDescription>
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setDropIso(false)}>
-              Keep it
-            </Button>
-            <Button
-              type="button"
-              onClick={() => {
-                if (!matchingIsoCar) return;
-                deleteCar(matchingIsoCar.id);
-                setDropIso(false);
-                toast.success("Off your ISO list", {
-                  description: "Undo in the top bar brings it back.",
-                });
-              }}
-              className="bg-rose-600 text-white hover:bg-rose-600/90"
-            >
-              <Trash2 className="size-4 shrink-0" />
-              Remove
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+        <Dialog open={dropIso} onOpenChange={setDropIso}>
+          <DialogContent className="sm:max-w-md">
+            <DialogTitle className="text-lg font-semibold">
+              Take this off your ISO list?
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{title}</span> stays in the catalogue.
+              You are only saying you have stopped looking for it.
+            </DialogDescription>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setDropIso(false)}>
+                Keep it
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!matchingIsoCar) return;
+                  deleteCar(matchingIsoCar.id);
+                  setDropIso(false);
+                  toast.success("Off your ISO list", {
+                    description: "Undo in the top bar brings it back.",
+                  });
+                }}
+                className="bg-rose-600 text-white hover:bg-rose-600/90"
+              >
+                <Trash2 className="size-4 shrink-0" />
+                Remove
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
-      {isAdmin && (
-        <CatalogOwnersDialog
-          open={ownersModalOpen}
-          onClose={() => setOwnersModalOpen(false)}
-          carName={title}
-          owners={owners}
-          loading={ownersLoading}
-          myUid={user?.id}
-          myShipping={myShipping}
-          onOpenParcel={setParcel}
-        />
-      )}
+        {isAdmin && (
+          <CatalogOwnersDialog
+            open={ownersModalOpen}
+            onClose={() => setOwnersModalOpen(false)}
+            carName={title}
+            owners={owners}
+            loading={ownersLoading}
+            myUid={user?.id}
+            myShipping={myShipping}
+            onOpenParcel={setParcel}
+          />
+        )}
 
-      {/* The parcel the reader's own copy came in: same dialog the Shipping ID
+        {/* The parcel the reader's own copy came in: same dialog the Shipping ID
           on a car opens, so one parcel has one screen. */}
-      <ShippingBatchDialog
-        open={Boolean(parcel)}
-        onOpenChange={(v) => !v && setParcel("")}
-        initialShippingId={parcel}
-      />
+        <ShippingBatchDialog
+          open={Boolean(parcel)}
+          onOpenChange={(v) => !v && setParcel("")}
+          initialShippingId={parcel}
+        />
+      </div>
+      {dock && (
+        <DockPanel
+          open={dockOpen}
+          title={
+            panel === "activity"
+              ? "Activity"
+              : panel === "buyers"
+                ? "Bought by"
+                : "Possible other boxes"
+          }
+          subtitle={title}
+          closeLabel="Close this panel"
+          onClose={() => setDockOpen(false)}
+        >
+          {panel === "activity" ? (
+            dockOpen && <ChangeLog rowKey={shownId} origin={filedBy} />
+          ) : panel === "buyers" ? (
+            <BuyersList
+              owners={owners}
+              myUid={user?.id}
+              isAdmin={Boolean(isAdmin)}
+              myShipping={myShipping}
+              onOpenParcel={setParcel}
+              onOpenMine={openMine}
+            />
+          ) : (
+            <SuggestionList boxes={boxes} />
+          )}
+        </DockPanel>
+      )}
     </div>
   );
 }

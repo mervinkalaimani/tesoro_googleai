@@ -166,11 +166,11 @@ export function boxSiblings(entry: CatalogCar, catalog: CatalogCar[]): CatalogCa
  * search, and it is deliberately looser than `boxSiblings`: the whole point is
  * to surface an entry that does *not* group yet.
  *
- * Hot Wheels and Matchbox are left out. Their card prints a position rather
- * than a number, so "3/5" is eight different castings, and the one rule strong
- * enough to be worth acting on -- brand and number -- is the one rule that is
- * meaningless for them. `brandUsesCarNumber` already draws that line for the
- * duplicate check and draws it here.
+ * Brand, make, model and variant must all match outright; colour, number,
+ * series and sub series then have to agree wherever both sides state them, and agreeing on both is
+ * what makes a suggestion definite. Hot Wheels and Matchbox are included, but
+ * their number is ignored: it is a position in a series, which changes from
+ * one box of a car to the next (`brandUsesCarNumber` draws that line).
  *
  * An entry in the same box is not a box of the same casting, it is a second
  * copy of the same product, so it is left to the Duplicates page.
@@ -190,23 +190,26 @@ export function attachSuggestions(
   catalog: CatalogCar[],
   { exclude = [], limit = 6 }: { exclude?: string[]; limit?: number } = {},
 ): AttachSuggestion[] {
-  if (!brandUsesCarNumber(entry.brand)) return [];
   const brand = brandKey(entry.brand);
-  if (!brand) return [];
-
-  const skip = new Set([entry.car_id, ...exclude].map((id) => (id || "").trim().toUpperCase()));
-  const number = clean(entry.car_number);
   const make = clean(entry.make);
   const model = clean(entry.model);
-  const box = clean(entry.assortment);
+  // Without all three there is nothing to say the two are the same car.
+  if (!brand || !make || !model) return [];
 
-  // Both sides have to state a field before it is allowed to disagree: half the
-  // catalogue leaves series blank, and silence is not a difference.
-  const agrees = (a: string | null | undefined, b: string | null | undefined) => {
-    const x = clean(a);
-    const y = clean(b);
-    return !x || !y || x === y;
+  const skip = new Set([entry.car_id, ...exclude].map((id) => (id || "").trim().toUpperCase()));
+  const box = clean(entry.assortment);
+  const variant = clean(entry.variant);
+
+  // "-" and friends are an empty box on the form, not a number.
+  const realNumber = (v: string | null | undefined) => {
+    const x = clean(v);
+    return /[a-z0-9]/.test(x) ? x : "";
   };
+  // Hot Wheels and Matchbox print a position in a series, which differs from
+  // one box of a car to the next, so for them the number says nothing.
+  const numbered = brandUsesCarNumber(entry.brand);
+  const number = numbered ? realNumber(entry.car_number) : "";
+  const colour = clean(entry.colour);
 
   const fields = {
     brand: entry.brand,
@@ -224,35 +227,39 @@ export function attachSuggestions(
   const out: AttachSuggestion[] = [];
   for (const c of catalog) {
     if (skip.has((c.car_id || "").trim().toUpperCase())) continue;
+    // These four have to match outright. A blank against a stated variant is a
+    // different car, not silence.
     if (brandKey(c.brand) !== brand) continue;
+    if (clean(c.make) !== make || clean(c.model) !== model) continue;
+    if (clean(c.variant) !== variant) continue;
     // Same box is the same product filed twice, which is a duplicate.
     if (clean(c.assortment) === box) continue;
 
-    const sameNumber = Boolean(number) && clean(c.car_number) === number;
-    const sameCasting =
-      Boolean(make) && Boolean(model) && clean(c.make) === make && clean(c.model) === model;
+    // Colour and number then speak only when both sides state them: a different
+    // one is a different car, a missing one is not a difference.
+    const theirColour = clean(c.colour);
+    if (colour && theirColour && colour !== theirColour) continue;
+    const theirNumber = numbered ? realNumber(c.car_number) : "";
+    if (number && theirNumber && number !== theirNumber) continue;
 
-    if (!sameNumber && !sameCasting) continue;
-    // A different number on an otherwise identical description is a different
-    // product, so it is not offered on the description alone.
-    if (!sameNumber && !agrees(c.car_number, entry.car_number)) continue;
-    if (
-      !sameNumber &&
-      !(
-        agrees(c.variant, entry.variant) &&
-        agrees(c.series, entry.series) &&
-        agrees(c.sub_series, entry.sub_series)
-      )
-    )
-      continue;
+    // Series and sub series are read the same way.
+    const agrees = (x: string | null | undefined, y: string | null | undefined) =>
+      !clean(x) || !clean(y) || clean(x) === clean(y);
+    if (!agrees(c.series, entry.series) || !agrees(c.sub_series, entry.sub_series)) continue;
 
+    const sameColour = Boolean(colour) && colour === theirColour;
+    const sameNumber = Boolean(number) && number === theirNumber;
     out.push({
       car: c,
-      definite: sameNumber,
+      definite: sameColour && sameNumber,
       match: matchPercent(fields, c),
-      because: sameNumber
-        ? `Same ${entry.brand || "brand"} number #${entry.car_number}`
-        : ["Same make and model", c.series || "", c.sub_series || ""].filter(Boolean).join(" · "),
+      because: [
+        "Same brand, make, model" + (variant ? " and variant" : ""),
+        sameColour ? `colour ${entry.colour}` : "",
+        sameNumber ? `number #${entry.car_number}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · "),
     });
   }
 

@@ -67,7 +67,11 @@ export const brandUsesCarNumber = (brand: string | null | undefined) => {
 };
 
 /** Whether this casting must state a car number before it can be filed. */
-export const needsCarNumber = (brand: string | null | undefined) => brandUsesCarNumber(brand);
+/** Majorette prints no collector number on most of its range, so it may be left blank. */
+const NUMBER_OPTIONAL_BRANDS = new Set(["majorette"]);
+
+export const needsCarNumber = (brand: string | null | undefined) =>
+  brandUsesCarNumber(brand) && !NUMBER_OPTIONAL_BRANDS.has(brandKey(brand));
 
 /**
  * How much of the description two castings share, as a percentage.
@@ -105,21 +109,20 @@ export function matchPercent(fields: DuplicateFields, c: CatalogCar): number {
 /**
  * Candidate duplicates for what has been typed.
  *
- * Three ways in, and nothing else counts:
+ * Brand, make, model and variant must all match outright, in either way in:
  *
  *   1. Brand and car number agree. The number names one product, so this needs
  *      nothing else filled in yet.
- *   2. Brand, make, model, assortment, series, sub-series and car number ALL
- *      agree. A blank on both sides is agreement — two Hot Wheels mainlines
+ *   2. Every other field agrees too: assortment, series, sub-series and car
+ *      number. A blank on both sides is agreement — two Hot Wheels mainlines
  *      with no series between them are the same mainline — but a blank against
  *      a value is not.
- *   3. Brand, make and series agree, and the model is free to differ. Weaker
- *      than the two above and labelled "possible" for it: the same make in the
- *      same series is worth a glance rather than a warning, which is why the
- *      form pins it as one line instead of a block.
+ *
+ * A different model is a different car, so same make and series alone offers
+ * nothing: a Mercedes A35 AMG is not a duplicate of a G63 AMG.
  *
  * There is no partial credit inside a rule: a hit either satisfies one of the
- * three outright or is not offered. What the level says is which rule it came
+ * two outright or is not offered. What the level says is which rule it came
  * from.
  *
  * It used to score partial matches instead, and offered anything sharing a
@@ -128,10 +131,6 @@ export function matchPercent(fields: DuplicateFields, c: CatalogCar): number {
  * existing car to add instead. A suggestion list that is wrong six times out
  * of six is worse than none: it trains you to scroll past the one time it is
  * right.
- *
- * Variant is deliberately absent from rule 2, because the list of fields came
- * from the person who uses this. Two variants of one casting that both lack a
- * car number will therefore still be offered to each other.
  *
  * needsCarNumber below is untouched: whether a brand has to state its number
  * is a question about filling the form in, not about what a duplicate is.
@@ -147,6 +146,7 @@ export function findDuplicates(
   // Too little to say anything useful.
   if (!brand || !make || !model) return [];
 
+  const variant = norm(fields.variant);
   const assortment = norm(fields.assortment);
   const series = norm(fields.series);
   const subSeries = norm(fields.subSeries);
@@ -164,10 +164,11 @@ export function findDuplicates(
     // every third-of-five in the catalogue — a different casting each time.
     // Brand, make, model and number, and nothing less.
     if (
-      carNumber &&
+      /[a-z0-9]/.test(carNumber) &&
       norm(c.car_number) === carNumber &&
       norm(c.make) === make &&
-      norm(c.model) === model
+      norm(c.model) === model &&
+      norm(c.variant) === variant
     ) {
       hits.push({
         car: c,
@@ -188,6 +189,7 @@ export function findDuplicates(
     // but a blank against a value does not.
     const wholeDescription =
       norm(c.model) === model &&
+      norm(c.variant) === variant &&
       norm(c.assortment) === assortment &&
       norm(c.series) === series &&
       norm(c.sub_series) === subSeries &&
@@ -208,30 +210,6 @@ export function findDuplicates(
           .join(" · "),
       });
       continue;
-    }
-
-    // Brand, make and the set, and nothing more asked of it. The model may
-    // differ, so this is not a duplicate — it is the line worth reading before
-    // filing another car into a set you already have this make in. It comes
-    // back as "possible" and the form shows it as one line rather than a block.
-    //
-    // The set is both halves of it. The sub-series was printed in the reason
-    // and then not read, so a Circuit Legends 911 was offered as a near-match
-    // for a Le Mans one — same series, different set, different product — and
-    // a shared sub-series under a blank series was not offered at all. A field
-    // speaks only when both sides state it, as everywhere else: silence is not
-    // disagreement, and a conflict is.
-    const agrees = (a: string, b: string) => !a || !b || a === b;
-    const sharesSet =
-      (series && norm(c.series) === series) || (subSeries && norm(c.sub_series) === subSeries);
-
-    if (sharesSet && agrees(norm(c.series), series) && agrees(norm(c.sub_series), subSeries)) {
-      hits.push({
-        car: c,
-        level: "possible",
-        match: matchPercent(fields, c),
-        because: ["Same make", c.series, c.sub_series].filter(Boolean).join(" · "),
-      });
     }
   }
 
