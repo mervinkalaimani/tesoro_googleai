@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  Crop,
   ClipboardPaste,
   Globe,
   ImageIcon,
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { ACCEPT_ATTR, uploadCarPhoto } from "@/lib/car-photos";
 import { readClipboardImage, useImagePaste } from "@/lib/paste-image";
 import type { CarImageCandidate } from "@/lib/car-image-search";
+import { PhotoCropDialog } from "@/components/photo-crop-dialog";
 import { WebImageSearchDialog } from "@/components/web-image-search-dialog";
 import { cn } from "@/lib/utils";
 
@@ -86,8 +88,13 @@ export function CarPhotoField({
     setBroken(false);
   }, [value]);
 
-  const take = async (file: File | undefined | null) => {
-    if (!file) return;
+  // Picked, dropped or pasted photos wait here to be cropped before uploading.
+  const [cropping, setCropping] = useState<File | null>(null);
+  const take = (file: File | undefined | null) => {
+    if (file) setCropping(file);
+  };
+  const upload = async (file: File) => {
+    setCropping(null);
     setBusy(true);
     const res = await uploadCarPhoto(file);
     setBusy(false);
@@ -110,7 +117,7 @@ export function CarPhotoField({
   // Ctrl+V anywhere in the window files it, and the button is there for anyone
   // who does not think in Ctrl+V. Off while one is uploading, so a second paste
   // cannot race the first.
-  useImagePaste(!busy, (file) => void take(file));
+  useImagePaste(!busy && !cropping, take);
 
   const paste = async () => {
     const res = await readClipboardImage();
@@ -118,7 +125,20 @@ export function CarPhotoField({
       toast.error("Nothing to paste", { description: res.error });
       return;
     }
-    await take(res.file);
+    take(res.file);
+  };
+
+  // Re-crop the photo already on the car: fetch it, then it goes through the
+  // same crop dialog and upload as a new one.
+  const cropExisting = async () => {
+    try {
+      const blob = await (await fetch(value)).blob();
+      take(new File([blob], "photo", { type: blob.type || "image/jpeg" }));
+    } catch {
+      toast.error("Could not open that photo to crop", {
+        description: "Its host does not allow it. Upload the photo instead.",
+      });
+    }
   };
 
   const remove = () => {
@@ -130,7 +150,7 @@ export function CarPhotoField({
     e.preventDefault();
     setDragOver(false);
     if (touch) return;
-    void take(e.dataTransfer.files?.[0]);
+    take(e.dataTransfer.files?.[0]);
   };
 
   const applyLink = () => {
@@ -325,6 +345,19 @@ export function CarPhotoField({
             <ImagePlus className="size-4" />
             {value ? "Replace image" : "Add image"}
           </Button>
+          {value && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full gap-1.5"
+              disabled={busy}
+              onClick={() => void cropExisting()}
+            >
+              <Crop className="size-4" />
+              Crop this photo
+            </Button>
+          )}
           {/* A phone has a clipboard too, and no Ctrl+V to use it with. A
               screenshot of a listing is how most photos get here, and without
               this the only way to that screenshot was the photo library two
@@ -392,6 +425,19 @@ export function CarPhotoField({
             <Upload className="size-3.5" />
             {value ? "Replace" : "Choose a file"}
           </Button>
+          {value && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              disabled={busy}
+              onClick={() => void cropExisting()}
+            >
+              <Crop className="size-3.5" />
+              Crop
+            </Button>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -445,6 +491,12 @@ export function CarPhotoField({
         </div>
       )}
 
+      <PhotoCropDialog
+        file={cropping}
+        onDone={(f) => void upload(f)}
+        onCancel={() => setCropping(null)}
+      />
+
       <WebImageSearchDialog
         open={webOpen}
         onOpenChange={setWebOpen}
@@ -485,7 +537,7 @@ export function CarPhotoField({
         accept={touch ? "image/*" : ACCEPT_ATTR}
         className="sr-only"
         onChange={(e) => {
-          void take(e.target.files?.[0]);
+          take(e.target.files?.[0]);
           e.target.value = "";
         }}
       />
