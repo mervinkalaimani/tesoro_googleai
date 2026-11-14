@@ -14,6 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useCarsActions, useCars, makeBlankCar } from "@/lib/cars-store";
 import { carIdFor } from "@/lib/car-id";
 import {
@@ -396,6 +403,9 @@ export function BulkAddCarsDialog({
   const [shared, setShared] = useState<Values>(defaultShared);
   const [rows, setRows] = useState<Row[]>([blankRow(), blankRow(), blankRow()]);
   const [restored, setRestored] = useState(false);
+  // A phone has no room for a table: each car is an accordion instead.
+  const isMobile = useIsMobile();
+  const [openRows, setOpenRows] = useState<string[]>([]);
   const [draftReady, setDraftReady] = useState(false);
 
   // Ten half-filled rows are the worst thing in this app to lose, and a phone
@@ -411,7 +421,9 @@ export function BulkAddCarsDialog({
       // not, so cost and MRP stay per car.
       setSharedKeys(new Set<FieldKey>(["seller", "status", "orderDate"]));
       setShared(defaultShared());
-      setRows(scanned.map(rowFromScan));
+      const fromScan = scanned.map(rowFromScan);
+      setRows(fromScan);
+      setOpenRows(fromScan[0] ? [fromScan[0].key] : []);
       setRestored(false);
       setDraftReady(true);
       return;
@@ -716,8 +728,9 @@ export function BulkAddCarsDialog({
             <DialogTitle>Add cars in bulk</DialogTitle>
           </div>
           <DialogDescription>
-            Pick which fields are the same for every car in this order. The rest become columns you
-            fill in per car.
+            {isMobile
+              ? "Pick which fields are the same for every car in this order. Open a car to fill in the rest."
+              : "Pick which fields are the same for every car in this order. The rest become columns you fill in per car."}
           </DialogDescription>
           {/* Both ways of getting a batch in, in the one dialog that is about
               batches. Upload CSV used to be a third button in the add-car
@@ -823,6 +836,70 @@ export function BulkAddCarsDialog({
             Every field is shared. Move at least one out of “same for all” to list cars
             individually.
           </p>
+        ) : isMobile ? (
+          <Accordion
+            type="multiple"
+            value={openRows}
+            onValueChange={setOpenRows}
+            className="rounded-lg border border-border px-3"
+          >
+            {rows.map((r, i) => {
+              const name = [valueOf(r, "make"), valueOf(r, "model")].filter(Boolean).join(" ");
+              const cost = num(valueOf(r, "cost"));
+              return (
+                <AccordionItem key={r.key} value={r.key}>
+                  <AccordionTrigger className="gap-2 py-3 text-left hover:no-underline">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold">
+                        {name || `Car ${i + 1}`}
+                      </span>
+                      <span className="block truncate text-xs font-normal text-muted-foreground">
+                        {[valueOf(r, "colour"), valueOf(r, "series"), previewCarIds.get(r.key)]
+                          .filter(Boolean)
+                          .join(" · ") || "Tap to fill in"}
+                        {cost > 0 ? ` · ${inrFull(cost)}` : ""}
+                      </span>
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="grid grid-cols-2 gap-x-2.5 gap-y-3 pb-1">
+                      {perCarFields.map((f) => (
+                        <div
+                          key={f.key}
+                          className={`space-y-1.5 ${
+                            f.kind === "combo" && f.key !== "year" ? "col-span-2" : ""
+                          }`}
+                        >
+                          <Label>{f.label}</Label>
+                          <FieldInput
+                            def={f}
+                            value={r[f.key] ?? ""}
+                            options={optionsForCell(
+                              f,
+                              valueOf(r, "make"),
+                              valueOf(r, "model"),
+                              valueOf(r, "brand"),
+                            )}
+                            onChange={(v) => setRow(r.key, { [f.key]: v })}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="mt-3 gap-1.5 text-destructive"
+                      disabled={rows.length === 1}
+                      onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}
+                    >
+                      <Trash2 className="size-3.5" />
+                      Remove this car
+                    </Button>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
+          </Accordion>
         ) : (
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-max min-w-full text-sm">

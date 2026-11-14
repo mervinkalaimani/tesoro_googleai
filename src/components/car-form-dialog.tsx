@@ -2719,50 +2719,27 @@ export function CarFormDialog({
                   </button>
                   <button
                     type="button"
-                    // Up to six cars from one photograph, ending in the bulk
-                    // table. Like bulk itself it is a wide-screen job: left on
-                    // the screen so it can say so, not hidden.
+                    // Up to six cars from one photograph. On a computer they land
+                    // in the bulk table; on a phone, as cards to open and edit.
                     disabled={scansRemaining === 0}
-                    aria-disabled={isMobile || scansRemaining === 0}
-                    onClick={() => {
-                      if (isMobile) {
-                        toast.info("Scanning several cars is available on the web only", {
-                          description:
-                            "Open VIIV on a computer to scan up to 6 cars from one photo.",
-                        });
-                        return;
-                      }
-                      setMultiScanOpen(true);
-                    }}
+                    onClick={() => setMultiScanOpen(true)}
                     title={
-                      isMobile
-                        ? "Available on web only"
-                        : scansRemaining === 0
-                          ? "No scans left this month"
-                          : "Read up to 6 cars from one photo"
+                      scansRemaining === 0
+                        ? "No scans left this month"
+                        : "Read up to 6 cars from one photo"
                     }
-                    className={cn(
-                      "flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border",
-                      isMobile && "border-border/60 bg-muted/30 hover:border-border/60",
-                    )}
+                    className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
                   >
                     <span className="flex items-center gap-2 text-sm font-semibold">
                       {scansRemaining === 0 ? (
                         <Lock className="size-4 text-muted-foreground" />
                       ) : (
-                        <Images
-                          className={cn(
-                            "size-4",
-                            isMobile ? "text-muted-foreground" : "text-primary",
-                          )}
-                        />
+                        <Images className="size-4 text-primary" />
                       )}
-                      <span className={isMobile ? "text-muted-foreground" : undefined}>
-                        Scan multiple cards
-                      </span>
+                      Scan multiple cards
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {isMobile ? "Available on web only" : "Up to 6 in one photo, one scan each"}
+                      Up to 6 in one photo, one scan each
                     </span>
                   </button>
                   {onSwitchToBulk && (

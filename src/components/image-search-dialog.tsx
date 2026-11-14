@@ -77,12 +77,8 @@ export function ImageSearchDialog({
   onOpenChange,
   several: wantsSeveral = false,
 }: ImageSearchDialogProps) {
-  /**
-   * Several cars is a wide-screen feature. The phone's search bar does not offer
-   * it, and a window narrowed below the tablet width while it is open falls
-   * back to the one-car scanner rather than showing a camera frame and a list
-   * laid out for more room.
-   */
+  const several = wantsSeveral;
+  // On a phone the cars open as cards to edit, not as a table to add to.
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
     const m = window.matchMedia("(max-width: 767px)");
@@ -91,7 +87,6 @@ export function ImageSearchDialog({
     m.addEventListener("change", sync);
     return () => m.removeEventListener("change", sync);
   }, []);
-  const several = wantsSeveral && !narrow;
   const cars = useCars();
   const { open: openCar } = useCarDrawer();
   const { profile, isGuest, reloadProfile } = useAuth();
@@ -872,7 +867,7 @@ export function ImageSearchDialog({
                           onClick={sendToBulk}
                           className="gap-1.5"
                         >
-                          Add {picked.size} to bulk add
+                          {narrow ? `Review ${picked.size}` : `Add ${picked.size} to bulk add`}
                           <ArrowRight className="size-4" />
                         </Button>
                       </div>
