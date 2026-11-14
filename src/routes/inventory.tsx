@@ -8,7 +8,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import { applyCatalogToCar } from "@/lib/catalog-sync";
 import { useCarsActions } from "@/lib/cars-store";
 import { toast } from "sonner";
-import { isPackMember, packMemberIds } from "@/lib/pack";
+import { isPackMember, packMemberIds, packSizes } from "@/lib/pack";
 import { FilterChipDropdown, ToggleChip } from "@/components/filter-chips";
 import { filterRows } from "@/lib/search";
 import { StatusPill, CostCell, CarListCard } from "@/components/cars-table";
@@ -445,6 +445,7 @@ function InventoryPage() {
    * Nothing is deleted: the toggle below puts them back.
    */
   const memberIds = useMemo(() => packMemberIds(packMembers), [packMembers]);
+  const sizeOfPack = useMemo(() => packSizes(catalog, packMembers), [catalog, packMembers]);
   const [hideInPacks, setHideInPacks] = useState(true);
   const inPackCount = useMemo(
     () => (memberIds.size === 0 ? 0 : data.filter((c) => isPackMember(c, memberIds)).length),
@@ -1025,6 +1026,11 @@ function InventoryPage() {
                   key={(r.id || "") + i}
                   car={r}
                   onOpen={() => openDrawer(r)}
+                  pack={
+                    sizeOfPack.has((r.catalogId || "").trim().toUpperCase())
+                      ? `${sizeOfPack.get((r.catalogId || "").trim().toUpperCase())} CARS`
+                      : undefined
+                  }
                   foot={<InventoryFoot inside car={r} copies={lead ? n : 1} copiesTotal={total} />}
                 />
               ) : (

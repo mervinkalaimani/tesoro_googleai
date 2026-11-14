@@ -5,6 +5,7 @@ import { ChaseMark, FavouriteMark, ChangedDot } from "@/components/car-marks";
 import { StatusPill } from "@/components/status-pill";
 import { CarThumb } from "@/components/car-thumb";
 import { carNumberOf } from "@/lib/car-subline";
+import { Layers } from "lucide-react";
 import { rarityOf } from "@/lib/rarity";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ export function BlisterTile({
   synced,
   syncedSource,
   copies = 1,
+  pack,
   foot,
   className = "",
 }: {
@@ -36,6 +38,8 @@ export function BlisterTile({
   synced?: boolean;
   syncedSource?: string | null;
   copies?: number;
+  /** Set when this is a multi-pack: "5 CARS", or "PACK" when its size is not known. */
+  pack?: string;
   /** Replaces the name and brand line under the photograph. */
   foot?: ReactNode;
   className?: string;
@@ -71,9 +75,18 @@ export function BlisterTile({
         />
 
         <SyncedMark synced={synced} source={syncedSource} />
-        {copies > 1 && (
-          <div className="pointer-events-none absolute bottom-1 left-1">
-            <CopiesBadge n={copies} className="bg-black/75 backdrop-blur-sm" />
+        {(copies > 1 || pack) && (
+          <div className="pointer-events-none absolute bottom-1 left-1 flex flex-col items-start gap-1">
+            {pack && (
+              <span
+                title="A multi-pack: several cars in one box"
+                className="inline-flex items-center gap-1 rounded-full bg-black/75 px-1.5 py-0.5 text-[11px] font-semibold leading-tight text-amber-300 backdrop-blur-sm"
+              >
+                <Layers className="size-3" />
+                {pack}
+              </span>
+            )}
+            {copies > 1 && <CopiesBadge n={copies} className="bg-black/75 backdrop-blur-sm" />}
           </div>
         )}
 

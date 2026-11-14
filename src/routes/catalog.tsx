@@ -376,6 +376,8 @@ function CatalogPage() {
   const [addingIso, setAddingIso] = useState(false);
   /** The entry whose details are open. */
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
+  /** The edit was opened from the details page, so saving goes back to it. */
+  const [backToDetails, setBackToDetails] = useState(false);
   const [pushing, setPushing] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [editing, setEditing] = useState<CatalogCar | "new" | null>(null);
@@ -684,6 +686,7 @@ function CatalogPage() {
               caption={myIso.has(cid) ? "ISO" : owned.has(cid) ? "Owned" : undefined}
               synced={Boolean(c.synced_at)}
               syncedSource={c.synced_source}
+              pack={c.is_multipack ? packLabel(c) : undefined}
             />
           );
         })}
@@ -971,6 +974,7 @@ function CatalogPage() {
         onEdit={() => {
           const target = viewing;
           setViewing(null);
+          setBackToDetails(true);
           setEditing(target);
         }}
         onAdd={(pick) => {
@@ -1078,7 +1082,10 @@ function CatalogPage() {
           open={editing !== null}
           entry={editing}
           catalog={catalog}
-          onClose={() => setEditing(null)}
+          onClose={() => {
+            setEditing(null);
+            setBackToDetails(false);
+          }}
           onAddExistingCar={(car) => {
             setEditing(null);
             setAdding(car);
@@ -1095,7 +1102,9 @@ function CatalogPage() {
             if (editing === "new") {
               return await addCatalogCar(car);
             } else {
-              return await updateCatalogCar(car);
+              const ok = await updateCatalogCar(car);
+              if (ok && backToDetails) setViewing(car);
+              return ok;
             }
           }}
         />

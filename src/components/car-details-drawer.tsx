@@ -28,6 +28,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { useApp } from "@/lib/store";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -143,6 +145,8 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
     catalogCar: CatalogCar | null;
   } | null>(null);
   const [editCatalogEntry, setEditCatalogEntry] = useState<CatalogCar | null>(null);
+  /** The car whose catalogue page the edit was opened from, to go back to on save. */
+  const [backToCatalog, setBackToCatalog] = useState<Diecast | null>(null);
   const [addAnotherCar, setAddAnotherCar] = useState<Diecast | null>(null);
 
   // Find latest car state by ID
@@ -262,6 +266,10 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
                 onClose={close}
                 onEdit={() => handleEdit(car)}
                 onViewInCatalog={() => handleViewInCatalog(car)}
+                onOpenCatalogEntry={(entry) => {
+                  close();
+                  setViewCatalogCar({ car: catalogCarToDiecast(entry), catalogCar: entry });
+                }}
                 onAddAnother={() => handleAddAnother(car)}
                 onOpenBatch={(id, field) => {
                   setBatchShippingId(id);
@@ -301,6 +309,8 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           }}
           initial={editCar}
           mode="edit"
+          // Saving goes back to the car it was opened from.
+          onSaved={(saved) => open(saved)}
         />
       )}
 
@@ -324,6 +334,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           canEdit={isAdmin}
           onEdit={() => {
             setEditCatalogEntry(viewCatalogCar.catalogCar);
+            setBackToCatalog(viewCatalogCar.car);
             setViewCatalogCar(null);
           }}
         />
@@ -334,9 +345,16 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           open={editCatalogEntry !== null}
           entry={editCatalogEntry}
           catalog={catalog}
-          onClose={() => setEditCatalogEntry(null)}
+          onClose={() => {
+            setEditCatalogEntry(null);
+            setBackToCatalog(null);
+          }}
           canDelete={false}
-          onSave={updateCatalogCar}
+          onSave={async (saved) => {
+            const ok = await updateCatalogCar(saved);
+            if (ok && backToCatalog) setViewCatalogCar({ car: backToCatalog, catalogCar: saved });
+            return ok;
+          }}
         />
       )}
 
@@ -546,6 +564,17 @@ function useMinWidth(px: number): boolean {
   return ok;
 }
 
+/** Close this window and search My Cars for what the shelf is named after. */
+function useSeeInMyCars(onClose: () => void) {
+  const { setQuery } = useApp();
+  const navigate = useNavigate();
+  return (heading: string) => {
+    onClose();
+    setQuery(heading);
+    void navigate({ to: "/inventory" });
+  };
+}
+
 /** A panel that grows out of the card's right edge: Activity, and the possible boxes. */
 function DockPanel({
   open,
@@ -607,6 +636,8 @@ interface CarPopupContentProps {
   onClose: () => void;
   onEdit: () => void;
   onViewInCatalog: () => void;
+  /** Open one catalogue entry's own page, from a car listed inside a box. */
+  onOpenCatalogEntry: (entry: CatalogCar) => void;
   onAddAnother: () => void;
   onOpenBatch: (id: string, field: "shippingId" | "orderId") => void;
   onOpenSeller: (seller: string) => void;
@@ -622,6 +653,7 @@ function CarPopupContent({
   onClose,
   onEdit,
   onViewInCatalog,
+  onOpenCatalogEntry,
   onAddAnother,
   onOpenBatch,
   onOpenSeller,
@@ -633,6 +665,7 @@ function CarPopupContent({
   const cars = useCars();
   const { updateCar } = useCarsActions();
   const mobile = useMobileHeroGestures(onClose);
+  const seeInMyCars = useSeeInMyCars(onClose);
 
   // Your own copy, so no admin about it: a photo pasted here replaces the one
   // on this car.
@@ -859,7 +892,7 @@ function CarPopupContent({
       )}
       {hasPack && (
         <Panel title="In the Box" className="col-span-full">
-          <CarInTheBoxTab packCarId={car.catalogId} />
+          <CarInTheBoxTab packCarId={car.catalogId} onOpenEntry={onOpenCatalogEntry} />
         </Panel>
       )}
     </div>
@@ -903,6 +936,7 @@ function CarPopupContent({
               cars={shelf.cars}
               currentId={car.id}
               onSelectCar={onSelectCar}
+              onSeeAll={() => seeInMyCars(shelf.heading)}
             />
           </div>
         )}
@@ -984,6 +1018,7 @@ function CarPopupContent({
                       cars={shelf.cars}
                       currentId={car.id}
                       onSelectCar={onSelectCar}
+                      onSeeAll={() => seeInMyCars(shelf.heading)}
                     />
                   )}
 
@@ -1570,7 +1605,14 @@ function CarDetailsTab({
  * The catalogue ID rides on the right because that is the part you would go
  * looking up; the name is what you read.
  */
-function CarInTheBoxTab({ packCarId }: { packCarId?: string | null }) {
+function CarInTheBoxTab({
+  packCarId,
+  onOpenEntry,
+}: {
+  packCarId?: string | null;
+  /** Each car in the box opens its own catalogue page. */
+  onOpenEntry?: (entry: CatalogCar) => void;
+}) {
   const { pack, members } = usePack(packCarId);
   if (!pack?.is_multipack) return null;
 
@@ -1583,17 +1625,36 @@ function CarInTheBoxTab({ packCarId }: { packCarId?: string | null }) {
           Nobody has listed what is in this one yet.
         </p>
       ) : (
-        members.map(({ id, entry }) => (
-          <div
-            key={id}
-            className="flex items-baseline justify-between gap-4 border-b border-border/50 py-3 last:border-b-0"
-          >
-            <span className="min-w-0 truncate text-[15px] font-bold text-foreground">
-              {entry?.name || id}
-            </span>
-            <span className="shrink-0 font-mono text-xs text-muted-foreground">{id}</span>
-          </div>
-        ))
+        members.map(({ id, entry }) => {
+          const row = (
+            <>
+              <span className="min-w-0 truncate text-[15px] font-bold text-foreground">
+                {entry?.name || id}
+              </span>
+              <span className="shrink-0 font-mono text-xs text-muted-foreground">{id}</span>
+            </>
+          );
+          const rowClass =
+            "flex w-full items-baseline justify-between gap-4 border-b border-border/50 py-3 text-left last:border-b-0";
+          return entry && onOpenEntry ? (
+            <button
+              key={id}
+              type="button"
+              onClick={() => onOpenEntry(entry)}
+              title="Open in the catalogue"
+              className={cn(
+                rowClass,
+                "cursor-pointer transition-colors hover:text-primary [&_span]:transition-colors hover:[&>span:first-child]:text-primary",
+              )}
+            >
+              {row}
+            </button>
+          ) : (
+            <div key={id} className={rowClass}>
+              {row}
+            </div>
+          );
+        })
       )}
       {/* A box that says it holds eight and lists six is worth saying out loud,
           rather than quietly showing six. */}
@@ -2198,11 +2259,14 @@ function CarShelfRow({
   cars,
   currentId,
   onSelectCar,
+  onSeeAll,
 }: {
   heading: string;
   cars: Diecast[];
   currentId: string;
   onSelectCar?: (car: Diecast) => void;
+  /** The count becomes a button: search my cars for this heading. */
+  onSeeAll?: () => void;
 }) {
   if (cars.length === 0) return null;
   const count = `${cars.length} ${cars.length === 1 ? "Model" : "Models"}`;
@@ -2216,7 +2280,18 @@ function CarShelfRow({
           <span className="font-semibold text-muted-foreground">More from </span>
           {heading}
         </p>
-        <p className="shrink-0 text-sm font-semibold text-primary">{count}</p>
+        {onSeeAll ? (
+          <button
+            type="button"
+            onClick={onSeeAll}
+            title={`Search my cars for ${heading}`}
+            className="shrink-0 cursor-pointer text-sm font-semibold text-primary transition-colors hover:text-primary/80 hover:underline"
+          >
+            {count}
+          </button>
+        ) : (
+          <p className="shrink-0 text-sm font-semibold text-primary">{count}</p>
+        )}
       </div>
 
       <div className="-mx-1 flex min-w-0 snap-x scroll-px-1 items-stretch gap-3 overflow-x-auto px-1 pb-1 no-scrollbar md:grid md:grid-cols-4 md:overflow-hidden md:[&>*:nth-child(n+5)]:hidden">
@@ -2964,6 +3039,7 @@ function CatalogDetailsContent({
     );
   }, [catalog, catalogCar, siblings, onSelectCatalogCar]);
 
+  const seeInMyCars = useSeeInMyCars(onClose);
   const boxes = useAssortmentSuggestions(shownId);
   const docked = useMinWidth(1180);
   /** Which panel sits beside the card, and whether it is out. Kept apart so it can slide shut still showing. */
@@ -3022,6 +3098,7 @@ function CatalogDetailsContent({
       heading={shelf.heading}
       cars={shelf.cars.map(catalogCarToDiecast)}
       currentId={shownId}
+      onSeeAll={() => seeInMyCars(shelf.heading)}
       onSelectCar={(picked) => {
         const match = shelf.cars.find((c) => c.car_id === picked.id);
         if (match) onSelectCatalogCar?.(match);
@@ -3146,7 +3223,7 @@ function CatalogDetailsContent({
       )}
       {hasPack && (
         <Panel title="What's Inside" className="col-span-full">
-          <CarInTheBoxTab packCarId={shown?.car_id} />
+          <CarInTheBoxTab packCarId={shown?.car_id} onOpenEntry={onSelectCatalogCar} />
         </Panel>
       )}
       <Panel title="Record" className="col-span-full">

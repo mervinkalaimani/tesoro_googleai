@@ -317,10 +317,15 @@ export function ChangeLog({
     return out;
   }, [shownEntries]);
 
-  const isYou = (e: Entry) => Boolean(e.actor_id && e.actor_id === user?.id);
+  const isMe = (e: Entry) => Boolean(e.actor_id && e.actor_id === user?.id);
+  // The catalogue is everybody's, so who changed an entry is named even when it
+  // was you; "You" is for your own collection.
+  const isYou = (e: Entry) => isMe(e) && e.source !== "catalogue";
   const whoName = (e: Entry) => {
     if (isYou(e)) return "You";
-    if (e.actor_name) return e.actor_name;
+    // First name only: the full name is more than a log line needs.
+    if (e.actor_name) return e.actor_name.trim().split(/\s+/)[0];
+    if (isMe(e)) return "You";
     return e.actor_id ? "Someone" : "System";
   };
 
@@ -369,6 +374,7 @@ export function ChangeLog({
     // other people are named.
     const you = isYou(e);
     const who = you ? null : <Bold>{whoName(e)}</Bold>;
+    const by = who ? <> by {who}</> : null;
     const verb = (w: string) => (you ? w[0].toUpperCase() + w.slice(1) : w);
     const keys = Object.keys(e.changes ?? {});
     // Verifying writes two columns; it reads as one act.
@@ -377,7 +383,8 @@ export function ChangeLog({
       const act = on ? "verified" : "removed the verification of";
       return single ? (
         <>
-          {who} {verb(act)}
+          {on ? "Verified" : "Verification removed"}
+          {by}
         </>
       ) : (
         <>
@@ -386,29 +393,18 @@ export function ChangeLog({
         </>
       );
     }
-    // A car's own log does not name the car: it is the page it is on.
+    // A car's own log does not name the car: it is the page it is on. Short:
+    // what happened, then by whom.
     if (single) {
-      if (e.action === "add") {
-        return (
-          <>
-            {who} {verb("added")}
-          </>
-        );
-      }
-      if (e.action === "delete") {
-        return (
-          <>
-            {who} {verb("deleted")}
-          </>
-        );
-      }
+      if (e.action === "add") return <>Added{by}</>;
+      if (e.action === "delete") return <>Deleted{by}</>;
       return keys.length === 1 ? (
         <>
-          {who} {verb("updated")} the <Bold>{label(keys[0])}</Bold>
+          <Bold>{label(keys[0])}</Bold> updated{by}
         </>
       ) : (
         <>
-          {who} {verb("updated")} {fieldsCount(e)}
+          {fieldsCount(e)} updated{by}
         </>
       );
     }
@@ -691,7 +687,9 @@ export function ChangeLog({
               </span>
 
               {/* The dotted rail the day's cards hang from. */}
-              <ol className="relative mt-3 space-y-3 pl-9 sm:pl-12">
+              <ol
+                className={cn("relative mt-3 pl-9 sm:pl-12", single ? "space-y-1.5" : "space-y-3")}
+              >
                 <span
                   aria-hidden
                   className="absolute bottom-3 left-2.5 top-0 border-l-2 border-dotted border-border"
@@ -718,13 +716,14 @@ export function ChangeLog({
                       }}
                       title="Show every field of this change"
                       className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-xl border bg-card p-3.5 shadow-sm transition-colors hover:border-primary/40",
+                        "flex cursor-pointer items-start gap-3 rounded-xl border bg-card shadow-sm transition-colors hover:border-primary/40",
+                        single ? "px-3 py-2" : "p-3.5",
                         open?.id === e.id
                           ? "border-primary/60 ring-1 ring-primary/30"
                           : "border-border/60",
                       )}
                     >
-                      {!isYou(e) && <Person name={whoName(e)} />}
+                      {!isYou(e) && !single && <Person name={whoName(e)} />}
                       <div className="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
                         {sentence(e)}
                         {outcome(e)}

@@ -36,6 +36,8 @@ import { downloadCsv, generateDiecastCsvTemplate } from "@/lib/csv";
 import { buildCarName } from "@/lib/car-name";
 import { deriveMonth } from "@/lib/date-utils";
 import { inrFull } from "@/lib/format";
+import { useCatalog } from "@/lib/catalog-store";
+import { findDuplicates } from "@/lib/duplicate";
 import { STATUSES, isInHand, isPreOrder, normaliseStatus } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
@@ -390,6 +392,7 @@ export function BulkAddCarsDialog({
 }) {
   const { addCar, bulkAddCars, updateCar } = useCarsActions();
   const cars = useCars();
+  const { catalog } = useCatalog();
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
   const open = isControlled ? controlledOpen : uncontrolledOpen;
@@ -571,6 +574,37 @@ export function BulkAddCarsDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [filled, shared, sharedKeys],
   );
+
+  /**
+   * The closest entry the catalogue already has for each row, by how much of
+   * the description agrees. Only worked out for a phone's accordions, which
+   * show it; the table has no room for it.
+   */
+  const catalogMatches = useMemo(() => {
+    const map = new Map<string, number>();
+    if (!isMobile) return map;
+    for (const r of rows) {
+      const hit = findDuplicates(
+        {
+          brand: valueOf(r, "brand"),
+          make: valueOf(r, "make"),
+          model: valueOf(r, "model"),
+          variant: valueOf(r, "variant"),
+          colour: valueOf(r, "colour"),
+          assortment: valueOf(r, "assortment"),
+          series: valueOf(r, "series"),
+          subSeries: valueOf(r, "subSeries"),
+          carNumber: valueOf(r, "carNumber"),
+          year: valueOf(r, "year"),
+        },
+        catalog,
+        { limit: 1 },
+      )[0];
+      if (hit) map.set(r.key, hit.match);
+    }
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, rows, shared, sharedKeys, catalog]);
 
   /**
    * Real-time preview of the unique Car IDs that will be assigned to each row,
@@ -838,9 +872,11 @@ export function BulkAddCarsDialog({
           </p>
         ) : isMobile ? (
           <Accordion
-            type="multiple"
-            value={openRows}
-            onValueChange={setOpenRows}
+            // One car open at a time: a phone has room for one form.
+            type="single"
+            collapsible
+            value={openRows[0] ?? ""}
+            onValueChange={(v) => setOpenRows(v ? [v] : [])}
             className="rounded-lg border border-border px-3"
           >
             {rows.map((r, i) => {
@@ -850,6 +886,14 @@ export function BulkAddCarsDialog({
                 <AccordionItem key={r.key} value={r.key}>
                   <AccordionTrigger className="gap-2 py-3 text-left hover:no-underline">
                     <span className="min-w-0 flex-1">
+                      {catalogMatches.has(r.key) && (
+                        <span
+                          title="The closest entry the catalogue already has"
+                          className="mb-1 inline-block rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold text-muted-foreground"
+                        >
+                          In catalogue · {catalogMatches.get(r.key)}% match
+                        </span>
+                      )}
                       <span className="block truncate text-sm font-semibold">
                         {name || `Car ${i + 1}`}
                       </span>
