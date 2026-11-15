@@ -67,7 +67,7 @@ const LABEL: Record<string, string> = {
   "Image URL": "Photo",
   image_url: "Photo",
   "Order Info": "Order info",
-  car_number: "Car number",
+  car_number: "Car #",
   sub_series: "Sub series",
   release_status: "Release status",
   synced_at: "Checked on",
@@ -442,6 +442,35 @@ export function ChangeLog({
   /** What a single-field update turned into, under the sentence like the status in a task log. */
   const outcome = (e: Entry) => {
     const keys = Object.keys(e.changes ?? {});
+    // One record's own log lays the fields out under its line, each with its
+    // before and after, instead of behind a card to open.
+    if (single && e.action === "edit" && e.changes?.synced_source === undefined) {
+      const shown = keys.filter((k) => !PHOTO_KEYS.has(k));
+      if (!shown.length) return null;
+      return (
+        <dl className="mt-2 space-y-1.5 border-t border-border/60 pt-2">
+          {shown.map((k) => (
+            <div
+              key={k}
+              className="grid grid-cols-[5.25rem_minmax(0,1fr)] items-start gap-x-1.5 text-xs"
+            >
+              <dt className="pt-0.5 font-semibold uppercase tracking-wider text-muted-foreground">
+                {label(k)}
+              </dt>
+              <dd className="flex flex-wrap items-center gap-1.5">
+                <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground line-through decoration-muted-foreground/40">
+                  {show(k, e.changes[k].from)}
+                </span>
+                <ArrowRight className="size-3 text-muted-foreground/60" />
+                <span className="rounded bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
+                  {show(k, e.changes[k].to)}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      );
+    }
     if (e.action !== "edit" || keys.length !== 1) return null;
     const k = keys[0];
     // "changed → changed" says nothing: the sentence already names the photo.
@@ -461,6 +490,9 @@ export function ChangeLog({
   };
 
   /** Every field of one change. */
+  /** On one record's own log everything is already laid out in the card. */
+  const canOpen = (_e: Entry) => !single;
+
   /** A card opens its change; the same card again closes it. */
   const toggleChange = (e: Entry) => {
     if (open?.id === e.id && view === "change") {
@@ -506,9 +538,17 @@ export function ChangeLog({
     const car = !single && entry.source === "car" ? byId.get(entry.row_key) : undefined;
     const showing = view === "car" && car ? "car" : "change";
     return (
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
-        <div className="flex items-start justify-between gap-3 border-b border-border/60 p-4">
-          <div className="min-w-0">
+      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+        {/* On one record's own log the card's line already says when and by whom,
+            so the panel is just the fields and a close button. */}
+        <div
+          className={cn(
+            single
+              ? "absolute right-2 top-2 z-10"
+              : "flex items-start justify-between gap-3 border-b border-border/60 p-4",
+          )}
+        >
+          <div className={cn("min-w-0", single && "hidden")}>
             {/* A car's own log is already on the car: no name or ID to repeat. */}
             {!single && (
               <h3 className="truncate text-sm font-semibold text-foreground">
@@ -682,42 +722,63 @@ export function ChangeLog({
         <div className="min-w-0 space-y-5">
           {days.map((d) => (
             <section key={d.key}>
-              <span className="inline-block rounded-full bg-muted px-3.5 py-1 text-sm font-medium text-muted-foreground">
+              {/* Like the letters in iOS Contacts: a full-width band that stays at the
+                  top until the next day's band pushes it off. */}
+              <div
+                className={cn(
+                  "sticky z-10 bg-background py-1.5 text-sm font-semibold text-muted-foreground",
+                  // In the side panel, run edge to edge across its padding, and stick
+                  // at -top-4: the panel has p-4, and sticking at 0 left that 1rem gap
+                  // above the band for cards to show through.
+                  single
+                    ? "-top-[calc(1rem+2px)] -mx-4 px-4 pt-[calc(0.375rem+2px)]"
+                    : "top-0 px-3",
+                )}
+              >
                 {d.label}
-              </span>
+              </div>
 
               {/* The dotted rail the day's cards hang from. */}
               <ol
-                className={cn("relative mt-3 pl-9 sm:pl-12", single ? "space-y-1.5" : "space-y-3")}
+                className={cn("relative mt-3", single ? "space-y-1.5" : "space-y-3 pl-9 sm:pl-12")}
               >
-                <span
-                  aria-hidden
-                  className="absolute bottom-3 left-2.5 top-0 border-l-2 border-dotted border-border"
-                />
+                {!single && (
+                  <span
+                    aria-hidden
+                    className="absolute bottom-3 left-2.5 top-0 border-l-2 border-dotted border-border"
+                  />
+                )}
                 {d.items.map((e) => (
                   <li key={e.id} className="relative">
-                    <span
-                      aria-hidden
-                      className="absolute -left-[1.6rem] top-1/2 size-3 -translate-y-1/2 rounded-full border-2 border-border bg-background sm:-left-[2.1rem]"
-                    />
-                    <span
-                      aria-hidden
-                      className="absolute -left-[1rem] top-1/2 w-3 -translate-y-1/2 border-t-2 border-dotted border-border sm:-left-[1.5rem] sm:w-5"
-                    />
+                    {!single && (
+                      <>
+                        <span
+                          aria-hidden
+                          className="absolute -left-[1.6rem] top-1/2 size-3 -translate-y-1/2 rounded-full border-2 border-border bg-background sm:-left-[2.1rem]"
+                        />
+                        <span
+                          aria-hidden
+                          className="absolute -left-[1rem] top-1/2 w-3 -translate-y-1/2 border-t-2 border-dotted border-border sm:-left-[1.5rem] sm:w-5"
+                        />
+                      </>
+                    )}
                     <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => toggleChange(e)}
+                      role={canOpen(e) ? "button" : undefined}
+                      tabIndex={canOpen(e) ? 0 : undefined}
+                      onClick={canOpen(e) ? () => toggleChange(e) : undefined}
                       onKeyDown={(ev) => {
-                        if (ev.key === "Enter" || ev.key === " ") {
+                        if (canOpen(e) && (ev.key === "Enter" || ev.key === " ")) {
                           ev.preventDefault();
                           toggleChange(e);
                         }
                       }}
-                      title="Show every field of this change"
+                      title={canOpen(e) ? "Show every field of this change" : undefined}
                       className={cn(
-                        "flex cursor-pointer items-start gap-3 rounded-xl border bg-card shadow-sm transition-colors hover:border-primary/40",
-                        single ? "px-3 py-2" : "p-3.5",
+                        "flex items-start gap-3 rounded-xl border bg-card shadow-sm transition-colors",
+                        canOpen(e) && "cursor-pointer hover:border-primary/40",
+                        single
+                          ? "rounded-2xl border-border/80 bg-muted/20 px-4 py-3 shadow-none"
+                          : "p-3.5",
                         open?.id === e.id
                           ? "border-primary/60 ring-1 ring-primary/30"
                           : "border-border/60",
