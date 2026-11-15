@@ -3041,25 +3041,40 @@ function CollectionSearch({
       type="button"
       onMouseDown={(e) => e.preventDefault()}
       onClick={() => pick(car)}
-      className="flex w-full flex-col items-start rounded px-2 py-1.5 text-left hover:bg-muted"
+      className="flex w-full items-center gap-3 rounded px-2 py-1.5 text-left hover:bg-muted"
     >
-      <span className="flex w-full min-w-0 items-center gap-1.5 text-sm font-medium">
-        <span className="truncate">{car.name || `${car.make} ${car.model}`}</span>
-        <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
-        {hint && (
-          <span className="ml-auto shrink-0 text-xs font-normal text-muted-foreground">{hint}</span>
+      <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-md bg-white">
+        {car.imageUrl && (
+          <img
+            src={car.imageUrl}
+            alt=""
+            loading="lazy"
+            className="size-full object-contain"
+            onError={(e) => (e.currentTarget.style.display = "none")}
+          />
         )}
       </span>
-      <span className="w-full truncate text-xs text-muted-foreground">
-        {[
-          car.brand,
-          car.assortment,
-          car.colour,
-          car.series,
-          car.carNumber ? `#${car.carNumber}` : null,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
+      <span className="flex min-w-0 flex-1 flex-col items-start">
+        <span className="flex w-full min-w-0 items-center gap-1.5 text-sm font-medium">
+          <span className="truncate">{car.name || `${car.make} ${car.model}`}</span>
+          <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
+          {hint && (
+            <span className="ml-auto shrink-0 text-xs font-normal text-muted-foreground">
+              {hint}
+            </span>
+          )}
+        </span>
+        <span className="w-full truncate text-xs text-muted-foreground">
+          {[
+            car.brand,
+            car.assortment,
+            car.colour,
+            car.series,
+            car.carNumber ? `#${car.carNumber}` : null,
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </span>
       </span>
     </button>
   );

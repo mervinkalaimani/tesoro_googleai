@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { CarThumb } from "@/components/car-thumb";
 import { useMemo, useState } from "react";
 import {
   Calendar,
@@ -10,6 +11,7 @@ import {
   Store,
   Truck,
   Filter,
+  Layers,
 } from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
@@ -58,6 +60,12 @@ export const Route = createFileRoute("/preorders")({
     </ProGate>
   ),
 });
+
+/** Red is for a date that has passed. */
+const lateClass = (raw: string) => {
+  const d = parseDMY(raw || "");
+  return d && d.getTime() < Date.now() - 864e5 ? "text-destructive" : "text-foreground";
+};
 
 /** Remaining balance for a pre-order row: car cost minus amount paid. */
 const balanceOf = (r: Diecast) => Math.max((r.spent || 0) - (r.paid || 0), 0);
@@ -115,9 +123,7 @@ function PreOrderFact({
 }) {
   return (
     <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
-      <dt className="truncate text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="truncate text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
       <dd
         className={`mt-0.5 truncate text-xs font-semibold tabular-nums ${className}`}
         title={value}
@@ -135,11 +141,14 @@ function PreOrderCard({
   onPay,
   onUpdateStatus,
   showSeller = true,
+  row = false,
 }: {
   car: Diecast;
   onOpen: () => void;
   onPay: () => void;
   onUpdateStatus: () => void;
+  /** One slim line: photo, name, the money, the actions. For inside an order. */
+  row?: boolean;
   /** Off inside a group, where the heading already names the seller. */
   showSeller?: boolean;
 }) {
@@ -150,25 +159,80 @@ function PreOrderCard({
     ? preOrderSubLine(car)
     : [car.brand, car.assortment, car.carNumber].filter(Boolean).join(" · ") || "—";
 
+  if (row)
+    return (
+      <article className="card-elevated flex flex-wrap items-center gap-x-4 gap-y-2 p-2.5">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="flex min-w-0 flex-1 basis-56 items-center gap-3 text-left"
+        >
+          <CarThumb
+            car={car}
+            className="size-12 shrink-0 rounded-lg border border-border/60 bg-white object-contain"
+          />
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-bold tracking-tight hover:text-primary">
+              {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+            </span>
+            <span className="block truncate text-xs text-muted-foreground">{sub}</span>
+          </span>
+        </button>
+        <dl className="flex items-center gap-5">
+          <PreOrderFact label="Cost" value={inrFull(car.spent || 0)} />
+          <PreOrderFact label="Deposit" value={inrFull(car.paid || 0)} />
+          <PreOrderFact
+            label="Balance"
+            value={settled ? "Fully paid" : inrFull(due)}
+            className={settled ? "text-emerald-500" : "text-amber-500"}
+          />
+        </dl>
+        <div className="flex items-center gap-2">
+          {!settled && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onPay}
+              className="h-8 gap-1.5 border-emerald-500/40 text-xs text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+            >
+              <IndianRupee className="size-3.5" />
+              Pay
+            </Button>
+          )}
+          <UpdateStatusButton onClick={onUpdateStatus} />
+        </div>
+      </article>
+    );
+
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
       {/* NAME FIRST */}
-      <button type="button" onClick={onOpen} className="px-4 pb-2 pt-3 text-left">
-        <div className="flex items-start justify-between gap-3">
-          <span className="min-w-0 truncate text-base font-bold tracking-tight hover:text-primary">
-            {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-          </span>
-          <span
-            className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${
-              settled
-                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                : "border-amber-500/40 bg-amber-500/10 text-amber-400"
-            }`}
-          >
-            {settled ? "Fully Paid" : "Pre-booked"}
-          </span>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex items-start gap-3 px-4 pb-2 pt-3 text-left"
+      >
+        <CarThumb
+          car={car}
+          className="size-14 shrink-0 rounded-lg border border-border/60 bg-white object-contain"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <span className="min-w-0 truncate text-base font-bold tracking-tight hover:text-primary">
+              {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+            </span>
+            <span
+              className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium ${
+                settled
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
+                  : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+              }`}
+            >
+              {settled ? "Fully Paid" : "Pre-booked"}
+            </span>
+          </div>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
         </div>
-        <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
       </button>
 
       {/* One 3-column grid for both rows, so the columns line up:
@@ -185,7 +249,7 @@ function PreOrderCard({
         <PreOrderFact
           label="Expected by"
           value={formatDayMonthYear(car.expectedDate) || car.transitInfo.trim() || "—"}
-          className="text-primary"
+          className={lateClass(car.expectedDate)}
           align="right"
         />
         <PreOrderFact label="Cost" value={inrFull(car.spent || 0)} />
@@ -258,6 +322,16 @@ function OrderGroupCard({
   onUpdateOrder: () => void;
 }) {
   const [carsOpen, setCarsOpen] = useState(false);
+  // The soonest date any car in the order is due.
+  const expectedRaw = (() => {
+    const dated = g.items
+      .map((c) => ({ c, t: parseDMY(c.expectedDate)?.getTime() ?? 0 }))
+      .filter((x) => x.t)
+      .sort((x, y) => x.t - y.t)[0];
+    const c = dated?.c ?? g.items.find((x) => (x.expectedDate || "").trim());
+    return c ? c.expectedDate : "";
+  })();
+  const expected = expectedRaw ? formatDayMonthYear(expectedRaw) || expectedRaw : "";
   const settled = g.due === 0;
 
   return (
@@ -273,6 +347,12 @@ function OrderGroupCard({
               <>
                 <span className="text-muted-foreground">·</span>
                 <span className="text-xs text-muted-foreground">Ordered {g.orderDate}</span>
+              </>
+            ) : null}
+            {expected ? (
+              <>
+                <span className="text-muted-foreground">·</span>
+                <span className={`text-xs ${lateClass(expectedRaw)}`}>Expected {expected}</span>
               </>
             ) : null}
           </p>
@@ -322,12 +402,13 @@ function OrderGroupCard({
         </button>
 
         {carsOpen && (
-          <div className="mt-3 grid gap-2 xl:grid-cols-2">
+          <div className="mt-3 grid gap-2">
             {g.items.map((c) => (
               <PreOrderCard
                 key={c.id}
                 car={c}
                 showSeller={false}
+                row
                 onOpen={() => onOpenCar(c)}
                 onPay={() => onPay(c)}
                 onUpdateStatus={() => onUpdateStatus(c)}
@@ -381,6 +462,35 @@ function OrderGroupCard({
   );
 }
 
+/** Items under headings, in the order each heading first appears. */
+function sectioned<T>(items: T[], key: ((x: T) => string) | null) {
+  if (!key) return [{ title: "", items }];
+  const map = new Map<string, T[]>();
+  for (const it of items) {
+    const k = key(it).trim() || "Unknown";
+    map.set(k, [...(map.get(k) ?? []), it]);
+  }
+  return [...map].map(([title, list]) => ({ title, items: list }));
+}
+
+const carKey = (by: string): ((c: Diecast) => string) | null =>
+  by === "model"
+    ? (c) => c.model
+    : by === "make"
+      ? (c) => c.make
+      : by === "seller"
+        ? (c) => c.seller
+        : null;
+
+function SectionHeading({ title, count }: { title: string; count: number }) {
+  return (
+    <h2 className="flex items-center gap-2 text-sm font-bold">
+      {title}
+      <span className="text-xs font-medium text-muted-foreground">{count}</span>
+    </h2>
+  );
+}
+
 function PreOrdersPage() {
   const { query } = useApp();
   const cars = useCars();
@@ -389,6 +499,21 @@ function PreOrdersPage() {
   const [sort, setSort] = useState<SortMode>("balance");
   const [dir, setDir] = useState<SortDir>("desc");
   const [grouping, setGrouping] = useState<Grouping>("car");
+  /** Headings the list is sectioned under; "none" is no headings. */
+  const [groupBy, setGroupBy] = useState("none");
+  const groupOpts =
+    grouping === "order"
+      ? [
+          { value: "none", label: "No grouping" },
+          { value: "seller", label: "Seller" },
+        ]
+      : [
+          { value: "none", label: "No grouping" },
+          { value: "model", label: "Model" },
+          { value: "make", label: "Make" },
+          { value: "seller", label: "Seller" },
+        ];
+  const activeGroupBy = groupOpts.some((o) => o.value === groupBy) ? groupBy : "none";
   const [payFor, setPayFor] = useState<Diecast | null>(null);
   const [statusFor, setStatusFor] = useState<Diecast | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -463,11 +588,14 @@ function PreOrdersPage() {
         due: items.reduce((s, r) => s + balanceOf(r), 0),
       });
     }
-    // Newest order first, which is the one most likely to still be moving.
+    // A sort the person chose is kept: the groups come out in the order their
+    // first car sits in `rows`. Untouched, newest order first, which is the one
+    // most likely to still be moving.
+    if (sort !== "balance") return out;
     return out.sort(
       (a, b) => t(b.orderDate) - t(a.orderDate) || a.orderId.localeCompare(b.orderId),
     );
-  }, [rows]);
+  }, [rows, sort]);
 
   const totalValue = rows.reduce((s, r) => s + (r.spent || 0), 0);
   const totalPaid = rows.reduce((s, r) => s + (r.paid || 0), 0);
@@ -572,6 +700,15 @@ function PreOrdersPage() {
                 ...sellerOpts.map((s) => ({ value: s, label: s })),
               ]}
             />
+            <FilterSelect
+              value={activeGroupBy}
+              onChange={setGroupBy}
+              icon={<Layers className="size-3.5" />}
+              label="Group by"
+              neutral="none"
+              iconOnly
+              options={groupOpts}
+            />
             <SortSelect
               value={sort}
               dir={dir}
@@ -605,31 +742,43 @@ function PreOrdersPage() {
           No pre-orders.
         </div>
       ) : grouping === "order" ? (
-        <div className="space-y-3">
-          {groups.map((g) => (
-            <OrderGroupCard
-              key={g.key}
-              g={g}
-              onOpenCar={(c) => open(c)}
-              onPay={(c) => setPayFor(c)}
-              onUpdateStatus={(c) => setStatusFor(c)}
-              onUpdateOrder={() => {
-                setBatchOrderId(g.orderId);
-                setBatchOpen(true);
-              }}
-            />
+        <div className="space-y-5">
+          {sectioned(groups, activeGroupBy === "seller" ? (g) => g.seller : null).map((sec) => (
+            <section key={sec.title} className="space-y-3">
+              {sec.title && <SectionHeading title={sec.title} count={sec.items.length} />}
+              {sec.items.map((g) => (
+                <OrderGroupCard
+                  key={g.key}
+                  g={g}
+                  onOpenCar={(c) => open(c)}
+                  onPay={(c) => setPayFor(c)}
+                  onUpdateStatus={(c) => setStatusFor(c)}
+                  onUpdateOrder={() => {
+                    setBatchOrderId(g.orderId);
+                    setBatchOpen(true);
+                  }}
+                />
+              ))}
+            </section>
           ))}
         </div>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
-          {rows.map((r, i) => (
-            <PreOrderCard
-              key={(r.id || "") + i}
-              car={r}
-              onOpen={() => open(r)}
-              onPay={() => setPayFor(r)}
-              onUpdateStatus={() => setStatusFor(r)}
-            />
+        <div className="space-y-5">
+          {sectioned(rows, carKey(activeGroupBy)).map((sec) => (
+            <section key={sec.title} className="space-y-3">
+              {sec.title && <SectionHeading title={sec.title} count={sec.items.length} />}
+              <div className="grid gap-3 lg:grid-cols-2">
+                {sec.items.map((r, i) => (
+                  <PreOrderCard
+                    key={(r.id || "") + i}
+                    car={r}
+                    onOpen={() => open(r)}
+                    onPay={() => setPayFor(r)}
+                    onUpdateStatus={() => setStatusFor(r)}
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       )}

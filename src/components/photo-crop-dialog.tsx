@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { hasAlpha } from "@/lib/car-photos";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,13 +10,49 @@ import {
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 
-const RATIO = 16 / 10; // the photo frame everywhere else
+const RATIO = 4 / 3; // the car details photo frame, so what you crop is what it shows
 const OUT_W = 1600;
 
 /**
  * Drag to move, wheel or slider to zoom, over a 16:10 frame; hands back the
  * cropped JPEG. "Use whole photo" skips the crop and returns the file as-is.
  */
+/**
+ * Black (or transparent-turned-black) bars around a photo become white, so the
+ * saved picture is filled edge to edge. Only runs when the photo's corners are
+ * black; the runs are walked inwards from each edge and stop at the card.
+ */
+function whitenBars(img: HTMLImageElement, c: HTMLCanvasElement, ctx: CanvasRenderingContext2D) {
+  const t = document.createElement("canvas");
+  t.width = t.height = 8;
+  const tc = t.getContext("2d", { willReadFrequently: true });
+  if (!tc) return;
+  tc.drawImage(img, 0, 0, 8, 8);
+  const corners = [0, 7].flatMap((x) => [0, 7].map((y) => tc.getImageData(x, y, 1, 1).data));
+  if (!corners.every((q) => q[3] < 20 || (q[0] < 20 && q[1] < 20 && q[2] < 20))) return;
+  let id: ImageData;
+  try {
+    id = ctx.getImageData(0, 0, c.width, c.height);
+  } catch {
+    return;
+  }
+  const d = id.data;
+  const bg = (i: number) =>
+    (d[i] < 20 && d[i + 1] < 20 && d[i + 2] < 20) ||
+    (d[i] > 235 && d[i + 1] > 235 && d[i + 2] > 235);
+  const white = (i: number) => (d[i] = d[i + 1] = d[i + 2] = 255);
+  const { width: w, height: h } = c;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w && bg((y * w + x) * 4); x++) white((y * w + x) * 4);
+    for (let x = w - 1; x >= 0 && bg((y * w + x) * 4); x--) white((y * w + x) * 4);
+  }
+  for (let x = 0; x < w; x++) {
+    for (let y = 0; y < h && bg((y * w + x) * 4); y++) white((y * w + x) * 4);
+    for (let y = h - 1; y >= 0 && bg((y * w + x) * 4); y--) white((y * w + x) * 4);
+  }
+  ctx.putImageData(id, 0, 0);
+}
+
 export function PhotoCropDialog({
   file,
   onDone,
@@ -94,6 +131,11 @@ export function PhotoCropDialog({
     } catch {
       return;
     }
+    // Background is white, or black when the corners are black (transparent
+    // PNGs and letterboxed shots).
+    const dark = [0, (w - 1) * 4, (h - 1) * w * 4, (h * w - 1) * 4].every(
+      (i) => d[i] < 20 && d[i + 1] < 20 && d[i + 2] < 20,
+    );
     let x0 = w,
       y0 = h,
       x1 = -1,
@@ -101,7 +143,10 @@ export function PhotoCropDialog({
     for (let y = 0; y < h; y++)
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
-        if (d[i + 3] > 20 && (d[i] < 235 || d[i + 1] < 235 || d[i + 2] < 235)) {
+        const bg = dark
+          ? d[i] < 20 && d[i + 1] < 20 && d[i + 2] < 20
+          : d[i] >= 235 && d[i + 1] >= 235 && d[i + 2] >= 235;
+        if (d[i + 3] > 20 && !bg) {
           if (x < x0) x0 = x;
           if (x > x1) x1 = x;
           if (y < y0) y0 = y;
@@ -109,8 +154,8 @@ export function PhotoCropDialog({
         }
       }
     if (x1 < 0) return; // all white: nothing to crop to
-    const cw = ((x1 - x0 + 1) / k) * 1.04;
-    const ch = ((y1 - y0 + 1) / k) * 1.04;
+    const cw = ((x1 - x0 + 1) / k) * 1.14;
+    const ch = ((y1 - y0 + 1) / k) * 1.14;
     const cx = (x0 + x1 + 1) / 2 / k;
     const cy = (y0 + y1 + 1) / 2 / k;
     const { bw: fw, bh: fh } = size();
@@ -136,13 +181,29 @@ export function PhotoCropDialog({
       c.width = OUT_W;
       c.height = Math.round(OUT_W / RATIO);
       const ctx = c.getContext("2d")!;
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, c.width, c.height);
       const k = c.width / bw;
+      // A PNG/WebP with transparency is saved as a PNG with the transparency
+      // kept: no white or black is put behind it.
+      const probe = document.createElement("canvas");
+      probe.width = probe.height = 64;
+      const pc = probe.getContext("2d", { willReadFrequently: true })!;
+      pc.drawImage(img, 0, 0, 64, 64);
+      const see = file?.type !== "image/jpeg" && hasAlpha(pc, 64, 64);
+      if (!see) {
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, c.width, c.height);
+      }
       ctx.drawImage(img, left * k, top * k, nat.w * s * k, nat.h * s * k);
+      if (!see) whitenBars(img, c, ctx);
       c.toBlob(
-        (b) => b && onDone(new File([b], "photo.jpg", { type: "image/jpeg" })),
-        "image/jpeg",
+        (b) =>
+          b &&
+          onDone(
+            see
+              ? new File([b], "photo.png", { type: "image/png" })
+              : new File([b], "photo.jpg", { type: "image/jpeg" }),
+          ),
+        see ? "image/png" : "image/jpeg",
         0.9,
       );
     };
@@ -151,7 +212,7 @@ export function PhotoCropDialog({
 
   return (
     <Dialog open={!!file} onOpenChange={(o) => !o && onCancel()}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg overflow-hidden [&>*]:min-w-0">
         <DialogHeader>
           <DialogTitle>Crop photo</DialogTitle>
         </DialogHeader>
@@ -221,8 +282,8 @@ export function PhotoCropDialog({
           Drag to move. Scroll or use the slider to zoom. The dashed box is what the blister view
           shows.
         </p>
-        <DialogFooter className="gap-2 sm:justify-between">
-          <div className="flex gap-1">
+        <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+          <div className="flex flex-wrap gap-1">
             <Button
               type="button"
               variant="ghost"
@@ -231,11 +292,22 @@ export function PhotoCropDialog({
             >
               Auto crop
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={!ready}
+              onClick={() => {
+                setZoom(1);
+                setPos({ x: 0, y: 0 });
+              }}
+            >
+              Fill
+            </Button>
             <Button type="button" variant="ghost" onClick={() => file && onDone(file)}>
               Use whole photo
             </Button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>

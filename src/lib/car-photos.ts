@@ -43,6 +43,17 @@ function isImage(file: File): boolean {
   return ACCEPTED_IMAGE_TYPES.includes(file.type);
 }
 
+/** True when any pixel is noticeably see-through. */
+export function hasAlpha(ctx: CanvasRenderingContext2D, w: number, h: number): boolean {
+  try {
+    const d = ctx.getImageData(0, 0, w, h).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] < 250) return true;
+  } catch {
+    /* tainted canvas: treat as opaque */
+  }
+  return false;
+}
+
 /**
  * Downscale and re-encode to JPEG.
  *
@@ -76,6 +87,12 @@ async function normalise(file: File, maxEdge = MAX_EDGE): Promise<Blob> {
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close?.();
 
+  // A PNG/WebP with see-through pixels stays a PNG: JPEG has no alpha, so it
+  // would fill the gaps with black.
+  if (file.type !== "image/jpeg" && hasAlpha(ctx, w, h)) {
+    const png = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    return png && png.size < file.size ? png : file;
+  }
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
   );

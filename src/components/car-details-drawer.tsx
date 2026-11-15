@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { brandKey, useBrandLogos } from "@/lib/brand-logos";
 import {
   BadgeCheck,
   BookOpen,
@@ -1301,10 +1302,12 @@ function PhoneFacts({
 }: {
   rows: readonly { items: readonly (readonly [string, string | null | undefined])[] }[];
 }) {
+  const logos = useBrandLogos();
   return (
     <div className="space-y-2">
       {rows.map((row, i) => {
-        const items = row.items.filter(([, v]) => (v || "").trim());
+        // Number is always drawn (as "-" when empty) so the Brand cell keeps its size.
+        const items = row.items.filter(([l, v]) => l === "Number" || (v || "").trim());
         if (items.length === 0) return null;
         return (
           // The cells share the row between them, so a fact that is missing
@@ -1314,11 +1317,31 @@ function PhoneFacts({
             className="grid gap-2"
             style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
           >
-            {items.map(([label, v]) => (
-              <Stat key={label} label={label} uniform>
-                <span title={v ?? undefined}>{(v || "").trim()}</span>
-              </Stat>
-            ))}
+            {items.map(([label, v]) => {
+              const logo =
+                label === "Brand"
+                  ? logos.find((l) => l.brand === brandKey(v || ""))?.image_url
+                  : null;
+              // A brand with a mark: the mark fills the card, centred, and
+              // whatever runs past the frame is cropped.
+              return logo ? (
+                <div
+                  key={label}
+                  title={(v || "").trim()}
+                  className="relative min-h-14 min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-transparent"
+                >
+                  <img
+                    src={logo}
+                    alt={(v || "").trim()}
+                    className="absolute inset-0 size-full bg-transparent object-cover object-center"
+                  />
+                </div>
+              ) : (
+                <Stat key={label} label={label} uniform>
+                  <span title={v ?? undefined}>{(v || "").trim() || "-"}</span>
+                </Stat>
+              );
+            })}
           </div>
         );
       })}

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Truck, Plus, Pencil, Store, ChevronDown, Filter } from "lucide-react";
+import { Truck, Plus, Pencil, Store, ChevronDown, Filter, Layers } from "lucide-react";
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import { RowListSkeleton } from "@/components/dashboard-skeletons";
 import { isInHand, isOpenOrder, normaliseStatus, statusRank, type Status } from "@/lib/status";
@@ -143,6 +143,16 @@ function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
   return [...s].sort((a, b) => a.localeCompare(b));
 }
 
+/** Shipments under their seller, sellers in the order they first appear. */
+function sectionsBySeller(list: Shipment[]) {
+  const map = new Map<string, Shipment[]>();
+  for (const x of list) {
+    const k = x.seller || "Unknown seller";
+    map.set(k, [...(map.get(k) ?? []), x]);
+  }
+  return [...map].map(([title, items]) => ({ title, items }));
+}
+
 function ShipmentCard({
   s,
   onEdit,
@@ -155,6 +165,10 @@ function ShipmentCard({
   onOpenCar: (car: Diecast) => void;
 }) {
   const [mobileCarsOpen, setMobileCarsOpen] = useState(false);
+  // A pre-order batch also says what has been paid and what is still owed.
+  const isPO = normaliseStatus(s.status) === "PO";
+  const paid = s.items.reduce((t, r) => t + (r.paid || 0), 0);
+  const balance = Math.max(s.value - paid, 0);
 
   return (
     <article className="card-elevated overflow-hidden">
@@ -178,7 +192,7 @@ function ShipmentCard({
 
         {/* The one place each date is said. The footer used to repeat the
             expected date in a sentence underneath the cars. */}
-        <dl className="grid grid-cols-3 gap-3">
+        <dl className={`grid grid-cols-3 gap-3 ${isPO ? "sm:grid-cols-5" : ""}`}>
           <HeaderFact label="Ordered" value={shortDate(s.orderDate)} />
           <HeaderFact
             label={s.delivered ? "Delivered" : "Expected"}
@@ -190,6 +204,14 @@ function ShipmentCard({
                 : undefined
             }
           />
+          {isPO && <HeaderFact label="Advance paid" value={inrFull(paid)} />}
+          {isPO && (
+            <HeaderFact
+              label="Balance"
+              value={balance > 0 ? inrFull(balance) : "Paid"}
+              className={balance > 0 ? "text-amber-500" : "text-emerald-500"}
+            />
+          )}
           <HeaderFact label="Total cost" value={inrFull(s.value)} align="right" />
         </dl>
       </header>
@@ -342,6 +364,8 @@ function OrdersPage() {
    *
    * Remembered, because it is a way of working rather than a one-off filter.
    */
+  /** Headings the shipments sit under: none, or one per seller. */
+  const [sectionBy, setSectionBy] = useState<"none" | "seller">("none");
   const [groupBy, setGroupBy] = useState<"shipping" | "order">(() => {
     try {
       return localStorage.getItem(GROUP_BY_KEY) === "order" ? "order" : "shipping";
@@ -578,6 +602,18 @@ function OrdersPage() {
                 ...sellerOpts.map((s) => ({ value: s, label: s })),
               ]}
             />
+            <FilterSelect
+              value={sectionBy}
+              onChange={(v) => setSectionBy(v as "none" | "seller")}
+              icon={<Layers className="size-3.5" />}
+              label="Group by"
+              neutral="none"
+              iconOnly
+              options={[
+                { value: "none", label: "No grouping" },
+                { value: "seller", label: "Seller" },
+              ]}
+            />
             <SortSelect
               value={mode}
               dir={dir}
@@ -623,20 +659,39 @@ function OrdersPage() {
       ) : asSheet ? (
         <OrdersSheet rows={filtered} onOpen={(car) => drawer.open(car)} />
       ) : (
-        <div className="space-y-3">
-          {shipments.map((s) => (
-            <ShipmentCard
-              key={s.key}
-              s={s}
-              onOpenCar={(car) => drawer.open(car)}
-              onEdit={() => {
-                setSelectedShippingId(s.shippingId);
-                setBatchOpen(true);
-              }}
-              onUpdateStatus={() =>
-                setReconcileFor({ shippingId: s.shippingId, seller: s.seller, items: s.items })
-              }
-            />
+        <div className="space-y-5">
+          {(sectionBy === "seller"
+            ? sectionsBySeller(shipments)
+            : [{ title: "", items: shipments }]
+          ).map((sec) => (
+            <section key={sec.title} className="space-y-3">
+              {sec.title && (
+                <h2 className="flex items-center gap-2 text-sm font-bold">
+                  {sec.title}
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {sec.items.length}
+                  </span>
+                </h2>
+              )}
+              {sec.items.map((s) => (
+                <ShipmentCard
+                  key={s.key}
+                  s={s}
+                  onOpenCar={(car) => drawer.open(car)}
+                  onEdit={() => {
+                    setSelectedShippingId(s.shippingId);
+                    setBatchOpen(true);
+                  }}
+                  onUpdateStatus={() =>
+                    setReconcileFor({
+                      shippingId: s.shippingId,
+                      seller: s.seller,
+                      items: s.items,
+                    })
+                  }
+                />
+              ))}
+            </section>
           ))}
           {shipments.length === 0 && (
             <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
