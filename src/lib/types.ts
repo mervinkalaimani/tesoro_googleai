@@ -29,6 +29,8 @@ export type Diecast = {
   carNumber: string;
   /** Which case or mix this one came in, e.g. "2026 K Case". Per car, not per casting. */
   caseNumber?: string;
+  /** The id of the box row this car came out of, when it was filed as one of a pack's cars. */
+  packOf?: string;
   colour: string;
   type: string;
   brand: string;

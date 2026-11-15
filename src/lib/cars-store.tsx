@@ -831,7 +831,14 @@ export function CarsProvider({ children }: { children: ReactNode }) {
       // Numbered as a batch, so two cars sharing a brand and assortment cannot
       // both claim the same number. Rows that arrive with a real ID — a CSV
       // re-import, say — keep the one they came with.
-      const identified = assignCarIds(newCars, cars);
+      const numbered = assignCarIds(newCars, cars);
+      // A car filed inside a box in this same batch cannot name the box yet — its
+      // ID is only just worked out above — so it says "@0" for the first row of
+      // the batch, "@1" for the second, and the real ID goes in here.
+      const identified = numbered.map((c) => {
+        const at = /^@(\d+)$/.exec(c.packOf ?? "");
+        return at ? { ...c, packOf: numbered[Number(at[1])]?.id } : c;
+      });
       // Same rule as a single add: rows that came with an ID keep it, the rest
       // are numbered from the seller and dates — and numbering them can move
       // existing orders, so the writes are whatever that returns.

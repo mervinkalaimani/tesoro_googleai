@@ -20,6 +20,7 @@ export type TesoroRawRow = {
   "Car ID"?: string | null;
   "Catalog ID"?: string | null;
   "Case Number"?: string | null;
+  "Pack Of"?: string | null;
   Name?: string | null;
   Make?: string | null;
   Model?: string | null;
@@ -155,6 +156,9 @@ export function diecastToTesoroRaw(car: Diecast): TesoroRawRow {
   if (typeof car.sno === "number" && Number.isFinite(car.sno)) {
     row.SNO = car.sno;
   }
+  // Only sent when there is a box, so an ordinary car saves exactly as it did
+  // before the column existed, migration run or not.
+  if (car.packOf) row["Pack Of"] = car.packOf;
   return row;
 }
 
@@ -228,6 +232,7 @@ export function tesoroRawToDiecast(row: TesoroRawRow): Diecast {
     subSeries: String(row["Sub Series"] || catalogMatch?.sub_series || "").trim(),
     carNumber: String(row["Car Number"] || catalogMatch?.car_number || "").trim(),
     caseNumber: String(row["Case Number"] || "").trim() || undefined,
+    packOf: String(row["Pack Of"] || "").trim() || undefined,
     colour: String(row.Colour || catalogMatch?.colour || "").trim(),
     type,
     brand: String(row.Brand || catalogMatch?.brand || "").trim(),

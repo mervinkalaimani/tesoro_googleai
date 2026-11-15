@@ -530,6 +530,7 @@ export function CarFormDialog({
   const [scanOpen, setScanOpen] = useState(false);
   /** The several-cars scanner, which ends in the bulk add table. */
   const [multiScanOpen, setMultiScanOpen] = useState(false);
+  const [packScanOpen, setPackScanOpen] = useState(false);
   useEffect(() => {
     if (open && startWithScan && scansRemaining !== 0) setScanOpen(true);
   }, [open, startWithScan, scansRemaining]);
@@ -2742,6 +2743,31 @@ export function CarFormDialog({
                       Up to 6 in one photo, one scan each
                     </span>
                   </button>
+                  <button
+                    type="button"
+                    // One photo of a 5-pack or 10-pack: the box is saved with its
+                    // cars inside it, for a single scan.
+                    disabled={scansRemaining === 0}
+                    onClick={() => setPackScanOpen(true)}
+                    title={
+                      scansRemaining === 0
+                        ? "No scans left this month"
+                        : "Read a whole multi-car pack from one photo"
+                    }
+                    className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-semibold">
+                      {scansRemaining === 0 ? (
+                        <Lock className="size-4 text-muted-foreground" />
+                      ) : (
+                        <Layers className="size-4 text-primary" />
+                      )}
+                      Scan a pack
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      A 5-pack or 10-pack, one scan
+                    </span>
+                  </button>
                   {onSwitchToBulk && (
                     <button
                       type="button"
@@ -2812,6 +2838,7 @@ export function CarFormDialog({
 
       {/* Up to six cars from one photograph; the ones ticked open the bulk table. */}
       <ImageSearchDialog open={multiScanOpen} onOpenChange={setMultiScanOpen} several />
+      <ImageSearchDialog open={packScanOpen} onOpenChange={setPackScanOpen} pack />
 
       {/* Filing a car that goes inside the pack you are describing. Searching
           the catalogue is no help when the car in the box has never been

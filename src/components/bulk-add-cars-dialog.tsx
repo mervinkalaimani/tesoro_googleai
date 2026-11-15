@@ -39,6 +39,7 @@ import { inrFull } from "@/lib/format";
 import { useCatalog } from "@/lib/catalog-store";
 import { findDuplicates } from "@/lib/duplicate";
 import { STATUSES, isInHand, isPreOrder, normaliseStatus } from "@/lib/status";
+import { isPackAssortment } from "@/lib/pack-assortments";
 import type { Diecast } from "@/lib/types";
 
 type FieldKey =
@@ -369,6 +370,7 @@ export function BulkAddCarsDialog({
   onOpenChange,
   seed,
   scanned,
+  pack = false,
   onSwitchToUpload,
 }: {
   trigger?: ReactNode;
@@ -387,6 +389,12 @@ export function BulkAddCarsDialog({
    * status, order date) is typed once, and what each car cost is typed per row.
    */
   scanned?: Parameters<typeof rowFromScan>[0][];
+  /**
+   * The scanned cars came out of one multipack. Saving files the box as a row
+   * of its own — it is what was paid for, so it carries the price — and each
+   * car as a row inside it that costs nothing separately.
+   */
+  pack?: boolean;
   /** Hands off to the CSV importer: a spreadsheet is a batch like any other. */
   onSwitchToUpload?: () => void;
 }) {
@@ -410,6 +418,9 @@ export function BulkAddCarsDialog({
   const isMobile = useIsMobile();
   const [openRows, setOpenRows] = useState<string[]>([]);
   const [draftReady, setDraftReady] = useState(false);
+  /** What the box cost, and what it says it is worth, when the batch is a pack. */
+  const [packCost, setPackCost] = useState("");
+  const [packMrp, setPackMrp] = useState("");
 
   // Ten half-filled rows are the worst thing in this app to lose, and a phone
   // going to standby is enough to lose them: a backgrounded tab gets evicted
@@ -426,6 +437,8 @@ export function BulkAddCarsDialog({
       setShared(defaultShared());
       const fromScan = scanned.map(rowFromScan);
       setRows(fromScan);
+      setPackCost("");
+      setPackMrp("");
       setOpenRows(fromScan[0] ? [fromScan[0].key] : []);
       setRestored(false);
       setDraftReady(true);
@@ -475,8 +488,20 @@ export function BulkAddCarsDialog({
     writeDraft<BulkDraft>(BULK_DRAFT_KEY, { rows, shared, sharedKeys: [...sharedKeys] });
   }, [open, draftReady, rows, shared, sharedKeys]);
 
-  const sharedFields = useMemo(() => FIELDS.filter((f) => sharedKeys.has(f.key)), [sharedKeys]);
-  const perCarFields = useMemo(() => FIELDS.filter((f) => !sharedKeys.has(f.key)), [sharedKeys]);
+  // A pack's price is the box's, typed once above the cars, so the cars have no
+  // cost or MRP column of their own to fill in.
+  const fieldList = useMemo(
+    () => (pack ? FIELDS.filter((f) => f.key !== "cost" && f.key !== "mrp") : FIELDS),
+    [pack],
+  );
+  const sharedFields = useMemo(
+    () => fieldList.filter((f) => sharedKeys.has(f.key)),
+    [fieldList, sharedKeys],
+  );
+  const perCarFields = useMemo(
+    () => fieldList.filter((f) => !sharedKeys.has(f.key)),
+    [fieldList, sharedKeys],
+  );
 
   const toggleShared = (key: FieldKey) =>
     setSharedKeys((prev) => {
@@ -668,8 +693,9 @@ export function BulkAddCarsDialog({
         const base = makeBlankCar();
         // The ISO row this came from, if it is still there to update.
         const source = r.isoId ? (cars.find((c) => c.id === r.isoId) ?? null) : null;
-        const cost = num(valueOf(r, "cost"));
-        const mrp = num(valueOf(r, "mrp"));
+        // In a pack the box was bought, not its cars.
+        const cost = pack ? 0 : num(valueOf(r, "cost"));
+        const mrp = pack ? 0 : num(valueOf(r, "mrp"));
         const status = normaliseStatus(valueOf(r, "status")) || "In Hand";
         const orderDate = valueOf(r, "orderDate") || base.orderDate;
         const month = deriveMonth(orderDate);
@@ -678,6 +704,8 @@ export function BulkAddCarsDialog({
           ...base,
           // Converting keeps the row's identity so it moves status in place.
           ...(source ? { id: source.id, sno: source.sno } : {}),
+          // The first row of the batch is the box, so "@0" is its ID once numbered.
+          ...(pack ? { packOf: "@0" } : {}),
           make: valueOf(r, "make").trim(),
           model: valueOf(r, "model").trim(),
           variant: valueOf(r, "variant").trim(),
@@ -688,7 +716,11 @@ export function BulkAddCarsDialog({
           series: valueOf(r, "series").trim(),
           subSeries: valueOf(r, "subSeries").trim(),
           carNumber: valueOf(r, "carNumber").trim(),
-          assortment: valueOf(r, "assortment").trim(),
+          // "5 Pack" names the box, not the car inside it.
+          assortment:
+            pack && isPackAssortment(valueOf(r, "assortment"))
+              ? ""
+              : valueOf(r, "assortment").trim(),
           size: valueOf(r, "size").trim() || base.size,
           seller: valueOf(r, "seller").trim(),
           status,
@@ -712,12 +744,46 @@ export function BulkAddCarsDialog({
         }
       }
 
+      if (pack && toAdd.length > 0) {
+        const first = filled[0];
+        const n = toAdd.length;
+        const brands = new Set(toAdd.map((c) => c.brand).filter(Boolean));
+        const makes = new Set(toAdd.map((c) => c.make).filter(Boolean));
+        const brand = brands.size === 1 ? [...brands][0] : "";
+        const status = toAdd[0].status;
+        const orderDate = toAdd[0].orderDate;
+        const month = deriveMonth(orderDate);
+        const spent = num(packCost);
+        const base = makeBlankCar();
+        const box: Diecast = {
+          ...base,
+          brand,
+          make: makes.size === 1 ? [...makes][0] : "Assorted",
+          model: `${n} Pack`,
+          assortment: `${n} Pack`,
+          series: toAdd[0].series,
+          size: toAdd[0].size,
+          seller: toAdd[0].seller,
+          status,
+          spent,
+          mrp: num(packMrp),
+          ...paymentOf(valueOf(first, "payment"), valueOf(first, "advance"), spent, status),
+          orderDate,
+          expectedDate: toAdd[0].expectedDate,
+          orderMonth: month || base.orderMonth,
+          date: isInHand(status) ? orderDate : "",
+          month: isInHand(status) ? month || base.month : "",
+        };
+        box.name = [brand, `${n} Pack`].filter(Boolean).join(" ");
+        toAdd.unshift(box);
+      }
+
       let addedCars: Diecast[] = [];
       if (toAdd.length > 0) {
         addedCars = bulkAddCars(toAdd);
       }
 
-      const added = filled.length - converted;
+      const added = filled.length - converted + (pack && toAdd.length ? 1 : 0);
       const assignedIds = addedCars.map((c) => c.id).filter(Boolean);
       const idSummary =
         assignedIds.length > 0
@@ -728,7 +794,11 @@ export function BulkAddCarsDialog({
 
       toast.success(
         [
-          added ? `Added ${added} car${added === 1 ? "" : "s"}${idSummary}` : "",
+          added
+            ? pack
+              ? `Added the pack and its ${added - 1} car${added === 2 ? "" : "s"}${idSummary}`
+              : `Added ${added} car${added === 1 ? "" : "s"}${idSummary}`
+            : "",
           converted ? `${converted} moved off your ISO list` : "",
         ]
           .filter(Boolean)
@@ -759,7 +829,7 @@ export function BulkAddCarsDialog({
             <div className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary">
               <Layers className="size-4" />
             </div>
-            <DialogTitle>Add cars in bulk</DialogTitle>
+            <DialogTitle>{pack ? "Add a pack" : "Add cars in bulk"}</DialogTitle>
           </div>
           <DialogDescription>
             {isMobile
@@ -823,7 +893,7 @@ export function BulkAddCarsDialog({
             Same for all — click a field to move it in or out
           </h3>
           <div className="flex flex-wrap gap-1.5">
-            {FIELDS.map((f) => {
+            {fieldList.map((f) => {
               const on = sharedKeys.has(f.key);
               return (
                 <button
@@ -864,6 +934,42 @@ export function BulkAddCarsDialog({
             </div>
           )}
         </section>
+
+        {pack && (
+          <section className="space-y-3 rounded-lg border border-border p-3">
+            <h3 className="text-xs uppercase tracking-wider text-muted-foreground">
+              The pack — one box, with the cars below inside it
+            </h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk-pack-cost">Paid for the pack</Label>
+                <Input
+                  id="bulk-pack-cost"
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="999"
+                  value={packCost}
+                  onChange={(e) => setPackCost(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="bulk-pack-mrp">Pack MRP</Label>
+                <Input
+                  id="bulk-pack-mrp"
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="1199"
+                  value={packMrp}
+                  onChange={(e) => setPackMrp(e.target.value)}
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The box is saved with this price. Each car inside is saved too, linked to the box, and
+              costs nothing of its own.
+            </p>
+          </section>
+        )}
 
         {perCarFields.length === 0 ? (
           <p className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">

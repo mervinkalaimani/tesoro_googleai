@@ -82,6 +82,36 @@ Do not invent or guess randomly.`;
 /** The cap on one photograph, and so on what one multi-car scan can cost. */
 const MAX_CARS = 6;
 
+/** One pack holds up to this many cars (Hot Wheels sells 10-packs). */
+const PACK_MAX = 10;
+
+const PACK_PROMPT = `You are an expert die-cast model car cataloguer for a collector's database.
+
+The image shows ONE multi-car pack: a single box or blister holding several die-cast cars, such as a Hot Wheels
+or Matchbox 5-pack, 2-pack, 10-pack or Team Transport set. List every car inside the pack, one entry per car,
+left to right and then top to bottom, and count them first. Include cars that are small, at an angle or only
+partly legible; leave uncertain fields as empty strings rather than leaving a car out. At most ${PACK_MAX} cars.
+
+Every car in the pack shares the same brand and the pack's series if one is printed. Each car has its own make,
+model, variant, colour, year, type and, if printed, carNumber. Never put the pack's name ("5 Pack", "10 Pack",
+"Team Transport") in a car's assortment: that is the box's name, not the car's.
+
+For every car, extract these fields:
+- make: the real-world automotive manufacturer (e.g. Nissan, Porsche, Ford). Never the toy brand.
+- model: the base vehicle model name only (e.g. Skyline, Supra, 911).
+- variant: trim or sub-designation (e.g. GT-R, R34, GT3, LBWK).
+- year: real car model year or packaging year if printed. Four digits.
+- colour: the primary body colour and livery finish as a collector describes it.
+- type: body style/category (e.g. Supercar, Race Car, Classic, JDM, Muscle, SUV, Truck).
+- brand: die-cast manufacturer / toy brand (e.g. Hot Wheels, Matchbox).
+- assortment: the product line of the car itself (e.g. Mainline, Premium); empty if the pack does not say.
+- series: named series or collection printed on the pack.
+- subSeries: narrower run or sub-series if applicable.
+- carNumber: the car's own number within the pack, exactly as printed (e.g. "3/5"), else empty.
+- size: scale, usually "1:64".
+
+Return an empty string for any field you cannot determine. Do not invent or guess randomly.`;
+
 const MULTI_PROMPT = `You are an expert die-cast model car cataloguer for a collector's database.
 
 The image shows SEVERAL die-cast cars at once, laid out together: blister cards, boxes, loose models, or a mix.
@@ -128,6 +158,7 @@ async function scanViaOmniRoute(
   base: string,
   image: { mimeType: string; data: string },
   multi = false,
+  pack = false,
 ): Promise<{ fields?: Record<string, unknown>; model: string; error?: string }> {
   const model = process.env["OMNIROUTE_MODEL"] || "auto";
   const apiKey = process.env["OMNIROUTE_API_KEY"];
@@ -151,7 +182,7 @@ async function scanViaOmniRoute(
               {
                 type: "text",
                 text: multi
-                  ? `${MULTI_PROMPT}
+                  ? `${pack ? PACK_PROMPT : MULTI_PROMPT}
 
 Reply with JSON only: an object with the key "count" (how many cars you can see) and then the key "cars", holding an array. Each item has exactly these keys: ${SCAN_FIELDS.join(", ")}.`
                   : `${PROMPT}
@@ -279,13 +310,21 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function readBody(raw: unknown): { mimeType: string; data: string; multi: boolean } | null {
+function readBody(
+  raw: unknown,
+): { mimeType: string; data: string; multi: boolean; pack: boolean } | null {
   if (!raw || typeof raw !== "object") return null;
-  const { mimeType, data, multi } = raw as { mimeType?: unknown; data?: unknown; multi?: unknown };
+  const { mimeType, data, multi, pack } = raw as {
+    mimeType?: unknown;
+    data?: unknown;
+    multi?: unknown;
+    pack?: unknown;
+  };
   if (typeof mimeType !== "string" || typeof data !== "string") return null;
   if (!/^image\/(jpeg|png|webp)$/.test(mimeType)) return null;
   if (!data || data.length > MAX_BASE64) return null;
-  return { mimeType, data, multi: multi === true };
+  // A pack is read as a list of cars, so it is a multi read with another prompt.
+  return { mimeType, data, multi: multi === true || pack === true, pack: pack === true };
 }
 
 /** How many cars the model said it could see, which it is asked for before it lists them. */
@@ -295,17 +334,17 @@ function seenFrom(parsed: unknown): number {
 }
 
 /** A reply that counted more cars than it described, short of the most one photograph can return. */
-const incomplete = (read: number, seen: number) => seen > read && read < MAX_CARS;
+const incomplete = (read: number, seen: number, cap = MAX_CARS) => seen > read && read < cap;
 
 /** Each car the reply listed, cleaned, with the ones that say nothing about a car dropped. */
-function carsFrom(parsed: unknown): ScanFields[] {
+function carsFrom(parsed: unknown, cap = MAX_CARS): ScanFields[] {
   const list = (parsed as { cars?: unknown } | null)?.cars;
   if (!Array.isArray(list)) return [];
   return list
     .filter((c): c is Record<string, unknown> => Boolean(c) && typeof c === "object")
     .map(cleanFields)
     .filter((c) => Object.values(c).some(Boolean))
-    .slice(0, MAX_CARS);
+    .slice(0, cap);
 }
 
 function cleanFields(parsed: Record<string, unknown>): ScanFields {
@@ -390,10 +429,14 @@ async function handler({ request }: { request: Request }) {
     console.log(`[scan-car] multi model=${model} seen=${seen} read=${cars.length}`);
     if (!best || cars.length > best.cars.length) best = { cars, seen, model };
   };
+  const cap = image.pack ? PACK_MAX : MAX_CARS;
   const bestReply = async () => {
     const b = best!;
     return json({
-      ...(await payForCars(caller.token, b.cars)),
+      // One pack is one scan, however many cars are inside it.
+      ...(image.pack
+        ? { cars: b.cars, found: b.cars.length, trimmed: false }
+        : await payForCars(caller.token, b.cars)),
       seen: b.seen,
       modelUsed: b.model,
     });
@@ -401,15 +444,15 @@ async function handler({ request }: { request: Request }) {
 
   // The router first, when there is one.
   if (omniBase) {
-    const attempt = await scanViaOmniRoute(omniBase, image, image.multi);
+    const attempt = await scanViaOmniRoute(omniBase, image, image.multi, image.pack);
     if (attempt.fields) {
       if (image.multi) {
-        const cars = carsFrom(attempt.fields);
+        const cars = carsFrom(attempt.fields, cap);
         const seen = seenFrom(attempt.fields);
         if (cars.length) {
           consider(cars, seen, `omniroute:${attempt.model}`);
           // Counted more than it listed, and there is another reader to ask.
-          if (!(key && incomplete(cars.length, seen))) return bestReply();
+          if (!(key && incomplete(cars.length, seen, cap))) return bestReply();
           lastError = "The first reading missed some of the cars.";
         } else {
           lastError = "No cars could be read in that photograph.";
@@ -441,7 +484,7 @@ async function handler({ request }: { request: Request }) {
         model,
         contents: {
           parts: [
-            { text: image.multi ? MULTI_PROMPT : PROMPT },
+            { text: image.pack ? PACK_PROMPT : image.multi ? MULTI_PROMPT : PROMPT },
             { inlineData: { mimeType: image.mimeType, data: image.data } },
           ],
         },
@@ -503,15 +546,15 @@ async function handler({ request }: { request: Request }) {
   /** Whether a reading is good enough to stop waiting for the others. */
   const complete = (r: { parsed: Record<string, unknown> }) => {
     if (!image.multi) return true;
-    const cars = carsFrom(r.parsed);
-    return cars.length > 0 && !incomplete(cars.length, seenFrom(r.parsed));
+    const cars = carsFrom(r.parsed, cap);
+    return cars.length > 0 && !incomplete(cars.length, seenFrom(r.parsed), cap);
   };
 
   const run = await hedged(modelsToTry, ask, complete, HEDGE_AFTER_MS);
 
   if (image.multi) {
     for (const r of run.results) {
-      const cars = carsFrom(r.parsed);
+      const cars = carsFrom(r.parsed, cap);
       if (cars.length) consider(cars, seenFrom(r.parsed), r.model);
     }
     // The fullest reading from whichever models answered.

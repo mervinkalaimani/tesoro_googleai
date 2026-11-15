@@ -712,6 +712,10 @@ function CarPopupContent({
 
   const { pack } = usePack(car.catalogId);
   const hasPack = Boolean(pack?.is_multipack);
+  // The cars you filed as inside this box (scanned in as a pack), or the box
+  // this car came out of.
+  const ownedInside = cars.filter((c) => c.packOf && c.packOf === car.id);
+  const packBox = car.packOf ? cars.find((c) => c.id === car.packOf) : undefined;
 
   /**
    * What else there is to look at: one shelf, by the rule in `moreFrom` —
@@ -888,6 +892,16 @@ function CarPopupContent({
       {car.caseNumber && (
         <Panel title="Specification">
           <CarDetailsTab car={car} hasCondition={false} compact />
+        </Panel>
+      )}
+      {ownedInside.length > 0 && (
+        <Panel title="Your cars in this pack" className="col-span-full">
+          <OwnedPackCars cars={ownedInside} onOpen={onSelectCar} />
+        </Panel>
+      )}
+      {packBox && (
+        <Panel title="Came in a pack" className="col-span-full">
+          <OwnedPackCars cars={[packBox]} onOpen={onSelectCar} />
         </Panel>
       )}
       {hasPack && (
@@ -1605,6 +1619,25 @@ function CarDetailsTab({
  * The catalogue ID rides on the right because that is the part you would go
  * looking up; the name is what you read.
  */
+/** Owned rows of a pack, each one opening that car. */
+function OwnedPackCars({ cars, onOpen }: { cars: Diecast[]; onOpen?: (car: Diecast) => void }) {
+  return (
+    <div className="min-w-0">
+      {cars.map((c) => (
+        <button
+          key={c.id}
+          type="button"
+          onClick={() => onOpen?.(c)}
+          className="flex w-full cursor-pointer items-baseline justify-between gap-4 border-b border-border/50 py-3 text-left transition-colors last:border-b-0 hover:text-primary"
+        >
+          <span className="min-w-0 truncate text-[15px] font-bold text-foreground">{c.name}</span>
+          <span className="shrink-0 font-mono text-xs text-muted-foreground">{c.id}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function CarInTheBoxTab({
   packCarId,
   onOpenEntry,

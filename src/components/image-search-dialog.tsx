@@ -48,6 +48,12 @@ interface ImageSearchDialogProps {
    * button opened the dialog, so there is no switch to miss inside it.
    */
   several?: boolean;
+  /**
+   * The photograph is one multi-car pack, as a Hot Wheels or Matchbox 5-pack.
+   * Every car in it is read for one scan, and the batch is saved as the box
+   * with the cars inside it.
+   */
+  pack?: boolean;
 }
 
 export type ExtractedAttributes = {
@@ -76,8 +82,9 @@ export function ImageSearchDialog({
   open,
   onOpenChange,
   several: wantsSeveral = false,
+  pack = false,
 }: ImageSearchDialogProps) {
-  const several = wantsSeveral;
+  const several = wantsSeveral || pack;
   // On a phone the cars open as cards to edit, not as a table to add to.
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
@@ -261,7 +268,7 @@ export function ImageSearchDialog({
       const res = await fetch("/api/scan-car", {
         method: "POST",
         headers: { "content-type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ ...imagePayload, multi: several }),
+        body: JSON.stringify({ ...imagePayload, multi: several, pack }),
       });
 
       const data = (await res.json().catch(() => null)) as {
@@ -298,7 +305,9 @@ export function ImageSearchDialog({
           );
         } else {
           toast.success(
-            `${list.length} ${list.length === 1 ? "car" : "cars"} found: ${list.length} ${list.length === 1 ? "scan" : "scans"} used`,
+            pack
+              ? `${list.length} ${list.length === 1 ? "car" : "cars"} found in the pack: 1 scan used`
+              : `${list.length} ${list.length === 1 ? "car" : "cars"} found: ${list.length} ${list.length === 1 ? "scan" : "scans"} used`,
           );
         }
         return;
@@ -505,7 +514,7 @@ export function ImageSearchDialog({
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
-                  {several ? "Scan several cars" : "Scan to Search"}
+                  {pack ? "Scan a pack" : several ? "Scan several cars" : "Scan to Search"}
                   {/* Pushed to the far end: what it is called is a label on the
                     feature, not the next word of the title. */}
                   <span className="ml-auto flex shrink-0 items-center gap-2">
@@ -521,9 +530,11 @@ export function ImageSearchDialog({
                   </span>
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-left text-xs text-muted-foreground">
-                  {several
-                    ? "Photograph up to 6 cars together to add them in one go. Each car found takes one scan."
-                    : "Scan or upload an image to identify the car and see if you have it in your collection."}
+                  {pack
+                    ? "Photograph one 5-pack, 10-pack or other multi-car pack. It is added as one box with every car inside it, for a single scan."
+                    : several
+                      ? "Photograph up to 6 cars together to add them in one go. Each car found takes one scan."
+                      : "Scan or upload an image to identify the car and see if you have it in your collection."}
                 </DialogDescription>
                 {left !== null && (
                   <p className="mt-1 text-left text-xs text-muted-foreground">
@@ -867,7 +878,11 @@ export function ImageSearchDialog({
                           onClick={sendToBulk}
                           className="gap-1.5"
                         >
-                          {narrow ? `Review ${picked.size}` : `Add ${picked.size} to bulk add`}
+                          {pack
+                            ? "Review the pack"
+                            : narrow
+                              ? `Review ${picked.size}`
+                              : `Add ${picked.size} to bulk add`}
                           <ArrowRight className="size-4" />
                         </Button>
                       </div>
@@ -1026,6 +1041,7 @@ export function ImageSearchDialog({
           if (!v) setBulkCars(null);
         }}
         scanned={bulkCars ?? undefined}
+        pack={pack}
       />
     </>
   );
