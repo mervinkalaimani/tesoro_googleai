@@ -12,7 +12,7 @@ import { formatDayMonthYear, inrFull, inrPriceFull } from "@/lib/format";
 import { ChaseMark } from "@/components/car-marks";
 import { StarRating } from "@/components/star-rating";
 import type { Diecast } from "@/lib/types";
-import { useCarsActions, useCars } from "@/lib/cars-store";
+import { useCarsActions, useCars, makeBlankCar } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
 import { carDraftHasContent } from "@/lib/draft-content";
 import { heldLabel } from "@/lib/held";
@@ -59,7 +59,7 @@ import { boxSiblings } from "@/lib/casting-group";
 import { catalogColours } from "@/lib/catalog";
 import { ensureAssortment } from "@/lib/assortments";
 import { catalogCarToCatalogueCar } from "@/lib/catalog";
-import { diecastToCatalogCar } from "@/lib/catalog";
+import { catalogCarToDiecast, diecastToCatalogCar, type CatalogCar } from "@/lib/catalog";
 import { CarPhotoField } from "@/components/car-photo-field";
 import { MultipackField } from "@/components/multipack-field";
 import { isPackAssortment, packFromAssortment } from "@/lib/pack-assortments";
@@ -500,7 +500,7 @@ export function CarFormDialog({
   /** Add mode only: open the card scanner straight away, over the form. */
   startWithScan?: boolean;
 }) {
-  const { addCar, updateCar } = useCarsActions();
+  const { addCar, updateCar, bulkAddCars } = useCarsActions();
   const cars = useCars();
   // Option lists come from the shared catalogue as well as your own cars, so a
   // new account is not typing into empty dropdowns. See suggestion-pool.ts.
@@ -530,7 +530,6 @@ export function CarFormDialog({
   const [scanOpen, setScanOpen] = useState(false);
   /** The several-cars scanner, which ends in the bulk add table. */
   const [multiScanOpen, setMultiScanOpen] = useState(false);
-  const [packScanOpen, setPackScanOpen] = useState(false);
   useEffect(() => {
     if (open && startWithScan && scansRemaining !== 0) setScanOpen(true);
   }, [open, startWithScan, scansRemaining]);
@@ -1793,6 +1792,35 @@ export function CarFormDialog({
     // Null means the free limit refused it, and the toast has already said so.
     // The form stays open with everything typed still in it.
     if (!saved) return;
+
+    // A box that lists what is in it is also those cars: each one is added to
+    // your collection, linked to the box, and costs nothing of its own because
+    // the box carries the price.
+    if (mode === "add" && isPack && saved.id) {
+      const inside = packList
+        .map((id) => catalog.find((c) => c.car_id.toUpperCase() === id.toUpperCase()))
+        .filter((c): c is CatalogCar => Boolean(c))
+        .map((entry): Diecast => ({
+          ...makeBlankCar(),
+          ...catalogCarToDiecast(entry),
+          id: "",
+          catalogId: entry.car_id,
+          spent: 0,
+          mrp: 0,
+          seller: saved.seller,
+          status: saved.status,
+          orderDate: saved.orderDate,
+          orderMonth: saved.orderMonth,
+          expectedDate: saved.expectedDate,
+          date: saved.date,
+          month: saved.month,
+          packOf: saved.id,
+        }));
+      if (inside.length) {
+        bulkAddCars(inside);
+        toast.success(`Added the ${inside.length} cars inside the pack too`);
+      }
+    }
     onSaved?.(saved);
 
     // The car is saved; the draft has nothing left to protect.
@@ -2727,7 +2755,7 @@ export function CarFormDialog({
                     title={
                       scansRemaining === 0
                         ? "No scans left this month"
-                        : "Read up to 6 cars from one photo"
+                        : "Read the cars, and any multi-car pack, from one photo"
                     }
                     className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
                   >
@@ -2740,32 +2768,7 @@ export function CarFormDialog({
                       Scan multiple cards
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      Up to 6 in one photo, one scan each
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    // One photo of a 5-pack or 10-pack: the box is saved with its
-                    // cars inside it, for a single scan.
-                    disabled={scansRemaining === 0}
-                    onClick={() => setPackScanOpen(true)}
-                    title={
-                      scansRemaining === 0
-                        ? "No scans left this month"
-                        : "Read a whole multi-car pack from one photo"
-                    }
-                    className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
-                  >
-                    <span className="flex items-center gap-2 text-sm font-semibold">
-                      {scansRemaining === 0 ? (
-                        <Lock className="size-4 text-muted-foreground" />
-                      ) : (
-                        <Layers className="size-4 text-primary" />
-                      )}
-                      Scan a pack
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      A 5-pack or 10-pack, one scan
+                      Singles and multi-packs in one photo
                     </span>
                   </button>
                   {onSwitchToBulk && (
@@ -2838,7 +2841,6 @@ export function CarFormDialog({
 
       {/* Up to six cars from one photograph; the ones ticked open the bulk table. */}
       <ImageSearchDialog open={multiScanOpen} onOpenChange={setMultiScanOpen} several />
-      <ImageSearchDialog open={packScanOpen} onOpenChange={setPackScanOpen} pack />
 
       {/* Filing a car that goes inside the pack you are describing. Searching
           the catalogue is no help when the car in the box has never been

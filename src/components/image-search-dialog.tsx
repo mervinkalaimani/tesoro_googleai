@@ -48,15 +48,11 @@ interface ImageSearchDialogProps {
    * button opened the dialog, so there is no switch to miss inside it.
    */
   several?: boolean;
-  /**
-   * The photograph is one multi-car pack, as a Hot Wheels or Matchbox 5-pack.
-   * Every car in it is read for one scan, and the batch is saved as the box
-   * with the cars inside it.
-   */
-  pack?: boolean;
 }
 
 export type ExtractedAttributes = {
+  /** The multi-car pack this car is inside, as "A" or "B"; absent for a car sold alone. */
+  pack?: string;
   make?: string;
   model?: string;
   variant?: string;
@@ -82,9 +78,8 @@ export function ImageSearchDialog({
   open,
   onOpenChange,
   several: wantsSeveral = false,
-  pack = false,
 }: ImageSearchDialogProps) {
-  const several = wantsSeveral || pack;
+  const several = wantsSeveral;
   // On a phone the cars open as cards to edit, not as a table to add to.
   const [narrow, setNarrow] = useState(false);
   useEffect(() => {
@@ -268,7 +263,7 @@ export function ImageSearchDialog({
       const res = await fetch("/api/scan-car", {
         method: "POST",
         headers: { "content-type": "application/json", ...(await authHeader()) },
-        body: JSON.stringify({ ...imagePayload, multi: several, pack }),
+        body: JSON.stringify({ ...imagePayload, multi: several }),
       });
 
       const data = (await res.json().catch(() => null)) as {
@@ -304,10 +299,9 @@ export function ImageSearchDialog({
             `${data.seen} cars seen, but only ${list.length} could be read. Move closer, or take it in two photos.`,
           );
         } else {
+          const units = new Set(list.map((c, i) => (c.pack ? `p${c.pack}` : `c${i}`))).size;
           toast.success(
-            pack
-              ? `${list.length} ${list.length === 1 ? "car" : "cars"} found in the pack: 1 scan used`
-              : `${list.length} ${list.length === 1 ? "car" : "cars"} found: ${list.length} ${list.length === 1 ? "scan" : "scans"} used`,
+            `${list.length} ${list.length === 1 ? "car" : "cars"} found: ${units} ${units === 1 ? "scan" : "scans"} used`,
           );
         }
         return;
@@ -514,7 +508,7 @@ export function ImageSearchDialog({
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="flex flex-wrap items-center gap-2 text-base font-semibold">
-                  {pack ? "Scan a pack" : several ? "Scan several cars" : "Scan to Search"}
+                  {several ? "Scan several cars" : "Scan to Search"}
                   {/* Pushed to the far end: what it is called is a label on the
                     feature, not the next word of the title. */}
                   <span className="ml-auto flex shrink-0 items-center gap-2">
@@ -530,11 +524,9 @@ export function ImageSearchDialog({
                   </span>
                 </DialogTitle>
                 <DialogDescription className="mt-1 text-left text-xs text-muted-foreground">
-                  {pack
-                    ? "Photograph one 5-pack, 10-pack or other multi-car pack. It is added as one box with every car inside it, for a single scan."
-                    : several
-                      ? "Photograph up to 6 cars together to add them in one go. Each car found takes one scan."
-                      : "Scan or upload an image to identify the car and see if you have it in your collection."}
+                  {several
+                    ? "Photograph cars together to add them in one go, including multi-car packs such as a 5-pack. Each single car or pack found takes one scan."
+                    : "Scan or upload an image to identify the car and see if you have it in your collection."}
                 </DialogDescription>
                 {left !== null && (
                   <p className="mt-1 text-left text-xs text-muted-foreground">
@@ -856,6 +848,11 @@ export function ImageSearchDialog({
                                     {[c.make, c.model, c.variant].filter(Boolean).join(" ") ||
                                       "Unnamed car"}
                                   </span>
+                                  {c.pack && (
+                                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
+                                      In pack {c.pack}
+                                    </span>
+                                  )}
                                   {manyOwned[i] > 0 && (
                                     <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
                                       Already in your collection
@@ -878,11 +875,7 @@ export function ImageSearchDialog({
                           onClick={sendToBulk}
                           className="gap-1.5"
                         >
-                          {pack
-                            ? "Review the pack"
-                            : narrow
-                              ? `Review ${picked.size}`
-                              : `Add ${picked.size} to bulk add`}
+                          {narrow ? `Review ${picked.size}` : `Add ${picked.size} to bulk add`}
                           <ArrowRight className="size-4" />
                         </Button>
                       </div>
@@ -1041,7 +1034,6 @@ export function ImageSearchDialog({
           if (!v) setBulkCars(null);
         }}
         scanned={bulkCars ?? undefined}
-        pack={pack}
       />
     </>
   );
