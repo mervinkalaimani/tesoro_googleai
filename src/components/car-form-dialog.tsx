@@ -85,6 +85,8 @@ import {
 import { SegmentControl } from "@/components/segment-control";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
+import { SavedScansDialog } from "@/components/saved-scans-dialog";
+import { useSavedScans } from "@/lib/saved-scans";
 import { ImageSearchDialog } from "@/components/image-search-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CatalogueLinkDialog } from "@/components/catalogue-link-dialog";
@@ -119,7 +121,7 @@ import {
   Upload,
   RotateCcw,
   ScanLine,
-  Images,
+  Bookmark,
   Trash2,
   Info,
   X,
@@ -508,7 +510,7 @@ export function CarFormDialog({
   // Read here rather than beside the pack fields below: the assortment options
   // narrow by what the catalogue holds, and those memos run before that point.
   const { catalog, addCatalogCar, updateCatalogCar, packMembers, setPackMembers } = useCatalog();
-  const { isGuest, isAdmin, profile } = useAuth();
+  const { isGuest, isAdmin, isPro, profile } = useAuth();
   const scansRemaining = scansLeft(profile);
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
@@ -530,9 +532,14 @@ export function CarFormDialog({
   const [scanOpen, setScanOpen] = useState(false);
   /** The several-cars scanner, which ends in the bulk add table. */
   const [multiScanOpen, setMultiScanOpen] = useState(false);
+  const [savedOpen, setSavedOpen] = useState(false);
+  const savedScans = useSavedScans(isPro && !isGuest);
   useEffect(() => {
-    if (open && startWithScan && scansRemaining !== 0) setScanOpen(true);
-  }, [open, startWithScan, scansRemaining]);
+    if (open && startWithScan && scansRemaining !== 0) {
+      if (isPro) setMultiScanOpen(true);
+      else setScanOpen(true);
+    }
+  }, [open, startWithScan, scansRemaining, isPro]);
   const isMobile = useIsMobile();
   /**
    * Step two's three groups. The catalogue fields start shut because a picked car
@@ -2722,11 +2729,16 @@ export function CarFormDialog({
                   <button
                     type="button"
                     disabled={scansRemaining === 0}
-                    onClick={() => setScanOpen(true)}
+                    // Pro has the one scan, which reads a single car, several, or a
+                    // multi-car pack from a photo. Everyone else has the card
+                    // scanner, which reads one.
+                    onClick={() => (isPro ? setMultiScanOpen(true) : setScanOpen(true))}
                     title={
                       scansRemaining === 0
                         ? "No scans left this month"
-                        : "Read make, model and series off the card"
+                        : isPro
+                          ? "Read one car, several, or a multi-car pack from a photo"
+                          : "Read make, model and series off the card"
                     }
                     className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
                   >
@@ -2736,41 +2748,37 @@ export function CarFormDialog({
                       ) : (
                         <ScanLine className="size-4 text-primary" />
                       )}
-                      Scan a card
+                      {isPro ? "Scan" : "Scan a card"}
                     </span>
                     <span className="text-xs text-muted-foreground">
                       {scansRemaining === null
-                        ? "Read make, model and series off the card"
+                        ? isPro
+                          ? "Cars and multi-packs from one photo"
+                          : "Read make, model and series off the card"
                         : scansRemaining === 0
                           ? "None left this month"
                           : `${scansRemaining} left this month`}
                     </span>
                   </button>
-                  <button
-                    type="button"
-                    // Up to six cars from one photograph. On a computer they land
-                    // in the bulk table; on a phone, as cards to open and edit.
-                    disabled={scansRemaining === 0}
-                    onClick={() => setMultiScanOpen(true)}
-                    title={
-                      scansRemaining === 0
-                        ? "No scans left this month"
-                        : "Read the cars, and any multi-car pack, from one photo"
-                    }
-                    className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
-                  >
-                    <span className="flex items-center gap-2 text-sm font-semibold">
-                      {scansRemaining === 0 ? (
-                        <Lock className="size-4 text-muted-foreground" />
-                      ) : (
-                        <Images className="size-4 text-primary" />
-                      )}
-                      Scan multiple cards
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      Singles and multi-packs in one photo
-                    </span>
-                  </button>
+                  {isPro && !isGuest && (
+                    <button
+                      type="button"
+                      // Scans kept from the phone, waiting to be added here.
+                      onClick={() => setSavedOpen(true)}
+                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                    >
+                      <span className="flex items-center gap-2 text-sm font-semibold">
+                        <Bookmark className="size-4 text-primary" />
+                        Saved scans
+                        {savedScans.scans.length > 0 && (
+                          <span className="rounded-full bg-primary/15 px-1.5 text-xs text-primary">
+                            {savedScans.scans.length}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground">Scans kept to add later</span>
+                    </button>
+                  )}
                   {onSwitchToBulk && (
                     <button
                       type="button"
@@ -2840,7 +2848,20 @@ export function CarFormDialog({
       <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={applyScan} />
 
       {/* Up to six cars from one photograph; the ones ticked open the bulk table. */}
-      <ImageSearchDialog open={multiScanOpen} onOpenChange={setMultiScanOpen} several />
+      <ImageSearchDialog
+        open={multiScanOpen}
+        onOpenChange={setMultiScanOpen}
+        several
+        // One car and no pack: straight into the form, not a list of one.
+        onSingle={({ pack: _pack, ...fields }) => applyScan(fields)}
+        onSaved={() => void savedScans.refresh()}
+      />
+      <SavedScansDialog
+        open={savedOpen}
+        onOpenChange={setSavedOpen}
+        scans={savedScans.scans}
+        onChanged={() => void savedScans.refresh()}
+      />
 
       {/* Filing a car that goes inside the pack you are describing. Searching
           the catalogue is no help when the car in the box has never been

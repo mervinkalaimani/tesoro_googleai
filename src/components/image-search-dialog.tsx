@@ -31,6 +31,7 @@ import { ACCEPT_ATTR, imageToBase64 } from "@/lib/car-photos";
 import { authHeader } from "@/lib/api-auth";
 import { MAX_MATCHES, matchScannedCar } from "@/lib/scan-match";
 import { useAuth } from "@/lib/auth-store";
+import { saveScan } from "@/lib/saved-scans";
 import { scansLeft } from "@/lib/tiers";
 import type { Diecast } from "@/lib/types";
 import { toast } from "sonner";
@@ -43,6 +44,13 @@ const MAX_SENT = 4_000_000;
 interface ImageSearchDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /**
+   * When one car, and no pack, is found it is handed here and added directly,
+   * rather than listed for review. Only the several-cars flow uses it.
+   */
+  onSingle?: (car: ExtractedAttributes) => void;
+  /** A scan was saved for later, so whoever lists saved scans can read them again. */
+  onSaved?: () => void;
   /**
    * Scan up to six cars from one photograph, rather than one. Chosen by which
    * button opened the dialog, so there is no switch to miss inside it.
@@ -78,6 +86,8 @@ export function ImageSearchDialog({
   open,
   onOpenChange,
   several: wantsSeveral = false,
+  onSingle,
+  onSaved,
 }: ImageSearchDialogProps) {
   const several = wantsSeveral;
   // On a phone the cars open as cards to edit, not as a table to add to.
@@ -91,7 +101,16 @@ export function ImageSearchDialog({
   }, []);
   const cars = useCars();
   const { open: openCar } = useCarDrawer();
-  const { profile, isGuest, reloadProfile } = useAuth();
+  const { profile, isGuest, isPro, reloadProfile } = useAuth();
+  /** Pro: keep every scan to add on the web later, and go on to the next. */
+  const [saveForLater, setSaveForLater] = useState(() => {
+    try {
+      return localStorage.getItem("tesoro-scan-save-for-later") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const saving = several && isPro && saveForLater;
   // A scan here costs the same credit a card scan costs, because it is the
   // same route and the same key. Null is no ceiling; 0 is none left.
   const left = isGuest ? null : scansLeft(profile);
@@ -290,6 +309,28 @@ export function ImageSearchDialog({
         setMany(list);
         setPicked(new Set(list.map((_, i) => i)));
         void reloadProfile();
+        // Kept for later: nothing to review now, the camera is free for the next.
+        if (saving && list.length) {
+          const err = await saveScan(list);
+          if (err) {
+            toast.error("Could not save that scan", { description: err });
+          } else {
+            toast.success(
+              `Saved ${list.length} ${list.length === 1 ? "car" : "cars"}. Open Saved scans on the web to add them.`,
+            );
+            onSaved?.();
+            handleResetImage();
+          }
+          return;
+        }
+        // Exactly one car and no pack: nothing to choose between, so it goes
+        // straight into the form.
+        if (list.length === 1 && !list[0].pack && onSingle) {
+          toast.success("1 car found: 1 scan used");
+          onOpenChange(false);
+          onSingle(list[0]);
+          return;
+        }
         if (data.trimmed && data.found) {
           toast.warning(
             `${data.found} cars found, but only ${list.length} of your scans covered. That is all your scans for this month.`,
@@ -528,6 +569,25 @@ export function ImageSearchDialog({
                     ? "Photograph cars together to add them in one go, including multi-car packs such as a 5-pack. Each single car or pack found takes one scan."
                     : "Scan or upload an image to identify the car and see if you have it in your collection."}
                 </DialogDescription>
+                {several && isPro && (
+                  <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-foreground">
+                    <Checkbox
+                      checked={saveForLater}
+                      onCheckedChange={(v) => {
+                        setSaveForLater(v === true);
+                        try {
+                          localStorage.setItem(
+                            "tesoro-scan-save-for-later",
+                            v === true ? "1" : "0",
+                          );
+                        } catch {
+                          /* a remembered tick is a convenience */
+                        }
+                      }}
+                    />
+                    Save scans to add later on the web, and keep scanning
+                  </label>
+                )}
                 {left !== null && (
                   <p className="mt-1 text-left text-xs text-muted-foreground">
                     {spent

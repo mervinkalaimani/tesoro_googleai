@@ -374,6 +374,7 @@ export function BulkAddCarsDialog({
   onOpenChange,
   seed,
   scanned,
+  onSaved,
   onSwitchToUpload,
 }: {
   trigger?: ReactNode;
@@ -392,6 +393,8 @@ export function BulkAddCarsDialog({
    * status, order date) is typed once, and what each car cost is typed per row.
    */
   scanned?: Parameters<typeof rowFromScan>[0][];
+  /** Called once the batch is saved, for whoever opened it from a list of pending things. */
+  onSaved?: () => void;
   /** Hands off to the CSV importer: a spreadsheet is a batch like any other. */
   onSwitchToUpload?: () => void;
 }) {
@@ -813,6 +816,7 @@ export function BulkAddCarsDialog({
       );
       discard();
       setOpen(false);
+      onSaved?.();
     } finally {
       setSaving(false);
     }

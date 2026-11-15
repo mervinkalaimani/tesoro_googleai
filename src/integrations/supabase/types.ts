@@ -1148,6 +1148,27 @@ export type Database = {
         };
         Relationships: [];
       };
+      tesoro_saved_scans: {
+        Row: {
+          cars: Json;
+          created_at: string;
+          id: string;
+          user_id: string;
+        };
+        Insert: {
+          cars: Json;
+          created_at?: string;
+          id?: string;
+          user_id?: string;
+        };
+        Update: {
+          cars?: Json;
+          created_at?: string;
+          id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       tesoro_sellers: {
         Row: {
           image_url: string | null;
