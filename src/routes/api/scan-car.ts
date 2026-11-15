@@ -91,13 +91,17 @@ First count every distinct car you can see, then list them: one entry per car, l
 Count and list EVERY car, including ones that are small, at an angle, partly overlapping or only partly legible.
 Never leave a car out because some of its details are uncertain: include it and leave the uncertain fields as
 empty strings. A car in a package counts as one car, not as the package and the car. If the same casting
-appears twice, list it twice. Leave out only things that are not die-cast cars. At most ${MAX_CARS} cars; if
+appears twice, list it twice. "Car" here means any die-cast vehicle: cars, trucks, aircraft and airplanes
+(Majorette Flights and Skypower), helicopters, boats, motorcycles. Leave out only things that are not die-cast
+vehicles. At most ${MAX_CARS} cars; if
 there are more, list the ${MAX_CARS} most clearly visible.
 
 Some of what you see may be a MULTI-CAR PACK: one box or blister holding several cars, such as a Hot Wheels or
 Matchbox 5-pack, 2-pack, 10-pack or Team Transport set. For a pack, list EVERY car inside it as its own entry
 (this is the one case where several cars share one package) and give all of them the same "pack" label: "A" for
-the first pack in the photo, "B" for a second. A car sold on its own has an empty "pack". Never put a pack's name
+the first pack in the photo, "B" for a second. A car sold on its own has an empty "pack". A pack is often only
+part of the photo: after listing its cars, keep going and list every OTHER vehicle in the photo too, each as a
+single with an empty "pack", whatever its brand (a Majorette next to a Matchbox pack is a separate single). Never put a pack's name
 ("5 Pack", "10 Pack") in a car's assortment; that names the box, not the car.
 
 For every car, extract these fields:
