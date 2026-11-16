@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { openProDialog } from "@/components/pro-dialog";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import { catalogueKey, useCatalogueSearch, type CatalogueCar } from "@/lib/catalogue-search";
@@ -540,7 +540,6 @@ export function CarFormDialog({
       else setScanOpen(true);
     }
   }, [open, startWithScan, scansRemaining, isPro]);
-  const isMobile = useIsMobile();
   /**
    * Step two's three groups. The catalogue fields start shut because a picked car
    * has already filled them in; they open on their own when the car was entered
@@ -2782,31 +2781,26 @@ export function CarFormDialog({
                   {onSwitchToBulk && (
                     <button
                       type="button"
-                      // A table of thirty-five columns and a file picker are
-                      // not a phone's work. Left on the screen rather than
-                      // hidden, so the answer to "where did bulk go" is on
-                      // the screen that raises the question.
-                      disabled={isMobile}
-                      title={isMobile ? "Available on web only" : undefined}
+                      // A Pro feature, phone included: the table has a card layout
+                      // for a small screen. Left on the screen for everyone, so a
+                      // free account sees what it is missing and is shown the plan.
                       // Wrapped, not passed directly: onSwitchToBulk takes seed
                       // cars, and a bare handler would hand it the click event
                       // as the batch to prefill.
-                      onClick={() => onSwitchToBulk()}
-                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted/30 disabled:hover:border-border/60"
+                      onClick={() => (isPro ? onSwitchToBulk() : openProDialog("Add in bulk"))}
+                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
                     >
                       <span className="flex items-center gap-2 text-sm font-semibold">
-                        <Layers
-                          className={cn(
-                            "size-4",
-                            isMobile ? "text-muted-foreground" : "text-primary",
-                          )}
-                        />
-                        <span className={isMobile ? "text-muted-foreground" : undefined}>
-                          Add in bulk
-                        </span>
+                        <Layers className="size-4 text-primary" />
+                        <span>Add in bulk</span>
+                        {!isPro && (
+                          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                            Pro
+                          </span>
+                        )}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        {isMobile ? "Available on web only" : "Several at once, or a CSV"}
+                        Several at once, or a CSV
                       </span>
                     </button>
                   )}
