@@ -9,10 +9,12 @@ import {
   RotateCcw,
   Tag,
   Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -21,6 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { IosGroup, IosInput, IosPicker, IosRow } from "@/components/ios-field";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
@@ -240,6 +243,7 @@ function FieldInput({
   onChange,
   options,
   compact = false,
+  ios = false,
 }: {
   def: FieldDef;
   value: string;
@@ -247,8 +251,56 @@ function FieldInput({
   /** Suggestions for a "combo" field; ignored by every other kind. */
   options?: string[];
   compact?: boolean;
+  /** The phone's list-row control: the answer on the right, a sheet to pick from. */
+  ios?: boolean;
 }) {
   const cls = compact ? "h-8" : "";
+
+  if (ios) {
+    if (def.kind === "combo")
+      return (
+        <IosPicker
+          label={def.label}
+          value={value}
+          onChange={onChange}
+          options={(options ?? []).map((o) => ({ value: o, label: o }))}
+          placeholder={def.placeholder ?? def.label}
+          allowNew
+        />
+      );
+    if (def.kind === "status")
+      return (
+        <IosPicker
+          label={def.label}
+          value={normaliseStatus(value) || "In Hand"}
+          onChange={onChange}
+          options={STATUSES.map((st) => ({ value: st, label: st }))}
+        />
+      );
+    if (def.kind === "payment")
+      return (
+        <IosPicker
+          label={def.label}
+          value={value}
+          onChange={onChange}
+          options={["", "Paid", "Partial", "Pending"].map((o) => ({
+            value: o,
+            label: o || "Auto",
+          }))}
+          placeholder="Auto"
+        />
+      );
+    return (
+      <IosInput
+        label={def.label}
+        type={def.kind === "date" ? "date" : "text"}
+        inputMode={def.kind === "number" ? "decimal" : undefined}
+        value={value}
+        onChange={onChange}
+        placeholder={def.placeholder}
+      />
+    );
+  }
 
   if (def.kind === "combo") {
     return (
@@ -903,52 +955,107 @@ export function BulkAddCarsDialog({
       {/* Near the full width of the screen on a desktop: this is a spreadsheet,
           and every field moved out of "same for all" is another column. It had
           been asking for 5xl and getting 32rem. */}
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[min(96rem,95vw)]">
-        <DialogHeader>
-          <div className="flex items-center gap-2">
-            <div className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary">
-              <Layers className="size-4" />
-            </div>
-            <DialogTitle>Add cars in bulk</DialogTitle>
+      <DialogContent
+        hideClose={isMobile}
+        className="max-h-[90vh] overflow-y-auto sm:max-w-[min(96rem,95vw)]"
+      >
+        {/* A phone: one pinned line — upload, the title, close — with the
+            template beside upload. The rest scrolls under it. */}
+        {isMobile && (
+          <div className="sticky -top-4 z-20 -mx-4 flex items-center gap-1 border-b border-border bg-background px-3 pb-2 pt-3">
+            {onSwitchToUpload && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 shrink-0"
+                aria-label="Upload CSV"
+                title="Upload CSV"
+                onClick={onSwitchToUpload}
+              >
+                <Upload className="size-4" />
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-9 shrink-0"
+              aria-label="Download the CSV template"
+              title="Download the CSV template"
+              onClick={() => downloadCsv("template.csv", generateDiecastCsvTemplate())}
+            >
+              <Download className="size-4" />
+            </Button>
+            <DialogTitle className="min-w-0 flex-1 truncate text-center text-base">
+              Add cars in bulk
+            </DialogTitle>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-9 shrink-0"
+                aria-label="Close"
+              >
+                <X className="size-4" />
+              </Button>
+            </DialogClose>
           </div>
+        )}
+        {isMobile && (
           <DialogDescription>
-            {isMobile
-              ? "Pick which fields are the same for every car in this order. Open a car to fill in the rest."
-              : "Pick which fields are the same for every car in this order. The rest become columns you fill in per car."}
+            Pick which fields are the same for every car in this order. Open a car to fill in the
+            rest.
           </DialogDescription>
-          {/* Both ways of getting a batch in, in the one dialog that is about
+        )}
+        {!isMobile && (
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary">
+                <Layers className="size-4" />
+              </div>
+              <DialogTitle>Add cars in bulk</DialogTitle>
+            </div>
+            <DialogDescription>
+              {isMobile
+                ? "Pick which fields are the same for every car in this order. Open a car to fill in the rest."
+                : "Pick which fields are the same for every car in this order. The rest become columns you fill in per car."}
+            </DialogDescription>
+            {/* Both ways of getting a batch in, in the one dialog that is about
               batches. Upload CSV used to be a third button in the add-car
               header, and the template download sat in a "Data" row beside
               Export — several screens from the importer that reads it. */}
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            {onSwitchToUpload && (
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {onSwitchToUpload && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={onSwitchToUpload}
+                >
+                  <Upload className="size-4" />
+                  Upload CSV
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 className="gap-1.5"
-                onClick={onSwitchToUpload}
+                onClick={() => downloadCsv("template.csv", generateDiecastCsvTemplate())}
+                title="Download the CSV template"
               >
-                <Upload className="size-4" />
-                Upload CSV
+                <Download className="size-4" />
+                CSV template
               </Button>
-            )}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              onClick={() => downloadCsv("template.csv", generateDiecastCsvTemplate())}
-              title="Download the CSV template"
-            >
-              <Download className="size-4" />
-              CSV template
-            </Button>
-            <span className="text-xs text-muted-foreground">
-              The template carries every column in the order the importer reads them.
-            </span>
-          </div>
-        </DialogHeader>
+              <span className="text-xs text-muted-foreground">
+                The template carries every column in the order the importer reads them.
+              </span>
+            </div>
+          </DialogHeader>
+        )}
 
         {restored && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
@@ -993,7 +1100,7 @@ export function BulkAddCarsDialog({
             })}
           </div>
 
-          {sharedFields.length > 0 && (
+          {sharedFields.length > 0 && !isMobile && (
             <div className="grid gap-3 border-t border-border pt-3 sm:grid-cols-2 lg:grid-cols-4">
               {sharedFields.map((f) => (
                 <div key={f.key} className="space-y-1.5">
@@ -1014,6 +1121,28 @@ export function BulkAddCarsDialog({
             </div>
           )}
         </section>
+
+        {/* On a phone the values stand outside the frame, as their own list. */}
+        {sharedFields.length > 0 && isMobile && (
+          <IosGroup>
+            {sharedFields.map((f) => (
+              <IosRow key={f.key} label={f.label}>
+                <FieldInput
+                  ios
+                  def={f}
+                  value={shared[f.key] ?? ""}
+                  options={optionsForCell(
+                    f,
+                    shared.make ?? "",
+                    shared.model ?? "",
+                    shared.brand ?? "",
+                  )}
+                  onChange={(v) => setShared((s) => ({ ...s, [f.key]: v }))}
+                />
+              </IosRow>
+            ))}
+          </IosGroup>
+        )}
 
         {packLabels.map((label) => {
           const price = packPrices[label] ?? { cost: "", mrp: "" };
@@ -1098,18 +1227,13 @@ export function BulkAddCarsDialog({
                     </span>
                   </AccordionTrigger>
                   <AccordionContent>
-                    <div className="grid grid-cols-2 gap-x-2.5 gap-y-3 pb-1">
+                    <IosGroup className="mb-1">
                       {perCarFields
                         .filter((f) => !(r.pack && (f.key === "cost" || f.key === "mrp")))
                         .map((f) => (
-                          <div
-                            key={f.key}
-                            className={`space-y-1.5 ${
-                              f.kind === "combo" && f.key !== "year" ? "col-span-2" : ""
-                            }`}
-                          >
-                            <Label>{f.label}</Label>
+                          <IosRow key={f.key} label={f.label}>
                             <FieldInput
+                              ios
                               def={f}
                               value={r[f.key] ?? ""}
                               options={optionsForCell(
@@ -1120,9 +1244,9 @@ export function BulkAddCarsDialog({
                               )}
                               onChange={(v) => setRow(r.key, { [f.key]: v })}
                             />
-                          </div>
+                          </IosRow>
                         ))}
-                    </div>
+                    </IosGroup>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1255,7 +1379,9 @@ export function BulkAddCarsDialog({
           </p>
         </div>
 
-        <DialogFooter>
+        {/* A phone keeps these in view: Cancel left, Add right, pinned to the
+            bottom of the sheet while the form scrolls above them. */}
+        <DialogFooter className="max-sm:sticky max-sm:bottom-[calc(-1*max(1rem,env(safe-area-inset-bottom)))] max-sm:z-10 max-sm:-mx-4 max-sm:-mb-[max(1rem,env(safe-area-inset-bottom))] max-sm:flex-row max-sm:items-center max-sm:justify-between max-sm:border-t max-sm:bg-background max-sm:px-4 max-sm:pt-3 max-sm:pb-[max(1.75rem,calc(0.75rem+env(safe-area-inset-bottom)))]">
           <Button
             variant="ghost"
             onClick={() => {
