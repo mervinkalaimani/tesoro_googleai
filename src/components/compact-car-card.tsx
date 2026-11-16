@@ -1,4 +1,5 @@
 import { SyncedMark } from "@/components/synced-badge";
+import { carNumberOf } from "@/lib/car-subline";
 import { CopiesBadge } from "@/components/copies-badge";
 import { ChaseMark, FavouriteMark, ChangedDot } from "@/components/car-marks";
 import { StatusPill } from "@/components/status-pill";
@@ -150,7 +151,9 @@ export function CompactCarCard({
                 className="text-xs px-1.5 py-0 leading-tight shrink-0"
               />
             )}
-            <span className="truncate text-muted-foreground">{car.brand || "—"}</span>
+            <span className="truncate text-muted-foreground">
+              {[car.brand, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
+            </span>
           </span>
           <span className="shrink-0 truncate text-xs text-muted-foreground/80">
             {car.assortment || ""}

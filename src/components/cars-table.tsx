@@ -333,13 +333,12 @@ export function CarsTable({
                     )}
                   </td>
                   <td className="px-3 py-2.5 md:px-4">
-                    <div className="truncate">{r.brand || "—"}</div>
-                    {/* The number joins the assortment rather than wearing a
-                        label of its own: "Mainline · 142/250" says what a
-                        column headed Car number said in twice the room. */}
-                    <div className="truncate text-xs text-muted-foreground">
-                      {[r.assortment, carNumberOf(r)].filter(Boolean).join(" · ")}
+                    {/* The number sits beside the brand rather than wearing a
+                        label of its own: "Hot Wheels · 142/250". */}
+                    <div className="truncate">
+                      {[r.brand, carNumberOf(r)].filter(Boolean).join(" · ") || "—"}
                     </div>
+                    <div className="truncate text-xs text-muted-foreground">{r.assortment}</div>
                   </td>
                   <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
                     {r.colour || "—"}

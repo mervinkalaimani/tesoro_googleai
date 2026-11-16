@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { carNumberOf } from "@/lib/car-subline";
 import { CarThumb } from "@/components/car-thumb";
 import { useMemo, useState } from "react";
 import {
@@ -106,7 +107,7 @@ function uniqueSorted(items: Diecast[], key: (r: Diecast) => string) {
  * least useful thing on a card about a car you can see.
  */
 function preOrderSubLine(car: Diecast) {
-  return [car.brand, car.assortment, car.carNumber, car.seller].filter(Boolean).join(" · ") || "—";
+  return [car.brand, car.carNumber, car.assortment, car.seller].filter(Boolean).join(" · ") || "—";
 }
 
 /** A label and value in the pre-order card's grid. */
@@ -134,8 +135,22 @@ function PreOrderFact({
   );
 }
 
-/** One pre-ordered car. */
-function PreOrderCard({
+/** One pre-ordered car: a slim row from the small breakpoint up, the stacked card on a phone. */
+function PreOrderCard(props: React.ComponentProps<typeof PreOrderCardImpl>) {
+  if (!props.row) return <PreOrderCardImpl {...props} />;
+  return (
+    <>
+      <div className="sm:hidden">
+        <PreOrderCardImpl {...props} row={false} />
+      </div>
+      <div className="hidden sm:block">
+        <PreOrderCardImpl {...props} />
+      </div>
+    </>
+  );
+}
+
+function PreOrderCardImpl({
   car,
   onOpen,
   onPay,
@@ -155,9 +170,11 @@ function PreOrderCard({
   const due = balanceOf(car);
   const settled = due === 0;
 
-  const sub = showSeller
-    ? preOrderSubLine(car)
-    : [car.brand, car.assortment, car.carNumber].filter(Boolean).join(" · ") || "—";
+  // On a slim row the seller has a column of its own.
+  const sub =
+    showSeller && !row
+      ? preOrderSubLine(car)
+      : [car.brand, car.carNumber, car.assortment].filter(Boolean).join(" · ") || "—";
 
   if (row)
     return (
@@ -179,15 +196,38 @@ function PreOrderCard({
           </span>
         </button>
         <dl className="flex items-center gap-5">
-          <PreOrderFact label="Cost" value={inrFull(car.spent || 0)} />
-          <PreOrderFact label="Deposit" value={inrFull(car.paid || 0)} />
+          {/* Same widths as the order row, so the columns line up. */}
+          {showSeller ? (
+            <PreOrderFact
+              label="Seller"
+              value={car.seller || "—"}
+              className="w-28 text-foreground"
+            />
+          ) : (
+            <div className="w-28" aria-hidden />
+          )}
+          <PreOrderFact
+            label="Expected"
+            value={formatDayMonthYear(car.expectedDate) || car.expectedDate || "—"}
+            className={`w-24 ${car.expectedDate ? lateClass(car.expectedDate) : "text-foreground"}`}
+          />
+          <PreOrderFact
+            label="Cost"
+            value={inrFull(car.spent || 0)}
+            className="w-24 text-foreground"
+          />
+          <PreOrderFact
+            label="Deposit"
+            value={inrFull(car.paid || 0)}
+            className="w-24 text-foreground"
+          />
           <PreOrderFact
             label="Balance"
             value={settled ? "Fully paid" : inrFull(due)}
-            className={settled ? "text-emerald-500" : "text-amber-500"}
+            className={`w-24 ${settled ? "text-emerald-500" : "text-amber-500"}`}
           />
         </dl>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 sm:w-[15rem]">
           {!settled && (
             <Button
               size="sm"
@@ -322,143 +362,447 @@ function OrderGroupCard({
   onUpdateOrder: () => void;
 }) {
   const [carsOpen, setCarsOpen] = useState(false);
-  // The soonest date any car in the order is due.
-  const expectedRaw = (() => {
-    const dated = g.items
-      .map((c) => ({ c, t: parseDMY(c.expectedDate)?.getTime() ?? 0 }))
-      .filter((x) => x.t)
-      .sort((x, y) => x.t - y.t)[0];
-    const c = dated?.c ?? g.items.find((x) => (x.expectedDate || "").trim());
-    return c ? c.expectedDate : "";
-  })();
+  const expectedRaw = soonestExpected(g.items);
   const expected = expectedRaw ? formatDayMonthYear(expectedRaw) || expectedRaw : "";
   const settled = g.due === 0;
 
   return (
     <article className="card-elevated overflow-hidden">
-      <header className="flex flex-wrap items-start justify-between gap-3 p-4">
-        <div className="min-w-0">
-          <h2 className="font-mono text-base font-bold tracking-tight">
-            {g.orderId || "Unassigned"}
-          </h2>
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
-            <span className="font-semibold">{g.seller}</span>
-            {g.orderDate ? (
-              <>
-                <span className="text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground">Ordered {g.orderDate}</span>
-              </>
-            ) : null}
-            {expected ? (
-              <>
-                <span className="text-muted-foreground">·</span>
-                <span className={`text-xs ${lateClass(expectedRaw)}`}>Expected {expected}</span>
-              </>
-            ) : null}
-          </p>
-        </div>
+      <div>
+        <header className="flex flex-wrap items-start justify-between gap-3 p-4">
+          <div className="min-w-0">
+            <h2 className="font-mono text-base font-bold tracking-tight">
+              {g.orderId || "Unassigned"}
+            </h2>
+            <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
+              <span className="font-semibold">{g.seller}</span>
+              {g.orderDate ? (
+                <>
+                  <span className="text-muted-foreground">·</span>
+                  <span className="text-xs text-muted-foreground">Ordered {g.orderDate}</span>
+                </>
+              ) : null}
+              {expected ? (
+                <>
+                  <span className="text-muted-foreground">·</span>
+                  <span className={`text-xs ${lateClass(expectedRaw)}`}>Expected {expected}</span>
+                </>
+              ) : null}
+            </p>
+          </div>
 
-        <div className="flex shrink-0 items-start gap-6 text-right">
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              Deposit paid
+          <div className="flex shrink-0 items-start gap-6 text-right">
+            <div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                Deposit paid
+              </div>
+              <div className="text-sm font-semibold tabular-nums">{inrFull(g.paid)}</div>
             </div>
-            <div className="text-sm font-semibold tabular-nums">{inrFull(g.paid)}</div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                Balance due
+              </div>
+              <div
+                className={`text-sm font-bold tabular-nums ${
+                  settled ? "text-emerald-500" : "text-amber-500"
+                }`}
+              >
+                {settled ? "Fully paid" : inrFull(g.due)}
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              Balance due
-            </div>
-            <div
-              className={`text-sm font-bold tabular-nums ${
-                settled ? "text-emerald-500" : "text-amber-500"
-              }`}
-            >
-              {settled ? "Fully paid" : inrFull(g.due)}
-            </div>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Accordion toggle matching orders screen */}
-      <div className="border-t border-border px-4 py-3">
-        <button
-          type="button"
-          onClick={() => setCarsOpen((v) => !v)}
-          className="flex w-full items-center justify-between text-left"
-          aria-expanded={carsOpen}
-        >
-          <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {g.items.length} casting{g.items.length === 1 ? "" : "s"} · {inrFull(g.value)} committed
-          </div>
-          <div className="flex items-center gap-1 text-xs font-medium text-primary">
-            <span>{carsOpen ? "Hide cars" : "View cars"}</span>
-            <ChevronDown
-              className={`size-3.5 transition-transform duration-200 ${
-                carsOpen ? "rotate-180" : ""
-              }`}
-            />
-          </div>
-        </button>
-
-        {carsOpen && (
-          <div className="mt-3 grid gap-2">
-            {g.items.map((c) => (
-              <PreOrderCard
-                key={c.id}
-                car={c}
-                showSeller={false}
-                row
-                onOpen={() => onOpenCar(c)}
-                onPay={() => onPay(c)}
-                onUpdateStatus={() => onUpdateStatus(c)}
+        {/* Accordion toggle matching orders screen */}
+        <div className="border-t border-border px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setCarsOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-left"
+            aria-expanded={carsOpen}
+          >
+            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {g.items.length} casting{g.items.length === 1 ? "" : "s"} · {inrFull(g.value)}{" "}
+              committed
+            </div>
+            <div className="flex items-center gap-1 text-xs font-medium text-primary">
+              <span>{carsOpen ? "Hide cars" : "View cars"}</span>
+              <ChevronDown
+                className={`size-3.5 transition-transform duration-200 ${
+                  carsOpen ? "rotate-180" : ""
+                }`}
               />
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
+          </button>
 
-      {/* Footer: everything this order can be done to, on the right. */}
-      <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
-        {settled && (
-          <span className="mr-auto text-xs font-medium text-emerald-500">Fully paid</span>
-        )}
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <ExportButton
-            rows={g.items}
-            name={`preorder-${g.orderId || g.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
-            label={g.orderId ? `Pre-order ${g.orderId}` : `${g.seller} pre-order`}
-            iconOnly
-            className="size-8 p-0"
-          />
-          {!settled && (
+          {carsOpen && (
+            <div className="mt-3 grid gap-2">
+              {g.items.map((c) => (
+                <PreOrderCard
+                  key={c.id}
+                  car={c}
+                  showSeller={false}
+                  row
+                  onOpen={() => onOpenCar(c)}
+                  onPay={() => onPay(c)}
+                  onUpdateStatus={() => onUpdateStatus(c)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Footer: everything this order can be done to, on the right. */}
+        <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3">
+          {settled && (
+            <span className="mr-auto text-xs font-medium text-emerald-500">Fully paid</span>
+          )}
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExportButton
+              rows={g.items}
+              name={`preorder-${g.orderId || g.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+              label={g.orderId ? `Pre-order ${g.orderId}` : `${g.seller} pre-order`}
+              iconOnly
+              className="size-8 p-0"
+            />
+            {!settled && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  const firstUnpaid = g.items.find((c) => balanceOf(c) > 0);
+                  if (firstUnpaid) onPay(firstUnpaid);
+                }}
+                className="gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400 h-8 text-xs"
+              >
+                <IndianRupee className="size-3.5" />
+                Pay balance
+              </Button>
+            )}
+            {/* Grouped by order ID, so the whole order can be updated at once. */}
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                const firstUnpaid = g.items.find((c) => balanceOf(c) > 0);
-                if (firstUnpaid) onPay(firstUnpaid);
-              }}
-              className="gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400 h-8 text-xs"
+              onClick={onUpdateOrder}
+              className="h-8 gap-1.5 text-xs"
+              title="Update this order"
             >
-              <IndianRupee className="size-3.5" />
-              Pay balance
+              <Truck className="size-3.5" />
+              Update order
             </Button>
-          )}
-          {/* Grouped by order ID, so the whole order can be updated at once. */}
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onUpdateOrder}
-            className="h-8 gap-1.5 text-xs"
-            title="Update this order"
-          >
-            <Truck className="size-3.5" />
-            Update order
-          </Button>
-        </div>
-      </footer>
+          </div>
+        </footer>
+      </div>
     </article>
+  );
+}
+
+/** The soonest date any car in a list is due. */
+function soonestExpected(items: Diecast[]): string {
+  const dated = items
+    .map((c) => ({ c, t: parseDMY(c.expectedDate)?.getTime() ?? 0 }))
+    .filter((x) => x.t)
+    .sort((x, y) => x.t - y.t)[0];
+  const c = dated?.c ?? items.find((x) => (x.expectedDate || "").trim());
+  return c ? c.expectedDate : "";
+}
+
+/** The money and dates columns, shared by the car table and the order table. */
+const TABLE_COLS = (
+  <colgroup>
+    <col />
+    <col className="w-[7rem]" />
+    <col className="w-[8rem]" />
+    <col className="w-[8rem]" />
+    <col className="w-[6rem]" />
+    <col className="w-[6rem]" />
+    <col className="w-[6.5rem]" />
+    <col className="w-[15rem]" />
+  </colgroup>
+);
+
+const OUTLINE_BTN = "h-8 border border-input bg-transparent text-xs text-foreground hover:bg-muted";
+const PAY_BTN =
+  "h-8 gap-1.5 border-emerald-500/40 text-xs text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400";
+
+/**
+ * The orders as a table, one row per order ID. Tap a row and the cars in it
+ * open underneath, in the same columns, so the money still adds up down the page.
+ */
+function PreOrderOrdersTable({
+  groups,
+  onOpenCar,
+  onPay,
+  onUpdateStatus,
+  onUpdateOrder,
+}: {
+  groups: OrderGroup[];
+  onOpenCar: (car: Diecast) => void;
+  onPay: (car: Diecast) => void;
+  onUpdateStatus: (car: Diecast) => void;
+  onUpdateOrder: (g: OrderGroup) => void;
+}) {
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const toggle = (k: string) =>
+    setOpen((prev) => {
+      const n = new Set(prev);
+      if (!n.delete(k)) n.add(k);
+      return n;
+    });
+  const th = "px-3 py-1.5 font-medium";
+  const cell = "truncate px-3 py-1.5 align-middle";
+  return (
+    <div className="card-elevated overflow-x-auto">
+      <table className="w-full min-w-[940px] table-fixed text-sm">
+        {TABLE_COLS}
+        <thead className="bg-muted/95 text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th className={`${th} px-4`}>Order ID</th>
+            <th className={th}>Seller</th>
+            <th className={th}>Order date</th>
+            <th className={th}>Expected</th>
+            <th className={`${th} text-right`}>Cost</th>
+            <th className={`${th} text-right`}>Deposit</th>
+            <th className={`${th} text-right`}>Balance</th>
+            <th className={th} />
+          </tr>
+        </thead>
+        {groups.map((g) => {
+          const isOpen = open.has(g.key);
+          const settled = g.due === 0;
+          const exp = soonestExpected(g.items);
+          return (
+            <tbody
+              key={g.key}
+              className="border-t border-border/60 odd:bg-transparent even:bg-muted/30"
+            >
+              <tr onClick={() => toggle(g.key)} className="cursor-pointer hover:bg-muted/40">
+                <td className="px-4 py-1.5 align-middle">
+                  <div className="flex items-center gap-2">
+                    <ChevronDown
+                      className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 ${
+                        isOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate font-mono font-semibold">
+                        {g.orderId || "Unassigned"}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {g.items.length} casting{g.items.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className={cell}>{g.seller || "—"}</td>
+                <td className={`${cell} text-muted-foreground`}>
+                  {formatDayMonthYear(g.orderDate) || g.orderDate || "—"}
+                </td>
+                <td className={`${cell} ${exp ? lateClass(exp) : ""}`}>
+                  {exp ? formatDayMonthYear(exp) || exp : "—"}
+                </td>
+                <td className={`${cell} text-right tabular-nums`}>{inrFull(g.value)}</td>
+                <td className={`${cell} text-right tabular-nums`}>{inrFull(g.paid)}</td>
+                <td
+                  className={`${cell} text-right font-semibold tabular-nums ${
+                    settled ? "text-emerald-500" : "text-amber-500"
+                  }`}
+                >
+                  {settled ? "Fully paid" : inrFull(g.due)}
+                </td>
+                <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                    <ExportButton
+                      rows={g.items}
+                      name={`preorder-${g.orderId || g.seller}`
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "-")}
+                      label={g.orderId ? `Pre-order ${g.orderId}` : `${g.seller} pre-order`}
+                      iconOnly
+                      className="size-8 p-0"
+                    />
+                    {!settled && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const first = g.items.find((c) => balanceOf(c) > 0);
+                          if (first) onPay(first);
+                        }}
+                        className={PAY_BTN}
+                      >
+                        Pay
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onUpdateOrder(g)}
+                      className="h-8 gap-1.5 text-xs"
+                      title="Update this order"
+                    >
+                      Update order
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+              {isOpen &&
+                g.items.map((c) => {
+                  const due = balanceOf(c);
+                  return (
+                    <tr
+                      key={c.id}
+                      onClick={() => onOpenCar(c)}
+                      className="cursor-pointer border-t border-border/40 bg-background/40 hover:bg-muted/50"
+                    >
+                      <td className="py-1.5 pl-11 pr-3 align-middle">
+                        <div className="truncate font-semibold">
+                          {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {[c.brand, carNumberOf(c), c.assortment].filter(Boolean).join(" · ") ||
+                            "—"}
+                        </div>
+                      </td>
+                      <td className={cell} />
+                      <td className={cell} />
+                      <td className={`${cell} ${c.expectedDate ? lateClass(c.expectedDate) : ""}`}>
+                        {formatDayMonthYear(c.expectedDate) || c.expectedDate || "—"}
+                      </td>
+                      <td className={`${cell} text-right tabular-nums`}>{inrFull(c.spent || 0)}</td>
+                      <td className={`${cell} text-right tabular-nums`}>{inrFull(c.paid || 0)}</td>
+                      <td
+                        className={`${cell} text-right font-semibold tabular-nums ${
+                          due > 0 ? "text-amber-500" : "text-emerald-500"
+                        }`}
+                      >
+                        {due > 0 ? inrFull(due) : "Fully paid"}
+                      </td>
+                      <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                          {due > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onPay(c)}
+                              className={PAY_BTN}
+                            >
+                              Pay
+                            </Button>
+                          )}
+                          <UpdateStatusButton
+                            onClick={() => onUpdateStatus(c)}
+                            className={OUTLINE_BTN}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          );
+        })}
+      </table>
+    </div>
+  );
+}
+
+/** The pre-orders as a table, the same look as the My Cars table. */
+function PreOrderTable({
+  rows,
+  onOpen,
+  onPay,
+  onUpdateStatus,
+}: {
+  rows: Diecast[];
+  onOpen: (car: Diecast) => void;
+  onPay: (car: Diecast) => void;
+  onUpdateStatus: (car: Diecast) => void;
+}) {
+  const th = "px-3 py-1.5 font-medium";
+  return (
+    <div className="card-elevated overflow-x-auto">
+      <table className="w-full min-w-[940px] table-fixed text-sm">
+        <colgroup>
+          <col />
+          <col className="w-[7rem]" />
+          <col className="w-[8rem]" />
+          <col className="w-[8rem]" />
+          <col className="w-[6rem]" />
+          <col className="w-[6rem]" />
+          <col className="w-[6.5rem]" />
+          <col className="w-[15rem]" />
+        </colgroup>
+        <thead className="bg-muted/95 text-left text-xs uppercase tracking-wide text-muted-foreground">
+          <tr>
+            <th className={`${th} px-4`}>Model</th>
+            <th className={th}>Seller</th>
+            <th className={th}>Order date</th>
+            <th className={th}>Expected</th>
+            <th className={`${th} text-right`}>Cost</th>
+            <th className={`${th} text-right`}>Deposit</th>
+            <th className={`${th} text-right`}>Balance</th>
+            <th className={th} />
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/60">
+          {rows.map((r, i) => {
+            const due = balanceOf(r);
+            const cell = "truncate px-3 py-1.5 align-middle";
+            return (
+              <tr
+                key={(r.id || "") + i}
+                onClick={() => onOpen(r)}
+                className="cursor-pointer odd:bg-transparent even:bg-muted/30 hover:bg-muted/50"
+              >
+                <td className="px-4 py-1.5 align-middle">
+                  <div className="truncate font-semibold">
+                    {r.name || `${r.make} ${r.model}`.trim() || "Unnamed car"}
+                  </div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {[r.brand, carNumberOf(r), r.assortment].filter(Boolean).join(" · ") || "—"}
+                  </div>
+                </td>
+                <td className={cell}>{r.seller || "—"}</td>
+                <td className={`${cell} text-muted-foreground`}>
+                  {formatDayMonthYear(r.orderDate) || r.orderDate || "—"}
+                </td>
+                <td className={`${cell} ${r.expectedDate ? lateClass(r.expectedDate) : ""}`}>
+                  {formatDayMonthYear(r.expectedDate) || r.expectedDate || "—"}
+                </td>
+                <td className={`${cell} text-right tabular-nums`}>{inrFull(r.spent || 0)}</td>
+                <td className={`${cell} text-right tabular-nums`}>{inrFull(r.paid || 0)}</td>
+                <td
+                  className={`${cell} text-right font-semibold tabular-nums ${
+                    due > 0 ? "text-amber-500" : "text-emerald-500"
+                  }`}
+                >
+                  {due > 0 ? inrFull(due) : "Fully paid"}
+                </td>
+                <td className="px-3 py-2 align-middle" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                    {due > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onPay(r)}
+                        className="h-8 gap-1.5 border-emerald-500/40 text-xs text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+                      >
+                        Pay
+                      </Button>
+                    )}
+                    <UpdateStatusButton
+                      onClick={() => onUpdateStatus(r)}
+                      className="h-8 border border-input bg-transparent text-xs text-foreground hover:bg-muted"
+                    />
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -474,19 +818,50 @@ function sectioned<T>(items: T[], key: ((x: T) => string) | null) {
 }
 
 const carKey = (by: string): ((c: Diecast) => string) | null =>
-  by === "model"
-    ? (c) => c.model
-    : by === "make"
-      ? (c) => c.make
+  by === "make"
+    ? (c) => c.make
+    : by === "brand"
+      ? (c) => c.brand
       : by === "seller"
         ? (c) => c.seller
         : null;
 
-function SectionHeading({ title, count }: { title: string; count: number }) {
+function SectionHeading({
+  title,
+  count,
+  cost,
+  paid,
+  due,
+}: {
+  title: string;
+  count: number;
+  cost: number;
+  paid: number;
+  due: number;
+}) {
   return (
-    <h2 className="flex items-center gap-2 text-sm font-bold">
-      {title}
-      <span className="text-xs font-medium text-muted-foreground">{count}</span>
+    <h2 className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1">
+      <span className="flex items-center gap-2 text-sm font-bold">
+        {title}
+        <span className="text-xs font-medium text-muted-foreground">{count}</span>
+      </span>
+      <span className="flex items-center gap-5 text-xs font-medium text-muted-foreground">
+        <span>
+          Cost <span className="font-semibold tabular-nums text-foreground">{inrFull(cost)}</span>
+        </span>
+        <span>
+          Deposit{" "}
+          <span className="font-semibold tabular-nums text-foreground">{inrFull(paid)}</span>
+        </span>
+        <span>
+          Balance{" "}
+          <span
+            className={`font-semibold tabular-nums ${due > 0 ? "text-amber-500" : "text-emerald-500"}`}
+          >
+            {due > 0 ? inrFull(due) : "Fully paid"}
+          </span>
+        </span>
+      </span>
     </h2>
   );
 }
@@ -509,8 +884,8 @@ function PreOrdersPage() {
         ]
       : [
           { value: "none", label: "No grouping" },
-          { value: "model", label: "Model" },
           { value: "make", label: "Make" },
+          { value: "brand", label: "Brand" },
           { value: "seller", label: "Seller" },
         ];
   const activeGroupBy = groupOpts.some((o) => o.value === groupBy) ? groupBy : "none";
@@ -745,20 +1120,42 @@ function PreOrdersPage() {
         <div className="space-y-5">
           {sectioned(groups, activeGroupBy === "seller" ? (g) => g.seller : null).map((sec) => (
             <section key={sec.title} className="space-y-3">
-              {sec.title && <SectionHeading title={sec.title} count={sec.items.length} />}
-              {sec.items.map((g) => (
-                <OrderGroupCard
-                  key={g.key}
-                  g={g}
+              {sec.title && (
+                <SectionHeading
+                  title={sec.title}
+                  count={sec.items.length}
+                  cost={sec.items.reduce((t, g) => t + g.value, 0)}
+                  paid={sec.items.reduce((t, g) => t + g.paid, 0)}
+                  due={sec.items.reduce((t, g) => t + g.due, 0)}
+                />
+              )}
+              <div className="space-y-3 sm:hidden">
+                {sec.items.map((g) => (
+                  <OrderGroupCard
+                    key={g.key}
+                    g={g}
+                    onOpenCar={(c) => open(c)}
+                    onPay={(c) => setPayFor(c)}
+                    onUpdateStatus={(c) => setStatusFor(c)}
+                    onUpdateOrder={() => {
+                      setBatchOrderId(g.orderId);
+                      setBatchOpen(true);
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="hidden sm:block">
+                <PreOrderOrdersTable
+                  groups={sec.items}
                   onOpenCar={(c) => open(c)}
                   onPay={(c) => setPayFor(c)}
                   onUpdateStatus={(c) => setStatusFor(c)}
-                  onUpdateOrder={() => {
+                  onUpdateOrder={(g) => {
                     setBatchOrderId(g.orderId);
                     setBatchOpen(true);
                   }}
                 />
-              ))}
+              </div>
             </section>
           ))}
         </div>
@@ -766,8 +1163,16 @@ function PreOrdersPage() {
         <div className="space-y-5">
           {sectioned(rows, carKey(activeGroupBy)).map((sec) => (
             <section key={sec.title} className="space-y-3">
-              {sec.title && <SectionHeading title={sec.title} count={sec.items.length} />}
-              <div className="grid gap-3 lg:grid-cols-2">
+              {sec.title && (
+                <SectionHeading
+                  title={sec.title}
+                  count={sec.items.length}
+                  cost={sec.items.reduce((t, r) => t + (r.spent || 0), 0)}
+                  paid={sec.items.reduce((t, r) => t + (r.paid || 0), 0)}
+                  due={sec.items.reduce((t, r) => t + balanceOf(r), 0)}
+                />
+              )}
+              <div className="grid gap-2 sm:hidden">
                 {sec.items.map((r, i) => (
                   <PreOrderCard
                     key={(r.id || "") + i}
@@ -777,6 +1182,14 @@ function PreOrdersPage() {
                     onUpdateStatus={() => setStatusFor(r)}
                   />
                 ))}
+              </div>
+              <div className="hidden sm:block">
+                <PreOrderTable
+                  rows={sec.items}
+                  onOpen={(r) => open(r)}
+                  onPay={(r) => setPayFor(r)}
+                  onUpdateStatus={(r) => setStatusFor(r)}
+                />
               </div>
             </section>
           ))}

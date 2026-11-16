@@ -36,7 +36,7 @@ import { SegmentControl } from "@/components/segment-control";
 import { SortSelect, type SortDir } from "@/components/filter-select";
 import { compareCarNumbers } from "@/lib/car-number";
 import { ExportButton } from "@/components/export-button";
-import { carSubLine } from "@/lib/car-subline";
+import { carNumberOf, carSubLine } from "@/lib/car-subline";
 import { toDateInputValue } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -279,7 +279,7 @@ function InventoryFoot({
       {/* brand (left) and assortment (right) (smaller size) */}
       <div className="mt-1 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
         <span className="truncate" title={car.brand || undefined}>
-          {car.brand || "—"}
+          {[car.brand, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
         </span>
         <span
           className="truncate text-right shrink-0 max-w-[50%]"
@@ -1128,11 +1128,13 @@ function InventoryPage() {
                       {/* Brand and assortment are the next column along now, so
                           the line under the name carries what it does not. */}
                       <div className="truncate text-xs text-muted-foreground">
-                        {carSubLine(r, true)}
+                        {carSubLine(r, true, true)}
                       </div>
                     </td>
                     <td className="px-3 py-2.5 align-top">
-                      <div className="truncate">{r.brand || "—"}</div>
+                      <div className="truncate">
+                        {[r.brand, carNumberOf(r)].filter(Boolean).join(" · ") || "—"}
+                      </div>
                       <div className="truncate text-xs text-muted-foreground">
                         {r.assortment || ""}
                       </div>

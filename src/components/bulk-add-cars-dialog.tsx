@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Download, Layers, Plus, Trash2, Loader2, RotateCcw, Tag, Upload } from "lucide-react";
+import {
+  Download,
+  Layers,
+  Plus,
+  ScanLine,
+  Trash2,
+  Loader2,
+  RotateCcw,
+  Tag,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -11,6 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
@@ -96,8 +107,6 @@ const FIELDS: FieldDef[] = [
   // No `option`: like model, its list is derived from what sits above it.
   { key: "variant", label: "Variant", kind: "combo", placeholder: "MK IV", sharedByDefault: false },
   { key: "year", label: "Year", kind: "text", placeholder: "1998", sharedByDefault: false },
-  { key: "colour", label: "Colour", kind: "combo", option: "colour", sharedByDefault: false },
-  { key: "type", label: "Type", kind: "combo", option: "type", sharedByDefault: false },
   {
     key: "brand",
     label: "Brand",
@@ -105,14 +114,6 @@ const FIELDS: FieldDef[] = [
     option: "brand",
     placeholder: "Hotwheels",
     sharedByDefault: true,
-  },
-  { key: "series", label: "Series", kind: "combo", option: "series", sharedByDefault: true },
-  {
-    key: "subSeries",
-    label: "Sub series",
-    kind: "combo",
-    option: "subSeries",
-    sharedByDefault: false,
   },
   // A casting's number on the card — "126/250". Per car by nature, and the one
   // field the bulk table had no column for at all.
@@ -128,6 +129,16 @@ const FIELDS: FieldDef[] = [
     label: "Assortment",
     kind: "combo",
     option: "assortment",
+    sharedByDefault: false,
+  },
+  { key: "colour", label: "Colour", kind: "combo", option: "colour", sharedByDefault: false },
+  { key: "type", label: "Type", kind: "combo", option: "type", sharedByDefault: false },
+  { key: "series", label: "Series", kind: "combo", option: "series", sharedByDefault: true },
+  {
+    key: "subSeries",
+    label: "Sub series",
+    kind: "combo",
+    option: "subSeries",
     sharedByDefault: false,
   },
   {
@@ -410,6 +421,7 @@ export function BulkAddCarsDialog({
   };
 
   const [saving, setSaving] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const [sharedKeys, setSharedKeys] = useState<Set<FieldKey>>(DEFAULT_SHARED_KEYS);
   const [shared, setShared] = useState<Values>(defaultShared);
   const [rows, setRows] = useState<Row[]>([blankRow(), blankRow(), blankRow()]);
@@ -496,16 +508,73 @@ export function BulkAddCarsDialog({
     [fieldList, sharedKeys],
   );
 
-  const toggleShared = (key: FieldKey) =>
+  const toggleShared = (key: FieldKey) => {
+    // Taking a field out of "same for all" hands its value to every car, so each
+    // row starts with what it was already showing rather than an empty cell.
+    if (sharedKeys.has(key)) {
+      const v = (shared[key] ?? "").trim();
+      if (v) setRows((rs) => rs.map((r) => ({ ...r, [key]: v })));
+    }
     setSharedKeys((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
+  };
 
   const setRow = (key: string, patch: Values) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
+
+  /**
+   * One scanned car into the table. A field that is the same for all and agrees
+   * with the scan stays shared. One that disagrees stops being shared: the cars
+   * already here keep the value the batch had (so nothing they showed changes),
+   * and the new car gets what was scanned. The shared value itself is left as
+   * it was.
+   */
+  const addScanned = (fields: ScanResult) => {
+    const incoming = rowFromScan(fields);
+    const has = (r: Row) => FIELDS.some((f) => (r[f.key] ?? "").trim());
+    const prior = rows.filter(has);
+    const nextShared = { ...shared };
+    const nextKeys = new Set(sharedKeys);
+    const fill: Values = {};
+    const backfill: Values = {};
+    for (const [k, raw] of Object.entries(fields) as [FieldKey, string][]) {
+      const v = (raw || "").trim();
+      if (!v || !(k in incoming)) continue;
+      if (!sharedKeys.has(k)) {
+        fill[k] = v;
+        continue;
+      }
+      const sv = (shared[k] ?? "").trim();
+      if (sv.toLowerCase() === v.toLowerCase()) continue;
+      if (!sv && prior.length === 0) {
+        nextShared[k] = v;
+        continue;
+      }
+      nextKeys.delete(k);
+      backfill[k] = sv;
+      fill[k] = v;
+    }
+    const blank = rows.find((r) => !has(r));
+    const made: Row = {
+      ...(blank ?? blankRow()),
+      ...incoming,
+      ...fill,
+      key: (blank ?? incoming).key,
+    };
+    // A field that is still shared is read from the shared value, so the new
+    // row carries nothing of its own for it.
+    for (const k of nextKeys) made[k] = "";
+    setRows((rs) => {
+      const back = rs.map((r) => (has(r) ? { ...r, ...backfill } : r));
+      return blank ? back.map((r) => (r.key === blank.key ? made : r)) : [...back, made];
+    });
+    setShared(nextShared);
+    setSharedKeys(nextKeys);
+  };
 
   /** Resolve a field for one row: shared value wins when the field is shared. */
   const valueOf = (row: Row, key: FieldKey) => (sharedKeys.has(key) ? shared[key] : row[key]) ?? "";
@@ -1166,10 +1235,20 @@ export function BulkAddCarsDialog({
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button variant="outline" size="sm" onClick={() => setRows((rs) => [...rs, blankRow()])}>
-            <Plus className="size-4" />
-            Add another
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setRows((rs) => [...rs, blankRow()])}
+            >
+              <Plus className="size-4" />
+              Add another
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setScanOpen(true)}>
+              <ScanLine className="size-4" />
+              Scan another
+            </Button>
+          </div>
           <p className="text-sm text-muted-foreground">
             {filled.length} car{filled.length === 1 ? "" : "s"}
             {total > 0 ? ` · ${inrFull(total)} total` : ""}
@@ -1193,6 +1272,7 @@ export function BulkAddCarsDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      <CarScanDialog open={scanOpen} onOpenChange={setScanOpen} onApply={addScanned} />
     </Dialog>
   );
 }
