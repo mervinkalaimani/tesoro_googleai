@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { openProDialog } from "@/components/pro-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -511,6 +512,7 @@ export function CarFormDialog({
   // narrow by what the catalogue holds, and those memos run before that point.
   const { catalog, addCatalogCar, updateCatalogCar, packMembers, setPackMembers } = useCatalog();
   const { isGuest, isAdmin, isPro, profile } = useAuth();
+  const isMobile = useIsMobile();
   const scansRemaining = scansLeft(profile);
   const [currentStep, setCurrentStep] = useState(1);
   const [form, setForm] = useState<CarFormData>(getBlankForm());
@@ -2044,12 +2046,21 @@ export function CarFormDialog({
      the element it had just changed — saving the car on the way to a step
      nobody ever saw. Distinct keys mean distinct nodes. */
   const actions = isEdit ? (
-    <div className="flex flex-col gap-2">
-      <Button type="submit" size="lg" className="w-full justify-between">
+    <div className="flex flex-col gap-2 max-sm:flex-row max-sm:gap-3">
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full justify-between max-sm:order-last max-sm:w-auto max-sm:h-12 max-sm:flex-1 max-sm:basis-0 max-sm:min-w-0 max-sm:justify-center"
+      >
         Update car <ChevronRight className="size-4" />
       </Button>
-      <div className="flex gap-2">
-        <Button type="button" variant="outline" className="flex-1" onClick={cancelAll}>
+      <div className="flex gap-2 max-sm:contents">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 max-sm:h-12 max-sm:flex-1 max-sm:basis-0 max-sm:min-w-0 max-sm:border-transparent max-sm:bg-muted"
+          onClick={cancelAll}
+        >
           Cancel
         </Button>
         {/* At the far end of the footer from Save. It was a full-width button on
@@ -2057,7 +2068,7 @@ export function CarFormDialog({
         <Button
           type="button"
           variant="outline"
-          className="flex-1 gap-1.5 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 dark:text-rose-400"
+          className="flex-1 gap-1.5 text-rose-600 hover:bg-rose-500/10 hover:text-rose-600 max-sm:h-12 max-sm:basis-0 max-sm:min-w-0 max-sm:border-transparent max-sm:bg-muted dark:text-rose-400"
           onClick={() => setConfirmDelete(true)}
         >
           <Trash2 className="size-4" />
@@ -2066,29 +2077,44 @@ export function CarFormDialog({
       </div>
     </div>
   ) : (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-2 max-sm:flex-row max-sm:gap-3">
       {currentStep < LAST_STEP ? (
         <Button
           key="next"
           type="button"
           size="lg"
-          className="w-full justify-between"
+          className="w-full justify-between max-sm:order-last max-sm:w-auto max-sm:h-12 max-sm:flex-1 max-sm:basis-0 max-sm:min-w-0 max-sm:justify-center"
           onClick={handleNext}
         >
           Next <ChevronRight className="size-4" />
         </Button>
       ) : (
-        <Button key="save" type="submit" size="lg" className="w-full justify-between">
+        <Button
+          key="save"
+          type="submit"
+          size="lg"
+          className="w-full justify-between max-sm:order-last max-sm:w-auto max-sm:h-12 max-sm:flex-1 max-sm:basis-0 max-sm:min-w-0 max-sm:justify-center"
+        >
           Add car <Check className="size-4" />
         </Button>
       )}
-      <div className="flex gap-2">
+      <div className="flex gap-2 max-sm:contents">
         {currentStep > 1 && (
-          <Button type="button" variant="outline" className="flex-1 gap-1" onClick={handleBack}>
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1 gap-1 max-sm:h-12 max-sm:flex-1 max-sm:basis-0 max-sm:min-w-0 max-sm:border-transparent max-sm:bg-muted"
+            onClick={handleBack}
+          >
             <ChevronLeft className="size-4" /> Back
           </Button>
         )}
-        <Button type="button" variant="outline" className="flex-1" onClick={cancelAll}>
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 max-sm:h-12 max-sm:flex-1 max-sm:basis-0 max-sm:min-w-0 max-sm:border-transparent max-sm:bg-muted"
+          onClick={cancelAll}
+        >
           Cancel
         </Button>
       </div>
@@ -2617,6 +2643,12 @@ export function CarFormDialog({
           rather than under them, which is the whole point of the layout. */}
       <DialogContent
         hideDragHandle
+        // A phone's keyboard comes up the moment a field is focused, and Add a
+        // car would open with the search box under it. Nothing is focused until
+        // a field is tapped.
+        onOpenAutoFocus={(e) => {
+          if (isMobile) e.preventDefault();
+        }}
         className={cn(
           // A column with one scrolling middle, so the steps stay at the top
           // and Cancel/Next stay at the bottom however long the form gets.
@@ -2713,7 +2745,7 @@ export function CarFormDialog({
                     onPick={pickFromCatalogue}
                     searchAll={!isGuest}
                     wide
-                    autoFocus
+                    autoFocus={!isMobile}
                   />
                   <p className="text-xs text-muted-foreground">
                     Pick a car and the fourteen fields that describe the casting fill themselves in.
@@ -2721,7 +2753,7 @@ export function CarFormDialog({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                   {/* The route counts the scan before it spends a model call.
                       This is so what is left is read before the camera opens
                       rather than after. */}
@@ -3015,12 +3047,15 @@ function CollectionSearch({
     return out;
   }, [cars, query]);
 
-  const others = useMemo(() => {
-    const mine = new Set(local.map(catalogueKey));
-    return remote.cars.filter((c) => !mine.has(catalogueKey(c))).slice(0, 10);
-  }, [local, remote.cars]);
+  // The catalogue comes first, then what is in your own collection that the
+  // catalogue results do not already show.
+  const others = useMemo(() => remote.cars.slice(0, 10), [remote.cars]);
+  const mineOnly = useMemo(() => {
+    const inCatalogue = new Set(others.map(catalogueKey));
+    return local.filter((c) => !inCatalogue.has(catalogueKey(c)));
+  }, [local, others]);
 
-  const first = local[0] ?? others[0];
+  const first = others[0] ?? mineOnly[0];
   const open = focused && query.trim().length > 0;
 
   const pick = (car: CatalogueCar) => {
@@ -3106,15 +3141,9 @@ function CollectionSearch({
             !wide && "sm:w-96",
           )}
         >
-          {local.length > 0 && (
-            <>
-              <SearchGroupLabel>Your collection</SearchGroupLabel>
-              {local.map((car) => row(car, `mine:${car.id}`))}
-            </>
-          )}
           {searchAll && others.length > 0 && (
             <>
-              <SearchGroupLabel>All collections</SearchGroupLabel>
+              <SearchGroupLabel>Catalogue</SearchGroupLabel>
               {others.map((car) =>
                 row(
                   car,
@@ -3127,8 +3156,14 @@ function CollectionSearch({
           {searchAll && remote.loading && (
             <p className="flex items-center justify-center gap-1.5 px-2 py-2 text-xs text-muted-foreground">
               <Loader2 className="size-3 animate-spin" />
-              Searching all collections…
+              Searching the catalogue…
             </p>
+          )}
+          {(searchAll ? mineOnly : local).length > 0 && (
+            <>
+              <SearchGroupLabel>Your collection</SearchGroupLabel>
+              {(searchAll ? mineOnly : local).map((car) => row(car, `mine:${car.id}`))}
+            </>
           )}
           {!remote.loading && local.length === 0 && others.length === 0 && (
             <p className="px-2 py-3 text-center text-xs text-muted-foreground">

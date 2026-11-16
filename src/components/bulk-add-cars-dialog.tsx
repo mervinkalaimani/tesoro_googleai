@@ -476,7 +476,7 @@ export function BulkAddCarsDialog({
   const [scanOpen, setScanOpen] = useState(false);
   const [sharedKeys, setSharedKeys] = useState<Set<FieldKey>>(DEFAULT_SHARED_KEYS);
   const [shared, setShared] = useState<Values>(defaultShared);
-  const [rows, setRows] = useState<Row[]>([blankRow(), blankRow(), blankRow()]);
+  const [rows, setRows] = useState<Row[]>([blankRow()]);
   const [restored, setRestored] = useState(false);
   // A phone has no room for a table: each car is an accordion instead.
   const isMobile = useIsMobile();
@@ -787,7 +787,7 @@ export function BulkAddCarsDialog({
 
   /** Clears the table but leaves the draft: closing is not the same as binning. */
   const reset = () => {
-    setRows([blankRow(), blankRow(), blankRow()]);
+    setRows([blankRow()]);
     setShared(defaultShared());
     setSharedKeys(DEFAULT_SHARED_KEYS());
     setRestored(false);
@@ -957,7 +957,7 @@ export function BulkAddCarsDialog({
           been asking for 5xl and getting 32rem. */}
       <DialogContent
         hideClose={isMobile}
-        className="max-h-[90vh] overflow-y-auto sm:max-w-[min(96rem,95vw)]"
+        className="max-h-[90vh] overflow-y-auto max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none sm:max-w-[min(96rem,95vw)]"
       >
         {/* A phone: one pinned line — upload, the title, close — with the
             template beside upload. The rest scrolls under it. */}
