@@ -33,6 +33,7 @@ import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as ApiCarFromUrlRouteImport } from './routes/api/car-from-url'
 import { Route as ApiCarImagesRouteImport } from './routes/api/car-images'
 import { Route as ApiCatalogOwnersRouteImport } from './routes/api/catalog-owners'
 import { Route as ApiScanCarRouteImport } from './routes/api/scan-car'
@@ -171,6 +172,11 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiCarFromUrlRoute = ApiCarFromUrlRouteImport.update({
+  id: '/api/car-from-url',
+  path: '/api/car-from-url',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCarImagesRoute = ApiCarImagesRouteImport.update({
   id: '/api/car-images',
   path: '/api/car-images',
@@ -273,6 +279,7 @@ export interface FileRoutesByFullPath {
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/api/car-from-url': typeof ApiCarFromUrlRoute
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/catalog-owners': typeof ApiCatalogOwnersRoute
   '/api/scan-car': typeof ApiScanCarRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/api/car-from-url': typeof ApiCarFromUrlRoute
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/catalog-owners': typeof ApiCatalogOwnersRoute
   '/api/scan-car': typeof ApiScanCarRoute
@@ -356,6 +364,7 @@ export interface FileRoutesById {
   '/terms': typeof TermsRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/api/car-from-url': typeof ApiCarFromUrlRoute
   '/api/car-images': typeof ApiCarImagesRoute
   '/api/catalog-owners': typeof ApiCatalogOwnersRoute
   '/api/scan-car': typeof ApiScanCarRoute
@@ -399,6 +408,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/api/car-from-url'
     | '/api/car-images'
     | '/api/catalog-owners'
     | '/api/scan-car'
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/api/car-from-url'
     | '/api/car-images'
     | '/api/catalog-owners'
     | '/api/scan-car'
@@ -481,6 +492,7 @@ export interface FileRouteTypes {
     | '/terms'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/api/car-from-url'
     | '/api/car-images'
     | '/api/catalog-owners'
     | '/api/scan-car'
@@ -523,6 +535,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ApiCarFromUrlRoute: typeof ApiCarFromUrlRoute
   ApiCarImagesRoute: typeof ApiCarImagesRoute
   ApiCatalogOwnersRoute: typeof ApiCatalogOwnersRoute
   ApiScanCarRoute: typeof ApiScanCarRoute
@@ -710,6 +723,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/car-from-url': {
+      id: '/api/car-from-url'
+      path: '/api/car-from-url'
+      fullPath: '/api/car-from-url'
+      preLoaderRoute: typeof ApiCarFromUrlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/car-images': {
       id: '/api/car-images'
       path: '/api/car-images'
@@ -844,6 +864,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ApiCarFromUrlRoute: ApiCarFromUrlRoute,
   ApiCarImagesRoute: ApiCarImagesRoute,
   ApiCatalogOwnersRoute: ApiCatalogOwnersRoute,
   ApiScanCarRoute: ApiScanCarRoute,

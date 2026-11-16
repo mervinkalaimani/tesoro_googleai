@@ -86,6 +86,7 @@ import {
 import { SegmentControl } from "@/components/segment-control";
 import { CatalogueFields, type CatalogueValues } from "@/components/catalogue-fields";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
+import { CarLinkField } from "@/components/car-link-field";
 import { SavedScansDialog } from "@/components/saved-scans-dialog";
 import { useSavedScans } from "@/lib/saved-scans";
 import { ImageSearchDialog } from "@/components/image-search-dialog";
@@ -882,8 +883,13 @@ export function CarFormDialog({
    * value, so this can be a flat merge: a field the scan did not fill in keeps
    * whatever was typed, and a field it did fill in is one they chose to take.
    */
-  const applyScan = (fields: ScanResult) => {
-    setForm((f) => ({ ...f, ...fields }));
+  const applyScan = (
+    fields: ScanResult & { imageUrl?: string; mrp?: number; expectedDate?: string },
+  ) => {
+    // A value the page did not state must not blank what is already typed.
+    const got = Object.fromEntries(Object.entries(fields).filter(([, v]) => v)) as typeof fields;
+    // Spent starts equal to MRP when it is still empty, as picking a car does.
+    setForm((f) => ({ ...f, ...got, ...(got.mrp && f.spent === "" ? { spent: got.mrp } : {}) }));
     setValidationError(null);
     // A scan answers step one the same way picking a car does, so it moves on
     // with the fields open: what a camera read is worth checking.
@@ -2752,6 +2758,16 @@ export function CarFormDialog({
                     Your collection first, then every collection.
                   </p>
                 </div>
+
+                <CarLinkField
+                  onFound={({ fields, imageUrl }) =>
+                    applyScan({
+                      ...fields,
+                      mrp: fields.mrp ? Number(fields.mrp) : undefined,
+                      ...(imageUrl ? { imageUrl } : {}),
+                    })
+                  }
+                />
 
                 <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                   {/* The route counts the scan before it spends a model call.

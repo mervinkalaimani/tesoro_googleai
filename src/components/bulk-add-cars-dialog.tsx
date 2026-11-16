@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { IosGroup, IosInput, IosPicker, IosRow } from "@/components/ios-field";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
+import { CarLinkField } from "@/components/car-link-field";
 import { Input } from "@/components/ui/input";
 import { Combobox } from "@/components/ui/combobox";
 import { Label } from "@/components/ui/label";
@@ -391,7 +392,9 @@ function rowFromScan(
       | "subSeries"
       | "carNumber"
       | "assortment"
-      | "size",
+      | "size"
+      | "mrp"
+      | "expectedDate",
       string
     >
   >,
@@ -411,6 +414,10 @@ function rowFromScan(
     carNumber: c.carNumber || "",
     assortment: c.assortment || "",
     size: c.size || "",
+    mrp: c.mrp || "",
+    // What it cost is, nearly always, the retail price.
+    cost: c.mrp || "",
+    expectedDate: c.expectedDate || "",
   };
 }
 
@@ -613,7 +620,7 @@ export function BulkAddCarsDialog({
    * and the new car gets what was scanned. The shared value itself is left as
    * it was.
    */
-  const addScanned = (fields: ScanResult) => {
+  const addScanned = (fields: ScanResult & { mrp?: string; expectedDate?: string }) => {
     const incoming = rowFromScan(fields);
     const has = (r: Row) => FIELDS.some((f) => (r[f.key] ?? "").trim());
     const prior = rows.filter(has);
@@ -1400,6 +1407,10 @@ export function BulkAddCarsDialog({
             </table>
           </div>
         )}
+
+        {/* One car from a web page, added as a row. The page photo is not kept:
+            bulk rows have no photo column. */}
+        <CarLinkField onFound={({ fields }) => addScanned(fields)} />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">

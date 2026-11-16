@@ -60,6 +60,7 @@ import { buildCarName } from "@/lib/car-name";
 import { useAuth } from "@/lib/auth-store";
 import { scansLeft } from "@/lib/tiers";
 import { CarScanDialog, type ScanResult } from "@/components/car-scan-dialog";
+import { CarLinkField } from "@/components/car-link-field";
 import { useCarImageCandidates } from "@/lib/car-image-search";
 import { cn } from "@/lib/utils";
 
@@ -442,7 +443,9 @@ export function CatalogFormDialog({
     .filter(Boolean)
     .join(" ");
 
-  const onApplyScan = (scanned: ScanResult) => {
+  const onApplyScan = (
+    scanned: ScanResult & { imageUrl?: string; mrp?: string; expectedDate?: string },
+  ) => {
     setForm((prev) => ({
       ...prev,
       make: scanned.make || prev.make,
@@ -457,6 +460,9 @@ export function CatalogFormDialog({
       sub_series: scanned.subSeries || prev.sub_series,
       car_number: scanned.carNumber || prev.car_number,
       size: scanned.size || prev.size,
+      image_url: scanned.imageUrl || prev.image_url,
+      mrp: scanned.mrp ? Number(scanned.mrp) : prev.mrp,
+      expected_date: scanned.expectedDate || prev.expected_date,
       name:
         prev.name ||
         `${scanned.make || prev.make || ""} ${scanned.model || prev.model || ""}`.trim(),
@@ -1256,6 +1262,14 @@ export function CatalogFormDialog({
               }
               actions={actions}
             >
+              {isNew && !isImageOnly && (
+                <CarLinkField
+                  className="mb-4"
+                  onFound={({ fields, imageUrl }) =>
+                    onApplyScan({ ...fields, ...(imageUrl ? { imageUrl } : {}) })
+                  }
+                />
+              )}
               <FormSection
                 id="identity"
                 title="Car details"

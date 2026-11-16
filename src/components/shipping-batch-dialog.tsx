@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { CarLinkField } from "@/components/car-link-field";
 import { makeBlankCar, useCars, useCarsActions, type ShippingBatchUpdates } from "@/lib/cars-store";
 import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
@@ -613,6 +614,20 @@ export function ShippingBatchDialog({
                     </Button>
                   </div>
 
+                  {/* A link to the car's page: the wizard opens with what it read. */}
+                  <CarLinkField
+                    onFound={({ fields, imageUrl }) =>
+                      setNewCarSeed({
+                        ...seedNewCar(),
+                        ...fields,
+                        mrp: Number(fields.mrp) || 0,
+                        spent: Number(fields.mrp) || 0,
+                        expectedDate: fields.expectedDate ?? "",
+                        ...(imageUrl ? { imageUrl } : {}),
+                      })
+                    }
+                  />
+
                   {pickerOpen && (
                     <div className="space-y-1.5 rounded-lg border border-border bg-background p-2">
                       <div className="relative">
@@ -747,10 +762,7 @@ export function ShippingBatchDialog({
                   >
                     <ul className="max-h-[22rem] space-y-1.5 overflow-y-auto">
                       {matchedCars.map((car) => (
-                        <li
-                          key={car.id}
-                          className="rounded bg-background/60 px-2 py-1.5 text-xs"
-                        >
+                        <li key={car.id} className="rounded bg-background/60 px-2 py-1.5 text-xs">
                           <div className="truncate font-medium text-foreground">
                             {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
                           </div>

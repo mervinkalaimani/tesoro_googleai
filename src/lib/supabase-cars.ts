@@ -3,6 +3,7 @@ import type { Diecast } from "@/lib/types";
 import { buildCarName } from "@/lib/car-name";
 import { getSupabaseTableName } from "@/lib/supabase-config";
 import { parseCurrency } from "@/lib/format";
+import { catalogIdFor } from "@/lib/car-id";
 import { monthEtaToDate, toDateInputValue } from "@/lib/date-utils";
 import { normaliseRarity, rarityOf } from "@/lib/rarity";
 import {
@@ -10,6 +11,7 @@ import {
   saveCatalogCarToSupabase,
   seedCatalogToSupabase,
   extractCatalogFromCars,
+  savePackMembers,
   getLocalCatalog,
   syncUserCarImageToCatalog,
 } from "@/lib/catalog";
@@ -484,6 +486,38 @@ async function upsertRaw(tableName: string, rows: TesoroRawRow[]) {
 }
 
 /**
+ * A box saved together with the cars inside it is a multipack in the catalogue
+ * too. The owned rows already say so (`packOf`), but the catalogue entry made
+ * from the box was an ordinary casting: no multipack flag, no size, no members,
+ * so the catalogue listed eight separate cars and a pack that held nothing.
+ * Uses the same IDs the entries above were filed under.
+ */
+async function flagPacksInCatalogue(filed: Diecast[]): Promise<void> {
+  try {
+    const boxes = new Map<string, Diecast[]>();
+    for (const c of filed) {
+      if (c.packOf) boxes.set(c.packOf, [...(boxes.get(c.packOf) ?? []), c]);
+    }
+    for (const [boxId, inside] of boxes) {
+      const box = filed.find((c) => c.id === boxId);
+      if (!box || inside.length < 2) continue;
+      const boxCid = catalogIdFor(box);
+      const memberIds = [...new Set(inside.map((c) => catalogIdFor(c)))].filter(
+        (id) => id && id !== boxCid,
+      );
+      if (!boxCid || memberIds.length < 2) continue;
+      await supabase
+        .from("tesoro_car_catalog")
+        .update({ is_multipack: true, pack_size: inside.length })
+        .eq("car_id", boxCid);
+      await savePackMembers(boxCid, memberIds);
+    }
+  } catch (e) {
+    console.warn("flagPacksInCatalogue warning:", (e as Error).message);
+  }
+}
+
+/**
  * Save many cars in one round trip per 100, instead of one upsert, one session
  * lookup and one catalogue upsert per car. Same contract as saveCarToSupabase,
  * one result per car, in order.
@@ -511,7 +545,11 @@ export async function saveCarsToSupabase(
 
     // Held cars keep their casting unfiled, as in saveCarToSupabase.
     const filed = cars.filter((c, i) => results[i].success && !c.catalogPendingAt);
-    if (filed.length) void seedCatalogToSupabase(extractCatalogFromCars(filed));
+    if (filed.length) {
+      void seedCatalogToSupabase(extractCatalogFromCars(filed)).then(() =>
+        flagPacksInCatalogue(filed),
+      );
+    }
     return results;
   } catch (err) {
     return failAll((err as Error).message);
