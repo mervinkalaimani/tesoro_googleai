@@ -562,6 +562,32 @@ export function BulkAddCarsDialog({
     [fieldList, sharedKeys],
   );
 
+  /** The next pack label no row is using: A, B, C… */
+  const nextPackLabel = () => {
+    const used = new Set(rows.map((r) => r.pack).filter(Boolean));
+    for (let i = 0; i < 26; i++) {
+      const l = String.fromCharCode(65 + i);
+      if (!used.has(l)) return l;
+    }
+    return String(used.size + 1);
+  };
+  /** Cars with something filled in that are not yet in a set. */
+  const looseRows = rows.filter(
+    (r) => !r.pack && FIELDS.some((f) => !sharedKeys.has(f.key) && (r[f.key] ?? "").trim()),
+  );
+  const makeSet = () => {
+    const label = nextPackLabel();
+    const ids = new Set(looseRows.map((r) => r.key));
+    setRows((rs) => rs.map((r) => (ids.has(r.key) ? { ...r, pack: label } : r)));
+  };
+  const ungroup = (label: string) => {
+    setRows((rs) => rs.map((r) => (r.pack === label ? { ...r, pack: undefined } : r)));
+    setPackPrices((p) => {
+      const { [label]: _gone, ...rest } = p;
+      return rest;
+    });
+  };
+
   const toggleShared = (key: FieldKey) => {
     // Taking a field out of "same for all" hands its value to every car, so each
     // row starts with what it was already showing rather than an empty cell.
@@ -959,7 +985,11 @@ export function BulkAddCarsDialog({
           been asking for 5xl and getting 32rem. */}
       <DialogContent
         hideClose={isMobile}
-        className="max-h-[90vh] overflow-y-auto max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none sm:max-w-[min(96rem,95vw)]"
+        // On a phone it is a fixed-height column, and a fixed-height grid
+        // squeezes anything with overflow hidden down to its border — the list
+        // of common fields was one line. A flex column whose children keep their
+        // height scrolls instead.
+        className="max-h-[90vh] overflow-y-auto max-sm:inset-0 max-sm:flex max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:flex-col max-sm:rounded-none max-sm:[&>*]:shrink-0 sm:max-w-[min(96rem,95vw)]"
       >
         {/* A phone: one pinned line — upload, the title, close — with the
             template beside upload. The rest scrolls under it. */}
@@ -1153,9 +1183,20 @@ export function BulkAddCarsDialog({
           const n = rows.filter((r) => r.pack === label).length;
           return (
             <section key={label} className="space-y-3 rounded-lg border border-border p-3">
-              <h3 className="text-xs uppercase tracking-wider text-muted-foreground">
-                Pack {label} — one box with {n} car{n === 1 ? "" : "s"} inside it
-              </h3>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xs uppercase tracking-wider text-muted-foreground">
+                  Set {label} — one box with {n} car{n === 1 ? "" : "s"} inside it
+                </h3>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => ungroup(label)}
+                >
+                  Ungroup
+                </Button>
+              </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1.5">
                   <Label htmlFor={`bulk-pack-cost-${label}`}>Paid for the pack</Label>
@@ -1374,6 +1415,17 @@ export function BulkAddCarsDialog({
               <ScanLine className="size-4" />
               Scan another
             </Button>
+            {looseRows.length >= 2 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={makeSet}
+                title="Save these cars as one set: a box with the cars inside it"
+              >
+                <Layers className="size-4" />
+                Make these a set
+              </Button>
+            )}
           </div>
           <p className="text-sm text-muted-foreground">
             {filled.length} car{filled.length === 1 ? "" : "s"}
