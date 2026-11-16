@@ -266,6 +266,7 @@ function FieldInput({
           options={(options ?? []).map((o) => ({ value: o, label: o }))}
           placeholder={def.placeholder ?? def.label}
           allowNew
+          clearable
         />
       );
     if (def.kind === "status")
@@ -310,6 +311,7 @@ function FieldInput({
         options={options ?? []}
         placeholder={def.placeholder ?? def.label}
         searchPlaceholder={`Search ${def.label.toLowerCase()}, or type a new one…`}
+        clearable
         ariaLabel={def.label}
         className={cls}
       />

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
+import { Check, ChevronsUpDown, Search, X } from "lucide-react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -78,6 +78,7 @@ export function IosPicker({
   options,
   placeholder,
   allowNew = false,
+  clearable = false,
 }: {
   label: string;
   value: string;
@@ -86,6 +87,8 @@ export function IosPicker({
   placeholder?: string;
   /** Lets a value that is not in the list be typed in, as a combo box does. */
   allowNew?: boolean;
+  /** Offers a row that empties the field again. */
+  clearable?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -111,18 +114,34 @@ export function IosPicker({
         setOpen(v);
       }}
     >
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          className="flex w-full items-center justify-end gap-1 text-[15px]"
-        >
-          <span className={cn("truncate", !shown && "text-muted-foreground/70")}>
-            {shown || placeholder || "Select"}
-          </span>
-          <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground/60" />
-        </button>
-      </PopoverTrigger>
+      <div className="flex w-full items-center justify-end gap-1.5">
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            aria-label={label}
+            className="flex min-w-0 flex-1 items-center justify-end gap-1 text-[15px]"
+          >
+            <span className={cn("truncate", !shown && "text-muted-foreground/70")}>
+              {shown || placeholder || "Select"}
+            </span>
+            {!(clearable && value) && (
+              <ChevronsUpDown className="size-4 shrink-0 text-muted-foreground/60" />
+            )}
+          </button>
+        </PopoverTrigger>
+        {/* With something chosen, the up-down arrows give way to a cross that
+            empties the field. */}
+        {clearable && value && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            aria-label={`Clear ${label}`}
+            className="grid size-6 shrink-0 place-items-center text-muted-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        )}
+      </div>
       {/* A menu that opens right at the value, the way iOS shows a pull-down:
           rounded, a tick on the one in use, scrolls when the list is long. */}
       <PopoverContent

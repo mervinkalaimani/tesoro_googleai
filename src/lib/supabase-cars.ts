@@ -420,6 +420,33 @@ export async function fetchCarsFromSupabase(): Promise<Diecast[] | null> {
 }
 
 /**
+ * Rows that are already in the table but reached this code without their SNO —
+ * a car added a moment ago and edited before the list reloaded — would be
+ * checked against NOT NULL as an INSERT and fail with 23502 on "SNO". Look the
+ * number up by Car ID and send it back; a row that is genuinely new has none to
+ * find and keeps the identity default.
+ */
+async function withKnownSno(tableName: string, rows: TesoroRawRow[]): Promise<TesoroRawRow[]> {
+  const missing = rows.filter((r) => r.SNO == null && r["Car ID"]);
+  if (missing.length === 0) return rows;
+  const { data } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from(tableName as any)
+    .select('"Car ID", "SNO"')
+    .in(
+      "Car ID",
+      missing.map((r) => String(r["Car ID"])),
+    );
+  const sno = new Map<string, number>();
+  for (const d of (data ?? []) as unknown as { "Car ID": string; SNO: number }[]) {
+    if (typeof d.SNO === "number") sno.set(String(d["Car ID"]), d.SNO);
+  }
+  return rows.map((r) =>
+    r.SNO == null && sno.has(String(r["Car ID"])) ? { ...r, SNO: sno.get(String(r["Car ID"])) } : r,
+  );
+}
+
+/**
  * One upsert of whole rows, retried without the optional columns when the
  * deployed schema has not reached them yet. Returns the error, if any.
  */
@@ -429,11 +456,12 @@ async function upsertRaw(tableName: string, rows: TesoroRawRow[]) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(tableName as any)
       .upsert(r, { onConflict: "Car ID" });
-  let { error } = await up(rows);
+  const known = await withKnownSno(tableName, rows);
+  let { error } = await up(known);
   if (error && isMissingColumnError(error.message)) {
     error = (
       await up(
-        rows.map((row) => {
+        known.map((row) => {
           const copy = { ...row };
           for (const key of OPTIONAL_COLUMNS) delete copy[key];
           return copy;
@@ -490,7 +518,9 @@ export async function saveCarToSupabase(
     if (!userId) return { success: false, error: "Not signed in" };
 
     const tableName = getSupabaseTableName();
-    const payload = { ...diecastToTesoroRaw(car), user_id: userId };
+    const [payload] = await withKnownSno(tableName, [
+      { ...diecastToTesoroRaw(car), user_id: userId },
+    ]);
     let { error } = await supabase
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .from(tableName as any)
