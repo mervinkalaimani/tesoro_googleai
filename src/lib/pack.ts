@@ -65,9 +65,18 @@ export function packMemberIds(members: Record<string, string[]>): Set<string> {
   return out;
 }
 
-/** Whether this row is a car that only comes inside a box. */
-export const isPackMember = (car: Pick<Diecast, "catalogId">, memberIds: Set<string>) =>
-  memberIds.has((car.catalogId || "").trim().toUpperCase());
+/**
+ * Whether this row is a car that only comes inside a box.
+ *
+ * Two ways to know. The catalogue says which castings are sold only in a box;
+ * and a car you filed inside a box you own says so itself, in `packOf`. The
+ * second does not depend on the catalogue having loaded, which a phone that has
+ * been open since before the set was added can be a long way behind on.
+ */
+export const isPackMember = (
+  car: Pick<Diecast, "catalogId"> & { packOf?: string | null },
+  memberIds: Set<string>,
+) => Boolean(car.packOf) || memberIds.has((car.catalogId || "").trim().toUpperCase());
 
 /** What one owned row counts as: the cars in the box, or 1 for a single car. */
 export function unitsOf(car: Pick<Diecast, "catalogId">, sizes: Map<string, number>): number {

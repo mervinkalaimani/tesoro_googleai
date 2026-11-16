@@ -448,13 +448,12 @@ function InventoryPage() {
   const sizeOfPack = useMemo(() => packSizes(catalog, packMembers), [catalog, packMembers]);
   const [hideInPacks, setHideInPacks] = useState(true);
   const inPackCount = useMemo(
-    () => (memberIds.size === 0 ? 0 : data.filter((c) => isPackMember(c, memberIds)).length),
+    () => data.filter((c) => isPackMember(c, memberIds)).length,
     [data, memberIds],
   );
 
   const searched = useMemo(() => {
-    const rolled =
-      hideInPacks && memberIds.size > 0 ? data.filter((c) => !isPackMember(c, memberIds)) : data;
+    const rolled = hideInPacks ? data.filter((c) => !isPackMember(c, memberIds)) : data;
     return filterRows(rolled, query);
   }, [data, query, hideInPacks, memberIds]);
 

@@ -245,7 +245,7 @@ function DashboardPage() {
   const memberIds = useMemo(() => packMemberIds(packMembers), [packMembers]);
   const data = useMemo(() => {
     const rows = filterRows(cars, query);
-    return memberIds.size === 0 ? rows : rows.filter((c) => !isPackMember(c, memberIds));
+    return rows.filter((c) => !isPackMember(c, memberIds));
   }, [cars, query, memberIds]);
 
   // Both shelves are worked out here rather than inside themselves, because

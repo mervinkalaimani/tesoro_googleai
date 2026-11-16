@@ -457,19 +457,30 @@ async function upsertRaw(tableName: string, rows: TesoroRawRow[]) {
       .from(tableName as any)
       .upsert(r, { onConflict: "Car ID" });
   const known = await withKnownSno(tableName, rows);
-  let { error } = await up(known);
-  if (error && isMissingColumnError(error.message)) {
-    error = (
-      await up(
-        known.map((row) => {
-          const copy = { ...row };
-          for (const key of OPTIONAL_COLUMNS) delete copy[key];
-          return copy;
-        }),
-      )
-    ).error;
+  // One request cannot mix rows that carry an SNO with rows that do not: the
+  // request fills every column any row mentions, and a row that left one out
+  // gets NULL rather than the identity default. A pack added to a collection is
+  // exactly that mix — new cars beside existing ones renumbered with it — so
+  // the two kinds go separately.
+  const groups = [known.filter((r) => r.SNO != null), known.filter((r) => r.SNO == null)].filter(
+    (g) => g.length > 0,
+  );
+  for (const group of groups) {
+    let { error } = await up(group);
+    if (error && isMissingColumnError(error.message)) {
+      error = (
+        await up(
+          group.map((row) => {
+            const copy = { ...row };
+            for (const key of OPTIONAL_COLUMNS) delete copy[key];
+            return copy;
+          }),
+        )
+      ).error;
+    }
+    if (error) return error;
   }
-  return error;
+  return null;
 }
 
 /**
