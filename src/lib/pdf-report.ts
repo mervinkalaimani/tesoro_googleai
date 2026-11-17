@@ -1,16 +1,19 @@
 import type { Diecast } from "@/lib/types";
 import type { CsvColumn } from "@/lib/csv";
 import { inrFull, inrPriceFull } from "@/lib/format";
+import { SITE_ORIGIN } from "@/lib/site";
+import logoSvg from "../../public/viiv_icon.svg?raw";
 
 /**
- * A printable collection report.
+ * A printable collection report, and the same page as an image.
  *
  * Rendered as a styled HTML document and handed to the browser's print dialog,
  * where "Save as PDF" produces the file. No PDF library: the two that would do
  * this ship their own font stack, and the standard PDF fonts have no rupee
  * glyph — every price in this app would print as a box or vanish. Printing uses
  * the system's own fonts, and gets real CSS for the layout, page breaks and
- * repeating table headers into the bargain.
+ * repeating table headers into the bargain. export-share.ts draws the same HTML
+ * to a PNG for sharing.
  */
 
 const esc = (v: unknown) =>
@@ -20,17 +23,6 @@ const esc = (v: unknown) =>
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 
-/** Top `n` values of one field, with counts. */
-function top(rows: Diecast[], pick: (r: Diecast) => string, n: number) {
-  const m = new Map<string, number>();
-  for (const r of rows) {
-    const v = (pick(r) || "").trim();
-    if (!v) continue;
-    m.set(v, (m.get(v) ?? 0) + 1);
-  }
-  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
-}
-
 export type ReportMeta = {
   /** "Inventory", "Favourites" — what this list is. */
   title: string;
@@ -38,7 +30,80 @@ export type ReportMeta = {
   subtitle?: string;
   /** Shown in the letterhead. */
   owner?: string;
+  /** "image" lays the page out as one tall sheet of a fixed width instead of A4 pages. */
+  mode?: "pdf" | "image";
+  /** Width of the image sheet in CSS pixels. */
+  width?: number;
+  /** A photo URL (or data URL) for a car; the Photo column is blank without it. */
+  photoSrc?: (r: Diecast) => string;
 };
+
+/** Money columns: right-aligned, formatted, and totalled at the foot. */
+const MONEY = new Set(["spent", "mrp", "paid", "balance", "shippingCost"]);
+/** Never lifted to the top: they identify a row rather than describe a group. */
+const PER_ROW = new Set(["name", "id", "imageUrl", "transitInfo", "trackingId"]);
+
+/**
+ * The columns whose value is the same on every row, with that value.
+ *
+ * A seller shared by the whole export is said once, at the top, instead of down
+ * a column. Only when every car has it: one different seller, or one car with
+ * none, and the column stays. At least one column is always left for the table.
+ */
+export function commonFields(
+  rows: Diecast[],
+  columns: CsvColumn<Diecast>[],
+): { common: { label: string; value: string }[]; rest: CsvColumn<Diecast>[] } {
+  if (rows.length < 2) return { common: [], rest: columns };
+  const common: { label: string; value: string }[] = [];
+  const rest: CsvColumn<Diecast>[] = [];
+  for (const c of columns) {
+    const first = String(c.get(rows[0]) ?? "").trim();
+    const shared =
+      !MONEY.has(c.key) &&
+      !PER_ROW.has(c.key) &&
+      first !== "" &&
+      first !== "-" &&
+      rows.every((r) => String(c.get(r) ?? "").trim() === first);
+    if (shared) common.push({ label: c.label, value: first });
+    else rest.push(c);
+  }
+  return rest.length ? { common, rest } : { common: [], rest: columns };
+}
+
+const CSS = `
+  :root { --ink:#16181d; --muted:#6b7280; --line:#e6e8ec; --accent:#EF6413; --tint:#fff6f0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { color:var(--ink); background:#fff; font:10pt/1.45 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .top { display:flex; justify-content:space-between; align-items:center; padding-bottom:12px; border-bottom:3px solid var(--accent); }
+  .brand { display:flex; align-items:center; gap:12px; }
+  .logo svg { width:100%; height:100%; display:block; }
+  .logo { width:46px; height:46px; display:block; } .logo.sm { width:30px; height:30px; }
+  .word { font-size:24pt; font-weight:800; letter-spacing:2px; line-height:1; }
+  .sub { font-size:9pt; color:var(--muted); margin-top:4px; }
+  .meta { text-align:right; font-size:9pt; color:var(--muted); } .meta b { color:var(--ink); font-size:12pt; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0; }
+  .chip { display:flex; gap:8px; align-items:baseline; background:#f1f2f4; border-radius:999px; padding:5px 14px; font-size:9.5pt; }
+  .chip span { font-size:7pt; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); } .chip b { font-weight:700; }
+  .stats { display:flex; gap:8px; margin:14px 0; }
+  .stat { flex:1; background:var(--tint); border-radius:8px; padding:8px 12px; }
+  .sl { font-size:7pt; text-transform:uppercase; letter-spacing:.7px; color:var(--muted); } .sv { font-size:14pt; font-weight:700; }
+  table { width:100%; border-collapse:collapse; font-size:9pt; }
+  thead { display:table-header-group; } tr { break-inside:avoid; page-break-inside:avoid; }
+  th { background:var(--ink); color:#fff; text-align:left; font-size:7pt; text-transform:uppercase; letter-spacing:.6px; padding:7px 8px; }
+  th:first-child { border-radius:6px 0 0 0; } th:last-child { border-radius:0 6px 0 0; }
+  td { padding:5px 8px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  tbody tr:nth-child(even) td { background:#f8f9fa; }
+  .n { text-align:right; font-variant-numeric:tabular-nums; } .nm { font-weight:600; }
+  .ph { width:48px; height:30px; object-fit:contain; background:#f1f2f4; border-radius:4px; display:block; }
+  tfoot td { font-weight:700; border-top:2px solid var(--ink); background:#fff; }
+  .vf { margin-top:16px; padding-top:10px; border-top:3px solid var(--accent); display:flex; justify-content:space-between;
+    align-items:center; font-size:8.5pt; color:var(--muted); break-inside:avoid; }
+  .vl { display:flex; gap:10px; align-items:center; } .vl b { color:var(--ink); font-size:10pt; letter-spacing:1.5px; }
+  .vr { text-align:right; } .empty { padding:30px; text-align:center; color:var(--muted); }
+`;
 
 export function buildReportHtml(
   rows: Diecast[],
@@ -47,184 +112,95 @@ export function buildReportHtml(
 ): string {
   const spend = rows.reduce((s, r) => s + (r.spent || 0), 0);
   const mrp = rows.reduce((s, r) => s + (r.mrp || 0), 0);
-  const brands = new Set(rows.map((r) => (r.brand || "").trim()).filter(Boolean)).size;
   const generated = new Date().toLocaleDateString("en-GB", {
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-
-  // Numeric columns sit right so the digits line up down the page.
-  const numeric = new Set(["spent", "mrp", "paid"]);
+  const logo = logoSvg.replace(/\s(width|height)="\d+"/g, "");
+  const picked = commonFields(rows, columns);
+  const { common } = picked;
+  // Photo and name lead the table whatever order the columns are declared in.
+  const lead = (c: CsvColumn<Diecast>) => (c.key === "imageUrl" ? 0 : c.key === "name" ? 1 : 2);
+  const rest = [...picked.rest].sort((a, b) => lead(a) - lead(b));
 
   const stat = (label: string, value: string) =>
-    `<div class="stat"><div class="stat-label">${esc(label)}</div><div class="stat-value">${esc(value)}</div></div>`;
+    `<div class="stat"><div class="sl">${esc(label)}</div><div class="sv">${esc(value)}</div></div>`;
 
-  const topBrands = top(rows, (r) => r.brand, 5);
-  const topSeries = top(rows, (r) => r.series, 5);
+  const head = rest
+    .map((c) => `<th class="${MONEY.has(c.key) ? "n" : ""}">${esc(c.label)}</th>`)
+    .join("");
 
-  const chartRow = (entries: [string, number][], heading: string) => {
-    if (!entries.length) return "";
-    const max = entries[0][1] || 1;
-    return `<section class="panel">
-      <h2>${esc(heading)}</h2>
-      ${entries
-        .map(
-          ([name, n]) => `<div class="bar-row">
-            <span class="bar-name">${esc(name)}</span>
-            <span class="bar-track"><span class="bar-fill" style="width:${Math.round((n / max) * 100)}%"></span></span>
-            <span class="bar-count">${n}</span>
-          </div>`,
-        )
-        .join("")}
-    </section>`;
+  const cell = (c: CsvColumn<Diecast>, r: Diecast) => {
+    if (c.key === "imageUrl") {
+      const src = meta.photoSrc?.(r) ?? r.imageUrl ?? "";
+      return src ? `<img class="ph" src="${esc(src)}" alt="">` : "";
+    }
+    const raw = c.get(r);
+    if (MONEY.has(c.key))
+      return Number(raw)
+        ? esc(c.key === "mrp" ? inrPriceFull(Number(raw)) : inrFull(Number(raw)))
+        : "—";
+    return c.key === "name" ? `<span class="nm">${esc(raw || "—")}</span>` : esc(raw || "—");
   };
 
-  const head = columns
-    .map((c) => `<th class="${numeric.has(c.key) ? "num" : ""}">${esc(c.label)}</th>`)
+  const body = rows
+    .map(
+      (r) =>
+        `<tr>${rest.map((c) => `<td class="${MONEY.has(c.key) ? "n" : ""}">${cell(c, r)}</td>`).join("")}</tr>`,
+    )
     .join("");
 
-  const body = rows
-    .map((r, i) => {
-      const cells = columns
-        .map((c) => {
-          const raw = c.get(r);
-          const value = numeric.has(c.key) ? (Number(raw) ? inrFull(Number(raw)) : "—") : raw;
-          return `<td class="${numeric.has(c.key) ? "num" : ""}">${esc(value || "—")}</td>`;
+  // A total under every money column that is shown; the first cell carries the label.
+  const foot = rest.some((c) => MONEY.has(c.key))
+    ? `<tfoot><tr>${rest
+        .map((c, i) => {
+          if (!MONEY.has(c.key)) return `<td>${i === 0 ? `Total · ${rows.length} cars` : ""}</td>`;
+          const sum = rows.reduce((s, r) => s + (Number(c.get(r)) || 0), 0);
+          return `<td class="n">${sum ? esc(c.key === "mrp" ? inrPriceFull(sum) : inrFull(sum)) : "—"}</td>`;
         })
-        .join("");
-      return `<tr class="${i % 2 ? "alt" : ""}">${cells}</tr>`;
-    })
-    .join("");
+        .join("")}</tr></tfoot>`
+    : "";
+
+  const sheet =
+    meta.mode === "image"
+      ? `body{width:${meta.width ?? 900}px;padding:32px;font-size:10pt}`
+      : "@page{size:A4 landscape;margin:12mm}";
 
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>${esc(meta.title)} — VIIV</title>
-<style>
-  @page { size: A4 landscape; margin: 14mm 12mm 16mm; }
-
-  :root {
-    --ink: #16181d;
-    --muted: #6b7280;
-    --line: #e3e6ea;
-    --accent: #b3123a;
-    --tint: #fbf3f5;
-  }
-
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
-  body {
-    color: var(--ink);
-    background: #fff;
-    font: 10pt/1.45 "Segoe UI", -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
-
-  header.masthead {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 16px;
-    border-bottom: 2.5pt solid var(--accent);
-    padding-bottom: 8px;
-  }
-  .brand { font-size: 20pt; font-weight: 700; letter-spacing: -0.4pt; }
-  .brand span { color: var(--accent); }
-  .masthead h1 { margin: 2px 0 0; font-size: 11pt; font-weight: 600; color: var(--muted); }
-  .masthead .meta { text-align: right; font-size: 8.5pt; color: var(--muted); line-height: 1.5; }
-
-  .stats { display: flex; gap: 8px; margin: 12px 0; }
-  .stat {
-    flex: 1;
-    border: 0.75pt solid var(--line);
-    border-top: 2pt solid var(--accent);
-    border-radius: 3pt;
-    padding: 7px 10px;
-    background: var(--tint);
-  }
-  .stat-label {
-    font-size: 7pt; text-transform: uppercase; letter-spacing: 0.6pt; color: var(--muted);
-  }
-  .stat-value { font-size: 13pt; font-weight: 700; margin-top: 2px; }
-
-  .panels { display: flex; gap: 8px; margin-bottom: 12px; }
-  .panel {
-    flex: 1; border: 0.75pt solid var(--line); border-radius: 3pt; padding: 8px 10px;
-  }
-  .panel h2 {
-    margin: 0 0 6px; font-size: 7pt; text-transform: uppercase;
-    letter-spacing: 0.6pt; color: var(--muted); font-weight: 600;
-  }
-  .bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 8.5pt; }
-  .bar-name { width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .bar-track { flex: 1; height: 5pt; background: var(--line); border-radius: 3pt; overflow: hidden; }
-  .bar-fill { display: block; height: 100%; background: var(--accent); }
-  .bar-count { width: 22pt; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-  /* Repeat the header on every printed page rather than only the first. */
-  thead { display: table-header-group; }
-  tr { page-break-inside: avoid; break-inside: avoid; }
-  th {
-    text-align: left; font-size: 7pt; text-transform: uppercase; letter-spacing: 0.5pt;
-    color: #fff; background: var(--ink); padding: 5px 7px; font-weight: 600;
-  }
-  td { padding: 4px 7px; border-bottom: 0.5pt solid var(--line); vertical-align: top; }
-  tr.alt td { background: #f7f8f9; }
-  .num { text-align: right; font-variant-numeric: tabular-nums; }
-  td:first-child { font-weight: 600; }
-
-  footer {
-    margin-top: 10px; padding-top: 6px; border-top: 0.75pt solid var(--line);
-    font-size: 7.5pt; color: var(--muted);
-    display: flex; justify-content: space-between;
-  }
-
-  .empty { padding: 30px; text-align: center; color: var(--muted); }
-</style>
+<style>${CSS}${sheet}</style>
 </head>
 <body>
-  <header class="masthead">
-    <div>
-      <div class="brand">Tes<span>o</span>ro</div>
-      <h1>${esc(meta.title)}${meta.subtitle ? ` · ${esc(meta.subtitle)}` : ""}</h1>
-    </div>
-    <div class="meta">
-      ${meta.owner ? `<div><strong>${esc(meta.owner)}</strong></div>` : ""}
-      <div>${esc(generated)}</div>
-    </div>
-  </header>
-
-  <div class="stats">
-    ${stat("Castings", rows.length.toLocaleString())}
-    ${stat("Total spend", inrFull(spend))}
-    ${stat("Total MRP", inrPriceFull(mrp))}
-    ${stat("Average spend", inrFull(rows.length ? spend / rows.length : 0))}
-    ${stat("Brands", String(brands))}
+  <div class="top">
+    <div class="brand"><span class="logo">${logo}</span>
+      <div><div class="word">VIIV</div><div class="sub">Collection report</div></div></div>
+    <div class="meta"><b>${esc(meta.title)}${meta.subtitle ? ` · ${esc(meta.subtitle)}` : ""}</b><br>
+      ${meta.owner ? `${esc(meta.owner)} · ` : ""}${esc(generated)} · ${rows.length.toLocaleString()} car${rows.length === 1 ? "" : "s"}</div>
   </div>
-
   ${
-    topBrands.length || topSeries.length
-      ? `<div class="panels">
-          ${chartRow(topBrands, "Leading brands")}
-          ${chartRow(topSeries, "Leading series")}
-        </div>`
+    common.length
+      ? `<div class="chips">${common.map((f) => `<div class="chip"><span>${esc(f.label)}</span><b>${esc(f.value)}</b></div>`).join("")}</div>`
       : ""
   }
-
+  <div class="stats">
+    ${stat("Cars", rows.length.toLocaleString())}
+    ${mrp ? stat("Total MRP", inrPriceFull(mrp)) : ""}
+    ${spend ? stat("Total paid", inrFull(spend)) : ""}
+    ${mrp && spend && mrp > spend ? stat("Saved", inrFull(mrp - spend)) : ""}
+  </div>
   ${
     rows.length
-      ? `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`
+      ? `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody>${foot}</table>`
       : `<p class="empty">No cars matched this selection.</p>`
   }
-
-  <footer>
-    <span>VIIV collection report</span>
-    <span>${rows.length.toLocaleString()} castings · ${esc(generated)}</span>
-  </footer>
+  <div class="vf">
+    <div class="vl"><span class="logo sm">${logo}</span><div><b>VIIV</b><br>Your diecast collection, catalogued.</div></div>
+    <div class="vr">${esc(SITE_ORIGIN.replace(/^https?:\/\//, ""))}<br>Report generated by VIIV</div>
+  </div>
 </body>
 </html>`;
 }

@@ -1,5 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import {
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Image as ImageIcon,
+  Loader2,
+  Share2,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -11,7 +19,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { SegmentControl } from "@/components/segment-control";
-import { exportCsv, type CsvColumn } from "@/lib/csv";
+import { buildCsv, exportCsv, type CsvColumn } from "@/lib/csv";
+import {
+  canShareFiles,
+  canvasToPdf,
+  canvasToPng,
+  downloadBlob,
+  inlinePhotos,
+  renderCanvas,
+  shareFile,
+} from "@/lib/export-share";
 import { buildReportHtml, printReport } from "@/lib/pdf-report";
 import type { Diecast } from "@/lib/types";
 
@@ -23,10 +40,14 @@ import type { Diecast } from "@/lib/types";
  */
 export const DEFAULT_EXPORT_KEYS = ["name", "brand", "assortment", "series", "carNumber", "seller"];
 
-type Format = "pdf" | "csv";
+type Format = "pdf" | "image" | "csv";
+
+/** An image is one tall sheet; past this many cars it would outgrow what a canvas can hold. */
+const IMAGE_MAX = 80;
 
 const FORMATS = [
-  { value: "pdf" as const, label: "PDF report" },
+  { value: "pdf" as const, label: "PDF" },
+  { value: "image" as const, label: "Image" },
   { value: "csv" as const, label: "CSV" },
 ];
 
@@ -68,19 +89,60 @@ export function ExportDialog({
   // order does not shuffle the report's columns.
   const chosen = columns.filter((c) => selected.includes(c.key));
 
-  const run = () => {
-    if (format === "csv") {
-      exportCsv(name, rows, chosen);
-    } else {
-      printReport(
-        buildReportHtml(rows, chosen, {
-          title: title.replace(/^export\s+/i, "") || "Collection",
-          subtitle: scopeLabel,
-          owner,
-        }),
-      );
+  const [busy, setBusy] = useState<"" | "save" | "share">("");
+  const canShare = useMemo(() => canShareFiles(), []);
+  const reportMeta = {
+    title: title.replace(/^export\s+/i, "") || "Collection",
+    subtitle: scopeLabel,
+    owner,
+  };
+  const stamp = new Date().toISOString().slice(0, 10);
+
+  /** The report drawn as a picture, with photos inlined so the canvas is allowed to paint them. */
+  const drawImage = async () => {
+    const list = rows.slice(0, IMAGE_MAX);
+    const photos = chosen.some((c) => c.key === "imageUrl")
+      ? await inlinePhotos(list.map((r) => r.imageUrl || ""))
+      : new Map<string, string>();
+    const width = Math.min(1400, Math.max(760, 220 + chosen.length * 110));
+    return renderCanvas(
+      buildReportHtml(list, chosen, {
+        ...reportMeta,
+        mode: "image",
+        width,
+        photoSrc: (r) => photos.get(r.imageUrl || "") ?? "",
+      }),
+      width,
+    );
+  };
+
+  const run = async (share: boolean) => {
+    setBusy(share ? "share" : "save");
+    try {
+      const file = `${name}-${stamp}`;
+      if (format === "csv") {
+        if (share) {
+          const csv = new Blob(["\ufeff" + buildCsv(rows, chosen)], { type: "text/csv" });
+          if (!(await shareFile(csv, `${file}.csv`, reportMeta.title))) return;
+        } else exportCsv(name, rows, chosen);
+      } else if (format === "pdf" && !share) {
+        // The print dialog makes a real, selectable PDF; a share sheet needs a file, below.
+        printReport(buildReportHtml(rows, chosen, reportMeta));
+      } else {
+        const canvas = await drawImage();
+        const isPdf = format === "pdf";
+        const blob = isPdf ? await canvasToPdf(canvas) : await canvasToPng(canvas);
+        const fileName = `${file}.${isPdf ? "pdf" : "png"}`;
+        if (share) {
+          if (!(await shareFile(blob, fileName, reportMeta.title))) return;
+        } else downloadBlob(blob, fileName);
+      }
+      onOpenChange(false);
+    } catch (e) {
+      toast.error((e as Error).message || "Could not create the export.");
+    } finally {
+      setBusy("");
     }
-    onOpenChange(false);
   };
 
   return (
@@ -134,21 +196,48 @@ export function ExportDialog({
 
         <p className="text-xs text-muted-foreground">
           {format === "pdf"
-            ? "Opens your print dialog — choose “Save as PDF” as the destination. Landscape A4, with a summary and the leading brands and series."
-            : "Downloads a .csv you can open in Sheets or Excel."}
+            ? "Opens your print dialog — choose “Save as PDF”. Landscape A4 with the VIIV letterhead. Anything the same on every car is shown once at the top."
+            : format === "image"
+              ? `A PNG of the same page, ready to send.${rows.length > IMAGE_MAX ? ` Shows the first ${IMAGE_MAX} cars; use PDF or CSV for all ${rows.length.toLocaleString()}.` : ""}`
+              : "Downloads a .csv you can open in Sheets or Excel."}
         </p>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={chosen.length === 0 || rows.length === 0} onClick={run}>
-            {format === "pdf" ? (
-              <FileText className="size-4" />
-            ) : (
+          {canShare && (
+            <Button
+              variant="outline"
+              disabled={chosen.length === 0 || rows.length === 0 || busy !== ""}
+              onClick={() => void run(true)}
+            >
+              {busy === "share" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Share2 className="size-4" />
+              )}
+              Share
+            </Button>
+          )}
+          <Button
+            disabled={chosen.length === 0 || rows.length === 0 || busy !== ""}
+            onClick={() => void run(false)}
+          >
+            {busy === "save" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : format === "csv" ? (
               <FileSpreadsheet className="size-4" />
+            ) : format === "image" ? (
+              <ImageIcon className="size-4" />
+            ) : (
+              <FileText className="size-4" />
             )}
-            {format === "pdf" ? "Create report" : "Download CSV"}
+            {format === "pdf"
+              ? "Create report"
+              : format === "image"
+                ? "Download image"
+                : "Download CSV"}
             <Download className="size-4 opacity-60" />
           </Button>
         </DialogFooter>
