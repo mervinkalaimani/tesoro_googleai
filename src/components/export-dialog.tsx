@@ -41,8 +41,8 @@ import type { Diecast } from "@/lib/types";
  */
 export const DEFAULT_EXPORT_KEYS = ["name", "brand", "assortment", "series", "carNumber", "seller"];
 
-/** What was paid, as opposed to what the car lists for. Hidden from a report meant for someone else. */
-const COST_KEYS = ["spent", "paid", "balance", "shippingCost"];
+/** Every price: what was paid and what the car lists for. Hidden from a report meant for someone else. */
+const COST_KEYS = ["mrp", "spent", "paid", "balance", "shippingCost"];
 
 type Format = "pdf" | "image" | "csv";
 
@@ -214,7 +214,7 @@ export function ExportDialog({
 
         <label className="flex cursor-pointer items-center gap-2 text-xs">
           <Checkbox checked={hideCost} onCheckedChange={(v) => setHideCost(v === true)} />
-          <span>Hide what I paid (keeps MRP)</span>
+          <span>Hide prices (cost and MRP)</span>
         </label>
 
         <p className="text-xs text-muted-foreground">
