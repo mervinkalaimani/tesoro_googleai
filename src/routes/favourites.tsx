@@ -58,6 +58,13 @@ const MODE_TEXT: Record<Mode, { title: string; subtitle: string; empty: string; 
 };
 
 export const Route = createFileRoute("/favourites")({
+  // The home page's Prized possessions links here on the shelf it was showing.
+  validateSearch: (s: Record<string, unknown>): { mode?: Mode } => ({
+    mode:
+      s.mode === "chase" || s.mode === "th" || s.mode === "sth" || s.mode === "favourite"
+        ? s.mode
+        : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Favourites | VIIV" },
@@ -152,7 +159,8 @@ function FavouritesPage() {
   const loading = useCarsRefresh().refreshing && cars.length === 0;
   const { open } = useCarDrawer();
   const { updateCar } = useCarsActions();
-  const [mode, setMode] = useState<Mode>("favourite");
+  const { mode: startMode } = Route.useSearch();
+  const [mode, setMode] = useState<Mode>(startMode ?? "favourite");
   const [view, setView] = useState<ViewMode>("blister");
 
   // TH and STH only get a segment when the collection has one. Judged on the
