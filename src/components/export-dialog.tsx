@@ -60,7 +60,7 @@ export function ExportDialog({
   onOpenChange,
   name,
   rows,
-  columns,
+  columns: allColumns,
   title = "Export",
   scopeLabel,
   owner,
@@ -75,6 +75,12 @@ export function ExportDialog({
   scopeLabel?: string;
   owner?: string;
 }) {
+  // "Display name" is the form's word for it; in a file somebody else reads it is the car's name.
+  // The importer reads "Car Name" as the same column, so a CSV still comes back in.
+  const columns = useMemo(
+    () => allColumns.map((c) => (c.key === "name" ? { ...c, label: "Car Name" } : c)),
+    [allColumns],
+  );
   const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
   const defaults = useMemo(() => allKeys.filter((k) => DEFAULT_EXPORT_KEYS.includes(k)), [allKeys]);
   const [selected, setSelected] = useState<string[]>(defaults);
