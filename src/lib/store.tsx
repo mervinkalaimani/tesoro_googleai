@@ -87,6 +87,23 @@ function isArrivingSoonPreference(value: unknown): value is ArrivingSoonPreferen
 }
 
 /**
+ * When the home page shows "Prized possessions" — the chase, STH, TH and
+ * favourite cars. "auto" shows it once you own one and stays out of the way
+ * until then; "show" keeps it up with a note when it is empty.
+ */
+export type PrizedPreference = "auto" | "show" | "hide";
+
+export const PRIZED_OPTIONS: { value: PrizedPreference; label: string }[] = [
+  { value: "auto", label: "Auto" },
+  { value: "show", label: "Show" },
+  { value: "hide", label: "Hide" },
+];
+
+function isPrizedPreference(value: unknown): value is PrizedPreference {
+  return value === "auto" || value === "show" || value === "hide";
+}
+
+/**
  * How far ahead "Arriving soon" looks when the preference is "custom".
  *
  * Auto and Always use a month, which is the horizon a pre-order lives on. The
@@ -167,6 +184,9 @@ type AppState = {
   /** Whether it shows what other collectors have just pre-ordered. */
   showNewPreorders: boolean;
   setShowNewPreorders: (b: boolean) => void;
+  /** Whether it shows the chase, STH, TH and favourite cars. */
+  prizedShelf: PrizedPreference;
+  setPrizedShelf: (p: PrizedPreference) => void;
 };
 
 const AppCtx = createContext<AppState | null>(null);
@@ -241,6 +261,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [releasedShelf, setReleasedShelfState] = useState<ReleasedPreference>("all");
   const [showRecentlyAdded, setShowRecentlyAddedState] = useState(true);
   const [showNewPreorders, setShowNewPreordersState] = useState(true);
+  const [prizedShelf, setPrizedShelfState] = useState<PrizedPreference>("auto");
   // The server renders with the defaults above while the inline boot script in
   // __root.tsx has already painted the stored ones. Nothing is applied to the
   // document until this flips, so the first client render cannot undo it.
@@ -274,6 +295,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setReleasedShelfState(isReleasedPreference(storedReleased) ? storedReleased : "all");
     setShowRecentlyAddedState(readLS<boolean>("dg.showRecentlyAdded", true));
     setShowNewPreordersState(readLS<boolean>("dg.showNewPreorders", true));
+    const storedPrized = readLS<unknown>("dg.prizedShelf", "auto");
+    setPrizedShelfState(isPrizedPreference(storedPrized) ? storedPrized : "auto");
     setHydrated(true);
   }, []);
 
@@ -467,6 +490,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.showNewPreorders", b);
   }, []);
 
+  const setPrizedShelf = useCallback((p: PrizedPreference) => {
+    setPrizedShelfState(p);
+    writeLS("dg.prizedShelf", p);
+  }, []);
+
   const setFontSize = useCallback((s: FontSizePreference) => {
     setFontSizeState(s);
     writeLS("dg.fontSize", s);
@@ -503,6 +531,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setShowRecentlyAdded,
       showNewPreorders,
       setShowNewPreorders,
+      prizedShelf,
+      setPrizedShelf,
     }),
     [
       navAnimation,
@@ -517,6 +547,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setShowRecentlyAdded,
       showNewPreorders,
       setShowNewPreorders,
+      prizedShelf,
+      setPrizedShelf,
       query,
       theme,
       themePreference,

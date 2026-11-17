@@ -36,6 +36,7 @@ import {
   themeOptionsFor,
   FONT_SIZE_OPTIONS,
   ARRIVING_SOON_OPTIONS,
+  PRIZED_OPTIONS,
   ARRIVING_WINDOW_OPTIONS,
   ARRIVING_WINDOW_DEFAULT,
   RELEASED_OPTIONS,
@@ -235,6 +236,8 @@ export function SettingsPage() {
     setShowRecentlyAdded,
     showNewPreorders,
     setShowNewPreorders,
+    prizedShelf,
+    setPrizedShelf,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
   const drawer = useCarDrawer();
@@ -840,6 +843,26 @@ export function SettingsPage() {
                   </div>
                 </div>
                 <Switch checked={showNewPreorders} onCheckedChange={setShowNewPreorders} />
+              </div>
+
+              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <div className="text-[15px] font-medium text-foreground">Prized possessions</div>
+                  <div className="text-xs text-muted-foreground">
+                    {prizedShelf === "auto"
+                      ? "Your chase, STH, TH and favourite cars, shown once you own one."
+                      : prizedShelf === "show"
+                        ? "Always shown, even before you own a chase or favourite car."
+                        : "Hidden."}
+                  </div>
+                </div>
+                <SegmentControl
+                  value={prizedShelf}
+                  onChange={setPrizedShelf}
+                  options={PRIZED_OPTIONS}
+                  fill
+                  className="h-9 text-sm sm:w-auto"
+                />
               </div>
             </div>
             <p className="px-1 pt-1 text-xs text-muted-foreground">

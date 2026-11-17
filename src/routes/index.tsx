@@ -43,6 +43,7 @@ import { useAuth } from "@/lib/auth-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { WelcomeWizard } from "@/components/welcome-wizard";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
+import { PrizedShelf } from "@/components/prized-shelf";
 import { CompactCarCard } from "@/components/compact-car-card";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { CatalogCarDetails, useCarDrawer } from "@/components/car-details-drawer";
@@ -233,6 +234,7 @@ function DashboardPage() {
     releasedShelf,
     showRecentlyAdded,
     showNewPreorders,
+    prizedShelf,
   } = useApp();
   const cars = useCars();
   const { packMembers } = useCatalog();
@@ -410,6 +412,12 @@ function DashboardPage() {
       )}
 
       <MySubscriptionRequest />
+
+      {/* Under the numbers, above the shelves that come and go: these are the
+          cars that stay. Auto hides itself until there is one to show. */}
+      {!loading && prizedShelf !== "hide" && (
+        <PrizedShelf rows={data} showEmpty={prizedShelf === "show"} />
+      )}
 
       {/* Above the tracker. It is the shortest-lived thing on the page — three
           days and a car drops out of it for good — and it renders nothing at
