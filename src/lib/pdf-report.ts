@@ -34,6 +34,8 @@ export type ReportMeta = {
   mode?: "pdf" | "image";
   /** Width of the image sheet in CSS pixels. */
   width?: number;
+  /** Leave out what was paid: the paid and saved tiles (the columns are the caller's to drop). */
+  hideCost?: boolean;
   /** A photo URL (or data URL) for a car; the Photo column is blank without it. */
   photoSrc?: (r: Diecast) => string;
 };
@@ -189,8 +191,8 @@ export function buildReportHtml(
   <div class="stats">
     ${stat("Cars", rows.length.toLocaleString())}
     ${mrp ? stat("Total MRP", inrPriceFull(mrp)) : ""}
-    ${spend ? stat("Total paid", inrFull(spend)) : ""}
-    ${mrp && spend && mrp > spend ? stat("Saved", inrFull(mrp - spend)) : ""}
+    ${spend && !meta.hideCost ? stat("Total paid", inrFull(spend)) : ""}
+    ${mrp && spend && mrp > spend && !meta.hideCost ? stat("Saved", inrFull(mrp - spend)) : ""}
   </div>
   ${
     rows.length

@@ -8,6 +8,7 @@ import {
   Share2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { SITE_ORIGIN } from "@/lib/site";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -39,6 +40,9 @@ import type { Diecast } from "@/lib/types";
  * than every column ticked.
  */
 export const DEFAULT_EXPORT_KEYS = ["name", "brand", "assortment", "series", "carNumber", "seller"];
+
+/** What was paid, as opposed to what the car lists for. Hidden from a report meant for someone else. */
+const COST_KEYS = ["spent", "paid", "balance", "shippingCost"];
 
 type Format = "pdf" | "image" | "csv";
 
@@ -76,10 +80,15 @@ export function ExportDialog({
   const [selected, setSelected] = useState<string[]>(defaults);
   const [format, setFormat] = useState<Format>("pdf");
 
+  const [hideCost, setHideCost] = useState(true);
+
   // Reopening starts from the defaults again rather than from whatever was
   // last ticked — the default is the recommendation, not a memory.
   useEffect(() => {
-    if (open) setSelected(defaults);
+    if (open) {
+      setSelected(defaults);
+      setHideCost(true);
+    }
   }, [open, defaults]);
 
   const toggle = (key: string) =>
@@ -87,7 +96,9 @@ export function ExportDialog({
 
   // Kept in the order the columns are declared, so ticking them in a different
   // order does not shuffle the report's columns.
-  const chosen = columns.filter((c) => selected.includes(c.key));
+  const chosen = columns.filter(
+    (c) => selected.includes(c.key) && !(hideCost && COST_KEYS.includes(c.key)),
+  );
 
   const [busy, setBusy] = useState<"" | "save" | "share">("");
   const canShare = useMemo(() => canShareFiles(), []);
@@ -95,7 +106,10 @@ export function ExportDialog({
     title: title.replace(/^export\s+/i, "") || "Collection",
     subtitle: scopeLabel,
     owner,
+    hideCost,
   };
+  // The link rides along as text, so it is in the message wherever the file goes.
+  const shareText = `${reportMeta.title} · made with VIIV\n${SITE_ORIGIN}`;
   const stamp = new Date().toISOString().slice(0, 10);
 
   /** The report drawn as a picture, with photos inlined so the canvas is allowed to paint them. */
@@ -123,7 +137,7 @@ export function ExportDialog({
       if (format === "csv") {
         if (share) {
           const csv = new Blob(["\ufeff" + buildCsv(rows, chosen)], { type: "text/csv" });
-          if (!(await shareFile(csv, `${file}.csv`, reportMeta.title))) return;
+          if (!(await shareFile(csv, `${file}.csv`, reportMeta.title, shareText))) return;
         } else exportCsv(name, rows, chosen);
       } else if (format === "pdf" && !share) {
         // The print dialog makes a real, selectable PDF; a share sheet needs a file, below.
@@ -134,7 +148,7 @@ export function ExportDialog({
         const blob = isPdf ? await canvasToPdf(canvas) : await canvasToPng(canvas);
         const fileName = `${file}.${isPdf ? "pdf" : "png"}`;
         if (share) {
-          if (!(await shareFile(blob, fileName, reportMeta.title))) return;
+          if (!(await shareFile(blob, fileName, reportMeta.title, shareText))) return;
         } else downloadBlob(blob, fileName);
       }
       onOpenChange(false);
@@ -188,11 +202,20 @@ export function ExportDialog({
         <div className="grid max-h-[45vh] grid-cols-2 gap-2 overflow-auto rounded-md border border-border p-3 sm:grid-cols-3">
           {columns.map((c) => (
             <label key={c.key} className="flex min-w-0 cursor-pointer items-center gap-2 text-xs">
-              <Checkbox checked={selected.includes(c.key)} onCheckedChange={() => toggle(c.key)} />
+              <Checkbox
+                checked={selected.includes(c.key) && !(hideCost && COST_KEYS.includes(c.key))}
+                disabled={hideCost && COST_KEYS.includes(c.key)}
+                onCheckedChange={() => toggle(c.key)}
+              />
               <span className="truncate">{c.label}</span>
             </label>
           ))}
         </div>
+
+        <label className="flex cursor-pointer items-center gap-2 text-xs">
+          <Checkbox checked={hideCost} onCheckedChange={(v) => setHideCost(v === true)} />
+          <span>Hide what I paid (keeps MRP)</span>
+        </label>
 
         <p className="text-xs text-muted-foreground">
           {format === "pdf"
@@ -202,7 +225,7 @@ export function ExportDialog({
               : "Downloads a .csv you can open in Sheets or Excel."}
         </p>
 
-        <DialogFooter>
+        <DialogFooter className="max-sm:flex-wrap">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -220,7 +243,9 @@ export function ExportDialog({
               Share
             </Button>
           )}
+          {/* On a phone the main action takes its own row, so its words fit beside the icon. */}
           <Button
+            className="max-sm:order-last max-sm:basis-full"
             disabled={chosen.length === 0 || rows.length === 0 || busy !== ""}
             onClick={() => void run(false)}
           >
@@ -238,7 +263,7 @@ export function ExportDialog({
               : format === "image"
                 ? "Download image"
                 : "Download CSV"}
-            <Download className="size-4 opacity-60" />
+            <Download className="size-4 opacity-60 max-sm:hidden" />
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -147,10 +147,15 @@ export function canShareFiles(): boolean {
 }
 
 /** Open the native share sheet with one file. Returns false if the person closed it. */
-export async function shareFile(blob: Blob, filename: string, title: string): Promise<boolean> {
+export async function shareFile(
+  blob: Blob,
+  filename: string,
+  title: string,
+  text?: string,
+): Promise<boolean> {
   const file = new File([blob], filename, { type: blob.type });
   try {
-    await navigator.share({ files: [file], title });
+    await navigator.share({ files: [file], title, ...(text ? { text } : {}) });
     return true;
   } catch (e) {
     if ((e as Error).name === "AbortError") return false;
