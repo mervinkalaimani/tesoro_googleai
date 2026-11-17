@@ -171,20 +171,30 @@ export function PrizedShelf({ rows, showEmpty }: { rows: Diecast[]; showEmpty: b
 
   return (
     <section className="card-elevated min-w-0 p-4 md:p-5">
-      <Eyebrow />
-      <div className="mt-1 text-2xl font-semibold tracking-tight">
-        {pool.length} prized {pool.length === 1 ? "car" : "cars"}
-      </div>
-      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        {counts.map((g) => {
-          const Icon = g.icon;
-          return (
-            <span key={g.key} className="inline-flex items-center gap-1.5">
-              <Icon className={cn("size-3.5", g.colour)} />
-              <span className="font-medium tabular-nums text-foreground">{g.n}</span> {g.label}
-            </span>
-          );
-        })}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <Eyebrow />
+          <div className="mt-1 text-2xl font-semibold tracking-tight">
+            {pool.length} prized {pool.length === 1 ? "car" : "cars"}
+          </div>
+        </div>
+        {/* Icon and number only, on the right; the label is the tooltip. */}
+        <div className="flex shrink-0 items-center gap-3 pt-0.5 text-sm">
+          {counts.map((g) => {
+            const Icon = g.icon;
+            return (
+              <span
+                key={g.key}
+                title={`${g.n} ${g.label}`}
+                aria-label={`${g.n} ${g.label}`}
+                className="inline-flex items-center gap-1"
+              >
+                <Icon className={cn("size-4", g.colour)} />
+                <span className="font-semibold tabular-nums">{g.n}</span>
+              </span>
+            );
+          })}
+        </div>
       </div>
 
       <div
