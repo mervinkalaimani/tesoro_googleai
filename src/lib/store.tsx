@@ -171,6 +171,9 @@ type AppState = {
   /** Phone only: the bottom bar shrinks while scrolling down. Per device. */
   navAnimation: boolean;
   setNavAnimation: (b: boolean) => void;
+  /** The accent-coloured glow fixed behind the app. */
+  showGlow: boolean;
+  setShowGlow: (b: boolean) => void;
   /** When the home page shows the "Arriving soon" shelf. */
   arrivingSoon: ArrivingSoonPreference;
   setArrivingSoon: (p: ArrivingSoonPreference) => void;
@@ -269,6 +272,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [hideCost, setHideCostState] = useState(false);
   const [transitEtaDays, setTransitEtaDaysState] = useState(21);
   const [navAnimation, setNavAnimationState] = useState(true);
+  const [showGlow, setShowGlowState] = useState(true);
   const [arrivingSoon, setArrivingSoonState] = useState<ArrivingSoonPreference>("auto");
   const [arrivingDays, setArrivingDaysState] = useState(ARRIVING_WINDOW_DEFAULT);
   const [releasedShelf, setReleasedShelfState] = useState<ReleasedPreference>("all");
@@ -309,6 +313,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setHideCostState(readLS<boolean>("dg.hideCost", false));
     setTransitEtaDaysState(readLS<number>("dg.transitEta", 21));
     setNavAnimationState(readLS<boolean>("dg.navAnimation", true));
+    setShowGlowState(readLS<boolean>("dg.showGlow", true));
     const storedArriving = readLS<unknown>("dg.arrivingSoon", "auto");
     setArrivingSoonState(isArrivingSoonPreference(storedArriving) ? storedArriving : "auto");
     const storedDays = readLS<unknown>("dg.arrivingDays", ARRIVING_WINDOW_DEFAULT);
@@ -493,6 +498,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.transitEta", n);
   }, []);
 
+  const setShowGlow = useCallback((b: boolean) => {
+    setShowGlowState(b);
+    writeLS("dg.showGlow", b);
+    if (b) delete document.documentElement.dataset.glow;
+    else document.documentElement.dataset.glow = "off";
+  }, []);
+
   const setNavAnimation = useCallback((b: boolean) => {
     setNavAnimationState(b);
     writeLS("dg.navAnimation", b);
@@ -572,6 +584,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setTransitEtaDays,
       navAnimation,
       setNavAnimation,
+      showGlow,
+      setShowGlow,
       arrivingSoon,
       setArrivingSoon,
       arrivingDays,
@@ -602,6 +616,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSummaryCardShown,
       navAnimation,
       setNavAnimation,
+      showGlow,
+      setShowGlow,
       arrivingSoon,
       setArrivingSoon,
       arrivingDays,

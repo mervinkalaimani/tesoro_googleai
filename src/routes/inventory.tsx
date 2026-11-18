@@ -26,7 +26,7 @@ import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { IosGroup, IosPicker, IosRow } from "@/components/ios-field";
 import { Switch } from "@/components/ui/switch";
 import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
-import { PageHeading } from "@/components/page-header";
+import { PageHeading, usePinnedFlag } from "@/components/page-header";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio, formatDayMonthYear, inrPrice } from "@/lib/format";
 import { sortCars } from "@/lib/status-order";
@@ -290,10 +290,15 @@ function InventoryPage() {
   // chips remain free to change it afterwards. Defaults to "Available".
   const [status, setStatus] = useState(search.status ?? "In Hand");
   const [isScrolled, setIsScrolled] = useState(false);
+  // Whether the toolbar band has reached the top bar and is riding over the list.
+  const bandRef = useRef<HTMLDivElement>(null);
+  usePinnedFlag(isScrolled);
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 28);
+      setIsScrolled(
+        window.scrollY > 0 && (bandRef.current?.getBoundingClientRect().top ?? 999) <= 57,
+      );
     };
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -635,9 +640,11 @@ function InventoryPage() {
 
       {/* Filter & Actions section below title - sticky below top bar */}
       <div
+        ref={bandRef}
         className={cn(
-          "sticky top-14 z-30 -mx-3 px-3 md:-mx-6 md:px-6 bg-background/95 backdrop-blur-md space-y-2 py-2 border-b border-border/40 transition-shadow",
-          isScrolled ? "shadow-xs" : "",
+          "sticky top-14 z-30 -mx-3 space-y-2 border-b px-3 py-2 transition-[background-color,border-color,backdrop-filter] duration-300 md:-mx-6 md:px-6",
+          // No background while it rests in the page; frosted once it is pinned.
+          isScrolled ? "pin-band-on border-border/40" : "border-transparent bg-transparent",
         )}
       >
         {/* Main controls row: Status segment control, filter chips, actions and

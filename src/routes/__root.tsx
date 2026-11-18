@@ -20,6 +20,7 @@ import { AuthGate } from "@/components/auth-gate";
 import { UpdateNotice } from "@/components/update-notice";
 import { Toaster } from "@/components/ui/sonner";
 import { UseCasePrompt } from "@/components/use-case-prompt";
+import { RevealOnScroll } from "@/components/reveal-on-scroll";
 import { BootSplash } from "@/components/brand-mark";
 
 function NotFoundComponent() {
@@ -196,6 +197,7 @@ try {
   document.documentElement.classList.toggle('dark', t === 'dark');
   var a = JSON.parse(localStorage.getItem('dg.accentColor') || '"viiv"');
   if (['viiv','crimson','blue','emerald','violet','amber'].indexOf(a) !== -1) document.documentElement.dataset.accent = a;
+  if (JSON.parse(localStorage.getItem('dg.showGlow') || 'true') === false) document.documentElement.dataset.glow = 'off';
   var f = JSON.parse(localStorage.getItem('dg.fontSize') || '"0"');
   if (['-2','-1','0','+1','+2'].indexOf(f) !== -1) document.documentElement.dataset.fontSize = f;
   else document.documentElement.dataset.fontSize = '0';
@@ -282,6 +284,7 @@ function RootComponent() {
                     bucket was missing. The upload looked like it silently did
                     nothing, which is exactly what it looked like. */}
                 <Toaster position="bottom-right" richColors closeButton />
+                <RevealOnScroll />
                 {/* Above the gate, so a tab left open on the login screen hears
                     about a deploy too. */}
                 <UpdateNotice />

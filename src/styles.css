@@ -822,3 +822,81 @@ html.in-app [class*="shadow-2xl"] {
     animation: none;
   }
 }
+
+/* The theme colour as a glow behind everything: a soft blob that fills the top
+   half of the screen and stays there while the page scrolls under it, so the
+   glass cards have something to pick up. It follows the accent colour. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 62vh;
+  z-index: -1;
+  pointer-events: none;
+  /* Strongest at the top and thinning evenly all the way down: the last stop
+     is the box's bottom edge, which is the 62% line, so it reaches it. */
+  background:
+    radial-gradient(
+      130% 100% at 50% 0%,
+      color-mix(in oklab, var(--primary) 38%, transparent) 0%,
+      color-mix(in oklab, var(--primary) 27%, transparent) 45%,
+      color-mix(in oklab, var(--primary) 14%, transparent) 78%,
+      transparent 100%
+    ),
+    radial-gradient(
+      60% 80% at 88% 6%,
+      color-mix(in oklab, var(--primary) 20%, transparent),
+      transparent 100%
+    );
+}
+html:not(.dark) body::before {
+  opacity: 0.7;
+}
+
+/* Display → Background glow, switched off. */
+html[data-glow="off"] body::before {
+  display: none;
+}
+
+/* RevealOnScroll: a glass card waits unseen until it scrolls into view, then
+   rises into place; the delay is set per card so a row of them arrives in turn. */
+.reveal {
+  opacity: 0;
+  transform: translateY(16px);
+}
+.reveal.reveal-in {
+  animation: reveal-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--rd, 0ms);
+}
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* When something is pinned under the top bar (a toolbar riding over the list),
+   the bar and the pinned band take the same colour: near-black, 90% opaque, so
+   the page colour still bleeds through a little. Without a pinned item the bar
+   stays see-through and lets the glow show. */
+:root {
+  --pin-bg: color-mix(in oklab, var(--background) 90%, transparent);
+}
+html.dark {
+  --pin-bg: oklch(0 0 0 / 0.9);
+}
+.app-top-bar {
+  transition:
+    background-color 0.3s,
+    backdrop-filter 0.3s;
+}
+html[data-pinned] .app-top-bar,
+.pin-band-on {
+  background-color: var(--pin-bg);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}

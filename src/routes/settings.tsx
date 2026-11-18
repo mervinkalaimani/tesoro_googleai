@@ -224,6 +224,8 @@ export function SettingsPage() {
     themePreference,
     setThemePreference,
     accentColor,
+    showGlow,
+    setShowGlow,
     setAccentColor,
     hideInvestment,
     setHideInvestment,
@@ -683,6 +685,14 @@ export function SettingsPage() {
                     className="h-9 text-sm sm:w-auto"
                   />
                 </div>
+              </div>
+
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-3"
+                title="A soft glow in your accent colour behind the app."
+              >
+                <div className="text-[15px] font-medium text-foreground">Background glow</div>
+                <Switch checked={showGlow} onCheckedChange={setShowGlow} />
               </div>
             </div>
           </div>

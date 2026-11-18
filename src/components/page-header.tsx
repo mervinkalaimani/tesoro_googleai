@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /**
  * The shape every page opens with, so that moving between them is moving
@@ -138,13 +138,56 @@ export function PageToolbar({
 
   if (!sticky) return body;
 
+  return <StickyBand>{body}</StickyBand>;
+}
+
+/**
+ * The band the toolbar sits in. It has no background of its own while it is
+ * resting in the page, so the page shows through it; once it reaches the top bar
+ * and starts riding over the content it takes a frosted background, so the rows
+ * scrolling under it do not run into its controls.
+ */
+/** Tells the top bar that something is pinned under it, so it matches the band. */
+export function usePinnedFlag(pinned: boolean) {
+  useEffect(() => {
+    if (pinned) document.documentElement.dataset.pinned = "1";
+    else delete document.documentElement.dataset.pinned;
+    return () => {
+      delete document.documentElement.dataset.pinned;
+    };
+  }, [pinned]);
+}
+
+function StickyBand({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pinned, setPinned] = useState(false);
+  usePinnedFlag(pinned);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => {
+      // top-14 is where it sticks: pinned means it has reached that line.
+      setPinned(el.getBoundingClientRect().top <= 56 + 1 && window.scrollY > 0);
+    };
+    check();
+    window.addEventListener("scroll", check, { passive: true });
+    window.addEventListener("resize", check);
+    return () => {
+      window.removeEventListener("scroll", check);
+      window.removeEventListener("resize", check);
+    };
+  }, []);
   return (
     // The negative margins let the band reach the edges of the page's padding
-    // rather than stopping where the content column does — a translucent strip
-    // with a gap either side reads as a floating box, not as part of the
-    // chrome. z-30 keeps it over table headers (z-10/20) and under the top bar (z-40).
-    <div className="sticky top-14 z-30 -mx-3 border-b border-border/40 bg-background/95 px-3 py-2 backdrop-blur-md shadow-xs md:-mx-6 md:px-6">
-      {body}
+    // rather than stopping where the content column does. z-30 keeps it over
+    // table headers (z-10/20) and under the top bar (z-40).
+    <div
+      ref={ref}
+      className={`sticky top-14 z-30 -mx-3 border-b px-3 py-2 transition-[background-color,border-color,backdrop-filter] duration-300 md:-mx-6 md:px-6 ${
+        pinned ? "pin-band-on border-border/40" : "border-transparent bg-transparent"
+      }`}
+    >
+      {children}
     </div>
   );
 }
