@@ -62,6 +62,12 @@ function usePhone() {
  * Self-contained: it keeps its own window, basis and Count / Cost, so it can
  * sit on any page without being wired to what is around it.
  */
+const WIN_OPTIONS: { value: "6m" | "12m" | "all"; label: string }[] = [
+  { value: "6m", label: "6M" },
+  { value: "12m", label: "12M" },
+  { value: "all", label: "All" },
+];
+
 export function MonthlySpending({ rows, className = "" }: { rows: Diecast[]; className?: string }) {
   const [win, setWin] = useState<Window>("6m");
   const [basis, setBasis] = useState<"ordered" | "delivered">("delivered");
@@ -132,20 +138,20 @@ export function MonthlySpending({ rows, className = "" }: { rows: Diecast[]; cla
             {mode === "count" ? `Cars ${verb} by month` : `Spent on cars ${verb}, by month`}
           </p>
         </div>
-        <SegmentControl
-          className="shrink-0"
-          value={win}
-          onChange={setWin}
-          options={[
-            { value: "6m", label: "6M" },
-            { value: "12m", label: "12M" },
-            { value: "all", label: "All" },
-          ]}
-        />
+        {/* From sm: the months selector sits beside the title. On a phone it
+            joins the other two pills below, so all three share one line. */}
+        <div className="hidden sm:block">
+          <SegmentControl
+            className="shrink-0"
+            value={win}
+            onChange={setWin}
+            options={WIN_OPTIONS}
+          />
+        </div>
       </div>
 
       {/* Above the chart: which month a car counts in, and what is measured. */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-center gap-2 sm:justify-between">
         <SegmentControl
           value={basis}
           onChange={setBasis}
@@ -162,6 +168,9 @@ export function MonthlySpending({ rows, className = "" }: { rows: Diecast[]; cla
             { value: "cost", label: "Cost" },
           ]}
         />
+        <div className="sm:hidden">
+          <SegmentControl value={win} onChange={setWin} options={WIN_OPTIONS} />
+        </div>
       </div>
 
       <div className="min-h-[260px] w-full flex-1">

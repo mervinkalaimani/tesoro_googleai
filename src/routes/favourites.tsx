@@ -1,21 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Star } from "lucide-react";
-import { useCars, useCarsActions, useCarsRefresh } from "@/lib/cars-store";
+import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import { RowListSkeleton, TileGridSkeleton } from "@/components/dashboard-skeletons";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { CarsTable } from "@/components/cars-table";
-import { ChaseMark, FAVOURITE_COLOUR, ChangedDot } from "@/components/car-marks";
 import { rarityOf } from "@/lib/rarity";
-import { inrFull } from "@/lib/format";
-import { CarThumb } from "@/components/car-thumb";
+import { InventoryCard } from "@/routes/inventory";
 import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { BlisterTile } from "@/components/blister-tile";
 import { SegmentControl } from "@/components/segment-control";
 import { PageHeading, PageToolbar } from "@/components/page-header";
-import { ExportButton } from "@/components/export-button";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { ProGate } from "@/components/pro-gate";
@@ -90,75 +86,11 @@ export const Route = createFileRoute("/favourites")({
   ),
 });
 
-function GalleryCard({
-  car,
-  onOpen,
-  onToggleFavourite,
-}: {
-  car: Diecast;
-  onOpen: () => void;
-  onToggleFavourite: () => void;
-}) {
-  const market = car.mrp || car.spent || 0;
-
-  return (
-    <article className="card-elevated flex flex-col overflow-hidden">
-      <div className="relative">
-        <button type="button" onClick={onOpen} className="block w-full">
-          <CarThumb car={car} className="aspect-[16/10] w-full" />
-        </button>
-
-        {/* The car ID is catalogue plumbing, not something to read off a
-            photograph — it sits in the details drawer and the table. */}
-        {car.chase && (
-          <span className="pointer-events-none absolute left-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-            <ChaseMark rarity={rarityOf(car)} className="size-3.5" />
-          </span>
-        )}
-
-        <button
-          type="button"
-          onClick={onToggleFavourite}
-          aria-pressed={car.favourite}
-          title={car.favourite ? "Remove from favourites" : "Add to favourites"}
-          className="absolute right-2 top-2 grid size-7 place-items-center rounded-full bg-black/70 backdrop-blur-sm transition-colors hover:bg-black/90"
-        >
-          <Star
-            className={`size-3.5 ${car.favourite ? FAVOURITE_COLOUR : "fill-none text-white/70"}`}
-          />
-        </button>
-      </div>
-
-      <div className="flex flex-1 flex-col p-4">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="text-left text-base font-bold tracking-tight hover:text-primary"
-        >
-          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-          <ChangedDot car={car} className="ml-1.5 align-middle" />
-        </button>
-        <p className="mt-1 truncate text-xs text-muted-foreground">
-          {[car.series, car.subSeries].filter(Boolean).join(" · ") || "—"}
-        </p>
-
-        <div className="mt-auto border-t border-border pt-3">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">
-            Market valuation
-          </div>
-          <div className="mt-0.5 text-sm font-semibold tabular-nums">{inrFull(market)}</div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
 function FavouritesPage() {
   const { query } = useApp();
   const cars = useCars();
   const loading = useCarsRefresh().refreshing && cars.length === 0;
   const { open } = useCarDrawer();
-  const { updateCar } = useCarsActions();
   const { mode: startMode } = Route.useSearch();
   const [mode, setMode] = useState<Mode>(startMode ?? "favourite");
   const [view, setView] = useState<ViewMode>("blister");
@@ -202,12 +134,6 @@ function FavouritesPage() {
         }
         right={
           <>
-            <ExportButton
-              rows={rows}
-              name={mode === "favourite" ? "favourites" : mode}
-              label={text.title}
-              iconOnly
-            />
             <ViewToggle value={view} onChange={setView} />
           </>
         }
@@ -229,22 +155,26 @@ function FavouritesPage() {
             view === "blister" ? (
               <BlisterTile key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
             ) : (
-              <GalleryCard
-                key={(r.id || "") + i}
-                car={r}
-                onOpen={() => open(r)}
-                onToggleFavourite={() => updateCar({ ...r, favourite: !r.favourite })}
-              />
+              <InventoryCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
             ),
           )}
         </div>
       ) : (
         // No frame on a phone: display:contents drops the card's box while
-        // keeping it round the table on a desktop.
+        // keeping it round the table on a desktop. The table draws its own
+        // phone cards — the same rows as My Cars — and one design for every
+        // segment, without the money: the price and the seller are not what
+        // this page is for.
         <div className="card-elevated overflow-hidden max-md:contents">
-          {/* One row design for every segment, and just the price: how it
-              compares with the MRP is not what this page is for. */}
-          <CarsTable rows={rows} bare showMrp={false} />
+          <CarsTable
+            rows={rows}
+            bare
+            showMrp={false}
+            showMoney={false}
+            showStatus={false}
+            badgesAtEnd
+            showImage
+          />
         </div>
       )}
     </div>

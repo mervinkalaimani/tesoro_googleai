@@ -11,6 +11,7 @@
  * duplicate is worth are different questions. All this holds is the frame, the
  * chevron, and the two row shapes.
  */
+import { CarThumb } from "@/components/car-thumb";
 import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 
@@ -23,17 +24,25 @@ export function GroupTable({
   head,
   children,
   minWidth = "min-w-[40rem]",
+  headClassName,
 }: {
   /** The `<th>` cells, in order. */
   head: ReactNode;
   children: ReactNode;
   /** Below this the table scrolls sideways rather than crushing its columns. */
   minWidth?: string;
+  /** Extra classes for the header row — `max-md:hidden` drops it on a phone. */
+  headClassName?: string;
 }) {
   return (
     <div className="card-elevated overflow-x-auto">
       <table className={cn("w-full text-sm", minWidth)}>
-        <thead className="bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground">
+        <thead
+          className={cn(
+            "bg-muted text-left text-xs uppercase tracking-wide text-muted-foreground",
+            headClassName,
+          )}
+        >
           <tr>{head}</tr>
         </thead>
         <tbody>{children}</tbody>
@@ -115,6 +124,11 @@ export function CarSubRow({
   onOpen,
   lead,
   sub,
+  aside,
+  asideSub,
+  flush = false,
+  centerName = false,
+  showImage = false,
   children,
 }: {
   car: Diecast;
@@ -123,6 +137,16 @@ export function CarSubRow({
   lead?: ReactNode;
   /** Replaces the usual "what kind of car" line. */
   sub?: ReactNode;
+  /** Sits at the right end of the name's line — the brand, say. */
+  aside?: ReactNode;
+  /** Sits at the right end of the second line, under the aside. */
+  asideSub?: ReactNode;
+  /** No indent: the row is not sitting under a group heading. */
+  flush?: boolean;
+  /** On a phone: no second line, so the name sits in the middle of the two lines beside it. */
+  centerName?: boolean;
+  /** The car's photograph at the left of the row. */
+  showImage?: boolean;
   children?: ReactNode;
 }) {
   return (
@@ -133,14 +157,55 @@ export function CarSubRow({
         onOpen && "cursor-pointer hover:bg-muted/40",
       )}
     >
-      <td className="py-2 pl-8 pr-3">
+      {/* w-full max-w-0: take the width the other columns leave and truncate to it,
+          so a brand at the right of the name stays on screen. */}
+      <td
+        className={cn(
+          "w-full max-w-0 pr-3 md:w-auto md:max-w-none",
+          // A photograph at the left gets the same room above as beside it, so
+          // its corner can follow the card's (see below).
+          showImage ? "py-2.5 pl-2.5" : cn("py-2", flush ? "pl-4" : "pl-8"),
+        )}
+      >
         <div className="flex min-w-0 items-center gap-2">
           {lead}
-          <span className="min-w-0">
-            <span className="block truncate text-xs font-medium">{car.name || "—"}</span>
-            <span className="block truncate text-xs text-muted-foreground">
+          {showImage && (
+            <CarThumb
+              car={car}
+              // Concentric with the card: its 1.5rem corner less the 0.625rem of
+              // room round the photograph.
+              className="size-12 shrink-0 overflow-hidden rounded-[calc(1.5rem-0.625rem)]"
+            />
+          )}
+          {/* A grid, so the name can span both lines and sit in the middle of
+              them when there is no second line of its own to put under it. */}
+          <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
+            <span
+              className={cn(
+                "col-start-1 row-start-1 truncate text-xs font-medium",
+                centerName && "max-md:row-span-2 max-md:self-center",
+              )}
+            >
+              {car.name || "—"}
+            </span>
+            {aside && (
+              <span className="col-start-2 row-start-1 text-[11px] text-muted-foreground">
+                {aside}
+              </span>
+            )}
+            <span
+              className={cn(
+                "col-start-1 row-start-2 truncate text-xs text-muted-foreground",
+                centerName && "max-md:hidden",
+              )}
+            >
               {sub ?? carSubLine(car)}
             </span>
+            {asideSub && (
+              <span className="col-start-2 row-start-2 text-[11px] text-muted-foreground">
+                {asideSub}
+              </span>
+            )}
           </span>
         </div>
       </td>
@@ -150,9 +215,9 @@ export function CarSubRow({
 }
 
 /** The cell every one of these tables has: the car's status. */
-export function StatusCell({ car }: { car: Diecast }) {
+export function StatusCell({ car, className }: { car: Diecast; className?: string }) {
   return (
-    <td className="px-3 py-2">
+    <td className={cn("px-3 py-2", className)}>
       <StatusPill status={car.status} />
     </td>
   );

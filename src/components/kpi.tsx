@@ -110,11 +110,13 @@ export function KpiTile({
 }) {
   const body = (
     <>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground md:gap-2 md:uppercase md:tracking-wider">
+      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground md:gap-2 md:text-xs">
         <span
           className={cn(
-            "grid size-5 shrink-0 place-items-center rounded md:size-6 md:rounded-md",
-            TONE_CHIP[tone] ?? "bg-muted",
+            "grid size-5 shrink-0 place-items-center md:size-6",
+            // One accent, no chip: the bare icon in the brand colour. Colour is
+            // kept for the number itself when it carries meaning.
+            "text-primary",
           )}
         >
           {icon}
@@ -123,7 +125,7 @@ export function KpiTile({
       </div>
       <div
         className={cn(
-          "text-display mt-0.5 truncate text-lg font-semibold leading-tight tabular-nums md:mt-2 md:text-2xl",
+          "text-display mt-0.5 truncate text-2xl font-semibold leading-tight tabular-nums md:mt-2 md:text-3xl",
           valueTone ? TONE_VALUE[valueTone] : undefined,
         )}
       >

@@ -41,7 +41,7 @@ import { heldCars, heldClosing, heldLabel } from "@/lib/held";
 import { useAuth } from "@/lib/auth-store";
 import { supabase } from "@/integrations/supabase/client";
 import { daysBetween, formatDayMonthYear, inrFull, parseDMY } from "@/lib/format";
-import { isPreOrder, STATUSES } from "@/lib/status";
+import { isPreOrder, STATUSES, statusLabel } from "@/lib/status";
 import {
   groupDeliveries,
   isDueToday,
@@ -661,7 +661,7 @@ export function NotificationCenter() {
                         <SelectContent>
                           {STATUS_OPTIONS.map((s) => (
                             <SelectItem key={s} value={s} className="text-xs">
-                              {s}
+                              {statusLabel(s)}
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -38,14 +38,14 @@ import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { cn } from "@/lib/utils";
-import { STATUSES, STATUS_STYLES, isInHand, isIso, type Status } from "@/lib/status";
+import { STATUSES, STATUS_STYLES, isInHand, isIso, statusLabel, type Status } from "@/lib/status";
 import { isLate } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { carSubLine, carSubLineParts } from "@/lib/car-subline";
 import { useCatalog } from "@/lib/catalog-store";
 import { catalogCarToCatalogueCar, catalogMatches, type CatalogCar } from "@/lib/catalog";
 
-const STATUS_CHOICES = STATUSES.map((value) => ({ value, label: value }));
+const STATUS_CHOICES = STATUSES.map((value) => ({ value, label: statusLabel(value) }));
 
 /**
  * Every status a shipment can be moved to, in the order it moves through them.
@@ -666,7 +666,7 @@ export function ShippingBatchDialog({
                               )}
                             </span>
                             <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
-                              ISO
+                              Wishlist
                             </span>
                             <Plus className="size-3 shrink-0 text-muted-foreground" />
                           </button>
@@ -695,8 +695,8 @@ export function ShippingBatchDialog({
                         {isoCandidates.length === 0 && catalogCandidates.length === 0 && (
                           <p className="px-1 py-2 text-center text-xs text-muted-foreground">
                             {pickerQuery.trim().length >= 2
-                              ? "Nothing on your ISO list or in the catalogue matches that."
-                              : "Type a name to search — your ISO list shows first."}
+                              ? "Nothing on your wishlist or in the catalogue matches that."
+                              : "Type a name to search — your wishlist shows first."}
                           </p>
                         )}
                       </div>

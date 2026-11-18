@@ -1,19 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Filter } from "lucide-react";
+import { Filter, X } from "lucide-react";
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import { TableRowsSkeleton } from "@/components/dashboard-skeletons";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import { MrpNote } from "@/components/cars-table";
+import { BlisterTile } from "@/components/blister-tile";
+import { CompactCarCard } from "@/components/compact-car-card";
+import { CarThumb } from "@/components/car-thumb";
+import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { CarSubRow, GroupRow, GroupTable, StatusCell, Th } from "@/components/group-table";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
-import { SegmentControl } from "@/components/segment-control";
+import { CyclePill, SegmentControl } from "@/components/segment-control";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
-import { ExportButton } from "@/components/export-button";
 import { inr } from "@/lib/format";
 import { ProGate } from "@/components/pro-gate";
 
@@ -72,13 +75,61 @@ const GROUP_LABEL: Partial<Record<GroupBy, (r: Diecast) => string>> = {
   assortment: (r) => r.assortment || "—",
 };
 
+/**
+ * A group as a tile, for the blister and grid views: a cover photograph from one
+ * of its cars, and the words on the picture the way the car tiles have them.
+ */
+function GroupTile({
+  title,
+  count,
+  brands,
+  cover,
+  tall,
+  onOpen,
+}: {
+  title: string;
+  count: number;
+  brands: string[];
+  cover: Diecast;
+  tall: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      title={title}
+      className="card-elevated group relative flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40"
+    >
+      <CarThumb
+        car={cover}
+        className={tall ? "aspect-[534/658] w-full" : "aspect-[16/10] w-full"}
+        fallback={
+          <span className="flex size-full items-center justify-center bg-gradient-to-b from-muted/60 to-muted/20" />
+        }
+      />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-3.5 pb-3 pt-14 text-white">
+        <div className="line-clamp-2 text-[15px] font-semibold leading-tight">{title}</div>
+        <div className="mt-1 truncate text-xs text-white/80">
+          {count} {count === 1 ? "car" : "cars"}
+        </div>
+        {brands.length > 0 && (
+          <div className="truncate text-xs text-white/60">{brands.join(" · ")}</div>
+        )}
+      </div>
+    </button>
+  );
+}
+
 function CollectionPage() {
   const { query } = useApp();
   const [group, setGroup] = useState<GroupBy>("series");
   const [selected, setSelected] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("count");
   const [dir, setDir] = useState<SortDir>("desc");
-  const [openRows, setOpenRows] = useState<Set<string>>(new Set());
+  // How the cars of the chosen group are laid out. The table is what this page
+  // has always shown, so it is where it starts.
+  const [view, setView] = useState<ViewMode>("table");
   const { open } = useCarDrawer();
 
   const cars = useCars();
@@ -126,13 +177,9 @@ function CollectionPage() {
   const visibleCars = useMemo(() => visible.flatMap((g) => g.items), [visible]);
   useRegisterExportScope("collection", "Collection", visibleCars);
 
-  const toggle = (name: string) =>
-    setOpenRows((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
+  // A drill-down, not an accordion: choosing a group replaces the list with that
+  // group's cars, and the group's name stays in the toolbar to step to the next.
+  const drilled = selected === "all" ? undefined : groups.find((g) => g.name === selected);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
@@ -147,41 +194,66 @@ function CollectionPage() {
         // instead of taking a row of its own above the buttons.
         oneLine
         left={
-          <SegmentControl
-            className="w-auto md:w-auto"
-            value={group}
-            onChange={(v) => {
-              setGroup(v);
-              setSelected("all");
-              setOpenRows(new Set());
-            }}
-            options={[
-              { value: "series", label: "Series" },
-              { value: "set", label: "Set" },
-              { value: "brand", label: "Brand" },
-              { value: "assortment", label: "Assortment" },
-              { value: "maker", label: "Maker" },
-              { value: "seller", label: "Seller" },
-              { value: "size", label: "Size" },
-            ]}
-          />
+          <>
+            <SegmentControl
+              className="w-auto md:w-auto"
+              value={group}
+              onChange={(v) => {
+                setGroup(v);
+                setSelected("all");
+              }}
+              options={[
+                { value: "series", label: "Series" },
+                { value: "set", label: "Set" },
+                { value: "brand", label: "Brand" },
+                { value: "assortment", label: "Assortment" },
+                { value: "maker", label: "Maker" },
+                { value: "seller", label: "Seller" },
+                { value: "size", label: "Size" },
+              ]}
+            />
+            {/* Once a group is chosen it sits beside the first pill and steps
+                through the groups; the X closes it and returns to the list.
+                Phone only — a row of every series would not fit anywhere else. */}
+            {drilled && (
+              <>
+                <CyclePill
+                  phoneOnly
+                  value={selected}
+                  onChange={setSelected}
+                  options={groups.map((g) => ({ value: g.name, label: g.label }))}
+                />
+                <button
+                  type="button"
+                  onClick={() => setSelected("all")}
+                  aria-label={`Close ${drilled.label}`}
+                  className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground sm:hidden"
+                >
+                  <X className="size-4" />
+                </button>
+              </>
+            )}
+          </>
         }
         right={
           <>
-            <FilterSelect
-              value={selected}
-              onChange={setSelected}
-              icon={<Filter className="size-3.5" />}
-              label={`Which ${group}`}
-              iconOnly
-              options={[
-                { value: "all", label: `All ${group}s` },
-                ...groups.map((g) => ({
-                  value: g.name,
-                  label: `${g.label} (${g.items.length})`,
-                })),
-              ]}
-            />
+            {/* The drill-down pill beside the first one does this job on a phone. */}
+            <div className="max-md:hidden">
+              <FilterSelect
+                value={selected}
+                onChange={setSelected}
+                icon={<Filter className="size-3.5" />}
+                label={`Which ${group}`}
+                iconOnly
+                options={[
+                  { value: "all", label: `All ${group}s` },
+                  ...groups.map((g) => ({
+                    value: g.name,
+                    label: `${g.label} (${g.items.length})`,
+                  })),
+                ]}
+              />
+            </div>
             {/* Picking the order already in use flips its direction, so the
                 separate arrow button this used to have is folded in. */}
             <SortSelect
@@ -199,61 +271,148 @@ function CollectionPage() {
                 dir: f === "name" ? ("asc" as const) : ("desc" as const),
               }))}
             />
-            <ExportButton rows={visibleCars} name="collection" label="Collection" iconOnly />
+            <ViewToggle value={view} onChange={setView} modes={["table", "blister", "grid"]} />
           </>
         }
       />
 
-      <GroupTable
-        head={
-          <>
-            <Th className="capitalize">{group}</Th>
-            <Th>Cars</Th>
-            <Th align="right">Spent</Th>
-          </>
-        }
-      >
-        {visible.map((g) => {
-          const isOpen = openRows.has(g.name);
-          return [
+      {drilled ? (
+        <>
+          {view === "table" ? (
+            <GroupTable
+              minWidth="md:min-w-[40rem]"
+              headClassName="max-md:hidden"
+              head={
+                <>
+                  <Th className="capitalize">Car</Th>
+                  <Th className="hidden md:table-cell">Status</Th>
+                  <Th align="right" className="hidden md:table-cell">
+                    Spent
+                  </Th>
+                </>
+              }
+            >
+              {drilled.items.map((r, i) => (
+                <CarSubRow
+                  key={(r.id || "") + i}
+                  car={r}
+                  onOpen={() => open(r)}
+                  flush
+                  showImage
+                  centerName={!r.subSeries}
+                  // The group already says which series; the brand sits at the
+                  // right of the name, and the second line is the sub series
+                  // followed by the assortment.
+                  aside={r.brand}
+                  // A phone has the assortment under the brand, at the right;
+                  // wider screens keep it after the sub series.
+                  sub={
+                    <>
+                      {r.subSeries}
+                      {r.assortment && (
+                        <span className="max-md:hidden">
+                          {r.subSeries ? " · " : ""}
+                          {r.assortment}
+                        </span>
+                      )}
+                      {!r.subSeries && !r.assortment && "—"}
+                    </>
+                  }
+                  asideSub={r.assortment && <span className="md:hidden">{r.assortment}</span>}
+                >
+                  <StatusCell car={r} className="hidden md:table-cell" />
+                  <td className="hidden px-3 py-2 text-right text-xs tabular-nums md:table-cell">
+                    {r.spent ? inr(r.spent) : "—"}
+                    {r.mrp ? (
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        <MrpNote spent={r.spent || 0} mrp={r.mrp} />
+                      </span>
+                    ) : null}
+                  </td>
+                </CarSubRow>
+              ))}
+            </GroupTable>
+          ) : (
+            <div className={view === "blister" ? BLISTER_GRID_COLS : GRID_COLS}>
+              {drilled.items.map((r, i) =>
+                view === "blister" ? (
+                  <BlisterTile key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
+                ) : (
+                  <CompactCarCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
+                ),
+              )}
+            </div>
+          )}
+        </>
+      ) : view !== "table" ? (
+        <div className={view === "blister" ? BLISTER_GRID_COLS : GRID_COLS}>
+          {groups.map((g) => (
+            <GroupTile
+              key={g.name}
+              title={g.label}
+              count={g.items.length}
+              brands={g.brands}
+              cover={g.items.find((r) => r.imageUrl) ?? g.items[0]}
+              tall={view === "blister"}
+              onOpen={() => setSelected(g.name)}
+            />
+          ))}
+          {!loading && groups.length === 0 && (
+            <p className="col-span-full p-8 text-center text-sm text-muted-foreground">
+              No groups.
+            </p>
+          )}
+        </div>
+      ) : (
+        /* A phone gets one column — the name, with what it is under it — and no
+           sideways scroll; the count and the money are for wider screens. */
+        <GroupTable
+          minWidth="md:min-w-[40rem]"
+          headClassName="max-md:hidden"
+          head={
+            <>
+              <Th className="capitalize">{group}</Th>
+              <Th className="hidden md:table-cell">Cars</Th>
+              <Th align="right" className="hidden md:table-cell">
+                Spent
+              </Th>
+            </>
+          }
+        >
+          {groups.map((g) => (
             <GroupRow
               key={g.name}
-              open={isOpen}
-              onToggle={() => toggle(g.name)}
+              open={false}
+              onToggle={() => setSelected(g.name)}
               title={g.label}
-              sub={g.brands.join(" · ") || undefined}
+              sub={
+                <>
+                  <span className="md:hidden">
+                    {g.items.length} {g.items.length === 1 ? "car" : "cars"}
+                    {g.brands.length > 0 ? " · " : ""}
+                  </span>
+                  {g.brands.join(" · ")}
+                </>
+              }
             >
-              <td className="px-3 py-2.5 text-muted-foreground">
+              <td className="hidden px-3 py-2.5 text-muted-foreground md:table-cell">
                 {g.items.length} {g.items.length === 1 ? "car" : "cars"}
               </td>
-              <td className="px-3 py-2.5 text-right font-medium tabular-nums">{inr(g.value)}</td>
-            </GroupRow>,
-            ...(isOpen
-              ? g.items.map((r, i) => (
-                  <CarSubRow key={(r.id || "") + i} car={r} onOpen={() => open(r)}>
-                    <StatusCell car={r} />
-                    <td className="px-3 py-2 text-right text-xs tabular-nums">
-                      {r.spent ? inr(r.spent) : "—"}
-                      {r.mrp ? (
-                        <span className="block text-xs font-normal text-muted-foreground">
-                          <MrpNote spent={r.spent || 0} mrp={r.mrp} />
-                        </span>
-                      ) : null}
-                    </td>
-                  </CarSubRow>
-                ))
-              : []),
-          ];
-        })}
-        {loading && <TableRowsSkeleton cols={3} rows={8} />}
-        {!loading && visible.length === 0 && (
-          <tr>
-            <td colSpan={3} className="p-8 text-center text-sm text-muted-foreground">
-              No groups.
-            </td>
-          </tr>
-        )}
-      </GroupTable>
+              <td className="hidden px-3 py-2.5 text-right font-medium tabular-nums md:table-cell">
+                {inr(g.value)}
+              </td>
+            </GroupRow>
+          ))}
+          {loading && <TableRowsSkeleton cols={3} rows={8} />}
+          {!loading && groups.length === 0 && (
+            <tr>
+              <td colSpan={3} className="p-8 text-center text-sm text-muted-foreground">
+                No groups.
+              </td>
+            </tr>
+          )}
+        </GroupTable>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { normaliseStatus, styleFor, LATE_STYLE } from "@/lib/status";
+import { statusLabel, styleFor, LATE_STYLE } from "@/lib/status";
 
 /**
  * The status of a car, as a pill.
@@ -12,7 +12,7 @@ import { normaliseStatus, styleFor, LATE_STYLE } from "@/lib/status";
  * the pill then agree even before the migration has run.
  */
 export function StatusPill({ status, className = "" }: { status: string; className?: string }) {
-  const label = normaliseStatus(status);
+  const label = statusLabel(status);
   return (
     <span
       className={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium shadow-none ${styleFor(status)} ${className}`}

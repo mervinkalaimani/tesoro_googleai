@@ -187,6 +187,12 @@ type AppState = {
   /** Whether it shows the chase, STH, TH and favourite cars. */
   prizedShelf: PrizedPreference;
   setPrizedShelf: (p: PrizedPreference) => void;
+  /** Whether the row of counts at the top of the home page is shown at all. */
+  summaryCards: boolean;
+  setSummaryCards: (b: boolean) => void;
+  /** Keys of the individual cards switched off (see summary-cards.ts). */
+  hiddenSummary: string[];
+  setSummaryCardShown: (key: string, shown: boolean) => void;
 };
 
 const AppCtx = createContext<AppState | null>(null);
@@ -262,6 +268,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [showRecentlyAdded, setShowRecentlyAddedState] = useState(true);
   const [showNewPreorders, setShowNewPreordersState] = useState(true);
   const [prizedShelf, setPrizedShelfState] = useState<PrizedPreference>("auto");
+  const [summaryCards, setSummaryCardsState] = useState(true);
+  const [hiddenSummary, setHiddenSummaryState] = useState<string[]>([]);
   // The server renders with the defaults above while the inline boot script in
   // __root.tsx has already painted the stored ones. Nothing is applied to the
   // document until this flips, so the first client render cannot undo it.
@@ -297,6 +305,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setShowNewPreordersState(readLS<boolean>("dg.showNewPreorders", true));
     const storedPrized = readLS<unknown>("dg.prizedShelf", "auto");
     setPrizedShelfState(isPrizedPreference(storedPrized) ? storedPrized : "auto");
+    setSummaryCardsState(readLS<boolean>("dg.summaryCards", true));
+    const storedHidden = readLS<unknown>("dg.hiddenSummary", []);
+    setHiddenSummaryState(
+      Array.isArray(storedHidden)
+        ? storedHidden.filter((k): k is string => typeof k === "string")
+        : [],
+    );
     setHydrated(true);
   }, []);
 
@@ -495,6 +510,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.prizedShelf", p);
   }, []);
 
+  const setSummaryCards = useCallback((b: boolean) => {
+    setSummaryCardsState(b);
+    writeLS("dg.summaryCards", b);
+  }, []);
+
+  const setSummaryCardShown = useCallback((key: string, shown: boolean) => {
+    setHiddenSummaryState((prev) => {
+      const next = shown ? prev.filter((k) => k !== key) : [...new Set([...prev, key])];
+      writeLS("dg.hiddenSummary", next);
+      return next;
+    });
+  }, []);
+
   const setFontSize = useCallback((s: FontSizePreference) => {
     setFontSizeState(s);
     writeLS("dg.fontSize", s);
@@ -533,8 +561,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setShowNewPreorders,
       prizedShelf,
       setPrizedShelf,
+      summaryCards,
+      setSummaryCards,
+      hiddenSummary,
+      setSummaryCardShown,
     }),
     [
+      summaryCards,
+      setSummaryCards,
+      hiddenSummary,
+      setSummaryCardShown,
       navAnimation,
       setNavAnimation,
       arrivingSoon,

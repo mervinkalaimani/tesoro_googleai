@@ -24,10 +24,10 @@ import {
   Loader2,
   Pencil,
   Plus,
-  Search,
   Star,
   Trash2,
   X,
+  Bookmark,
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useApp } from "@/lib/store";
@@ -2666,8 +2666,8 @@ function CatalogChips({
         <span
           className={cn(base, "border-sky-500/40 bg-sky-500/10 text-sky-600 dark:text-sky-400")}
         >
-          <Search className="size-3 shrink-0" />
-          On your ISO list
+          <Bookmark className="size-3 shrink-0" />
+          On your wishlist
         </span>
       )}
 
@@ -3340,22 +3340,22 @@ function CatalogDetailsContent({
             type="button"
             variant="outline"
             onClick={() => setDropIso(true)}
-            title="Take this off your ISO list"
+            title="Take this off your wishlist"
             className="h-11 w-11 shrink-0 cursor-pointer gap-2 px-0 text-sm font-semibold text-rose-500 hover:text-rose-500 sm:w-auto sm:min-w-0 sm:flex-1 sm:px-2"
           >
             <Trash2 className="size-3.5 shrink-0" />
-            <span className="hidden truncate sm:inline">Remove ISO</span>
+            <span className="hidden truncate sm:inline">Remove from wishlist</span>
           </Button>
         ) : (
           <Button
             type="button"
             variant="outline"
             onClick={() => onAddIso(pick)}
-            title="Add to your ISO list"
+            title="Add to your wishlist"
             className="h-11 w-11 shrink-0 cursor-pointer gap-2 px-0 text-sm font-semibold sm:w-auto sm:min-w-0 sm:flex-1 sm:px-2"
           >
-            <Search className="size-3.5 shrink-0" />
-            <span className="hidden truncate sm:inline">Add to ISO</span>
+            <Bookmark className="size-3.5 shrink-0" />
+            <span className="hidden truncate sm:inline">Add to wishlist</span>
           </Button>
         ))}
       <Button
@@ -3608,7 +3608,7 @@ function CatalogDetailsContent({
         <Dialog open={dropIso} onOpenChange={setDropIso}>
           <DialogContent className="sm:max-w-md">
             <DialogTitle className="text-lg font-semibold">
-              Take this off your ISO list?
+              Take this off your wishlist?
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{title}</span> stays in the catalogue.
@@ -3624,7 +3624,7 @@ function CatalogDetailsContent({
                   if (!matchingIsoCar) return;
                   deleteCar(matchingIsoCar.id);
                   setDropIso(false);
-                  toast.success("Off your ISO list", {
+                  toast.success("Off your wishlist", {
                     description: "Undo in the top bar brings it back.",
                   });
                 }}

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Boxes,
   CalendarDays,
@@ -147,14 +147,22 @@ function HomeCircle({
       className={`${HOME_CIRCLE} ${className}`}
       style={style}
     >
+      {/* Icon alone: this circle only appears inside a section, and the home
+          bar itself keeps the labelled Home tab. */}
       <Home className="size-5" />
-      <span className="text-xs font-medium leading-none">Home</span>
     </Link>
   );
 }
 
 export function MobileNav() {
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  // The selected-tab pill is one element that slides to whichever tab is
+  // current, rather than a background that switches on and off.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [pill, setPill] = useState<{ left: number; top: number; w: number; h: number } | null>(
+    null,
+  );
+  const pillSeen = useRef(false);
   const { query, navAnimation } = useApp();
   const { plan } = useAuth();
   const searchOpen = useSearchOpen();
@@ -186,6 +194,20 @@ export function MobileNav() {
 
   // Only a change of section animates — not the bar's first appearance. Once a
   // section has changed, each newly keyed pill plays its entrance on mount.
+  useLayoutEffect(() => {
+    const place = () => {
+      const el = tabsRef.current?.querySelector<HTMLElement>('[aria-current="page"]');
+      setPill(
+        el
+          ? { left: el.offsetLeft, top: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight }
+          : null,
+      );
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => window.removeEventListener("resize", place);
+  }, [pathname, navMode, searchOpen]);
+
   const lastMode = useRef(navMode);
   const animate = useRef(false);
   if (lastMode.current !== navMode) {
@@ -262,12 +284,27 @@ export function MobileNav() {
 
         <div
           key={navMode}
+          ref={tabsRef}
           className={`${GLASS} flex min-h-[58px] min-w-0 items-stretch gap-1 rounded-[2.5rem] p-1.5 transition-[opacity,transform] duration-200 before:inset-x-4 ${
             short ? "flex-none" : "flex-1"
           } ${
             split ? (sectioned ? "animate-nav-split" : "animate-nav-merge") : ""
           } ${searchOpen ? "pointer-events-none scale-95 opacity-0" : ""}`}
         >
+          {pill && (
+            <span
+              aria-hidden
+              className={`pointer-events-none absolute rounded-[1.75rem] bg-foreground/[0.04] shadow-[inset_0_1px_0_oklch(1_0_0/0.22)] ring-1 ring-inset ring-foreground/15 backdrop-blur-sm ${
+                pillSeen.current
+                  ? "transition-[left,top,width,height] duration-300 ease-out motion-reduce:transition-none"
+                  : ""
+              }`}
+              ref={() => {
+                pillSeen.current = true;
+              }}
+              style={{ left: pill.left, top: pill.top, width: pill.w, height: pill.h }}
+            />
+          )}
           {tabs.map((t) => {
             const active = isActive(pathname, t.url);
             return (
@@ -275,14 +312,19 @@ export function MobileNav() {
                 key={t.url}
                 to={t.url}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex flex-col items-center justify-center gap-1 rounded-[1.75rem] px-1 py-1.5 transition-colors ${sizing} ${
+                className={`relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-[1.75rem] px-1 py-1.5 transition-colors duration-300 ease-out motion-reduce:transition-none ${
+                  sizing
+                } ${
                   active
-                    ? "bg-primary/12 font-semibold text-primary"
+                    ? "font-semibold text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
-                <span className="truncate text-xs font-medium leading-none">{t.title}</span>
+                {/* Every tab names itself. */}
+                <span className="whitespace-nowrap text-xs font-medium leading-none">
+                  {t.title}
+                </span>
               </Link>
             );
           })}

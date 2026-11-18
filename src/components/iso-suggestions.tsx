@@ -1,4 +1,4 @@
-import { Layers, Search, X } from "lucide-react";
+import { Layers, X, Bookmark } from "lucide-react";
 
 import type { Diecast } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -43,12 +43,12 @@ export function IsoSuggestions({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <span className="grid size-6 shrink-0 place-items-center rounded-md bg-sky-500/15 text-sky-500">
-            <Search className="size-3.5" />
+            <Bookmark className="size-3.5" />
           </span>
           <p className="min-w-0 text-sm font-medium">
             {matches.length === 1
-              ? "This is on your ISO list"
-              : `${matches.length} matches on your ISO list`}
+              ? "This is on your wishlist"
+              : `${matches.length} matches on your wishlist`}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -70,7 +70,7 @@ export function IsoSuggestions({
             variant="ghost"
             className="size-7 text-muted-foreground"
             onClick={onDismiss}
-            aria-label="Dismiss ISO suggestions"
+            aria-label="Dismiss wishlist suggestions"
             title="Dismiss for this car"
           >
             <X className="size-4" />

@@ -174,7 +174,7 @@ function Shelf({
         </div>
         {icon}
       </div>
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
         {children}
       </div>
     </section>

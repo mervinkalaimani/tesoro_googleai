@@ -440,7 +440,7 @@ function HabitsPage() {
               tap a {unit} for details
             </p>
           </div>
-          <div className="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center">
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <SegmentControl
               value={mode}
               onChange={(v) => {

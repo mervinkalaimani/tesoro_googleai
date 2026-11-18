@@ -37,6 +37,7 @@ import { inrFull } from "@/lib/format";
 import { needsCarNumber } from "@/lib/duplicate";
 import {
   STATUSES,
+  statusLabel,
   iconFor,
   isInHand,
   isIso,
@@ -284,7 +285,7 @@ export function StatusUpdateDialog({
       };
 
       updateCar(next);
-      toast.success(wasIso ? "Moved off your ISO list" : "Status updated", {
+      toast.success(wasIso ? "Moved off your wishlist" : "Status updated", {
         description: `${title} is now ${status.toLowerCase()}.`,
       });
       onDone?.(next);
@@ -369,7 +370,9 @@ export function StatusUpdateDialog({
                     }`}
                   >
                     <Icon className="size-3.5 shrink-0" />
-                    <span className="leading-tight">{isInHand(s) ? "Delivered" : s}</span>
+                    <span className="leading-tight">
+                      {isInHand(s) ? "Delivered" : statusLabel(s)}
+                    </span>
                     {isCurrent && (
                       <span className="text-xs font-semibold uppercase leading-none tracking-wide text-muted-foreground">
                         Current

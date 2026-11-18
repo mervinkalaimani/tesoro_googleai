@@ -1450,6 +1450,7 @@ export function CatalogFormDialog({
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <Field label="Release status">
                     <SegmentControl<ReleaseStatus>
+                      row
                       fill
                       disabled={isImageOnly}
                       value={form.release_status ?? "Released"}

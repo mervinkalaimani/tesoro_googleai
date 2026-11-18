@@ -3,7 +3,7 @@ import {
   CircleDot,
   CirclePause,
   PackageCheck,
-  Search,
+  Bookmark,
   Truck,
   Hourglass,
   type LucideIcon,
@@ -120,6 +120,16 @@ export function statusRank(s: string | null | undefined): number {
 
 export const isInHand = (s: string | null | undefined) => normaliseStatus(s) === "In Hand";
 export const isPreOrder = (s: string | null | undefined) => normaliseStatus(s) === "PO";
+/**
+ * What a status is called on screen. The stored value for a car being looked for
+ * stays "ISO" — it is in every row, filter and export — but nobody should have
+ * to know that stands for "in search of", so people see "Wishlist".
+ */
+export const statusLabel = (s: string | null | undefined): string => {
+  const n = normaliseStatus(s);
+  return n === "ISO" ? "Wishlist" : n;
+};
+
 export const isIso = (s: string | null | undefined) => normaliseStatus(s) === "ISO";
 export const isOnHold = (s: string | null | undefined) => normaliseStatus(s) === "On Hold";
 
@@ -197,7 +207,7 @@ export const STATUS_ICON: Record<Status, LucideIcon> = {
   Ordered: Hourglass,
   "On Hold": CirclePause,
   PO: CalendarClock,
-  ISO: Search,
+  ISO: Bookmark,
 };
 
 /** A status outside the six (an older spelling) gets a plain dot. */

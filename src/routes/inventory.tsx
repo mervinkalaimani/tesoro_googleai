@@ -22,20 +22,19 @@ import {
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog } from "@/components/car-form-dialog";
-import { BlisterTile } from "@/components/blister-tile";
+import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { PageHeading } from "@/components/page-header";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { inr, mrpRatio, formatDayMonthYear, inrPrice } from "@/lib/format";
 import { sortCars } from "@/lib/status-order";
-import { STATUSES, normaliseStatus } from "@/lib/status";
+import { STATUSES, normaliseStatus, statusLabel } from "@/lib/status";
 import { groupCopies } from "@/lib/copies";
 import { CopiesBadge } from "@/components/copies-badge";
 import { Button } from "@/components/ui/button";
-import { SegmentControl } from "@/components/segment-control";
+import { CyclePill } from "@/components/segment-control";
 import { SortSelect, type SortDir } from "@/components/filter-select";
 import { compareCarNumbers } from "@/lib/car-number";
-import { ExportButton } from "@/components/export-button";
 import { carNumberOf, carSubLine } from "@/lib/car-subline";
 import { toDateInputValue } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
@@ -172,146 +171,72 @@ function Metric({ label, value, className }: { label: string; value: string; cla
   );
 }
 
-/** Spend, list price, and the gap between them. */
+/**
+ * Spend, list price, and the gap between them, on one line: what it cost, big;
+ * what it lists for, quiet; and the gap as a small pill that only appears when
+ * there is one. No labels — ₹565 next to "MRP ₹549" needs none.
+ */
 function PriceStrip({ car, spentOverride }: { car: Diecast; spentOverride?: number }) {
   const spent = spentOverride ?? car.spent ?? 0;
   const mrp = spentOverride === undefined ? car.mrp || 0 : 0;
-  const diff = spent > 0 && mrp > 0 ? Math.round(spent - mrp) : null;
-  let deltaDisplay = "—";
-  if (diff !== null) {
-    if (diff > 0) deltaDisplay = `+${inr(diff)}`;
-    else if (diff < 0) deltaDisplay = `-${inr(Math.abs(diff))}`;
-    else deltaDisplay = "₹0";
-  }
+  const diff = spent > 0 && mrp > 0 ? Math.round(spent - mrp) : 0;
 
   return (
-    <div className="grid grid-cols-3 gap-2 text-left">
+    <div className="flex items-end justify-between gap-2 whitespace-nowrap">
       <div className="min-w-0">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">spent</div>
-        <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-foreground">
+        <div className="text-sm font-semibold tabular-nums leading-none md:text-base">
           {spent ? inr(spent) : "—"}
         </div>
+        {mrp > 0 && (
+          <div className="mt-0.5 text-[11px] tabular-nums text-muted-foreground md:text-xs">
+            MRP {inrPrice(mrp)}
+          </div>
+        )}
       </div>
-      <div className="min-w-0">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">MRP</div>
-        <div className="mt-0.5 truncate text-xs font-semibold tabular-nums text-foreground">
-          {mrp ? inrPrice(mrp) : "—"}
-        </div>
-      </div>
-      <div className="min-w-0">
-        <div className="text-xs uppercase tracking-wider text-muted-foreground">delta</div>
-        <div
+      {diff !== 0 && (
+        <span
           className={cn(
-            "mt-0.5 truncate text-xs font-semibold tabular-nums",
-            diff === null || diff === 0
-              ? "text-muted-foreground"
-              : diff > 0
-                ? "text-rose-600 dark:text-rose-400"
-                : "text-emerald-600 dark:text-emerald-400",
+            "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums md:text-xs",
+            diff > 0
+              ? "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+              : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
           )}
         >
-          {deltaDisplay}
-        </div>
-      </div>
+          {diff > 0 ? "+" : "−"}
+          {inr(Math.abs(diff))}
+        </span>
+      )}
     </div>
   );
 }
 
 /**
- * What sits under a car's photograph in the grid and the blister views: the
- * name, brand and box, series, and the spent / MRP / delta strip.
+ * Under the photograph, only when there is something to show: the mark for a
+ * casting held in several copies. What a car cost is not on the card.
  *
  * `inside` is for a tile that is already one button, where a second one for the
- * name or the copies mark would be a button in a button.
+ * copies mark would be a button in a button.
  */
 function InventoryFoot({
-  car,
-  onOpen,
   copies = 1,
-  copiesTotal,
   expanded = false,
   onToggleCopies,
   inside = false,
 }: {
-  car: Diecast;
-  onOpen?: () => void;
   copies?: number;
-  copiesTotal?: number;
   expanded?: boolean;
   onToggleCopies?: () => void;
   inside?: boolean;
 }) {
-  const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
+  if (copies <= 1 || inside) return null;
   return (
-    <div className="flex flex-1 flex-col p-3">
-      {/* Car Name (regular size) */}
-      <div className="flex items-start justify-between gap-1.5">
-        {inside ? (
-          <span
-            className="text-left text-sm font-semibold leading-snug line-clamp-1 min-w-0"
-            title={title}
-          >
-            {title}
-            <ChangedDot car={car} className="ml-1.5 align-middle" />
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={onOpen}
-            className="text-left text-sm font-semibold leading-snug hover:text-primary line-clamp-1 min-w-0"
-            title={title}
-          >
-            {title}
-            <ChangedDot car={car} className="ml-1.5 align-middle" />
-          </button>
-        )}
-        {copies > 1 && (
-          <div className="shrink-0">
-            <CopiesBadge
-              n={copies}
-              expanded={expanded}
-              onToggle={inside ? undefined : onToggleCopies}
-            />
-          </div>
-        )}
-      </div>
-
-      {/* brand (left) and assortment (right) (smaller size) */}
-      <div className="mt-1 flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
-        <span className="truncate" title={car.brand || undefined}>
-          {[car.brand, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
-        </span>
-        <span
-          className="truncate text-right shrink-0 max-w-[50%]"
-          title={car.assortment || undefined}
-        >
-          {car.assortment || "—"}
-        </span>
-      </div>
-
-      {/* series (left) and sub series (right) (even smaller) */}
-      <div className="mt-0.5 flex items-baseline justify-between gap-2 text-xs text-muted-foreground/80">
-        <span className="truncate" title={car.series || undefined}>
-          {car.series || "—"}
-        </span>
-        <span
-          className="truncate text-right shrink-0 max-w-[50%]"
-          title={car.subSeries || undefined}
-        >
-          {car.subSeries || "—"}
-        </span>
-      </div>
-
-      {/* Divider */}
-      <div className="mt-auto border-t border-border pt-2.5">
-        {/* spent, MRP, delta */}
-        <PriceStrip car={car} spentOverride={copies > 1 ? copiesTotal : undefined} />
-      </div>
+    <div className="flex items-center justify-end px-3 py-2">
+      <CopiesBadge n={copies} expanded={expanded} onToggle={onToggleCopies} />
     </div>
   );
 }
 
-function InventoryCard({
+export function InventoryCard({
   car,
   onOpen,
   copies = 1,
@@ -336,21 +261,14 @@ function InventoryCard({
         </button>
 
         <CarMarkOverlay car={car} />
+        <CarOverlay car={car} />
 
-        {/* Status pill overlay with proper dark/light mode and no artificial black backdrop or blur */}
-        <div className="pointer-events-none absolute bottom-2 right-2">
-          <StatusPill status={car.status} className="shadow-xs" />
+        <div className="pointer-events-none absolute left-2 top-2">
+          <StatusPill status={car.status} className="shadow-xs backdrop-blur-sm" />
         </div>
       </div>
 
-      <InventoryFoot
-        car={car}
-        onOpen={onOpen}
-        copies={copies}
-        copiesTotal={copiesTotal}
-        expanded={expanded}
-        onToggleCopies={onToggleCopies}
-      />
+      <InventoryFoot copies={copies} expanded={expanded} onToggleCopies={onToggleCopies} />
     </article>
   );
 }
@@ -487,7 +405,10 @@ function InventoryPage() {
     }
     const currentNorm = normaliseStatus(status);
     const available = STATUSES.filter((s) => present.has(s) || currentNorm === s);
-    return [{ value: "all", label: "All" }, ...available.map((s) => ({ value: s, label: s }))];
+    return [
+      { value: "all", label: "All" },
+      ...available.map((s) => ({ value: s, label: statusLabel(s) })),
+    ];
   }, [data, status]);
 
   const rows = useMemo(() => {
@@ -728,7 +649,8 @@ function InventoryPage() {
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
             {/* Status segment control: scrollable on mobile */}
             <div className="flex flex-nowrap items-center min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
-              <SegmentControl
+              <CyclePill
+                separate="all"
                 value={status}
                 onChange={setStatus}
                 options={statusSegmentOptions}
@@ -840,14 +762,6 @@ function InventoryPage() {
               options={SORT_OPTIONS}
               iconOnly={true}
               className="size-8 justify-center"
-            />
-
-            <ExportButton
-              rows={rows}
-              name="my-cars"
-              label="My Cars"
-              iconOnly={true}
-              className="size-8 p-0 justify-center"
             />
 
             {(sort !== "added" || sortDir !== "desc") && (
@@ -1030,7 +944,9 @@ function InventoryPage() {
                       ? `${sizeOfPack.get((r.catalogId || "").trim().toUpperCase())} CARS`
                       : undefined
                   }
-                  foot={<InventoryFoot inside car={r} copies={lead ? n : 1} copiesTotal={total} />}
+                  overlay={<CarOverlay car={r} brandOnly />}
+                  // The blister view is the packaging and its caption; the money is in the grid.
+                  foot={false}
                 />
               ) : (
                 <InventoryCard
@@ -1057,6 +973,7 @@ function InventoryPage() {
           <div className="space-y-2 md:hidden">
             {shown.map(({ car: r, n, lead }, i) => (
               <CarListCard
+                showCost={false}
                 key={(r.id || "") + i}
                 car={r}
                 copies={lead ? n : 1}
@@ -1080,7 +997,6 @@ function InventoryPage() {
                 <col className="w-[7rem]" />
                 <col className="w-[7rem]" />
                 <col className="w-[9rem]" />
-                <col className="w-[9rem]" />
                 <col className="w-[8rem]" />
                 <col className="w-[7rem]" />
                 <col className="w-[7rem]" />
@@ -1091,7 +1007,6 @@ function InventoryPage() {
                   <th className="px-3 py-2.5 font-medium">Brand / Assortment</th>
                   <th className="px-3 py-2.5 font-medium">Colour</th>
                   <th className="px-3 py-2.5 font-medium">Type</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Cost</th>
                   <th className="px-3 py-2.5 font-medium">Status</th>
                   <th className="px-3 py-2.5 font-medium">Seller</th>
                   <th className="px-3 py-2.5 font-medium">Order date</th>
@@ -1143,12 +1058,6 @@ function InventoryPage() {
                     </td>
                     <td className="truncate px-3 py-2.5 align-top text-muted-foreground">
                       {r.type || "—"}
-                    </td>
-                    <td className="px-3 py-2.5 align-top">
-                      {/* The group's total, not the lead copy's own spend: six
-                          McQueens cost ₹3,562.58, and the newest one's ₹600 is
-                          not what this line is worth. */}
-                      <CostCell car={r} spentOverride={lead && n > 1 ? total : undefined} />
                     </td>
                     <td className="px-3 py-2.5 align-top">
                       <StatusPill status={r.status} />

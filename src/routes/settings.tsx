@@ -1,3 +1,4 @@
+import { SUMMARY_ITEMS } from "@/lib/summary-cards";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeading } from "@/components/page-header";
 import { useEffect, useMemo, useState } from "react";
@@ -238,6 +239,10 @@ export function SettingsPage() {
     setShowNewPreorders,
     prizedShelf,
     setPrizedShelf,
+    summaryCards,
+    setSummaryCards,
+    hiddenSummary,
+    setSummaryCardShown,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
   const drawer = useCarDrawer();
@@ -738,6 +743,44 @@ export function SettingsPage() {
       {view === "homepage" && (
         <div className="space-y-6">
           <SubpageHeader title="Homepage" onBack={() => changeView("root")} />
+
+          {/* The row of counts at the top. A master switch, and — once it is on —
+              every card in it, each with its own. */}
+          <div className="space-y-1.5">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Summary cards
+            </div>
+            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+              <div className="flex items-center justify-between gap-4 p-4">
+                <div className="min-w-0">
+                  <div className="text-[15px] font-medium text-foreground">Show summary cards</div>
+                  <div className="text-xs text-muted-foreground">
+                    The row of counts at the top of the home page, like how many cars are on the
+                    way.
+                  </div>
+                </div>
+                <Switch checked={summaryCards} onCheckedChange={setSummaryCards} />
+              </div>
+              {summaryCards &&
+                SUMMARY_ITEMS.map((item) => (
+                  <div key={item.key} className="flex items-center justify-between gap-4 p-4 pl-6">
+                    <div className="min-w-0">
+                      <div className="text-[15px] font-medium text-foreground">{item.label}</div>
+                      <div className="text-xs text-muted-foreground">{item.hint}</div>
+                    </div>
+                    <Switch
+                      checked={!hiddenSummary.includes(item.key)}
+                      onCheckedChange={(on) => setSummaryCardShown(item.key, on)}
+                    />
+                  </div>
+                ))}
+            </div>
+            {summaryCards && (
+              <p className="px-1 pt-1 text-xs text-muted-foreground">
+                A card with nothing to count stays out of the way, even when it is switched on.
+              </p>
+            )}
+          </div>
 
           {/* Released pre-orders */}
           <div className="space-y-1.5">

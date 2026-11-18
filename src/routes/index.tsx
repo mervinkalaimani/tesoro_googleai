@@ -1,3 +1,4 @@
+import { SUMMARY_ITEMS } from "@/lib/summary-cards";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -13,6 +14,7 @@ import {
   Plus,
   CalendarClock,
   PackageCheck,
+  Bookmark,
 } from "lucide-react";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { MySubscriptionRequest } from "@/components/subscription-requests";
@@ -37,7 +39,7 @@ import {
   daysAgo,
 } from "@/lib/format";
 import { Button } from "@/components/ui/button";
-import { SegmentControl } from "@/components/segment-control";
+import { CyclePill, SegmentControl } from "@/components/segment-control";
 import { PageHeading } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -235,6 +237,8 @@ function DashboardPage() {
     showRecentlyAdded,
     showNewPreorders,
     prizedShelf,
+    summaryCards,
+    hiddenSummary,
   } = useApp();
   const cars = useCars();
   const { packMembers } = useCatalog();
@@ -356,9 +360,9 @@ function DashboardPage() {
       },
       {
         key: "iso",
-        label: "ISO",
+        label: "Wishlist",
         tone: "sky",
-        icon: <Sparkles className="size-4" />,
+        icon: <Bookmark className="size-4" />,
         value: countOf("ISO"),
         status: "ISO",
       },
@@ -373,8 +377,17 @@ function DashboardPage() {
         ordersTab: "late",
       },
     ];
-    return defs.filter((d) => (typeof d.value === "number" ? d.value > 0 : true));
-  }, [data]);
+    // Settings → Homepage can switch the whole row off, or single cards, and
+    // names them: the cards carry the same words.
+    if (!summaryCards) return [];
+    const named = defs.map((d) => ({
+      ...d,
+      label: SUMMARY_ITEMS.find((i) => i.key === d.key)?.label ?? d.label,
+    }));
+    return named.filter(
+      (d) => !hiddenSummary.includes(d.key) && (typeof d.value === "number" ? d.value > 0 : true),
+    );
+  }, [data, summaryCards, hiddenSummary]);
 
   // A brand-new account has nothing to chart. Guarded on the unfiltered list and
   // on loading, so a search that matches nothing still shows the real dashboard.
@@ -794,7 +807,7 @@ function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; no
 
           The caption is what each card is doing in here — it landed today, or
           two days ago — which is the only thing separating one from the next. */}
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
         {recent.map(({ r, dt }, i) => (
           <CompactCarCard
             key={r.id + i}
@@ -848,7 +861,7 @@ function ArrivingSoon({
         </div>
         <CalendarClock className="size-4 text-accent" />
       </div>
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
         {arriving.map(({ car, day }, i) => (
           <CompactCarCard
             key={car.id + i}
@@ -1025,7 +1038,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
         </div>
         <ShoppingBag className="size-4 text-accent" />
       </div>
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
         {shelf.map(({ c, added }, i) => {
           // Shaped as a car for the card pointing to the actual car in the catalogue
           const asCar = toCarWithCatalogId(c, `preorder-${i}`);
@@ -1242,7 +1255,7 @@ function TopTenGrid({
           <h2 className="text-display text-lg font-semibold">Top 5</h2>
           <p className="truncate text-xs text-muted-foreground">Leading {label.toLowerCase()}</p>
         </div>
-        <SegmentControl
+        <CyclePill
           value={key}
           onChange={setKey}
           options={TOP_OPTIONS}
@@ -1459,7 +1472,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         </div>
         <PackageCheck className="size-4 text-emerald-500" />
       </div>
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5">
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
         {releases.map((r) => {
           return (
             <div key={r.entry.car_id} className="relative w-36 shrink-0 snap-start sm:w-40">

@@ -12,9 +12,9 @@ import {
   Package,
   Pencil,
   Plus,
-  Search,
   Store,
   Trash2,
+  Bookmark,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,19 +32,20 @@ import {
   loadUserHandles,
 } from "@/lib/catalog";
 import { catalogueKey, type CatalogueCar } from "@/lib/catalogue-search";
-import { carSubLine } from "@/lib/car-subline";
+import { carNumberOf } from "@/lib/car-subline";
 import { formatDayMonthYear, inrPrice } from "@/lib/format";
 import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { logoMap, useBrandLogos } from "@/lib/brand-logos";
 import { RARITIES } from "@/lib/rarity";
 import { PageHeading, PageToolbar } from "@/components/page-header";
-import { SegmentControl } from "@/components/segment-control";
+import { SegmentControl, CyclePill } from "@/components/segment-control";
 import { ViewToggle, GRID_COLS, BLISTER_GRID_COLS, type ViewMode } from "@/components/view-toggle";
-import { BlisterTile } from "@/components/blister-tile";
+import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { SyncedBadge, VERIFIED_BY_ADMIN, isVerifiedByAdmin } from "@/components/synced-badge";
 import { CarThumb } from "@/components/car-thumb";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { QuickAddDialog } from "@/components/quick-add-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { packMemberIds } from "@/lib/pack";
@@ -93,6 +94,20 @@ export const Route = createFileRoute("/catalog")({
   }),
   component: CatalogPage,
 });
+
+/**
+ * The line under a casting's name in every catalogue view: who made it, its
+ * number beside that, then the box. The series and sub series are left off —
+ * the catalogue is already sorted and filtered by them, and together they ran
+ * the line past the width of a phone.
+ */
+const catalogueLine = (
+  car: Parameters<typeof carNumberOf>[0] & { brand?: string; assortment?: string },
+) =>
+  [car.brand, carNumberOf(car), car.assortment]
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean)
+    .join(" · ") || "—";
 
 type Segment = "all" | "released" | "preorder" | "iso";
 
@@ -369,6 +384,22 @@ function CatalogPage() {
   const [group, setGroup] = useState<GroupKey>("none");
   const [view, setView] = useState<ViewMode>("blister");
   const [adding, setAdding] = useState<CatalogCar | null>(null);
+  // The short form: just what is about this copy. Boxes that list their cars
+  // still go to the full form, which is where those cars are added.
+  const [quickAdding, setQuickAdding] = useState<CatalogCar | null>(null);
+  const startAdd = (c: CatalogCar) => (c.is_multipack ? setAdding(c) : setQuickAdding(c));
+  // Every box this casting comes in — a Box and a Blister, say — so the short
+  // form can offer the choice. Judged on the whole catalogue, not on what the
+  // current filters happen to leave showing.
+  const quickBoxes = useMemo(
+    () =>
+      quickAdding
+        ? (groupCastings(catalog).find((g) =>
+            g.members.some((m) => m.car_id === quickAdding.car_id),
+          )?.members ?? [quickAdding])
+        : [],
+    [catalog, quickAdding],
+  );
   /**
    * Whether the add dialog was opened to file a wish rather than a purchase.
    * Same dialog either way: an ISO row is a car with a status, not a second form.
@@ -679,15 +710,19 @@ function CatalogPage() {
         {list.map((c) => {
           const cid = c.car_id.toUpperCase();
           return (
-            <BlisterTile
-              key={c.car_id}
-              car={asCar(c)}
-              onOpen={() => setViewing(c)}
-              caption={myIso.has(cid) ? "ISO" : owned.has(cid) ? "Owned" : undefined}
-              synced={Boolean(c.synced_at)}
-              syncedSource={c.synced_source}
-              pack={c.is_multipack ? packLabel(c) : undefined}
-            />
+            <div key={c.car_id} className="relative h-full">
+              <BlisterTile
+                car={asCar(c)}
+                onOpen={() => setViewing(c)}
+                caption={myIso.has(cid) ? "Wishlist" : owned.has(cid) ? "Owned" : undefined}
+                synced={Boolean(c.synced_at)}
+                syncedSource={c.synced_source}
+                pack={c.is_multipack ? packLabel(c) : undefined}
+                overlay={<CarOverlay car={asCar(c)} brandOnly padRight />}
+                foot={false}
+              />
+              <AddPlus onClick={() => startAdd(c)} className="absolute bottom-3 right-3" />
+            </div>
           );
         })}
       </div>
@@ -698,7 +733,7 @@ function CatalogPage() {
         owned={owned}
         isIso={myIso}
         onOpen={setViewing}
-        onAdd={setAdding}
+        onAdd={startAdd}
         onEdit={isAdmin ? setEditing : undefined}
       />
     ) : (
@@ -711,7 +746,7 @@ function CatalogPage() {
             owned={owned.has(c.car_id.toUpperCase())}
             isIso={myIso.has(c.car_id.toUpperCase())}
             onOpen={() => setViewing(c)}
-            onAdd={() => setAdding(c)}
+            onAdd={() => startAdd(c)}
             group={siblings.get(c.car_id)}
           />
         ))}
@@ -768,7 +803,8 @@ function CatalogPage() {
           // on a phone, where they would be a wall — the funnel opens the same
           // filters there instead.
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
-            <SegmentControl
+            <CyclePill
+              separate="all"
               value={segment}
               onChange={setSegment}
               className="h-8 w-auto max-sm:text-xs max-sm:[&>button]:px-2"
@@ -776,7 +812,7 @@ function CatalogPage() {
                 { value: "all", label: "All" },
                 { value: "released", label: "Released" },
                 { value: "preorder", label: "PO" },
-                { value: "iso", label: "My ISO" },
+                { value: "iso", label: "My wishlist" },
               ]}
             />
 
@@ -831,14 +867,6 @@ function CatalogPage() {
               )}
             </div>
           </div>
-        }
-        below={
-          <BrandTray
-            brands={options.brand}
-            logos={brandLogos}
-            active={filters.brand}
-            onPick={(brand) => setFilters((f) => ({ ...f, brand }))}
-          />
         }
         right={
           <>
@@ -928,6 +956,16 @@ function CatalogPage() {
         }
       />
 
+      {/* Under the toolbar's rule rather than inside it, so the line sits straight
+          under the controls the way it does on My Cars, and the tray scrolls
+          away with the list instead of riding along in the pinned band. */}
+      <BrandTray
+        brands={options.brand}
+        logos={brandLogos}
+        active={filters.brand}
+        onPick={(brand) => setFilters((f) => ({ ...f, brand }))}
+      />
+
       {isLoading && catalog.length === 0 ? (
         view === "table" ? (
           <RowListSkeleton rows={8} />
@@ -937,7 +975,7 @@ function CatalogPage() {
       ) : rows.length === 0 ? (
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
           {segment === "iso"
-            ? "No ISO cars found in the catalog."
+            ? "No wishlist cars found in the catalog."
             : segment === "preorder"
               ? "Nothing open to pre-order matches."
               : "No castings match."}
@@ -979,7 +1017,8 @@ function CatalogPage() {
         }}
         onAdd={(pick) => {
           setAddingIso(false);
-          setAdding(pick ?? viewing);
+          const target = pick ?? viewing;
+          if (target) startAdd(target);
           setViewing(null);
         }}
         onAddIso={
@@ -1005,6 +1044,18 @@ function CatalogPage() {
           return res;
         }}
       />
+      <QuickAddDialog
+        entry={quickAdding}
+        alternatives={quickBoxes}
+        preOrder={quickAdding ? isPreOrder(quickAdding) : false}
+        onClose={() => setQuickAdding(null)}
+        onMore={(entry) => {
+          setQuickAdding(null);
+          setAddingIso(false);
+          setAdding(entry);
+        }}
+      />
+
       <CarFormDialog
         open={adding !== null}
         onOpenChange={(v) => {
@@ -1229,6 +1280,29 @@ function CatalogPage() {
   );
 }
 
+/**
+ * The same round plus on every catalogue car in every view: add this one to
+ * your collection. It stops the click from also opening the car it sits on.
+ */
+function AddPlus({ onClick, className }: { onClick: () => void; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      aria-label="Add to my collection"
+      title="Add to my collection"
+      className={cn(
+        "grid size-8 shrink-0 cursor-pointer place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform hover:bg-primary/90 active:scale-95",
+        className,
+      )}
+    >
+      <Plus className="size-4" />
+    </button>
+  );
+}
 function CatalogCard({
   c,
   owned,
@@ -1262,10 +1336,10 @@ function CatalogCard({
           <SyncedBadge car={c} />
           {isCarIso && (
             <span
-              title="On your ISO list"
+              title="On your wishlist"
               className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-sky-400 backdrop-blur-sm ring-1 ring-sky-500/40"
             >
-              <Search className="size-3" /> ISO
+              <Bookmark className="size-3" /> Wishlist
             </span>
           )}
           {owned && (
@@ -1303,7 +1377,7 @@ function CatalogCard({
         >
           {car.name}
         </button>
-        <p className="mt-1 truncate text-xs text-muted-foreground">{carSubLine(car)}</p>
+        <p className="mt-1 truncate text-xs text-muted-foreground">{catalogueLine(car)}</p>
 
         <div className="mt-auto flex items-center justify-between gap-2 pt-3">
           <div className="min-w-0">
@@ -1319,10 +1393,7 @@ function CatalogCard({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            <Button size="sm" className="gap-1.5" onClick={onAdd}>
-              <Plus className="size-3.5" />
-              Add
-            </Button>
+            <AddPlus onClick={onAdd} />
           </div>
         </div>
       </div>
@@ -1363,15 +1434,21 @@ function CatalogTable({
           const car = asCar(c);
           const cid = c.car_id.toUpperCase();
           return (
-            <article key={c.car_id} className="card-elevated overflow-hidden">
+            <article key={c.car_id} className="card-elevated flex items-center overflow-hidden">
               <button
                 type="button"
                 onClick={() => onOpen(c)}
-                className="block w-full space-y-1 p-2.5 text-left transition-colors hover:bg-muted/30"
+                className="flex min-w-0 flex-1 items-center gap-3 p-2.5 text-left transition-colors hover:bg-muted/30"
               >
-                {/* NAME AND MRP */}
-                <div className="flex items-start justify-between gap-3">
-                  <span className="flex min-w-0 items-center gap-1.5">
+                {/* Concentric with the card: its 1.5rem corner less the 0.625rem of
+                    room round the photograph, the same on every side. */}
+                <CarThumb
+                  car={car}
+                  className="size-16 shrink-0 overflow-hidden rounded-[calc(1.5rem-0.625rem)]"
+                />
+                <div className="min-w-0 flex-1 space-y-1">
+                  {/* NAME */}
+                  <div className="flex min-w-0 items-center gap-1.5">
                     <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
                     {c.synced_at && (
                       <BadgeCheck
@@ -1383,42 +1460,37 @@ function CatalogTable({
                         </title>
                       </BadgeCheck>
                     )}
-                    {isPreOrder(c) && (
-                      <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.2 text-xs font-semibold text-amber-500">
-                        PO
-                      </span>
-                    )}
-                    {isoSet.has(cid) && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.2 text-xs font-semibold text-sky-500">
-                        <Search className="size-3" />
-                        <span>ISO</span>
-                      </span>
-                    )}
-                    {owned.has(cid) && (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-xs font-semibold text-emerald-500">
-                        <Check className="size-3" />
-                        <span>Owned</span>
-                      </span>
-                    )}
-                  </span>
-                  <span className="shrink-0 text-sm font-semibold tabular-nums">
-                    {c.mrp ? inrPrice(c.mrp) : "—"}
-                  </span>
-                </div>
+                  </div>
 
-                {/* WHAT KIND OF CAR */}
-                <div className="truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
+                  {/* WHAT KIND OF CAR */}
+                  <div className="truncate text-xs text-muted-foreground">{catalogueLine(car)}</div>
 
-                {/* BRAND, ASSORTMENT AND S.NO / SERIES */}
-                <div className="flex items-end justify-between gap-3 text-xs text-muted-foreground">
-                  <span className="min-w-0 truncate">
-                    {[c.brand, c.assortment].filter(Boolean).join(" · ") || "—"}
-                  </span>
-                  <span className="shrink-0 truncate text-xs">
-                    {c.series ? `Series: ${c.series}` : c.car_id}
-                  </span>
+                  {/* THE MARKS, on a line of their own: pre-order, wishlist and owned.
+                      The verified tick stays beside the name. */}
+                  {(isPreOrder(c) || isoSet.has(cid) || owned.has(cid)) && (
+                    <div className="flex items-center gap-1.5">
+                      {isPreOrder(c) && (
+                        <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.2 text-xs font-semibold text-amber-500">
+                          PO
+                        </span>
+                      )}
+                      {isoSet.has(cid) && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.2 text-xs font-semibold text-sky-500">
+                          <Bookmark className="size-3" />
+                          <span>Wishlist</span>
+                        </span>
+                      )}
+                      {owned.has(cid) && (
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-xs font-semibold text-emerald-500">
+                          <Check className="size-3" />
+                          <span>Owned</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </button>
+              <AddPlus onClick={() => onAdd(c)} className="mr-2.5" />
             </article>
           );
         })}
@@ -1489,17 +1561,17 @@ function CatalogTable({
                           )}
                           {isoSet.has(cid) && (
                             <span
-                              title="On your ISO list"
+                              title="On your wishlist"
                               className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 text-xs font-semibold text-sky-500"
                             >
-                              <Search className="size-3" />
-                              ISO
+                              <Bookmark className="size-3" />
+                              Wishlist
                             </span>
                           )}
                           {owned.has(cid) && <Check className="size-3 shrink-0 text-emerald-500" />}
                         </span>
                         <span className="block truncate text-xs text-muted-foreground">
-                          {carSubLine(car)}
+                          {catalogueLine(car)}
                         </span>
                       </span>
                     </button>
@@ -1539,14 +1611,7 @@ function CatalogTable({
                           <Pencil className="size-3.5" />
                         </Button>
                       )}
-                      <Button
-                        size="sm"
-                        className="h-7 gap-1 px-2 cursor-pointer shadow-xs"
-                        onClick={() => onAdd(c)}
-                      >
-                        <Plus className="size-3.5" />
-                        Add
-                      </Button>
+                      <AddPlus onClick={() => onAdd(c)} className="size-7" />
                     </div>
                   </td>
                 </tr>

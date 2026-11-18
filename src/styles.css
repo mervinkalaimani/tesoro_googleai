@@ -59,7 +59,7 @@
    orange is 3.2:1, which is enough for a border and not enough for a word.
 */
 :root {
-  --viiv-orange: oklch(0.67 0.19 44);
+  --viiv-orange: oklch(0.75 0.25 51);
   --viiv-orange-ink: oklch(0.22 0.02 50);
 }
 
@@ -151,40 +151,40 @@
 }
 
 .dark {
-  --background: oklch(0.16 0.012 240);
-  --foreground: oklch(0.96 0.006 240);
-  --card: oklch(0.21 0.014 245);
-  --card-foreground: oklch(0.96 0.006 240);
-  --popover: oklch(0.21 0.014 245);
-  --popover-foreground: oklch(0.96 0.006 240);
+  --background: oklch(0.19 0 0);
+  --foreground: oklch(0.96 0 0);
+  --card: oklch(0.24 0 0);
+  --card-foreground: oklch(0.96 0 0);
+  --popover: oklch(0.21 0 0);
+  --popover-foreground: oklch(0.96 0 0);
   --primary: var(--viiv-orange);
   --primary-foreground: var(--viiv-orange-ink);
-  --secondary: oklch(0.28 0.02 245);
-  --secondary-foreground: oklch(0.96 0.006 240);
-  --muted: oklch(0.25 0.015 245);
-  --muted-foreground: oklch(0.68 0.02 245);
+  --secondary: oklch(0.28 0 0);
+  --secondary-foreground: oklch(0.96 0 0);
+  --muted: oklch(0.25 0 0);
+  --muted-foreground: oklch(0.68 0 0);
   --accent: oklch(0.78 0.16 85);
   --accent-foreground: oklch(0.16 0.012 240);
   --destructive: oklch(0.6 0.22 27);
   --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.28 0.02 245);
-  --input: oklch(0.28 0.02 245);
+  --border: oklch(0.28 0 0);
+  --input: oklch(0.28 0 0);
   --ring: var(--viiv-orange);
   --chart-1: var(--viiv-orange);
   --chart-2: oklch(0.78 0.16 85);
   --chart-3: oklch(0.7 0.15 200);
   --chart-4: oklch(0.72 0.18 145);
   --chart-5: oklch(0.7 0.18 300);
-  --sidebar: oklch(0.18 0.014 245);
-  --sidebar-foreground: oklch(0.96 0.006 240);
+  --sidebar: oklch(0.18 0 0);
+  --sidebar-foreground: oklch(0.96 0 0);
   --sidebar-primary: var(--viiv-orange);
   --sidebar-primary-foreground: var(--viiv-orange-ink);
-  --sidebar-accent: oklch(0.25 0.015 245);
-  --sidebar-accent-foreground: oklch(0.96 0.006 240);
-  --sidebar-border: oklch(0.28 0.02 245);
+  --sidebar-accent: oklch(0.25 0 0);
+  --sidebar-accent-foreground: oklch(0.96 0 0);
+  --sidebar-border: oklch(0.28 0 0);
   --sidebar-ring: var(--viiv-orange);
-  --scrollbar-thumb: oklch(0.96 0.006 240 / 0.22);
-  --scrollbar-thumb-active: oklch(0.96 0.006 240 / 0.4);
+  --scrollbar-thumb: oklch(0.96 0 0 / 0.22);
+  --scrollbar-thumb-active: oklch(0.96 0 0 / 0.4);
 }
 
 /*
@@ -343,8 +343,6 @@
   }
   html.dark body {
     background:
-      radial-gradient(1200px 600px at 10% -10%, oklch(0.28 0.05 25 / 0.35), transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, oklch(0.3 0.05 85 / 0.18), transparent 60%),
       var(--color-background);
   }
 
@@ -435,18 +433,32 @@
 }
 
 @utility card-elevated {
-  background: var(--color-card);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  /* Liquid glass: a translucent pane that blurs and tints whatever is behind
+     it, a bright specular edge along the top, and a deeper radius. */
+  background: linear-gradient(160deg, oklch(1 0 0 / 0.35), oklch(1 0 0 / 0.15));
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid oklch(1 0 0 / 0.6);
+  border-radius: 1.5rem;
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.03) inset,
-    0 10px 30px -12px oklch(0 0 0 / 0.15);
+    0 1px 0 oklch(1 0 0 / 0.9) inset,
+    0 -1px 0 oklch(0 0 0 / 0.03) inset,
+    0 18px 40px -18px oklch(0.3 0.05 60 / 0.25);
+}
+/* Concentric corners. A frame inside a frame takes the outer radius minus the
+   gap between them, so the two curves run parallel instead of the inner one
+   looking pinched or loose. The gap is --frame-gap: 1rem unless the padded
+   container says otherwise (a shelf row padded 0.625rem sets it to that). */
+.card-elevated .card-elevated {
+  border-radius: calc(1.5rem - var(--frame-gap, 1rem));
 }
 html.dark .card-elevated {
-  background: linear-gradient(180deg, oklch(0.23 0.015 245) 0%, oklch(0.2 0.014 245) 100%);
+  background: linear-gradient(160deg, oklch(1 0 0 / 0.035), oklch(1 0 0 / 0.01));
+  border: 1px solid oklch(1 0 0 / 0.12);
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.03) inset,
-    0 10px 30px -12px oklch(0 0 0 / 0.5);
+    0 1px 0 oklch(1 0 0 / 0.22) inset,
+    0 -1px 0 oklch(1 0 0 / 0.03) inset,
+    0 18px 40px -18px oklch(0 0 0 / 0.7);
 }
 
 /* Date fields keep their calendar icon at the far right. The shared Input is

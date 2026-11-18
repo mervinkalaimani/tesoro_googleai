@@ -379,6 +379,7 @@ export function CatalogueFields({
           info="TH is a Treasure Hunt and STH a Super Treasure Hunt, both Hot Wheels'. Chase is every other brand's limited run. Normal is a regular car."
         >
           <SegmentControl<Rarity>
+            row
             fill
             disabled={disabled}
             value={values.rarity || "Normal"}

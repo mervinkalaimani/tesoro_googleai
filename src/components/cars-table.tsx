@@ -11,6 +11,7 @@ import { useCarDrawer } from "@/components/car-details-drawer";
 // Lives in its own module: the details drawer shows one too, and it imports
 // this file — reading it from here would close a cycle between them.
 import { StatusPill } from "@/components/status-pill";
+import { CarThumb } from "@/components/car-thumb";
 
 import { carNumberOf, carSubLine, carSubLineParts } from "@/lib/car-subline";
 
@@ -147,6 +148,11 @@ export function CarListCard({
   copies = 1,
   copiesExpanded = false,
   onToggleCopies,
+  showMoney = true,
+  showStatus = true,
+  badgesAtEnd = false,
+  showImage = false,
+  showCost = true,
 }: {
   car: Diecast;
   onOpen: () => void;
@@ -159,6 +165,16 @@ export function CarListCard({
   copies?: number;
   copiesExpanded?: boolean;
   onToggleCopies?: () => void;
+  /** False drops the price and the seller line: what it cost and who from. */
+  showMoney?: boolean;
+  /** False drops the status pill. */
+  showStatus?: boolean;
+  /** The favourite / chase marks at the right end of the name line, not after the name. */
+  badgesAtEnd?: boolean;
+  /** The car's photograph at the left of the row. */
+  showImage?: boolean;
+  /** False drops what it cost, how that sat against the MRP and how it was paid for. */
+  showCost?: boolean;
 }) {
   const pay = paymentStatusText(car) ?? advanceText(car);
   const spent = car.spent || 0;
@@ -173,52 +189,84 @@ export function CarListCard({
           apart, which read as two blocks with the seller exiled below — and
           made every card taller than its contents needed. One gap value, and
           the card is as tall as three lines of text plus its padding. */}
-      <button type="button" onClick={onOpen} className="block w-full space-y-1 p-2.5 text-left">
-        {/* NAME AND PRICE. Two things you can read at arm's length, one at each
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          "w-full p-2.5 text-left",
+          showImage ? "flex items-center gap-3" : "block space-y-1",
+        )}
+      >
+        {/* Concentric with the card: its 1.5rem corner less the 0.625rem of
+            padding round the photograph. */}
+        {showImage && (
+          <CarThumb
+            car={car}
+            className="size-16 shrink-0 overflow-hidden rounded-[calc(1.5rem-0.625rem)]"
+          />
+        )}
+        <div className={cn(showImage ? "min-w-0 flex-1 space-y-1" : "contents")}>
+          {/* NAME AND PRICE. Two things you can read at arm's length, one at each
             end of the line — what it is, and what it cost. */}
-        <div className="flex items-start justify-between gap-3">
-          <span className="flex min-w-0 items-center gap-1.5">
-            <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
-            <ChangedDot car={car} />
-            <CarBadges car={car} primary={badgePrimary} />
-            <CopiesBadge n={copies} />
-          </span>
-          <span className="shrink-0 text-sm font-semibold tabular-nums">
-            {spent ? inr(spent) : "—"}
-          </span>
-        </div>
+          <div className="flex items-start justify-between gap-3">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
+              <ChangedDot car={car} />
+              {!badgesAtEnd && <CarBadges car={car} primary={badgePrimary} />}
+              <CopiesBadge n={copies} />
+            </span>
+            {badgesAtEnd && (
+              <span className="shrink-0">
+                <CarBadges car={car} primary={badgePrimary} />
+              </span>
+            )}
+            {showMoney && showCost && (
+              <span className="shrink-0 text-sm font-semibold tabular-nums">
+                {spent ? inr(spent) : "—"}
+              </span>
+            )}
+          </div>
 
-        {/* WHAT KIND OF CAR */}
-        <div className="truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
+          {/* WHAT KIND OF CAR */}
+          <div className="truncate text-xs text-muted-foreground">{carSubLine(car)}</div>
 
-        {/* WHO IT CAME FROM, AND WHERE IT IS.
+          {/* WHO IT CAME FROM, AND WHERE IT IS.
             The seller was not on this card at all, which made a phone the one
             place you could not answer "where did I get this". */}
-        <div className="flex items-end justify-between gap-3">
-          {/* One line, not two. The seller, what was paid and how it sat
+          {(showMoney || showStatus) && (
+            <div className="flex items-end justify-between gap-3">
+              {showMoney && (
+                <>
+                  {/* One line, not two. The seller, what was paid and how it sat
               against the MRP are three short facts about the same purchase,
               and giving the last two a line of their own made every card in
               the list a line taller to say half a sentence. */}
-          <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
-            <span className="truncate">{car.seller || "—"}</span>
-            {pay && (
-              <>
-                <span aria-hidden>·</span>
-                <span className="shrink-0">{pay}</span>
-              </>
-            )}
-            {showMrpNote && (
-              <>
-                <span aria-hidden>·</span>
+                  <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
+                    <span className="truncate">{car.seller || "—"}</span>
+                    {showCost && pay && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="shrink-0">{pay}</span>
+                      </>
+                    )}
+                    {showCost && showMrpNote && (
+                      <>
+                        <span aria-hidden>·</span>
+                        <span className="shrink-0">
+                          <MrpNote spent={spent} mrp={mrp} />
+                        </span>
+                      </>
+                    )}
+                  </span>
+                </>
+              )}
+              {showStatus && (
                 <span className="shrink-0">
-                  <MrpNote spent={spent} mrp={mrp} />
+                  <StatusPill status={car.status} />
                 </span>
-              </>
-            )}
-          </span>
-          <span className="shrink-0">
-            <StatusPill status={car.status} />
-          </span>
+              )}
+            </div>
+          )}
         </div>
       </button>
 
@@ -252,12 +300,24 @@ export function CarsTable({
   bare = false,
   showMrp = true,
   variant = "default",
+  showMoney = true,
+  showStatus = true,
+  badgesAtEnd = false,
+  showImage = false,
 }: {
   rows: Diecast[];
   showBadgeCol?: boolean;
   badgePrimary?: "favourite" | "chase";
   /** Hides the MRP and the cost-against-MRP lines under each price. */
   showMrp?: boolean;
+  /** False drops the Seller and Cost columns, and the price on the phone cards. */
+  showMoney?: boolean;
+  /** False drops the Status column, and the status pill on the phone cards. */
+  showStatus?: boolean;
+  /** Phone cards: the favourite / chase marks at the right end of the name line. */
+  badgesAtEnd?: boolean;
+  /** Phone cards: the car's photograph at the left of each row. */
+  showImage?: boolean;
   /**
    * The phone cards sit straight on the page rather than inset inside a
    * frame, so they line up with the page's own edges.
@@ -278,6 +338,10 @@ export function CarsTable({
             badgePrimary={badgePrimary}
             showMrp={showMrp}
             variant={variant}
+            showMoney={showMoney}
+            showStatus={showStatus}
+            badgesAtEnd={badgesAtEnd}
+            showImage={showImage}
           />
         ))}
         {rows.length === 0 && (
@@ -291,9 +355,9 @@ export function CarsTable({
             <col />
             <col className="w-[9rem] md:w-[11rem]" />
             <col className="hidden w-[8rem] md:table-column" />
-            <col className="hidden w-[9rem] md:table-column" />
-            <col className="w-[7rem] md:w-[8rem]" />
-            <col className="w-[7rem] md:w-[8rem]" />
+            {showMoney && <col className="hidden w-[9rem] md:table-column" />}
+            {showMoney && <col className="w-[7rem] md:w-[8rem]" />}
+            {showStatus && <col className="w-[7rem] md:w-[8rem]" />}
             {showBadgeCol && <col className="w-[7.5rem]" />}
           </colgroup>
           {/* z-[1], not z-10: enough to stay over the rows it heads, and below
@@ -303,9 +367,11 @@ export function CarsTable({
               <th className="px-3 py-2.5 font-medium md:px-4">Model</th>
               <th className="px-3 py-2.5 font-medium md:px-4">Brand / Assortment</th>
               <th className="hidden px-4 py-2.5 font-medium md:table-cell">Colour</th>
-              <th className="hidden px-4 py-2.5 font-medium md:table-cell">Seller</th>
-              <th className="px-3 py-2.5 text-right font-medium md:px-4">Cost</th>
-              <th className="px-3 py-2.5 font-medium md:px-4">Status</th>
+              {showMoney && (
+                <th className="hidden px-4 py-2.5 font-medium md:table-cell">Seller</th>
+              )}
+              {showMoney && <th className="px-3 py-2.5 text-right font-medium md:px-4">Cost</th>}
+              {showStatus && <th className="px-3 py-2.5 font-medium md:px-4">Status</th>}
               {showBadgeCol && <th className="px-3 py-2.5 font-medium md:px-4"></th>}
             </tr>
           </thead>
@@ -343,18 +409,24 @@ export function CarsTable({
                   <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
                     {r.colour || "—"}
                   </td>
-                  <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
-                    {r.seller || "—"}
-                  </td>
-                  <td className="px-3 py-2.5 md:px-4">
-                    <CostCell car={r} showMrp={showMrp} />
-                  </td>
-                  <td className="px-3 py-2.5 md:px-4">
-                    <StatusPill status={r.status} />
-                    {pay && (
-                      <div className="mt-1 truncate text-xs text-muted-foreground">{pay}</div>
-                    )}
-                  </td>
+                  {showMoney && (
+                    <td className="hidden truncate px-4 py-2.5 text-muted-foreground md:table-cell">
+                      {r.seller || "—"}
+                    </td>
+                  )}
+                  {showMoney && (
+                    <td className="px-3 py-2.5 md:px-4">
+                      <CostCell car={r} showMrp={showMrp} />
+                    </td>
+                  )}
+                  {showStatus && (
+                    <td className="px-3 py-2.5 md:px-4">
+                      <StatusPill status={r.status} />
+                      {pay && (
+                        <div className="mt-1 truncate text-xs text-muted-foreground">{pay}</div>
+                      )}
+                    </td>
+                  )}
                   {showBadgeCol && (
                     <td className="px-3 py-2.5 md:px-4">
                       <CarBadges car={r} primary={badgePrimary} />

@@ -195,6 +195,7 @@ function SegmentOrOther({
       {chips.length > 0 && (
         <div className="flex min-w-0 items-center gap-1.5">
           <SegmentControl
+            row
             className="min-w-0 flex-1"
             value={showList ? "" : value}
             options={chips.map((c) => ({ value: c, label: c }))}
@@ -204,6 +205,7 @@ function SegmentOrOther({
             }}
           />
           <SegmentControl
+            row
             className="shrink-0"
             value={showList ? OTHER : ""}
             options={[{ value: OTHER, label: "Other" }]}
@@ -231,6 +233,7 @@ function SegmentOrOther({
 }
 import {
   STATUSES,
+  statusLabel,
   isInHand,
   isIso as statusIsIso,
   isOpenOrder,
@@ -2223,6 +2226,7 @@ export function CarFormDialog({
               Which box is yours? This casting is sold in {boxes.length}.
             </p>
             <SegmentControl
+              row
               value={boxes.find((b) => b.assortment === form.assortment.trim())?.assortment ?? ""}
               onChange={pickBox}
               options={boxes.map((b) => ({
@@ -2325,9 +2329,10 @@ export function CarFormDialog({
               release month. */}
           <Field label="Status *" name="status" error={errorFor("status")}>
             <SegmentControl
+              row
               fill
               value={form.status}
-              options={STATUS_OPTIONS.map((st) => ({ value: st, label: st }))}
+              options={STATUS_OPTIONS.map((st) => ({ value: st, label: statusLabel(st) }))}
               onChange={(v) => set("status", v)}
             />
           </Field>
@@ -2361,6 +2366,7 @@ export function CarFormDialog({
           {!isIso && (
             <Field label="Payment status *" name="payment" error={errorFor("payment")}>
               <SegmentControl
+                row
                 fill
                 value={form.payment}
                 options={paymentSegments}
@@ -2555,6 +2561,7 @@ export function CarFormDialog({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field label="Car condition">
             <SegmentControl
+              row
               fill
               value={form.carCondition}
               options={carConditionSegments}
@@ -2564,6 +2571,7 @@ export function CarFormDialog({
           </Field>
           <Field label="Card condition">
             <SegmentControl
+              row
               fill
               value={form.cardCondition}
               options={cardConditionSegments}

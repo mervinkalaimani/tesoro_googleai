@@ -53,7 +53,7 @@ import { deriveMonth } from "@/lib/date-utils";
 import { inrFull } from "@/lib/format";
 import { useCatalog } from "@/lib/catalog-store";
 import { findDuplicates } from "@/lib/duplicate";
-import { STATUSES, isInHand, isPreOrder, normaliseStatus } from "@/lib/status";
+import { STATUSES, isInHand, isPreOrder, normaliseStatus, statusLabel } from "@/lib/status";
 import { isPackAssortment } from "@/lib/pack-assortments";
 import type { Diecast } from "@/lib/types";
 
@@ -276,7 +276,7 @@ function FieldInput({
           label={def.label}
           value={normaliseStatus(value) || "In Hand"}
           onChange={onChange}
-          options={STATUSES.map((st) => ({ value: st, label: st }))}
+          options={STATUSES.map((st) => ({ value: st, label: statusLabel(st) }))}
         />
       );
     if (def.kind === "payment")
@@ -351,7 +351,7 @@ function FieldInput({
       >
         {STATUSES.map((s) => (
           <option key={s} value={s}>
-            {s}
+            {statusLabel(s)}
           </option>
         ))}
       </select>
@@ -965,7 +965,7 @@ export function BulkAddCarsDialog({
               ? `Added ${added} rows, including ${packLabels.length} multipack${packLabels.length === 1 ? "" : "s"} with the cars inside${idSummary}`
               : `Added ${added} car${added === 1 ? "" : "s"}${idSummary}`
             : "",
-          converted ? `${converted} moved off your ISO list` : "",
+          converted ? `${converted} moved off your wishlist` : "",
         ]
           .filter(Boolean)
           .join(" · "),
@@ -1340,7 +1340,7 @@ export function BulkAddCarsDialog({
                     className={`border-t border-border ${r.isoId ? "bg-sky-500/[0.06]" : ""}`}
                     title={
                       r.isoId
-                        ? "From your ISO list — this entry is updated, not duplicated"
+                        ? "From your wishlist — this entry is updated, not duplicated"
                         : undefined
                     }
                   >
@@ -1350,14 +1350,16 @@ export function BulkAddCarsDialog({
                           className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-1 rounded bg-muted/60 text-foreground border border-border/60"
                           title={
                             r.isoId
-                              ? `Keeps existing ISO ID: ${previewCarIds.get(r.key)}`
+                              ? `Keeps existing wishlist ID: ${previewCarIds.get(r.key)}`
                               : `Auto-generated Car ID: ${previewCarIds.get(r.key)}`
                           }
                         >
                           <Tag className="size-3 text-primary shrink-0" />
                           {previewCarIds.get(r.key)}
                           {r.isoId && (
-                            <span className="text-xs text-muted-foreground font-normal">(ISO)</span>
+                            <span className="text-xs text-muted-foreground font-normal">
+                              (Wishlist)
+                            </span>
                           )}
                         </span>
                       ) : (
