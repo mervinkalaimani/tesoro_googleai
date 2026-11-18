@@ -533,6 +533,12 @@ async function handler({ request }: { request: Request }) {
   };
 
   const run = await hedged(modelsToTry, ask, complete, HEDGE_AFTER_MS);
+  // Every model gave up. "This operation was aborted" is the timeout talking,
+  // and naming the last model tried says nothing a person can act on.
+  if (run.results.length === 0 && /abort|timed? ?out|deadline/i.test(run.error)) {
+    run.error =
+      "The scan took too long and was stopped. Try again, or use a closer photo with fewer cars in it.";
+  }
 
   if (image.multi) {
     for (const r of run.results) {

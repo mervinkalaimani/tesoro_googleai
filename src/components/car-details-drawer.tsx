@@ -668,6 +668,34 @@ function CarPopupContent({
   const mobile = useMobileHeroGestures(onClose);
   const seeInMyCars = useSeeInMyCars(onClose);
 
+  // Whether the phone header is stuck to the top with the rest scrolling under
+  // it. Only then does it paint a frosted bar, so at rest it adds nothing over
+  // the card's own glass.
+  const [pinned, setPinned] = useState(false);
+  const [nearClose, setNearClose] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const root = document.getElementById("car-details-mobile-scroll");
+    const head = headerRef.current;
+    if (!root || !head) return;
+    const check = () => {
+      // Stuck to the top, with something to scroll under it.
+      const stuck = head.getBoundingClientRect().top <= root.getBoundingClientRect().top + 1;
+      setPinned(stuck && root.scrollHeight > root.clientHeight + 1);
+      // The header's top has risen to the Close button, which floats up there:
+      // the buttons step aside for it.
+      setNearClose(head.getBoundingClientRect().top - root.getBoundingClientRect().top < 64);
+    };
+    // The window animates in, so look again once it has settled.
+    check();
+    const settle = window.setTimeout(check, 500);
+    root.addEventListener("scroll", check, { passive: true });
+    return () => {
+      window.clearTimeout(settle);
+      root.removeEventListener("scroll", check);
+    };
+  }, [car?.id]);
+
   // Your own copy, so no admin about it: a photo pasted here replaces the one
   // on this car.
   usePastedPhoto(true, (url) => updateCar({ ...car, imageUrl: url }));
@@ -1006,12 +1034,32 @@ function CarPopupContent({
 
               <div
                 ref={mobile.cardRef}
-                className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
+                className="relative flex flex-1 flex-col overflow-clip rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
               >
                 <div className="relative space-y-3">
-                  <div className="min-w-0 space-y-3">
-                    <div className="flex items-start justify-between gap-3 pr-11">
-                      <h2 className="min-w-0 text-2xl font-bold leading-tight tracking-tight text-foreground">
+                  {/* Pinned: the name, the chips and the buttons stay at the top
+                      while the rest scrolls under. The close button floats at the
+                      same height, so the three buttons share one line. */}
+                  <div
+                    ref={headerRef}
+                    className="sticky top-0 z-20 -mx-4 -mt-5 min-w-0 space-y-3 rounded-t-3xl px-4 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))]"
+                  >
+                    {/* The frosted bar fades in once the header is stuck and the
+                        rest has begun to scroll under it, and out again as it lets go. */}
+                    <div
+                      aria-hidden
+                      className={cn(
+                        "pointer-events-none absolute inset-0 -z-10 rounded-t-3xl bg-background/85 backdrop-blur-2xl transition-opacity duration-300",
+                        pinned ? "opacity-100" : "opacity-0",
+                      )}
+                    />
+                    <div
+                      className={cn(
+                        "flex items-start justify-between gap-3 transition-[padding] duration-300",
+                        nearClose && "pr-11",
+                      )}
+                    >
+                      <h2 className="min-w-0 pt-1 text-2xl font-bold leading-tight tracking-tight text-foreground">
                         {title}
                       </h2>
                       <div className="flex shrink-0 items-center gap-2">{idButtons(true)}</div>
@@ -1059,7 +1107,7 @@ function CarPopupContent({
             onClick={onClose}
             title="Close details"
             aria-label="Close"
-            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
+            className="absolute right-3 top-[max(1.25rem,env(safe-area-inset-top))] z-30 grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
           >
             <X className="size-4" />
           </button>
@@ -1210,13 +1258,11 @@ function Panel({
   className?: string;
 }) {
   return (
-    <section
-      className={cn("min-w-0 rounded-2xl border border-border/60 bg-muted/20 p-5", className)}
-    >
+    <section className={cn("card-elevated min-w-0 p-5", className)}>
       {title && (
         // Sticks to the top of the scrolling column; the next section's heading
         // takes over as this one's panel scrolls out.
-        <h3 className="sticky top-0 z-10 -mx-5 -mt-5 mb-3 rounded-t-2xl bg-[color-mix(in_oklab,var(--muted)_20%,var(--background))] px-5 pb-2 pt-5 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+        <h3 className="sticky top-0 z-10 -mx-5 -mt-5 mb-3 rounded-t-3xl bg-background/30 backdrop-blur-md px-5 pb-2 pt-5 text-xs font-bold uppercase tracking-[0.18em] text-primary">
           {title}
         </h3>
       )}
@@ -1253,7 +1299,7 @@ function Stat({
   return (
     <div
       className={cn(
-        "min-w-0 rounded-2xl border border-border/60 bg-muted/20",
+        "card-elevated min-w-0 !rounded-2xl",
         uniform ? "py-2" : "py-3",
         small ? "px-3" : "px-4",
         className,
@@ -1328,7 +1374,7 @@ function PhoneFacts({
                 <div
                   key={label}
                   title={(v || "").trim()}
-                  className="relative min-h-14 min-w-0 overflow-hidden rounded-2xl border border-border/60 bg-transparent"
+                  className="card-elevated relative min-h-14 min-w-0 overflow-hidden !rounded-2xl"
                 >
                   <img
                     src={logo}
@@ -1934,17 +1980,18 @@ function SuggestionList({ boxes }: { boxes: BoxSuggestions }) {
   return (
     <ul className="space-y-1.5">
       {boxes.suggestions.map(({ car, definite, because }) => (
-        <li
-          key={car.car_id}
-          className="space-y-3 rounded-xl border border-border bg-background/85 p-3"
-        >
+        <li key={car.car_id} className="card-elevated space-y-3 p-3 [--frame-gap:0.625rem]">
           <div className="flex items-start gap-3">
             <div className="size-16 shrink-0 overflow-hidden rounded-lg border border-border/60 bg-white">
               <CarThumb car={catalogCarToDiecast(car)} className="size-full object-contain" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold">{car.assortment || "No box"}</div>
-              <div className="truncate font-mono text-xs text-muted-foreground">{car.car_id}</div>
+              <div className="truncate text-sm font-semibold">
+                {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+              </div>
+              <div className="truncate text-xs text-muted-foreground">
+                {[car.brand, car.series, car.assortment].filter(Boolean).join(" · ") || "No box"}
+              </div>
               <p className="mt-1 text-xs leading-snug text-muted-foreground">
                 {because}
                 {Number(car.mrp) ? ` · ${inrPriceFull(Math.round(Number(car.mrp)))}` : ""}
@@ -1988,7 +2035,7 @@ function SuggestionList({ boxes }: { boxes: BoxSuggestions }) {
 function BoxesInline({ boxes }: { boxes: BoxSuggestions }) {
   if (!boxes.enabled) return null;
   return (
-    <div className="mt-3 rounded-lg border border-border/80 bg-muted/20 p-2.5">
+    <div className="card-elevated mt-3 p-2.5 [--frame-gap:0.625rem]">
       <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         <Layers className="size-3.5" />
         Possible other boxes
@@ -2386,8 +2433,8 @@ function RelatedCarCard({
       onClick={onSelect}
       title={title}
       className={cn(
-        "group relative flex flex-col rounded-xl border border-border/80 bg-card p-2 text-left shadow-xs transition-all hover:border-primary/50 hover:shadow-md active:scale-95 cursor-pointer",
-        isCurrent && "border-primary/70 ring-1 ring-primary/40 bg-primary/5",
+        "card-elevated group relative flex flex-col !rounded-2xl p-2 text-left transition-all hover:!border-primary/50 active:scale-95 cursor-pointer",
+        isCurrent && "!border-primary/70 ring-1 ring-primary/40",
         className,
       )}
     >
@@ -3591,7 +3638,7 @@ function CatalogDetailsContent({
               onClick={onClose}
               title="Close details"
               aria-label="Close"
-              className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-30 grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
+              className="absolute right-3 top-[max(1.25rem,env(safe-area-inset-top))] z-30 grid size-9 cursor-pointer place-items-center rounded-full bg-foreground text-background shadow-md transition-transform active:scale-95"
             >
               <X className="size-4" />
             </button>

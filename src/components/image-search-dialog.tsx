@@ -251,7 +251,9 @@ export function ImageSearchDialog({
   }, [open, stopLiveCamera, previewUrl]);
 
   // Handle image analysis with /api/scan-car
+  const lastFile = useRef<File | null>(null);
   const analyzeImageFile = async (file: File) => {
+    lastFile.current = file;
     if (spent) {
       setAnalysisError("That is all your scans for this month. The count resets on the 1st.");
       return;
@@ -843,6 +845,20 @@ export function ImageSearchDialog({
                           <div>
                             <p className="font-medium">Analysis couldn't complete</p>
                             <p className="text-xs opacity-90">{analysisError}</p>
+                            {lastFile.current && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2 h-7 gap-1 text-xs"
+                                onClick={() =>
+                                  lastFile.current && analyzeImageFile(lastFile.current)
+                                }
+                              >
+                                <RefreshCw className="size-3" />
+                                Try again
+                              </Button>
+                            )}
                           </div>
                         </div>
                       ) : attributes ? (
@@ -929,6 +945,29 @@ export function ImageSearchDialog({
                         <span className="text-xs text-muted-foreground">
                           {picked.size} of {many.length} ticked
                         </span>
+                        {isPro && !saving && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={picked.size === 0}
+                            className="gap-1.5"
+                            onClick={async () => {
+                              const chosen = many.filter((_, i) => picked.has(i));
+                              const err = await saveScan(chosen);
+                              if (err) {
+                                toast.error("Could not save that scan", { description: err });
+                                return;
+                              }
+                              toast.success(
+                                `Saved ${chosen.length} ${chosen.length === 1 ? "car" : "cars"}. Open Saved scans on the web to add them.`,
+                              );
+                              onSaved?.();
+                              handleResetImage();
+                            }}
+                          >
+                            Save scan
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           disabled={picked.size === 0}
