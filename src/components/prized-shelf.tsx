@@ -361,9 +361,9 @@ function PrizedCoverflow({
               className="absolute right-2.5 top-2.5 rounded-full bg-black/60 px-1.5 py-1 backdrop-blur-sm"
               iconClassName="size-3.5"
             />
-            <div className="absolute inset-x-0 bottom-0 p-3 text-white" style={{ opacity: front }}>
-              <div className="line-clamp-2 text-base font-semibold leading-tight">{name}</div>
-              <div className="truncate text-xs text-white/70">
+            <div className="absolute inset-x-0 bottom-0 p-2.5 text-white" style={{ opacity: front }}>
+              <div className="line-clamp-2 text-xs font-semibold leading-tight sm:text-sm">{name}</div>
+              <div className="truncate text-[10px] text-white/70 sm:text-xs">
                 {[car.brand, car.assortment].filter(Boolean).join(" · ") || "—"}
               </div>
             </div>
