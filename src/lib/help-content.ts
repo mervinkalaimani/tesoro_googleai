@@ -59,7 +59,7 @@ export const HELP_DEFAULTS: HelpContent = {
   privacy: `VIIV is a tracker for a diecast collection. It is run by one person,
 not by a company, and it does not sell anything about you to anybody.
 
-Last updated: October 2026.
+Last updated: November 2026.
 
 ## What is stored
 Your account holds your name, email address, and anything you choose to add to
@@ -72,6 +72,12 @@ how long it runs for, whether you have asked for one, whether you have said you
 are not renewing, and whether you have used your free trial. No card number,
 expiry date or billing address is ever held, because none is ever typed into
 this app — see Paying in the terms.
+
+Your theme and accent colour are saved with your account, so they follow you to
+another device. The other display choices stay on the device you made them on
+and are not sent anywhere: which shelves and summary cards the home page shows,
+whether amounts are hidden, and what you said you use VIIV for. That last one
+only decides which details are shown. Nothing is deleted when you change it.
 
 Two counts are kept because they are limits: how many card scans you have used
 this month, and the day a collection first went over the free car limit.
@@ -103,6 +109,10 @@ configured for this deployment, which reads the text off it and returns the
 fields. It is sent for that one request and nothing else about you goes with
 it — not your name, not your collection, not your other cars. Your monthly
 scan count is kept so the allowance can be enforced.
+
+If you use Save scans to add later (a paid feature), the fields that were read
+from each scan are kept in your account until you add them or delete them. The
+photograph is not kept, and the saved scans are visible to you alone.
 
 If you would rather no photograph of yours left the app, do not use the
 scanner. Every field it fills can be typed by hand.

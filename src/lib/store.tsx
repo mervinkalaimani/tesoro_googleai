@@ -28,13 +28,15 @@ export type AccentColor = "viiv" | "crimson" | "blue" | "emerald" | "violet" | "
 export const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "light", label: "Light" },
   { value: "dark", label: "Dark" },
-  { value: "oled", label: "OLED" },
   { value: "system", label: "Auto" },
 ];
 
-/** The same list without the option this screen cannot make use of. */
-export const themeOptionsFor = (phone: boolean) =>
-  phone ? THEME_OPTIONS : THEME_OPTIONS.filter((o) => o.value !== "oled");
+/**
+ * The list a screen offers. OLED is gone as a choice: a pure-black background
+ * was too stark, so dark is a deep grey on every screen. A stored "oled" still
+ * reads as plain dark, so nobody who had it chosen is left without a theme.
+ */
+export const themeOptionsFor = (_phone: boolean) => THEME_OPTIONS;
 
 /** What a browser that has never been told shows. */
 export const DEFAULT_ACCENT: AccentColor = "viiv";
@@ -193,6 +195,11 @@ type AppState = {
   /** Keys of the individual cards switched off (see summary-cards.ts). */
   hiddenSummary: string[];
   setSummaryCardShown: (key: string, shown: boolean) => void;
+  /** What the person uses VIIV for (see use-cases.ts); null until they have been asked. */
+  useCases: string[] | null;
+  setUseCases: (v: string[]) => void;
+  /** True once the stored settings have been read, so nothing is asked twice. */
+  settingsReady: boolean;
 };
 
 const AppCtx = createContext<AppState | null>(null);
@@ -270,6 +277,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [prizedShelf, setPrizedShelfState] = useState<PrizedPreference>("auto");
   const [summaryCards, setSummaryCardsState] = useState(true);
   const [hiddenSummary, setHiddenSummaryState] = useState<string[]>([]);
+  const [useCases, setUseCasesState] = useState<string[] | null>(null);
   // The server renders with the defaults above while the inline boot script in
   // __root.tsx has already painted the stored ones. Nothing is applied to the
   // document until this flips, so the first client render cannot undo it.
@@ -288,7 +296,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const storedTheme = readLS<unknown>("dg.theme", "dark");
     const storedAccent = readLS<unknown>("dg.accentColor", DEFAULT_ACCENT);
     const storedFontSize = readLS<unknown>("dg.fontSize", "0");
-    setThemePreferenceState(isThemePreference(storedTheme) ? storedTheme : "dark");
+    // "oled" is no longer offered; it carries on as plain dark.
+    setThemePreferenceState(
+      storedTheme === "oled" ? "dark" : isThemePreference(storedTheme) ? storedTheme : "dark",
+    );
     setAccentColorState(isAccentColor(storedAccent) ? storedAccent : DEFAULT_ACCENT);
     setFontSizeState(isFontSizePreference(storedFontSize) ? storedFontSize : "0");
     setHideInvestmentState(readLS<boolean>("dg.hideInvestment", true));
@@ -311,6 +322,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       Array.isArray(storedHidden)
         ? storedHidden.filter((k): k is string => typeof k === "string")
         : [],
+    );
+    const storedUse = readLS<unknown>("dg.useCases", null);
+    setUseCasesState(
+      Array.isArray(storedUse) ? storedUse.filter((k): k is string => typeof k === "string") : null,
     );
     setHydrated(true);
   }, []);
@@ -340,7 +355,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (hydrated) applyTheme(theme, phone && themePreference === "oled");
+    if (hydrated) applyTheme(theme, false);
   }, [hydrated, theme, themePreference, phone]);
 
   useEffect(() => {
@@ -515,6 +530,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.summaryCards", b);
   }, []);
 
+  const setUseCases = useCallback((v: string[]) => {
+    setUseCasesState(v);
+    writeLS("dg.useCases", v);
+  }, []);
+
   const setSummaryCardShown = useCallback((key: string, shown: boolean) => {
     setHiddenSummaryState((prev) => {
       const next = shown ? prev.filter((k) => k !== key) : [...new Set([...prev, key])];
@@ -565,8 +585,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setSummaryCards,
       hiddenSummary,
       setSummaryCardShown,
+      useCases,
+      setUseCases,
+      settingsReady: hydrated,
     }),
     [
+      useCases,
+      setUseCases,
+      hydrated,
       summaryCards,
       setSummaryCards,
       hiddenSummary,

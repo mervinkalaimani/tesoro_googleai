@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { useApp } from "@/lib/store";
+import { uses } from "@/lib/use-cases";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -665,6 +666,9 @@ function CarPopupContent({
 }: CarPopupContentProps) {
   const cars = useCars();
   const { updateCar } = useCarsActions();
+  // What the person said they use VIIV for decides which details are shown.
+  const { useCases } = useApp();
+  const showCar = uses(useCases, "car");
   const mobile = useMobileHeroGestures(onClose);
   const seeInMyCars = useSeeInMyCars(onClose);
 
@@ -873,7 +877,7 @@ function CarPopupContent({
   );
 
   /** The facts, row by row; see PhoneFacts. */
-  const factRows = [
+  const allFactRows = [
     {
       items: [
         ["Brand", car.brand],
@@ -894,7 +898,9 @@ function CarPopupContent({
       ],
     },
   ] as const;
-  const conditionRows = [
+  // Without car details only the brand and number stay.
+  const factRows = showCar ? allFactRows : allFactRows.slice(0, 1);
+  const allConditionRows = [
     {
       items: [
         ["Car condition", conditionLine(car.carCondition, car.carRating)],
@@ -902,6 +908,7 @@ function CarPopupContent({
       ],
     },
   ] as const;
+  const conditionRows = showCar ? allConditionRows : [];
 
   /** The cards: what it cost, what it is, what is in the box. */
   const panels = (cols: string, phone = false) => (
@@ -2111,6 +2118,10 @@ function CarPurchaseTab({
   onOpenBatch: (id: string, field: "orderId" | "shippingId") => void;
   onOpenSeller: (seller: string) => void;
 }) {
+  const { useCases } = useApp();
+  const showPurchase = uses(useCases, "purchase");
+  const showSeller = uses(useCases, "seller");
+  const showTracking = uses(useCases, "tracking");
   const courier = (car.deliveryPartner || car.trackingId || "").trim();
   // The note stands in for the courier when there is none to name, so it is
   // only printed again below when the field is already saying something else.
@@ -2118,94 +2129,101 @@ function CarPurchaseTab({
 
   return (
     <div className="col-span-full min-w-0 space-y-4">
-      <Panel>
-        {/* Paid, MRP and the seller share the row in equal thirds. */}
-        <div className="grid grid-cols-3 gap-6">
-          {!rowsOnly && (
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Paid
-              </p>
-              <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-foreground">
-                {inrFull(spent)}
-              </p>
-            </div>
-          )}
-          {mrp > 0 && (
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                MRP
-              </p>
-              <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-muted-foreground">
-                {inrFull(mrp)}
-              </p>
-            </div>
-          )}
-          {car.seller && (
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Sold by
-              </p>
-              <div className="mt-1 truncate text-lg font-bold leading-tight text-primary">
-                <LinkValue
-                  value={car.seller}
-                  title={`Everything bought from ${car.seller}`}
-                  onClick={() => onOpenSeller(car.seller)}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-      </Panel>
-
-      {(car.orderDate ||
-        car.orderId ||
-        courier ||
-        cleanTransitNotes ||
-        car.shippingId ||
-        car.expectedDate ||
-        car.date) && (
+      {(showPurchase || (showSeller && car.seller)) && (
         <Panel>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-4">
-            <MiniFact
-              label="Ordered on"
-              value={formatDayMonthYear(car.orderDate) || car.orderDate}
-            />
-            <MiniFact label="Order ID" value={car.orderId} accent>
-              <LinkValue
-                value={car.orderId}
-                title={`Everything in order ${car.orderId}`}
-                onClick={() => onOpenBatch(car.orderId || "", "orderId")}
-              />
-            </MiniFact>
-            <MiniFact label="Transit info" value={courier || cleanTransitNotes} accent={trackable}>
-              {trackable ? (
-                <TrackingLink
-                  compact
-                  partner={car.deliveryPartner}
-                  trackingId={car.trackingId}
-                  className="text-[13px] font-bold text-primary"
-                />
-              ) : (
-                <span className="truncate">{courier || cleanTransitNotes}</span>
-              )}
-            </MiniFact>
-            <MiniFact
-              label={hasArrived ? "Received on" : "Expected on"}
-              value={formatDayMonthYear(
-                hasArrived ? car.date || car.expectedDate : car.expectedDate,
-              )}
-            />
-            <MiniFact label="Shipping ID" value={car.shippingId} accent>
-              <LinkValue
-                value={car.shippingId}
-                title={`Everything in shipment ${car.shippingId}`}
-                onClick={() => onOpenBatch(car.shippingId || "", "shippingId")}
-              />
-            </MiniFact>
+          {/* Paid, MRP and the seller share the row in equal thirds. */}
+          <div className="grid grid-cols-3 gap-6">
+            {!rowsOnly && showPurchase && (
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Paid
+                </p>
+                <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-foreground">
+                  {inrFull(spent)}
+                </p>
+              </div>
+            )}
+            {mrp > 0 && showPurchase && (
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  MRP
+                </p>
+                <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-muted-foreground">
+                  {inrFull(mrp)}
+                </p>
+              </div>
+            )}
+            {car.seller && showSeller && (
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Sold by
+                </p>
+                <div className="mt-1 truncate text-lg font-bold leading-tight text-primary">
+                  <LinkValue
+                    value={car.seller}
+                    title={`Everything bought from ${car.seller}`}
+                    onClick={() => onOpenSeller(car.seller)}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </Panel>
       )}
+
+      {showTracking &&
+        (car.orderDate ||
+          car.orderId ||
+          courier ||
+          cleanTransitNotes ||
+          car.shippingId ||
+          car.expectedDate ||
+          car.date) && (
+          <Panel>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-4">
+              <MiniFact
+                label="Ordered on"
+                value={formatDayMonthYear(car.orderDate) || car.orderDate}
+              />
+              <MiniFact label="Order ID" value={car.orderId} accent>
+                <LinkValue
+                  value={car.orderId}
+                  title={`Everything in order ${car.orderId}`}
+                  onClick={() => onOpenBatch(car.orderId || "", "orderId")}
+                />
+              </MiniFact>
+              <MiniFact
+                label="Transit info"
+                value={courier || cleanTransitNotes}
+                accent={trackable}
+              >
+                {trackable ? (
+                  <TrackingLink
+                    compact
+                    partner={car.deliveryPartner}
+                    trackingId={car.trackingId}
+                    className="text-[13px] font-bold text-primary"
+                  />
+                ) : (
+                  <span className="truncate">{courier || cleanTransitNotes}</span>
+                )}
+              </MiniFact>
+              <MiniFact
+                label={hasArrived ? "Received on" : "Expected on"}
+                value={formatDayMonthYear(
+                  hasArrived ? car.date || car.expectedDate : car.expectedDate,
+                )}
+              />
+              <MiniFact label="Shipping ID" value={car.shippingId} accent>
+                <LinkValue
+                  value={car.shippingId}
+                  title={`Everything in shipment ${car.shippingId}`}
+                  onClick={() => onOpenBatch(car.shippingId || "", "shippingId")}
+                />
+              </MiniFact>
+            </div>
+          </Panel>
+        )}
 
       {noteBelow && (
         <p className="rounded-lg border border-border/50 bg-muted/30 p-2.5 text-xs text-foreground">
@@ -2651,7 +2669,7 @@ function PickChips({
               CHIP,
               "text-xs",
               active
-                ? "border-accent bg-accent text-accent-foreground"
+                ? "border-primary bg-primary text-primary-foreground"
                 : "border-border/80 text-foreground hover:border-foreground/40",
             )}
           >
@@ -3388,9 +3406,10 @@ function CatalogDetailsContent({
             variant="outline"
             onClick={() => setDropIso(true)}
             title="Take this off your wishlist"
-            className="h-11 w-11 shrink-0 cursor-pointer gap-2 px-0 text-sm font-semibold text-rose-500 hover:text-rose-500 sm:w-auto sm:min-w-0 sm:flex-1 sm:px-2"
+            className="h-11 min-w-0 flex-1 cursor-pointer gap-2 px-2 text-sm font-semibold text-rose-500 hover:text-rose-500"
           >
             <Trash2 className="size-3.5 shrink-0" />
+            <span className="truncate sm:hidden">Remove</span>
             <span className="hidden truncate sm:inline">Remove from wishlist</span>
           </Button>
         ) : (
@@ -3399,20 +3418,21 @@ function CatalogDetailsContent({
             variant="outline"
             onClick={() => onAddIso(pick)}
             title="Add to your wishlist"
-            className="h-11 w-11 shrink-0 cursor-pointer gap-2 px-0 text-sm font-semibold sm:w-auto sm:min-w-0 sm:flex-1 sm:px-2"
+            className="h-11 min-w-0 flex-1 cursor-pointer gap-2 px-2 text-sm font-semibold"
           >
             <Bookmark className="size-3.5 shrink-0" />
+            <span className="truncate sm:hidden">Wishlist</span>
             <span className="hidden truncate sm:inline">Add to wishlist</span>
           </Button>
         ))}
       <Button
         type="button"
         onClick={() => onAdd(pick)}
-        // Its words are the ones that must not be cut: the others give way.
-        className="h-11 shrink-0 cursor-pointer gap-2 whitespace-nowrap px-4 text-sm font-semibold"
+        // The same width as the others: all three share the row.
+        className="h-11 min-w-0 flex-1 cursor-pointer gap-2 whitespace-nowrap px-2 text-sm font-semibold"
       >
         <Plus className="size-4 shrink-0" />
-        {isActuallyOwned ? "Add another" : "Add"}
+        <span className="truncate">{isActuallyOwned ? "Add another" : "Add"}</span>
       </Button>
     </div>
   );

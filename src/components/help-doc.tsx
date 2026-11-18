@@ -243,7 +243,7 @@ export function HelpDoc({ docKey }: { docKey: HelpDocKey }) {
   return (
     <div className="space-y-4">
       {isContact && (content.phone || content.email) && (
-        <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+        <div className="divide-y divide-border/60 overflow-hidden card-elevated">
           {content.phone && (
             <ContactRow icon={Phone} href={`tel:${content.phone.replace(/\s+/g, "")}`}>
               {content.phone}
@@ -258,14 +258,14 @@ export function HelpDoc({ docKey }: { docKey: HelpDocKey }) {
       )}
 
       {isContact && loaded && !content.phone && !content.email && (
-        <p className="rounded-xl border border-dashed border-border/80 px-4 py-3 text-xs text-muted-foreground">
+        <p className="card-elevated !rounded-2xl border-dashed px-4 py-3 text-xs text-muted-foreground">
           {isOwner
             ? "No phone or email set yet — add them with Edit, and they appear here for everybody."
             : "No contact details have been published yet."}
         </p>
       )}
 
-      <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+      <div className="card-elevated p-4">
         <DocBody text={content[docKey]} />
       </div>
 

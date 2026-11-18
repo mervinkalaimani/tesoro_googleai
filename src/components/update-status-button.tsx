@@ -36,19 +36,17 @@ export function UpdateStatusButton({
     <Button
       type="button"
       size={size}
+      variant="outline"
       onClick={onClick}
       disabled={disabled}
       title={title ?? "Update status"}
       className={cn(
-        // The accent, not a literal green: it is the theme's second fill, it
-        // moves with the accent colour in Settings, and it stays distinct from
-        // the primary buttons it sits beside. The green was a colour from
-        // nowhere — it belonged to no palette and changed with no setting.
-        "gap-1.5 bg-accent text-accent-foreground hover:bg-accent/85",
+        // Styled like the Pay button beside it: glass with its plain edge, the text in the theme colour.
+        "gap-1.5 !border-primary/40 !text-primary hover:!bg-primary/10",
         className,
       )}
     >
-      <CheckCircle2 className={size === "sm" ? "size-3.5" : "size-4"} />
+      <CheckCircle2 className={cn("text-primary", size === "sm" ? "size-3.5" : "size-4")} />
       {label}
     </Button>
   );

@@ -1,4 +1,5 @@
 import { SUMMARY_ITEMS } from "@/lib/summary-cards";
+import { USE_CASES, uses } from "@/lib/use-cases";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeading } from "@/components/page-header";
 import { useEffect, useMemo, useState } from "react";
@@ -241,6 +242,8 @@ export function SettingsPage() {
     setPrizedShelf,
     summaryCards,
     setSummaryCards,
+    useCases,
+    setUseCases,
     hiddenSummary,
     setSummaryCardShown,
   } = useApp();
@@ -336,7 +339,7 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={() => changeView("account")}
-            className="group flex w-full items-center gap-4 rounded-2xl border border-border/80 bg-card p-4 text-left shadow-xs transition-all hover:border-border hover:bg-muted/30 active:scale-[0.995]"
+            className="group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:border-border hover:bg-muted/30 active:scale-[0.995]"
           >
             <TierAvatar
               url={profile?.avatar_url}
@@ -379,7 +382,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("subscription")}
-              className="group flex w-full items-center gap-3.5 rounded-2xl border border-border/80 bg-card px-4 py-3.5 text-left shadow-xs transition-all hover:border-border hover:bg-muted/30 active:scale-[0.995]"
+              className="group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:border-border hover:bg-muted/30 active:scale-[0.995]"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Sparkles className="size-4" />
@@ -395,7 +398,7 @@ export function SettingsPage() {
           )}
 
           {/* Grouped General Settings Card */}
-          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+          <div className="divide-y divide-border/60 overflow-hidden card-elevated">
             {/* HOMEPAGE — above Display, because it is about what you see
                 first rather than how the whole app looks. */}
             <button
@@ -463,7 +466,7 @@ export function SettingsPage() {
               the general list or an admin card beside it, which put five
               things nobody else can act on in front of everybody. */}
           {isOwner && (
-            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
               <button
                 type="button"
                 onClick={() => changeView("advanced")}
@@ -486,7 +489,7 @@ export function SettingsPage() {
           {/* HELP — everybody's, unlike the Admin Console. The policy has to be
               readable by the people it is about, and the phone number is no
               use to the one person who already knows it. */}
-          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+          <div className="divide-y divide-border/60 overflow-hidden card-elevated">
             <button
               type="button"
               onClick={() => changeView("help")}
@@ -547,7 +550,7 @@ export function SettingsPage() {
 
           {/* Sign Out Card (Moved here from the main menu, Apple style) */}
           <div className="space-y-1.5 pt-2">
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <div className="overflow-hidden card-elevated">
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
@@ -610,7 +613,7 @@ export function SettingsPage() {
 
           {/* In Apple Settings, Sign Out is also at the very bottom of Apple ID */}
           <div className="pt-2">
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <div className="overflow-hidden card-elevated">
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
@@ -636,7 +639,7 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Appearance
             </div>
-            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
               <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-[15px] font-medium text-foreground">Theme</div>
@@ -707,7 +710,7 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Privacy
             </div>
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+            <div className="overflow-hidden card-elevated p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-[15px] font-medium text-foreground">
@@ -744,30 +747,61 @@ export function SettingsPage() {
         <div className="space-y-6">
           <SubpageHeader title="Homepage" onBack={() => changeView("root")} />
 
+          {/* What VIIV is used for: asked once after sign-in, changed here. The
+              details that are not ticked are left off the screen, not deleted. */}
+          <div className="space-y-1.5">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              What you use VIIV for
+            </div>
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+              {USE_CASES.map((u) => (
+                <div
+                  key={u.key}
+                  title={u.hint}
+                  className="flex items-center justify-between gap-4 px-4 py-2.5"
+                >
+                  <div className="text-[15px] font-medium text-foreground">{u.label}</div>
+                  <Switch
+                    checked={uses(useCases, u.key)}
+                    onCheckedChange={(on) => {
+                      const now = useCases ?? USE_CASES.map((x) => x.key);
+                      setUseCases(
+                        on ? [...new Set([...now, u.key])] : now.filter((k) => k !== u.key),
+                      );
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="px-1 pt-1 text-xs text-muted-foreground">
+              Only these details are shown on the home page and in each car. Nothing is deleted.
+            </p>
+          </div>
+
           {/* The row of counts at the top. A master switch, and — once it is on —
               every card in it, each with its own. */}
           <div className="space-y-1.5">
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Summary cards
             </div>
-            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-              <div className="flex items-center justify-between gap-4 p-4">
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
                 <div className="min-w-0">
                   <div className="text-[15px] font-medium text-foreground">Show summary cards</div>
                   <div className="text-xs text-muted-foreground">
-                    The row of counts at the top of the home page, like how many cars are on the
-                    way.
+                    The row of counts at the top of the home page.
                   </div>
                 </div>
                 <Switch checked={summaryCards} onCheckedChange={setSummaryCards} />
               </div>
               {summaryCards &&
                 SUMMARY_ITEMS.map((item) => (
-                  <div key={item.key} className="flex items-center justify-between gap-4 p-4 pl-6">
-                    <div className="min-w-0">
-                      <div className="text-[15px] font-medium text-foreground">{item.label}</div>
-                      <div className="text-xs text-muted-foreground">{item.hint}</div>
-                    </div>
+                  <div
+                    key={item.key}
+                    title={item.hint}
+                    className="flex items-center justify-between gap-4 px-4 py-2.5 pl-6"
+                  >
+                    <div className="min-w-0 text-sm font-medium text-foreground">{item.label}</div>
                     <Switch
                       checked={!hiddenSummary.includes(item.key)}
                       onCheckedChange={(on) => setSummaryCardShown(item.key, on)}
@@ -782,135 +816,85 @@ export function SettingsPage() {
             )}
           </div>
 
-          {/* Released pre-orders */}
+          {/* The shelves under the summary cards, one line each: the name, and
+              its control on the right. The longer explanations are tooltips, and
+              what a mode means is said by its own label. */}
           <div className="space-y-1.5">
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Released PO
+              Shelves
             </div>
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
-              <div className="flex flex-col gap-3">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">
-                    Pre-orders that have been released
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    A casting is marked released the first time anybody&rsquo;s copy of it arrives.{" "}
-                    {releasedShelf === "all"
-                      ? "Every casting that has started arriving, whoever ordered it."
-                      : releasedShelf === "mine"
-                        ? "Only castings you are waiting on yourself."
-                        : "The shelf is hidden."}{" "}
-                    Either way, a pre-order of yours that ships still reaches the notification bell
-                    — that one has a seller to contact and usually a balance to settle.
-                  </div>
-                </div>
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+              <div
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
+                title="A casting is marked released the first time anybody’s copy of it arrives. A pre-order of yours that ships still reaches the notification bell either way."
+              >
+                <div className="text-[15px] font-medium text-foreground">Released PO</div>
                 <SegmentControl
                   value={releasedShelf}
                   onChange={setReleasedShelf}
                   options={RELEASED_OPTIONS}
-                  fill
-                  className="h-9 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Arriving soon — moved here from Display, where it sat under a
-              "Home" heading inside a page about theme and text size. */}
-          <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Arriving Soon
-            </div>
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">Arriving Soon</div>
-                  <div className="text-xs text-muted-foreground">
-                    {arrivingSoon === "auto"
-                      ? "Shown only on a week with nothing recently added and no new pre-orders."
-                      : arrivingSoon === "always"
-                        ? "Always shown, alongside Recently added and New pre-orders."
-                        : arrivingSoon === "custom"
-                          ? "Always shown, over the window you pick below."
-                          : "Hidden."}{" "}
-                    Cars due in your hands within{" "}
-                    {arrivingSoon === "custom" ? arrivingDays : ARRIVING_WINDOW_DEFAULT} days.
-                  </div>
-                </div>
-                <SegmentControl
-                  value={arrivingSoon}
-                  onChange={setArrivingSoon}
-                  options={ARRIVING_SOON_OPTIONS}
-                  fill
                   className="h-9 text-sm sm:w-auto"
                 />
               </div>
 
+              <div
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
+                title={`Cars due in your hands within ${
+                  arrivingSoon === "custom" ? arrivingDays : ARRIVING_WINDOW_DEFAULT
+                } days. Auto shows it only on a week with nothing recently added and no new pre-orders.`}
+              >
+                <div className="text-[15px] font-medium text-foreground">Arriving soon</div>
+                <SegmentControl
+                  value={arrivingSoon}
+                  onChange={setArrivingSoon}
+                  options={ARRIVING_SOON_OPTIONS}
+                  className="h-9 text-sm sm:w-auto"
+                />
+              </div>
               {arrivingSoon === "custom" && (
-                <div className="flex flex-col gap-2 border-t border-border/60 px-4 pb-4 pt-3">
-                  <div className="text-xs font-medium text-muted-foreground">How far ahead</div>
+                <div className="flex items-center justify-between gap-3 px-4 py-2.5 pl-6">
+                  <div className="text-sm text-muted-foreground">How far ahead</div>
                   <SegmentControl
                     value={String(arrivingDays)}
                     onChange={(v) => setArrivingDays(Number(v))}
                     options={ARRIVING_WINDOW_OPTIONS}
-                    fill
-                    className="h-9 text-sm"
+                    className="h-9 text-sm sm:w-auto"
                   />
                 </div>
               )}
-            </div>
-          </div>
 
-          {/* The other two shelves. Switches rather than a segment each,
-              because there is nothing to choose: they are on or they are not. */}
-          <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Other shelves
-            </div>
-            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-              <div className="flex items-center justify-between gap-4 p-4">
-                <div className="min-w-0">
-                  <div className="text-[15px] font-medium text-foreground">Recently added</div>
-                  <div className="text-xs text-muted-foreground">
-                    Cars you logged in the last few days, above the transit tracker.
-                  </div>
-                </div>
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-2.5"
+                title="Cars you logged in the last few days, above the transit tracker."
+              >
+                <div className="text-[15px] font-medium text-foreground">Recently added</div>
                 <Switch checked={showRecentlyAdded} onCheckedChange={setShowRecentlyAdded} />
               </div>
 
-              <div className="flex items-center justify-between gap-4 p-4">
-                <div className="min-w-0">
-                  <div className="text-[15px] font-medium text-foreground">New pre-orders</div>
-                  <div className="text-xs text-muted-foreground">
-                    What other collectors have pre-ordered in the last three days, ready to add.
-                  </div>
-                </div>
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-2.5"
+                title="What other collectors have pre-ordered in the last three days, ready to add."
+              >
+                <div className="text-[15px] font-medium text-foreground">New pre-orders</div>
                 <Switch checked={showNewPreorders} onCheckedChange={setShowNewPreorders} />
               </div>
 
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="text-[15px] font-medium text-foreground">Prized possessions</div>
-                  <div className="text-xs text-muted-foreground">
-                    {prizedShelf === "auto"
-                      ? "Your chase, STH, TH and favourite cars, shown once you own one."
-                      : prizedShelf === "show"
-                        ? "Always shown, even before you own a chase or favourite car."
-                        : "Hidden."}
-                  </div>
-                </div>
+              <div
+                className="flex items-center justify-between gap-3 px-4 py-2.5"
+                title="Your chase, STH, TH and favourite cars. Auto shows it once you own one."
+              >
+                <div className="text-[15px] font-medium text-foreground">Prized possessions</div>
                 <SegmentControl
                   value={prizedShelf}
                   onChange={setPrizedShelf}
                   options={PRIZED_OPTIONS}
-                  fill
                   className="h-9 text-sm sm:w-auto"
                 />
               </div>
             </div>
             <p className="px-1 pt-1 text-xs text-muted-foreground">
-              Switching one off also makes Arriving Soon&rsquo;s &ldquo;Auto&rdquo; treat it as
-              empty, so the shelf still stands in on a quiet week.
+              Switching a shelf off also makes Arriving soon&rsquo;s &ldquo;Auto&rdquo; treat it as
+              empty.
             </p>
           </div>
         </div>
@@ -922,7 +906,7 @@ export function SettingsPage() {
       {view === "advanced" && isOwner && (
         <div className="space-y-6">
           <SubpageHeader title="Admin Console" onBack={() => changeView("root")} />
-          <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+          <div className="divide-y divide-border/60 overflow-hidden card-elevated">
             {/* SEARCH ENGINE */}
             <button
               type="button"
@@ -1123,10 +1107,7 @@ export function SettingsPage() {
               ],
             ] as const
           ).map(([group, items]) => (
-            <div
-              key={group}
-              className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs"
-            >
+            <div key={group} className="divide-y divide-border/60 overflow-hidden card-elevated">
               {items.map(([target, label, blurb, Icon]) => (
                 <button
                   key={target}
@@ -1221,7 +1202,7 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Deliveries &amp; Shipments
             </div>
-            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
               <div className="flex items-center justify-between gap-4 p-4">
                 <div>
                   <div className="text-[15px] font-medium text-foreground">
@@ -1280,7 +1261,7 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Banner Alerts
             </div>
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+            <div className="overflow-hidden card-elevated p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-[15px] font-medium text-foreground">
@@ -1306,7 +1287,7 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               History &amp; Dismissals
             </div>
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+            <div className="overflow-hidden card-elevated p-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-[15px] font-medium text-foreground">
@@ -1345,7 +1326,7 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Data Health &amp; Identifiers
             </div>
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+            <div className="overflow-hidden card-elevated p-5">
               <p className="mb-4 text-xs text-muted-foreground">
                 Run automated consistency checks on your diecast records, carrier tracking numbers,
                 and collection integrity.
@@ -1362,7 +1343,7 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Collection Integrity
             </div>
-            <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+            <div className="overflow-hidden card-elevated p-5">
               <FavouriteDetector />
             </div>
           </div>
@@ -1382,7 +1363,7 @@ export function SettingsPage() {
           {isAdmin ? (
             <MetadataEditor />
           ) : (
-            <p className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground shadow-xs">
+            <p className="card-elevated p-6 text-center text-sm text-muted-foreground">
               The catalogue is shared by everybody, so only an admin can change it.
             </p>
           )}
@@ -1396,7 +1377,7 @@ export function SettingsPage() {
             onBack={() => changeView("advanced")}
             backLabel="Admin Console"
           />
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-card p-5 shadow-xs">
+          <div className="overflow-hidden card-elevated p-5">
             <OAuthProvidersCard />
           </div>
         </div>
@@ -1411,7 +1392,7 @@ export function SettingsPage() {
           />
 
           {/* Connection Status Banner */}
-          <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
+          <div className="card-elevated p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div
@@ -1462,7 +1443,7 @@ export function SettingsPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-2xl border border-border/80 bg-card p-6 text-center shadow-xs">
+            <div className="card-elevated p-6 text-center">
               <ShieldCheck className="mx-auto size-10 text-muted-foreground/60" />
               <h3 className="mt-2 text-base font-semibold text-foreground">Owner Configuration</h3>
               <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
@@ -1489,7 +1470,7 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Web Image Lookup Provider
             </div>
-            <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
               {SEARCH_ENGINES.map((engine) => {
                 const isSelected = selectedEngine === engine.value;
                 return (

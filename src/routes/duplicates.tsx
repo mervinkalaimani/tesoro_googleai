@@ -1,18 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Share2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
 import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
-import { ExportDialog } from "@/components/export-dialog";
-import { CAR_CSV_COLUMNS } from "@/lib/car-columns";
 import { inrFull } from "@/lib/format";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarMarks } from "@/components/car-marks";
 import { CarSubRow, GroupRow, GroupTable, StatusCell, Th } from "@/components/group-table";
 import { PageHeading, PageToolbar } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
+import { BlisterTile, CarOverlay } from "@/components/blister-tile";
+import { InventoryCard } from "@/routes/inventory";
+import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { cn } from "@/lib/utils";
 import { ProGate } from "@/components/pro-gate";
 
@@ -62,8 +63,8 @@ function DuplicatesPage() {
   const { query } = useApp();
   const cars = useCars();
   const { open } = useCarDrawer();
+  const [view, setView] = useState<ViewMode>("blister");
   const [active, setActive] = useState<AttrKey[]>(DEFAULT_ATTRS);
-  const [exportOpen, setExportOpen] = useState(false);
   // Closed by default: the page is a list of groups to scan, and the copies
   // inside one are only worth the room once it is the group you are after.
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
@@ -95,7 +96,6 @@ function DuplicatesPage() {
     return [...map.values()].filter((arr) => arr.length >= 2).sort((a, b) => b.length - a.length);
   }, [cars, query, active]);
 
-  const flatRows = useMemo(() => groups.flat(), [groups]);
   // "Surplus" is every copy beyond the first in each group.
   const surplusCount = groups.reduce((s, g) => s + (g.length - 1), 0);
 
@@ -104,13 +104,15 @@ function DuplicatesPage() {
       <PageHeading
         title="Duplicates"
         subtitle={`${surplusCount} ${surplusCount === 1 ? "casting" : "castings"} across ${groups.length} ${groups.length === 1 ? "model" : "models"}`}
-      />
+      >
+        <ViewToggle value={view} onChange={setView} modes={["blister", "grid", "table"]} />
+      </PageHeading>
 
       <PageToolbar
         sticky
         oneLine
         left={
-          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+          <div className="flex max-w-full flex-wrap items-center gap-1.5 py-0.5">
             {ATTRS.map((a) => {
               const isSelected = active.includes(a.key);
               return (
@@ -132,133 +134,139 @@ function DuplicatesPage() {
             })}
           </div>
         }
-        right={
-          <Button
-            size="icon"
-            variant="outline"
-            onClick={() => setExportOpen(true)}
-            title="Export the duplicates"
-            aria-label="Export the duplicates"
-            className="size-8 shrink-0 justify-center p-0"
-          >
-            <Share2 className="size-3.5" />
-          </Button>
-        }
       />
 
       {active.length === 0 && (
         <p className="text-xs text-destructive">Select at least one attribute to match on.</p>
       )}
 
-      <GroupTable
-        head={
-          <>
-            <Th>Casting</Th>
-            <Th>Copies</Th>
-            <Th className="hidden sm:table-cell">Seller</Th>
-            <Th align="right">Spent</Th>
-            <Th align="right">Valuation</Th>
-          </>
-        }
-      >
-        {groups.map((arr, i) => {
-          const key = (arr[0].id || "") + i;
-          const isOpen = openRows.has(key);
-          const first = arr[0];
-          const spent = arr.reduce((t, r) => t + (r.spent || 0), 0);
-          const valuation = arr.reduce((t, r) => t + (r.mrp || r.spent || 0), 0);
-          const surplus = arr.length - 1;
-          const sellers = [...new Set(arr.map((r) => (r.seller || "").trim()).filter(Boolean))];
-          return [
-            <GroupRow
-              key={key}
-              open={isOpen}
-              onToggle={() => toggleGroup(key)}
-              title={
-                <>
-                  {first.name || `${first.make} ${first.model}`.trim() || "—"}
-                  {first.brand ? (
-                    <span className="ml-2 text-xs font-normal text-muted-foreground">
-                      ({first.brand})
-                    </span>
-                  ) : null}
-                </>
-              }
-              sub={`${surplus} surplus unit${surplus === 1 ? "" : "s"}`}
-            >
-              <td className="px-3 py-2.5">
-                <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">
-                  {arr.length}x
-                </span>
-              </td>
-              <td className="hidden px-3 py-2.5 text-xs text-muted-foreground sm:table-cell">
-                {sellers.length === 1
-                  ? sellers[0]
-                  : sellers.length
-                    ? `${sellers.length} sellers`
-                    : "—"}
-              </td>
-              <td className="px-3 py-2.5 text-right tabular-nums">{inrFull(spent)}</td>
-              <td className="px-3 py-2.5 text-right font-medium tabular-nums">
-                {inrFull(valuation)}
-              </td>
-            </GroupRow>,
-            // The copies, as rows rather than as a card each: what you are doing
-            // here is comparing them, and the only things that tell them apart
-            // are their IDs, where they came from, and what they cost.
-            ...(isOpen
-              ? arr.map((r, n) => (
-                  <CarSubRow
-                    key={(r.id || "") + n}
-                    car={r}
-                    onOpen={() => open(r)}
-                    lead={
-                      <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
-                        #{n + 1}
+      {view !== "table" ? (
+        // The glass view: one tile per casting, with how many copies you hold.
+        <div className={view === "blister" ? BLISTER_GRID_COLS : GRID_COLS}>
+          {groups.map((arr, i) =>
+            view === "blister" ? (
+              <BlisterTile
+                key={(arr[0].id || "") + i}
+                car={arr[0]}
+                copies={arr.length}
+                onOpen={() => open(arr[0])}
+                overlay={<CarOverlay car={arr[0]} brandOnly />}
+                showStatus={false}
+                foot={false}
+              />
+            ) : (
+              <InventoryCard
+                key={(arr[0].id || "") + i}
+                car={arr[0]}
+                copies={arr.length}
+                onOpen={() => open(arr[0])}
+                showStatus={false}
+              />
+            ),
+          )}
+        </div>
+      ) : (
+        <GroupTable
+          head={
+            <>
+              <Th>Casting</Th>
+              <Th>Copies</Th>
+              <Th className="hidden sm:table-cell">Seller</Th>
+              <Th align="right">Spent</Th>
+              <Th align="right">Valuation</Th>
+            </>
+          }
+        >
+          {groups.map((arr, i) => {
+            const key = (arr[0].id || "") + i;
+            const isOpen = openRows.has(key);
+            const first = arr[0];
+            const spent = arr.reduce((t, r) => t + (r.spent || 0), 0);
+            const valuation = arr.reduce((t, r) => t + (r.mrp || r.spent || 0), 0);
+            const surplus = arr.length - 1;
+            const sellers = [...new Set(arr.map((r) => (r.seller || "").trim()).filter(Boolean))];
+            return [
+              <GroupRow
+                key={key}
+                open={isOpen}
+                onToggle={() => toggleGroup(key)}
+                title={
+                  <>
+                    {first.name || `${first.make} ${first.model}`.trim() || "—"}
+                    {first.brand ? (
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        ({first.brand})
                       </span>
-                    }
-                    sub={
-                      <span className="font-mono">
-                        {r.id || "—"}
-                        {r.date ? ` · ${r.date}` : ""}
-                      </span>
-                    }
-                  >
-                    <StatusCell car={r} />
-                    <td className="hidden px-3 py-2 text-xs text-muted-foreground sm:table-cell">
-                      <span className="flex min-w-0 items-center gap-1.5">
-                        <span className="truncate">{r.seller || "—"}</span>
-                        <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 text-right text-xs tabular-nums">
-                      {inrFull(r.spent || 0)}
-                    </td>
-                    <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
-                      {inrFull(r.mrp || r.spent || 0)}
-                    </td>
-                  </CarSubRow>
-                ))
-              : []),
-          ];
-        })}
-        {groups.length === 0 && (
-          <tr>
-            <td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">
-              No duplicates found.
-            </td>
-          </tr>
-        )}
-      </GroupTable>
-
-      <ExportDialog
-        open={exportOpen}
-        onOpenChange={setExportOpen}
-        name="duplicates"
-        rows={flatRows}
-        columns={CAR_CSV_COLUMNS}
-        title="Export duplicates"
-      />
+                    ) : null}
+                  </>
+                }
+                sub={`${surplus} surplus unit${surplus === 1 ? "" : "s"}`}
+              >
+                <td className="px-3 py-2.5">
+                  <span className="rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-bold tabular-nums text-amber-600 dark:text-amber-400">
+                    {arr.length}x
+                  </span>
+                </td>
+                <td className="hidden px-3 py-2.5 text-xs text-muted-foreground sm:table-cell">
+                  {sellers.length === 1
+                    ? sellers[0]
+                    : sellers.length
+                      ? `${sellers.length} sellers`
+                      : "—"}
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums">{inrFull(spent)}</td>
+                <td className="px-3 py-2.5 text-right font-medium tabular-nums">
+                  {inrFull(valuation)}
+                </td>
+              </GroupRow>,
+              // The copies, as rows rather than as a card each: what you are doing
+              // here is comparing them, and the only things that tell them apart
+              // are their IDs, where they came from, and what they cost.
+              ...(isOpen
+                ? arr.map((r, n) => (
+                    <CarSubRow
+                      key={(r.id || "") + n}
+                      car={r}
+                      onOpen={() => open(r)}
+                      lead={
+                        <span className="shrink-0 rounded border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
+                          #{n + 1}
+                        </span>
+                      }
+                      sub={
+                        <span className="font-mono">
+                          {r.id || "—"}
+                          {r.date ? ` · ${r.date}` : ""}
+                        </span>
+                      }
+                    >
+                      <StatusCell car={r} />
+                      <td className="hidden px-3 py-2 text-xs text-muted-foreground sm:table-cell">
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span className="truncate">{r.seller || "—"}</span>
+                          <CarMarks car={r} primary="chase" iconClassName="size-3.5" />
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right text-xs tabular-nums">
+                        {inrFull(r.spent || 0)}
+                      </td>
+                      <td className="px-3 py-2 text-right text-xs tabular-nums text-muted-foreground">
+                        {inrFull(r.mrp || r.spent || 0)}
+                      </td>
+                    </CarSubRow>
+                  ))
+                : []),
+            ];
+          })}
+          {groups.length === 0 && (
+            <tr>
+              <td colSpan={5} className="p-8 text-center text-sm text-muted-foreground">
+                No duplicates found.
+              </td>
+            </tr>
+          )}
+        </GroupTable>
+      )}
     </div>
   );
 }

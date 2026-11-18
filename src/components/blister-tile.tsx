@@ -20,11 +20,19 @@ export function CarOverlay({
   car,
   brandOnly = false,
   padRight = false,
+  suffix,
+  small = false,
+  className,
 }: {
   car: Diecast;
   brandOnly?: boolean;
+  /** Set at the end of the brand line, after a dot: a copy count, say. */
+  suffix?: ReactNode;
+  /** Smaller type, for the grid view. */
+  small?: boolean;
   /** Room at the right for a button laid over the corner. */
   padRight?: boolean;
+  className?: string;
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   // brandOnly is the blister view: the packaging already says the series.
@@ -35,13 +43,35 @@ export function CarOverlay({
       className={cn(
         "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-3.5 pb-3 pt-14 text-white",
         padRight && "pr-14",
+        className,
       )}
     >
-      <div className="line-clamp-2 text-[15px] font-semibold leading-tight" title={title}>
+      <div
+        className={cn(
+          "line-clamp-2 font-semibold leading-tight",
+          small ? "text-[11px] sm:text-[13px]" : "text-[15px]",
+        )}
+        title={title}
+      >
         {title}
         <ChangedDot car={car} className="ml-1.5 align-middle" />
       </div>
-      {brandLine && <div className="mt-1 truncate text-xs text-white/80">{brandLine}</div>}
+      {(brandLine || suffix) && (
+        <div
+          className={cn(
+            "mt-1 truncate text-white/80",
+            small ? "text-[9px] sm:text-[11px]" : "text-xs",
+          )}
+        >
+          {brandLine}
+          {suffix && (
+            <>
+              {brandLine && " · "}
+              {suffix}
+            </>
+          )}
+        </div>
+      )}
       {seriesLine && <div className="truncate text-xs text-white/60">{seriesLine}</div>}
     </div>
   );
@@ -69,6 +99,7 @@ export function BlisterTile({
   pack,
   foot,
   overlay,
+  showStatus = true,
   className = "",
 }: {
   car: Diecast;
@@ -85,6 +116,8 @@ export function BlisterTile({
   foot?: ReactNode;
   /** Words laid over the bottom of the photograph. Moves the badges to the top. */
   overlay?: ReactNode;
+  /** The status pill on the photograph. My Cars leaves it off. */
+  showStatus?: boolean;
   className?: string;
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
@@ -134,7 +167,7 @@ export function BlisterTile({
           )}
         >
           {words &&
-            (car.status ? (
+            (car.status && showStatus ? (
               <StatusPill status={car.status} className={PILL_ON_PHOTO} />
             ) : caption ? (
               <span className={cn(PILL_ON_PHOTO, "bg-black/75 text-white")}>{caption}</span>
@@ -158,7 +191,7 @@ export function BlisterTile({
 
         {!words && (
           <div className="pointer-events-none absolute bottom-1 right-1">
-            {car.status ? (
+            {car.status && showStatus ? (
               <StatusPill
                 status={car.status}
                 className="px-1.5 py-0 text-xs leading-tight shadow-sm backdrop-blur-sm"

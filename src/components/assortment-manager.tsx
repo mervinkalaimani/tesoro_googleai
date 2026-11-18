@@ -24,7 +24,17 @@ import {
  * anything uses the name — retiring hides it from the pickers and leaves the
  * cars that carry it alone.
  */
-export function AssortmentManager() {
+export function AssortmentManager({
+  q = "",
+  addOpen = false,
+  onAdded,
+}: {
+  /** What the search box above filters the list by. */
+  q?: string;
+  /** Whether the add panel is showing: the button for it sits with the search. */
+  addOpen?: boolean;
+  onAdded?: () => void;
+}) {
   const [rows, setRows] = useState<Assortment[]>([]);
   const [usage, setUsage] = useState<AssortmentUsage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +73,7 @@ export function AssortmentManager() {
       return;
     }
     setAdding("");
+    onAdded?.();
     toast.success(`Added ${name}`);
     void load();
   };
@@ -123,44 +134,53 @@ export function AssortmentManager() {
     void load();
   };
 
+  const want = q.trim().toLowerCase();
+  const shownRows = want ? rows.filter((r) => r.name.toLowerCase().includes(want)) : rows;
+
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
-        <p className="text-sm font-medium text-foreground">Add an assortment</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Everything here is what the pickers offer. Nobody can type one that is not on this list.
-        </p>
-        <div className="mt-3 flex gap-2">
-          <Input
-            value={adding}
-            onChange={(e) => setAdding(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && void add()}
-            placeholder="Team Transport, Qube Carz, Acrylic case…"
-            className="h-9 text-sm"
-          />
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => void add()}
-            disabled={!adding.trim() || busy === "add"}
-            className="gap-1.5"
-          >
-            {busy === "add" ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Plus className="size-3.5" />
-            )}
-            Add
-          </Button>
+      {addOpen && (
+        <div className="card-elevated p-4">
+          <p className="text-sm font-medium text-foreground">Add an assortment</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Everything here is what the pickers offer. Nobody can type one that is not on this list.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Input
+              value={adding}
+              onChange={(e) => setAdding(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && void add()}
+              autoFocus
+              placeholder="Team Transport, Qube Carz, Acrylic case…"
+              className="h-9 text-sm"
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void add()}
+              disabled={!adding.trim() || busy === "add"}
+              className="gap-1.5"
+            >
+              {busy === "add" ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Plus className="size-3.5" />
+              )}
+              Add
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-        <div className="border-b border-border/70 bg-muted/30 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {loading ? "Loading…" : `${rows.length} assortments`}
-        </div>
-        <div className="divide-y divide-border/50">
-          {rows.map((row) => {
+      <div className="card-elevated overflow-hidden">
+        <div
+          className={`divide-y divide-border/50 overflow-y-auto min-h-56 ${
+            addOpen
+              ? "max-h-[calc(100svh-26.5rem)] sm:max-h-[calc(100svh-22rem)]"
+              : "max-h-[calc(100svh-17.5rem)] sm:max-h-[calc(100svh-14rem)]"
+          }`}
+        >
+          {shownRows.map((row) => {
             const used = countFor(row.name);
             const isEditing = editing?.id === row.id;
             return (

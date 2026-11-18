@@ -147,7 +147,7 @@ export function CatalogueLinkDialog({
                     onPick({ ...pending, colour }, colour);
                     close();
                   }}
-                  className="cursor-pointer rounded-full border border-border/80 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-accent hover:bg-accent hover:text-accent-foreground"
+                  className="cursor-pointer rounded-full border border-border/80 px-3 py-1.5 text-xs font-semibold transition-colors hover:border-primary hover:bg-primary hover:text-primary-foreground"
                 >
                   {colour}
                 </button>

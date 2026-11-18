@@ -563,7 +563,29 @@ function OrdersPage() {
       <PageHeading
         title="My Orders"
         subtitle={`${inShipmentOrders.length} ${inShipmentOrders.length === 1 ? "order" : "orders"} in shipment · ${inShipmentCarCount} ${inShipmentCarCount === 1 ? "car" : "cars"}`}
-      />
+      >
+        {/* The two actions that make or change an order sit beside the title. */}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setSelectedShippingId("");
+            setBatchOpen(true);
+          }}
+          title="Update an order by its shipping ID"
+          aria-label="Update an order by its shipping ID"
+        >
+          <Pencil className="size-3.5" />
+        </Button>
+        <BulkAddCarsDialog
+          trigger={
+            <Button size="sm" className="gap-1.5">
+              <Plus className="size-4" />
+              <span className="hidden sm:inline">New shipment</span>
+            </Button>
+          }
+        />
+      </PageHeading>
 
       <PageToolbar
         sticky
@@ -629,26 +651,6 @@ function OrdersPage() {
                 { value: "seller", label: "Seller", dir: "asc" },
                 { value: "orderDate", label: "Order date", dir: "desc" },
               ]}
-            />
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setSelectedShippingId("");
-                setBatchOpen(true);
-              }}
-              title="Update an order by its shipping ID"
-              aria-label="Update an order by its shipping ID"
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-            <BulkAddCarsDialog
-              trigger={
-                <Button size="sm" className="gap-1.5">
-                  <Plus className="size-4" />
-                  <span className="hidden sm:inline">New shipment</span>
-                </Button>
-              }
             />
           </>
         }

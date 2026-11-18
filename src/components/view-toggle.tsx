@@ -17,7 +17,8 @@ const MODES: { value: ViewMode; label: string; icon: typeof List }[] = [
 ];
 
 /** Column counts for the two grids, shared so every page matches: 2 cols on a phone */
-export const GRID_COLS = "grid gap-2.5 sm:gap-3 grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+export const GRID_COLS =
+  "grid gap-2 sm:gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6";
 /**
  * Blister view: one column more than the grid at every width, because a blister
  * card is taller than it is wide and a row of them would otherwise run off the
@@ -54,7 +55,7 @@ export function ViewToggle({
         onClick={() => onChange(shown[(shown.indexOf(current) + 1) % shown.length].value)}
         aria-label={`View: ${current.label}. Tap for the next.`}
         className={cn(
-          "grid size-8 shrink-0 place-items-center rounded-md border border-border bg-muted/40 text-foreground sm:hidden",
+          "glass-btn grid size-8 shrink-0 place-items-center rounded-full text-foreground sm:hidden",
           className,
         )}
       >
@@ -63,7 +64,7 @@ export function ViewToggle({
       {/* Same container styling as SegmentControl (rounded-md, border-border, bg-muted/40, p-0.5) */}
       <div
         className={cn(
-          "hidden h-8 shrink-0 items-center rounded-md border sm:inline-flex border-border bg-muted/40 p-0.5",
+          "glass-btn hidden h-8 shrink-0 items-center rounded-full sm:inline-flex p-0.5",
           className,
         )}
       >
@@ -79,7 +80,7 @@ export function ViewToggle({
               aria-label={m.label}
               title={m.label}
               className={cn(
-                "grid size-7 place-items-center rounded-[6px] transition-all",
+                "grid size-7 place-items-center rounded-full transition-all",
                 active
                   ? "bg-background text-foreground shadow-sm font-medium"
                   : "text-muted-foreground hover:text-foreground",

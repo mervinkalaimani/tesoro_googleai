@@ -1,12 +1,15 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Flame, Gem, Star } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, Flame, Gem, Star } from "lucide-react";
 
 import type { Diecast } from "@/lib/types";
 import { rarityOf, RARITY_FLAME } from "@/lib/rarity";
 import { CarMarks, FAVOURITE_COLOUR } from "@/components/car-marks";
 import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
+import { Button } from "@/components/ui/button";
+import { statusLabel } from "@/lib/status";
+import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 /**
@@ -96,21 +99,24 @@ const STEP = [
  */
 const WIDE_LEFT = [
   { x: 0, scale: 1, turn: 0, z: 0, opacity: 1 },
-  { x: 0.62, scale: 0.86, turn: 38, z: -50, opacity: 1 },
-  { x: 0.95, scale: 0.7, turn: 45, z: -120, opacity: 0 },
+  { x: 0.5, scale: 0.86, turn: 38, z: -50, opacity: 1 },
+  { x: 0.85, scale: 0.74, turn: 44, z: -110, opacity: 1 },
+  { x: 1.1, scale: 0.64, turn: 50, z: -170, opacity: 0 },
 ];
-const WIDE_PERSPECTIVE = 1500;
+/** Where the front car's centre sits across the row, as a fraction of its width. */
+const WIDE_FRONT = 0.34;
+/* Two cars show to the right of the front one; the other five fan out behind the
+   details pane, so they read as a stack under the glass. */
 const WIDE_RIGHT = [
   { x: 0, scale: 1, turn: 0, z: 0, opacity: 1 },
-  { x: 0.78, scale: 0.86, turn: 40, z: -50, opacity: 1 },
-  { x: 0.98, scale: 0.8, turn: 42, z: -90, opacity: 1 },
-  { x: 1.18, scale: 0.75, turn: 44, z: -130, opacity: 1 },
-  { x: 1.38, scale: 0.7, turn: 46, z: -170, opacity: 1 },
-  { x: 1.58, scale: 0.66, turn: 48, z: -210, opacity: 1 },
-  { x: 1.78, scale: 0.62, turn: 50, z: -250, opacity: 1 },
-  { x: 1.98, scale: 0.58, turn: 52, z: -290, opacity: 1 },
-  { x: 2.18, scale: 0.54, turn: 54, z: -330, opacity: 1 },
-  { x: 2.4, scale: 0.5, turn: 56, z: -370, opacity: 0 },
+  { x: 0.5, scale: 0.86, turn: 38, z: -50, opacity: 1 },
+  { x: 0.85, scale: 0.74, turn: 44, z: -110, opacity: 1 },
+  { x: 1.2, scale: 0.7, turn: 46, z: -170, opacity: 1 },
+  { x: 1.45, scale: 0.66, turn: 48, z: -210, opacity: 1 },
+  { x: 1.7, scale: 0.62, turn: 50, z: -250, opacity: 1 },
+  { x: 1.95, scale: 0.58, turn: 52, z: -290, opacity: 1 },
+  { x: 2.2, scale: 0.54, turn: 54, z: -330, opacity: 1 },
+  { x: 2.45, scale: 0.5, turn: 56, z: -370, opacity: 0 },
 ];
 
 type Step = { x: number; scale: number; turn: number; z: number; opacity: number };
@@ -137,8 +143,26 @@ function PrizedCoverflow({
   const targetRef = useRef(0);
   const raf = useRef(0);
   const box = useRef<HTMLDivElement>(null);
-  const [cw, setCw] = useState(0);
   const hovering = useRef(false);
+  // The details panel on the wide shelf; with it hidden, the cards carry the
+  // name themselves. Remembered on this device.
+  const [showPanel, setShowPanel] = useState(true);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("dg.prizedPanel") === "0") setShowPanel(false);
+    } catch {
+      /* a remembered choice is a convenience */
+    }
+  }, []);
+  const togglePanel = () =>
+    setShowPanel((v) => {
+      try {
+        localStorage.setItem("dg.prizedPanel", v ? "0" : "1");
+      } catch {
+        /* as above */
+      }
+      return !v;
+    });
 
   const set = (v: number) => {
     posRef.current = v;
@@ -176,16 +200,6 @@ function PrizedCoverflow({
     return () => window.clearInterval(iv);
   }, [wide, n]);
 
-  // The row's width, so the wide fan can stretch to end exactly at its right edge.
-  useEffect(() => {
-    const el = box.current;
-    if (!wide || !el) return;
-    const ro = new ResizeObserver(() => setCw(el.clientWidth));
-    ro.observe(el);
-    setCw(el.clientWidth);
-    return () => ro.disconnect();
-  }, [wide]);
-
   // A trackpad's two-finger sideways swipe, a mouse's sideways wheel (or shift +
   // wheel) moves the row as it comes, on any screen size, and it settles when the
   // input stops. Vertical scrolling is left alone, so the page still scrolls past
@@ -221,29 +235,10 @@ function PrizedCoverflow({
 
   // Where a car at `d` cars from the front sits. Between whole cars it is blended
   // from the two either side, so the row moves smoothly rather than in steps.
-  const rem =
-    typeof document === "undefined"
-      ? 16
-      : parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
-  const cardW = 18 * rem;
-  const rightCount = Math.max(1, Math.min(10, n) - 2);
-  const wideX = (j: number) => {
-    const last = WIDE_RIGHT[Math.min(rightCount, WIDE_RIGHT.length - 1)];
-    // Where the last car's centre must be on screen for its right edge to meet the
-    // row's edge; then back out the perspective, which draws far cars toward the
-    // middle (PERSPECTIVE / (PERSPECTIVE + depth)).
-    const screenCentre = cw - cardW * last.scale * 0.32 - 36;
-    const shrink = WIDE_PERSPECTIVE / (WIDE_PERSPECTIVE + Math.abs(last.z));
-    const lastCentre = cw / 2 + (screenCentre - cw / 2) / shrink;
-    const lastX = (lastCentre - 0.3 * cw) / cardW;
-    const x1 = WIDE_RIGHT[1].x;
-    return rightCount <= 1 ? x1 : x1 + ((j - 1) * (lastX - x1)) / (rightCount - 1);
-  };
   const stepOf = (side: number, j: number): Step => {
     const table = wide ? (side < 0 ? WIDE_LEFT : WIDE_RIGHT) : STEP;
     const e = table[Math.min(j, table.length - 1)];
-    const x = wide && side > 0 && j >= 1 && cw > 0 ? wideX(j) : e.x;
-    return { ...e, x, opacity: j > table.length - 1 ? 0 : e.opacity };
+    return { ...e, opacity: j > table.length - 1 ? 0 : e.opacity };
   };
   const styleAt = (d: number) => {
     const side = d < 0 ? -1 : 1;
@@ -266,7 +261,7 @@ function PrizedCoverflow({
   // Which cars to draw: a window round the front one, as wide as the fan.
   const base = Math.round(pos);
   const reach = wide ? Math.min(10, n) + 1 : Math.min(5, n) + 1;
-  const behind = wide ? 2 : Math.floor(reach / 2) + 1;
+  const behind = wide ? 3 : Math.floor(reach / 2) + 1;
   const offsets = Array.from({ length: reach + 2 }, (_, i) => i - behind);
 
   return (
@@ -274,7 +269,9 @@ function PrizedCoverflow({
       ref={box}
       className={cn(
         "relative select-none overflow-hidden",
-        wide ? "mt-4 h-[27rem] [perspective:1500px]" : "mt-3 aspect-[100/62] [perspective:900px]",
+        wide
+          ? "mx-auto mt-4 aspect-[100/39] max-w-[1800px] [perspective:1500px]"
+          : "mt-3 aspect-[100/62] [perspective:900px]",
       )}
       style={{ touchAction: "pan-y", overscrollBehaviorX: "contain" }}
       onPointerEnter={() => {
@@ -339,10 +336,10 @@ function PrizedCoverflow({
             }}
             className={cn(
               "absolute top-1/2 aspect-[534/658] overflow-hidden rounded-3xl border border-white/15 text-left shadow-[0_18px_40px_-14px_rgba(0,0,0,0.8)]",
-              wide ? "w-[18rem]" : "w-[46%]",
+              wide ? "w-[26%]" : "w-[46%]",
             )}
             style={{
-              left: wide ? "30%" : "50%",
+              left: wide ? `${WIDE_FRONT * 100}%` : "50%",
               zIndex: 100 - Math.round(st.m * 10),
               opacity: st.opacity,
               pointerEvents: st.opacity < 0.05 ? "none" : undefined,
@@ -353,7 +350,7 @@ function PrizedCoverflow({
             <CarThumb car={car} className="absolute inset-0 size-full" />
             <div
               className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent"
-              style={{ opacity: 0.6 + 0.4 * front }}
+              style={{ opacity: wide && showPanel ? 0 : 0.6 + 0.4 * front }}
             />
             <CarMarks
               car={car}
@@ -361,8 +358,13 @@ function PrizedCoverflow({
               className="absolute right-2.5 top-2.5 rounded-full bg-black/60 px-1.5 py-1 backdrop-blur-sm"
               iconClassName="size-3.5"
             />
-            <div className="absolute inset-x-0 bottom-0 p-2.5 text-white" style={{ opacity: front }}>
-              <div className="line-clamp-2 text-xs font-semibold leading-tight sm:text-sm">{name}</div>
+            <div
+              className="absolute inset-x-0 bottom-0 p-2.5 text-white"
+              style={{ opacity: wide && showPanel ? 0 : front }}
+            >
+              <div className="line-clamp-2 text-xs font-semibold leading-tight sm:text-sm">
+                {name}
+              </div>
               <div className="truncate text-[10px] text-white/70 sm:text-xs">
                 {[car.brand, car.assortment].filter(Boolean).join(" · ") || "—"}
               </div>
@@ -370,6 +372,90 @@ function PrizedCoverflow({
           </button>
         );
       })}
+      {wide && !showPanel && (
+        <button
+          type="button"
+          onClick={togglePanel}
+          aria-label="Show details panel"
+          title="Show details panel"
+          className="glass-btn absolute right-3 top-3 z-[200] grid size-9 cursor-pointer place-items-center rounded-full text-foreground"
+        >
+          <Eye className="size-4" />
+        </button>
+      )}
+      {wide && showPanel && (
+        // The front car's details, on glass over the right of the fan: three
+        // quarters of the frame's height, two fifths of its width, centred
+        // vertically. Keyed on the car so a new one fades in.
+        <div className="card-elevated absolute right-3 top-1/2 !bg-background/55 z-[200] flex h-[75%] w-[40%] -translate-y-1/2 flex-col gap-3 overflow-hidden p-5 duration-300">
+          {(() => {
+            const c = cars[wrap(base)];
+            const facts: [string, string | undefined][] = [
+              ["Brand", c.brand],
+              ["Number", c.carNumber],
+              ["Series", c.series],
+              ["Sub series", c.subSeries],
+              ["Assortment", c.assortment],
+              ["Colour", c.colour],
+              ["Type", c.type],
+              ["Status", c.status ? statusLabel(c.status) : ""],
+              ["Year", c.year],
+              // What it cost goes through inrFull, which honours the hide-amounts switch.
+              ["Paid", Number(c.spent) > 0 ? inrFull(Number(c.spent)) : ""],
+              ["Sold by", c.seller],
+            ];
+            return (
+              <div
+                key={wrap(base)}
+                className="animate-in fade-in flex min-h-0 flex-1 flex-col gap-3 duration-300"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="line-clamp-2 text-xl font-semibold leading-tight">
+                      {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                    </div>
+                    {(c.make || c.model) && c.name && (
+                      <div className="mt-0.5 truncate text-sm text-muted-foreground">
+                        {`${c.make} ${c.model}`.trim()}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={togglePanel}
+                    aria-label="Hide details panel"
+                    title="Hide details panel"
+                    className="glass-btn grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-foreground"
+                  >
+                    <EyeOff className="size-4" />
+                  </button>
+                </div>
+                <dl className="grid min-h-0 flex-1 grid-cols-2 content-start gap-x-4 gap-y-3 overflow-hidden">
+                  {facts
+                    .filter(([, v]) => (v || "").trim())
+                    .map(([k, v]) => (
+                      <div key={k} className="min-w-0">
+                        <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          {k}
+                        </dt>
+                        <dd className="truncate text-sm font-medium">{v}</dd>
+                      </div>
+                    ))}
+                </dl>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => onOpen(c)}
+                >
+                  View details
+                  <ArrowRight className="size-4" />
+                </Button>
+              </div>
+            );
+          })()}
+        </div>
+      )}
     </div>
   );
 }

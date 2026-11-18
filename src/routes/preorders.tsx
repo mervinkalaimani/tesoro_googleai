@@ -1003,7 +1003,12 @@ function PreOrdersPage() {
       <PageHeading
         title="Pre-orders"
         subtitle={`${rows.length} ${rows.length === 1 ? "car" : "cars"} on pre-order`}
-      />
+      >
+        <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
+          <Plus className="size-4" />
+          <span className="hidden sm:inline">New pre-order</span>
+        </Button>
+      </PageHeading>
 
       <KpiBand>
         <KpiTile
@@ -1104,10 +1109,6 @@ function PreOrdersPage() {
             />
             {/* Every pre-order on the page, filtered as it stands. */}
             <ExportButton rows={rows} name="preorders" label="Pre-orders" iconOnlyOnMobile />
-            <Button size="sm" className="gap-1.5" onClick={() => setAddOpen(true)}>
-              <Plus className="size-4" />
-              <span className="hidden sm:inline">New pre-order</span>
-            </Button>
           </>
         }
       />

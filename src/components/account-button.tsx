@@ -1,13 +1,13 @@
 import { isIso } from "@/lib/status";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronRight, Eye, EyeOff, Settings, Sparkles, Table, Wrench } from "lucide-react";
+import { ChevronRight, Eye, EyeOff, Settings, Sparkles, Table, Wrench, X } from "lucide-react";
 
 import { openProDialog } from "@/components/pro-dialog";
 import { paidPlanOf } from "@/lib/tiers";
 import { TierAvatar } from "@/components/tier-avatar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { UserMenu } from "@/components/user-menu";
 import { useCars } from "@/lib/cars-store";
 import { useAuth, fullName } from "@/lib/auth-store";
@@ -84,14 +84,15 @@ function MobileAccountMenu() {
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent
           side="bottom"
-          className="max-h-[85svh] overflow-y-auto rounded-t-[2.5rem] border-t border-border p-4 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))]"
+          hideClose
+          className="max-h-[85svh] overflow-y-auto rounded-t-[2.5rem] border-t border-border bg-background/60 p-4 backdrop-blur-2xl pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))]"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Menu</SheetTitle>
           </SheetHeader>
 
           {/* 1. User Details */}
-          <div className="flex items-center gap-3.5 rounded-2xl border border-border/80 bg-muted/40 p-3.5 shadow-xs">
+          <div className="flex items-center gap-3.5 card-elevated p-3.5">
             <TierAvatar
               url={profile?.avatar_url}
               initials={initialsOf(name, display)}
@@ -121,6 +122,12 @@ function MobileAccountMenu() {
                 <div className="truncate text-xs text-muted-foreground">{profile.email_id}</div>
               )}
             </div>
+            <SheetClose
+              aria-label="Close"
+              className="grid size-8 shrink-0 cursor-pointer place-items-center self-start rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-4" />
+            </SheetClose>
           </div>
 
           {/* The same offer the sidebar makes, in the only place a phone has
@@ -148,7 +155,7 @@ function MobileAccountMenu() {
             <Link
               to="/inventory"
               onClick={close}
-              className="group block rounded-2xl border border-border/80 bg-card p-3.5 shadow-xs transition-colors hover:bg-muted/40 active:scale-[0.98]"
+              className="group block card-elevated p-3.5 transition-colors hover:bg-muted/40 active:scale-[0.98]"
             >
               <div className="flex items-center justify-between">
                 <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -162,7 +169,7 @@ function MobileAccountMenu() {
               <div className="mt-0.5 text-xs text-muted-foreground">View diecast inventory</div>
             </Link>
 
-            <div className="rounded-2xl border border-border/80 bg-card p-3.5 shadow-xs">
+            <div className="card-elevated p-3.5">
               <div className="flex items-center justify-between gap-1">
                 <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Cost details
@@ -192,7 +199,7 @@ function MobileAccountMenu() {
               to="/settings"
               search={{ tab: "advanced" }}
               onClick={close}
-              className="group mt-2.5 flex items-center gap-3.5 rounded-2xl border border-border/80 bg-card px-3.5 py-3 shadow-xs transition-colors hover:bg-muted/40 active:scale-[0.98]"
+              className="group mt-2.5 flex items-center gap-3.5 card-elevated px-3.5 py-3 transition-colors hover:bg-muted/40 active:scale-[0.98]"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Wrench className="size-4" />
@@ -205,7 +212,7 @@ function MobileAccountMenu() {
           )}
 
           {/* 3. Settings */}
-          <div className="mt-3 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+          <div className="mt-3 overflow-hidden card-elevated">
             <Link
               to="/settings"
               onClick={close}

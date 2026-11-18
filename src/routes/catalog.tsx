@@ -1,3 +1,5 @@
+import { IosGroup, IosPicker, IosRow } from "@/components/ios-field";
+import { Switch } from "@/components/ui/switch";
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -23,7 +25,7 @@ import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
 import { compareCarNumbers } from "@/lib/car-number";
 import { useAuth } from "@/lib/auth-store";
-import { isIso } from "@/lib/status";
+import { isIso, isPreOrder as isPoStatus } from "@/lib/status";
 import type { CatalogCar, ReleaseStatus } from "@/lib/catalog";
 import {
   catalogEntryUsage,
@@ -58,7 +60,7 @@ import {
 } from "@/lib/catalog";
 import { parseQuery, matchesQuery } from "@/lib/search";
 import { searchCarImages } from "@/lib/car-image-search";
-import { groupCastings, priceRange, type CastingGroup } from "@/lib/casting-group";
+import { groupCastings, type CastingGroup } from "@/lib/casting-group";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { RowListSkeleton, TileGridSkeleton } from "@/components/dashboard-skeletons";
@@ -453,10 +455,13 @@ function CatalogPage() {
    * ISO cars are tracked separately so they are marked and kept visible
    * even when "Hide owned cars" is enabled.
    */
-  const { owned, myIso } = useMemo(() => {
+  const { owned, myIso, preordered } = useMemo(() => {
     const known = new Set(catalog.map((c) => c.car_id.toUpperCase()));
     const ownedSet = new Set<string>();
     const isoSet = new Set<string>();
+    // Castings you have pre-ordered and not yet received: they say PO, not Owned.
+    const poSet = new Set<string>();
+    const poKeys = new Set<string>();
     const unresolvedOwned: typeof mine = [];
     const unresolvedIso: typeof mine = [];
     /** What you own and what you are hunting, by description rather than by id. */
@@ -472,6 +477,10 @@ function CatalogPage() {
         else unresolvedIso.push(c);
       } else {
         ownedKeys.add(catalogueKey(c));
+        if (isPoStatus(c.status)) {
+          poKeys.add(catalogueKey(c));
+          if (id && known.has(id)) poSet.add(id);
+        }
         if (id && known.has(id)) ownedSet.add(id);
         else unresolvedOwned.push(c);
       }
@@ -497,6 +506,7 @@ function CatalogPage() {
           ownedSet.add(id);
         }
       }
+      if (!poSet.has(id) && poKeys.has(key)) poSet.add(id);
       if (!isoSet.has(id)) {
         if (isoKeys.has(key) || unresolvedIso.some((m) => isCarMatchingCatalog(m, cat))) {
           isoSet.add(id);
@@ -504,7 +514,7 @@ function CatalogPage() {
       }
     }
 
-    return { owned: ownedSet, myIso: isoSet };
+    return { owned: ownedSet, myIso: isoSet, preordered: poSet };
   }, [mine, catalog]);
 
   // Segment and the top bar's search first; the filter options come from what is left.
@@ -737,13 +747,13 @@ function CatalogPage() {
         onEdit={isAdmin ? setEditing : undefined}
       />
     ) : (
-      // Two across on a phone rather than one full-width card per row.
-      <div className={cn(GRID_COLS, "max-sm:grid-cols-2 max-sm:gap-2")}>
+      <div className={GRID_COLS}>
         {list.map((c) => (
           <CatalogCard
             key={c.car_id}
             c={c}
             owned={owned.has(c.car_id.toUpperCase())}
+            preordered={preordered.has(c.car_id.toUpperCase())}
             isIso={myIso.has(c.car_id.toUpperCase())}
             onOpen={() => setViewing(c)}
             onAdd={() => startAdd(c)}
@@ -1181,95 +1191,64 @@ function CatalogPage() {
             <DialogDescription className="sr-only">Filter catalog cars</DialogDescription>
           </div>
 
-          {/* Scrollable Filter List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[60dvh]">
-            {/* On by default. Once a box is in the catalogue its cars appear
-                twice — as the box and as themselves — and the box is the thing
-                on the shelf. Turning it off shows the castings individually. */}
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 transition-colors hover:bg-muted/50">
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-foreground">
-                  Combine multi pack
-                </span>
-                <span className="block text-xs text-muted-foreground">
-                  Show the box, not the five cars inside it.
-                </span>
-              </span>
-              <input
-                type="checkbox"
-                checked={draftHideInPacks}
-                onChange={(e) => setDraftHideInPacks(e.target.checked)}
-                className="size-4 shrink-0 cursor-pointer rounded border-input accent-primary"
-              />
-            </label>
-
-            {/* On the desktop this is a chip in the toolbar. There is no room
-                for the chip row on a phone, so it comes in here with the rest
-                rather than disappearing. */}
-            <label className="flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-border/80 bg-muted/30 p-3 transition-colors hover:bg-muted/50">
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-foreground">Hide owned</span>
-                <span className="block text-xs text-muted-foreground">
-                  Leave out castings already in your collection.
-                </span>
-              </span>
-              <input
-                type="checkbox"
-                checked={draftHideOwned}
-                onChange={(e) => setDraftHideOwned(e.target.checked)}
-                className="size-4 shrink-0 cursor-pointer rounded border-input accent-primary"
-              />
-            </label>
-
-            {/* All filter dropdowns arranged in 2 columns */}
-            <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
-              {FILTERS.map((d) => {
-                const isSelected = draftFilters[d.key] !== "all";
-                const filterOpts = draftOptions[d.key] || [];
-                return (
-                  <div key={d.key} className="space-y-1">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block truncate">
-                      {d.label}
-                    </label>
-                    <select
-                      value={draftFilters[d.key]}
-                      onChange={(e) => setDraftFilters((f) => ({ ...f, [d.key]: e.target.value }))}
-                      aria-label={d.label}
-                      className={cn(
-                        "w-full h-9 rounded-lg border bg-background px-2.5 text-xs transition-colors cursor-pointer truncate",
-                        isSelected
-                          ? "border-primary font-medium text-foreground ring-1 ring-primary/20"
-                          : "border-input text-muted-foreground",
-                      )}
-                    >
-                      <option value="all">All {plural(d.label)}</option>
-                      {filterOpts.map((o) => (
-                        <option key={o.value} value={o.value}>
-                          {o.value} ({o.count})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                );
-              })}
+          {/* Scrollable list, laid out the way iOS Settings does it: grouped rows,
+              the name on the left and the answer on the right. */}
+          <div className="max-h-[60dvh] flex-1 space-y-5 overflow-y-auto p-4">
+            <div className="space-y-1.5">
+              <IosGroup>
+                {/* On by default. Once a box is in the catalogue its cars appear
+                    twice, as the box and as themselves, and the box is the thing
+                    on the shelf. Off shows the castings individually. */}
+                <IosRow label="Combine multi pack">
+                  <Switch checked={draftHideInPacks} onCheckedChange={setDraftHideInPacks} />
+                </IosRow>
+                {/* A chip in the toolbar on the desktop; with no room for the chip
+                    row on a phone, it comes in here with the rest. */}
+                <IosRow label="Hide owned">
+                  <Switch checked={draftHideOwned} onCheckedChange={setDraftHideOwned} />
+                </IosRow>
+              </IosGroup>
+              <p className="px-1 text-xs text-muted-foreground">
+                Combine shows the box, not the cars inside it. Hide owned leaves out castings
+                already in your collection.
+              </p>
             </div>
+
+            <IosGroup>
+              {FILTERS.map((d) => (
+                <IosRow key={d.key} label={d.label}>
+                  <IosPicker
+                    label={d.label}
+                    value={draftFilters[d.key]}
+                    onChange={(v) => setDraftFilters((f) => ({ ...f, [d.key]: v || "all" }))}
+                    options={[
+                      { value: "all", label: "All" },
+                      ...(draftOptions[d.key] || []).map((o) => ({
+                        value: o.value,
+                        label: `${o.value} (${o.count})`,
+                      })),
+                    ]}
+                  />
+                </IosRow>
+              ))}
+            </IosGroup>
           </div>
 
-          {/* Sticky footer: Clear on left, Apply on right */}
-          <div className="sticky bottom-0 z-10 border-t border-border bg-background/95 backdrop-blur-md p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] flex items-center justify-between gap-3 shrink-0">
+          {/* Sticky footer: Clear and Apply share the width equally */}
+          <div className="sticky bottom-0 z-10 flex shrink-0 items-center gap-3 border-t border-border bg-background/95 p-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] backdrop-blur-md">
             <Button
               type="button"
               variant="outline"
               onClick={handleClearFilters}
               disabled={draftActiveCount === 0}
-              className="h-10 px-4 text-sm font-semibold cursor-pointer"
+              className="h-10 flex-1 cursor-pointer text-sm font-semibold"
             >
               Clear
             </Button>
             <Button
               type="button"
               onClick={handleApplyFilters}
-              className="h-10 flex-1 sm:flex-initial px-6 text-sm font-semibold cursor-pointer"
+              className="h-10 flex-1 cursor-pointer text-sm font-semibold"
             >
               Apply
             </Button>
@@ -1295,7 +1274,7 @@ function AddPlus({ onClick, className }: { onClick: () => void; className?: stri
       aria-label="Add to my collection"
       title="Add to my collection"
       className={cn(
-        "grid size-8 shrink-0 cursor-pointer place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform hover:bg-primary/90 active:scale-95",
+        "glass-btn-solid grid size-8 shrink-0 cursor-pointer place-items-center rounded-full bg-primary/90 text-primary-foreground transition-transform hover:bg-primary active:scale-95",
         className,
       )}
     >
@@ -1306,6 +1285,7 @@ function AddPlus({ onClick, className }: { onClick: () => void; className?: stri
 function CatalogCard({
   c,
   owned,
+  preordered = false,
   isIso: isCarIso,
   onOpen,
   onAdd,
@@ -1313,6 +1293,8 @@ function CatalogCard({
 }: {
   c: CatalogCar;
   owned: boolean;
+  /** One of yours is a pre-order: the mark says PO rather than Owned. */
+  preordered?: boolean;
   isIso: boolean;
   onOpen: () => void;
   onAdd: () => void;
@@ -1321,80 +1303,69 @@ function CatalogCard({
 }) {
   const car = asCar(c);
   const boxes = group && group.assortments.length > 1 ? group : null;
-  const span = boxes ? priceRange(boxes.members) : null;
 
+  // The same card as My Cars' grid: the photograph fills a tall frame, the name
+  // and the brand line sit over it on glass, and the marks are small round ones
+  // so three fit across a phone.
+  const mark = "grid size-6 place-items-center rounded-full bg-black/70 backdrop-blur-sm";
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
-      <button type="button" onClick={onOpen} className="relative block w-full">
-        <CarThumb car={car} className="aspect-[16/10] w-full" />
-        {isPreOrder(c) && (
-          <span className="absolute left-2 top-2 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-amber-400 backdrop-blur-sm">
-            PO
-          </span>
-        )}
-        <div className="absolute right-2 top-2 flex items-center gap-1">
-          <SyncedBadge car={c} />
-          {isCarIso && (
-            <span
-              title="On your wishlist"
-              className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-sky-400 backdrop-blur-sm ring-1 ring-sky-500/40"
-            >
-              <Bookmark className="size-3" /> Wishlist
-            </span>
-          )}
-          {owned && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-emerald-400 backdrop-blur-sm">
-              <Check className="size-3" /> Owned
-            </span>
-          )}
-        </div>
-        {/* More than one box holds this same casting. Bottom-right is the one
-            corner nothing else uses, and the count is the point — which boxes
-            they are is a tap away. */}
-        {boxes && (
-          <span
-            title={`Sold as ${boxes.assortments.join(", ")}`}
-            className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-foreground ring-1 ring-white/20 backdrop-blur-sm"
-          >
-            <Layers className="size-3" />
-            {boxes.assortments.length} assortments
-          </span>
-        )}
-        {/* A box, not a casting. It earns the primary colour because it changes
-            what the card means: one of these is several cars. */}
-        {c.is_multipack && (
-          <span className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground shadow-sm">
-            <Package className="size-3" />
-            {packLabel(c)}
-          </span>
-        )}
-      </button>
-      <div className="flex flex-1 flex-col p-3">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="text-left text-sm font-bold leading-snug hover:text-primary"
-        >
-          {car.name}
+      <div className="relative">
+        <button type="button" onClick={onOpen} className="relative block w-full">
+          <CarThumb car={car} className="aspect-[534/658] w-full" />
+          <div className="absolute right-2 top-2 flex items-center gap-1">
+            <SyncedBadge car={c} iconOnly />
+            {isCarIso && (
+              <span title="On your wishlist" className={cn(mark, "text-sky-400")}>
+                <Bookmark className="size-3" />
+              </span>
+            )}
+            {preordered ? (
+              <span
+                title="You have pre-ordered this"
+                className="inline-flex h-6 items-center rounded-full bg-black/70 px-2 text-[10px] font-bold text-amber-400 backdrop-blur-sm"
+              >
+                PO
+              </span>
+            ) : (
+              owned && (
+                <span title="Owned" className={cn(mark, "text-emerald-400")}>
+                  <Check className="size-3" />
+                </span>
+              )
+            )}
+          </div>
+          {/* Top left: how many cars a box holds, then whether the casting is a
+              pre-order in the catalogue (unless you have pre-ordered it, when the
+              mark on the right already says PO). */}
+          <div className="absolute left-2 top-2 flex items-center gap-1">
+            {c.is_multipack && (
+              <span className="inline-flex h-6 items-center gap-1 rounded-full bg-primary px-2 text-[10px] font-bold text-primary-foreground shadow-sm">
+                <Package className="size-3" />
+                {packLabel(c).match(/\d+/)?.[0] ?? packLabel(c)}
+              </span>
+            )}
+            {isPreOrder(c) && !preordered && (
+              <span className="inline-flex h-6 items-center rounded-full bg-black/75 px-2 text-[10px] font-semibold text-amber-400 backdrop-blur-sm">
+                PO
+              </span>
+            )}
+          </div>
         </button>
-        <p className="mt-1 truncate text-xs text-muted-foreground">{catalogueLine(car)}</p>
-
-        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-          <div className="min-w-0">
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">MRP</div>
-            {/* A range when the boxes disagree, which is the whole reason they
-                are still separate entries underneath one card. */}
-            <div className="truncate text-sm font-semibold tabular-nums">
-              {span && span.low !== span.high
-                ? `${inrPrice(span.low)}–${inrPrice(span.high)}`
-                : c.mrp
-                  ? inrPrice(c.mrp)
-                  : "—"}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <AddPlus onClick={onAdd} />
-          </div>
+        <CarOverlay
+          car={car}
+          brandOnly
+          small
+          suffix={boxes ? `${boxes.assortments.length} boxes` : undefined}
+          className="pb-12"
+        />
+        {/* Over the bottom of the photograph, full length: the picture fills the
+            whole card, the button sits on it. */}
+        <div className="absolute inset-x-2 bottom-2">
+          <Button type="button" size="sm" onClick={onAdd} className="h-8 w-full gap-1.5 text-xs">
+            <Plus className="size-3.5" />
+            Add
+          </Button>
         </div>
       </div>
     </article>

@@ -11,7 +11,7 @@
  * spelling, which is also how two spellings become one.
  */
 import { useMemo, useState } from "react";
-import { Check, Loader2, Pencil, Search, X } from "lucide-react";
+import { Check, Loader2, Pencil, Plus, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -41,11 +41,10 @@ const isMetaField = (t: Tab): t is MetaField =>
   t !== "assortments" && t !== "entries" && t !== "logos" && t !== "photos";
 
 /** One field's spellings, with a rename each. */
-function ValueList({ field }: { field: MetaField }) {
+function ValueList({ field, q }: { field: MetaField; q: string }) {
   const { catalog, refreshCatalog } = useCatalog();
   const [editing, setEditing] = useState<{ key: string; value: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const [q, setQ] = useState("");
 
   const values = useMemo(() => metaValues(catalog, field), [catalog, field]);
   const shown = useMemo(() => {
@@ -73,107 +72,154 @@ function ValueList({ field }: { field: MetaField }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-      <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2.5">
-        <Search className="size-3.5 shrink-0 text-muted-foreground" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={`Search ${META_LABEL[field].toLowerCase()}…`}
-          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-        />
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-          {shown.length}/{values.length}
-        </span>
-      </div>
-
-      <p className="border-b border-border/60 px-4 py-2 text-xs text-muted-foreground">
-        Renaming rewrites every catalogue entry and every car that used the old spelling — which is
-        also how two spellings become one.
-      </p>
-
-      <ul className="max-h-[28rem] divide-y divide-border/60 overflow-y-auto">
-        {shown.map((v) => {
-          const open = editing?.key === v.key;
-          const working = busy === v.key;
-          return (
-            <li key={v.key} className="flex items-center gap-3 px-4 py-2.5">
-              {open ? (
-                <>
-                  <Input
-                    autoFocus
-                    value={editing.value}
-                    onChange={(e) => setEditing({ key: v.key, value: e.target.value })}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void save(v.key, v.label);
-                      if (e.key === "Escape") setEditing(null);
-                    }}
-                    className="h-8 text-sm"
-                  />
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="size-8 text-emerald-600"
-                    onClick={() => void save(v.key, v.label)}
-                  >
-                    <Check className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="size-8 text-muted-foreground"
-                    onClick={() => setEditing(null)}
-                  >
-                    <X className="size-4" />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{v.label}</span>
-                  <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                    {v.count}
-                  </span>
-                  {working ? (
-                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
-                  ) : (
+    <div className="space-y-1.5">
+      <div className="card-elevated overflow-hidden">
+        <ul className="max-h-[calc(100svh-21.5rem)] min-h-56 sm:max-h-[calc(100svh-18rem)] divide-y divide-border/60 overflow-y-auto">
+          {shown.map((v) => {
+            const open = editing?.key === v.key;
+            const working = busy === v.key;
+            return (
+              <li key={v.key} className="flex items-center gap-3 px-4 py-2.5">
+                {open ? (
+                  <>
+                    <Input
+                      autoFocus
+                      value={editing.value}
+                      onChange={(e) => setEditing({ key: v.key, value: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void save(v.key, v.label);
+                        if (e.key === "Escape") setEditing(null);
+                      }}
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-8 text-emerald-600"
+                      onClick={() => void save(v.key, v.label)}
+                    >
+                      <Check className="size-4" />
+                    </Button>
                     <Button
                       size="icon"
                       variant="ghost"
                       className="size-8 text-muted-foreground"
-                      title={`Rename ${v.label}`}
-                      onClick={() => setEditing({ key: v.key, value: v.label })}
+                      onClick={() => setEditing(null)}
                     >
-                      <Pencil className="size-3.5" />
+                      <X className="size-4" />
                     </Button>
-                  )}
-                </>
-              )}
-            </li>
-          );
-        })}
-        {shown.length === 0 && (
-          <li className="p-6 text-center text-sm text-muted-foreground">Nothing matches.</li>
-        )}
-      </ul>
+                  </>
+                ) : (
+                  <>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{v.label}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                      {v.count}
+                    </span>
+                    {working ? (
+                      <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-muted-foreground"
+                        title={`Rename ${v.label}`}
+                        onClick={() => setEditing({ key: v.key, value: v.label })}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    )}
+                  </>
+                )}
+              </li>
+            );
+          })}
+          {shown.length === 0 && (
+            <li className="p-6 text-center text-sm text-muted-foreground">Nothing matches.</li>
+          )}
+        </ul>
+      </div>
+      <p className="px-1 pt-1 text-xs text-muted-foreground">
+        <span className="tabular-nums">
+          {shown.length}/{values.length}
+        </span>{" "}
+        · Renaming rewrites every catalogue entry and every car that used the old spelling — which
+        is also how two spellings become one.
+      </p>
     </div>
   );
 }
 
 export function MetadataEditor() {
   const [tab, setTab] = useState<Tab>("brand");
+  const [q, setQ] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+  const searchable = isMetaField(tab) || tab === "assortments" || tab === "logos";
+  const tabControl = (
+    <SegmentControl<Tab>
+      value={tab}
+      onChange={(t) => {
+        setTab(t);
+        setQ("");
+        setAddOpen(false);
+      }}
+      className="h-9 w-auto"
+      options={TABS}
+    />
+  );
 
   return (
     <div className="space-y-4">
-      <SegmentControl<Tab> value={tab} onChange={setTab} className="h-9 w-auto" options={TABS} />
+      {/* The Entries page has its own search and filter, so it takes the field
+          picker into its row, after them. */}
+      {tab === "entries" ? (
+        <CataloguePhotos trailing={tabControl} />
+      ) : (
+        <>
+          {/* The search sits with the field picker, to its left, on the lists it
+          searches. */}
+          <div className="flex items-center gap-2">
+            {searchable && (
+              <label className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-full border border-border bg-muted/40 px-3">
+                <Search className="size-3.5 shrink-0 text-muted-foreground" />
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder={`Search ${(isMetaField(tab)
+                    ? META_LABEL[tab]
+                    : tab === "logos"
+                      ? "brands"
+                      : "assortments"
+                  ).toLowerCase()}…`}
+                  className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                />
+              </label>
+            )}
+            {tab === "assortments" && (
+              <Button
+                type="button"
+                size="icon"
+                aria-label="Add an assortment"
+                title="Add an assortment"
+                onClick={() => setAddOpen((v) => !v)}
+                className="size-9 shrink-0 rounded-full"
+              >
+                <Plus className={`size-4 transition-transform ${addOpen ? "rotate-45" : ""}`} />
+              </Button>
+            )}
+            {tabControl}
+          </div>
 
-      {isMetaField(tab) && <ValueList key={tab} field={tab} />}
-      {tab === "assortments" && <AssortmentManager />}
-      {tab === "entries" && <CataloguePhotos />}
-      {tab === "logos" && <BrandLogoManager />}
-      {/* Finding photographs for castings is work on the catalogue, not on
+          {isMetaField(tab) && <ValueList key={tab} field={tab} q={q} />}
+          {tab === "assortments" && (
+            <AssortmentManager q={q} addOpen={addOpen} onAdded={() => setAddOpen(false)} />
+          )}
+          {tab === "logos" && <BrandLogoManager q={q} />}
+          {/* Finding photographs for castings is work on the catalogue, not on
           anybody’s account. It sat at the bottom of the Users screen because
           that was the only admin page there was. */}
-      {tab === "photos" && <AdminImageRefresh />}
+          {tab === "photos" && <AdminImageRefresh />}
+        </>
+      )}
     </div>
   );
 }

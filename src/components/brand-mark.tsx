@@ -15,6 +15,10 @@ const themed = (svg: string, id: string) =>
   svg
     .replace(/#0A0A0A/gi, "currentColor")
     .replace(/#090908/gi, "currentColor")
+    // The orange letters are the accent colour, so choosing another accent in
+    // Settings repaints the mark too. A style, because a presentation attribute
+    // cannot hold var().
+    .replace(/fill="#EF6413"/gi, 'style="fill:var(--primary)"')
     // Both files come out of the same editor, so their clip-path ids can collide
     // when two marks are on one page.
     .replace(/clip0_[0-9_]+/g, id)

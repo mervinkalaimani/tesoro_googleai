@@ -19,6 +19,7 @@ import { AuthProvider } from "@/lib/auth-store";
 import { AuthGate } from "@/components/auth-gate";
 import { UpdateNotice } from "@/components/update-notice";
 import { Toaster } from "@/components/ui/sonner";
+import { UseCasePrompt } from "@/components/use-case-prompt";
 import { BootSplash } from "@/components/brand-mark";
 
 function NotFoundComponent() {
@@ -273,6 +274,7 @@ function RootComponent() {
               <CarDrawerProvider>
                 <AuthGate>
                   <Outlet />
+                  <UseCasePrompt />
                 </AuthGate>
                 {/* Nothing was mounting this, so every toast in the app was
                     written to a surface that did not exist — including the one

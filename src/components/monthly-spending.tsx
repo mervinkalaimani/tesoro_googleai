@@ -242,6 +242,12 @@ export function MonthlySpending({ rows, className = "" }: { rows: Diecast[]; cla
                 />
               )}
               <Bar
+                // The data is the same rows either way, so the chart sees nothing
+                // new when Cost becomes Count and would not move. A key per
+                // metric redraws the bars growing from the baseline.
+                key={metricKey}
+                animationDuration={800}
+                animationEasing="ease-out"
                 dataKey={metricKey}
                 fill="var(--primary)"
                 radius={[6, 6, 0, 0]}

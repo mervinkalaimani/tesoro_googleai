@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Check, Copy, Loader2, Pencil, Search, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
@@ -64,7 +64,7 @@ function searchWords(c: CatalogCar): string {
  * Nothing is bulk-applied. Each row saves on its own the moment you leave the
  * box, because a mistake should cost one casting rather than a screenful.
  */
-export function CataloguePhotos() {
+export function CataloguePhotos({ trailing }: { trailing?: ReactNode } = {}) {
   const { catalog, updateCatalogCar } = useCatalog();
   /** The entry whose full details are open, if any. */
   const [editing, setEditing] = useState<CatalogCar | null>(null);
@@ -161,16 +161,8 @@ export function CataloguePhotos() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs">
-        <p className="text-xs text-muted-foreground">
-          {missingCount.toLocaleString()} of {catalog.length.toLocaleString()} castings have no
-          photo. Paste a link and it saves when you leave the box — the preview on the left is what
-          everyone will see.
-        </p>
-      </div>
-
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
@@ -192,11 +184,10 @@ export function CataloguePhotos() {
           options={FILTERS}
           className="h-9 text-sm"
         />
+        {trailing}
       </div>
 
-      <p className="px-1 text-xs text-muted-foreground">{rows.length.toLocaleString()} shown</p>
-
-      <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
+      <div className="card-elevated divide-y divide-border/60 overflow-hidden">
         {shown.map((c) => {
           const url = clean(c.image_url);
           const draft = drafts[c.car_id];
@@ -247,9 +238,7 @@ export function CataloguePhotos() {
                   <p className="truncate text-xs text-muted-foreground">
                     {carSubLine(catalogCarToDiecast(c))}
                   </p>
-                  <p className="truncate font-mono text-xs text-muted-foreground/70">
-                    {c.car_id}
-                  </p>
+                  <p className="truncate font-mono text-xs text-muted-foreground/70">{c.car_id}</p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -320,6 +309,14 @@ export function CataloguePhotos() {
           </p>
         )}
       </div>
+
+      {/* The counts and what to do, under the list the way a footnote sits
+          under a grouped list in iOS Settings. */}
+      <p className="px-1 text-xs text-muted-foreground">
+        {rows.length.toLocaleString()} shown · {missingCount.toLocaleString()} of{" "}
+        {catalog.length.toLocaleString()} castings have no photo. Paste a link and it saves when you
+        leave the box — the preview on the left is what everyone will see.
+      </p>
 
       {visible < rows.length && (
         <Button variant="outline" className="w-full" onClick={() => setVisible((v) => v + PAGE)}>

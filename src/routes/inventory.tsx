@@ -23,6 +23,8 @@ import { CarThumb } from "@/components/car-thumb";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
+import { IosGroup, IosPicker, IosRow } from "@/components/ios-field";
+import { Switch } from "@/components/ui/switch";
 import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { PageHeading } from "@/components/page-header";
 import { useRegisterExportScope } from "@/lib/export-scope";
@@ -217,25 +219,6 @@ function PriceStrip({ car, spentOverride }: { car: Diecast; spentOverride?: numb
  * `inside` is for a tile that is already one button, where a second one for the
  * copies mark would be a button in a button.
  */
-function InventoryFoot({
-  copies = 1,
-  expanded = false,
-  onToggleCopies,
-  inside = false,
-}: {
-  copies?: number;
-  expanded?: boolean;
-  onToggleCopies?: () => void;
-  inside?: boolean;
-}) {
-  if (copies <= 1 || inside) return null;
-  return (
-    <div className="flex items-center justify-end px-3 py-2">
-      <CopiesBadge n={copies} expanded={expanded} onToggle={onToggleCopies} />
-    </div>
-  );
-}
-
 export function InventoryCard({
   car,
   onOpen,
@@ -243,6 +226,7 @@ export function InventoryCard({
   copiesTotal,
   expanded = false,
   onToggleCopies,
+  showStatus = true,
 }: {
   car: Diecast;
   onOpen: () => void;
@@ -252,23 +236,42 @@ export function InventoryCard({
   copiesTotal?: number;
   expanded?: boolean;
   onToggleCopies?: () => void;
+  /** The status pill on the photograph. My Cars leaves it off. */
+  showStatus?: boolean;
 }) {
   return (
     <article className="card-elevated flex flex-col overflow-hidden">
       <div className="relative">
         <button type="button" onClick={onOpen} className="block w-full">
-          <CarThumb car={car} className="aspect-[16/10] w-full" />
+          <CarThumb car={car} className="aspect-[534/658] w-full" />
         </button>
 
         <CarMarkOverlay car={car} />
-        <CarOverlay car={car} />
+        <CarOverlay
+          car={car}
+          brandOnly
+          small
+          suffix={
+            copies > 1 ? (
+              // The count sits in the line, and opens the copies as the foot's badge did.
+              <button
+                type="button"
+                onClick={onToggleCopies}
+                disabled={!onToggleCopies}
+                aria-expanded={expanded}
+                title={expanded ? "Hide the copies" : "Show every copy"}
+                className="pointer-events-auto font-semibold text-primary"
+              >
+                {copies}×
+              </button>
+            ) : undefined
+          }
+        />
 
         <div className="pointer-events-none absolute left-2 top-2">
-          <StatusPill status={car.status} className="shadow-xs backdrop-blur-sm" />
+          {showStatus && <StatusPill status={car.status} className="shadow-xs backdrop-blur-sm" />}
         </div>
       </div>
-
-      <InventoryFoot copies={copies} expanded={expanded} onToggleCopies={onToggleCopies} />
     </article>
   );
 }
@@ -838,76 +841,54 @@ function InventoryPage() {
             </DrawerClose>
           </DrawerHeader>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* Quick multi-select toggle chips */}
+          {/* The way iOS Settings lays it out: grouped rows, the name on the left
+              and the answer on the right; a switch for each toggle, a pull-down
+              for each filter. */}
+          <div className="flex-1 space-y-5 overflow-y-auto p-4">
             <div className="space-y-1.5">
-              <label className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-                Toggles
-              </label>
-              <div className="flex flex-wrap items-center gap-2">
-                <ToggleChip
-                  label="Chase"
-                  active={chaseOnly}
-                  onToggle={() => setChaseOnly((v) => !v)}
-                  icon={
-                    <ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />
-                  }
-                />
-                <ToggleChip
-                  label="Favourites"
-                  active={favOnly}
-                  onToggle={() => setFavOnly((v) => !v)}
-                  icon={
-                    <FavouriteMark
-                      className={favOnly ? "size-3" : "size-3 fill-none text-current"}
-                    />
-                  }
-                />
-                <ToggleChip
-                  label="Show collapsed"
-                  active={showCollapsed}
-                  onToggle={() => onToggleShowCollapsed(!showCollapsed)}
-                />
-                {inPackCount > 0 && (
-                  <ToggleChip
-                    label={`Combine multi pack (${inPackCount})`}
-                    active={hideInPacks}
-                    onToggle={() => setHideInPacks((v) => !v)}
-                  />
-                )}
+              <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Show
               </div>
+              <IosGroup>
+                <IosRow label="Chase">
+                  <Switch checked={chaseOnly} onCheckedChange={setChaseOnly} />
+                </IosRow>
+                <IosRow label="Favourites">
+                  <Switch checked={favOnly} onCheckedChange={setFavOnly} />
+                </IosRow>
+                <IosRow label="Show collapsed">
+                  <Switch checked={showCollapsed} onCheckedChange={onToggleShowCollapsed} />
+                </IosRow>
+                {inPackCount > 0 && (
+                  <IosRow label={`Combine multi pack (${inPackCount})`}>
+                    <Switch checked={hideInPacks} onCheckedChange={setHideInPacks} />
+                  </IosRow>
+                )}
+              </IosGroup>
             </div>
 
-            {/* 5 Filters: Make, Model, Brand, Assortment, Seller */}
-            <div className="space-y-3">
-              {FILTERS.map((d) => (
-                <div key={d.key} className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-foreground">{d.label}</label>
-                    {filters[d.key] !== "all" && (
-                      <button
-                        type="button"
-                        onClick={() => setFilters((prev) => ({ ...prev, [d.key]: "all" }))}
-                        className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
-                      >
-                        Reset
-                      </button>
-                    )}
-                  </div>
-                  <select
-                    value={filters[d.key]}
-                    onChange={(e) => setFilters((prev) => ({ ...prev, [d.key]: e.target.value }))}
-                    className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="all">All {d.label}s</option>
-                    {options[d.key].map((o) => (
-                      <option key={o.name} value={o.name}>
-                        {o.name} ({o.value})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
+            <div className="space-y-1.5">
+              <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Filter by
+              </div>
+              <IosGroup>
+                {FILTERS.map((d) => (
+                  <IosRow key={d.key} label={d.label}>
+                    <IosPicker
+                      label={d.label}
+                      value={filters[d.key]}
+                      onChange={(v) => setFilters((prev) => ({ ...prev, [d.key]: v || "all" }))}
+                      options={[
+                        { value: "all", label: "All" },
+                        ...options[d.key].map((o) => ({
+                          value: o.name,
+                          label: `${o.name} (${o.value})`,
+                        })),
+                      ]}
+                    />
+                  </IosRow>
+                ))}
+              </IosGroup>
             </div>
           </div>
 
@@ -945,6 +926,7 @@ function InventoryPage() {
                       : undefined
                   }
                   overlay={<CarOverlay car={r} brandOnly />}
+                  showStatus={false}
                   // The blister view is the packaging and its caption; the money is in the grid.
                   foot={false}
                 />
@@ -957,6 +939,7 @@ function InventoryPage() {
                   expanded={expanded.has(r.id)}
                   onToggleCopies={() => toggleExpanded(r.id)}
                   onOpen={() => openDrawer(r)}
+                  showStatus={false}
                 />
               ),
             )}

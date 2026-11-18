@@ -146,15 +146,14 @@ export function CyclePill<T extends string>({
   const shown = rest[Math.max(0, i)];
   const pill = (active: boolean) =>
     cn(
-      "flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium disabled:pointer-events-none disabled:opacity-50",
-      // The same pill whether or not it is selected — no extra fill, no brighter
-      // edge — and the selection shows in the text alone.
-      "border-border bg-muted/40",
+      "glass-btn flex h-8 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium disabled:pointer-events-none disabled:opacity-50",
+      // Glass, the same whether or not it is selected: the selection shows in the
+      // text alone.
       active ? "text-foreground" : "text-muted-foreground",
     );
   return (
     <>
-      <div className="flex min-w-0 items-center gap-2 sm:hidden">
+      <div className="cycle-wrap flex min-w-0 items-center gap-2 sm:hidden">
         {separate !== undefined && (
           <button
             type="button"
@@ -167,7 +166,7 @@ export function CyclePill<T extends string>({
           </button>
         )}
         {shown && (
-          <Popover open={hint && !menu}>
+          <Popover open={hint && !menu} onOpenChange={(o) => !o && setHint(false)}>
             <PopoverAnchor asChild>
               <span className="inline-flex min-w-0">
                 <Popover open={menu} onOpenChange={setMenu}>
@@ -242,9 +241,14 @@ export function CyclePill<T extends string>({
         {shown && (
           <button
             type="button"
-            onClick={showHint}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              // The (i) is a switch: the bubble it opened, it closes.
+              if (hint) setHint(false);
+              else showHint();
+            }}
             aria-label="How this works"
-            className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground"
+            className="cycle-info grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground"
           >
             <Info className="size-4" />
           </button>

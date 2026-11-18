@@ -147,77 +147,79 @@ export function AdminImageRefresh() {
   const pct = progress && progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
 
   return (
-    <section className="rounded-2xl border border-border/80 bg-card p-4 shadow-xs md:p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 className="flex items-center gap-2 text-base font-semibold">
-            <ImageDown className="size-4 text-muted-foreground" />
-            Refresh car photos
-          </h2>
-          <p className="mt-1 max-w-xl text-xs text-muted-foreground">
-            Finds a new photo for every car in your collection from its brand, make, model, colour,
-            year and assortment — the card when one can be found — and replaces the current one.
-            Keep this page open while it runs. Each batch can be undone.
-          </p>
+    <section className="space-y-1.5">
+      <div className="card-elevated p-4 md:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="flex items-center gap-2 text-base font-semibold">
+              <ImageDown className="size-4 text-muted-foreground" />
+              Refresh car photos
+            </h2>
+          </div>
+          {running ? (
+            <Button variant="outline" onClick={() => (stopRef.current = true)} className="gap-1.5">
+              <Square className="size-3.5" />
+              Stop
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setConfirming(true)}
+              disabled={!targets.length}
+              className="gap-1.5"
+            >
+              <ImageDown className="size-4" />
+              Refresh {targets.length.toLocaleString()} {targets.length === 1 ? "photo" : "photos"}
+            </Button>
+          )}
         </div>
-        {running ? (
-          <Button variant="outline" onClick={() => (stopRef.current = true)} className="gap-1.5">
-            <Square className="size-3.5" />
-            Stop
-          </Button>
-        ) : (
-          <Button
-            onClick={() => setConfirming(true)}
-            disabled={!targets.length}
-            className="gap-1.5"
-          >
-            <ImageDown className="size-4" />
-            Refresh {targets.length.toLocaleString()} {targets.length === 1 ? "photo" : "photos"}
-          </Button>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+          <label className="flex items-center justify-between gap-3 card-elevated !rounded-2xl px-3 py-2.5 [--frame-gap:1rem]">
+            <span className="text-sm">
+              Only cars without a photo
+              <span className="block text-xs text-muted-foreground">
+                Leave existing photos alone
+              </span>
+            </span>
+            <Switch checked={onlyMissing} onCheckedChange={setOnlyMissing} disabled={running} />
+          </label>
+          <label className="flex items-center justify-between gap-3 card-elevated !rounded-2xl px-3 py-2.5 [--frame-gap:1rem]">
+            <span className="text-sm">
+              Keep photos you uploaded
+              <span className="block text-xs text-muted-foreground">
+                Your own camera shots are not replaced
+              </span>
+            </span>
+            <Switch checked={keepUploads} onCheckedChange={setKeepUploads} disabled={running} />
+          </label>
+        </div>
+
+        {progress && (
+          <div className="mt-4 space-y-1.5" aria-live="polite">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                {running && <Loader2 className="size-3 animate-spin" />}
+                {progress.done.toLocaleString()} of {progress.total.toLocaleString()} ({pct}%)
+              </span>
+              <span>
+                {progress.updated} updated · {progress.unchanged} current · {progress.missing} no
+                match
+              </span>
+            </div>
+          </div>
         )}
       </div>
-
-      <div className="mt-4 grid gap-2 sm:grid-cols-2">
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-border/70 px-3 py-2.5">
-          <span className="text-sm">
-            Only cars without a photo
-            <span className="block text-xs text-muted-foreground">
-              Leave existing photos alone
-            </span>
-          </span>
-          <Switch checked={onlyMissing} onCheckedChange={setOnlyMissing} disabled={running} />
-        </label>
-        <label className="flex items-center justify-between gap-3 rounded-xl border border-border/70 px-3 py-2.5">
-          <span className="text-sm">
-            Keep photos you uploaded
-            <span className="block text-xs text-muted-foreground">
-              Your own camera shots are not replaced
-            </span>
-          </span>
-          <Switch checked={keepUploads} onCheckedChange={setKeepUploads} disabled={running} />
-        </label>
-      </div>
-
-      {progress && (
-        <div className="mt-4 space-y-1.5" aria-live="polite">
-          <div className="h-2 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs tabular-nums text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              {running && <Loader2 className="size-3 animate-spin" />}
-              {progress.done.toLocaleString()} of {progress.total.toLocaleString()} ({pct}%)
-            </span>
-            <span>
-              {progress.updated} updated · {progress.unchanged} current · {progress.missing} no
-              match
-            </span>
-          </div>
-        </div>
-      )}
+      <p className="px-1 pt-1 text-xs text-muted-foreground">
+        Finds a new photo for every car in your collection from its brand, make, model, colour, year
+        and assortment — the card when one can be found — and replaces the current one. Keep this
+        page open while it runs. Each batch can be undone.
+      </p>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
         <AlertDialogContent>

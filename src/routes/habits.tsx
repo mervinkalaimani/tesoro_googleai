@@ -333,6 +333,25 @@ function HabitsPage() {
     [buckets, selectedBucket],
   );
 
+  // The order the cells pop in: the busiest first, then down to the quietest one
+  // by one, and the empty ones last, together. Worked out across whatever is on
+  // screen, so a day, a week, a month and a year all fill the same way.
+  const popDelay = useMemo(() => {
+    const items: { key: string; count: number }[] = [];
+    for (const week of grid)
+      for (const c of week) if (c) items.push({ key: c.key, count: c.count });
+    for (const b of buckets) items.push({ key: b.key, count: b.count });
+    for (const row of matrix?.rows ?? [])
+      for (const b of row.cells) if (b) items.push({ key: b.key, count: b.count });
+    const ranked = items.filter((i) => i.count > 0).sort((a, b) => b.count - a.count);
+    // Short enough that a full year still finishes in about two seconds.
+    const step = Math.min(60, Math.max(10, 2000 / Math.max(ranked.length, 1)));
+    const map = new Map<string, number>();
+    ranked.forEach((it, i) => map.set(it.key, Math.round(i * step)));
+    const emptyAt = Math.round(ranked.length * step + 150);
+    return (key: string) => map.get(key) ?? emptyAt;
+  }, [grid, buckets, matrix]);
+
   const level = (count: number) => {
     if (!count) return 0;
     const pct = count / max;
@@ -488,7 +507,7 @@ function HabitsPage() {
         </div>
 
         {view === "daily" ? (
-          <div ref={scrollContainerRef} className="overflow-x-auto py-4">
+          <div ref={scrollContainerRef} key={`d-${mode}-${range}`} className="overflow-x-auto py-4">
             <div className="inline-flex min-w-full flex-col gap-1.5 pr-4">
               <div className="flex items-center gap-[6px]">
                 <div className="sticky left-0 z-10 mr-1.5 h-4 w-10 shrink-0 bg-card pl-2 pr-1 border-r border-border/40" />
@@ -533,7 +552,8 @@ function HabitsPage() {
                               prev === cell.key ? null : cell.count ? cell.key : null,
                             )
                           }
-                          className={`size-5 rounded-[4px] ${LEVEL_CLASS[lv]} ${
+                          style={{ "--d": `${popDelay(cell.key)}ms` } as CSSProperties}
+                          className={`cell-pop size-5 rounded-[4px] ${LEVEL_CLASS[lv]} ${
                             selected === cell.key
                               ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
                               : ""
@@ -547,9 +567,9 @@ function HabitsPage() {
             </div>
           </div>
         ) : view === "yearly" ? (
-          <div ref={scrollContainerRef} className="overflow-x-auto p-4">
+          <div ref={scrollContainerRef} key={`y-${mode}`} className="overflow-x-auto p-4">
             <div className="inline-flex min-w-full flex-wrap items-end gap-x-3 gap-y-2">
-              {buckets.map((b) => (
+              {buckets.map((b, bi) => (
                 <div key={b.key} className="flex flex-col items-center gap-1">
                   <div className="text-xs text-muted-foreground">{b.label}</div>
                   <PeriodSquare
@@ -557,18 +577,24 @@ function HabitsPage() {
                     level={level(b.count)}
                     selected={selected === b.key}
                     onSelect={(k) => setSelected((prev) => (prev === k ? null : k))}
+                    delay={popDelay(b.key)}
                   />
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <div ref={scrollContainerRef} className="overflow-x-auto py-4">
+          <div
+            ref={scrollContainerRef}
+            key={`m-${view}-${mode}-${range}`}
+            className="overflow-x-auto py-4"
+          >
             <div className="inline-flex min-w-full flex-col gap-1.5 pr-4">
               <MatrixHeader labels={matrix?.labels ?? []} />
               {(matrix?.rows ?? []).map((row) => (
                 <MatrixRow
                   key={row.year}
+                  delayOf={popDelay}
                   row={row}
                   level={level}
                   selected={selected}
@@ -647,18 +673,22 @@ function PeriodSquare({
   level,
   selected,
   onSelect,
+  delay = 0,
 }: {
   bucket: Bucket;
   level: number;
   selected: boolean;
   onSelect: (key: string | null) => void;
+  /** Milliseconds before it pops in, so a grid sweeps rather than appearing at once. */
+  delay?: number;
 }) {
   return (
     <button
       type="button"
       title={`${bucket.label} — ${bucket.count} car${bucket.count === 1 ? "" : "s"}${bucket.spent ? ` · ${inr(bucket.spent)}` : ""}`}
       onClick={() => onSelect(bucket.count ? bucket.key : null)}
-      className={`${SQUARE} ${LEVEL_CLASS[level]} ${
+      style={{ "--d": `${delay}ms` } as CSSProperties}
+      className={`cell-pop ${SQUARE} ${LEVEL_CLASS[level]} ${
         selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
       } ${bucket.count ? "cursor-pointer" : "cursor-default"}`}
     />
@@ -680,10 +710,12 @@ function MatrixHeader({ labels }: { labels: string[] }) {
 
 function MatrixRow({
   row,
+  delayOf,
   level,
   selected,
   onSelect,
 }: {
+  delayOf: (key: string) => number;
   row: { year: number; cells: (Bucket | null)[] };
   level: (count: number) => number;
   selected: string | null;
@@ -702,6 +734,7 @@ function MatrixRow({
             level={level(bucket.count)}
             selected={selected === bucket.key}
             onSelect={onSelect}
+            delay={delayOf(bucket.key)}
           />
         ) : (
           <span key={i} className={`${SQUARE} bg-muted/25`} />
@@ -745,7 +778,7 @@ function InsightCard({
         <span className="truncate">{title}</span>
       </div>
       <ul className="mt-2.5 space-y-1.5 sm:mt-3 sm:space-y-2">
-        {rows.map((r) => (
+        {rows.map((r, ri) => (
           <li key={r.label} className="min-w-0">
             <div className="flex items-baseline justify-between gap-1.5 text-xs sm:text-sm">
               <span className="truncate font-medium text-foreground" title={r.label}>
@@ -757,8 +790,13 @@ function InsightCard({
             </div>
             <div className="mt-1 h-1 rounded-full bg-muted/60 sm:h-1.5">
               <div
-                className="h-full rounded-full bg-primary/70 transition-all"
-                style={{ width: `${Math.min(100, Math.max(8, (r.value / max) * 100))}%` }}
+                className="bar-grow h-full rounded-full bg-primary/70"
+                style={
+                  {
+                    width: `${Math.min(100, Math.max(8, (r.value / max) * 100))}%`,
+                    "--d": `${ri * 120}ms`,
+                  } as CSSProperties
+                }
               />
             </div>
           </li>

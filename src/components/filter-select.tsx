@@ -60,8 +60,8 @@ export function SortSelect<T extends string>({
         aria-label={`${label}: ${current?.label ?? ""}, ${dirName}`}
         title={`${label}: ${current?.label ?? ""} (${dirName})`}
         className={cn(
-          "inline-flex size-8 shrink-0 cursor-pointer items-center justify-center p-0 rounded-md border border-input bg-transparent text-sm shadow-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          isSet ? "border-primary/40 text-foreground font-medium" : "text-muted-foreground",
+          "glass-btn inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full p-0 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          isSet ? "!border-primary/50 text-foreground font-medium" : "text-muted-foreground",
           className,
         )}
       >
@@ -145,8 +145,8 @@ export function FilterSelect({
         aria-label={label}
         title={current ? `${label}: ${current.label}` : label}
         className={cn(
-          "size-8 shrink-0 justify-center p-0 [&>svg:last-child]:hidden",
-          isSet ? "border-primary/40 text-foreground" : "text-muted-foreground",
+          "glass-btn size-8 shrink-0 justify-center !rounded-full !border-solid p-0 !shadow-none [&>svg:last-child]:hidden",
+          isSet ? "!border-primary/50 text-foreground" : "text-muted-foreground",
           className,
         )}
       >

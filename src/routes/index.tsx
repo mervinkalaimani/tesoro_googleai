@@ -17,6 +17,7 @@ import {
   Bookmark,
 } from "lucide-react";
 import { KpiBand, KpiTile } from "@/components/kpi";
+import { TRACKING_CARDS, uses } from "@/lib/use-cases";
 import { MySubscriptionRequest } from "@/components/subscription-requests";
 import { TrackingLink } from "@/components/tracking-link";
 import { trackingPageFor } from "@/lib/tracking";
@@ -239,6 +240,7 @@ function DashboardPage() {
     prizedShelf,
     summaryCards,
     hiddenSummary,
+    useCases,
   } = useApp();
   const cars = useCars();
   const { packMembers } = useCatalog();
@@ -287,16 +289,6 @@ function DashboardPage() {
   // the app already knows which of the two it is.
   const first = (profile?.first_name || "").trim().split(/\s+/)[0] || "";
   const greeting = first ? `Hello ${first}` : "Hello";
-
-  // What the page is actually reporting on, rather than a slogan. The counts
-  // are the same ones the tiles below carry, said as a sentence.
-  const subNote = useMemo(() => {
-    const open = data.filter((r) => isOpenOrder(r.status)).length;
-    if (data.length === 0) return "Nothing in the collection yet.";
-    return open === 0
-      ? `${data.length.toLocaleString()} cars, and nothing on its way.`
-      : `${data.length.toLocaleString()} cars · ${open} still on the way.`;
-  }, [data]);
 
   const kpis = useMemo(() => {
     const countOf = (s: Status) => data.filter((r) => normaliseStatus(r.status) === s).length;
@@ -385,9 +377,13 @@ function DashboardPage() {
       label: SUMMARY_ITEMS.find((i) => i.key === d.key)?.label ?? d.label,
     }));
     return named.filter(
-      (d) => !hiddenSummary.includes(d.key) && (typeof d.value === "number" ? d.value > 0 : true),
+      (d) =>
+        !hiddenSummary.includes(d.key) &&
+        // Without tracking, the cards about orders on their way have no purpose.
+        (uses(useCases, "tracking") || !TRACKING_CARDS.includes(d.key)) &&
+        (typeof d.value === "number" ? d.value > 0 : true),
     );
-  }, [data, summaryCards, hiddenSummary]);
+  }, [data, summaryCards, hiddenSummary, useCases]);
 
   // A brand-new account has nothing to chart. Guarded on the unfiltered list and
   // on loading, so a search that matches nothing still shows the real dashboard.
@@ -397,7 +393,7 @@ function DashboardPage() {
 
   return (
     <div className="mx-auto min-w-0 max-w-[1600px] space-y-5 overflow-x-hidden p-3 md:space-y-8 md:p-6">
-      <PageHeading title={greeting} subtitle={subNote} />
+      <PageHeading title={greeting} />
 
       {/* A release landing this week now lives behind the bell in the top bar,
           with the rest of what expires — it followed you off the dashboard
@@ -1202,13 +1198,15 @@ function pickTopValue(r: Diecast, key: TopKey) {
 
 function TopTenGrid({
   rows,
-  mode,
+  mode: initialMode = "count",
   loading = false,
 }: {
   rows: Diecast[];
-  mode: "count" | "cost";
+  mode?: "count" | "cost";
   loading?: boolean;
 }) {
+  // How the five are ranked: by how many cars, or by what they cost.
+  const [mode, setMode] = useState<"count" | "cost">(initialMode);
   const [key, setKey] = useState<TopKey>("make");
   const [selected, setSelected] = useState<string | null>(null);
   /** The part of the bar whose value is showing. */
@@ -1230,6 +1228,16 @@ function TopTenGrid({
   // A different five: the value label would point at the wrong part.
   useEffect(() => setActive(null), [key, mode]);
 
+  // The bar grows from nothing once, when it first appears. After that a
+  // different five is the same segments moving to their new widths, so
+  // switching what it measures reads as a change within the bar.
+  const [grown, setGrown] = useState(false);
+  useEffect(() => {
+    if (loading) return;
+    const id = requestAnimationFrame(() => requestAnimationFrame(() => setGrown(true)));
+    return () => cancelAnimationFrame(id);
+  }, [loading]);
+
   const selectedRows = useMemo(
     () => (selected ? rows.filter((r) => pickTopValue(r, key) === selected) : []),
     [rows, key, selected],
@@ -1250,17 +1258,24 @@ function TopTenGrid({
     <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
       {/* Title and control share the line at every width: the control is
           capped and scrolls sideways rather than dropping underneath. */}
-      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-1 flex items-center justify-between gap-3">
         <div className="min-w-0 shrink-0">
           <h2 className="text-display text-lg font-semibold">Top 5</h2>
-          <p className="truncate text-xs text-muted-foreground">Leading {label.toLowerCase()}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {mode === "cost" ? "Most spent on" : "Leading"} {label.toLowerCase()}
+          </p>
         </div>
-        <CyclePill
-          value={key}
-          onChange={setKey}
-          options={TOP_OPTIONS}
-          className="w-full sm:w-auto"
-        />
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
+          <CyclePill
+            value={mode}
+            onChange={setMode}
+            options={[
+              { value: "count", label: "Count" },
+              { value: "cost", label: "Cost" },
+            ]}
+          />
+          <CyclePill value={key} onChange={setKey} options={TOP_OPTIONS} className="w-auto" />
+        </div>
       </div>
 
       {/* Laid out like iPhone storage: one bar split by share of the whole,
@@ -1292,24 +1307,41 @@ function TopTenGrid({
             >
               {items.map((it, i) => (
                 <button
-                  key={it.name}
+                  key={i}
                   type="button"
                   aria-label={`${it.name}: ${fmt(it.value)}`}
                   onMouseEnter={() => setActive(i)}
                   onClick={() => setActive((cur) => (cur === i ? null : i))}
-                  className={`h-full min-w-[3px] transition-opacity ${
+                  className={`h-full transition-[width,opacity] duration-700 ease-out motion-reduce:transition-none ${
                     active !== null && active !== i ? "opacity-50" : ""
                   }`}
-                  style={{ width: `${share(it.value)}%`, background: TOP_COLOURS[i] }}
+                  style={{
+                    width: grown ? `${share(it.value)}%` : "0%",
+                    minWidth: grown ? 3 : 0,
+                    background: TOP_COLOURS[i],
+                    transitionDelay: grown ? `${i * 40}ms` : "0ms",
+                    transitionProperty: grown ? undefined : "none",
+                  }}
                 />
               ))}
             </div>
           </div>
 
-          {/* Names only, small, two rows. Tapping one opens its cars. */}
-          <ul className="grid grid-cols-3 gap-x-3 gap-y-1.5">
+          {/* Names only, small. On a phone three to a row, two rows. From sm: up one
+              row, each name starting where its part of the bar starts and moving
+              with it, so the legend reads straight off the bar. */}
+          <ul className="grid grid-cols-3 gap-x-3 gap-y-1.5 sm:flex sm:gap-x-[2px]">
             {items.map((it, i) => (
-              <li key={it.name} className="min-w-0">
+              <li
+                key={i}
+                className="min-w-0 sm:shrink-0 sm:overflow-hidden sm:pr-2 sm:transition-[width] sm:duration-700 sm:ease-out motion-reduce:sm:transition-none sm:[width:var(--w)]"
+                style={
+                  {
+                    "--w": grown ? `${share(it.value)}%` : "0%",
+                    transitionDelay: grown ? `${i * 40}ms` : "0ms",
+                  } as React.CSSProperties
+                }
+              >
                 <button
                   type="button"
                   onClick={() => setSelected(it.name)}

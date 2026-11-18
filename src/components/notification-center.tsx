@@ -233,6 +233,27 @@ function usePendingApprovals(enabled: boolean) {
  * to launch.
  */
 export function NotificationCenter() {
+  // The panel grows out of the bell: once it has been placed, its transform
+  // origin is set to the bell's centre, so the scale starts from there.
+  const bellRef = useRef<HTMLButtonElement>(null);
+  const growFromBell = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const bell = bellRef.current?.getBoundingClientRect();
+        if (!bell) return;
+        // Measured on the wrapper the popover positions, which the grow
+        // animation never scales, so it is the panel's resting place.
+        const place = (el.parentElement ?? el).getBoundingClientRect();
+        const left = place.left;
+        const top = place.top;
+        el.style.setProperty(
+          "--notif-origin",
+          `${bell.left + bell.width / 2 - left}px ${bell.top + bell.height / 2 - top}px`,
+        );
+      }),
+    );
+  }, []);
   const cars = useCars();
   const { catalog } = useCatalog();
   const { bulkUpdateCars } = useCarsActions();
@@ -453,6 +474,7 @@ export function NotificationCenter() {
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            ref={bellRef}
             variant="ghost"
             size="icon"
             // A fill, faint enough to stay quiet: three bare icons in a row
@@ -473,8 +495,10 @@ export function NotificationCenter() {
         </PopoverTrigger>
 
         <PopoverContent
+          ref={growFromBell}
           align="end"
-          className="w-[min(26rem,calc(100vw-1.5rem))] max-h-[min(34rem,calc(100svh-5rem))] overflow-y-auto p-0"
+          collisionPadding={8}
+          className="notif-pop w-[calc(100vw-1rem)] max-h-[min(34rem,calc(100svh-5rem))] overflow-y-auto p-0 data-[state=closed]:animate-none data-[state=open]:animate-none sm:w-[26rem]"
         >
           <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-popover px-3 py-2.5">
             <h2 className="text-sm font-semibold">Notifications</h2>
@@ -593,6 +617,7 @@ export function NotificationCenter() {
                 <GroupNotice
                   key={g.key}
                   group={g}
+                  onDismiss={() => clear([todayKey(g)])}
                   onOpen={(car) => act(() => drawer.open(car))}
                   meta={
                     <span className="text-emerald-600 dark:text-emerald-400">
@@ -602,10 +627,6 @@ export function NotificationCenter() {
                   actions={
                     <>
                       <UpdateStatusButton onClick={() => updateGroup(g)} />
-                      <DismissButton
-                        label={g.shippingId || "delivery"}
-                        onClick={() => clear([todayKey(g)])}
-                      />
                     </>
                   }
                 />
@@ -628,6 +649,7 @@ export function NotificationCenter() {
                 <GroupNotice
                   key={g.key}
                   group={g}
+                  onDismiss={() => clear([delayedKey(g)])}
                   onOpen={(car) => act(() => drawer.open(car))}
                   meta={
                     <span className="text-rose-500">
@@ -669,10 +691,6 @@ export function NotificationCenter() {
                       <Button size="sm" disabled={!newDates[g.key]} onClick={() => saveNewDate(g)}>
                         Save date
                       </Button>
-                      <DismissButton
-                        label={g.shippingId || "delivery"}
-                        onClick={() => clear([delayedKey(g)])}
-                      />
                     </>
                   }
                 />
@@ -699,7 +717,9 @@ export function NotificationCenter() {
                 const balance = Math.max((w.car.spent || 0) - (w.car.paid || 0), 0);
                 return (
                   <ShipmentItem
+                    simple
                     key={releasedKey(w)}
+                    onDismiss={() => clear([releasedKey(w)])}
                     car={w.car}
                     thumb
                     onOpen={() => act(() => drawer.open(w.car))}
@@ -712,14 +732,6 @@ export function NotificationCenter() {
                               ? `Contact ${w.car.seller}`
                               : "No seller recorded — check where you ordered it"}
                           </span>
-                          {balance > 0 && (
-                            <>
-                              <span>·</span>
-                              <span className="tabular-nums text-amber-500">
-                                {inrFull(balance)} due
-                              </span>
-                            </>
-                          )}
                         </div>
                         <div className="mt-0.5 text-xs text-emerald-600 dark:text-emerald-400">
                           {releasedLabel(w.daysAgo)} · {formatDayMonthYear(w.at)}
@@ -736,14 +748,10 @@ export function NotificationCenter() {
                             className="gap-1.5 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
                           >
                             <IndianRupee className="size-3.5" />
-                            Pay balance
+                            Pay {inrFull(balance)}
                           </Button>
                         )}
                         <UpdateStatusButton onClick={() => act(() => setStatusFor(w.car))} />
-                        <DismissButton
-                          label={w.car.name || w.car.model}
-                          onClick={() => clear([releasedKey(w)])}
-                        />
                       </>
                     }
                   />
@@ -769,6 +777,7 @@ export function NotificationCenter() {
             >
               {held.slice(0, 8).map((c) => (
                 <ShipmentItem
+                  simple
                   key={`held-${c.id}`}
                   car={c}
                   thumb
@@ -830,7 +839,9 @@ export function NotificationCenter() {
                 const when = whenLabel(l.days);
                 return (
                   <ShipmentItem
+                    simple
                     key={launchKey(l)}
+                    onDismiss={() => clear([launchKey(l)])}
                     car={first}
                     thumb
                     identity={many ? [plural(l.cars.length, "car"), ...brands] : undefined}
@@ -844,21 +855,10 @@ export function NotificationCenter() {
                             <Wallet className="size-3" />
                             {first.seller || "Seller not recorded"}
                           </span>
-                          {balance > 0 && (
-                            <>
-                              <span>·</span>
-                              <span className="tabular-nums text-amber-500">
-                                {inrFull(balance)} due
-                              </span>
-                            </>
-                          )}
-                        </div>
-                        <div
-                          className={`mt-0.5 text-xs tabular-nums ${
-                            when.overdue ? "text-rose-500" : "text-violet-500"
-                          }`}
-                        >
-                          {formatDayMonthYear(l.due)} · {when.text}
+                          <span>·</span>
+                          <span className={when.overdue ? "text-rose-500" : undefined}>
+                            {when.text}
+                          </span>
                         </div>
                       </>
                     }
@@ -883,7 +883,7 @@ export function NotificationCenter() {
                             className="gap-1.5 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
                           >
                             <IndianRupee className="size-3.5" />
-                            Pay balance
+                            Pay {inrFull(balance)}
                           </Button>
                         )}
                         <UpdateStatusButton
@@ -898,10 +898,6 @@ export function NotificationCenter() {
                                 : setStatusFor(first),
                             )
                           }
-                        />
-                        <DismissButton
-                          label={many ? l.orderId : first.name || first.model}
-                          onClick={() => clear([launchKey(l)])}
                         />
                       </>
                     }
@@ -945,7 +941,7 @@ const TONES = {
   emerald:
     "bg-emerald-500/[0.06] [&_[data-icon]]:bg-emerald-500/15 [&_[data-icon]]:text-emerald-500",
   rose: "bg-rose-500/[0.06] [&_[data-icon]]:bg-rose-500/15 [&_[data-icon]]:text-rose-500",
-  violet: "bg-violet-500/[0.06] [&_[data-icon]]:bg-violet-500/15 [&_[data-icon]]:text-violet-500",
+  violet: "bg-primary/[0.06] [&_[data-icon]]:bg-primary/15 [&_[data-icon]]:text-primary",
 } as const;
 
 /** A heading that folds its notices away, and remembers that it did. */
@@ -1008,10 +1004,12 @@ function Section({
 function GroupNotice({
   group,
   onOpen,
+  onDismiss,
   meta,
   actions,
 }: {
   group: DeliveryGroup;
+  onDismiss: () => void;
   onOpen: (car: Diecast) => void;
   meta: React.ReactNode;
   actions: React.ReactNode;
@@ -1020,8 +1018,11 @@ function GroupNotice({
   const more = group.cars.length - 1;
   return (
     <ShipmentItem
+      simple
       car={first}
       thumb
+      onDismiss={onDismiss}
+      dismissLabel={group.shippingId || "delivery"}
       onOpen={() => onOpen(first)}
       meta={
         <>

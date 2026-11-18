@@ -11,7 +11,7 @@ import { InventoryCard } from "@/routes/inventory";
 import { BLISTER_GRID_COLS, GRID_COLS, ViewToggle, type ViewMode } from "@/components/view-toggle";
 import { BlisterTile } from "@/components/blister-tile";
 import { SegmentControl } from "@/components/segment-control";
-import { PageHeading, PageToolbar } from "@/components/page-header";
+import { PageHeading } from "@/components/page-header";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { ProGate } from "@/components/pro-gate";
@@ -113,31 +113,21 @@ function FavouritesPage() {
       <PageHeading
         title={text.title}
         subtitle={`${rows.length} ${rows.length === 1 ? "car" : "cars"}`}
-      />
-
-      <PageToolbar
-        sticky
-        // The model count is a KPI tile now, so the segments and the view
-        // controls have the row to themselves.
-        oneLine
-        left={
-          <SegmentControl
-            value={mode}
-            onChange={setMode}
-            options={[
-              { value: "favourite", label: "Favourites" },
-              { value: "chase", label: "Chase" },
-              ...(hasTh ? [{ value: "th" as const, label: "TH" }] : []),
-              ...(hasSth ? [{ value: "sth" as const, label: "STH" }] : []),
-            ]}
-          />
-        }
-        right={
-          <>
-            <ViewToggle value={view} onChange={setView} />
-          </>
-        }
-      />
+      >
+        {/* The model count is a KPI tile now, so the segments and the view
+            control sit beside the title instead of on a row of their own. */}
+        <SegmentControl
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "favourite", label: "Favourites" },
+            { value: "chase", label: "Chase" },
+            ...(hasTh ? [{ value: "th" as const, label: "TH" }] : []),
+            ...(hasSth ? [{ value: "sth" as const, label: "STH" }] : []),
+          ]}
+        />
+        <ViewToggle value={view} onChange={setView} />
+      </PageHeading>
 
       {loading ? (
         view === "table" ? (
@@ -153,9 +143,19 @@ function FavouritesPage() {
         <div className={view === "blister" ? BLISTER_GRID_COLS : GRID_COLS}>
           {rows.map((r, i) =>
             view === "blister" ? (
-              <BlisterTile key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
+              <BlisterTile
+                key={(r.id || "") + i}
+                car={r}
+                onOpen={() => open(r)}
+                showStatus={false}
+              />
             ) : (
-              <InventoryCard key={(r.id || "") + i} car={r} onOpen={() => open(r)} />
+              <InventoryCard
+                key={(r.id || "") + i}
+                car={r}
+                onOpen={() => open(r)}
+                showStatus={false}
+              />
             ),
           )}
         </div>

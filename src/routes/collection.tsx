@@ -15,7 +15,7 @@ import { CarSubRow, GroupRow, GroupTable, StatusCell, Th } from "@/components/gr
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { CyclePill, SegmentControl } from "@/components/segment-control";
-import { PageHeading, PageToolbar } from "@/components/page-header";
+import { PageHeading } from "@/components/page-header";
 import { FilterSelect, SortSelect, type SortDir } from "@/components/filter-select";
 import { inr } from "@/lib/format";
 import { ProGate } from "@/components/pro-gate";
@@ -186,95 +186,85 @@ function CollectionPage() {
       <PageHeading
         title="Collection"
         subtitle={`${groups.length} ${group} · ${filtered.length.toLocaleString()} cars`}
-      />
-
-      <PageToolbar
-        sticky
-        // One line on a phone too: the control narrows and scrolls sideways
-        // instead of taking a row of its own above the buttons.
-        oneLine
-        left={
-          <>
-            <SegmentControl
-              className="w-auto md:w-auto"
-              value={group}
-              onChange={(v) => {
-                setGroup(v);
-                setSelected("all");
-              }}
-              options={[
-                { value: "series", label: "Series" },
-                { value: "set", label: "Set" },
-                { value: "brand", label: "Brand" },
-                { value: "assortment", label: "Assortment" },
-                { value: "maker", label: "Maker" },
-                { value: "seller", label: "Seller" },
-                { value: "size", label: "Size" },
-              ]}
-            />
-            {/* Once a group is chosen it sits beside the first pill and steps
+      >
+        <>
+          <SegmentControl
+            className="w-auto md:w-auto"
+            value={group}
+            onChange={(v) => {
+              setGroup(v);
+              setSelected("all");
+            }}
+            options={[
+              { value: "series", label: "Series" },
+              { value: "set", label: "Set" },
+              { value: "brand", label: "Brand" },
+              { value: "assortment", label: "Assortment" },
+              { value: "maker", label: "Maker" },
+              { value: "seller", label: "Seller" },
+              { value: "size", label: "Size" },
+            ]}
+          />
+          {/* Once a group is chosen it sits beside the first pill and steps
                 through the groups; the X closes it and returns to the list.
                 Phone only — a row of every series would not fit anywhere else. */}
-            {drilled && (
-              <>
-                <CyclePill
-                  phoneOnly
-                  value={selected}
-                  onChange={setSelected}
-                  options={groups.map((g) => ({ value: g.name, label: g.label }))}
-                />
-                <button
-                  type="button"
-                  onClick={() => setSelected("all")}
-                  aria-label={`Close ${drilled.label}`}
-                  className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground sm:hidden"
-                >
-                  <X className="size-4" />
-                </button>
-              </>
-            )}
-          </>
-        }
-        right={
-          <>
-            {/* The drill-down pill beside the first one does this job on a phone. */}
-            <div className="max-md:hidden">
-              <FilterSelect
+          {drilled && (
+            <>
+              <CyclePill
+                phoneOnly
                 value={selected}
                 onChange={setSelected}
-                icon={<Filter className="size-3.5" />}
-                label={`Which ${group}`}
-                iconOnly
-                options={[
-                  { value: "all", label: `All ${group}s` },
-                  ...groups.map((g) => ({
-                    value: g.name,
-                    label: `${g.label} (${g.items.length})`,
-                  })),
-                ]}
+                options={groups.map((g) => ({ value: g.name, label: g.label }))}
               />
-            </div>
-            {/* Picking the order already in use flips its direction, so the
-                separate arrow button this used to have is folded in. */}
-            <SortSelect
-              value={sortField}
-              dir={dir}
-              onChange={(v, d) => {
-                setSortField(v);
-                setDir(d);
-              }}
+              <button
+                type="button"
+                onClick={() => setSelected("all")}
+                aria-label={`Close ${drilled.label}`}
+                className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground sm:hidden"
+              >
+                <X className="size-4" />
+              </button>
+            </>
+          )}
+        </>
+        <>
+          {/* The drill-down pill beside the first one does this job on a phone. */}
+          <div className="max-md:hidden">
+            <FilterSelect
+              value={selected}
+              onChange={setSelected}
+              icon={<Filter className="size-3.5" />}
+              label={`Which ${group}`}
               iconOnly
-              neutral="count"
-              options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
-                value: f,
-                label: SORT_LABELS[f],
-                dir: f === "name" ? ("asc" as const) : ("desc" as const),
-              }))}
+              options={[
+                { value: "all", label: `All ${group}s` },
+                ...groups.map((g) => ({
+                  value: g.name,
+                  label: `${g.label} (${g.items.length})`,
+                })),
+              ]}
             />
-            <ViewToggle value={view} onChange={setView} modes={["table", "blister", "grid"]} />
-          </>
-        }
-      />
+          </div>
+          {/* Picking the order already in use flips its direction, so the
+                separate arrow button this used to have is folded in. */}
+          <SortSelect
+            value={sortField}
+            dir={dir}
+            onChange={(v, d) => {
+              setSortField(v);
+              setDir(d);
+            }}
+            iconOnly
+            neutral="count"
+            options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
+              value: f,
+              label: SORT_LABELS[f],
+              dir: f === "name" ? ("asc" as const) : ("desc" as const),
+            }))}
+          />
+          <ViewToggle value={view} onChange={setView} modes={["table", "blister", "grid"]} />
+        </>
+      </PageHeading>
 
       {drilled ? (
         <>

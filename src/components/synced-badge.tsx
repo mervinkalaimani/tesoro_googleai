@@ -18,9 +18,12 @@ export const isVerifiedByAdmin = (source?: string | null) => source === VERIFIED
 export function SyncedBadge({
   car,
   className = "",
+  iconOnly = false,
 }: {
   car: Pick<CatalogCar, "synced_at" | "synced_source">;
   className?: string;
+  /** Just the mark, for a card too narrow for the word. */
+  iconOnly?: boolean;
 }) {
   if (!car.synced_at) return null;
   const when = new Date(car.synced_at).toLocaleDateString(undefined, {
@@ -36,9 +39,17 @@ export function SyncedBadge({
           ? `${VERIFIED_BY_ADMIN} on ${when}`
           : `Photo and details checked against ${car.synced_source || "the maker's site"} on ${when}`
       }
-      className={`inline-flex shrink-0 items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-sky-300 backdrop-blur-sm ring-1 ring-sky-400/30 ${className}`}
+      className={
+        iconOnly
+          ? `grid size-6 shrink-0 place-items-center rounded-full bg-black/70 text-sky-300 backdrop-blur-sm ${className}`
+          : `inline-flex shrink-0 items-center gap-1 rounded-full bg-black/75 px-2 py-0.5 text-xs font-semibold text-sky-300 backdrop-blur-sm ring-1 ring-sky-400/30 ${className}`
+      }
     >
-      <BadgeCheck className="size-3" /> {admin ? "Verified" : "Synced"}
+      <BadgeCheck
+        aria-label={admin ? "Verified" : "Synced"}
+        className={iconOnly ? "size-3.5" : "size-3"}
+      />
+      {!iconOnly && (admin ? " Verified" : " Synced")}
     </span>
   );
 }
