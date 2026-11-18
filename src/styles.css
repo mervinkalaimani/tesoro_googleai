@@ -342,8 +342,7 @@
     font-size: calc(15px + var(--font-pt-offset, -2pt));
   }
   html.dark body {
-    background:
-      var(--color-background);
+    background: var(--color-background);
   }
 
   /* SCROLLBARS
@@ -452,6 +451,46 @@
 .card-elevated .card-elevated {
   border-radius: calc(1.5rem - var(--frame-gap, 1rem));
 }
+/* Prized possessions: a car popping into its place, and out of it. */
+@keyframes prize-pop-in {
+  0% {
+    transform: scale(0.5) rotate(-4deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.025) rotate(0.5deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+@keyframes prize-pop-out {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.55) rotate(5deg);
+    opacity: 0;
+  }
+}
+.prize-pop-in {
+  animation: prize-pop-in 0.9s cubic-bezier(0.34, 1.25, 0.64, 1) both;
+  z-index: 20;
+}
+.prize-pop-out {
+  animation: prize-pop-out 0.5s cubic-bezier(0.5, 0, 0.75, 0) both;
+  z-index: 20;
+}
+@media (prefers-reduced-motion: reduce) {
+  .prize-pop-in,
+  .prize-pop-out {
+    animation: none;
+  }
+}
+
 html.dark .card-elevated {
   background: linear-gradient(160deg, oklch(1 0 0 / 0.035), oklch(1 0 0 / 0.01));
   border: 1px solid oklch(1 0 0 / 0.12);
