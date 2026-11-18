@@ -42,13 +42,17 @@ export function IosInput({
   type = "text",
   inputMode,
   label,
+  readOnly,
+  autoComplete,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  type?: "text" | "date";
+  type?: "text" | "date" | "password";
   inputMode?: "decimal";
   label: string;
+  readOnly?: boolean;
+  autoComplete?: string;
 }) {
   return (
     <input
@@ -58,6 +62,8 @@ export function IosInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       aria-label={label}
+      readOnly={readOnly}
+      autoComplete={autoComplete}
       style={{ textAlign: "right" }}
       className={cn(
         VALUE,
@@ -65,6 +71,7 @@ export function IosInput({
         // The phone's date field draws its own text, left-aligned by default.
         "[&::-webkit-date-and-time-value]:text-right [&::-webkit-datetime-edit]:justify-end",
         type === "date" && "min-h-11 text-right",
+        readOnly && "cursor-default text-muted-foreground",
       )}
     />
   );

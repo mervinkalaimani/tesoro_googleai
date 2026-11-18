@@ -301,7 +301,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       storedTheme === "oled" ? "dark" : isThemePreference(storedTheme) ? storedTheme : "dark",
     );
     setAccentColorState(isAccentColor(storedAccent) ? storedAccent : DEFAULT_ACCENT);
-    setFontSizeState(isFontSizePreference(storedFontSize) ? storedFontSize : "0");
+    // The smaller-fonts switch is gone, so a size chosen with it is let go
+    // rather than left on with no way to turn it off.
+    void storedFontSize;
+    setFontSizeState("0");
     setHideInvestmentState(readLS<boolean>("dg.hideInvestment", true));
     setHideCostState(readLS<boolean>("dg.hideCost", false));
     setTransitEtaDaysState(readLS<number>("dg.transitEta", 21));

@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Palette,
   Bell,
+  Compass,
   Wrench,
   Database,
   LogOut,
@@ -119,6 +120,8 @@ type SettingsView =
   | "report_bug"
   | "display"
   | "notifications"
+  | "privacy"
+  | "onboarding"
   | "diagnostics"
   | "database"
   | "auth_providers"
@@ -152,6 +155,8 @@ function parseTab(tab?: string): SettingsView {
   }
   if (t === "display" || t === "preferences" || t === "appearance") return "display";
   if (t === "notifications" || t === "alerts") return "notifications";
+  if (t === "privacy") return "privacy";
+  if (t === "onboarding") return "onboarding";
   if (t === "diagnostics" || t === "diag") return "diagnostics";
   if (t === "database" || t === "supabase" || t === "db") return "database";
   if (t === "auth_providers" || t === "auth" || t === "logins" || t === "providers") {
@@ -220,14 +225,10 @@ export function SettingsPage() {
     setThemePreference,
     accentColor,
     setAccentColor,
-    fontSize,
-    setFontSize,
     hideInvestment,
     setHideInvestment,
     hideCost,
     setHideCost,
-    navAnimation,
-    setNavAnimation,
     arrivingSoon,
     setArrivingSoon,
     arrivingDays,
@@ -330,10 +331,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {view === "root" && (
         <div className="space-y-6">
-          <PageHeading
-            title="Settings"
-            subtitle="Manage your profile, preferences, and diecast collection system."
-          />
+          <PageHeading title="Settings" />
 
           {/* Top Account Card (Separate Apple ID style card) */}
           <button
@@ -411,9 +409,6 @@ export function SettingsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[15px] font-medium text-foreground">Homepage</span>
-                <p className="text-xs text-muted-foreground">
-                  Which shelves the home page shows &amp; how far ahead it looks
-                </p>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -431,9 +426,6 @@ export function SettingsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[15px] font-medium text-foreground">Display</span>
-                <p className="text-xs text-muted-foreground">
-                  Theme mode, accent colour, text size &amp; investment privacy
-                </p>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -451,9 +443,40 @@ export function SettingsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[15px] font-medium text-foreground">Notifications</span>
-                <p className="text-xs text-muted-foreground">
-                  Shipment arrivals, delay alerts &amp; release launch notices
-                </p>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </button>
+
+            {/* PRIVACY */}
+            <button
+              type="button"
+              onClick={() => changeView("privacy")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <ShieldCheck className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Privacy</span>
+              </div>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </div>
+            </button>
+
+            {/* ONBOARDING — what you told VIIV you use it for */}
+            <button
+              type="button"
+              onClick={() => changeView("onboarding")}
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
+            >
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <Compass className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">Onboarding</span>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -477,9 +500,6 @@ export function SettingsPage() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <span className="text-[15px] font-medium text-foreground">Admin Console</span>
-                  <p className="text-xs text-muted-foreground">
-                    Search engine, diagnostics, users, catalogue photos &amp; database
-                  </p>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </button>
@@ -500,9 +520,6 @@ export function SettingsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[15px] font-medium text-foreground">Help</span>
-                <p className="text-xs text-muted-foreground">
-                  Ask for something, report a bug, policies and how to reach us
-                </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
@@ -518,9 +535,6 @@ export function SettingsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[15px] font-medium text-foreground">Activity log</span>
-                <p className="text-xs text-muted-foreground">
-                  Every change to your cars and orders, and who made it
-                </p>
               </div>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
@@ -537,9 +551,6 @@ export function SettingsPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <span className="text-[15px] font-medium text-foreground">What&apos;s new</span>
-                <p className="text-xs text-muted-foreground">
-                  Everything added in each build, newest first
-                </p>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span className="tabular-nums">Build {LATEST_BUILD}</span>
@@ -640,100 +651,38 @@ export function SettingsPage() {
               Appearance
             </div>
             <div className="divide-y divide-border/60 overflow-hidden card-elevated">
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
                   <div className="text-[15px] font-medium text-foreground">Theme</div>
                   <div className="text-xs text-muted-foreground">
                     {themePreference === "system"
-                      ? `Matching your system theme (currently ${theme}).`
-                      : "Choose between light, dark, or system preference."}
+                      ? `Matching your system (${theme}).`
+                      : "Light, dark, or match your system."}
                   </div>
                 </div>
-                <SegmentControl
-                  value={themePreference}
-                  onChange={setThemePreference}
-                  options={themeOptionsFor(isPhone)}
-                  fill
-                  className="h-9 text-sm sm:w-auto"
-                />
+                <div className="shrink-0 [&_.cycle-info]:hidden">
+                  <SegmentControl
+                    value={themePreference}
+                    onChange={setThemePreference}
+                    options={themeOptionsFor(isPhone)}
+                    className="h-9 text-sm sm:w-auto"
+                  />
+                </div>
               </div>
 
-              <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
                   <div className="text-[15px] font-medium text-foreground">Accent Colour</div>
-                  <div className="text-xs text-muted-foreground">
-                    Colour applied to buttons, active navigation, and charts.
-                  </div>
+                  <div className="text-xs text-muted-foreground">Buttons, charts and the logo.</div>
                 </div>
-                <Select value={accentColor} onValueChange={(v) => setAccentColor(v as AccentColor)}>
-                  <SelectTrigger className="w-full sm:w-44">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ACCENT_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center justify-between gap-4 p-4">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">Smaller Fonts</div>
-                  <div className="text-xs text-muted-foreground">
-                    Reduce application text size across all views.
-                  </div>
+                <div className="shrink-0 [&_.cycle-info]:hidden">
+                  <SegmentControl
+                    value={accentColor}
+                    onChange={(v) => setAccentColor(v as AccentColor)}
+                    options={ACCENT_OPTIONS}
+                    className="h-9 text-sm sm:w-auto"
+                  />
                 </div>
-                <Switch
-                  checked={fontSize === "-2"}
-                  onCheckedChange={(checked) => setFontSize(checked ? "-2" : "0")}
-                />
-              </div>
-
-              {/* Phones only: the bottom bar is a phone thing. */}
-              <div className="flex items-center justify-between gap-4 p-4 md:hidden">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">Navbar Animation</div>
-                  <div className="text-xs text-muted-foreground">
-                    Shrink the bottom bar while scrolling down.
-                  </div>
-                </div>
-                <Switch checked={navAnimation} onCheckedChange={setNavAnimation} />
-              </div>
-            </div>
-          </div>
-
-          {/* Privacy Group */}
-          <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Privacy
-            </div>
-            <div className="overflow-hidden card-elevated p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">
-                    Hide Investment Value
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Mask the total expenditure figures across dashboard cards and sidebar until
-                    tapped.
-                  </div>
-                </div>
-                <Switch checked={hideInvestment} onCheckedChange={setHideInvestment} />
-              </div>
-              <div className="mt-4 flex items-center justify-between gap-4 border-t border-border/70 pt-4">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">
-                    Hide Cost Information
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Hide what you paid for every car, across the app. MRP and catalogue prices stay
-                    visible.
-                  </div>
-                </div>
-                <Switch checked={hideCost} onCheckedChange={setHideCost} />
               </div>
             </div>
           </div>
@@ -746,37 +695,6 @@ export function SettingsPage() {
       {view === "homepage" && (
         <div className="space-y-6">
           <SubpageHeader title="Homepage" onBack={() => changeView("root")} />
-
-          {/* What VIIV is used for: asked once after sign-in, changed here. The
-              details that are not ticked are left off the screen, not deleted. */}
-          <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              What you use VIIV for
-            </div>
-            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
-              {USE_CASES.map((u) => (
-                <div
-                  key={u.key}
-                  title={u.hint}
-                  className="flex items-center justify-between gap-4 px-4 py-2.5"
-                >
-                  <div className="text-[15px] font-medium text-foreground">{u.label}</div>
-                  <Switch
-                    checked={uses(useCases, u.key)}
-                    onCheckedChange={(on) => {
-                      const now = useCases ?? USE_CASES.map((x) => x.key);
-                      setUseCases(
-                        on ? [...new Set([...now, u.key])] : now.filter((k) => k !== u.key),
-                      );
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
-            <p className="px-1 pt-1 text-xs text-muted-foreground">
-              Only these details are shown on the home page and in each car. Nothing is deleted.
-            </p>
-          </div>
 
           {/* The row of counts at the top. A master switch, and — once it is on —
               every card in it, each with its own. */}
@@ -1161,11 +1079,11 @@ export function SettingsPage() {
       {view === "activity" && (
         <div className="space-y-5">
           <SubpageHeader title="Activity log" onBack={() => changeView("root")} />
-          <p className="text-xs text-muted-foreground">
+          <ChangeLog openCar={(car) => drawer.open(car)} />
+          <p className="px-1 text-xs text-muted-foreground">
             Every change to your cars, orders and catalogue entries, newest first: what it was, what
             it became, and who did it.
           </p>
-          <ChangeLog openCar={(car) => drawer.open(car)} />
         </div>
       )}
 
@@ -1177,6 +1095,72 @@ export function SettingsPage() {
             screens can be told apart. A filled dot is one worth knowing about.
           </p>
           <WhatsNewList />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBPAGE: ONBOARDING                                                       */}
+      {/* ========================================================================= */}
+      {view === "onboarding" && (
+        <div className="space-y-6">
+          <SubpageHeader title="Onboarding" onBack={() => changeView("root")} />
+
+          {/* What VIIV is used for: asked once after sign-in, changed here. The
+              details that are not ticked are left off the screen, not deleted. */}
+          <div className="space-y-1.5">
+            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              What you use VIIV for
+            </div>
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+              {USE_CASES.map((u) => (
+                <div
+                  key={u.key}
+                  title={u.hint}
+                  className="flex items-center justify-between gap-4 px-4 py-2.5"
+                >
+                  <div className="text-[15px] font-medium text-foreground">{u.label}</div>
+                  <Switch
+                    checked={uses(useCases, u.key)}
+                    onCheckedChange={(on) => {
+                      const now = useCases ?? USE_CASES.map((x) => x.key);
+                      setUseCases(
+                        on ? [...new Set([...now, u.key])] : now.filter((k) => k !== u.key),
+                      );
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="px-1 pt-1 text-xs text-muted-foreground">
+              Only these details are shown on the home page and in each car. Nothing is deleted.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* SUBPAGE: PRIVACY                                                          */}
+      {/* ========================================================================= */}
+      {view === "privacy" && (
+        <div className="space-y-6">
+          <SubpageHeader title="Privacy" onBack={() => changeView("root")} />
+          <div className="space-y-1.5">
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="text-[15px] font-medium text-foreground">Hide investment value</div>
+                <Switch checked={hideInvestment} onCheckedChange={setHideInvestment} />
+              </div>
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="text-[15px] font-medium text-foreground">Hide cost information</div>
+                <Switch checked={hideCost} onCheckedChange={setHideCost} />
+              </div>
+            </div>
+            <p className="px-1 pt-1 text-xs text-muted-foreground">
+              Hide investment value masks the total expenditure figures across the dashboard cards
+              and sidebar until tapped. Hide cost information hides what you paid for every car,
+              across the app. MRP and catalogue prices stay visible.
+            </p>
+          </div>
         </div>
       )}
 
@@ -1261,16 +1245,10 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Banner Alerts
             </div>
-            <div className="overflow-hidden card-elevated p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">
-                    Daily Toast Notifications
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Display an on-screen toast popup when you open the app if parcels are arriving
-                    today.
-                  </div>
+            <div className="overflow-hidden card-elevated">
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="text-[15px] font-medium text-foreground">
+                  Daily toast notifications
                 </div>
                 <Switch
                   checked={notifyToasts}
@@ -1280,6 +1258,9 @@ export function SettingsPage() {
                 />
               </div>
             </div>
+            <p className="px-1 pt-1 text-xs text-muted-foreground">
+              Display an on-screen toast popup when you open the app if parcels are arriving today.
+            </p>
           </div>
 
           {/* Notification Management */}
@@ -1287,26 +1268,24 @@ export function SettingsPage() {
             <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               History &amp; Dismissals
             </div>
-            <div className="overflow-hidden card-elevated p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-[15px] font-medium text-foreground">
-                    Reset Dismissed Notices
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Unhide any notifications you previously swiped away or cleared.
-                  </div>
+            <div className="overflow-hidden card-elevated">
+              <div className="flex items-center justify-between gap-4 px-4 py-3">
+                <div className="text-[15px] font-medium text-foreground">
+                  Reset dismissed notices
                 </div>
                 <button
                   type="button"
                   onClick={resetDismissedNotices}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted active:scale-95"
+                  className="glass-btn inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-foreground transition-colors active:scale-95"
                 >
                   <RotateCcw className="size-3.5" />
-                  Reset Dismissed
+                  Reset
                 </button>
               </div>
             </div>
+            <p className="px-1 pt-1 text-xs text-muted-foreground">
+              Unhide any notifications you previously swiped away or cleared.
+            </p>
           </div>
         </div>
       )}

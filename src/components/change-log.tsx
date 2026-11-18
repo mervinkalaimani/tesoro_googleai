@@ -538,7 +538,7 @@ export function ChangeLog({
     const car = !single && entry.source === "car" ? byId.get(entry.row_key) : undefined;
     const showing = view === "car" && car ? "car" : "change";
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+      <div className="card-elevated relative overflow-hidden">
         {/* On one record's own log the card's line already says when and by whom,
             so the panel is just the fields and a close button. */}
         <div
@@ -649,54 +649,57 @@ export function ChangeLog({
   return (
     <div className="space-y-5">
       {!single && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-48 flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+        <div className="space-y-2">
+          <div className="relative w-full">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Search a car, order or shipping ID, or a person"
               aria-label="Search the activity log"
-              className="h-8 w-full rounded-md border border-input bg-transparent pl-8 pr-2 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="glass-btn h-9 w-full rounded-full pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
             />
           </div>
-          <SegmentControl
-            value={source}
-            onChange={setSource}
-            options={[
-              { value: "all", label: "All" },
-              { value: "car", label: "Cars" },
-              { value: "catalogue", label: "Catalogue" },
-            ]}
-            className="w-auto"
-          />
-          <SegmentControl
-            value={action}
-            onChange={setAction}
-            options={[
-              { value: "all", label: "Any" },
-              { value: "add", label: "Added" },
-              { value: "edit", label: "Updated" },
-              { value: "delete", label: "Deleted" },
-            ]}
-            className="w-auto"
-          />
-          {everyone && (
+          {/* The filters share one line under the search. */}
+          <div className="flex items-center gap-2">
             <SegmentControl
-              value={scope}
-              onChange={setScope}
+              value={source}
+              onChange={setSource}
               options={[
-                { value: "mine", label: "Mine" },
-                { value: "everyone", label: "Everyone" },
+                { value: "all", label: "All" },
+                { value: "car", label: "Cars" },
+                { value: "catalogue", label: "Catalogue" },
               ]}
               className="w-auto"
             />
-          )}
+            <SegmentControl
+              value={action}
+              onChange={setAction}
+              options={[
+                { value: "all", label: "Any" },
+                { value: "add", label: "Added" },
+                { value: "edit", label: "Updated" },
+                { value: "delete", label: "Deleted" },
+              ]}
+              className="w-auto"
+            />
+            {everyone && (
+              <SegmentControl
+                value={scope}
+                onChange={setScope}
+                options={[
+                  { value: "mine", label: "Mine" },
+                  { value: "everyone", label: "Everyone" },
+                ]}
+                className="w-auto"
+              />
+            )}
+          </div>
         </div>
       )}
 
       {missing && !single && (
-        <div className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground">
+        <div className="card-elevated p-6 text-center text-sm text-muted-foreground">
           The activity log is not switched on yet. It starts recording once its database migration
           has been applied.
         </div>
@@ -709,7 +712,7 @@ export function ChangeLog({
       )}
 
       {!missing && !error && !loading && shownEntries.length === 0 && (
-        <div className="rounded-2xl border border-border/80 bg-card p-6 text-center text-sm text-muted-foreground">
+        <div className="card-elevated p-6 text-center text-sm text-muted-foreground">
           {single
             ? "No changes recorded for this car yet."
             : term || source !== "all" || action !== "all"
@@ -774,11 +777,9 @@ export function ChangeLog({
                       }}
                       title={canOpen(e) ? "Show every field of this change" : undefined}
                       className={cn(
-                        "flex items-start gap-3 rounded-xl border bg-card shadow-sm transition-colors",
+                        "card-elevated flex items-start gap-3 !rounded-2xl transition-colors",
                         canOpen(e) && "cursor-pointer hover:border-primary/40",
-                        single
-                          ? "rounded-2xl border-border/80 bg-muted/20 px-4 py-3 shadow-none"
-                          : "p-3.5",
+                        single ? "px-4 py-3" : "p-3.5",
                         open?.id === e.id
                           ? "border-primary/60 ring-1 ring-primary/30"
                           : "border-border/60",

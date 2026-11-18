@@ -70,44 +70,45 @@ export function AdminPushCard() {
   const canToggle = state === "on" || state === "off";
 
   return (
-    <div className="divide-y divide-border/60 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-xs">
-      <div className="flex items-center justify-between gap-4 p-4">
-        <div>
-          <div className="text-[15px] font-medium text-foreground">New Account Requests</div>
-          <div className="text-xs text-muted-foreground">
-            {state === "loading" ? "Checking this device…" : HINT[state]}
-          </div>
+    <div className="space-y-1.5">
+      <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <div className="text-[15px] font-medium text-foreground">New account requests</div>
+          {busy || state === "loading" ? (
+            <Loader2 className="size-5 shrink-0 animate-spin text-muted-foreground" />
+          ) : (
+            <Switch
+              checked={state === "on"}
+              disabled={!canToggle}
+              onCheckedChange={(v) => void toggle(v)}
+              aria-label="Push notifications for new account requests"
+            />
+          )}
         </div>
-        {busy || state === "loading" ? (
-          <Loader2 className="size-5 shrink-0 animate-spin text-muted-foreground" />
-        ) : (
-          <Switch
-            checked={state === "on"}
-            disabled={!canToggle}
-            onCheckedChange={(v) => void toggle(v)}
-            aria-label="Push notifications for new account requests"
-          />
+
+        {state === "on" && (
+          <div className="flex items-center justify-between gap-4 px-4 py-2.5">
+            <div className="text-[15px] text-foreground">Send a test</div>
+            <button
+              type="button"
+              onClick={() => void test()}
+              disabled={testing}
+              className="glass-btn inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-foreground transition-colors active:scale-95 disabled:opacity-60"
+            >
+              {testing ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Send className="size-3.5" />
+              )}
+              Send
+            </button>
+          </div>
         )}
       </div>
-
-      {state === "on" && (
-        <div className="flex items-center justify-between gap-4 p-4">
-          <div className="text-xs text-muted-foreground">Check it works on this device.</div>
-          <button
-            type="button"
-            onClick={() => void test()}
-            disabled={testing}
-            className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-border bg-muted/60 px-3.5 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-muted active:scale-95 disabled:opacity-60"
-          >
-            {testing ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Send className="size-3.5" />
-            )}
-            Send a test
-          </button>
-        </div>
-      )}
+      {/* The detail sits under the frame, the way iOS Settings footnotes a group. */}
+      <p className="px-1 pt-1 text-xs text-muted-foreground">
+        {state === "loading" ? "Checking this device…" : HINT[state]}
+      </p>
     </div>
   );
 }

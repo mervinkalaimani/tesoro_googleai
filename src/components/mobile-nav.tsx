@@ -163,7 +163,10 @@ export function MobileNav() {
     null,
   );
   const pillSeen = useRef(false);
-  const { query, navAnimation } = useApp();
+  const { query } = useApp();
+  // The bar no longer animates: it neither shrinks while scrolling nor slides
+  // when its set of tabs changes. The switch for it is gone from Settings.
+  const navAnimation = false;
   const { plan } = useAuth();
   const searchOpen = useSearchOpen();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -216,7 +219,6 @@ export function MobileNav() {
   }
   const split = animate.current && navAnimation;
 
-  // Settings → Display → Navbar animation switches this off.
   const compact = useScrollCompact(navAnimation && !searchOpen);
   /**
    * The bar on a phone holds four pills and has no room for a row of padlocks,
