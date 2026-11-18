@@ -1,5 +1,7 @@
-import { useEffect, useRef } from "react";
-import { ChevronsUpDown } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronsUpDown, Info } from "lucide-react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 function SegmentRow<T extends string>({
@@ -109,6 +111,36 @@ export function CyclePill<T extends string>({
   phoneOnly?: boolean;
 }) {
   const rest = options.filter((o) => o.value !== separate);
+  // Press and hold lists every choice. The tap that follows a hold is swallowed.
+  const [menu, setMenu] = useState(false);
+  const holdTimer = useRef(0);
+  const held = useRef(false);
+  const startHold = () => {
+    held.current = false;
+    window.clearTimeout(holdTimer.current);
+    holdTimer.current = window.setTimeout(() => {
+      held.current = true;
+      setMenu(true);
+    }, 450);
+  };
+  const endHold = () => window.clearTimeout(holdTimer.current);
+  // Shown once, on the first tap, so the hold is discoverable.
+  const [hint, setHint] = useState(false);
+  const hintTimer = useRef(0);
+  const showHint = () => {
+    setHint(true);
+    window.clearTimeout(hintTimer.current);
+    hintTimer.current = window.setTimeout(() => setHint(false), 3500);
+  };
+  const hintOnce = () => {
+    try {
+      if (localStorage.getItem("dg.cycleHint")) return;
+      localStorage.setItem("dg.cycleHint", "1");
+    } catch {
+      return;
+    }
+    showHint();
+  };
   const i = rest.findIndex((o) => o.value === value);
   const onSeparate = separate !== undefined && value === separate;
   const shown = rest[Math.max(0, i)];
@@ -135,17 +167,86 @@ export function CyclePill<T extends string>({
           </button>
         )}
         {shown && (
+          <Popover open={hint && !menu}>
+            <PopoverAnchor asChild>
+              <span className="inline-flex min-w-0">
+                <Popover open={menu} onOpenChange={setMenu}>
+                  <PopoverAnchor asChild>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onPointerDown={startHold}
+                      onPointerUp={endHold}
+                      onPointerLeave={endHold}
+                      onPointerCancel={endHold}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onClick={() => {
+                        if (held.current) {
+                          held.current = false;
+                          return;
+                        }
+                        hintOnce();
+                        onChange(
+                          i < 0 || onSeparate ? rest[0].value : rest[(i + 1) % rest.length].value,
+                        );
+                      }}
+                      aria-label={`${shown.label}. Tap for the next, press and hold for all.`}
+                      className={cn(
+                        pill(!onSeparate),
+                        "select-none pr-3 [-webkit-touch-callout:none]",
+                        phoneOnly && "min-w-0 shrink",
+                      )}
+                    >
+                      <span className={cn("truncate", phoneOnly && "max-w-[8.5rem]")}>
+                        {shown.label}
+                      </span>
+                      <ChevronsUpDown className="size-4 shrink-0 opacity-60" />
+                    </button>
+                  </PopoverAnchor>
+                  <PopoverContent align="start" className="w-auto min-w-40 rounded-2xl p-1.5">
+                    {rest.map((o) => (
+                      <button
+                        key={o.value}
+                        type="button"
+                        onClick={() => {
+                          onChange(o.value);
+                          setMenu(false);
+                        }}
+                        className="flex w-full items-center justify-between gap-4 rounded-xl px-3 py-2 text-left text-sm hover:bg-muted"
+                      >
+                        {o.label}
+                        {o.value === value && <Check className="size-4 text-primary" />}
+                      </button>
+                    ))}
+                  </PopoverContent>
+                </Popover>
+              </span>
+            </PopoverAnchor>
+            <PopoverContent
+              side="top"
+              align="start"
+              sideOffset={10}
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              className="pointer-events-none w-auto max-w-[14rem] rounded-2xl border-primary/40 bg-popover px-3 py-2 text-xs"
+            >
+              Press and hold to see all options
+              <PopoverPrimitive.Arrow asChild>
+                <svg width="14" height="8" viewBox="0 0 14 8" className="-mt-px">
+                  <path d="M0 0 L7 7 L14 0 Z" className="fill-popover" />
+                  <path d="M0.5 0 L7 6.5 L13.5 0" fill="none" className="stroke-primary/40" />
+                </svg>
+              </PopoverPrimitive.Arrow>
+            </PopoverContent>
+          </Popover>
+        )}
+        {shown && (
           <button
             type="button"
-            disabled={disabled}
-            onClick={() =>
-              onChange(i < 0 || onSeparate ? rest[0].value : rest[(i + 1) % rest.length].value)
-            }
-            aria-label={`${shown.label}. Tap for the next.`}
-            className={cn(pill(!onSeparate), "pr-3", phoneOnly && "min-w-0 shrink")}
+            onClick={showHint}
+            aria-label="How this works"
+            className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground"
           >
-            <span className={cn("truncate", phoneOnly && "max-w-[8.5rem]")}>{shown.label}</span>
-            <ChevronsUpDown className="size-4 shrink-0 opacity-60" />
+            <Info className="size-4" />
           </button>
         )}
       </div>

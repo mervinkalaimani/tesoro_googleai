@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
  */
 export function bentoSpan(i: number, total: number): string {
   const rest = total % 3;
+  // A lone leftover would run the full width; four-or-more makes it two rows of
+  // half-width pairs instead, and the rest go three to a row.
+  if (rest === 1 && total >= 4) return i < 4 ? "col-span-3" : "col-span-2";
   if (rest === 0 || i >= rest) return "col-span-2";
   return rest === 1 ? "col-span-6" : "col-span-3";
 }
@@ -125,7 +128,7 @@ export function KpiTile({
       </div>
       <div
         className={cn(
-          "text-display mt-0.5 truncate text-2xl font-semibold leading-tight tabular-nums md:mt-2 md:text-3xl",
+          "text-display mt-1 truncate text-2xl font-semibold leading-none tabular-nums md:mt-2 md:text-3xl",
           valueTone ? TONE_VALUE[valueTone] : undefined,
         )}
       >
@@ -146,7 +149,7 @@ export function KpiTile({
   );
 
   const shell = cn(
-    "card-elevated flex min-w-0 flex-col overflow-hidden p-2 text-left md:p-4",
+    "card-elevated flex min-w-0 flex-col overflow-hidden p-3.5 text-left md:p-4",
     className,
   );
 
