@@ -33,7 +33,9 @@ npm run dev        # then open http://localhost:3000/market
 
 No environment variables are needed. Everything is seeded and runs in the browser.
 
-Demo accounts (sign in at `/market/signin`, no passwords): **Aarav Mehta** (collector with an order in transit), and sellers **Garage 64**, **Diecast Dukaan**, **Pit Lane Models** (verification pending) and **Rev Kart** (unverified). You can also create an account, then use **Become a seller** from Account. _Reset demo data_ is on the Account page.
+**The store is off by default.** Turn it on in **Settings → Viiv Store (beta)** (stored per Viiv account on this device, `src/market/enabled.ts`). While it is off there is no sidebar link, `/market` shows an "off" page, catalogue cars show no sellers, and nothing is seeded or loaded.
+
+**Your Viiv login is your store account.** There is no separate sign-in: the first time you open the store, a store profile is created for your Viiv account (a demo guest gets one too). Buy, collect, or use **Become a seller** from Store account. The seeded sellers (**Garage 64**, **Diecast Dukaan**, **Pit Lane Models**, **Rev Kart**) are demo data you can buy from, not logins. _Reset demo data_ is on the Store account page; it keeps your account.
 
 ## How it is built
 
@@ -72,7 +74,7 @@ public/market-sw.js       offline shell for the store
 ## Known MVP boundaries (be honest about these)
 
 - **Persistence is `localStorage`.** The rules are real but live in client code, so this is a demo, not a trust boundary. To go live, port `db.ts` to Supabase tables with RLS and run checkout, bidding and event close as Postgres RPCs (one transaction each, an `idempotency_key` unique index, `CHECK (quantity >= 0)`). The function signatures in `api` map to those RPCs one to one.
-- **Auth is a demo picker.** Use Supabase Auth in production.
+- **Identity is your Viiv login, but the store's rules still run in the browser** (see above); a real backend must verify the Supabase session server-side.
 - **Payment is simulated.** Orders say "demo payment" everywhere and nothing is charged. Plug a provider in at `api.checkout`, and only move an order out of _processing_ when it confirms.
 - **Auction and raffle money is simulated.** Real-money bids or entries need a compliant provider and a legal review for your jurisdiction. The raffle draw is reproducible, not an audited lottery.
 - No image upload (listings use the catalogue illustration), no email or push (notifications are in-app), no shipping-rate or pincode-coverage engine (`regions` is free text), no catalogue review step, no seller reviews.

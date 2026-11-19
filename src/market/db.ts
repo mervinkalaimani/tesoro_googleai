@@ -129,7 +129,12 @@ export function setCatalogue(items: CatalogueItem[]) {
 
 /** Reset the demo to its seeded state (also signs out). */
 export function resetDemo() {
-  commit(seedState(Date.now(), catalogue));
+  const me = state.users.find((u) => u.id === state.session);
+  const fresh = seedState(Date.now(), catalogue);
+  // Keep the signed-in Viiv account: the reset wipes what it made, not who it is.
+  if (me) fresh.users.push({ ...me, sellerMode: false, saved: [] });
+  fresh.session = me?.id ?? null;
+  commit(fresh);
 }
 
 function tx<T>(
@@ -272,38 +277,40 @@ function settleEvents(s: State, now: number) {
 
 export const api = {
   /* ---- identity ---- */
+  /** Test hook: act as a seeded account. The UI never calls it; the session comes from linkViivUser. */
   signIn(userId: string) {
     return tx(
       (s) => (user(s, userId) ? ((s.session = userId), ok(undefined)) : fail("No such account.")),
       { offlineOk: true },
     );
   },
-  signUp(name: string, email: string) {
+  /**
+   * Make the store's session the signed-in Viiv account (null = signed out).
+   * The market user is created the first time the account opens the store.
+   */
+  linkViivUser(v: { id: string; name: string; email: string } | null) {
+    const want = v ? `v_${v.id}` : null;
+    const cur = getState();
+    if (cur.session === want && (!want || cur.users.some((u) => u.id === want)))
+      return ok(undefined);
     return tx(
-      (s) => {
-        if (name.trim().length < 2) return fail("Enter your name.");
-        if (!/^\S+@\S+\.\S+$/.test(email)) return fail("Enter a valid email address.");
-        if (s.users.some((u) => u.email.toLowerCase() === email.toLowerCase()))
-          return fail("That email is already registered.");
-        const u: User = {
-          id: id(s, "u"),
-          name: name.trim(),
-          email: email.trim(),
-          createdAt: Date.now(),
-          sellerMode: false,
-          addresses: [],
-          saved: [],
-          notify: { orders: true, events: true },
-        };
-        s.users.push(u);
-        s.session = u.id;
-        return ok(u.id);
+      (s, now) => {
+        if (v && want && !s.users.some((u) => u.id === want))
+          s.users.push({
+            id: want,
+            name: v.name,
+            email: v.email,
+            createdAt: now,
+            sellerMode: false,
+            addresses: [],
+            saved: [],
+            notify: { orders: true, events: true },
+          });
+        s.session = want;
+        return ok(undefined);
       },
       { offlineOk: true },
     );
-  },
-  signOut() {
-    return tx((s) => ((s.session = null), ok(undefined)), { offlineOk: true });
   },
   updateProfile(name: string) {
     return tx(

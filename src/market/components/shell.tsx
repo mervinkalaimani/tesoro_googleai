@@ -7,6 +7,7 @@ import {
   Library,
   Package,
   Search,
+  ShoppingCart,
   Store,
   User,
 } from "lucide-react";
@@ -17,7 +18,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 
 import { dateTime } from "../format";
-import { api, run, useMarket, useMarketCatalogue, useMounted, useNow } from "../use-market";
+import { useStoreEnabled } from "../enabled";
+import { api, run, useMarket, useMounted, useNow } from "../use-market";
 
 const NAV_BUY = [
   { to: "/market", label: "Home", icon: Home, exact: true },
@@ -136,9 +138,8 @@ function Bell_() {
   );
 }
 
-export function MarketLayout() {
+function MarketApp() {
   usePwa();
-  useMarketCatalogue();
   useNow(15_000); // closes due events even on pages that don't render a clock
   const { s, me } = useMarket();
   const navigate = useNavigate();
@@ -208,7 +209,7 @@ export function MarketLayout() {
             )}
             <Bell_ />
             <Button asChild variant="ghost" size="icon" aria-label={me ? "Account" : "Sign in"}>
-              <Link to={me ? "/market/account" : "/market/signin"}>
+              <Link to={me ? "/market/account" : "/login"}>
                 <User />
               </Link>
             </Button>
@@ -224,3 +225,23 @@ export function MarketLayout() {
 }
 
 export { run };
+
+/** The store is off until it is switched on in Settings. */
+export function MarketLayout() {
+  const on = useStoreEnabled();
+  if (on === null) return null; // not known yet (server render): show nothing rather than flash "off"
+  if (!on)
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <ShoppingCart className="mx-auto size-8 text-muted-foreground" aria-hidden />
+        <h1 className="mt-3 text-xl font-semibold">Viiv Store is off</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          It's in beta and switched off by default. Turn it on for your account in Settings.
+        </p>
+        <Button asChild className="mt-4">
+          <Link to="/settings">Open Settings</Link>
+        </Button>
+      </div>
+    );
+  return <MarketApp />;
+}

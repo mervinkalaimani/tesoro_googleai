@@ -30,7 +30,7 @@ export function AccountPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <PageTitle title="Account" sub={me.email} />
+      <PageTitle title="Store account" sub={`Your Viiv login · ${me.email}`} />
       <Card className="space-y-3">
         <h2 className="font-medium">Profile</h2>
         <Field label="Name">
@@ -185,15 +185,6 @@ export function AccountPage() {
       </Card>
 
       <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          onClick={() => {
-            api.signOut();
-            void navigate({ to: "/market" });
-          }}
-        >
-          Sign out
-        </Button>
         <Confirm
           trigger={(open) => (
             <Button variant="ghost" onClick={open}>

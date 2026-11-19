@@ -46,7 +46,6 @@ import { Route as MarketAccountRouteImport } from './routes/market.account'
 import { Route as MarketCollectionRouteImport } from './routes/market.collection'
 import { Route as MarketEventsRouteImport } from './routes/market.events'
 import { Route as MarketSearchRouteImport } from './routes/market.search'
-import { Route as MarketSigninRouteImport } from './routes/market.signin'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPayConfigRouteImport } from './routes/api/pay/config'
 import { Route as ApiPayOrderRouteImport } from './routes/api/pay/order'
@@ -257,11 +256,6 @@ const MarketSearchRoute = MarketSearchRouteImport.update({
   path: '/search',
   getParentRoute: () => MarketRoute,
 } as any)
-const MarketSigninRoute = MarketSigninRouteImport.update({
-  id: '/signin',
-  path: '/signin',
-  getParentRoute: () => MarketRoute,
-} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -412,7 +406,6 @@ export interface FileRoutesByFullPath {
   '/market/collection': typeof MarketCollectionRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
-  '/market/signin': typeof MarketSigninRoute
   '/market/': typeof MarketIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/pay/config': typeof ApiPayConfigRoute
@@ -473,7 +466,6 @@ export interface FileRoutesByTo {
   '/market/collection': typeof MarketCollectionRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
-  '/market/signin': typeof MarketSigninRoute
   '/market': typeof MarketIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/pay/config': typeof ApiPayConfigRoute
@@ -536,7 +528,6 @@ export interface FileRoutesById {
   '/market/collection': typeof MarketCollectionRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
-  '/market/signin': typeof MarketSigninRoute
   '/market/': typeof MarketIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/pay/config': typeof ApiPayConfigRoute
@@ -600,7 +591,6 @@ export interface FileRouteTypes {
     | '/market/collection'
     | '/market/events'
     | '/market/search'
-    | '/market/signin'
     | '/market/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/pay/config'
@@ -661,7 +651,6 @@ export interface FileRouteTypes {
     | '/market/collection'
     | '/market/events'
     | '/market/search'
-    | '/market/signin'
     | '/market'
     | '/.mcp/invoke-tool/$tool'
     | '/api/pay/config'
@@ -723,7 +712,6 @@ export interface FileRouteTypes {
     | '/market/collection'
     | '/market/events'
     | '/market/search'
-    | '/market/signin'
     | '/market/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/pay/config'
@@ -1054,13 +1042,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketSearchRouteImport
       parentRoute: typeof MarketRoute
     }
-    '/market/signin': {
-      id: '/market/signin'
-      path: '/signin'
-      fullPath: '/market/signin'
-      preLoaderRoute: typeof MarketSigninRouteImport
-      parentRoute: typeof MarketRoute
-    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -1223,7 +1204,6 @@ interface MarketRouteChildren {
   MarketCollectionRoute: typeof MarketCollectionRoute
   MarketEventsRoute: typeof MarketEventsRoute
   MarketSearchRoute: typeof MarketSearchRoute
-  MarketSigninRoute: typeof MarketSigninRoute
   MarketIndexRoute: typeof MarketIndexRoute
   MarketBuyListingIdRoute: typeof MarketBuyListingIdRoute
   MarketEventEventIdRoute: typeof MarketEventEventIdRoute
@@ -1245,7 +1225,6 @@ const MarketRouteChildren: MarketRouteChildren = {
   MarketCollectionRoute: MarketCollectionRoute,
   MarketEventsRoute: MarketEventsRoute,
   MarketSearchRoute: MarketSearchRoute,
-  MarketSigninRoute: MarketSigninRoute,
   MarketIndexRoute: MarketIndexRoute,
   MarketBuyListingIdRoute: MarketBuyListingIdRoute,
   MarketEventEventIdRoute: MarketEventEventIdRoute,

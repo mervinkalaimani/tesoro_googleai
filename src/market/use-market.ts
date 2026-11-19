@@ -1,8 +1,10 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { createElement, useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
+import { useAuth } from "@/lib/auth-store";
 import { useCatalog } from "@/lib/catalog-store";
 
+import { useStoreEnabled } from "./enabled";
 import { fromCatalogCar, MARKET_CAR_EVENT } from "./catalogue";
 import { api, getServerState, getState, setCatalogue, settleDue, subscribe } from "./db";
 import type { R, State } from "./types";
@@ -68,8 +70,35 @@ export function useMarketCatalogue() {
   }, [catalog, created.length]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
-/** Mounted once under the catalogue provider, so the market and the catalogue see each other's cars on every page. */
-export function MarketCatalogueBridge() {
+/** The store's session follows the Viiv login (a demo guest counts). */
+function useViivIdentity() {
+  const { user, profile, isGuest, status } = useAuth();
+  useEffect(() => {
+    if (status === "loading") return;
+    if (isGuest) api.linkViivUser({ id: "guest", name: "Guest", email: "guest@demo.viiv" });
+    else if (user)
+      api.linkViivUser({
+        id: user.id,
+        name:
+          [profile?.first_name, profile?.last_name].filter(Boolean).join(" ") ||
+          user.email ||
+          "Viiv collector",
+        email: user.email ?? "",
+      });
+    else api.linkViivUser(null);
+  }, [status, isGuest, user?.id, profile?.first_name, profile?.last_name]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+function LiveBridge() {
   useMarketCatalogue();
+  useViivIdentity();
   return null;
+}
+
+/**
+ * Mounted once under the catalogue provider. Does nothing until the store is
+ * switched on in Settings: no seeding, no catalogue copy, no session.
+ */
+export function MarketCatalogueBridge() {
+  return useStoreEnabled() ? createElement(LiveBridge) : null;
 }

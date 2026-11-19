@@ -202,7 +202,7 @@ export function EventPage() {
               </form>
             ) : (
               <Button asChild>
-                <Link to="/market/signin">Sign in to bid</Link>
+                <Link to="/login">Sign in to bid</Link>
               </Button>
             ))}
           {isSeller && open && (
@@ -251,7 +251,7 @@ export function EventPage() {
               </Button>
             ) : (
               <Button asChild>
-                <Link to="/market/signin">Sign in to enter</Link>
+                <Link to="/login">Sign in to enter</Link>
               </Button>
             ))}
           {isSeller && open && (

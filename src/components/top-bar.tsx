@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { useStoreEnabled } from "@/market/enabled";
 import { BookOpen, Plus, RefreshCw, ShoppingCart, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ const UNDO_WINDOW_MS = 30_000;
 export function TopBar() {
   const { undo, undoLabel, undoAt } = useCarsUndo();
   const { carCeiling } = useAuth();
+  const storeOn = useStoreEnabled() === true;
   const allCars = useCars();
   /** At the ceiling this plan has. The database refuses the row anyway. */
   const atCarLimit = carCeiling !== null && allCars.length >= carCeiling;
@@ -161,17 +163,19 @@ export function TopBar() {
           </Button>
           {/* The sidebar is the way to the store and the catalogue on desktop;
               below md it is hidden, so they are one tap here instead. */}
-          <Button
-            asChild
-            variant="outline"
-            size="icon"
-            className="size-9 rounded-full md:hidden"
-            title="Viiv Store"
-          >
-            <Link to="/market" aria-label="Viiv Store">
-              <ShoppingCart className="size-4.5" />
-            </Link>
-          </Button>
+          {storeOn && (
+            <Button
+              asChild
+              variant="outline"
+              size="icon"
+              className="size-9 rounded-full md:hidden"
+              title="Viiv Store"
+            >
+              <Link to="/market" aria-label="Viiv Store">
+                <ShoppingCart className="size-4.5" />
+              </Link>
+            </Button>
+          )}
           <Button
             asChild
             variant="outline"

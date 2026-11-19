@@ -44,6 +44,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import { isPackMember, packMemberIds } from "@/lib/pack";
 import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { useStoreEnabled } from "@/market/enabled";
 import { openProDialog } from "@/components/pro-dialog";
 import { paidPlanOf, planIncludes, type PaidPlan } from "@/lib/tiers";
 import { useApp } from "@/lib/store";
@@ -52,8 +53,8 @@ import { Button } from "@/components/ui/button";
 import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
 
 /** Below the sections, above the totals: the store and the shared catalogue. */
-const SHOP_LINKS: { title: string; url: string; icon: LucideIcon }[] = [
-  { title: "Viiv Store", url: "/market", icon: ShoppingCart },
+const SHOP_LINKS: { title: string; url: string; icon: LucideIcon; store?: boolean }[] = [
+  { title: "Viiv Store", url: "/market", icon: ShoppingCart, store: true },
   { title: "Catalogue", url: "/catalog", icon: BookOpen },
 ];
 
@@ -102,6 +103,7 @@ export function AppSidebar() {
     [allMatching, memberIds],
   );
   const { isMobile, setOpenMobile } = useSidebar();
+  const storeOn = useStoreEnabled() === true;
   const [localReveal, setLocalReveal] = useState(false);
   const pathname = useRouterState({ select: (r) => r.location.pathname });
 
@@ -271,7 +273,7 @@ export function AppSidebar() {
         <SidebarGroup className="py-1">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
-              {SHOP_LINKS.map((item) => (
+              {SHOP_LINKS.filter((l) => !l.store || storeOn).map((item) => (
                 <SidebarMenuItem key={item.url}>
                   <SidebarMenuButton
                     asChild

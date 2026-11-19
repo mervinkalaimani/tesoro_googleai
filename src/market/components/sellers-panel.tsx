@@ -6,14 +6,15 @@ import { Button } from "@/components/ui/button";
 
 import { rupees } from "../format";
 import { itemOffers, sellerOf } from "../queries";
-import { useMarket, useMarketCatalogue } from "../use-market";
+import { useStoreEnabled } from "../enabled";
+import { useMarket } from "../use-market";
 import { Pill, Price, VerifyPill } from "./bits";
 
-/** The live offers for a catalogue car_id. Seeds the demo market the first time it runs. */
+/** The live offers for a catalogue car_id. Empty while the store is switched off. */
 export function useCarOffers(carId: string) {
-  useMarketCatalogue();
+  const on = useStoreEnabled();
   const { s } = useMarket();
-  return { s, offers: carId ? itemOffers(s, carId) : [] };
+  return { s, offers: on && carId ? itemOffers(s, carId) : [] };
 }
 
 export function SellersList({ carId, compact }: { carId: string; compact?: boolean }) {

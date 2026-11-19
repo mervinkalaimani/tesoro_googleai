@@ -222,10 +222,10 @@ export function SignInNeeded({ what }: { what: string }) {
   return (
     <Empty
       title={`Sign in to ${what}`}
-      body="Browsing is open to everyone. Buying, bidding and your collection need an account (one account, buyer and seller)."
+      body="The store uses your Viiv login: one account, buyer and seller."
       action={
         <Button asChild>
-          <Link to="/market/signin">Sign in</Link>
+          <Link to="/login">Sign in to Viiv</Link>
         </Button>
       }
     />
