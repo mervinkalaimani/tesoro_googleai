@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Gavel,
   Home,
-  Library,
   Package,
   Search,
   ShoppingCart,
@@ -25,7 +24,6 @@ const NAV_BUY = [
   { to: "/market", label: "Home", icon: Home, exact: true },
   { to: "/market/search", label: "Search", icon: Search },
   { to: "/market/events", label: "Events", icon: Gavel },
-  { to: "/market/collection", label: "Collection", icon: Library },
   { to: "/market/orders", label: "Orders", icon: Package },
 ] as const;
 const NAV_SELL = [

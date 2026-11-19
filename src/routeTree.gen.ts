@@ -43,7 +43,6 @@ import { Route as ApiSyncImagesRouteImport } from './routes/api/sync-images'
 import { Route as CatalogCarIdRouteImport } from './routes/catalog_.$carId'
 import { Route as MarketIndexRouteImport } from './routes/market.index'
 import { Route as MarketAccountRouteImport } from './routes/market.account'
-import { Route as MarketCollectionRouteImport } from './routes/market.collection'
 import { Route as MarketEventsRouteImport } from './routes/market.events'
 import { Route as MarketSearchRouteImport } from './routes/market.search'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -241,11 +240,6 @@ const MarketAccountRoute = MarketAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => MarketRoute,
 } as any)
-const MarketCollectionRoute = MarketCollectionRouteImport.update({
-  id: '/collection',
-  path: '/collection',
-  getParentRoute: () => MarketRoute,
-} as any)
 const MarketEventsRoute = MarketEventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -403,7 +397,6 @@ export interface FileRoutesByFullPath {
   '/api/sync-images': typeof ApiSyncImagesRoute
   '/catalog/$carId': typeof CatalogCarIdRoute
   '/market/account': typeof MarketAccountRoute
-  '/market/collection': typeof MarketCollectionRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
   '/market/': typeof MarketIndexRoute
@@ -463,7 +456,6 @@ export interface FileRoutesByTo {
   '/api/sync-images': typeof ApiSyncImagesRoute
   '/catalog/$carId': typeof CatalogCarIdRoute
   '/market/account': typeof MarketAccountRoute
-  '/market/collection': typeof MarketCollectionRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
   '/market': typeof MarketIndexRoute
@@ -525,7 +517,6 @@ export interface FileRoutesById {
   '/api/sync-images': typeof ApiSyncImagesRoute
   '/catalog_/$carId': typeof CatalogCarIdRoute
   '/market/account': typeof MarketAccountRoute
-  '/market/collection': typeof MarketCollectionRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
   '/market/': typeof MarketIndexRoute
@@ -588,7 +579,6 @@ export interface FileRouteTypes {
     | '/api/sync-images'
     | '/catalog/$carId'
     | '/market/account'
-    | '/market/collection'
     | '/market/events'
     | '/market/search'
     | '/market/'
@@ -648,7 +638,6 @@ export interface FileRouteTypes {
     | '/api/sync-images'
     | '/catalog/$carId'
     | '/market/account'
-    | '/market/collection'
     | '/market/events'
     | '/market/search'
     | '/market'
@@ -709,7 +698,6 @@ export interface FileRouteTypes {
     | '/api/sync-images'
     | '/catalog_/$carId'
     | '/market/account'
-    | '/market/collection'
     | '/market/events'
     | '/market/search'
     | '/market/'
@@ -1021,13 +1009,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketAccountRouteImport
       parentRoute: typeof MarketRoute
     }
-    '/market/collection': {
-      id: '/market/collection'
-      path: '/collection'
-      fullPath: '/market/collection'
-      preLoaderRoute: typeof MarketCollectionRouteImport
-      parentRoute: typeof MarketRoute
-    }
     '/market/events': {
       id: '/market/events'
       path: '/events'
@@ -1201,7 +1182,6 @@ declare module '@tanstack/react-router' {
 
 interface MarketRouteChildren {
   MarketAccountRoute: typeof MarketAccountRoute
-  MarketCollectionRoute: typeof MarketCollectionRoute
   MarketEventsRoute: typeof MarketEventsRoute
   MarketSearchRoute: typeof MarketSearchRoute
   MarketIndexRoute: typeof MarketIndexRoute
@@ -1222,7 +1202,6 @@ interface MarketRouteChildren {
 
 const MarketRouteChildren: MarketRouteChildren = {
   MarketAccountRoute: MarketAccountRoute,
-  MarketCollectionRoute: MarketCollectionRoute,
   MarketEventsRoute: MarketEventsRoute,
   MarketSearchRoute: MarketSearchRoute,
   MarketIndexRoute: MarketIndexRoute,

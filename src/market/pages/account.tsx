@@ -91,7 +91,7 @@ export function AccountPage() {
           <>
             <p className="text-sm text-muted-foreground">
               Same account, extra tools: list cars, ship orders, host auctions and raffles. Your
-              collection and orders stay as they are.
+              cars and orders stay as they are.
             </p>
             <Button asChild>
               <Link to="/market/sell/setup">Become a seller</Link>

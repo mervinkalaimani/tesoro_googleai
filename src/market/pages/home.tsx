@@ -55,7 +55,7 @@ export function HomePage() {
         </h1>
         <p className="mt-2 max-w-xl text-muted-foreground">
           Every offer is tied to one catalogue car, so a 1:64 Premium and a 1:64 Mainline are never
-          mixed up. Buy it and it lands in your collection.
+          mixed up. Buy it and it's added to your Viiv cars.
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Button asChild size="lg">

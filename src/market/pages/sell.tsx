@@ -73,7 +73,7 @@ export function SetupPage() {
     <div className="mx-auto max-w-xl">
       <PageTitle
         title={existing ? "Edit your store" : "Become a seller"}
-        sub="Same account. Your collection and orders stay exactly as they are."
+        sub="Same account. Your cars and orders stay exactly as they are."
       />
       <Card>
         <form
@@ -607,7 +607,7 @@ export function SellOrdersPage() {
                               </Button>
                             )}
                             title="Cancel this order?"
-                            body="Stock goes back on your listing and the car leaves the buyer's collection. The buyer is notified."
+                            body="Stock goes back on your listing and the car is removed from the buyer's cars. The buyer is notified."
                             confirm="Cancel order"
                             danger
                             onConfirm={() =>

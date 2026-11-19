@@ -12,7 +12,7 @@ import {
   Truck,
   Store,
   Gavel,
-  Library,
+  Package,
 } from "lucide-react";
 
 import { useApp } from "@/lib/store";
@@ -60,7 +60,7 @@ const MARKET_TABS = [
   { title: "Store", url: "/market", icon: Store },
   { title: "Search", url: "/market/search", icon: Search },
   { title: "Events", url: "/market/events", icon: Gavel },
-  { title: "Shelf", url: "/market/collection", icon: Library },
+  { title: "Orders", url: "/market/orders", icon: Package },
 ] as const;
 
 function isActive(pathname: string, url: string) {

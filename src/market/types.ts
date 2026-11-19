@@ -139,26 +139,6 @@ export type Order = {
   demo?: boolean;
 };
 
-export type CollectionSource = {
-  kind: "order" | "manual";
-  orderId?: string;
-  sellerId?: string;
-  qty: number;
-  at: number;
-  from?: string;
-};
-
-export type CollectionEntry = {
-  id: string;
-  userId: string;
-  itemId: string;
-  qty: number;
-  condition: Condition;
-  notes: string;
-  acquiredAt: number;
-  sources: CollectionSource[];
-};
-
 export type Bid = { id: string; userId: string; amountPaise: number; at: number };
 export type RaffleEntry = { id: string; userId: string; at: number };
 
@@ -212,7 +192,6 @@ export type State = {
   items: CatalogueItem[];
   listings: Listing[];
   orders: Order[];
-  collection: CollectionEntry[];
   events: MarketEvent[];
   notifications: Notification[];
 };

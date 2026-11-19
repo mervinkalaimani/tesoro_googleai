@@ -206,7 +206,7 @@ export function OrderPage() {
               </Button>
             )}
             title="Cancel this order?"
-            body="The car goes back to the seller's stock and is removed from your collection. It's allowed only until the seller ships."
+            body="The car goes back to the seller's stock and is removed from your cars. It's allowed only until the seller ships."
             confirm="Cancel order"
             danger
             onConfirm={() => run(api.cancelOrder(o.id, "Cancelled by buyer"), "Order cancelled")}

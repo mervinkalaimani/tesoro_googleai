@@ -7,7 +7,6 @@
  */
 import type {
   CatalogueItem,
-  CollectionEntry,
   Listing,
   MarketEvent,
   Order,
@@ -253,42 +252,6 @@ export function seedState(now: number, items: CatalogueItem[]): State {
   // Seeded orders count as sold; the shelf is restocked so the demo stays buyable.
   for (const o of orders) listings.find((x) => x.id === o.lines[0].listingId)!.sold += 1;
 
-  const collection: CollectionEntry[] = [
-    {
-      id: "c_1",
-      userId: DEMO_BUYER,
-      itemId: lB.itemId,
-      qty: 1,
-      condition: lB.condition,
-      notes: "",
-      acquiredAt: base - 14 * DAY,
-      sources: [
-        { kind: "order", orderId: "o_2", sellerId: lB.sellerId, qty: 1, at: base - 14 * DAY },
-      ],
-    },
-    {
-      id: "c_2",
-      userId: DEMO_BUYER,
-      itemId: pick(7).id,
-      qty: 2,
-      condition: "Opened",
-      notes: "Swapped at the Pune meet-up",
-      acquiredAt: base - 60 * DAY,
-      sources: [{ kind: "manual", qty: 2, at: base - 60 * DAY, from: "Pune meet-up" }],
-    },
-  ];
-  // A purchase lands in the collection when the order is placed, so the in-transit o_1 is here too.
-  collection.push({
-    id: "c_3",
-    userId: DEMO_BUYER,
-    itemId: lA.itemId,
-    qty: 1,
-    condition: lA.condition,
-    notes: "",
-    acquiredAt: base - 3 * DAY,
-    sources: [{ kind: "order", orderId: "o_1", sellerId: lA.sellerId, qty: 1, at: base - 3 * DAY }],
-  });
-
   const auctionItem = pick(2);
   const raffleItem = pick(5);
   const events: MarketEvent[] = [
@@ -361,7 +324,6 @@ export function seedState(now: number, items: CatalogueItem[]): State {
     items,
     listings,
     orders,
-    collection,
     events,
     notifications: [
       {

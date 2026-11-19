@@ -8,6 +8,7 @@ import { useStoreEnabled } from "./enabled";
 import { fromCatalogCar, MARKET_CAR_EVENT } from "./catalogue";
 import { api, getServerState, getState, setCatalogue, settleDue, subscribe } from "./db";
 import type { R, State } from "./types";
+import { useShopCancelSync } from "./viiv-cars";
 
 export function useMarket() {
   const s = useSyncExternalStore(subscribe, getState, getServerState);
@@ -92,6 +93,7 @@ function useViivIdentity() {
 function LiveBridge() {
   useMarketCatalogue();
   useViivIdentity();
+  useShopCancelSync();
   return null;
 }
 

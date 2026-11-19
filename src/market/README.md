@@ -49,18 +49,18 @@ src/market/
   format.ts       ₹ formatting, local times with zone, order labels
   use-market.ts   React hooks over the store
   components/     shell, cards, shared bits, address form
-  pages/          one file per area (home, search, item, checkout, orders, collection, sell, events, …)
+  pages/          one file per area (home, search, item, checkout, orders, sell, events, …)
 src/routes/market*.tsx    thin route files
 public/market-sw.js       offline shell for the store
 ```
 
-**Data model:** `CatalogueItem` (canonical car) is separate from `Listing` (a seller's offer: price, MRP, stock, condition, shipping). `Order` has `lines`, a timestamped `history` and tracking fields. `CollectionEntry` is unique per user and car and keeps `sources` (each order, or manual). `MarketEvent` holds `bids` or `entries`, an `audit` log and the draw record. `Notification`, `User` (one identity, `sellerMode` flag) and `SellerProfile` (`Unverified` / `Pending` / `Verified`, never granted automatically).
+**Data model:** `CatalogueItem` (canonical car) is separate from `Listing` (a seller's offer: price, MRP, stock, condition, shipping). `Order` has `lines`, a timestamped `history` and tracking fields. `MarketEvent` holds `bids` or `entries`, an `audit` log and the draw record. `Notification`, `User` (one identity, `sellerMode` flag) and `SellerProfile` (`Unverified` / `Pending` / `Verified`, never granted automatically).
 
 **Rules enforced in `db.ts`** (and covered by `db.selfcheck.ts`):
 
-- Checkout is idempotent on a client key: a retry returns the first order, never a second purchase, stock decrement or collection add.
-- Stock cannot go negative; an out-of-stock or paused offer is refused. Cancelling a processing order restocks and reverses the collection add.
-- A buyer's purchase increments the single collection record for that car (no duplicates). Manual adds are tracked separately.
+- Checkout is idempotent on a client key: a retry returns the first order, never a second purchase, stock decrement or car added.
+- Stock cannot go negative; an out-of-stock or paused offer is refused. Cancelling a processing order restocks and removes the car again.
+- **No separate collection.** A purchase is added to the buyer's own Viiv cars (`viiv-cars.ts`): seller "VIIV Shop · <store>", shipping ID `VIIV-<order>`, linked to the catalogue car. Cancelling the order removes it.
 - A seller can only read or ship their own orders (someone else's is "not found"). Only `processing → shipped → delivered` moves forward; a shipped order shows as **In transit** to the buyer; a seller can't change the buyer's payment.
 - Auctions: bid must beat the current bid by the minimum raise; seller can't bid; no bidding on yourself; deadline enforced; late-bid extension; reserve decides whether there is a winner.
 - Raffles: free entry only, per-person limit, seller can't enter, winner drawn at close with the seed, entry count and position stored on the event.
@@ -84,4 +84,4 @@ public/market-sw.js       offline shell for the store
 
 - `db.selfcheck.ts` passes (idempotent checkout, oversell, ownership, cancellation, bids, reserve, restart, raffle draw).
 - ESLint on the new code: no errors (4 fast-refresh warnings). `tsc` reports no errors in the new code.
-- Manually in the browser: browse, exact-car seller comparison, search filters, checkout, collection merge, seller ship flow, buyer sees **In transit** with tracking, no horizontal scroll at 375 px. Not tested: real devices, the production service worker, installing the PWA.
+- Manually in the browser: browse, exact-car seller comparison, search filters, checkout, seller ship flow, buyer sees **In transit** with tracking, no horizontal scroll at 375 px. Not tested: real devices, the production service worker, installing the PWA.

@@ -1,5 +1,6 @@
 import { Link, useParams } from "@tanstack/react-router";
 
+import { useCars } from "@/lib/cars-store";
 import { Button } from "@/components/ui/button";
 
 import { Card, CarImage, Empty, Pill, Price, itemLine } from "../components/bits";
@@ -11,6 +12,7 @@ import { useMarket } from "../use-market";
 export function ItemPage() {
   const { itemId } = useParams({ strict: false }) as { itemId: string };
   const { s, me } = useMarket();
+  const myCars = useCars();
   const item = itemById(s, itemId);
   if (!item || item.review !== "approved")
     return (
@@ -27,9 +29,7 @@ export function ItemPage() {
 
   const offers = itemOffers(s, item.id);
   const events = itemEvents(s, item.id);
-  const owned = me
-    ? (s.collection.find((c) => c.userId === me.id && c.itemId === item.id)?.qty ?? 0)
-    : 0;
+  const owned = myCars.filter((c) => c.catalogId === item.id).length;
   const specs: Array<[string, string]> = [
     ["Catalogue code", item.code],
     ["Brand", item.brand],

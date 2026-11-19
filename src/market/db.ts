@@ -59,7 +59,6 @@ const emptyState = (): State => ({
   items: [],
   listings: [],
   orders: [],
-  collection: [],
   events: [],
   notifications: [],
 });
@@ -203,34 +202,6 @@ export const minNextBid = (e: MarketEvent) =>
 export const available = (l: Listing) => l.quantity;
 export const participants = (e: MarketEvent) =>
   new Set([...e.bids.map((b) => b.userId), ...e.entries.map((x) => x.userId)]).size;
-
-function addToCollection(
-  s: State,
-  userId: string,
-  itemId: string,
-  qty: number,
-  condition: Condition,
-  source: State["collection"][number]["sources"][number],
-) {
-  const e = s.collection.find((c) => c.userId === userId && c.itemId === itemId);
-  if (!e) {
-    s.collection.push({
-      id: id(s, "c"),
-      userId,
-      itemId,
-      qty,
-      condition,
-      notes: "",
-      acquiredAt: source.at,
-      sources: [source],
-    });
-    return;
-  }
-  // Idempotent: a retry carrying the same order never adds twice.
-  if (source.orderId && e.sources.some((x) => x.orderId === source.orderId)) return;
-  e.qty += qty;
-  e.sources.push(source);
-}
 
 /* --------------------------------------------------------------- events */
 
@@ -642,13 +613,6 @@ export const api = {
         createdAt: now,
       };
       s.orders.unshift(o);
-      addToCollection(s, me.id, l.itemId, f.qty, l.condition, {
-        kind: "order",
-        orderId: o.id,
-        sellerId: l.sellerId,
-        qty: f.qty,
-        at: now,
-      });
       const u = user(s, me.id)!;
       if (!u.addresses.length) u.addresses.push({ ...f.address, id: id(s, "a") });
       ping(
@@ -674,15 +638,6 @@ export const api = {
           l.quantity += line.qty;
           l.sold = Math.max(0, l.sold - line.qty);
           if (l.status === "sold_out") l.status = "active";
-        }
-        const c = s.collection.find((x) => x.userId === o.buyerId && x.itemId === line.itemId);
-        if (c) {
-          const src = c.sources.find((x) => x.orderId === o.id);
-          if (src) {
-            c.qty -= src.qty;
-            c.sources = c.sources.filter((x) => x !== src);
-          }
-          if (c.qty <= 0) s.collection = s.collection.filter((x) => x !== c);
         }
       }
       o.status = "cancelled";
@@ -774,48 +729,6 @@ export const api = {
         `Order ${o.id} was delivered.`,
         "/market/orders/" + o.id,
       );
-      return ok(undefined);
-    });
-  },
-  addManual(f: {
-    itemId: string;
-    qty: number;
-    condition: Condition;
-    notes: string;
-    acquiredAt: number;
-    from: string;
-  }) {
-    return tx((s, now, me) => {
-      if (!me) return fail("Sign in to do that.");
-      const item = s.items.find((i) => i.id === f.itemId && i.review === "approved");
-      if (!item) return fail("Pick a catalogue car.");
-      if (!Number.isInteger(f.qty) || f.qty < 1 || f.qty > 999)
-        return fail("Quantity must be 1 or more.");
-      addToCollection(s, me.id, f.itemId, f.qty, f.condition, {
-        kind: "manual",
-        qty: f.qty,
-        at: f.acquiredAt || now,
-        from: f.from.trim(),
-      });
-      const c = s.collection.find((x) => x.userId === me.id && x.itemId === f.itemId)!;
-      if (f.notes.trim()) c.notes = f.notes.trim();
-      return ok(undefined);
-    });
-  },
-  updateCollection(entryId: string, f: { notes: string; condition: Condition }) {
-    return tx((s, _n, me) => {
-      const c = s.collection.find((x) => x.id === entryId && x.userId === me?.id);
-      if (!c) return fail("Not found.");
-      c.notes = f.notes.trim();
-      c.condition = f.condition;
-      return ok(undefined);
-    });
-  },
-  removeCollection(entryId: string) {
-    return tx((s, _n, me) => {
-      if (!s.collection.some((x) => x.id === entryId && x.userId === me?.id))
-        return fail("Not found.");
-      s.collection = s.collection.filter((x) => x.id !== entryId);
       return ok(undefined);
     });
   },

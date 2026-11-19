@@ -21,6 +21,7 @@ import { SellerChip } from "../components/cards";
 import { rupees } from "../format";
 import { itemById, sellerOf } from "../queries";
 import type { Order } from "../types";
+import { useAddShopCars } from "../viiv-cars";
 import { api, useMarket } from "../use-market";
 
 export function CheckoutPage() {
@@ -36,6 +37,7 @@ export function CheckoutPage() {
   const [draft, setDraft] = useState<AddressDraft>(BLANK_ADDRESS);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const addShopCars = useAddShopCars();
   const [placed, setPlaced] = useState<Order | null>(null);
 
   if (placed) {
@@ -51,7 +53,7 @@ export function CheckoutPage() {
           Status: <Pill tone="warn">Processing</Pill> The seller has been notified. When they ship
           it, it shows as <b>In transit</b> with tracking.
         </p>
-        <p className="mt-2 text-sm">Added to your collection ✓</p>
+        <p className="mt-2 text-sm">Added to your cars as bought from VIIV Shop ✓</p>
         <div className="mt-5 flex justify-center gap-2">
           <Button asChild>
             <Link to="/market/orders/$orderId" params={{ orderId: placed.id }}>
@@ -59,7 +61,7 @@ export function CheckoutPage() {
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/market/collection">My collection</Link>
+            <Link to="/collection">My cars</Link>
           </Button>
         </div>
       </Card>
@@ -127,8 +129,13 @@ export function CheckoutPage() {
       key: key.current,
     });
     setBusy(false);
-    if (r.ok) setPlaced(r.data);
-    else setError(r.error);
+    if (r.ok) {
+      if (!key.current.startsWith("done:")) {
+        addShopCars(r.data, item, s.sellers.find((x) => x.userId === l.sellerId)?.storeName ?? "");
+        key.current = "done:" + key.current;
+      }
+      setPlaced(r.data);
+    } else setError(r.error);
   };
 
   return (
