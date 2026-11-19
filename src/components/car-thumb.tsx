@@ -52,7 +52,9 @@ export function CarThumb({
   }, [car.id, car.imageUrl, car.model, car.variant, car.colour, car.brand, car.make]);
 
   return (
-    <div className={`relative flex items-center justify-center bg-muted/40 ${className}`}>
+    <div
+      className={`relative flex items-center justify-center overflow-hidden bg-muted/40 ${className}`}
+    >
       {loading ? (
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
       ) : src ? (
