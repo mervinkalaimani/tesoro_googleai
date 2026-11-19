@@ -20,7 +20,6 @@ export function SellerCataloguePage() {
   const [q, setQ] = useState(urlQ.q ?? "");
   useEffect(() => setQ(urlQ.q ?? ""), [urlQ.q]);
   const [brand, setBrand] = useState("");
-  const [scale, setScale] = useState("");
   const [shown, setShown] = useState(PAGE);
   const dq = useDeferredValue(q);
   const f = useMemo(() => facets(s), [s]);
@@ -29,14 +28,13 @@ export function SellerCataloguePage() {
     return approved(s).filter(
       (i) =>
         (!brand || i.brand === brand) &&
-        (!scale || i.scale === scale) &&
         t.every((x) =>
           `${i.name} ${i.brand} ${i.make} ${i.assortment} ${i.series} ${i.colour} ${i.code}`
             .toLowerCase()
             .includes(x),
         ),
     );
-  }, [s, dq, brand, scale]);
+  }, [s, dq, brand]);
   const mine = (id: string, uid: string) =>
     s.listings.some((l) => l.sellerId === uid && l.itemId === id && !l.bundle);
 
@@ -85,22 +83,6 @@ export function SellerCataloguePage() {
                     setShown(PAGE);
                   }}
                   options={f.brand.map((v) => ({ value: v, label: v }))}
-                />
-              </div>
-            </div>
-            <div className="flex min-h-11 items-center justify-between gap-4 px-3.5">
-              <span className="text-[15px]">Scale</span>
-              <div className="w-48">
-                <IosPicker
-                  label="Scale"
-                  placeholder="All"
-                  clearable
-                  value={scale}
-                  onChange={(v) => {
-                    setScale(v);
-                    setShown(PAGE);
-                  }}
-                  options={f.scale.map((v) => ({ value: v, label: v }))}
                 />
               </div>
             </div>
