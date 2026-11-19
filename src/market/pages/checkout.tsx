@@ -266,7 +266,11 @@ export function CheckoutPage() {
             return have ? (
               <Confirm
                 title="You already have this casting"
-                body={`${have} ${have === 1 ? "piece" : "pieces"} of ${item.name}${item.brand ? ` from ${item.brand}` : ""} ${have === 1 ? "is" : "are"} already in your collection. Buy another?`}
+                body={
+                  have === 1
+                    ? "You already have this. Buy another?"
+                    : `${have} pieces of ${item.name}${item.brand ? ` from ${item.brand}` : ""} are already in your collection. Buy another?`
+                }
                 confirm="Yes, buy it"
                 onConfirm={place}
                 trigger={btn}
