@@ -14,3 +14,7 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Viiv Market
+
+A separate buyer/seller marketplace for collectible model cars lives at `/market`. See [src/market/README.md](src/market/README.md).

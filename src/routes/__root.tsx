@@ -22,6 +22,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { UseCasePrompt } from "@/components/use-case-prompt";
 import { RevealOnScroll } from "@/components/reveal-on-scroll";
 import { BootSplash } from "@/components/brand-mark";
+import { MarketCatalogueBridge } from "@/market/use-market";
 
 function NotFoundComponent() {
   return (
@@ -273,6 +274,7 @@ function RootComponent() {
         <AppProvider>
           <CarsProvider>
             <CatalogProvider>
+              <MarketCatalogueBridge />
               <CarDrawerProvider>
                 <AuthGate>
                   <Outlet />

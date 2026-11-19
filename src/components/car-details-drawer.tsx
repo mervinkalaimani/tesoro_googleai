@@ -20,6 +20,7 @@ import {
   Copy,
   Flame,
   Layers,
+  Store,
   Users,
   Loader2,
   Pencil,
@@ -67,6 +68,7 @@ import { CatalogOwnersDialog, ownParcel } from "@/components/catalog-owners-dial
 import { SegmentControl } from "@/components/segment-control";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
+import { SellersList, useCarOffers } from "@/market/components/sellers-panel";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { SellerOrdersDialog } from "@/components/seller-orders-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
@@ -3164,9 +3166,9 @@ function CatalogDetailsContent({
   const boxes = useAssortmentSuggestions(shownId);
   const docked = useMinWidth(1180);
   /** Which panel sits beside the card, and whether it is out. Kept apart so it can slide shut still showing. */
-  const [panel, setPanel] = useState<"boxes" | "activity" | "buyers">("boxes");
+  const [panel, setPanel] = useState<"boxes" | "activity" | "buyers" | "sellers">("boxes");
   const [dockOpen, setDockOpen] = useState(false);
-  const togglePanel = (p: "boxes" | "activity" | "buyers") => {
+  const togglePanel = (p: "boxes" | "activity" | "buyers" | "sellers") => {
     if (dockOpen && panel === p) setDockOpen(false);
     else {
       setPanel(p);
@@ -3212,7 +3214,10 @@ function CatalogDetailsContent({
     : undefined;
   const buyerCount = ownerCount(owners);
   const buyersDock = docked && buyerCount > 0;
-  const dock = docked && (boxesDock || canLog || buyersDock);
+  // Who is selling this exact car in Viiv Market.
+  const { offers: sellerOffers } = useCarOffers(shownId);
+  const sellersDock = docked && sellerOffers.length > 0;
+  const dock = docked && (boxesDock || canLog || buyersDock || sellersDock);
 
   const shelfRow = shelf ? (
     <CarShelfRow
@@ -3301,6 +3306,11 @@ function CatalogDetailsContent({
   /** The cards: the choices, the description, the box, who filed what. */
   const panels = (cols: string, phone = false) => (
     <div className={cn("grid items-start gap-3", cols)}>
+      {!sellersDock && sellerOffers.length > 0 && (
+        <Panel title="For sale" className="col-span-full">
+          <SellersList carId={shownId} compact />
+        </Panel>
+      )}
       {shownCar.caseNumber && (
         <Panel title="Specification" className="col-span-full">
           <InfoRow label="Case / Mix" value={shownCar.caseNumber} />
@@ -3535,8 +3545,27 @@ function CatalogDetailsContent({
           actions={actions}
         >
           {panels("grid-cols-2")}
-          {(buyersDock || boxesDock) && (
+          {(buyersDock || boxesDock || sellersDock) && (
             <div className="flex items-center gap-2.5">
+              {sellersDock && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => togglePanel("sellers")}
+                  aria-pressed={dockOpen && panel === "sellers"}
+                  title="Sellers offering this car in Viiv Market"
+                  className={cn(
+                    "h-11 flex-1 cursor-pointer gap-2 text-sm font-semibold",
+                    dockOpen &&
+                      panel === "sellers" &&
+                      "border-primary/60 bg-primary/10 text-primary",
+                  )}
+                >
+                  <Store className="size-4" />
+                  For sale
+                  <span className="tabular-nums text-muted-foreground">{sellerOffers.length}</span>
+                </Button>
+              )}
               {buyersDock && (
                 <Button
                   type="button"
@@ -3733,7 +3762,9 @@ function CatalogDetailsContent({
               ? "Activity"
               : panel === "buyers"
                 ? "Bought by"
-                : "Possible other boxes"
+                : panel === "sellers"
+                  ? "For sale"
+                  : "Possible other boxes"
           }
           subtitle={title}
           closeLabel="Close this panel"
@@ -3741,6 +3772,8 @@ function CatalogDetailsContent({
         >
           {panel === "activity" ? (
             dockOpen && <ChangeLog rowKey={shownId} origin={filedBy} />
+          ) : panel === "sellers" ? (
+            <SellersList carId={shownId} />
           ) : panel === "buyers" ? (
             <BuyersList
               owners={owners}

@@ -32,6 +32,7 @@ import {
   type CastingStats,
 } from "@/lib/casting-page";
 import { carSubLine } from "@/lib/car-subline";
+import { SellersPanel } from "@/market/components/sellers-panel";
 import { inrPriceFull } from "@/lib/format";
 import { RARITY_LABEL, rarityOf } from "@/lib/rarity";
 
@@ -282,6 +283,12 @@ function CastingPage() {
               caseNumber: "",
             } as never)}
           </p>
+
+          {/* Who is selling this exact casting in Viiv Market, with Buy now. Draws
+              nothing when nobody is. */}
+          <div className="mt-4 empty:hidden">
+            <SellersPanel carId={car.car_id} />
+          </div>
 
           {(owners || typical || mrp) && (
             <div className="mt-4 rounded-xl border border-border bg-card p-3">

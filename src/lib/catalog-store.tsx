@@ -168,6 +168,19 @@ export function CatalogProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // A car made in Viiv Market's demo mode joins this list for the session. It is
+  // not written to the cache or to Supabase: the shared catalogue is only written
+  // by addCatalogCar.
+  useEffect(() => {
+    const onMarketCar = (e: Event) => {
+      const car = (e as CustomEvent).detail?.car as CatalogCar | undefined;
+      if (!car?.car_id) return;
+      setCatalog((prev) => (prev.some((c) => c.car_id === car.car_id) ? prev : [car, ...prev]));
+    };
+    window.addEventListener("viiv-market:catalog-car", onMarketCar);
+    return () => window.removeEventListener("viiv-market:catalog-car", onMarketCar);
+  }, []);
+
   useEffect(() => {
     const handleImageSynced = (e: Event) => {
       const detail = (e as CustomEvent).detail;

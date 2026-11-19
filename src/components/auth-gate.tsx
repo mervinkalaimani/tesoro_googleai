@@ -141,7 +141,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
    * should keep the sidebar they were using a second ago.
    */
   const isPublicRoute = pathname === "/releases" || pathname.startsWith("/catalog/");
-  const isBareRoute = BARE.includes(pathname) || isPublicRoute;
+  // The marketplace is its own feature with its own shell and demo session.
+  const isMarket = pathname === "/market" || pathname.startsWith("/market/");
+  const isBareRoute = BARE.includes(pathname) || isPublicRoute || isMarket;
 
   useEffect(() => {
     if (status === "signed-out" && !isBareRoute) {
