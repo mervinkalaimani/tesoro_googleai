@@ -54,7 +54,7 @@ import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
 
 /** Below the sections, above the totals: the store and the shared catalogue. */
 const SHOP_LINKS: { title: string; url: string; icon: LucideIcon; store?: boolean }[] = [
-  { title: "Viiv Store", url: "/market", icon: ShoppingCart, store: true },
+  { title: "VIIV Shop", url: "/market", icon: ShoppingCart, store: true },
   { title: "Catalogue", url: "/catalog", icon: BookOpen },
 ];
 
@@ -288,7 +288,15 @@ export function AppSidebar() {
                       }}
                     >
                       <item.icon className="size-4.5" />
-                      <span>{item.title}</span>
+                      <span className="flex items-center gap-1.5">
+                        {item.store ? (
+                          <>
+                            <HomeScreenMark className="w-10" /> Shop
+                          </>
+                        ) : (
+                          item.title
+                        )}
+                      </span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

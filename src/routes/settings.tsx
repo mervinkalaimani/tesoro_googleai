@@ -441,19 +441,19 @@ export function SettingsPage() {
             {/* VIIV STORE (beta): off until you switch it on. */}
             <div
               className="flex items-center gap-3.5 px-4 py-3.5"
-              title="The Viiv Store is in beta. Switching it on adds it to the sidebar and shows sellers on catalogue cars."
+              title="VIIV Shop is in beta. Switching it on adds it to the sidebar and shows sellers on catalogue cars."
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <ShoppingCart className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Viiv Store (beta)</span>
+                <span className="text-[15px] font-medium text-foreground">VIIV Shop (beta)</span>
                 <p className="text-xs text-muted-foreground">
                   Buy and sell cars. Off by default, set per account on this device.
                 </p>
               </div>
               <Switch
-                aria-label="Viiv Store"
+                aria-label="VIIV Shop"
                 checked={storeOn}
                 disabled={!viivId}
                 onCheckedChange={(v) => viivId && setStoreEnabled(viivId, v)}

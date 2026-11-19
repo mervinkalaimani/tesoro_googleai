@@ -234,7 +234,7 @@ export function MarketLayout() {
     return (
       <div className="mx-auto max-w-md px-4 py-16 text-center">
         <ShoppingCart className="mx-auto size-8 text-muted-foreground" aria-hidden />
-        <h1 className="mt-3 text-xl font-semibold">Viiv Store is off</h1>
+        <h1 className="mt-3 text-xl font-semibold">VIIV Shop is off</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           It's in beta and switched off by default. Turn it on for your account in Settings.
         </p>

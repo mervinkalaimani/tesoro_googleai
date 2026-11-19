@@ -169,9 +169,9 @@ export function TopBar() {
               variant="outline"
               size="icon"
               className="size-9 rounded-full md:hidden"
-              title="Viiv Store"
+              title="VIIV Shop"
             >
-              <Link to="/market" aria-label="Viiv Store">
+              <Link to="/market" aria-label="VIIV Shop">
                 <ShoppingCart className="size-4.5" />
               </Link>
             </Button>
