@@ -1,6 +1,6 @@
 import { startTransition, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plus, RefreshCw, Store, Undo2 } from "lucide-react";
+import { Plus, RefreshCw, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -158,22 +158,6 @@ export function TopBar() {
                 className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-amber-400"
               />
             )}
-          </Button>
-          {/* The shared catalogue: every casting, ready to add. */}
-          <Button
-            asChild
-            variant="outline"
-            size="icon"
-            // Outlined in the accent rather than the border grey: it sits
-            // beside a solid primary Add car, and a plain grey outline read as
-            // the disabled one of the pair.
-            className="flex size-9 shrink-0 items-center justify-center rounded-full border-primary/60 p-0 text-primary hover:bg-primary/10 hover:text-primary md:w-auto md:gap-1.5 md:px-3.5"
-            title="Catalogue"
-          >
-            <Link to="/catalog" aria-label="Catalogue">
-              <Store className="size-4.5" />
-              <span className="max-md:sr-only">Catalogue</span>
-            </Link>
           </Button>
           <AccountButton />
         </div>

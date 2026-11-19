@@ -14,6 +14,8 @@ import {
   EyeOff,
   CalendarDays,
   ShoppingBag,
+  ShoppingCart,
+  BookOpen,
   Store,
   Database,
   Lock,
@@ -48,6 +50,12 @@ import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
+
+/** Below the sections, above the totals: the store and the shared catalogue. */
+const SHOP_LINKS: { title: string; url: string; icon: LucideIcon }[] = [
+  { title: "Viiv Store", url: "/market", icon: ShoppingCart },
+  { title: "Catalogue", url: "/catalog", icon: BookOpen },
+];
 
 const NAV_GROUPS: {
   title: string;
@@ -260,6 +268,32 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
+        <SidebarGroup className="py-1">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              {SHOP_LINKS.map((item) => (
+                <SidebarMenuItem key={item.url}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(item.url)}
+                    tooltip={item.title}
+                    className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                  >
+                    <Link
+                      to={item.url}
+                      onClick={() => {
+                        if (isMobile) setOpenMobile(false);
+                      }}
+                    >
+                      <item.icon className="size-4.5" />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">
