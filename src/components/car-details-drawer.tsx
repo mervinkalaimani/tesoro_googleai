@@ -3431,8 +3431,7 @@ function CatalogDetailsContent({
             className="h-11 min-w-0 flex-1 cursor-pointer gap-2 px-2 text-sm font-semibold"
           >
             <Bookmark className="size-3.5 shrink-0" />
-            <span className="truncate sm:hidden">Wishlist</span>
-            <span className="hidden truncate sm:inline">Add to wishlist</span>
+            <span className="truncate">Wishlist</span>
           </Button>
         ))}
       <Button
