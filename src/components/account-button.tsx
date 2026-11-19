@@ -8,6 +8,8 @@ import { paidPlanOf } from "@/lib/tiers";
 import { TierAvatar } from "@/components/tier-avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { PersonaPicker } from "@/components/persona-picker";
+import { usePersona } from "@/lib/persona";
 import { UserMenu } from "@/components/user-menu";
 import { useCars } from "@/lib/cars-store";
 import { useAuth, fullName } from "@/lib/auth-store";
@@ -45,6 +47,7 @@ function MobileAccountMenu() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { profile, isAdmin, isOwner, isGuest, isPro } = useAuth();
   const { hideInvestment, setHideInvestment, query } = useApp();
+  const { persona } = usePersona();
   const allCars = useCars();
   const [localReveal, setLocalReveal] = useState(false);
 
@@ -194,7 +197,11 @@ function MobileAccountMenu() {
             </div>
           </div>
 
-          {isAdmin && (
+          <div className="mt-2.5 card-elevated px-3.5 py-3">
+            <PersonaPicker />
+          </div>
+
+          {isAdmin && persona === "admin" && (
             <Link
               to="/settings"
               search={{ tab: "advanced" }}

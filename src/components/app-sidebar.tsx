@@ -50,6 +50,7 @@ import { paidPlanOf, planIncludes, type PaidPlan } from "@/lib/tiers";
 import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
+import { usePersona } from "@/lib/persona";
 import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
 
 /** Below the sections, above the totals: the store and the shared catalogue. */
@@ -91,6 +92,7 @@ export function AppSidebar() {
   const allCars = useCars();
   const { hideInvestment, setHideInvestment, hideCost, query } = useApp();
   const { isAdmin, isOwner, isGuest, plan, profile } = useAuth();
+  const { persona } = usePersona();
   const { source } = useCarsSource();
   const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
   const { packMembers } = useCatalog();
@@ -223,7 +225,7 @@ export function AppSidebar() {
             collection; these two are everybody else's accounts and the
             install's own settings, which is a different subject and belongs
             under its own heading rather than tucked beside Home. */}
-        {isAdmin && (
+        {isAdmin && persona === "admin" && (
           <SidebarGroup className="py-1">
             <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
               Admin

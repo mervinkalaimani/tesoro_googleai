@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PersonaPicker } from "@/components/persona-picker";
 import { useAuth, fullName } from "@/lib/auth-store";
 import { planOf } from "@/lib/tiers";
 
@@ -75,6 +76,8 @@ export function UserMenu() {
           )}
         </div>
 
+        <DropdownMenuSeparator />
+        <PersonaPicker className="px-2 pb-1.5" />
         <DropdownMenuSeparator />
 
         {/* Admin Console used to be here. It lives in the sidebar's own

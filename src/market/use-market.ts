@@ -1,6 +1,7 @@
 import { createElement, useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 
+import { usePersona } from "@/lib/persona";
 import { useAuth } from "@/lib/auth-store";
 import { useCatalog } from "@/lib/catalog-store";
 
@@ -90,10 +91,23 @@ function useViivIdentity() {
   }, [status, isGuest, user?.id, profile?.first_name, profile?.last_name]); // eslint-disable-line react-hooks/exhaustive-deps
 }
 
+/** Seller persona turns seller tools on in the store; Buyer and Admin turn them off. */
+function usePersonaSync() {
+  const { persona } = usePersona();
+  const { me, s } = useMarket();
+  const hasStore = !!me && s.sellers.some((x) => x.userId === me.id);
+  useEffect(() => {
+    if (!me || !hasStore) return;
+    const want = persona === "seller";
+    if (me.sellerMode !== want) api.setSellerMode(want);
+  }, [persona, me?.id, me?.sellerMode, hasStore]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 function LiveBridge() {
   useMarketCatalogue();
   useViivIdentity();
   useShopCancelSync();
+  usePersonaSync();
   return null;
 }
 
