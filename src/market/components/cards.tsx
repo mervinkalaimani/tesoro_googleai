@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { currentBid, minNextBid, participants } from "../db";
 import { rupees, timeLeft } from "../format";
 import { itemById, sellerOf, type Hit } from "../queries";
-import type { MarketEvent, State } from "../types";
+import type { Listing, MarketEvent, State } from "../types";
 import { api, run, useMarket, useMounted, useNow } from "../use-market";
 import { CarImage, itemLine, Pill, Price, VerifyPill } from "./bits";
 
@@ -149,5 +149,40 @@ export function SellerChip({ userId, s }: { userId: string; s: State }) {
         {sp.rating ? `★ ${sp.rating.toFixed(1)} (${sp.ratingCount})` : "No ratings yet"}
       </span>
     </span>
+  );
+}
+
+/** A box of several catalogue cars sold together. Goes straight to checkout. */
+export function ComboCard({ listing, s }: { listing: Listing; s: State }) {
+  const cars = (listing.bundle ?? []).flatMap((b) => {
+    const i = itemById(s, b.itemId);
+    return i ? [{ i, qty: b.qty }] : [];
+  });
+  const n = cars.reduce((t, c) => t + c.qty, 0);
+  return (
+    <Link
+      to="/market/buy/$listingId"
+      params={{ listingId: listing.id }}
+      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:border-foreground/30"
+    >
+      <div className="grid grid-cols-2 gap-px bg-border">
+        {cars.slice(0, 4).map(({ i }) => (
+          <CarImage key={i.id} item={i} className="aspect-[4/3]" />
+        ))}
+      </div>
+      <div className="flex flex-1 flex-col gap-1.5 p-3">
+        <div className="flex flex-wrap gap-1">
+          <Pill tone="brand">Combo · {n} cars</Pill>
+          <Pill>{listing.condition}</Pill>
+        </div>
+        <p className="line-clamp-2 text-sm font-medium leading-snug">{listing.title}</p>
+        <p className="line-clamp-1 text-xs text-muted-foreground">
+          {sellerOf(s, listing.sellerId)?.storeName}
+        </p>
+        <div className="mt-auto pt-1">
+          <Price price={listing.pricePaise} mrp={listing.mrpPaise} />
+        </div>
+      </div>
+    </Link>
   );
 }

@@ -451,12 +451,26 @@ export const api = {
       sku: string;
       privateNotes: string;
       originOverride: Origin | null;
+      bundle?: { itemId: string; qty: number }[];
     },
     publish: boolean,
   ) {
     return tx((s, now, me) => {
       if (!me) return fail("Sign in to do that.");
       if (!s.sellers.some((x) => x.userId === me.id)) return fail("Become a seller first.");
+      if (f.bundle) {
+        const n = f.bundle.reduce((t, b) => t + b.qty, 0);
+        if (f.bundle.length < 1 || n < 2) return fail("A combo needs at least 2 cars.");
+        if (!f.title.trim()) return fail("Give the combo a name.");
+        for (const b of f.bundle) {
+          const bi = s.items.find((i) => i.id === b.itemId);
+          if (!bi || (bi.review === "pending" && bi.suggestedBy !== me.id))
+            return fail("One of the cars is not in the catalogue.");
+          if (!Number.isInteger(b.qty) || b.qty < 1 || b.qty > 99)
+            return fail("Each car's count is 1 to 99.");
+        }
+        f.itemId = f.bundle[0].itemId;
+      }
       const item = s.items.find((i) => i.id === f.itemId);
       if (!item) return fail("Pick a catalogue car first.");
       if (item.review === "pending" && item.suggestedBy !== me.id)
@@ -499,6 +513,7 @@ export const api = {
         returnPolicy: f.returnPolicy.trim(),
         sku: f.sku.trim(),
         privateNotes: f.privateNotes.trim(),
+        bundle: f.bundle,
         updatedAt: now,
         originOverride:
           f.originOverride && f.originOverride !== item.origin

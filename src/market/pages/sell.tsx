@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 
+import { IosGroup, IosInput, IosPicker, IosRow, IosTextArea } from "@/components/ios-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -87,50 +88,49 @@ export function SetupPage() {
             } else setError(r.error);
           }}
         >
-          <Field label="Store name">
-            <input
-              className={inputCls}
-              value={f.storeName}
-              onChange={(e) => set("storeName", e.target.value)}
-            />
-          </Field>
-          <Field
-            label="Location"
-            hint="City, state. Shown to buyers; it is not treated as the car's country of origin."
-          >
-            <input
-              className={inputCls}
-              value={f.location}
-              onChange={(e) => set("location", e.target.value)}
-            />
-          </Field>
-          <Field label="About your store">
-            <textarea
+          <IosGroup>
+            <IosRow label="Store name">
+              <IosInput
+                label="Store name"
+                value={f.storeName}
+                onChange={(v) => set("storeName", v)}
+              />
+            </IosRow>
+            <IosRow label="Location">
+              <IosInput
+                label="Location"
+                placeholder="City, state"
+                value={f.location}
+                onChange={(v) => set("location", v)}
+              />
+            </IosRow>
+            <IosRow label="Contact">
+              <IosPicker
+                label="Contact"
+                value={f.contact}
+                onChange={(v) => set("contact", v)}
+                options={["in-app", "email", "phone"].map((v) => ({ value: v, label: v }))}
+              />
+            </IosRow>
+            <IosRow label="Payout (placeholder)">
+              <IosInput
+                label="Payout details"
+                placeholder="UPI id (not used)"
+                value={f.payoutNote}
+                onChange={(v) => set("payoutNote", v)}
+              />
+            </IosRow>
+            <IosTextArea
+              label="About your store"
               rows={3}
-              className={inputCls + " h-auto py-2"}
               value={f.bio}
-              onChange={(e) => set("bio", e.target.value)}
+              onChange={(v) => set("bio", v)}
             />
-          </Field>
-          <Field label="Contact preference">
-            <Sel
-              label="Contact"
-              value={f.contact}
-              onChange={(v) => set("contact", v)}
-              options={["in-app", "email", "phone"]}
-            />
-          </Field>
-          <Field
-            label="Payout details"
-            hint="Placeholder only. No payout provider is connected in the demo."
-          >
-            <input
-              className={inputCls}
-              value={f.payoutNote}
-              onChange={(e) => set("payoutNote", e.target.value)}
-              placeholder="e.g. UPI id (not used)"
-            />
-          </Field>
+          </IosGroup>
+          <p className="px-1 text-xs text-muted-foreground">
+            Location is shown to buyers; it is not treated as the car's country of origin. No payout
+            provider is connected in the demo.
+          </p>
           <p className="text-xs text-muted-foreground">
             New stores start <b>Unverified</b>. Verification is a separate review that does not
             happen automatically.

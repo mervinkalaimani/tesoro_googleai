@@ -47,6 +47,7 @@ import { Route as MarketAccountRouteImport } from './routes/market.account'
 import { Route as MarketEventsRouteImport } from './routes/market.events'
 import { Route as MarketSearchRouteImport } from './routes/market.search'
 import { Route as SellerIndexRouteImport } from './routes/seller.index'
+import { Route as SellerCatalogueRouteImport } from './routes/seller.catalogue'
 import { Route as SellerEventsRouteImport } from './routes/seller.events'
 import { Route as SellerListingsRouteImport } from './routes/seller.listings'
 import { Route as SellerOrdersRouteImport } from './routes/seller.orders'
@@ -261,6 +262,11 @@ const SellerIndexRoute = SellerIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SellerRoute,
 } as any)
+const SellerCatalogueRoute = SellerCatalogueRouteImport.update({
+  id: '/catalogue',
+  path: '/catalogue',
+  getParentRoute: () => SellerRoute,
+} as any)
 const SellerEventsRoute = SellerEventsRouteImport.update({
   id: '/events',
   path: '/events',
@@ -405,6 +411,7 @@ export interface FileRoutesByFullPath {
   '/market/account': typeof MarketAccountRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
+  '/seller/catalogue': typeof SellerCatalogueRoute
   '/seller/events': typeof SellerEventsRoute
   '/seller/listings': typeof SellerListingsRoute
   '/seller/orders': typeof SellerOrdersRoute
@@ -464,6 +471,7 @@ export interface FileRoutesByTo {
   '/market/account': typeof MarketAccountRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
+  '/seller/catalogue': typeof SellerCatalogueRoute
   '/seller/events': typeof SellerEventsRoute
   '/seller/listings': typeof SellerListingsRoute
   '/seller/orders': typeof SellerOrdersRoute
@@ -526,6 +534,7 @@ export interface FileRoutesById {
   '/market/account': typeof MarketAccountRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
+  '/seller/catalogue': typeof SellerCatalogueRoute
   '/seller/events': typeof SellerEventsRoute
   '/seller/listings': typeof SellerListingsRoute
   '/seller/orders': typeof SellerOrdersRoute
@@ -589,6 +598,7 @@ export interface FileRouteTypes {
     | '/market/account'
     | '/market/events'
     | '/market/search'
+    | '/seller/catalogue'
     | '/seller/events'
     | '/seller/listings'
     | '/seller/orders'
@@ -648,6 +658,7 @@ export interface FileRouteTypes {
     | '/market/account'
     | '/market/events'
     | '/market/search'
+    | '/seller/catalogue'
     | '/seller/events'
     | '/seller/listings'
     | '/seller/orders'
@@ -709,6 +720,7 @@ export interface FileRouteTypes {
     | '/market/account'
     | '/market/events'
     | '/market/search'
+    | '/seller/catalogue'
     | '/seller/events'
     | '/seller/listings'
     | '/seller/orders'
@@ -1047,6 +1059,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SellerIndexRouteImport
       parentRoute: typeof SellerRoute
     }
+    '/seller/catalogue': {
+      id: '/seller/catalogue'
+      path: '/catalogue'
+      fullPath: '/seller/catalogue'
+      preLoaderRoute: typeof SellerCatalogueRouteImport
+      parentRoute: typeof SellerRoute
+    }
     '/seller/events': {
       id: '/seller/events'
       path: '/events'
@@ -1227,6 +1246,7 @@ const MarketRouteWithChildren =
   MarketRoute._addFileChildren(MarketRouteChildren)
 
 interface SellerRouteChildren {
+  SellerCatalogueRoute: typeof SellerCatalogueRoute
   SellerEventsRoute: typeof SellerEventsRoute
   SellerListingsRoute: typeof SellerListingsRoute
   SellerOrdersRoute: typeof SellerOrdersRoute
@@ -1237,6 +1257,7 @@ interface SellerRouteChildren {
 }
 
 const SellerRouteChildren: SellerRouteChildren = {
+  SellerCatalogueRoute: SellerCatalogueRoute,
   SellerEventsRoute: SellerEventsRoute,
   SellerListingsRoute: SellerListingsRoute,
   SellerOrdersRoute: SellerOrdersRoute,

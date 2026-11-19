@@ -9,7 +9,7 @@ export const approved = (s: State) => s.items.filter((i) => i.review === "approv
 /** Offers a buyer can act on. Exact catalogue id only: a different scale or variant is a different car. */
 export function itemOffers(s: State, itemId: string): Listing[] {
   return s.listings
-    .filter((l) => l.itemId === itemId && l.status === "active" && l.quantity > 0)
+    .filter((l) => l.itemId === itemId && !l.bundle && l.status === "active" && l.quantity > 0)
     .sort((a, b) => a.pricePaise - b.pricePaise);
 }
 

@@ -179,7 +179,7 @@ export function PageTitle({
   return (
     <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-semibold tracking-tight md:text-2xl">{title}</h1>
+        <h1 className="text-display text-xl font-semibold tracking-tight sm:text-2xl">{title}</h1>
         {sub && <p className="mt-0.5 text-sm text-muted-foreground">{sub}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -233,9 +233,7 @@ export function SignInNeeded({ what }: { what: string }) {
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return (
-    <div className={cn("rounded-2xl border border-border bg-card p-4", className)}>{children}</div>
-  );
+  return <div className={cn("card-elevated p-4", className)}>{children}</div>;
 }
 
 export function Field({

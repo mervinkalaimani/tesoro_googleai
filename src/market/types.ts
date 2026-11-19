@@ -99,6 +99,8 @@ export type Listing = {
   sku: string;
   privateNotes: string;
   originOverride?: { value: Origin; status: "pending" };
+  /** A combo: one box of several catalogue cars sold together. `itemId` is its first car. */
+  bundle?: { itemId: string; qty: number }[];
   createdAt: number;
   updatedAt: number;
   demo?: boolean;

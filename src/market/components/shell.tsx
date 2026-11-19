@@ -1,5 +1,6 @@
-import { Link, Outlet, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
+  BookOpen,
   Bell,
   ClipboardList,
   Gavel,
@@ -12,7 +13,22 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { HomeScreenMark } from "@/components/brand-mark";
+import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
+import { AccountButton } from "@/components/account-button";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -29,6 +45,7 @@ const NAV_BUY = [
 ] as const;
 const NAV_SELL = [
   { to: "/seller", label: "Dashboard", icon: Store, exact: true },
+  { to: "/seller/catalogue", label: "Catalogue", icon: BookOpen },
   { to: "/seller/listings", label: "Listings", icon: ClipboardList },
   { to: "/seller/orders", label: "Orders", icon: Package },
   { to: "/seller/events", label: "Events", icon: Gavel },
@@ -236,7 +253,115 @@ export function MarketLayout() {
   return <MarketApp />;
 }
 
-/** The seller site: its own frame (no Viiv sidebar), the same catalogue and data. */
+function SellerSidebar() {
+  const { isMobile, setOpenMobile } = useSidebar();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const close = () => isMobile && setOpenMobile(false);
+  return (
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="h-14 justify-center">
+        <Link
+          to="/seller"
+          aria-label="VIIV Seller"
+          className="flex items-center gap-2 px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <HomeScreenMark className="w-[72px] shrink-0 group-data-[collapsible=icon]:hidden" />
+          <span className="text-sm font-semibold text-muted-foreground group-data-[collapsible=icon]:hidden">
+            Seller
+          </span>
+          <MonogramMark className="hidden w-7 shrink-0 group-data-[collapsible=icon]:block" />
+        </Link>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              {NAV_SELL.map((n) => (
+                <SidebarMenuItem key={n.to}>
+                  <SidebarMenuButton
+                    asChild
+                    tooltip={n.label}
+                    isActive={
+                      "exact" in n && n.exact
+                        ? pathname === n.to
+                        : pathname === n.to || pathname.startsWith(n.to + "/")
+                    }
+                    className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                  >
+                    <Link to={n.to} onClick={close}>
+                      <n.icon className="size-4.5" />
+                      <span>{n.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup className="py-1">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="VIIV Shop"
+                  className="h-10 text-[14px] font-medium"
+                >
+                  <Link to="/market" onClick={close}>
+                    <ShoppingCart className="size-4.5" />
+                    <span>VIIV Shop</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  tooltip="Back to Viiv"
+                  className="h-10 text-[14px] font-medium"
+                >
+                  <Link to="/" onClick={close}>
+                    <Home className="size-4.5" />
+                    <span>Back to Viiv</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
+}
+
+/** Searches the catalogue for something to sell. */
+function SellerSearch() {
+  const navigate = useNavigate();
+  const [q, setQ] = useState("");
+  return (
+    <form
+      role="search"
+      className="relative min-w-0 max-w-md flex-1"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void navigate({ to: "/seller/catalogue", search: { q } });
+      }}
+    >
+      <Search
+        className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+        aria-hidden
+      />
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        aria-label="Search the catalogue"
+        placeholder="Search the catalogue to sell…"
+        className="h-9 w-full rounded-full border border-input bg-muted/40 pl-9 pr-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
+      />
+    </form>
+  );
+}
+
+/** The seller site: its own frame (left nav, profile avatar), the same catalogue and data. */
 export function SellerLayout() {
   usePwa();
   useNow(15_000);
@@ -255,44 +380,24 @@ export function SellerLayout() {
       </div>
     );
   return (
-    <div className="min-h-screen bg-background">
-      <Offline />
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-2.5 md:flex-nowrap md:gap-4">
-          <Link to="/seller" className="flex shrink-0 items-center gap-2" aria-label="VIIV Seller">
-            <HomeScreenMark className="w-14" />
-            <span className="text-sm font-semibold text-muted-foreground">Seller</span>
-          </Link>
-          <nav
-            className="order-last flex w-full items-center gap-1 overflow-x-auto md:order-none md:ml-4 md:w-auto"
-            aria-label="Seller"
-          >
-            {NAV_SELL.map((n) => (
-              <Link
-                key={n.to}
-                to={n.to}
-                activeOptions={{ exact: "exact" in n && n.exact }}
-                className="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
-                activeProps={{ className: "bg-muted text-foreground" }}
-              >
-                {n.label}
-              </Link>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-1">
-            <Button asChild variant="outline" size="sm">
-              <Link to="/market">VIIV Shop</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link to="/">Back to Viiv</Link>
-            </Button>
-            <Bell_ />
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-5">
-        <Outlet />
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full">
+        <SellerSidebar />
+        <SidebarInset className="min-w-0 flex-1">
+          <header className="app-top-bar sticky top-0 z-40 flex h-14 items-center gap-2 border-b border-border/30 bg-background/30 px-3 backdrop-blur-xl">
+            <SidebarTrigger />
+            <SellerSearch />
+            <div className="ml-auto flex items-center gap-1.5">
+              <Bell_ />
+              <AccountButton />
+            </div>
+          </header>
+          <Offline />
+          <main className="mx-auto w-full max-w-[1600px] space-y-3 p-3 md:p-6">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }

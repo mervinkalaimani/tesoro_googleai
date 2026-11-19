@@ -9,34 +9,39 @@ import { useMarket } from "./use-market";
 /** Tags a car with its shop order so a cancel can take it back out. */
 export const shopTag = (orderId: string) => `VIIV-${orderId}`;
 
+/** A purchase becomes your cars. A combo becomes each of its cars, the price split evenly. */
 export function useAddShopCars() {
   const { addCar } = useCarsActions();
-  return (o: Order, item: CatalogueItem, sellerName: string) => {
+  return (o: Order, parts: { item: CatalogueItem; qty: number }[], sellerName: string) => {
     const day = new Date(o.createdAt).toISOString().slice(0, 10);
     const line = o.lines[0];
-    for (let i = 0; i < line.qty; i++)
-      addCar({
-        ...makeBlankCar(),
-        name: item.name,
-        make: item.make,
-        model: item.model,
-        variant: item.variant,
-        year: item.year,
-        series: item.series,
-        colour: item.colour,
-        brand: item.brand,
-        assortment: item.assortment,
-        size: item.scale,
-        catalogId: item.id,
-        imageUrl: item.imageUrl ?? "",
-        spent: line.unitPaise / 100,
-        paid: line.unitPaise / 100,
-        mrp: (line.mrpPaise ?? 0) / 100,
-        seller: `VIIV Shop · ${sellerName}`,
-        status: "Ordered",
-        orderDate: day,
-        shippingId: shopTag(o.id),
-      });
+    const per = parts.reduce((t, p) => t + p.qty, 0);
+    const each = line.unitPaise / per / 100;
+    for (let n = 0; n < line.qty; n++)
+      for (const { item, qty } of parts)
+        for (let i = 0; i < qty; i++)
+          addCar({
+            ...makeBlankCar(),
+            name: item.name,
+            make: item.make,
+            model: item.model,
+            variant: item.variant,
+            year: item.year,
+            series: item.series,
+            colour: item.colour,
+            brand: item.brand,
+            assortment: item.assortment,
+            size: item.scale,
+            catalogId: item.id,
+            imageUrl: item.imageUrl ?? "",
+            spent: each,
+            paid: each,
+            mrp: (per === 1 ? (line.mrpPaise ?? 0) : item.mrpPaise) / 100,
+            seller: `VIIV Shop · ${sellerName}`,
+            status: "Ordered",
+            orderDate: day,
+            shippingId: shopTag(o.id),
+          });
   };
 }
 

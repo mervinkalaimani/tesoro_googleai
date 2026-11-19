@@ -134,7 +134,14 @@ export function CheckoutPage() {
     setBusy(false);
     if (r.ok) {
       if (!key.current.startsWith("done:")) {
-        addShopCars(r.data, item, s.sellers.find((x) => x.userId === l.sellerId)?.storeName ?? "");
+        addShopCars(
+          r.data,
+          (l.bundle ?? [{ itemId: item.id, qty: 1 }]).flatMap((b) => {
+            const it = itemById(s, b.itemId);
+            return it ? [{ item: it, qty: b.qty }] : [];
+          }),
+          s.sellers.find((x) => x.userId === l.sellerId)?.storeName ?? "",
+        );
         key.current = "done:" + key.current;
       }
       setPlaced(r.data);
@@ -149,16 +156,31 @@ export function CheckoutPage() {
           <div className="flex gap-3">
             <CarImage item={item} className="w-28 shrink-0 rounded-xl" />
             <div className="min-w-0 space-y-1">
-              <Link
-                to="/market/item/$itemId"
-                params={{ itemId: item.id }}
-                className="font-medium hover:underline"
-              >
-                {item.name}
-              </Link>
-              <p className="text-xs text-muted-foreground">
-                {item.scale} · {item.assortment} · {item.origin}
-              </p>
+              {l.bundle ? (
+                <>
+                  <p className="font-medium">{l.title || "Combo"}</p>
+                  <ul className="text-xs text-muted-foreground">
+                    {l.bundle.map((b) => (
+                      <li key={b.itemId}>
+                        {b.qty} × {itemById(s, b.itemId)?.name ?? "Car"}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/market/item/$itemId"
+                    params={{ itemId: item.id }}
+                    className="font-medium hover:underline"
+                  >
+                    {item.name}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">
+                    {item.scale} · {item.assortment} · {item.origin}
+                  </p>
+                </>
+              )}
               <p className="text-sm">
                 Sold by <SellerChip userId={l.sellerId} s={s} />
               </p>
@@ -257,7 +279,7 @@ export function CheckoutPage() {
           )}
           <ErrorNote>{error}</ErrorNote>
           {(() => {
-            const have = myCars.filter((c) => c.catalogId === item.id).length;
+            const have = l.bundle ? 0 : myCars.filter((c) => c.catalogId === item.id).length;
             const btn = (go: () => void) => (
               <Button className="w-full" disabled={busy} onClick={go}>
                 {busy ? "Placing order…" : "Place demo order"}

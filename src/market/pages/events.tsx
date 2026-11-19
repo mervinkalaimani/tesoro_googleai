@@ -1,10 +1,12 @@
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 
+import { IosGroup, IosInput, IosPicker, IosRow, IosTextArea } from "@/components/ios-field";
 import { Button } from "@/components/ui/button";
 
 import {
   Card,
+  CarImage,
   Confirm,
   Empty,
   ErrorNote,
@@ -21,6 +23,7 @@ import { dateTime, rupees, timeLeft, toPaise } from "../format";
 import { approved, itemById, liveEvents } from "../queries";
 import type { Condition, EventType, MarketEvent, Packaging } from "../types";
 import { api, run, useMarket, useMounted, useNow } from "../use-market";
+import { CarPicker } from "./listing-form";
 import { SellerGate } from "./sell";
 
 export function EventsPage() {
@@ -499,172 +502,165 @@ export function EventFormPage() {
               title={existing ? "Edit event" : "New event"}
               sub="Auction: highest bid wins. Raffle: free-entry random draw."
             />
-            <Card className="space-y-3">
-              <Field label="Type">
-                <Sel
-                  label="Type"
-                  value={type}
-                  onChange={(v) => !existing && setType(v as EventType)}
-                  options={["auction", "raffle"]}
-                />
-              </Field>
+            <section className="space-y-2">
+              <h2 className="px-1 text-sm font-medium text-muted-foreground">Car</h2>
               {item ? (
-                <p className="text-sm">
-                  Car: <b>{item.name}</b>{" "}
-                  <span className="text-muted-foreground">{itemLine(item)}</span>{" "}
+                <Card className="flex items-center gap-3">
+                  <CarImage item={item} className="w-20 shrink-0 rounded-xl" />
+                  <div className="min-w-0 flex-1 text-sm">
+                    <p className="font-medium">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">{itemLine(item)}</p>
+                  </div>
                   {!existing && (
                     <button
-                      className="ml-2 text-xs text-primary underline"
+                      className="text-xs text-primary underline"
                       onClick={() => setItemId("")}
                     >
                       Change
                     </button>
                   )}
-                </p>
+                </Card>
               ) : (
-                <>
-                  <Field label="Catalogue car">
-                    <input
-                      className={inputCls}
-                      value={q}
-                      onChange={(e) => setQ(e.target.value)}
-                      placeholder="Search the catalogue"
-                    />
-                  </Field>
-                  {matches.length > 0 && (
-                    <ul className="divide-y divide-border rounded-xl border border-border">
-                      {matches.map((i) => (
-                        <li key={i.id}>
-                          <button
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-muted"
-                            onClick={() => {
-                              setItemId(i.id);
-                              if (!f.title) set("title", `${i.name} - ${type}`);
-                            }}
-                          >
-                            {i.name}{" "}
-                            <span className="text-xs text-muted-foreground">{itemLine(i)}</span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              )}
-              <Field label="Title">
-                <input
-                  className={inputCls}
-                  value={f.title}
-                  onChange={(e) => set("title", e.target.value)}
+                <CarPicker
+                  onPick={(id) => {
+                    setItemId(id);
+                    const i = itemById(s, id);
+                    if (!f.title && i) set("title", `${i.name} - ${type}`);
+                  }}
                 />
-              </Field>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Condition">
-                  <Sel
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="px-1 text-sm font-medium text-muted-foreground">Event</h2>
+              <IosGroup>
+                <IosRow label="Type">
+                  <IosPicker
+                    label="Type"
+                    value={type}
+                    onChange={(v) => !existing && setType(v as EventType)}
+                    options={[
+                      { value: "auction", label: "Auction" },
+                      { value: "raffle", label: "Raffle" },
+                    ]}
+                  />
+                </IosRow>
+                <IosRow label="Title">
+                  <IosInput label="Title" value={f.title} onChange={(v) => set("title", v)} />
+                </IosRow>
+                <IosRow label="Condition">
+                  <IosPicker
                     label="Condition"
                     value={f.condition}
                     onChange={(v) => set("condition", v)}
-                    options={["New", "Opened", "Display"]}
+                    options={["New", "Opened", "Display"].map((v) => ({ value: v, label: v }))}
                   />
-                </Field>
-                <Field label="Packaging">
-                  <Sel
+                </IosRow>
+                <IosRow label="Packaging">
+                  <IosPicker
                     label="Packaging"
                     value={f.packaging}
                     onChange={(v) => set("packaging", v)}
-                    options={["Sealed", "Box (minor wear)", "Box (damaged)", "Loose"]}
+                    options={["Sealed", "Box (minor wear)", "Box (damaged)", "Loose"].map((v) => ({
+                      value: v,
+                      label: v,
+                    }))}
                   />
-                </Field>
-                <Field label="Closes at (your local time)">
+                </IosRow>
+                <IosRow label="Closes at">
                   <input
                     type="datetime-local"
-                    className={inputCls}
+                    aria-label="Closes at"
                     value={f.ends}
                     onChange={(e) => set("ends", e.target.value)}
+                    style={{ textAlign: "right" }}
+                    className="min-h-11 w-full bg-transparent text-right text-[15px] outline-none"
                   />
-                </Field>
+                </IosRow>
+              </IosGroup>
+            </section>
+
+            <section className="space-y-2">
+              <h2 className="px-1 text-sm font-medium text-muted-foreground">
+                {type === "auction" ? "Bidding" : "Entries"}
+              </h2>
+              <IosGroup>
                 {type === "raffle" && (
-                  <Field label="Entries per person (1-5)">
-                    <input
-                      inputMode="numeric"
-                      className={inputCls}
+                  <IosRow label="Entries per person (1-5)">
+                    <IosInput
+                      label="Entries per person"
+                      inputMode="decimal"
                       value={f.max}
-                      onChange={(e) => set("max", e.target.value.replace(/\D/g, ""))}
+                      onChange={(v) => set("max", v.replace(/\D/g, ""))}
                     />
-                  </Field>
+                  </IosRow>
                 )}
                 {type === "auction" && (
                   <>
-                    <Field label="Starting bid (₹)">
-                      <input
+                    <IosRow label="Starting bid (₹)">
+                      <IosInput
+                        label="Starting bid"
                         inputMode="decimal"
-                        className={inputCls}
                         value={f.start}
-                        onChange={(e) => set("start", e.target.value)}
+                        onChange={(v) => set("start", v)}
                       />
-                    </Field>
-                    <Field label="Minimum raise (₹)">
-                      <input
+                    </IosRow>
+                    <IosRow label="Minimum raise (₹)">
+                      <IosInput
+                        label="Minimum raise"
                         inputMode="decimal"
-                        className={inputCls}
                         value={f.inc}
-                        onChange={(e) => set("inc", e.target.value)}
+                        onChange={(v) => set("inc", v)}
                       />
-                    </Field>
-                    <Field label="Reserve (₹, optional)" hint="Below this at close, nobody wins.">
-                      <input
+                    </IosRow>
+                    <IosRow label="Reserve (₹, optional)">
+                      <IosInput
+                        label="Reserve"
                         inputMode="decimal"
-                        className={inputCls}
+                        placeholder="Below this, nobody wins"
                         value={f.reserve}
-                        onChange={(e) => set("reserve", e.target.value)}
+                        onChange={(v) => set("reserve", v)}
                       />
-                    </Field>
-                    <Field
-                      label="Late-bid extension (min)"
-                      hint="A bid inside this window extends the close."
-                    >
-                      <input
-                        inputMode="numeric"
-                        className={inputCls}
+                    </IosRow>
+                    <IosRow label="Late-bid extension (min)">
+                      <IosInput
+                        label="Late-bid extension"
+                        inputMode="decimal"
                         value={f.extend}
-                        onChange={(e) => set("extend", e.target.value.replace(/\D/g, ""))}
+                        onChange={(v) => set("extend", v.replace(/\D/g, ""))}
                       />
-                    </Field>
+                    </IosRow>
                   </>
                 )}
-              </div>
-              <Field
-                label="Rules shown to participants"
-                hint="Say how the winner is picked and what happens if the winner doesn't pay."
-              >
-                <textarea
+                <IosTextArea
+                  label="Rules shown to participants"
                   rows={5}
-                  className={inputCls + " h-auto py-2"}
+                  placeholder="How the winner is picked, and what happens if they don't pay"
                   value={f.rules}
-                  onChange={(e) => set("rules", e.target.value)}
+                  onChange={(v) => set("rules", v)}
                 />
-              </Field>
+              </IosGroup>
               {!f.rules && (
                 <button
-                  className="text-xs text-primary underline"
+                  className="px-1 text-xs text-primary underline"
                   onClick={() => set("rules", template)}
                 >
                   Use the standard {type} rules
                 </button>
               )}
-              <p className="text-xs text-muted-foreground">
-                Demo: no money moves for bids or entries. Real-money auctions or raffles need a
-                compliant payment provider and a legal review for your jurisdiction before they go
-                live.
-              </p>
-              <ErrorNote>{error}</ErrorNote>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => submit(false)}>
-                  Save draft
-                </Button>
-                <Button onClick={() => submit(true)}>Publish</Button>
-              </div>
-            </Card>
+            </section>
+            <p className="px-1 text-xs text-muted-foreground">
+              Demo: no money moves for bids or entries. Real-money auctions or raffles need a
+              compliant payment provider and a legal review for your jurisdiction before they go
+              live.
+            </p>
+            <ErrorNote>{error}</ErrorNote>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => submit(false)}>
+                Save draft
+              </Button>
+              <Button onClick={() => submit(true)}>Publish</Button>
+            </div>
           </div>
         );
       }}

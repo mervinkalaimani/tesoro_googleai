@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 
 import { Empty, Pill, VerifyPill } from "../components/bits";
-import { EventCard, ItemCard } from "../components/cards";
+import { ComboCard, EventCard, ItemCard } from "../components/cards";
 import { liveEvents, NO_FILTERS, search, sellerOf } from "../queries";
 import { useMarket } from "../use-market";
 
@@ -37,6 +37,9 @@ export function HomePage() {
     [hits],
   );
   const events = liveEvents(s).slice(0, 4);
+  const combos = s.listings
+    .filter((l) => l.bundle && l.status === "active" && l.quantity > 0)
+    .slice(0, 4);
   const sellers = [...s.sellers].sort(
     (a, b) => Number(b.verification === "Verified") - Number(a.verification === "Verified"),
   );
@@ -127,6 +130,16 @@ export function HomePage() {
           <Empty title="No cars with several sellers yet" />
         )}
       </Row>
+
+      {combos.length > 0 && (
+        <Row title="Boxes & combos">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {combos.map((l) => (
+              <ComboCard key={l.id} listing={l} s={s} />
+            ))}
+          </div>
+        </Row>
+      )}
 
       <Row title="Recently listed" to="/market/search">
         {recent.length ? (

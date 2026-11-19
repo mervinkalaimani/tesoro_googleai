@@ -196,3 +196,32 @@ export function IosPicker({
     </Popover>
   );
 }
+
+/** A longer answer: the label above, the text below, still no box. */
+export function IosTextArea({
+  label,
+  value,
+  onChange,
+  placeholder,
+  rows = 2,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  rows?: number;
+}) {
+  return (
+    <div className="px-3.5 py-2.5">
+      <span className="text-[15px]">{label}</span>
+      <textarea
+        aria-label={label}
+        rows={rows}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="mt-1 block w-full resize-none bg-transparent text-[15px] text-muted-foreground outline-none placeholder:text-muted-foreground/70 focus:text-foreground"
+      />
+    </div>
+  );
+}
