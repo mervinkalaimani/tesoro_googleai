@@ -1,6 +1,8 @@
-import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import {
   BookOpen,
+  ChevronLeft,
+  ChevronRight,
   Bell,
   ClipboardList,
   Gavel,
@@ -361,6 +363,56 @@ function SellerSearch() {
   );
 }
 
+const CRUMB: Record<string, [string, string]> = {
+  catalogue: ["Catalogue", "/seller/catalogue"],
+  listings: ["Listings", "/seller/listings"],
+  listing: ["Listings", "/seller/listings"],
+  orders: ["Orders", "/seller/orders"],
+  events: ["Events", "/seller/events"],
+  event: ["Events", "/seller/events"],
+  setup: ["Store", "/seller/setup"],
+};
+
+/** Back button plus a trail (Seller › Listings › Edit), on every seller page but the dashboard. */
+function Crumbs() {
+  const router = useRouter();
+  const path = useRouterState({ select: (r) => r.location.pathname });
+  const [section, id] = path.split("/").filter(Boolean).slice(1);
+  if (!section) return null;
+  const [label, to] = CRUMB[section] ?? [section, path];
+  const leaf = id ? (id === "new" ? "New" : "Edit") : null;
+  return (
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm text-muted-foreground">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-8"
+        aria-label="Back"
+        onClick={() => router.history.back()}
+      >
+        <ChevronLeft />
+      </Button>
+      <Link to="/seller" className="hover:text-foreground">
+        Seller
+      </Link>
+      <ChevronRight className="size-3.5" />
+      {leaf ? (
+        <Link to={to} className="hover:text-foreground">
+          {label}
+        </Link>
+      ) : (
+        <span className="text-foreground">{label}</span>
+      )}
+      {leaf && (
+        <>
+          <ChevronRight className="size-3.5" />
+          <span className="text-foreground">{leaf}</span>
+        </>
+      )}
+    </nav>
+  );
+}
+
 /** The seller site: its own frame (left nav, profile avatar), the same catalogue and data. */
 export function SellerLayout() {
   usePwa();
@@ -394,6 +446,7 @@ export function SellerLayout() {
           </header>
           <Offline />
           <main className="mx-auto w-full max-w-[1600px] space-y-3 p-3 md:p-6">
+            <Crumbs />
             <Outlet />
           </main>
         </SidebarInset>
