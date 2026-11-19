@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Truck,
-  Calendar,
   Clock,
   CheckCircle2,
   Package,
@@ -23,14 +22,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Combobox } from "@/components/ui/combobox";
+import { Switch } from "@/components/ui/switch";
+import { IosGroup, IosInput, IosPicker, IosRow } from "@/components/ios-field";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CarLinkField } from "@/components/car-link-field";
 import { makeBlankCar, useCars, useCarsActions, type ShippingBatchUpdates } from "@/lib/cars-store";
@@ -507,66 +500,48 @@ export function ShippingBatchDialog({
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_1fr]">
               {/* Batch selector — shipping ID or order ID, per idField. */}
               <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-foreground">{idLabel}</label>
-                  {!allowedShippingIds && (
-                    <button
-                      type="button"
-                      onClick={() => setUseCustom(!useCustom)}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      {useCustom ? "Choose from list" : "+ Enter custom ID"}
-                    </button>
-                  )}
-                </div>
-
-                {useCustom ? (
-                  <Input
-                    placeholder={
-                      idField === "orderId"
-                        ? "e.g. FIRY-2026-06-001..."
-                        : "e.g. FIRY/02, ANIH/PO/09..."
-                    }
-                    value={customShippingId}
-                    onChange={(e) => setCustomShippingId(e.target.value)}
-                    className="border-border bg-background text-xs text-foreground"
-                  />
-                ) : (
-                  <Select value={selectedShippingId} onValueChange={setSelectedShippingId}>
-                    <SelectTrigger className="border-border bg-background text-xs text-foreground">
-                      <SelectValue placeholder="Select a shipping ID..." />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-64 border-border bg-background text-foreground">
-                      {shippingIdStats.map((item) => (
-                        <SelectItem key={item.id} value={item.id} className="text-xs">
-                          <span className="font-mono font-semibold text-primary">{item.id}</span>
-                          <span className="ml-2 text-muted-foreground">
-                            ({item.count} car{item.count === 1 ? "" : "s"}
-                            {item.sellers ? ` · ${item.sellers}` : ""})
-                          </span>
-                        </SelectItem>
-                      ))}
-                      {shippingIdStats.length === 0 && (
-                        <div className="p-2 text-center text-muted-foreground">
-                          No shipping IDs found
-                        </div>
-                      )}
-                    </SelectContent>
-                  </Select>
+                <IosGroup>
+                  <IosRow label={idLabel}>
+                    {useCustom ? (
+                      <IosInput
+                        label={idLabel}
+                        placeholder={
+                          idField === "orderId" ? "e.g. FIRY-2026-06-001" : "e.g. FIRY/02"
+                        }
+                        value={customShippingId}
+                        onChange={setCustomShippingId}
+                      />
+                    ) : (
+                      <IosPicker
+                        label={idLabel}
+                        placeholder="Select"
+                        value={selectedShippingId}
+                        onChange={setSelectedShippingId}
+                        options={shippingIdStats.map((item) => ({
+                          value: item.id,
+                          label: `${item.id} (${item.count} car${item.count === 1 ? "" : "s"}${item.sellers ? ` · ${item.sellers}` : ""})`,
+                        }))}
+                      />
+                    )}
+                  </IosRow>
+                  {/* Delivered cars were previously filtered out with no way back,
+                    so a batch that had already arrived could not be corrected. */}
+                  <IosRow label="Include delivered cars">
+                    <Switch
+                      checked={!hideDelivered}
+                      onCheckedChange={(v) => setHideDelivered(!v)}
+                    />
+                  </IosRow>
+                </IosGroup>
+                {!allowedShippingIds && (
+                  <button
+                    type="button"
+                    onClick={() => setUseCustom(!useCustom)}
+                    className="px-1 text-xs text-primary hover:underline"
+                  >
+                    {useCustom ? "Choose from list" : "+ Enter custom ID"}
+                  </button>
                 )}
-
-                {/* Delivered cars were previously filtered out with no way back,
-                  so a batch that had already arrived could not be corrected —
-                  its ID was not even in the list. */}
-                <label className="flex cursor-pointer items-center gap-1.5 pt-0.5 text-xs text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    checked={!hideDelivered}
-                    onChange={(e) => setHideDelivered(!e.target.checked)}
-                    className="rounded border-input bg-background text-primary"
-                  />
-                  <span>Include cars already delivered</span>
-                </label>
               </div>
 
               {/* THE ORDER ITSELF — what is in it, and how to put more in.
@@ -789,28 +764,21 @@ export function ShippingBatchDialog({
               )}
 
               {/* Form Updates */}
-              <div className="min-w-0 space-y-3 lg:col-start-1 lg:row-start-2">
-                {/* New Status */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">
-                    Update Status for All Cars
-                  </label>
-                  <Select value={newStatus} onValueChange={setNewStatus}>
-                    <SelectTrigger className="border-border bg-background text-xs text-foreground">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="border-border bg-background text-foreground">
-                      {STATUS_CHOICES.map((choice) => (
-                        <SelectItem key={choice.value} value={choice.value} className="text-xs">
-                          {choice.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
+              <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-2">
+                <div className="space-y-2">
+                  <IosGroup>
+                    <IosRow label="Status">
+                      <IosPicker
+                        label="Status"
+                        placeholder="Keep current"
+                        value={newStatus}
+                        onChange={setNewStatus}
+                        options={[{ value: "keep", label: "Keep current" }, ...STATUS_CHOICES]}
+                      />
+                    </IosRow>
+                  </IosGroup>
                   {/* Quick status presets, one per status a shipment can take. */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    <span className="text-xs text-muted-foreground">Quick set:</span>
+                  <div className="flex flex-wrap items-center gap-1.5 px-1">
                     {QUICK_SET.map(({ value, label }) => (
                       <button
                         key={value}
@@ -822,7 +790,7 @@ export function ShippingBatchDialog({
                             setNewExpectedDate(new Date().toISOString().slice(0, 10));
                           }
                         }}
-                        className={`rounded border px-2 py-0.5 text-xs font-medium transition-colors ${
+                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
                           newStatus === value
                             ? `font-semibold ${STATUS_STYLES[value]}`
                             : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -834,164 +802,135 @@ export function ShippingBatchDialog({
                   </div>
                 </div>
 
-                {/* Order Date */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                      <Calendar className="size-3.5 text-muted-foreground" />
-                      <span>Order Date</span>
-                    </label>
-                    {orderDateChanged && (
-                      <button
-                        type="button"
-                        onClick={() => setNewOrderDate(loadedOrderDate)}
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Reset
-                      </button>
-                    )}
-                  </div>
-                  <Input
-                    type="date"
-                    value={newOrderDate}
-                    onChange={(e) => setNewOrderDate(e.target.value)}
-                    className="border-border bg-background text-xs text-foreground"
-                  />
-                </div>
-
-                {/* New Expected Date */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Calendar className="size-3.5 text-muted-foreground" />
-                      <span>Expected / Available Date</span>
-                    </label>
-                    {newExpectedDate && (
-                      <button
-                        type="button"
-                        onClick={() => setNewExpectedDate("")}
-                        className="text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-
-                  <Input
-                    type="date"
-                    value={newExpectedDate}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setNewExpectedDate(val);
-                      if (val && newStatus === "keep" && matchedCars.some((c) => isLate(c))) {
-                        setNewStatus("Ordered");
-                      }
-                    }}
-                    className="border-border bg-background text-xs text-foreground"
-                  />
-
+                <div className="space-y-2">
+                  <IosGroup>
+                    <IosRow label="Order date">
+                      <div className="flex items-center justify-end gap-2">
+                        {orderDateChanged && (
+                          <button
+                            type="button"
+                            onClick={() => setNewOrderDate(loadedOrderDate)}
+                            className="shrink-0 text-xs text-primary"
+                          >
+                            Reset
+                          </button>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <IosInput
+                            type="date"
+                            label="Order date"
+                            value={newOrderDate}
+                            onChange={setNewOrderDate}
+                          />
+                        </div>
+                      </div>
+                    </IosRow>
+                    <IosRow label="Expected date">
+                      <div className="flex items-center justify-end gap-2">
+                        {newExpectedDate && (
+                          <button
+                            type="button"
+                            onClick={() => setNewExpectedDate("")}
+                            className="shrink-0 text-xs text-primary"
+                          >
+                            Clear
+                          </button>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <IosInput
+                            type="date"
+                            label="Expected date"
+                            value={newExpectedDate}
+                            onChange={(val) => {
+                              setNewExpectedDate(val);
+                              if (
+                                val &&
+                                newStatus === "keep" &&
+                                matchedCars.some((c) => isLate(c))
+                              ) {
+                                setNewStatus("Ordered");
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </IosRow>
+                  </IosGroup>
                   {/* Quick Date Presets */}
-                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                    <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                      <Clock className="size-3" /> Quick:
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDate(0)}
-                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-xs text-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      Today
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDate(7)}
-                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-xs text-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      +7 Days
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDate(14)}
-                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-xs text-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      +14 Days
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickDate(30)}
-                      className="rounded border border-border bg-muted/60 px-2 py-0.5 text-xs text-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      +1 Month
-                    </button>
+                  <div className="flex flex-wrap items-center gap-1.5 px-1">
+                    <Clock className="size-3.5 text-muted-foreground" />
+                    {[
+                      ["Today", 0],
+                      ["+7 days", 7],
+                      ["+14 days", 14],
+                      ["+1 month", 30],
+                    ].map(([label, days]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => handleQuickDate(days as number)}
+                        className="rounded-full border px-2.5 py-1 text-xs font-medium transition-colors border-border bg-muted/50 text-foreground hover:bg-muted"
+                      >
+                        {label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Delivery partner + tracking ID. Together they are a link, so
                   they are set together or not at all. */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                      <Truck className="size-3.5 text-sky-500" />
-                      <span>Delivery partner &amp; tracking ID</span>
-                    </label>
-                    <label className="flex cursor-pointer items-center gap-1.5 text-xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={updateTracking}
-                        onChange={(e) => setUpdateTracking(e.target.checked)}
-                        className="rounded border-input bg-background text-primary"
-                      />
-                      <span>Update tracking</span>
-                    </label>
-                  </div>
+                <div className="space-y-2">
+                  <IosGroup>
+                    <IosRow label="Update tracking">
+                      <Switch checked={updateTracking} onCheckedChange={setUpdateTracking} />
+                    </IosRow>
+                    {updateTracking && (
+                      <>
+                        <IosRow label="Courier">
+                          <IosPicker
+                            label="Courier"
+                            placeholder="Select"
+                            allowNew
+                            clearable
+                            value={newPartner}
+                            onChange={setNewPartner}
+                            options={DELIVERY_PARTNER_NAMES.map((n) => ({ value: n, label: n }))}
+                          />
+                        </IosRow>
+                        <IosRow label="Tracking ID">
+                          <IosInput
+                            label="Tracking ID"
+                            placeholder="AWB number"
+                            value={newTrackingId}
+                            onChange={setNewTrackingId}
+                          />
+                        </IosRow>
+                      </>
+                    )}
+                  </IosGroup>
                   {updateTracking && (
-                    <div className="space-y-1.5">
-                      <Combobox
-                        value={newPartner}
-                        onChange={setNewPartner}
-                        options={DELIVERY_PARTNER_NAMES}
-                        placeholder="Courier"
-                        searchPlaceholder="Search or type a courier…"
-                        ariaLabel="Delivery partner"
-                        className="h-9 border-border bg-background text-xs text-foreground"
-                      />
-                      <Input
-                        placeholder="Consignment / AWB number"
-                        value={newTrackingId}
-                        onChange={(e) => setNewTrackingId(e.target.value)}
-                        className="border-border bg-background font-mono text-xs text-foreground"
-                      />
+                    <div className="px-1">
                       <TrackingLink partner={newPartner} trackingId={newTrackingId} />
                     </div>
                   )}
                 </div>
 
                 {/* Notes (Optional) */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                      <Truck className="size-3.5 text-muted-foreground" />
-                      <span>Notes</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs text-muted-foreground">
-                      <input
-                        type="checkbox"
-                        checked={updateTransitInfo}
-                        onChange={(e) => setUpdateTransitInfo(e.target.checked)}
-                        className="rounded border-input bg-background text-primary"
-                      />
-                      <span>Update notes</span>
-                    </label>
-                  </div>
+                <IosGroup>
+                  <IosRow label="Update notes">
+                    <Switch checked={updateTransitInfo} onCheckedChange={setUpdateTransitInfo} />
+                  </IosRow>
                   {updateTransitInfo && (
-                    <Input
-                      placeholder="Courier AWB, tracking code, dispatch notes..."
-                      value={newTransitInfo}
-                      onChange={(e) => setNewTransitInfo(e.target.value)}
-                      className="border-border bg-background text-xs text-foreground"
-                    />
+                    <IosRow label="Notes">
+                      <IosInput
+                        label="Notes"
+                        placeholder="Dispatch notes, tracking code…"
+                        value={newTransitInfo}
+                        onChange={setNewTransitInfo}
+                      />
+                    </IosRow>
                   )}
-                </div>
+                </IosGroup>
               </div>
             </div>
           </div>
