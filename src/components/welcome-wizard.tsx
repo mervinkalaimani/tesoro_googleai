@@ -35,9 +35,12 @@ import { isPackMember, packMemberIds } from "@/lib/pack";
 import { isPreOrder } from "@/lib/status-order";
 import { loadTaste, ownedCandidates, saveTaste, topValues, type Taste } from "@/lib/taste";
 import type { Diecast } from "@/lib/types";
+import { useApp } from "@/lib/store";
+import { USE_CASES, uses } from "@/lib/use-cases";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
+  { label: "Your use", icon: Compass },
   { label: "Your taste", icon: Heart },
   { label: "Your cars", icon: Plus },
   { label: "What's new", icon: ShoppingBag },
@@ -210,6 +213,11 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
   const who = profile?.sno ?? "me";
   const first = (profile?.first_name || "").trim().split(/\s+/)[0];
 
+  const { useCases, setUseCases } = useApp();
+  const showSeller = uses(useCases, "seller");
+  const showPurchase = uses(useCases, "purchase");
+  const showTracking = uses(useCases, "tracking");
+  const [extra, setExtra] = useState({ seller: "", price: "", status: "In Hand" });
   const [step, setStep] = useState(0);
   const [taste, setTaste] = useState<Taste>({ brands: [], makes: [] });
   const [makeQuery, setMakeQuery] = useState("");
@@ -331,7 +339,14 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
   };
 
   const saveTicked = () => {
-    const rows = candidates.filter((c) => ticked.has(c.car_id)).map(ownedFrom);
+    const rows = candidates
+      .filter((c) => ticked.has(c.car_id))
+      .map((c) => ({
+        ...ownedFrom(c),
+        ...(showSeller && extra.seller.trim() ? { seller: extra.seller.trim() } : {}),
+        ...(showPurchase && Number(extra.price) > 0 ? { spent: Number(extra.price) } : {}),
+        ...(showTracking ? { status: extra.status } : {}),
+      }));
     if (!rows.length) return;
     setSaving(true);
     try {
@@ -394,7 +409,7 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
   };
 
   const empty = cars.length === 0;
-  const carsStep = 1;
+  const carsStep = 2;
 
   return (
     <div ref={top} className="mx-auto w-full max-w-4xl space-y-5 p-4 md:p-6">
@@ -439,6 +454,51 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
       </ol>
 
       {step === 0 && (
+        <div className="card-elevated space-y-3 p-5">
+          <div>
+            <h2 className="text-display text-lg font-semibold">What do you use VIIV for?</h2>
+            <p className="text-xs text-muted-foreground">
+              Pick all that apply. The next steps and your car pages show only those details. You
+              can change it any time in Settings.
+            </p>
+          </div>
+          <div className="grid gap-2.5 sm:grid-cols-2">
+            {USE_CASES.map((u) => {
+              const on = uses(useCases, u.key);
+              return (
+                <button
+                  key={u.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => {
+                    const now = useCases ?? USE_CASES.map((x) => x.key);
+                    setUseCases(on ? now.filter((k) => k !== u.key) : [...now, u.key]);
+                  }}
+                  className={cn(
+                    "card-elevated flex items-center gap-3 p-3 text-left transition-colors !rounded-2xl",
+                    on && "!border-primary/70 bg-primary/10",
+                  )}
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium">{u.label}</span>
+                    <span className="block text-xs text-muted-foreground">{u.hint}</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "grid size-5 shrink-0 place-items-center rounded-full border",
+                      on ? "border-primary bg-primary text-primary-foreground" : "border-border",
+                    )}
+                  >
+                    {on && <Check className="size-3.5" />}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {step === 1 && (
         <div className="card-elevated space-y-6 p-5">
           <section>
             <h2 className="text-display text-lg font-semibold">Favourite brands</h2>
@@ -556,6 +616,46 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
                 })}
               </div>
 
+              {ticked.size > 0 && (showSeller || showPurchase || showTracking) && (
+                <div className="space-y-2 border-t border-border p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Details for the {ticked.size} you ticked (optional, you can edit each car later)
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    {showSeller && (
+                      <Input
+                        aria-label="Seller"
+                        placeholder="Seller"
+                        value={extra.seller}
+                        onChange={(e) => setExtra({ ...extra, seller: e.target.value })}
+                      />
+                    )}
+                    {showPurchase && (
+                      <Input
+                        aria-label="Price paid per car"
+                        placeholder="Price paid per car (₹)"
+                        inputMode="decimal"
+                        value={extra.price}
+                        onChange={(e) =>
+                          setExtra({ ...extra, price: e.target.value.replace(/[^\d.]/g, "") })
+                        }
+                      />
+                    )}
+                    {showTracking && (
+                      <select
+                        aria-label="Status"
+                        value={extra.status}
+                        onChange={(e) => setExtra({ ...extra, status: e.target.value })}
+                        className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                      >
+                        <option value="In Hand">In hand</option>
+                        <option value="PO">Pre-ordered</option>
+                      </select>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border p-3">
                 <Button variant="outline" className="gap-2" onClick={nextSet}>
                   <RefreshCw className="size-4" />
@@ -619,7 +719,7 @@ export function WelcomeWizard({ onDone }: { onDone: () => void }) {
         </div>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <div className="space-y-4">
           <Shelf
             title="New pre-orders"

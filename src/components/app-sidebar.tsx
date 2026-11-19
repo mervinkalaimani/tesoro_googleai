@@ -18,7 +18,6 @@ import {
   BookOpen,
   Store,
   Database,
-  Lock,
   Sparkles,
   ChevronRight,
 } from "lucide-react";
@@ -160,42 +159,46 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Sections: My Cars, My Orders, Habit */}
-        {NAV_GROUPS.map((group) => (
-          <SidebarGroup key={group.title} className="py-1">
-            <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/80 uppercase">
-              {group.title}
-            </SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu className="gap-1">
-                {group.items.map((item) => {
-                  const active = pathname.startsWith(item.url);
-                  const locked = item.needs !== undefined && !planIncludes(plan, item.needs);
-                  return (
-                    <SidebarMenuItem key={item.url}>
-                      <SidebarMenuButton
-                        asChild
-                        isActive={active}
-                        tooltip={item.title}
-                        className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
-                      >
-                        <Link
-                          to={item.url}
-                          onClick={() => {
-                            if (isMobile) setOpenMobile(false);
-                          }}
+        {NAV_GROUPS.map((g) => ({
+          ...g,
+          // Items the plan doesn't include are left out, not shown locked.
+          items: g.items.filter((i) => i.needs === undefined || planIncludes(plan, i.needs)),
+        }))
+          .filter((group) => group.items.length > 0)
+          .map((group) => (
+            <SidebarGroup key={group.title} className="py-1">
+              <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/80 uppercase">
+                {group.title}
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu className="gap-1">
+                  {group.items.map((item) => {
+                    const active = pathname.startsWith(item.url);
+                    return (
+                      <SidebarMenuItem key={item.url}>
+                        <SidebarMenuButton
+                          asChild
+                          isActive={active}
+                          tooltip={item.title}
+                          className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
                         >
-                          <item.icon className={cn("size-4.5", locked && "opacity-50")} />
-                          <span className={cn(locked && "opacity-50")}>{item.title}</span>
-                          {locked && <Lock className="ml-auto size-3.5 text-muted-foreground" />}
-                        </Link>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+                          <Link
+                            to={item.url}
+                            onClick={() => {
+                              if (isMobile) setOpenMobile(false);
+                            }}
+                          >
+                            <item.icon className="size-4.5" />
+                            <span>{item.title}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          ))}
         {/* Only for somebody who could act on it, and only where there is
             room for words: the collapsed rail is icons, and a bare sparkle
             there would say nothing. */}
