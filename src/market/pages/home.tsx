@@ -67,32 +67,6 @@ export function HomePage() {
             </Button>
           )}
         </div>
-        <div className="mt-5 flex flex-wrap gap-2" aria-label="Browse by scale">
-          {f.scale.map((sc) => (
-            <Link
-              key={sc}
-              to="/market/search"
-              search={{ scale: sc }}
-              className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-sm hover:border-foreground/40"
-            >
-              {sc}
-            </Link>
-          ))}
-          <Link
-            to="/market/search"
-            search={{ origin: "Indian" }}
-            className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-sm hover:border-foreground/40"
-          >
-            Indian
-          </Link>
-          <Link
-            to="/market/search"
-            search={{ origin: "Imported" }}
-            className="rounded-full border border-border bg-background/60 px-3 py-1.5 text-sm hover:border-foreground/40"
-          >
-            Imported
-          </Link>
-        </div>
       </section>
 
       {events.length > 0 && (

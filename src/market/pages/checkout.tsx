@@ -2,12 +2,14 @@ import { Link, useParams } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
 import { useRef, useState } from "react";
 
+import { useCars } from "@/lib/cars-store";
 import { Button } from "@/components/ui/button";
 
 import { AddressForm, BLANK_ADDRESS, type AddressDraft } from "../components/address";
 import {
   Card,
   CarImage,
+  Confirm,
   Empty,
   ErrorNote,
   Field,
@@ -38,6 +40,7 @@ export function CheckoutPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const addShopCars = useAddShopCars();
+  const myCars = useCars();
   const [placed, setPlaced] = useState<Order | null>(null);
 
   if (placed) {
@@ -253,9 +256,25 @@ export function CheckoutPage() {
             </p>
           )}
           <ErrorNote>{error}</ErrorNote>
-          <Button className="w-full" disabled={busy} onClick={place}>
-            {busy ? "Placing order…" : "Place demo order"}
-          </Button>
+          {(() => {
+            const have = myCars.filter((c) => c.catalogId === item.id).length;
+            const btn = (go: () => void) => (
+              <Button className="w-full" disabled={busy} onClick={go}>
+                {busy ? "Placing order…" : "Place demo order"}
+              </Button>
+            );
+            return have ? (
+              <Confirm
+                title="You already have this casting"
+                body={`${item.name} is already in your cars (${have}). Buy another?`}
+                confirm="Yes, buy it"
+                onConfirm={place}
+                trigger={btn}
+              />
+            ) : (
+              btn(place)
+            );
+          })()}
           <p className="text-xs text-muted-foreground">
             Demo checkout: no real payment provider is connected, so nothing is charged. Production
             setup is in the README.
