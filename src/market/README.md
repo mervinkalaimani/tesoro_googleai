@@ -1,6 +1,6 @@
 # Viiv Market
 
-A buyer-and-seller marketplace for collectible model cars, built as a **separate feature** inside the existing app. It lives under `/market` and does not touch the collection tracker's routes, stores or database.
+The Viiv Store: a buyer-and-seller marketplace for collectible model cars, part of the Viiv app. It lives under `/market` and opens in the app shell's content panel beside the sidebar (the store and catalogue links sit above the totals). It has its own data and demo session and does not touch the collection tracker's tables.
 
 Spec: [`VIIV Store.md`](../../VIIV%20Store.md).
 
@@ -49,7 +49,7 @@ src/market/
   components/     shell, cards, shared bits, address form
   pages/          one file per area (home, search, item, checkout, orders, collection, sell, events, …)
 src/routes/market*.tsx    thin route files
-public/market.webmanifest, public/market-sw.js    PWA
+public/market-sw.js       offline shell for the store
 ```
 
 **Data model:** `CatalogueItem` (canonical car) is separate from `Listing` (a seller's offer: price, MRP, stock, condition, shipping). `Order` has `lines`, a timestamped `history` and tracking fields. `CollectionEntry` is unique per user and car and keeps `sources` (each order, or manual). `MarketEvent` holds `bids` or `entries`, an `audit` log and the draw record. `Notification`, `User` (one identity, `sellerMode` flag) and `SellerProfile` (`Unverified` / `Pending` / `Verified`, never granted automatically).
@@ -67,7 +67,7 @@ public/market.webmanifest, public/market-sw.js    PWA
 
 ## PWA
 
-`/market` swaps in `market.webmanifest` (scope `/market`) and registers `market-sw.js` in production builds: network-first pages with a cached shell fallback, cache-first hashed assets. Writes are never cached or answered by the worker; when the browser is offline every write action is refused with a message instead of pretending to succeed. The tracker's own `sw.js` is untouched.
+`/market` registers `market-sw.js` (scope `/market`) in production builds; installing is the Viiv app's own manifest: network-first pages with a cached shell fallback, cache-first hashed assets. Writes are never cached or answered by the worker; when the browser is offline every write action is refused with a message instead of pretending to succeed. The tracker's own `sw.js` is untouched.
 
 ## Known MVP boundaries (be honest about these)
 

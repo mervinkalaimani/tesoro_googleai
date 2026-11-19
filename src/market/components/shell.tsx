@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { HomeScreenMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -34,17 +33,11 @@ const NAV_SELL = [
   { to: "/market/sell/events", label: "Events", icon: Gavel },
 ] as const;
 
-/** Installable PWA: swap in the marketplace manifest and register its worker (scope /market). */
+/** Offline shell for the store (scope /market). Installing is the Viiv app's own manifest. */
 function usePwa() {
   useEffect(() => {
-    const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
-    const prev = link?.getAttribute("href") ?? null;
-    link?.setAttribute("href", "/market.webmanifest");
     if ("serviceWorker" in navigator && !import.meta.env.DEV)
       navigator.serviceWorker.register("/market-sw.js", { scope: "/market" }).catch(() => {});
-    return () => {
-      if (link && prev) link.setAttribute("href", prev);
-    };
   }, []);
 }
 
@@ -155,22 +148,14 @@ export function MarketLayout() {
   const nav = selling ? NAV_SELL : NAV_BUY;
 
   return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
+    <div className="bg-background">
       <p className="bg-primary/15 px-4 py-1 text-center text-[11px] text-foreground">
         Demo marketplace: seeded sellers and cars, simulated payments and shipping. Nothing here is
         charged or shipped.
       </p>
       <Offline />
-      <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center gap-2 px-4 py-2.5 md:gap-4">
-          <Link
-            to="/market"
-            className="flex shrink-0 items-center gap-2"
-            aria-label="Viiv Market home"
-          >
-            <HomeScreenMark className="size-7" />
-            <span className="text-sm font-semibold tracking-tight">Market</span>
-          </Link>
+      <header className="border-b border-border bg-background">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-2.5 md:flex-nowrap md:gap-4">
           <form
             role="search"
             className="relative min-w-0 flex-1 md:max-w-md"
@@ -191,13 +176,16 @@ export function MarketLayout() {
               className="h-10 w-full rounded-full border border-input bg-muted/40 pl-9 pr-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring md:text-sm"
             />
           </form>
-          <nav className="ml-2 hidden items-center gap-1 md:flex" aria-label="Main">
+          <nav
+            className="order-last flex w-full items-center gap-1 overflow-x-auto md:order-none md:ml-2 md:w-auto"
+            aria-label="Main"
+          >
             {nav.map((n) => (
               <Link
                 key={n.to}
                 to={n.to}
                 activeOptions={{ exact: "exact" in n && n.exact }}
-                className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+                className="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
                 activeProps={{ className: "bg-muted text-foreground" }}
               >
                 {n.label}
@@ -209,7 +197,7 @@ export function MarketLayout() {
               <Button
                 variant="outline"
                 size="sm"
-                className="hidden sm:inline-flex"
+                className="inline-flex"
                 onClick={() => {
                   api.setSellerMode(!selling);
                   void navigate({ to: selling ? "/market" : "/market/sell" });
@@ -231,38 +219,6 @@ export function MarketLayout() {
       <main className="mx-auto max-w-6xl px-4 py-5">
         <Outlet />
       </main>
-
-      <nav
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
-        aria-label="Main"
-      >
-        <ul
-          className="grid"
-          style={{ gridTemplateColumns: `repeat(${nav.length + 1}, minmax(0, 1fr))` }}
-        >
-          {nav.map((n) => (
-            <li key={n.to}>
-              <Link
-                to={n.to}
-                activeOptions={{ exact: "exact" in n && n.exact }}
-                className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] text-muted-foreground"
-                activeProps={{ className: "text-primary font-medium" }}
-              >
-                <n.icon className="size-5" aria-hidden /> {n.label}
-              </Link>
-            </li>
-          ))}
-          <li>
-            <Link
-              to={me ? "/market/account" : "/market/signin"}
-              className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] text-muted-foreground"
-              activeProps={{ className: "text-primary font-medium" }}
-            >
-              <User className="size-5" aria-hidden /> {me ? "Account" : "Sign in"}
-            </Link>
-          </li>
-        </ul>
-      </nav>
     </div>
   );
 }

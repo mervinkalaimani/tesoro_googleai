@@ -140,10 +140,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
    * A signed-in collector who opens the calendar is still inside Tesoro and
    * should keep the sidebar they were using a second ago.
    */
-  const isPublicRoute = pathname === "/releases" || pathname.startsWith("/catalog/");
-  // The marketplace is its own feature with its own shell and demo session.
+  // The store is part of Viiv: signed in it opens in the app shell's content
+  // panel beside the sidebar, signed out it is browsable under the public chrome.
   const isMarket = pathname === "/market" || pathname.startsWith("/market/");
-  const isBareRoute = BARE.includes(pathname) || isPublicRoute || isMarket;
+  const isPublicRoute = pathname === "/releases" || pathname.startsWith("/catalog/") || isMarket;
+  const isBareRoute = BARE.includes(pathname) || isPublicRoute;
 
   useEffect(() => {
     if (status === "signed-out" && !isBareRoute) {

@@ -46,12 +46,14 @@ export function CarImage({
   item: Pick<CatalogueItem, "name" | "colour" | "brand" | "imageUrl">;
   className?: string;
 }) {
-  if (item.imageUrl)
+  const [broken, setBroken] = useState(false);
+  if (item.imageUrl && !broken)
     return (
       <img
         src={item.imageUrl}
         alt={item.name}
         loading="lazy"
+        onError={() => setBroken(true)}
         className={cn("aspect-[4/3] w-full object-cover", className)}
       />
     );

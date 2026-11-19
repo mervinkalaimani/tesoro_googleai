@@ -1,6 +1,6 @@
 import { startTransition, useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Plus, RefreshCw, Undo2 } from "lucide-react";
+import { BookOpen, Plus, RefreshCw, ShoppingCart, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -158,6 +158,30 @@ export function TopBar() {
                 className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-amber-400"
               />
             )}
+          </Button>
+          {/* The sidebar is the way to the store and the catalogue on desktop;
+              below md it is hidden, so they are one tap here instead. */}
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            className="size-9 rounded-full md:hidden"
+            title="Viiv Store"
+          >
+            <Link to="/market" aria-label="Viiv Store">
+              <ShoppingCart className="size-4.5" />
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="icon"
+            className="size-9 rounded-full md:hidden"
+            title="Catalogue"
+          >
+            <Link to="/catalog" aria-label="Catalogue">
+              <BookOpen className="size-4.5" />
+            </Link>
           </Button>
           <AccountButton />
         </div>

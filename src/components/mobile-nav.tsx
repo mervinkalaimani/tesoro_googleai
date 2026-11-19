@@ -11,6 +11,8 @@ import {
   Car,
   Truck,
   Store,
+  Gavel,
+  Library,
 } from "lucide-react";
 
 import { useApp } from "@/lib/store";
@@ -53,7 +55,16 @@ const ORDERS_TABS = [
   { title: "Duplicates", url: "/duplicates", icon: Copy },
 ] as const;
 
+/** Sub-tabs shown inside Viiv Store. */
+const MARKET_TABS = [
+  { title: "Store", url: "/market", icon: Store },
+  { title: "Search", url: "/market/search", icon: Search },
+  { title: "Events", url: "/market/events", icon: Gavel },
+  { title: "Shelf", url: "/market/collection", icon: Library },
+] as const;
+
 function isActive(pathname: string, url: string) {
+  if (url === "/market") return pathname === "/market";
   return url === "/" ? pathname === "/" : pathname.startsWith(url);
 }
 
@@ -187,13 +198,17 @@ export function MobileNav() {
   // it splits Home out into its own circle and the bar holds the two pages.
   const isHabitMode = pathname.startsWith("/habits") || pathname.startsWith("/sellers");
 
-  const navMode: "default" | "inventory" | "orders" | "habit" = isHabitMode
-    ? "habit"
-    : isInventoryMode
-      ? "inventory"
-      : isOrdersMode
-        ? "orders"
-        : "default";
+  const navMode: "default" | "inventory" | "orders" | "habit" | "market" = pathname.startsWith(
+    "/market",
+  )
+    ? "market"
+    : isHabitMode
+      ? "habit"
+      : isInventoryMode
+        ? "inventory"
+        : isOrdersMode
+          ? "orders"
+          : "default";
 
   // Only a change of section animates — not the bar's first appearance. Once a
   // section has changed, each newly keyed pill plays its entrance on mount.
@@ -235,7 +250,9 @@ export function MobileNav() {
         ? INVENTORY_TABS
         : navMode === "habit"
           ? HABIT_TABS
-          : ORDERS_TABS;
+          : navMode === "market"
+            ? MARKET_TABS
+            : ORDERS_TABS;
   const open = allTabs.filter((t) => planOpensPath(plan, t.url));
   // Every tab of a section being Pro would leave an empty bar. Fall back to the
   // one page a free account always has, so there is still somewhere to tap.
