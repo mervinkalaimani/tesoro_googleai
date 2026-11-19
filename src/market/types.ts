@@ -101,6 +101,8 @@ export type Listing = {
   originOverride?: { value: Origin; status: "pending" };
   /** A combo: one box of several catalogue cars sold together. `itemId` is its first car. */
   bundle?: { itemId: string; qty: number }[];
+  /** The seller's own photos of this exact car or box, at most MAX_PHOTOS. */
+  photos?: string[];
   createdAt: number;
   updatedAt: number;
   demo?: boolean;
@@ -149,6 +151,9 @@ export type MarketEvent = {
   sellerId: string;
   type: EventType;
   itemId: string;
+  /** A box of several cars up for auction or raffle. `itemId` is its first car. */
+  bundle?: { itemId: string; qty: number }[];
+  photos?: string[];
   title: string;
   condition: Condition;
   packaging: Packaging;
@@ -170,6 +175,19 @@ export type MarketEvent = {
   audit: { at: number; by: string; note: string }[];
   createdAt: number;
   demo?: boolean;
+};
+
+/** A buyer asks a seller for another photo, or for one photo to be swapped. `targetId` is a listing or event id. */
+export type PhotoRequest = {
+  id: string;
+  targetId: string;
+  buyerId: string;
+  kind: "more" | "replace";
+  /** Which photo to replace (replace only). */
+  index: number | null;
+  note: string;
+  status: "open" | "done" | "declined";
+  at: number;
 };
 
 export type Notification = {
@@ -195,6 +213,7 @@ export type State = {
   listings: Listing[];
   orders: Order[];
   events: MarketEvent[];
+  photoRequests: PhotoRequest[];
   notifications: Notification[];
 };
 

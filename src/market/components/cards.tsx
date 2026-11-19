@@ -95,7 +95,15 @@ export function EventCard({ e, s }: { e: MarketEvent; s: State }) {
       params={{ eventId: e.id }}
       className="flex gap-3 rounded-2xl border border-border bg-card p-3 hover:border-foreground/30"
     >
-      <CarImage item={item} className="w-28 shrink-0 rounded-xl" />
+      {e.photos?.[0] ? (
+        <img
+          src={e.photos[0]}
+          alt=""
+          className="aspect-[4/3] w-28 shrink-0 rounded-xl object-cover"
+        />
+      ) : (
+        <CarImage item={item} className="w-28 shrink-0 rounded-xl" />
+      )}
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-1">
           <Pill tone="brand">
@@ -165,11 +173,15 @@ export function ComboCard({ listing, s }: { listing: Listing; s: State }) {
       params={{ listingId: listing.id }}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition hover:border-foreground/30"
     >
-      <div className="grid grid-cols-2 gap-px bg-border">
-        {cars.slice(0, 4).map(({ i }) => (
-          <CarImage key={i.id} item={i} className="aspect-[4/3]" />
-        ))}
-      </div>
+      {listing.photos?.[0] ? (
+        <img src={listing.photos[0]} alt="" className="aspect-[4/3] w-full object-cover" />
+      ) : (
+        <div className="grid grid-cols-2 gap-px bg-border">
+          {cars.slice(0, 4).map(({ i }) => (
+            <CarImage key={i.id} item={i} className="aspect-[4/3]" />
+          ))}
+        </div>
+      )}
       <div className="flex flex-1 flex-col gap-1.5 p-3">
         <div className="flex flex-wrap gap-1">
           <Pill tone="brand">Combo · {n} cars</Pill>

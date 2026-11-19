@@ -133,6 +133,7 @@ export function ItemPage() {
                             <Pill>{l.condition}</Pill>
                             <Pill>{l.packaging}</Pill>
                             <Pill tone="brand">Fixed price</Pill>
+                            {!!l.photos?.length && <Pill>{l.photos.length} seller photos</Pill>}
                             {i === 0 && offers.length > 1 && <Pill tone="good">Lowest price</Pill>}
                             {l.originOverride && (
                               <Pill tone="warn">

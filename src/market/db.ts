@@ -27,6 +27,7 @@ import type {
   Notification,
   Order,
   Origin,
+  PhotoRequest,
   Packaging,
   R,
   SellerProfile,
@@ -36,6 +37,7 @@ import type {
 
 const KEY = "viiv.market.v2";
 const MIN = 60_000;
+export const MAX_PHOTOS = 5;
 
 const ok = <T>(data: T): R<T> => ({ ok: true, data });
 const fail = (error: string): R<never> => ({ ok: false, error });
@@ -60,6 +62,7 @@ const emptyState = (): State => ({
   listings: [],
   orders: [],
   events: [],
+  photoRequests: [],
   notifications: [],
 });
 const serverState = emptyState();
@@ -72,7 +75,7 @@ function read(): State | null {
   try {
     const t = typeof localStorage === "undefined" ? null : localStorage.getItem(KEY);
     const s = t ? (JSON.parse(t) as State) : null;
-    return s && s.v === 1 ? { ...s, items: catalogue } : null;
+    return s && s.v === 1 ? { ...s, photoRequests: s.photoRequests ?? [], items: catalogue } : null;
   } catch {
     return null;
   }
@@ -184,6 +187,27 @@ function ping(
     read: false,
     href,
   } as Notification);
+}
+
+/** A box needs 2+ cars in total, each a real catalogue car (approved only when `strict`). */
+function bundleError(
+  s: State,
+  me: User,
+  bundle: { itemId: string; qty: number }[],
+  strict: boolean,
+): string | null {
+  if (bundle.reduce((t, b) => t + b.qty, 0) < 2 || bundle.length < 1)
+    return "A combo needs at least 2 cars.";
+  for (const b of bundle) {
+    const bi = s.items.find((i) => i.id === b.itemId);
+    if (
+      !bi ||
+      (strict ? bi.review !== "approved" : bi.review === "pending" && bi.suggestedBy !== me.id)
+    )
+      return "One of the cars is not in the catalogue.";
+    if (!Number.isInteger(b.qty) || b.qty < 1 || b.qty > 99) return "Each car's count is 1 to 99.";
+  }
+  return null;
 }
 
 const addrOk = (a: Omit<Address, "id">) =>
@@ -459,16 +483,9 @@ export const api = {
       if (!me) return fail("Sign in to do that.");
       if (!s.sellers.some((x) => x.userId === me.id)) return fail("Become a seller first.");
       if (f.bundle) {
-        const n = f.bundle.reduce((t, b) => t + b.qty, 0);
-        if (f.bundle.length < 1 || n < 2) return fail("A combo needs at least 2 cars.");
+        const bad = bundleError(s, me, f.bundle, false);
+        if (bad) return fail(bad);
         if (!f.title.trim()) return fail("Give the combo a name.");
-        for (const b of f.bundle) {
-          const bi = s.items.find((i) => i.id === b.itemId);
-          if (!bi || (bi.review === "pending" && bi.suggestedBy !== me.id))
-            return fail("One of the cars is not in the catalogue.");
-          if (!Number.isInteger(b.qty) || b.qty < 1 || b.qty > 99)
-            return fail("Each car's count is 1 to 99.");
-        }
         f.itemId = f.bundle[0].itemId;
       }
       const item = s.items.find((i) => i.id === f.itemId);
@@ -753,6 +770,7 @@ export const api = {
     id?: string;
     type: EventType;
     itemId: string;
+    bundle?: { itemId: string; qty: number }[];
     title: string;
     rules: string;
     condition: Condition;
@@ -766,6 +784,11 @@ export const api = {
   }) {
     return tx((s, now, me) => {
       if (!me || !s.sellers.some((x) => x.userId === me.id)) return fail("Become a seller first.");
+      if (f.bundle) {
+        const bad = bundleError(s, me, f.bundle, true);
+        if (bad) return fail(bad);
+        f.itemId = f.bundle[0].itemId;
+      }
       if (!s.items.some((i) => i.id === f.itemId && i.review === "approved"))
         return fail("Pick an approved catalogue car.");
       if (f.title.trim().length < 3) return fail("Give the event a title.");
@@ -787,6 +810,7 @@ export const api = {
       const clean = {
         type: f.type,
         itemId: f.itemId,
+        bundle: f.bundle,
         title: f.title.trim(),
         rules: f.rules.trim(),
         condition: f.condition,
@@ -933,6 +957,98 @@ export const api = {
         `New bid on "${e.title}": ${rupees(amountPaise)}.`,
         `/market/event/${e.id}`,
       );
+      return ok(undefined);
+    });
+  },
+  /* ---- photos ---- */
+  /**
+   * Set the photos of a listing or event (its id is `targetId`). At most MAX_PHOTOS.
+   * Once live, a photo can be replaced but not removed, so a buyer's "different
+   * photo" request is answered by a swap. Open requests the change answers close.
+   */
+  setPhotos(targetId: string, photos: string[]) {
+    return tx((s, now, me) => {
+      const t =
+        s.listings.find((x) => x.id === targetId) ?? s.events.find((x) => x.id === targetId);
+      if (!me || !t || t.sellerId !== me.id) return fail("Not found.");
+      if (photos.length > MAX_PHOTOS) return fail(`Up to ${MAX_PHOTOS} photos.`);
+      if (photos.some((p) => !/^data:image\//.test(p))) return fail("Photos must be images.");
+      const before = t.photos ?? [];
+      if (t.status !== "draft" && photos.length < before.length)
+        return fail("Replace a photo instead of removing it.");
+      t.photos = photos;
+      const name = t.title || "your item";
+      for (const r of s.photoRequests) {
+        if (r.targetId !== targetId || r.status !== "open") continue;
+        const done =
+          r.kind === "more" ? photos.length > before.length : photos[r.index!] !== before[r.index!];
+        if (!done) continue;
+        r.status = "done";
+        ping(
+          s,
+          r.buyerId,
+          null,
+          r.kind === "more"
+            ? `New photos added for ${name}`
+            : `Photo ${r.index! + 1} replaced for ${name}`,
+          targetId.startsWith("e_") ? `/market/event/${targetId}` : `/market/buy/${targetId}`,
+        );
+      }
+      return ok(undefined);
+    });
+  },
+  /** A buyer asks for one more photo (while under the cap) or a different one in place of photo `index`. */
+  requestPhoto(targetId: string, kind: "more" | "replace", index: number | null, note: string) {
+    return tx((s, now, me) => {
+      if (!me) return fail("Sign in to ask the seller.");
+      const t =
+        s.listings.find((x) => x.id === targetId) ?? s.events.find((x) => x.id === targetId);
+      if (!t || t.status === "draft") return fail("Not found.");
+      if (t.sellerId === me.id) return fail("That's your own item.");
+      const n = (t.photos ?? []).length;
+      if (kind === "more" && n >= MAX_PHOTOS)
+        return fail(`The seller already shows the maximum of ${MAX_PHOTOS} photos.`);
+      if (kind === "replace" && !(index !== null && index >= 0 && index < n))
+        return fail("Pick a photo to replace.");
+      const dup = s.photoRequests.some(
+        (r) =>
+          r.targetId === targetId &&
+          r.buyerId === me.id &&
+          r.status === "open" &&
+          r.kind === kind &&
+          r.index === (kind === "replace" ? index : null),
+      );
+      if (dup) return fail("You've already asked for that. The seller has been told.");
+      s.photoRequests.push({
+        id: id(s, "pr"),
+        targetId,
+        buyerId: me.id,
+        kind,
+        index: kind === "replace" ? index : null,
+        note: note.trim().slice(0, 200),
+        status: "open",
+        at: now,
+      });
+      ping(
+        s,
+        t.sellerId,
+        null,
+        kind === "more"
+          ? `A buyer asked for more photos of ${t.title || "an item"}`
+          : `A buyer asked you to replace photo ${index! + 1} of ${t.title || "an item"}`,
+        targetId.startsWith("e_") ? `/seller/event/${targetId}` : `/seller/listing/${targetId}`,
+      );
+      return ok(undefined);
+    });
+  },
+  declinePhotoRequest(requestId: string) {
+    return tx((s, _now, me) => {
+      const r = s.photoRequests.find((x) => x.id === requestId);
+      const t =
+        r &&
+        (s.listings.find((x) => x.id === r.targetId) ?? s.events.find((x) => x.id === r.targetId));
+      if (!r || !t || t.sellerId !== me?.id) return fail("Not found.");
+      r.status = "declined";
       return ok(undefined);
     });
   },

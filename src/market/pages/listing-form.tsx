@@ -12,6 +12,7 @@ import { catalogIdFor } from "@/lib/car-id";
 import type { CatalogCar } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-store";
 
+import { PhotoEditor } from "../components/photos";
 import { CarImage, Card, Confirm, ErrorNote, Pill, Price, itemLine } from "../components/bits";
 import { rupees, toPaise } from "../format";
 import { approved, itemById } from "../queries";
@@ -237,6 +238,85 @@ export function CarPicker({ onPick }: { onPick: (id: string) => void }) {
   );
 }
 
+/** The cars in a box: quantities, remove, and a picker to add more. */
+export function BundleEditor({
+  bundle,
+  setBundle,
+}: {
+  bundle: { itemId: string; qty: number }[];
+  setBundle: React.Dispatch<React.SetStateAction<{ itemId: string; qty: number }[]>>;
+}) {
+  const { s } = useMarket();
+  const cars = bundle.flatMap((b) => {
+    const i = itemById(s, b.itemId);
+    return i ? [{ i, b }] : [];
+  });
+  const addToBundle = (id: string) =>
+    setBundle((p) =>
+      p.some((b) => b.itemId === id)
+        ? p.map((b) => (b.itemId === id ? { ...b, qty: b.qty + 1 } : b))
+        : [...p, { itemId: id, qty: 1 }],
+    );
+  return (
+    <>
+      {cars.length > 0 && (
+        <IosGroup>
+          {cars.map(({ i, b }) => (
+            <div key={i.id} className="flex items-center gap-3 px-3.5 py-2">
+              <CarImage item={i} className="w-14 shrink-0 rounded-lg" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium">{i.name}</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  {itemLine(i)} · {i.colour}
+                </span>
+              </span>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label={`Fewer ${i.name}`}
+                  disabled={b.qty < 2}
+                  onClick={() =>
+                    setBundle((p) =>
+                      p.map((x) => (x.itemId === i.id ? { ...x, qty: x.qty - 1 } : x)),
+                    )
+                  }
+                >
+                  <Minus />
+                </Button>
+                <span className="w-5 text-center text-sm tabular-nums">{b.qty}</span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  aria-label={`More ${i.name}`}
+                  onClick={() => addToBundle(i.id)}
+                >
+                  <Plus />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-muted-foreground"
+                  aria-label={`Remove ${i.name}`}
+                  onClick={() => setBundle((p) => p.filter((x) => x.itemId !== i.id))}
+                >
+                  <X />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </IosGroup>
+      )}
+      <CarPicker onPick={addToBundle} />
+    </>
+  );
+}
+
 const MODES = [
   {
     mode: "single",
@@ -322,6 +402,7 @@ export function ListingFormPage() {
     privateNotes: existing?.privateNotes ?? "",
     origin: (existing?.originOverride?.value ?? "") as Origin | "",
   });
+  const [photos, setPhotos] = useState<string[]>(existing?.photos ?? []);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState(false);
   const set = (k: keyof typeof f) => (v: string) => setF((p) => ({ ...p, [k]: v }));
@@ -331,12 +412,6 @@ export function ListingFormPage() {
     return i ? [{ i, b }] : [];
   });
   const total = bundle.reduce((t, b) => t + b.qty, 0);
-  const addToBundle = (id: string) =>
-    setBundle((p) =>
-      p.some((b) => b.itemId === id)
-        ? p.map((b) => (b.itemId === id ? { ...b, qty: b.qty + 1 } : b))
-        : [...p, { itemId: id, qty: 1 }],
-    );
 
   return (
     <SellerGate>
@@ -373,6 +448,7 @@ export function ListingFormPage() {
         const save = (publish: boolean) => {
           const r = api.saveListing(input(), publish);
           if (r.ok) {
+            if (!existing && photos.length) api.setPhotos(r.data.id, photos);
             run(r, publish ? "Published" : "Saved");
             void navigate({ to: "/seller/listings" });
           } else setError(r.error);
@@ -432,62 +508,16 @@ export function ListingFormPage() {
                 <h2 className="px-1 text-sm font-medium text-muted-foreground">
                   Cars in the box ({total})
                 </h2>
-                {cars.length > 0 && (
-                  <IosGroup>
-                    {cars.map(({ i, b }) => (
-                      <div key={i.id} className="flex items-center gap-3 px-3.5 py-2">
-                        <CarImage item={i} className="w-14 shrink-0 rounded-lg" />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">{i.name}</span>
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {itemLine(i)} · {i.colour}
-                          </span>
-                        </span>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                            aria-label={`Fewer ${i.name}`}
-                            disabled={b.qty < 2}
-                            onClick={() =>
-                              setBundle((p) =>
-                                p.map((x) => (x.itemId === i.id ? { ...x, qty: x.qty - 1 } : x)),
-                              )
-                            }
-                          >
-                            <Minus />
-                          </Button>
-                          <span className="w-5 text-center text-sm tabular-nums">{b.qty}</span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7"
-                            aria-label={`More ${i.name}`}
-                            onClick={() => addToBundle(i.id)}
-                          >
-                            <Plus />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-muted-foreground"
-                            aria-label={`Remove ${i.name}`}
-                            onClick={() => setBundle((p) => p.filter((x) => x.itemId !== i.id))}
-                          >
-                            <X />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </IosGroup>
-                )}
-                <CarPicker onPick={addToBundle} />
+                <BundleEditor bundle={bundle} setBundle={setBundle} />
               </section>
             )}
+
+            <PhotoEditor
+              value={photos}
+              onChange={setPhotos}
+              targetId={existing?.id}
+              locked={!!existing && existing.status !== "draft"}
+            />
 
             {mode === "combo" && (
               <IosGroup>

@@ -23,7 +23,8 @@ import { dateTime, rupees, timeLeft, toPaise } from "../format";
 import { approved, itemById, liveEvents } from "../queries";
 import type { Condition, EventType, MarketEvent, Packaging } from "../types";
 import { api, run, useMarket, useMounted, useNow } from "../use-market";
-import { CarPicker } from "./listing-form";
+import { PhotoEditor, PhotoGallery } from "../components/photos";
+import { BundleEditor } from "./listing-form";
 import { SellerGate } from "./sell";
 
 export function EventsPage() {
@@ -110,18 +111,37 @@ export function EventPage() {
           </>
         }
       />
+      <PhotoGallery
+        targetId={e.id}
+        photos={e.photos ?? []}
+        sellerId={e.sellerId}
+        fallback={<CarImage item={item} />}
+      />
       <Card className="space-y-2 text-sm">
-        <p>
-          Car:{" "}
-          <Link
-            className="font-medium hover:underline"
-            to="/market/item/$itemId"
-            params={{ itemId: item.id }}
-          >
-            {item.name}
-          </Link>{" "}
-          <span className="text-muted-foreground">({itemLine(item)})</span>
-        </p>
+        {e.bundle ? (
+          <div>
+            <p>Combo box · {e.bundle.reduce((n, b) => n + b.qty, 0)} cars</p>
+            <ul className="text-xs text-muted-foreground">
+              {e.bundle.map((b) => (
+                <li key={b.itemId}>
+                  {b.qty} × {itemById(s, b.itemId)?.name ?? "Car"}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p>
+            Car:{" "}
+            <Link
+              className="font-medium hover:underline"
+              to="/market/item/$itemId"
+              params={{ itemId: item.id }}
+            >
+              {item.name}
+            </Link>{" "}
+            <span className="text-muted-foreground">({itemLine(item)})</span>
+          </p>
+        )}
         <p>
           Seller: <SellerChip userId={e.sellerId} s={s} />
         </p>
@@ -434,7 +454,12 @@ export function EventFormPage() {
   const navigate = useNavigate();
   const existing = eventId !== "new" ? s.events.find((e) => e.id === eventId) : undefined;
   const [q, setQ] = useState("");
-  const [itemId, setItemId] = useState(existing?.itemId ?? "");
+  const [bundle, setBundle] = useState<{ itemId: string; qty: number }[]>(
+    existing?.bundle ?? (existing ? [{ itemId: existing.itemId, qty: 1 }] : []),
+  );
+  const [photos, setPhotos] = useState<string[]>(existing?.photos ?? []);
+  const total = bundle.reduce((n, b) => n + b.qty, 0);
+  const itemId = bundle[0]?.itemId ?? "";
   const [type, setType] = useState<EventType>(existing?.type ?? "auction");
   const [f, setF] = useState(() => ({
     title: existing?.title ?? "",
@@ -450,19 +475,6 @@ export function EventFormPage() {
   }));
   const [error, setError] = useState("");
   const set = (k: keyof typeof f, v: string) => setF({ ...f, [k]: v });
-  const item = itemById(s, itemId);
-  const matches = q.trim()
-    ? approved(s)
-        .filter((i) =>
-          q
-            .toLowerCase()
-            .split(/\s+/)
-            .every((x) =>
-              `${i.name} ${i.brand} ${i.scale} ${i.assortment}`.toLowerCase().includes(x),
-            ),
-        )
-        .slice(0, 6)
-    : [];
   const template =
     type === "auction"
       ? "Highest bid at close wins. Each bid must beat the current bid by the minimum raise. If the reserve is not met there is no winner. If the winner does not pay within 48 hours the seller may offer the car to the next highest bidder."
@@ -477,6 +489,7 @@ export function EventFormPage() {
             id: existing?.id,
             type,
             itemId,
+            bundle: total > 1 ? bundle : undefined,
             title: f.title,
             rules: f.rules,
             condition: f.condition,
@@ -493,6 +506,7 @@ export function EventFormPage() {
             const p = api.setEventStatus(r.data.id, "live");
             if (!p.ok) return setError(p.error);
           }
+          if (!existing && photos.length) api.setPhotos(r.data.id, photos);
           run(r, publish ? "Event is live" : "Draft saved");
           void navigate({ to: "/market/event/$eventId", params: { eventId: r.data.id } });
         };
@@ -503,33 +517,18 @@ export function EventFormPage() {
               sub="Auction: highest bid wins. Raffle: free-entry random draw."
             />
             <section className="space-y-2">
-              <h2 className="px-1 text-sm font-medium text-muted-foreground">Car</h2>
-              {item ? (
-                <Card className="flex items-center gap-3">
-                  <CarImage item={item} className="w-20 shrink-0 rounded-xl" />
-                  <div className="min-w-0 flex-1 text-sm">
-                    <p className="font-medium">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">{itemLine(item)}</p>
-                  </div>
-                  {!existing && (
-                    <button
-                      className="text-xs text-primary underline"
-                      onClick={() => setItemId("")}
-                    >
-                      Change
-                    </button>
-                  )}
-                </Card>
-              ) : (
-                <CarPicker
-                  onPick={(id) => {
-                    setItemId(id);
-                    const i = itemById(s, id);
-                    if (!f.title && i) set("title", `${i.name} - ${type}`);
-                  }}
-                />
-              )}
+              <h2 className="px-1 text-sm font-medium text-muted-foreground">
+                {total > 1 ? `Cars in the box (${total})` : "Car, or add more for a combo box"}
+              </h2>
+              <BundleEditor bundle={bundle} setBundle={setBundle} />
             </section>
+
+            <PhotoEditor
+              value={photos}
+              onChange={setPhotos}
+              targetId={existing?.id}
+              locked={!!existing && existing.status !== "draft"}
+            />
 
             <section className="space-y-2">
               <h2 className="px-1 text-sm font-medium text-muted-foreground">Event</h2>

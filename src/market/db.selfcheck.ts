@@ -169,4 +169,29 @@ assert.ok(
   "only sellers add cars",
 );
 
+/* photos: cap of 5, requests, replace-not-remove */
+const px = (n: number) => `data:image/jpeg;base64,${n}`;
+const pl = get().listings.find((x) => x.sellerId === "u_pitlane" && x.status === "active")!;
+api.signIn("u_aarav");
+assert.ok(!api.setPhotos(pl.id, [px(1)]).ok, "only the seller sets photos");
+assert.ok(!api.requestPhoto(pl.id, "replace", 0, "").ok, "nothing to replace yet");
+must(api.requestPhoto(pl.id, "more", null, "side view"));
+assert.ok(!api.requestPhoto(pl.id, "more", null, "").ok, "no duplicate open request");
+api.signIn("u_pitlane");
+assert.ok(!api.setPhotos(pl.id, [1, 2, 3, 4, 5, 6].map(px)).ok, "max 5");
+must(api.setPhotos(pl.id, [px(1), px(2)]));
+assert.equal(get().photoRequests[0].status, "done", "adding a photo answers 'more'");
+assert.ok(!api.setPhotos(pl.id, [px(1)]).ok, "live: replace, don't remove");
+api.signIn("u_aarav");
+must(api.requestPhoto(pl.id, "replace", 1, "blurry"));
+api.signIn("u_pitlane");
+must(api.setPhotos(pl.id, [px(1), px(9)]));
+assert.ok(get().photoRequests.every((r) => r.status === "done"), "replacing answers 'replace'");
+must(api.setPhotos(pl.id, [1, 2, 3, 4, 5].map(px)));
+api.signIn("u_aarav");
+assert.ok(!api.requestPhoto(pl.id, "more", null, "").ok, "at 5 photos no more to ask for");
+must(api.requestPhoto(pl.id, "replace", 4, ""));
+api.signIn("u_pitlane");
+must(api.declinePhotoRequest(get().photoRequests.at(-1)!.id));
+
 console.log("market selfcheck ok");

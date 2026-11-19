@@ -14,7 +14,7 @@ export function itemOffers(s: State, itemId: string): Listing[] {
 }
 
 export const itemEvents = (s: State, itemId: string): MarketEvent[] =>
-  s.events.filter((e) => e.itemId === itemId && e.status === "live");
+  s.events.filter((e) => e.itemId === itemId && !e.bundle && e.status === "live");
 
 export const liveEvents = (s: State) =>
   s.events.filter((e) => e.status === "live").sort((a, b) => a.endsAt - b.endsAt);

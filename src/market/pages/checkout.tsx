@@ -20,6 +20,7 @@ import {
   SignInNeeded,
 } from "../components/bits";
 import { SellerChip } from "../components/cards";
+import { PhotoGallery } from "../components/photos";
 import { rupees } from "../format";
 import { itemById, sellerOf } from "../queries";
 import type { Order } from "../types";
@@ -189,6 +190,14 @@ export function CheckoutPage() {
                 <Pill>{l.packaging}</Pill>
               </div>
             </div>
+          </div>
+          <div className="mt-3">
+            <PhotoGallery
+              targetId={l.id}
+              photos={l.photos ?? []}
+              sellerId={l.sellerId}
+              fallback={<CarImage item={item} />}
+            />
           </div>
           <p className="mt-3 rounded-lg bg-muted/60 p-3 text-sm">
             <b>Condition disclosed by seller:</b>{" "}

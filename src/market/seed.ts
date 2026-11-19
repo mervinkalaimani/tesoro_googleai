@@ -325,6 +325,7 @@ export function seedState(now: number, items: CatalogueItem[]): State {
     listings,
     orders,
     events,
+    photoRequests: [],
     notifications: [
       {
         id: "n_1",
