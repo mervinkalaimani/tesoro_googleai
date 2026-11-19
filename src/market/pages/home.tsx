@@ -68,6 +68,28 @@ export function HomePage() {
           )}
         </div>
       </section>
+      <Row title="Featured sellers">
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+          {sellers.map((sp) => (
+            <Link
+              key={sp.userId}
+              to="/market/store/$sellerId"
+              params={{ sellerId: sp.userId }}
+              className="rounded-2xl border border-border bg-card p-4 hover:border-foreground/30"
+            >
+              <p className="font-medium">{sp.storeName}</p>
+              <p className="text-xs text-muted-foreground">{sp.location}</p>
+              <div className="mt-2">
+                <VerifyPill v={sp.verification} />
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {s.listings.filter((l) => l.sellerId === sp.userId && l.status === "active").length}{" "}
+                active listings
+              </p>
+            </Link>
+          ))}
+        </div>
+      </Row>
 
       {events.length > 0 && (
         <Row title="Auctions & raffles closing soon" to="/market/events">
@@ -106,28 +128,6 @@ export function HomePage() {
         )}
       </Row>
 
-      <Row title="Featured sellers">
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-          {sellers.map((sp) => (
-            <Link
-              key={sp.userId}
-              to="/market/store/$sellerId"
-              params={{ sellerId: sp.userId }}
-              className="rounded-2xl border border-border bg-card p-4 hover:border-foreground/30"
-            >
-              <p className="font-medium">{sp.storeName}</p>
-              <p className="text-xs text-muted-foreground">{sp.location}</p>
-              <div className="mt-2">
-                <VerifyPill v={sp.verification} />
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                {s.listings.filter((l) => l.sellerId === sp.userId && l.status === "active").length}{" "}
-                active listings
-              </p>
-            </Link>
-          ))}
-        </div>
-      </Row>
       <p className="text-xs text-muted-foreground">
         {sellerOf(s, "u_garage64") ? "Seeded demo data. " : ""}Catalogue entries come from the Viiv
         catalogue; pictures are placeholders until it ships images.
