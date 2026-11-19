@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 
 import { Empty, Pill, VerifyPill } from "../components/bits";
 import { EventCard, ItemCard } from "../components/cards";
-import { facets, liveEvents, NO_FILTERS, search, sellerOf } from "../queries";
+import { liveEvents, NO_FILTERS, search, sellerOf } from "../queries";
 import { useMarket } from "../use-market";
 
 function Row({ title, to, children }: { title: string; to?: string; children: React.ReactNode }) {
@@ -32,7 +32,10 @@ export function HomePage() {
     () => search(s, { ...NO_FILTERS, stock: "in" }, "newest").slice(0, 8),
     [s],
   );
-  const f = facets(s);
+  const castings = useMemo(
+    () => hits.filter((h) => h.offers.length && h.item.imageUrl).slice(0, 8),
+    [hits],
+  );
   const events = liveEvents(s).slice(0, 4);
   const sellers = [...s.sellers].sort(
     (a, b) => Number(b.verification === "Verified") - Number(a.verification === "Verified"),
@@ -90,6 +93,16 @@ export function HomePage() {
           ))}
         </div>
       </Row>
+
+      {castings.length > 0 && (
+        <Row title="Featured castings" to="/market/search">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {castings.map((h) => (
+              <ItemCard key={h.item.id} hit={h} />
+            ))}
+          </div>
+        </Row>
+      )}
 
       {events.length > 0 && (
         <Row title="Auctions & raffles closing soon" to="/market/events">
