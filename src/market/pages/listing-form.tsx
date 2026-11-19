@@ -269,7 +269,7 @@ export function ListingFormPage() {
           const r = api.saveListing(input(), publish);
           if (r.ok) {
             run(r, publish ? "Published" : "Saved");
-            void navigate({ to: "/market/sell/listings" });
+            void navigate({ to: "/seller/listings" });
           } else setError(r.error);
         };
         const reducing = !!existing && Number(f.quantity) < existing.quantity;

@@ -64,11 +64,13 @@ export function HomePage() {
           <Button asChild size="lg">
             <Link to="/market/search">Browse all cars</Link>
           </Button>
-          {!me?.sellerMode && (
-            <Button asChild size="lg" variant="outline">
-              <Link to="/market/sell/setup">Become a seller</Link>
-            </Button>
-          )}
+          <Button asChild size="lg" variant="outline">
+            {s.sellers.some((x) => x.userId === me?.id) ? (
+              <Link to="/seller">Seller site</Link>
+            ) : (
+              <Link to="/seller/setup">Become a seller</Link>
+            )}
+          </Button>
         </div>
       </section>
       <Row title="Featured sellers">

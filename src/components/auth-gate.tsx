@@ -144,6 +144,8 @@ export function AuthGate({ children }: { children: ReactNode }) {
   // panel beside the sidebar, signed out it is browsable under the public chrome.
   const isMarket = pathname === "/market" || pathname.startsWith("/market/");
   const isPublicRoute = pathname === "/releases" || pathname.startsWith("/catalog/") || isMarket;
+  // The seller site has its own frame: signed in it renders without the app shell.
+  const isSeller = pathname === "/seller" || pathname.startsWith("/seller/");
   const isBareRoute = BARE.includes(pathname) || isPublicRoute;
 
   useEffect(() => {
@@ -160,6 +162,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   // A public route falls through to the switch below when the session is
   // ready, so it lands in the app shell like any other page.
+  if (isSeller && status === "ready") return <>{children}</>;
   if (isPublicRoute && status === "ready") {
     return <AppShell>{children}</AppShell>;
   }

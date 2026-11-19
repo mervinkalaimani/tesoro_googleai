@@ -93,7 +93,7 @@ export function CheckoutPage() {
         body="You can't buy from yourself."
         action={
           <Button asChild variant="outline">
-            <Link to="/market/sell/listings">Your listings</Link>
+            <Link to="/seller/listings">Your listings</Link>
           </Button>
         }
       />

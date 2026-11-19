@@ -27,6 +27,7 @@ import { Route as PreordersRouteImport } from './routes/preorders'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ReleasesRouteImport } from './routes/releases'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SellerRouteImport } from './routes/seller'
 import { Route as SellersRouteImport } from './routes/sellers'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -45,6 +46,11 @@ import { Route as MarketIndexRouteImport } from './routes/market.index'
 import { Route as MarketAccountRouteImport } from './routes/market.account'
 import { Route as MarketEventsRouteImport } from './routes/market.events'
 import { Route as MarketSearchRouteImport } from './routes/market.search'
+import { Route as SellerIndexRouteImport } from './routes/seller.index'
+import { Route as SellerEventsRouteImport } from './routes/seller.events'
+import { Route as SellerListingsRouteImport } from './routes/seller.listings'
+import { Route as SellerOrdersRouteImport } from './routes/seller.orders'
+import { Route as SellerSetupRouteImport } from './routes/seller.setup'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPayConfigRouteImport } from './routes/api/pay/config'
 import { Route as ApiPayOrderRouteImport } from './routes/api/pay/order'
@@ -59,14 +65,9 @@ import { Route as MarketEventEventIdRouteImport } from './routes/market.event.$e
 import { Route as MarketItemItemIdRouteImport } from './routes/market.item.$itemId'
 import { Route as MarketOrdersIndexRouteImport } from './routes/market.orders.index'
 import { Route as MarketOrdersOrderIdRouteImport } from './routes/market.orders.$orderId'
-import { Route as MarketSellIndexRouteImport } from './routes/market.sell.index'
-import { Route as MarketSellEventsRouteImport } from './routes/market.sell.events'
-import { Route as MarketSellListingsRouteImport } from './routes/market.sell.listings'
-import { Route as MarketSellOrdersRouteImport } from './routes/market.sell.orders'
-import { Route as MarketSellSetupRouteImport } from './routes/market.sell.setup'
 import { Route as MarketStoreSellerIdRouteImport } from './routes/market.store.$sellerId'
-import { Route as MarketSellEventEventIdRouteImport } from './routes/market.sell.event.$eventId'
-import { Route as MarketSellListingListingIdRouteImport } from './routes/market.sell.listing.$listingId'
+import { Route as SellerEventEventIdRouteImport } from './routes/seller.event.$eventId'
+import { Route as SellerListingListingIdRouteImport } from './routes/seller.listing.$listingId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -156,6 +157,11 @@ const ReleasesRoute = ReleasesRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SellerRoute = SellerRouteImport.update({
+  id: '/seller',
+  path: '/seller',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SellersRoute = SellersRouteImport.update({
@@ -250,6 +256,31 @@ const MarketSearchRoute = MarketSearchRouteImport.update({
   path: '/search',
   getParentRoute: () => MarketRoute,
 } as any)
+const SellerIndexRoute = SellerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SellerRoute,
+} as any)
+const SellerEventsRoute = SellerEventsRouteImport.update({
+  id: '/events',
+  path: '/events',
+  getParentRoute: () => SellerRoute,
+} as any)
+const SellerListingsRoute = SellerListingsRouteImport.update({
+  id: '/listings',
+  path: '/listings',
+  getParentRoute: () => SellerRoute,
+} as any)
+const SellerOrdersRoute = SellerOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => SellerRoute,
+} as any)
+const SellerSetupRoute = SellerSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => SellerRoute,
+} as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -321,47 +352,21 @@ const MarketOrdersOrderIdRoute = MarketOrdersOrderIdRouteImport.update({
   path: '/orders/$orderId',
   getParentRoute: () => MarketRoute,
 } as any)
-const MarketSellIndexRoute = MarketSellIndexRouteImport.update({
-  id: '/sell/',
-  path: '/sell/',
-  getParentRoute: () => MarketRoute,
-} as any)
-const MarketSellEventsRoute = MarketSellEventsRouteImport.update({
-  id: '/sell/events',
-  path: '/sell/events',
-  getParentRoute: () => MarketRoute,
-} as any)
-const MarketSellListingsRoute = MarketSellListingsRouteImport.update({
-  id: '/sell/listings',
-  path: '/sell/listings',
-  getParentRoute: () => MarketRoute,
-} as any)
-const MarketSellOrdersRoute = MarketSellOrdersRouteImport.update({
-  id: '/sell/orders',
-  path: '/sell/orders',
-  getParentRoute: () => MarketRoute,
-} as any)
-const MarketSellSetupRoute = MarketSellSetupRouteImport.update({
-  id: '/sell/setup',
-  path: '/sell/setup',
-  getParentRoute: () => MarketRoute,
-} as any)
 const MarketStoreSellerIdRoute = MarketStoreSellerIdRouteImport.update({
   id: '/store/$sellerId',
   path: '/store/$sellerId',
   getParentRoute: () => MarketRoute,
 } as any)
-const MarketSellEventEventIdRoute = MarketSellEventEventIdRouteImport.update({
-  id: '/sell/event/$eventId',
-  path: '/sell/event/$eventId',
-  getParentRoute: () => MarketRoute,
+const SellerEventEventIdRoute = SellerEventEventIdRouteImport.update({
+  id: '/event/$eventId',
+  path: '/event/$eventId',
+  getParentRoute: () => SellerRoute,
 } as any)
-const MarketSellListingListingIdRoute =
-  MarketSellListingListingIdRouteImport.update({
-    id: '/sell/listing/$listingId',
-    path: '/sell/listing/$listingId',
-    getParentRoute: () => MarketRoute,
-  } as any)
+const SellerListingListingIdRoute = SellerListingListingIdRouteImport.update({
+  id: '/listing/$listingId',
+  path: '/listing/$listingId',
+  getParentRoute: () => SellerRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -382,6 +387,7 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/releases': typeof ReleasesRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/seller': typeof SellerRouteWithChildren
   '/sellers': typeof SellersRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -399,7 +405,12 @@ export interface FileRoutesByFullPath {
   '/market/account': typeof MarketAccountRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
+  '/seller/events': typeof SellerEventsRoute
+  '/seller/listings': typeof SellerListingsRoute
+  '/seller/orders': typeof SellerOrdersRoute
+  '/seller/setup': typeof SellerSetupRoute
   '/market/': typeof MarketIndexRoute
+  '/seller/': typeof SellerIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/pay/config': typeof ApiPayConfigRoute
   '/api/pay/order': typeof ApiPayOrderRoute
@@ -413,15 +424,10 @@ export interface FileRoutesByFullPath {
   '/market/event/$eventId': typeof MarketEventEventIdRoute
   '/market/item/$itemId': typeof MarketItemItemIdRoute
   '/market/orders/$orderId': typeof MarketOrdersOrderIdRoute
-  '/market/sell/events': typeof MarketSellEventsRoute
-  '/market/sell/listings': typeof MarketSellListingsRoute
-  '/market/sell/orders': typeof MarketSellOrdersRoute
-  '/market/sell/setup': typeof MarketSellSetupRoute
   '/market/store/$sellerId': typeof MarketStoreSellerIdRoute
+  '/seller/event/$eventId': typeof SellerEventEventIdRoute
+  '/seller/listing/$listingId': typeof SellerListingListingIdRoute
   '/market/orders/': typeof MarketOrdersIndexRoute
-  '/market/sell/': typeof MarketSellIndexRoute
-  '/market/sell/event/$eventId': typeof MarketSellEventEventIdRoute
-  '/market/sell/listing/$listingId': typeof MarketSellListingListingIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -458,7 +464,12 @@ export interface FileRoutesByTo {
   '/market/account': typeof MarketAccountRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
+  '/seller/events': typeof SellerEventsRoute
+  '/seller/listings': typeof SellerListingsRoute
+  '/seller/orders': typeof SellerOrdersRoute
+  '/seller/setup': typeof SellerSetupRoute
   '/market': typeof MarketIndexRoute
+  '/seller': typeof SellerIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/pay/config': typeof ApiPayConfigRoute
   '/api/pay/order': typeof ApiPayOrderRoute
@@ -472,15 +483,10 @@ export interface FileRoutesByTo {
   '/market/event/$eventId': typeof MarketEventEventIdRoute
   '/market/item/$itemId': typeof MarketItemItemIdRoute
   '/market/orders/$orderId': typeof MarketOrdersOrderIdRoute
-  '/market/sell/events': typeof MarketSellEventsRoute
-  '/market/sell/listings': typeof MarketSellListingsRoute
-  '/market/sell/orders': typeof MarketSellOrdersRoute
-  '/market/sell/setup': typeof MarketSellSetupRoute
   '/market/store/$sellerId': typeof MarketStoreSellerIdRoute
+  '/seller/event/$eventId': typeof SellerEventEventIdRoute
+  '/seller/listing/$listingId': typeof SellerListingListingIdRoute
   '/market/orders': typeof MarketOrdersIndexRoute
-  '/market/sell': typeof MarketSellIndexRoute
-  '/market/sell/event/$eventId': typeof MarketSellEventEventIdRoute
-  '/market/sell/listing/$listingId': typeof MarketSellListingListingIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -502,6 +508,7 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/releases': typeof ReleasesRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/seller': typeof SellerRouteWithChildren
   '/sellers': typeof SellersRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -519,7 +526,12 @@ export interface FileRoutesById {
   '/market/account': typeof MarketAccountRoute
   '/market/events': typeof MarketEventsRoute
   '/market/search': typeof MarketSearchRoute
+  '/seller/events': typeof SellerEventsRoute
+  '/seller/listings': typeof SellerListingsRoute
+  '/seller/orders': typeof SellerOrdersRoute
+  '/seller/setup': typeof SellerSetupRoute
   '/market/': typeof MarketIndexRoute
+  '/seller/': typeof SellerIndexRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/pay/config': typeof ApiPayConfigRoute
   '/api/pay/order': typeof ApiPayOrderRoute
@@ -533,15 +545,10 @@ export interface FileRoutesById {
   '/market/event/$eventId': typeof MarketEventEventIdRoute
   '/market/item/$itemId': typeof MarketItemItemIdRoute
   '/market/orders/$orderId': typeof MarketOrdersOrderIdRoute
-  '/market/sell/events': typeof MarketSellEventsRoute
-  '/market/sell/listings': typeof MarketSellListingsRoute
-  '/market/sell/orders': typeof MarketSellOrdersRoute
-  '/market/sell/setup': typeof MarketSellSetupRoute
   '/market/store/$sellerId': typeof MarketStoreSellerIdRoute
+  '/seller/event/$eventId': typeof SellerEventEventIdRoute
+  '/seller/listing/$listingId': typeof SellerListingListingIdRoute
   '/market/orders/': typeof MarketOrdersIndexRoute
-  '/market/sell/': typeof MarketSellIndexRoute
-  '/market/sell/event/$eventId': typeof MarketSellEventEventIdRoute
-  '/market/sell/listing/$listingId': typeof MarketSellListingListingIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -564,6 +571,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/releases'
     | '/reset-password'
+    | '/seller'
     | '/sellers'
     | '/settings'
     | '/sitemap.xml'
@@ -581,7 +589,12 @@ export interface FileRouteTypes {
     | '/market/account'
     | '/market/events'
     | '/market/search'
+    | '/seller/events'
+    | '/seller/listings'
+    | '/seller/orders'
+    | '/seller/setup'
     | '/market/'
+    | '/seller/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/pay/config'
     | '/api/pay/order'
@@ -595,15 +608,10 @@ export interface FileRouteTypes {
     | '/market/event/$eventId'
     | '/market/item/$itemId'
     | '/market/orders/$orderId'
-    | '/market/sell/events'
-    | '/market/sell/listings'
-    | '/market/sell/orders'
-    | '/market/sell/setup'
     | '/market/store/$sellerId'
+    | '/seller/event/$eventId'
+    | '/seller/listing/$listingId'
     | '/market/orders/'
-    | '/market/sell/'
-    | '/market/sell/event/$eventId'
-    | '/market/sell/listing/$listingId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -640,7 +648,12 @@ export interface FileRouteTypes {
     | '/market/account'
     | '/market/events'
     | '/market/search'
+    | '/seller/events'
+    | '/seller/listings'
+    | '/seller/orders'
+    | '/seller/setup'
     | '/market'
+    | '/seller'
     | '/.mcp/invoke-tool/$tool'
     | '/api/pay/config'
     | '/api/pay/order'
@@ -654,15 +667,10 @@ export interface FileRouteTypes {
     | '/market/event/$eventId'
     | '/market/item/$itemId'
     | '/market/orders/$orderId'
-    | '/market/sell/events'
-    | '/market/sell/listings'
-    | '/market/sell/orders'
-    | '/market/sell/setup'
     | '/market/store/$sellerId'
+    | '/seller/event/$eventId'
+    | '/seller/listing/$listingId'
     | '/market/orders'
-    | '/market/sell'
-    | '/market/sell/event/$eventId'
-    | '/market/sell/listing/$listingId'
   id:
     | '__root__'
     | '/'
@@ -683,6 +691,7 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/releases'
     | '/reset-password'
+    | '/seller'
     | '/sellers'
     | '/settings'
     | '/sitemap.xml'
@@ -700,7 +709,12 @@ export interface FileRouteTypes {
     | '/market/account'
     | '/market/events'
     | '/market/search'
+    | '/seller/events'
+    | '/seller/listings'
+    | '/seller/orders'
+    | '/seller/setup'
     | '/market/'
+    | '/seller/'
     | '/.mcp/invoke-tool/$tool'
     | '/api/pay/config'
     | '/api/pay/order'
@@ -714,15 +728,10 @@ export interface FileRouteTypes {
     | '/market/event/$eventId'
     | '/market/item/$itemId'
     | '/market/orders/$orderId'
-    | '/market/sell/events'
-    | '/market/sell/listings'
-    | '/market/sell/orders'
-    | '/market/sell/setup'
     | '/market/store/$sellerId'
+    | '/seller/event/$eventId'
+    | '/seller/listing/$listingId'
     | '/market/orders/'
-    | '/market/sell/'
-    | '/market/sell/event/$eventId'
-    | '/market/sell/listing/$listingId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -744,6 +753,7 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   ReleasesRoute: typeof ReleasesRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SellerRoute: typeof SellerRouteWithChildren
   SellersRoute: typeof SellersRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -897,6 +907,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/seller': {
+      id: '/seller'
+      path: '/seller'
+      fullPath: '/seller'
+      preLoaderRoute: typeof SellerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sellers': {
       id: '/sellers'
       path: '/sellers'
@@ -1023,6 +1040,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketSearchRouteImport
       parentRoute: typeof MarketRoute
     }
+    '/seller/': {
+      id: '/seller/'
+      path: '/'
+      fullPath: '/seller/'
+      preLoaderRoute: typeof SellerIndexRouteImport
+      parentRoute: typeof SellerRoute
+    }
+    '/seller/events': {
+      id: '/seller/events'
+      path: '/events'
+      fullPath: '/seller/events'
+      preLoaderRoute: typeof SellerEventsRouteImport
+      parentRoute: typeof SellerRoute
+    }
+    '/seller/listings': {
+      id: '/seller/listings'
+      path: '/listings'
+      fullPath: '/seller/listings'
+      preLoaderRoute: typeof SellerListingsRouteImport
+      parentRoute: typeof SellerRoute
+    }
+    '/seller/orders': {
+      id: '/seller/orders'
+      path: '/orders'
+      fullPath: '/seller/orders'
+      preLoaderRoute: typeof SellerOrdersRouteImport
+      parentRoute: typeof SellerRoute
+    }
+    '/seller/setup': {
+      id: '/seller/setup'
+      path: '/setup'
+      fullPath: '/seller/setup'
+      preLoaderRoute: typeof SellerSetupRouteImport
+      parentRoute: typeof SellerRoute
+    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -1121,41 +1173,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketOrdersOrderIdRouteImport
       parentRoute: typeof MarketRoute
     }
-    '/market/sell/': {
-      id: '/market/sell/'
-      path: '/sell'
-      fullPath: '/market/sell/'
-      preLoaderRoute: typeof MarketSellIndexRouteImport
-      parentRoute: typeof MarketRoute
-    }
-    '/market/sell/events': {
-      id: '/market/sell/events'
-      path: '/sell/events'
-      fullPath: '/market/sell/events'
-      preLoaderRoute: typeof MarketSellEventsRouteImport
-      parentRoute: typeof MarketRoute
-    }
-    '/market/sell/listings': {
-      id: '/market/sell/listings'
-      path: '/sell/listings'
-      fullPath: '/market/sell/listings'
-      preLoaderRoute: typeof MarketSellListingsRouteImport
-      parentRoute: typeof MarketRoute
-    }
-    '/market/sell/orders': {
-      id: '/market/sell/orders'
-      path: '/sell/orders'
-      fullPath: '/market/sell/orders'
-      preLoaderRoute: typeof MarketSellOrdersRouteImport
-      parentRoute: typeof MarketRoute
-    }
-    '/market/sell/setup': {
-      id: '/market/sell/setup'
-      path: '/sell/setup'
-      fullPath: '/market/sell/setup'
-      preLoaderRoute: typeof MarketSellSetupRouteImport
-      parentRoute: typeof MarketRoute
-    }
     '/market/store/$sellerId': {
       id: '/market/store/$sellerId'
       path: '/store/$sellerId'
@@ -1163,19 +1180,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarketStoreSellerIdRouteImport
       parentRoute: typeof MarketRoute
     }
-    '/market/sell/event/$eventId': {
-      id: '/market/sell/event/$eventId'
-      path: '/sell/event/$eventId'
-      fullPath: '/market/sell/event/$eventId'
-      preLoaderRoute: typeof MarketSellEventEventIdRouteImport
-      parentRoute: typeof MarketRoute
+    '/seller/event/$eventId': {
+      id: '/seller/event/$eventId'
+      path: '/event/$eventId'
+      fullPath: '/seller/event/$eventId'
+      preLoaderRoute: typeof SellerEventEventIdRouteImport
+      parentRoute: typeof SellerRoute
     }
-    '/market/sell/listing/$listingId': {
-      id: '/market/sell/listing/$listingId'
-      path: '/sell/listing/$listingId'
-      fullPath: '/market/sell/listing/$listingId'
-      preLoaderRoute: typeof MarketSellListingListingIdRouteImport
-      parentRoute: typeof MarketRoute
+    '/seller/listing/$listingId': {
+      id: '/seller/listing/$listingId'
+      path: '/listing/$listingId'
+      fullPath: '/seller/listing/$listingId'
+      preLoaderRoute: typeof SellerListingListingIdRouteImport
+      parentRoute: typeof SellerRoute
     }
   }
 }
@@ -1189,15 +1206,8 @@ interface MarketRouteChildren {
   MarketEventEventIdRoute: typeof MarketEventEventIdRoute
   MarketItemItemIdRoute: typeof MarketItemItemIdRoute
   MarketOrdersOrderIdRoute: typeof MarketOrdersOrderIdRoute
-  MarketSellEventsRoute: typeof MarketSellEventsRoute
-  MarketSellListingsRoute: typeof MarketSellListingsRoute
-  MarketSellOrdersRoute: typeof MarketSellOrdersRoute
-  MarketSellSetupRoute: typeof MarketSellSetupRoute
   MarketStoreSellerIdRoute: typeof MarketStoreSellerIdRoute
   MarketOrdersIndexRoute: typeof MarketOrdersIndexRoute
-  MarketSellIndexRoute: typeof MarketSellIndexRoute
-  MarketSellEventEventIdRoute: typeof MarketSellEventEventIdRoute
-  MarketSellListingListingIdRoute: typeof MarketSellListingListingIdRoute
 }
 
 const MarketRouteChildren: MarketRouteChildren = {
@@ -1209,19 +1219,35 @@ const MarketRouteChildren: MarketRouteChildren = {
   MarketEventEventIdRoute: MarketEventEventIdRoute,
   MarketItemItemIdRoute: MarketItemItemIdRoute,
   MarketOrdersOrderIdRoute: MarketOrdersOrderIdRoute,
-  MarketSellEventsRoute: MarketSellEventsRoute,
-  MarketSellListingsRoute: MarketSellListingsRoute,
-  MarketSellOrdersRoute: MarketSellOrdersRoute,
-  MarketSellSetupRoute: MarketSellSetupRoute,
   MarketStoreSellerIdRoute: MarketStoreSellerIdRoute,
   MarketOrdersIndexRoute: MarketOrdersIndexRoute,
-  MarketSellIndexRoute: MarketSellIndexRoute,
-  MarketSellEventEventIdRoute: MarketSellEventEventIdRoute,
-  MarketSellListingListingIdRoute: MarketSellListingListingIdRoute,
 }
 
 const MarketRouteWithChildren =
   MarketRoute._addFileChildren(MarketRouteChildren)
+
+interface SellerRouteChildren {
+  SellerEventsRoute: typeof SellerEventsRoute
+  SellerListingsRoute: typeof SellerListingsRoute
+  SellerOrdersRoute: typeof SellerOrdersRoute
+  SellerSetupRoute: typeof SellerSetupRoute
+  SellerIndexRoute: typeof SellerIndexRoute
+  SellerEventEventIdRoute: typeof SellerEventEventIdRoute
+  SellerListingListingIdRoute: typeof SellerListingListingIdRoute
+}
+
+const SellerRouteChildren: SellerRouteChildren = {
+  SellerEventsRoute: SellerEventsRoute,
+  SellerListingsRoute: SellerListingsRoute,
+  SellerOrdersRoute: SellerOrdersRoute,
+  SellerSetupRoute: SellerSetupRoute,
+  SellerIndexRoute: SellerIndexRoute,
+  SellerEventEventIdRoute: SellerEventEventIdRoute,
+  SellerListingListingIdRoute: SellerListingListingIdRoute,
+}
+
+const SellerRouteWithChildren =
+  SellerRoute._addFileChildren(SellerRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -1242,6 +1268,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   ReleasesRoute: ReleasesRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SellerRoute: SellerRouteWithChildren,
   SellersRoute: SellersRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

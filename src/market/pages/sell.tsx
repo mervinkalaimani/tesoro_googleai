@@ -31,7 +31,7 @@ import { itemById } from "../queries";
 import type { Listing, Order, SellerProfile } from "../types";
 import { api, run, useMarket, useMounted } from "../use-market";
 
-/** Everything under /market/sell needs a signed-in user with a seller profile. */
+/** Everything under /seller needs a signed-in user with a seller profile. */
 export function SellerGate({
   children,
 }: {
@@ -47,7 +47,7 @@ export function SellerGate({
         body="One account, two hats: add a store profile and the seller tools appear."
         action={
           <Button asChild>
-            <Link to="/market/sell/setup">Become a seller</Link>
+            <Link to="/seller/setup">Become a seller</Link>
           </Button>
         }
       />
@@ -83,7 +83,7 @@ export function SetupPage() {
             const r = existing ? api.updateSeller(f) : api.becomeSeller(f as never);
             if (r.ok) {
               run(r, existing ? "Store saved" : "You're a seller");
-              void navigate({ to: "/market/sell" });
+              void navigate({ to: "/seller" });
             } else setError(r.error);
           }}
         >
@@ -155,19 +155,15 @@ export function DashboardPage() {
           [
             "Active listings",
             listings.filter((l) => l.status === "active").length,
-            "/market/sell/listings",
+            "/seller/listings",
           ],
           [
             "Awaiting fulfilment",
             orders.filter((o) => o.status === "processing").length,
-            "/market/sell/orders",
+            "/seller/orders",
           ],
-          [
-            "In transit",
-            orders.filter((o) => o.status === "shipped").length,
-            "/market/sell/orders",
-          ],
-          ["Live events", events.filter((e) => e.status === "live").length, "/market/sell/events"],
+          ["In transit", orders.filter((o) => o.status === "shipped").length, "/seller/orders"],
+          ["Live events", events.filter((e) => e.status === "live").length, "/seller/events"],
         ];
         const low = listings.filter((l) => l.status === "active" && l.quantity <= 1);
         return (
@@ -179,7 +175,7 @@ export function DashboardPage() {
                 <>
                   <VerifyPill v={store.verification} />
                   <Button asChild size="sm">
-                    <Link to="/market/sell/listing/$listingId" params={{ listingId: "new" }}>
+                    <Link to="/seller/listing/$listingId" params={{ listingId: "new" }}>
                       New listing
                     </Link>
                   </Button>
@@ -200,7 +196,7 @@ export function DashboardPage() {
               <p className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
                 {orders.filter((o) => o.status === "processing").length} order(s) are waiting for
                 you to ship.{" "}
-                <Link className="underline" to="/market/sell/orders">
+                <Link className="underline" to="/seller/orders">
                   Open the queue
                 </Link>
               </p>
@@ -212,7 +208,7 @@ export function DashboardPage() {
             )}
             <div className="mt-5 flex flex-wrap gap-2">
               <Button asChild variant="outline">
-                <Link to="/market/sell/events">Auctions & raffles</Link>
+                <Link to="/seller/events">Auctions & raffles</Link>
               </Button>
               <Button asChild variant="outline">
                 <Link to="/market/store/$sellerId" params={{ sellerId: uid }}>
@@ -246,7 +242,7 @@ export function ListingsPage() {
               sub="Your offers on catalogue cars"
               actions={
                 <Button asChild>
-                  <Link to="/market/sell/listing/$listingId" params={{ listingId: "new" }}>
+                  <Link to="/seller/listing/$listingId" params={{ listingId: "new" }}>
                     New listing
                   </Link>
                 </Button>
@@ -281,7 +277,7 @@ export function ListingsPage() {
                 body="Pick a catalogue car and set your price, stock and condition."
                 action={
                   <Button asChild>
-                    <Link to="/market/sell/listing/$listingId" params={{ listingId: "new" }}>
+                    <Link to="/seller/listing/$listingId" params={{ listingId: "new" }}>
                       Create a listing
                     </Link>
                   </Button>
@@ -312,7 +308,7 @@ export function ListingsPage() {
                         <div className="flex items-center gap-2">
                           <Price price={l.pricePaise} mrp={l.mrpPaise} />
                           <Button asChild size="sm" variant="outline">
-                            <Link to="/market/sell/listing/$listingId" params={{ listingId: l.id }}>
+                            <Link to="/seller/listing/$listingId" params={{ listingId: l.id }}>
                               Edit
                             </Link>
                           </Button>

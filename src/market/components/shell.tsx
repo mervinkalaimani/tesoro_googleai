@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { HomeScreenMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -27,10 +28,10 @@ const NAV_BUY = [
   { to: "/market/orders", label: "Orders", icon: Package },
 ] as const;
 const NAV_SELL = [
-  { to: "/market/sell", label: "Dashboard", icon: Store, exact: true },
-  { to: "/market/sell/listings", label: "Listings", icon: ClipboardList },
-  { to: "/market/sell/orders", label: "Orders", icon: Package },
-  { to: "/market/sell/events", label: "Events", icon: Gavel },
+  { to: "/seller", label: "Dashboard", icon: Store, exact: true },
+  { to: "/seller/listings", label: "Listings", icon: ClipboardList },
+  { to: "/seller/orders", label: "Orders", icon: Package },
+  { to: "/seller/events", label: "Events", icon: Gavel },
 ] as const;
 
 /** Offline shell for the store (scope /market). Installing is the Viiv app's own manifest. */
@@ -143,8 +144,7 @@ function MarketApp() {
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const hasStore = !!me && s.sellers.some((x) => x.userId === me.id);
-  const selling = !!me?.sellerMode && hasStore;
-  const nav = selling ? NAV_SELL : NAV_BUY;
+  const nav = NAV_BUY;
 
   return (
     <div className="bg-background">
@@ -193,16 +193,8 @@ function MarketApp() {
           </nav>
           <div className="ml-auto flex items-center gap-1">
             {hasStore && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="inline-flex"
-                onClick={() => {
-                  api.setSellerMode(!selling);
-                  void navigate({ to: selling ? "/market" : "/market/sell" });
-                }}
-              >
-                {selling ? "Switch to buying" : "Switch to selling"}
+              <Button asChild variant="outline" size="sm" className="inline-flex">
+                <Link to="/seller">Seller site</Link>
               </Button>
             )}
             <Bell_ />
@@ -242,4 +234,65 @@ export function MarketLayout() {
       </div>
     );
   return <MarketApp />;
+}
+
+/** The seller site: its own frame (no Viiv sidebar), the same catalogue and data. */
+export function SellerLayout() {
+  usePwa();
+  useNow(15_000);
+  const on = useStoreEnabled();
+  if (on === null) return null;
+  if (!on)
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold">The seller site is off</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          It runs on VIIV Shop (beta), which is switched off by default. Turn it on in Settings.
+        </p>
+        <Button asChild className="mt-4">
+          <Link to="/settings">Open Settings</Link>
+        </Button>
+      </div>
+    );
+  return (
+    <div className="min-h-screen bg-background">
+      <Offline />
+      <header className="border-b border-border">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-2 px-4 py-2.5 md:flex-nowrap md:gap-4">
+          <Link to="/seller" className="flex shrink-0 items-center gap-2" aria-label="VIIV Seller">
+            <HomeScreenMark className="w-14" />
+            <span className="text-sm font-semibold text-muted-foreground">Seller</span>
+          </Link>
+          <nav
+            className="order-last flex w-full items-center gap-1 overflow-x-auto md:order-none md:ml-4 md:w-auto"
+            aria-label="Seller"
+          >
+            {NAV_SELL.map((n) => (
+              <Link
+                key={n.to}
+                to={n.to}
+                activeOptions={{ exact: "exact" in n && n.exact }}
+                className="shrink-0 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+                activeProps={{ className: "bg-muted text-foreground" }}
+              >
+                {n.label}
+              </Link>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-1">
+            <Button asChild variant="outline" size="sm">
+              <Link to="/market">VIIV Shop</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/">Back to Viiv</Link>
+            </Button>
+            <Bell_ />
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto max-w-6xl px-4 py-5">
+        <Outlet />
+      </main>
+    </div>
+  );
 }

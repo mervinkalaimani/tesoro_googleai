@@ -308,7 +308,7 @@ export function EventPage() {
             )}
             {["draft", "paused"].includes(e.status) && !hasPeople && (
               <Button variant="outline" asChild>
-                <Link to="/market/sell/event/$eventId" params={{ eventId: e.id }}>
+                <Link to="/seller/event/$eventId" params={{ eventId: e.id }}>
                   Edit
                 </Link>
               </Button>
@@ -321,7 +321,7 @@ export function EventPage() {
                   if (r.ok) {
                     run(r, "Draft copy created");
                     void navigate({
-                      to: "/market/sell/event/$eventId",
+                      to: "/seller/event/$eventId",
                       params: { eventId: r.data.id },
                     });
                   }
@@ -397,7 +397,7 @@ export function SellEventsPage() {
               title="Auctions & raffles"
               actions={
                 <Button asChild>
-                  <Link to="/market/sell/event/$eventId" params={{ eventId: "new" }}>
+                  <Link to="/seller/event/$eventId" params={{ eventId: "new" }}>
                     New event
                   </Link>
                 </Button>

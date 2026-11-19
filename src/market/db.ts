@@ -620,7 +620,7 @@ export const api = {
         l.sellerId,
         "orders",
         `New order ${o.id}: ${f.qty} × ${item.name}. Ship it from Seller orders.`,
-        "/market/sell/orders",
+        "/seller/orders",
       );
       return ok(o);
     });

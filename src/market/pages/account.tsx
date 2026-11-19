@@ -52,16 +52,6 @@ export function AccountPage() {
                   <VerifyPill v={store.verification} />
                 </div>
               </div>
-              <label className="flex items-center gap-2 text-sm">
-                Seller tools{" "}
-                <Switch
-                  checked={me.sellerMode}
-                  onCheckedChange={(v) => {
-                    run(api.setSellerMode(v));
-                  }}
-                  aria-label="Seller mode"
-                />
-              </label>
             </div>
             {store.verification === "Unverified" && (
               <div className="text-sm text-muted-foreground">
@@ -80,10 +70,10 @@ export function AccountPage() {
             )}
             <div className="flex gap-2">
               <Button asChild size="sm">
-                <Link to="/market/sell">Seller dashboard</Link>
+                <Link to="/seller">Seller dashboard</Link>
               </Button>
               <Button asChild size="sm" variant="outline">
-                <Link to="/market/sell/setup">Edit store</Link>
+                <Link to="/seller/setup">Edit store</Link>
               </Button>
             </div>
           </>
@@ -94,7 +84,7 @@ export function AccountPage() {
               cars and orders stay as they are.
             </p>
             <Button asChild>
-              <Link to="/market/sell/setup">Become a seller</Link>
+              <Link to="/seller/setup">Become a seller</Link>
             </Button>
           </>
         )}

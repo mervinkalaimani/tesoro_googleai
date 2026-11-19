@@ -18,6 +18,10 @@ Spec: [`VIIV Store.md`](../../VIIV%20Store.md).
   - **Live mode:** set `VITE_MARKET_WRITE_CATALOG=true` and sign in to the tracker; the car is filed with `addCatalogCar` (Supabase `tesoro_car_catalog`). Don't turn this on for a demo.
   - The public page `/catalog/<id>` reads the database, so a demo-mode car has no public page.
 
+## Seller site
+
+Sellers have their own site at `/seller` (dashboard, listings, orders, events, store setup): its own header and navigation, no Viiv sidebar (`SellerLayout` in `components/shell.tsx`, bypassing the app shell in `auth-gate.tsx`). It reads and writes the same market data and uses the same Viiv catalogue as VIIV Shop. Picking **Seller** in the avatar menu's persona switcher opens it. It is a route area of this app, not a separate deployment; giving it its own domain later is a hosting change.
+
 ## Assumptions and gaps
 
 - The catalogue has **no product photos** for many cars: cards then show a local car illustration in the casting's colour. A catalogue `image_url` is used when there is one.
