@@ -53,6 +53,15 @@ export function ItemPage() {
           <CarImage item={item} />
           <SaveButton itemId={item.id} className="absolute right-3 top-3" />
         </div>
+        {events.length > 0 && (
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold">Live events for this car</h2>
+            {events.map((e) => (
+              <EventCard key={e.id} e={e} s={s} />
+            ))}
+          </div>
+        )}
+
         <Card>
           <h2 className="mb-2 text-sm font-semibold">Catalogue details</h2>
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
@@ -84,15 +93,6 @@ export function ItemPage() {
             {item.brand} · {itemLine(item)} · {item.colour}
           </p>
         </div>
-
-        {events.length > 0 && (
-          <div className="space-y-2">
-            <h2 className="text-sm font-semibold">Live events for this car</h2>
-            {events.map((e) => (
-              <EventCard key={e.id} e={e} s={s} />
-            ))}
-          </div>
-        )}
 
         <section aria-labelledby="offers">
           <h2 id="offers" className="mb-2 text-lg font-semibold">
