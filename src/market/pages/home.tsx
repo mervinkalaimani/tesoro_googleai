@@ -69,7 +69,9 @@ export function HomePage() {
           </Button>
           <Button asChild size="lg" variant="outline">
             {s.sellers.some((x) => x.userId === me?.id) ? (
-              <Link to="/seller">Seller site</Link>
+              <Link to="/market/store/$sellerId" params={{ sellerId: me!.id }}>
+                View your shop
+              </Link>
             ) : (
               <Link to="/seller/setup">Become a seller</Link>
             )}
