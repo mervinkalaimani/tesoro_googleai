@@ -32,17 +32,11 @@ export function ItemPage() {
   const owned = myCars.filter((c) => c.catalogId === item.id).length;
   const specs: Array<[string, string]> = [
     ["Catalogue code", item.code],
-    ["Brand", item.brand],
     ["Make", item.make],
     ["Model", item.model],
-    ["Scale", item.scale],
     ["Series", item.series],
-    ["Assortment", item.assortment],
-    ["Variant", item.variant],
-    ["Colour", item.colour],
     ["Year", item.year],
     ["Manufacturer", item.manufacturer],
-    ["Country of origin", item.origin],
     ["Catalogue MRP", item.mrpPaise ? rupees(item.mrpPaise) : ""],
   ];
 
