@@ -1,6 +1,7 @@
 import { Link, useParams } from "@tanstack/react-router";
 
 import { useCars } from "@/lib/cars-store";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 import { Card, CarImage, Empty, Pill, Price, itemLine } from "../components/bits";
@@ -116,22 +117,23 @@ export function ItemPage() {
                     l.mrpPaise && l.mrpPaise > l.pricePaise ? l.mrpPaise - l.pricePaise : 0;
                   return (
                     <li key={l.id}>
-                      <Card className={i === 0 ? "border-primary/50" : ""}>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0 space-y-1">
-                            <SellerChip userId={l.sellerId} s={s} />
+                      <Card className={cn("p-4", i === 0 && "border-primary/50")}>
+                        <div className="grid gap-x-6 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                          <div className="min-w-0 space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                              <SellerChip userId={l.sellerId} s={s} />
+                              {i === 0 && offers.length > 1 && (
+                                <Pill tone="good">Lowest price</Pill>
+                              )}
+                            </div>
                             <p className="text-xs text-muted-foreground">
                               {sp?.location} · dispatches in {l.dispatchDays || "<1"} day
                               {l.dispatchDays === 1 ? "" : "s"}
                             </p>
-                            <div className="flex flex-wrap gap-1 pt-1">
+                            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
                               <Pill>{l.condition}</Pill>
                               <Pill>{l.packaging}</Pill>
-                              <Pill tone="brand">Fixed price</Pill>
-                              {!!l.photos?.length && <Pill>{l.photos.length} seller photos</Pill>}
-                              {i === 0 && offers.length > 1 && (
-                                <Pill tone="good">Lowest price</Pill>
-                              )}
+                              {!!l.photos?.length && <Pill>{l.photos.length} photos</Pill>}
                               {l.originOverride && (
                                 <Pill tone="warn">
                                   Seller says {l.originOverride.value} (unverified)
@@ -139,12 +141,10 @@ export function ItemPage() {
                               )}
                             </div>
                             {l.conditionNotes && (
-                              <p className="pt-1 text-xs">
-                                <b>Condition:</b> {l.conditionNotes}
-                              </p>
+                              <p className="text-xs text-muted-foreground">{l.conditionNotes}</p>
                             )}
                           </div>
-                          <div className="text-right">
+                          <div className="flex flex-col items-start gap-0.5 sm:items-end sm:text-right">
                             <Price price={l.pricePaise} mrp={l.mrpPaise} big />
                             {saving > 0 && (
                               <p className="text-xs text-emerald-600 dark:text-emerald-400">
@@ -153,35 +153,33 @@ export function ItemPage() {
                             )}
                             <p className="text-xs text-muted-foreground">
                               {l.shippingPaise === null
-                                ? "Shipping: calculated later"
+                                ? "Shipping calculated later"
                                 : l.shippingPaise === 0
                                   ? "Free shipping"
                                   : `+ ${rupees(l.shippingPaise)} shipping`}
+                              {" · "}
+                              <span
+                                className={
+                                  l.quantity <= 2 ? "text-amber-600 dark:text-amber-400" : ""
+                                }
+                              >
+                                {l.quantity <= 2
+                                  ? `Only ${l.quantity} left`
+                                  : `${l.quantity} in stock`}
+                              </span>
                             </p>
-                            <p
-                              className={
-                                "text-xs " +
-                                (l.quantity <= 2
-                                  ? "text-amber-600 dark:text-amber-400"
-                                  : "text-muted-foreground")
-                              }
-                            >
-                              {l.quantity <= 2
-                                ? `Only ${l.quantity} left`
-                                : `${l.quantity} available`}
-                            </p>
+                            <div className="pt-2 sm:mt-auto">
+                              {mine ? (
+                                <Pill>Your listing</Pill>
+                              ) : (
+                                <Button asChild>
+                                  <Link to="/market/buy/$listingId" params={{ listingId: l.id }}>
+                                    Buy now
+                                  </Link>
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                        <div className="mt-3 flex justify-end">
-                          {mine ? (
-                            <Pill>Your listing</Pill>
-                          ) : (
-                            <Button asChild>
-                              <Link to="/market/buy/$listingId" params={{ listingId: l.id }}>
-                                Buy from {sp?.storeName ?? "seller"}
-                              </Link>
-                            </Button>
-                          )}
                         </div>
                       </Card>
                     </li>
