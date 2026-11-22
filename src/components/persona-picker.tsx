@@ -11,7 +11,7 @@ const ALL: { value: Persona; label: string }[] = [
 
 /** The three hats, as a segmented control. Admin is offered only to admins. */
 export function PersonaPicker({ className }: { className?: string }) {
-  const { persona, setPersona, canAdmin } = usePersona();
+  const { persona, setPersona, canAdmin, enabled } = usePersona();
   const navigate = useNavigate();
   const onSeller = useRouterState({ select: (r) => r.location.pathname.startsWith("/seller") });
   // Seller is its own site: picking it goes there, picking anything else comes back.
@@ -20,6 +20,8 @@ export function PersonaPicker({ className }: { className?: string }) {
     if (p === "seller") void navigate({ to: "/seller" });
     else if (onSeller) void navigate({ to: "/" });
   };
+  // Personas are for testing only: nothing to pick unless the shop is set to testing.
+  if (!enabled) return null;
   return (
     <div className={className}>
       <p className="mb-1 text-xs font-medium text-muted-foreground">Persona</p>

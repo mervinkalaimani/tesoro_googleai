@@ -7,7 +7,8 @@
 import { useSyncExternalStore } from "react";
 
 import { useAuth } from "@/lib/auth-store";
-import { useViivId } from "@/market/enabled";
+import { useShopMode } from "@/lib/deployment-settings";
+import { useStoreEnabled, useViivId } from "@/market/enabled";
 
 export type Persona = "admin" | "buyer" | "seller";
 
@@ -29,14 +30,29 @@ function read(id: string | null): string {
 export function usePersona() {
   const { isAdmin } = useAuth();
   const id = useViivId();
+  // Personas are for testing only: the picker exists while the shop is set to "For testing
+  // only", and only for the people it is on for. Otherwise there is just the account, and
+  // an admin keeps everything an admin has.
+  const { mode } = useShopMode();
+  const shopOn = useStoreEnabled() === true;
+  const enabled = mode === "testing" && shopOn;
   const saved = useSyncExternalStore(
     subscribe,
     () => read(id),
     () => "",
   );
   // Admins start as Admin (nothing changes for them); everyone else as Buyer.
-  const persona: Persona =
-    saved === "seller" ? "seller" : saved === "buyer" ? "buyer" : isAdmin ? "admin" : "buyer";
+  const persona: Persona = !enabled
+    ? isAdmin
+      ? "admin"
+      : "buyer"
+    : saved === "seller"
+      ? "seller"
+      : saved === "buyer"
+        ? "buyer"
+        : isAdmin
+          ? "admin"
+          : "buyer";
   const set = (p: Persona) => {
     if (!id || (p === "admin" && !isAdmin)) return;
     try {
@@ -46,5 +62,5 @@ export function usePersona() {
     }
     subs.forEach((f) => f());
   };
-  return { persona, setPersona: set, canAdmin: isAdmin };
+  return { persona, setPersona: set, canAdmin: isAdmin, enabled };
 }
