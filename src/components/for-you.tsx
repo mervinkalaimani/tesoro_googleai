@@ -36,10 +36,13 @@ function useColumns() {
 export function ForYou({
   onShown,
   hideHeading = false,
+  framed = false,
 }: {
   onShown?: (ids: string[]) => void;
   /** Leave off the title and the line under it; the paging buttons stay. */
   hideHeading?: boolean;
+  /** Sit in a frame of its own, apart from the list it leads. */
+  framed?: boolean;
 }) {
   const cars = useCars();
   const { catalog } = useCatalog();
@@ -67,7 +70,10 @@ export function ForYou({
   if (!pool.length) return null;
   return (
     <>
-      <section aria-label="For You" className="space-y-2">
+      <section
+        aria-label="For You"
+        className={framed ? "card-elevated space-y-2 p-3 [--frame-gap:0.75rem]" : "space-y-2"}
+      >
         <div className="flex items-center justify-between gap-2 px-1">
           <div className="min-w-0 space-y-1.5">
             {!hideHeading && (

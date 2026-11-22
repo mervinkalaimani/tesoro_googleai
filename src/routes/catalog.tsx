@@ -1083,7 +1083,7 @@ function CatalogPage() {
       />
 
       {/* The first thing in the list: what to look at before the whole catalogue. */}
-      <ForYou hideHeading onShown={(ids) => setSuggested(new Set(ids))} />
+      <ForYou hideHeading framed onShown={(ids) => setSuggested(new Set(ids))} />
 
       {isLoading && catalog.length === 0 ? (
         <TileGridSkeleton className={BLISTER_GRID_COLS} />

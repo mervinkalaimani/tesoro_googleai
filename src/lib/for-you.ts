@@ -42,7 +42,8 @@ const ATTRS: Record<Attr, Def> = {
     coef: 3,
     car: (c) => c.brand,
     cat: (c) => c.brand,
-    say: (l, _o, r) => (r ? `bought ${r} ${l} recently` : `collect ${l}`),
+    say: (l, _o, r) =>
+      r > 1 ? `bought ${r} ${l} recently` : r ? `bought ${l} recently` : `collect ${l}`,
   },
   make: {
     coef: 2,
@@ -69,10 +70,12 @@ const ATTRS: Record<Attr, Def> = {
     cat: (c) => c.sub_series,
     say: (l) => `collect ${l}`,
   },
+  // An assortment belongs to a brand: Hot Wheels Premium is not Matchbox Premium, so
+  // the two are one thing here and the reason names them together.
   assortment: {
     coef: 1.4,
-    car: (c) => c.assortment,
-    cat: (c) => c.assortment,
+    car: (c) => (c.assortment ? `${c.brand} ${c.assortment}`.trim() : undefined),
+    cat: (c) => (c.assortment ? `${c.brand} ${c.assortment}`.trim() : undefined),
     say: (l) => `buy ${l}`,
   },
   size: { coef: 0.8, car: (c) => c.size, cat: (c) => c.size, say: (l) => `collect ${l} scale` },
@@ -175,8 +178,10 @@ export function forYou(cars: Diecast[], catalog: CatalogCar[], limit = 48): Sugg
     if (!Number.isNaN(added) && now - added <= 45 * 86_400_000) score += 0.8;
     // The reason names the most specific things that carried the match, not just the
     // biggest: "you have a Skyline" says more than "you collect Hot Wheels".
-    const top = hits
-      .filter((h) => h.value >= hits[0].value * 0.4)
+    const strong = hits.filter((h) => h.value >= hits[0].value * 0.4);
+    const top = strong
+      // "Hot Wheels Premium" already says the brand: drop the bare brand beside it.
+      .filter((h) => !(h.a === "brand" && strong.some((x) => x.a === "assortment")))
       .sort((x, y) => SPECIFIC.indexOf(x.a) - SPECIFIC.indexOf(y.a))
       .slice(0, 2);
     scored.push({
