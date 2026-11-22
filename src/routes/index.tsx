@@ -392,7 +392,7 @@ function DashboardPage() {
   }
 
   return (
-    <div className="flat-cards mx-auto min-w-0 max-w-[1600px] space-y-5 overflow-x-hidden p-3 md:space-y-8 md:p-6">
+    <div className="mx-auto min-w-0 max-w-[1600px] space-y-5 overflow-x-hidden p-3 md:space-y-8 md:p-6">
       <PageHeading title={greeting} />
 
       {/* A release landing this week now lives behind the bell in the top bar,
@@ -561,7 +561,7 @@ function TransitTracker({
   if (shipments.length === 0) return null;
 
   return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
+    <div className="flex min-w-0 flex-col overflow-hidden">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display truncate text-lg font-semibold">Transit tracker</h2>
@@ -768,7 +768,7 @@ function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; no
   if (recent.length === 0) return null;
 
   return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
+    <div className="flex min-w-0 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Recently added</h2>
@@ -847,7 +847,7 @@ function ArrivingSoon({
   const { open: openDrawer } = useCarDrawer();
 
   return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
+    <div className="flex min-w-0 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Arriving soon</h2>
@@ -1024,7 +1024,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
   if (loading || cars.length === 0) return null;
 
   return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
+    <div className="flex min-w-0 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">New pre-orders</h2>
@@ -1255,7 +1255,7 @@ function TopTenGrid({
   }
 
   return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden p-4">
+    <div className="flex min-w-0 flex-col overflow-hidden p-4">
       {/* Title and control share the line at every width: the control is
           capped and scrolls sideways rather than dropping underneath. */}
       <div className="mb-1 flex items-center justify-between gap-3">
@@ -1492,7 +1492,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   if (isLoading || releases.length === 0) return null;
 
   return (
-    <div className="card-elevated flex min-w-0 flex-col overflow-hidden">
+    <div className="flex min-w-0 flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Recently Released</h2>
