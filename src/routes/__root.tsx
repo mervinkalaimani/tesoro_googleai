@@ -9,8 +9,6 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 
-import { startCardHaze } from "@/lib/card-haze";
-
 import appCss from "../styles.css?url";
 import { AppProvider } from "@/lib/store";
 import { SITE_NAME, siteUrl } from "@/lib/site";
@@ -262,7 +260,6 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  useEffect(startCardHaze, []);
 
   return (
     <QueryClientProvider client={queryClient}>
