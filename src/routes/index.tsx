@@ -44,6 +44,7 @@ import { CyclePill, SegmentControl } from "@/components/segment-control";
 import { PageHeading } from "@/components/page-header";
 import { useAuth } from "@/lib/auth-store";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { ForYou } from "@/components/for-you";
 import { WelcomeWizard } from "@/components/welcome-wizard";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { PrizedShelf } from "@/components/prized-shelf";
@@ -432,6 +433,8 @@ function DashboardPage() {
           days and a car drops out of it for good — and it renders nothing at
           all on a quiet week, so it costs the tracker no room when there is
           nothing to show. */}
+      {!loading && <ForYou />}
+
       {!loading && showRecentlyAdded && <RecentlyAdded recent={recent} now={now} />}
 
       <DashboardMiddle rows={data} etaDays={transitEtaDays} loading={loading} />

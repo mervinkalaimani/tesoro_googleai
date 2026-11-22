@@ -53,6 +53,7 @@ import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { packMemberIds } from "@/lib/pack";
 import { FilterChipDropdown, ToggleChip, plural } from "@/components/filter-chips";
+import { ForYou } from "@/components/for-you";
 import { MergeDuplicatesDialog } from "@/components/merge-duplicates-dialog";
 import {
   isCarMatchingCatalog,
@@ -1066,6 +1067,8 @@ function CatalogPage() {
         active={filters.brand}
         onPick={(brand) => setFilters((f) => ({ ...f, brand }))}
       />
+
+      {segment === "all" && activeCount === 0 && !query.trim() && <ForYou />}
 
       {isLoading && catalog.length === 0 ? (
         <TileGridSkeleton className={BLISTER_GRID_COLS} />
