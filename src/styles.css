@@ -518,6 +518,19 @@ html.dark .card-elevated {
     0 18px 40px -18px oklch(0 0 0 / 0.7);
 }
 
+/* Hover or selected: an interactive card lights up in the theme colour, a thin ring
+   and a soft glow around it. Static panels stay as they are. */
+html .card-elevated:is(button, a, [role="button"]):hover,
+html .card-elevated[aria-pressed="true"],
+html .card-elevated[aria-selected="true"],
+html .card-elevated[data-selected="true"] {
+  border-color: color-mix(in oklab, var(--primary) 70%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--primary) 45%, transparent),
+    0 0 28px -2px color-mix(in oklab, var(--primary) 45%, transparent),
+    0 18px 40px -18px oklch(0 0 0 / 0.6);
+}
+
 /* Date fields keep their calendar icon at the far right. The shared Input is
    display:flex, which stops Chrome's date box stretching, so the icon sat
    straight after the date; as a block it fills the field and the icon can be
