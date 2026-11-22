@@ -39,7 +39,11 @@ export function CarOverlay({
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   // brandOnly is the blister view: the packaging already says the series.
-  const brandLine = [car.brand, car.assortment].filter(Boolean).join(" · ");
+  // These makers sell by casting number, so it follows the brand.
+  const numbered = /^(mini ?gt|kaido ?house|qube ?carz)$/i.test((car.brand || "").trim());
+  const brandLine = [car.brand, numbered ? carNumberOf(car) : "", car.assortment]
+    .filter(Boolean)
+    .join(" · ");
   const seriesLine =
     detail ?? (brandOnly ? "" : [car.series, car.subSeries].filter(Boolean).join(" · "));
   return (
@@ -63,7 +67,7 @@ export function CarOverlay({
       {(brandLine || suffix) && (
         <div
           className={cn(
-            "mt-1 truncate text-white/80",
+            "mt-px truncate text-white/80",
             small ? "text-[9px] sm:text-[11px]" : "text-xs",
           )}
         >
@@ -104,8 +108,11 @@ export function BlisterTile({
   foot,
   overlay,
   showStatus = true,
+  smallPills = false,
   className = "",
 }: {
+  /** Smaller tags on the photograph, for the dense grids. */
+  smallPills?: boolean;
   car: Diecast;
   onOpen: () => void;
   /** One short word at the end of the second line — "Owned", a price, a day. */
@@ -127,6 +134,7 @@ export function BlisterTile({
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   // Glass by default: the words go on the photograph. A caller that passes its
   // own foot keeps the old layout, with the words underneath.
+  const pill = smallPills ? "h-5 gap-0.5 px-1.5 text-[10px]" : "";
   const words = overlay ?? (foot === undefined ? <CarOverlay car={car} brandOnly /> : undefined);
 
   return (
@@ -172,9 +180,9 @@ export function BlisterTile({
         >
           {words &&
             (car.status && showStatus ? (
-              <StatusPill status={car.status} className={PILL_ON_PHOTO} />
+              <StatusPill status={car.status} className={cn(PILL_ON_PHOTO, pill)} />
             ) : caption ? (
-              <span className={cn(PILL_ON_PHOTO, "bg-black/75 text-white")}>{caption}</span>
+              <span className={cn(PILL_ON_PHOTO, pill, "bg-black/75 text-white")}>{caption}</span>
             ) : null)}
           {pack && (
             <span

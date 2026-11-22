@@ -1,5 +1,4 @@
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
-import { inr } from "@/lib/format";
 
 import type { Diecast } from "@/lib/types";
 
@@ -77,16 +76,9 @@ export function CompactCarCard({
       syncedSource={syncedSource}
       copies={copies}
       showStatus={!hideStatus}
+      smallPills
       foot={false}
-      overlay={
-        <CarOverlay
-          car={car}
-          small
-          padRight={marksOffset}
-          detail={detail}
-          suffix={car.spent ? inr(car.spent) : undefined}
-        />
-      }
+      overlay={<CarOverlay car={car} small padRight={marksOffset} detail={detail} />}
       className={className}
     />
   );
