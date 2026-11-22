@@ -297,6 +297,8 @@ function InventoryPage() {
   const measureRef = useRef<HTMLDivElement>(null);
   // True once the chips would not fit on the segment control's line.
   const [chipsCollapsed, setChipsCollapsed] = useState(false);
+  // On a wide screen the Filters button lays the chips out over the status control.
+  const [chipsOpen, setChipsOpen] = useState(false);
   usePinnedFlag(isScrolled);
 
   // Collapse the chips into the Filters button the moment they would no longer sit on
@@ -779,6 +781,22 @@ function InventoryPage() {
             >
               {chips}
             </div>
+            {chipsCollapsed && chipsOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setChipsOpen(false)} />
+                <div className="absolute left-0 top-0 z-50 flex w-full flex-wrap items-center gap-1.5 rounded-2xl border border-border bg-popover p-2 shadow-xl">
+                  {chips}
+                  <button
+                    type="button"
+                    aria-label="Close filters"
+                    onClick={() => setChipsOpen(false)}
+                    className="ml-auto grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              </>
+            )}
             {chipsCollapsed ? null : (
               <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
                 {chips}
@@ -793,7 +811,11 @@ function InventoryPage() {
               size="icon"
               variant={activeCount ? "default" : "outline"}
               className={cn("size-8 relative shrink-0", !chipsCollapsed && "md:hidden")}
-              onClick={() => setMobileFilterOpen(true)}
+              onClick={() =>
+                chipsCollapsed && window.matchMedia("(min-width: 768px)").matches
+                  ? setChipsOpen((v) => !v)
+                  : setMobileFilterOpen(true)
+              }
               title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
               aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
             >
