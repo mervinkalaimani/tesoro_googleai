@@ -299,6 +299,9 @@ function InventoryPage() {
   const [chipsCollapsed, setChipsCollapsed] = useState(false);
   // On a wide screen the Filters button lays the chips out over the status control.
   const [chipsOpen, setChipsOpen] = useState(false);
+  const viewRef = useRef<HTMLDivElement>(null);
+  // How far the open panel reaches: from the status control to the end of the view toggle.
+  const [panelW, setPanelW] = useState<number | undefined>();
   usePinnedFlag(isScrolled);
 
   // Collapse the chips into the Filters button the moment they would no longer sit on
@@ -784,7 +787,10 @@ function InventoryPage() {
             {chipsCollapsed && chipsOpen && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setChipsOpen(false)} />
-                <div className="absolute left-0 top-0 z-50 flex w-full flex-wrap items-center gap-1.5 rounded-2xl border border-border bg-popover p-2 shadow-xl">
+                <div
+                  style={{ width: panelW }}
+                  className="absolute left-0 top-0 z-50 flex w-full flex-wrap items-center gap-1.5 rounded-2xl border border-border bg-popover p-2 shadow-xl"
+                >
                   {chips}
                   <button
                     type="button"
@@ -813,7 +819,13 @@ function InventoryPage() {
               className={cn("size-8 relative shrink-0", !chipsCollapsed && "md:hidden")}
               onClick={() =>
                 chipsCollapsed && window.matchMedia("(min-width: 768px)").matches
-                  ? setChipsOpen((v) => !v)
+                  ? (setPanelW(
+                      viewRef.current && regionRef.current
+                        ? viewRef.current.getBoundingClientRect().right -
+                            regionRef.current.getBoundingClientRect().left
+                        : undefined,
+                    ),
+                    setChipsOpen((v) => !v))
                   : setMobileFilterOpen(true)
               }
               title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
@@ -856,7 +868,7 @@ function InventoryPage() {
               </Button>
             )}
 
-            <div className="shrink-0">
+            <div ref={viewRef} className="shrink-0">
               <ViewToggle value={view} onChange={setView} />
             </div>
           </div>
