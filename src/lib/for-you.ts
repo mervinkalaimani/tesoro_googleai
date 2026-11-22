@@ -34,12 +34,22 @@ type Def = {
   car: (c: Diecast) => string | undefined;
   cat: (c: CatalogCar) => string | undefined;
   /** The reason, finishing "Because you …". */
-  say: (label: string, owned: number) => string;
+  say: (label: string, owned: number, recent: number) => string;
 };
 
 const ATTRS: Record<Attr, Def> = {
-  brand: { coef: 3, car: (c) => c.brand, cat: (c) => c.brand, say: (l) => `collect ${l}` },
-  make: { coef: 2, car: (c) => c.make, cat: (c) => c.make, say: (l) => `like ${l} cars` },
+  brand: {
+    coef: 3,
+    car: (c) => c.brand,
+    cat: (c) => c.brand,
+    say: (l, _o, r) => (r ? `bought ${r} ${l} recently` : `collect ${l}`),
+  },
+  make: {
+    coef: 2,
+    car: (c) => c.make,
+    cat: (c) => c.make,
+    say: (l, _o, r) => (r ? `bought ${l} recently` : `like ${l} cars`),
+  },
   model: {
     coef: 2.5,
     car: (c) => c.model,
@@ -89,47 +99,40 @@ const SPECIFIC: Attr[] = [
   "brand",
 ];
 
-type Seen = { label: string; weight: number; owned: number };
+type Seen = { label: string; weight: number; owned: number; recent: number };
 
-/** The ranked pool, best first. The caller pages through it and may reshuffle it (see `reshuffle`). */
 /** When a car was bought: its order date, else the day it landed. */
 const boughtOn = (c: Diecast) => parseDMY(c.orderDate) ?? parseDMY(c.date);
 
-/** The cars that count for a period: purchases inside it, plus the wishlist, which is taste and not a date. */
-function inPeriod(cars: Diecast[], days: number | null, now = Date.now()): Diecast[] {
-  if (!days) return cars;
-  return cars.filter((c) => {
-    if (isIso(c.status)) return true;
+/** How far back "recent" can reach, at the most. */
+export const MAX_WINDOW_DAYS = 60;
+const WINDOWS = [14, 30, 45, MAX_WINDOW_DAYS];
+/** Enough purchases for a window to say something about taste. */
+const ENOUGH = 8;
+
+const boughtWithin = (cars: Diecast[], days: number, now: number) =>
+  cars.filter((c) => {
+    if (isIso(c.status)) return false;
     const d = boughtOn(c);
-    return !!d && now - d.getTime() <= days * 86_400_000;
+    return !!d && now - d.getTime() <= days * 86_400_000 && d.getTime() <= now;
   });
-}
 
 /**
- * What the chosen period looks like: how many cars were bought in it and how often.
- * "Everything" measures from the first purchase to the last.
+ * The window that counts as "recent", chosen from how much you have been buying: the
+ * shortest of 2, 4½, 6½ weeks or two months that holds enough purchases to go on,
+ * and two months, the most it ever reaches, when even that is thin.
  */
-export function purchaseStats(cars: Diecast[], days: number | null) {
-  const now = Date.now();
-  const bought = inPeriod(cars, days, now).filter((c) => !isIso(c.status));
-  let span = days ? days / 30.44 : 0;
-  if (!days) {
-    const times = bought.map((c) => boughtOn(c)?.getTime()).filter((x): x is number => !!x);
-    span = times.length > 1 ? (Math.max(...times) - Math.min(...times)) / 86_400_000 / 30.44 : 1;
-  }
-  const months = Math.max(span, 1);
-  return { count: bought.length, perMonth: bought.length / months, months };
+export function purchaseStats(cars: Diecast[], now = Date.now()) {
+  const days = WINDOWS.find((d) => boughtWithin(cars, d, now).length >= ENOUGH) ?? MAX_WINDOW_DAYS;
+  const count = boughtWithin(cars, days, now).length;
+  return { days, count, perWeek: count / (days / 7), perMonth: count / (days / 30.44) };
 }
 
-export function forYou(
-  cars: Diecast[],
-  catalog: CatalogCar[],
-  limit = 48,
-  /** Only cars bought in the last this-many days count; null is everything. */
-  periodDays: number | null = null,
-): Suggestion[] {
+/** The ranked pool, best first. The caller pages through it and may reshuffle it (see `reshuffle`). */
+export function forYou(cars: Diecast[], catalog: CatalogCar[], limit = 48): Suggestion[] {
   const now = Date.now();
-  cars = inPeriod(cars, periodDays, now);
+  const { days } = purchaseStats(cars, now);
+  const recentIds = new Set(boughtWithin(cars, days, now).map((c) => c.id));
   const ownedIds = new Set(cars.map((c) => norm(c.catalogId)).filter(Boolean));
   const book = Object.fromEntries(KEYS.map((k) => [k, new Map<string, Seen>()])) as Record<
     Attr,
@@ -138,14 +141,17 @@ export function forYou(
 
   for (const c of cars) {
     const wished = isIso(c.status);
-    const w = (wished ? 1.5 : 1) + (c.favourite ? 2 : 0);
+    const recent = recentIds.has(c.id);
+    // What you bought lately says most about what you want now, a wishlist car next.
+    const w = (wished ? 1.5 : recent ? 3 : 1) + (c.favourite ? 2 : 0);
     for (const a of KEYS) {
       const value = ATTRS[a].car(c);
       const k = norm(value);
       if (!k || k === "na" || k === "-") continue;
-      const s = book[a].get(k) ?? { label: (value || "").trim(), weight: 0, owned: 0 };
+      const s = book[a].get(k) ?? { label: (value || "").trim(), weight: 0, owned: 0, recent: 0 };
       s.weight += w;
       if (!wished) s.owned += 1;
+      if (recent) s.recent += 1;
       book[a].set(k, s);
     }
   }
@@ -176,7 +182,7 @@ export function forYou(
     scored.push({
       car: c,
       score,
-      reason: `Because you ${top.map((h) => ATTRS[h.a].say(h.s.label, h.s.owned)).join(" and ")}`,
+      reason: `Because you ${top.map((h) => ATTRS[h.a].say(h.s.label, h.s.owned, h.s.recent)).join(" and ")}`,
     });
   }
   scored.sort((a, b) => b.score - a.score);
