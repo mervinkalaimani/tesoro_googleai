@@ -897,6 +897,16 @@ html.dark body::before {
     );
 }
 
+/* The home page's cards are plain panels, not glass: solid surface, hairline border,
+   no blur or specular edge, no pointer haze. */
+html .flat-cards .card-elevated {
+  background: var(--card);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+
 /* Display → Background glow, switched off. */
 html[data-glow="off"] body::before {
   display: none;
