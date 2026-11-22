@@ -61,16 +61,13 @@ export function CarOverlay({
       )}
     >
       {/* Sizes follow the width of the tile (cqw), so the words fit without being cut. */}
-      <div
-        className="font-semibold leading-tight [font-size:clamp(11px,7.5cqw,17px)]"
-        title={title}
-      >
+      <div className="font-semibold leading-tight [font-size:clamp(13px,9cqw,19px)]" title={title}>
         <span className="block">{first}</span>
         {rest && <span className="block">{rest}</span>}
         <ChangedDot car={car} className="ml-1.5 align-middle" />
       </div>
       {(brandLine || suffix) && (
-        <div className="mt-px whitespace-nowrap text-white/80 [font-size:clamp(8px,4.6cqw,12px)]">
+        <div className="mt-px whitespace-nowrap text-white/80 [font-size:clamp(10px,5.4cqw,13px)]">
           {brandLine}
           {suffix && (
             <>
@@ -81,7 +78,7 @@ export function CarOverlay({
         </div>
       )}
       {seriesLine && (
-        <div className="break-words text-white/60 [font-size:clamp(9px,5cqw,12px)]">
+        <div className="break-words text-white/60 [font-size:clamp(10px,5.4cqw,13px)]">
           {seriesLine}
         </div>
       )}
