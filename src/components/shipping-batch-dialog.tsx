@@ -34,11 +34,22 @@ import { TrackingLink } from "@/components/tracking-link";
 import { cn } from "@/lib/utils";
 import { CarThumb } from "@/components/car-thumb";
 import { carNumberOf } from "@/lib/car-subline";
-import { isInHand, isIso } from "@/lib/status";
+import {
+  STATUSES,
+  iconFor,
+  isInHand,
+  isIso,
+  normaliseStatus,
+  statusLabel,
+  type Status,
+} from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 import { carSubLine, carSubLineParts } from "@/lib/car-subline";
 import { useCatalog } from "@/lib/catalog-store";
 import { catalogCarToCatalogueCar, catalogMatches, type CatalogCar } from "@/lib/catalog";
+
+/** The way an order goes, left to right. On Hold is not a step, so it ends the line. */
+const FLOW_ORDER: Status[] = ["ISO", "PO", "Ordered", "In Transit", "In Hand"];
 
 export interface ShippingBatchDialogProps {
   open: boolean;
@@ -90,6 +101,10 @@ export function ShippingBatchDialog({
   const [newOrderDate, setNewOrderDate] = useState("");
   const [loadedOrderDate, setLoadedOrderDate] = useState("");
   const [newTransitInfo, setNewTransitInfo] = useState("");
+  // The status the order is on now, and the one picked. Only a different pick is written.
+  const [loadedStatus, setLoadedStatus] = useState("");
+  const [newStatus, setNewStatus] = useState("");
+  const statusChanged = newStatus !== "" && newStatus !== loadedStatus;
   // A note typed here is written to every car in the order; left empty, notes stay as they are.
   const updateTransitInfo = newTransitInfo.trim() !== "";
   const [newPartner, setNewPartner] = useState("");
@@ -218,6 +233,9 @@ export function ShippingBatchDialog({
     setNewOrderDate(placed);
     setLoadedOrderDate(placed);
     setNewTransitInfo("");
+    const current = normaliseStatus(String(first("status") ?? ""));
+    setLoadedStatus(current);
+    setNewStatus(current);
     setNewPartner(String(first("deliveryPartner") ?? ""));
     setNewTrackingId(String(first("trackingId") ?? ""));
   }, [activeShippingId, hideDelivered, open]);
@@ -232,6 +250,14 @@ export function ShippingBatchDialog({
     setNewCarSeed(null);
     setCarsAccordionOpen(false);
   }, [activeShippingId, open]);
+
+  // Tiles: any status the order is on that is not a known step leads the line, so
+  // staying put is still a choice.
+  const statusFlow: Status[] = [
+    ...(STATUSES as readonly Status[]).filter((s) => s !== "On Hold" && !FLOW_ORDER.includes(s)),
+    ...FLOW_ORDER,
+  ];
+  const statusTiles: Status[] = [...statusFlow, "On Hold"];
 
   const orderDateChanged = Boolean(newOrderDate) && newOrderDate !== loadedOrderDate;
 
@@ -289,7 +315,7 @@ export function ShippingBatchDialog({
    * car already knows — its own seller, its own order date — is kept.
    */
   const joinOrder = (car: Diecast): Diecast => {
-    const status = template?.status || car.status;
+    const status = statusChanged ? newStatus : template?.status || car.status;
     const expected = newExpectedDate || template?.expectedDate || car.expectedDate || "";
     const partner = updateTracking
       ? newPartner.trim()
@@ -366,10 +392,14 @@ export function ShippingBatchDialog({
       return;
     }
     const changesFields =
-      orderDateChanged || Boolean(newExpectedDate) || updateTransitInfo || updateTracking;
+      statusChanged ||
+      orderDateChanged ||
+      Boolean(newExpectedDate) ||
+      updateTransitInfo ||
+      updateTracking;
     if (!changesFields && pendingCars.length === 0) {
       setErrorMessage(
-        "Please choose at least one field to change (Order Date, Expected Date, Tracking, or Notes), or add a car to this order.",
+        "Please choose at least one field to change (Status, Order Date, Expected Date, Tracking, or Notes), or add a car to this order.",
       );
       return;
     }
@@ -379,6 +409,7 @@ export function ShippingBatchDialog({
 
     try {
       const updates: ShippingBatchUpdates = {};
+      if (statusChanged) updates.status = newStatus;
       if (orderDateChanged) {
         updates.orderDate = newOrderDate;
       }
@@ -447,20 +478,18 @@ export function ShippingBatchDialog({
             <span className="grid size-6 shrink-0 place-items-center rounded-md bg-sky-500/15 text-sky-500">
               <Truck className="size-3.5" />
             </span>
-            Edit order
+            Update order
           </DialogTitle>
           <DialogDescription>
             {locked ? (
               <>
-                Change the dates, tracking and notes across every car in{" "}
-                <span className="font-mono text-foreground">{activeShippingId}</span>, or add cars
-                to it. To move it to a new status, use Update status.
+                Move <span className="font-mono text-foreground">{activeShippingId}</span> to a new
+                status, change its dates, tracking and notes across every car in it, or add cars.
               </>
             ) : (
               <>
-                Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to change its dates,
-                tracking and notes across every car in it — or add cars to the order. To move it to
-                a new status, use Update status.
+                Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to change its status,
+                dates, tracking and notes across every car in it — or add cars to the order.
               </>
             )}
           </DialogDescription>
@@ -761,6 +790,55 @@ export function ShippingBatchDialog({
 
               {/* Form Updates */}
               <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-2">
+                {/* Where it is, as tiles in one line in the order an order goes. The steps
+                  up to the picked one are outlined; On Hold, which is not a step, ends it. */}
+                <div className="space-y-1.5">
+                  <div className="text-xs font-semibold">Status</div>
+                  <div
+                    className="grid gap-1.5"
+                    style={{
+                      gridTemplateColumns: `repeat(${statusTiles.length}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {statusTiles.map((s) => {
+                      const Icon = iconFor(s);
+                      const selected = newStatus === s;
+                      const reached =
+                        s !== "On Hold" &&
+                        statusFlow.indexOf(newStatus as Status) >= statusFlow.indexOf(s);
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => {
+                            setNewStatus(s);
+                            // A courier and tracking ID are what an order in transit needs.
+                            if (s === "In Transit") setUpdateTracking(true);
+                          }}
+                          className={`relative flex flex-col items-center justify-center gap-1 rounded-lg border px-1.5 py-2 text-center text-xs font-medium transition-colors ${
+                            selected
+                              ? "border-primary bg-primary/10 font-semibold text-primary shadow-xs"
+                              : reached
+                                ? "border-primary/40 bg-background text-foreground hover:bg-muted/60"
+                                : "border-border bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          }`}
+                        >
+                          <Icon className="size-3.5 shrink-0" />
+                          <span className="leading-tight">
+                            {isInHand(s) ? "Delivered" : statusLabel(s)}
+                          </span>
+                          {s === loadedStatus && (
+                            <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-muted-foreground">
+                              Current
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <IosGroup>
                     <IosRow label="Order date">

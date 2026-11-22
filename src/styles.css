@@ -878,14 +878,14 @@ html.dark body::before {
   background:
     radial-gradient(
       130% 100% at 50% 0%,
-      color-mix(in oklab, var(--glow) 26%, transparent) 0%,
-      color-mix(in oklab, var(--glow) 18%, transparent) 45%,
-      color-mix(in oklab, var(--glow) 9%, transparent) 78%,
+      color-mix(in oklab, var(--glow) 16%, transparent) 0%,
+      color-mix(in oklab, var(--glow) 11%, transparent) 45%,
+      color-mix(in oklab, var(--glow) 5%, transparent) 78%,
       transparent 100%
     ),
     radial-gradient(
       60% 80% at 88% 6%,
-      color-mix(in oklab, var(--glow) 14%, transparent),
+      color-mix(in oklab, var(--glow) 8%, transparent),
       transparent 100%
     );
 }

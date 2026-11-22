@@ -12,7 +12,6 @@ import { SegmentControl } from "@/components/segment-control";
 import { formatDayMonthYear, inr, inrFull, parseDMY, inrPrice } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
-import { StatusUpdateDialog, type StatusBatch } from "@/components/status-update-dialog";
 
 import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 import { UpdateStatusButton } from "@/components/update-status-button";
@@ -156,12 +155,10 @@ function sectionsBySeller(list: Shipment[]) {
 function ShipmentCard({
   s,
   onEdit,
-  onUpdateStatus,
   onOpenCar,
 }: {
   s: Shipment;
   onEdit: () => void;
-  onUpdateStatus: () => void;
   onOpenCar: (car: Diecast) => void;
 }) {
   const [mobileCarsOpen, setMobileCarsOpen] = useState(false);
@@ -259,23 +256,11 @@ function ShipmentCard({
           className="min-w-0 flex-1 gap-1.5 sm:flex-none"
         />
         {s.shippingId ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEdit}
-            className="min-w-0 flex-1 gap-1.5 sm:flex-none"
-          >
-            <Pencil className="size-3.5" />
-            Edit details
-          </Button>
-        ) : null}
-        {!s.delivered && s.shippingId ? (
           <UpdateStatusButton
-            onClick={onUpdateStatus}
+            onClick={onEdit}
+            label="Update order"
             className="min-w-0 flex-1 sm:flex-none"
-            title={`Update status for the ${s.items.length} car${
-              s.items.length === 1 ? "" : "s"
-            } in ${s.shippingId}`}
+            title={`Update the ${s.items.length} car${s.items.length === 1 ? "" : "s"} in ${s.shippingId}`}
           />
         ) : null}
       </footer>
@@ -410,7 +395,6 @@ function OrdersPage() {
   };
   const [batchOpen, setBatchOpen] = useState(false);
   const [selectedShippingId, setSelectedShippingId] = useState("");
-  const [reconcileFor, setReconcileFor] = useState<StatusBatch | null>(null);
 
   // Arriving from the dashboard a second time, with the page already mounted.
   useEffect(() => {
@@ -693,13 +677,6 @@ function OrdersPage() {
                     setSelectedShippingId(s.shippingId);
                     setBatchOpen(true);
                   }}
-                  onUpdateStatus={() =>
-                    setReconcileFor({
-                      shippingId: s.shippingId,
-                      seller: s.seller,
-                      items: s.items,
-                    })
-                  }
                 />
               ))}
             </section>
@@ -719,8 +696,6 @@ function OrdersPage() {
         onOpenChange={setBatchOpen}
         initialShippingId={selectedShippingId}
       />
-
-      <StatusUpdateDialog batch={reconcileFor} onClose={() => setReconcileFor(null)} />
     </div>
   );
 }
