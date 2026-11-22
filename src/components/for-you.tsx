@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, Sparkles } from "lucide-react";
 
-import { BlisterTile, CarOverlay } from "@/components/blister-tile";
+import { CarThumb } from "@/components/car-thumb";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
@@ -10,6 +10,8 @@ import { useCars } from "@/lib/cars-store";
 import { useRecentPreorders } from "@/lib/catalogue-search";
 import { catalogCarToCatalogueCar, catalogCarToDiecast, type CatalogCar } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-store";
+import { carNumberOf } from "@/lib/car-subline";
+import { inr } from "@/lib/format";
 import { castingKey, forYou, MAX_WINDOW_DAYS, purchaseStats, reshuffle } from "@/lib/for-you";
 import { Button } from "@/components/ui/button";
 
@@ -145,43 +147,57 @@ export function ForYou({
           </div>
         </div>
         <div className={BLISTER_GRID_COLS}>
-          {picks.map(({ car, reason }) => (
-            <div key={car.car_id} className="relative h-full">
-              <BlisterTile
-                car={catalogCarToDiecast(car)}
-                onOpen={() => setViewing(car)}
-                showStatus={false}
-                badge={
-                  <>
+          {picks.map(({ car, reason }) => {
+            const d = catalogCarToDiecast(car);
+            const brandLine = [car.brand, carNumberOf(d)].filter(Boolean).join(" · ");
+            return (
+              // The Grid view card: the photograph on top, then the name, the brand and
+              // number beside the price, and the reason underneath.
+              <article
+                key={car.car_id}
+                className="card-elevated flex h-full flex-col overflow-hidden"
+              >
+                <div className="relative">
+                  <button type="button" onClick={() => setViewing(car)} className="block w-full">
+                    <CarThumb car={d} className="aspect-[4/3] w-full" />
+                  </button>
+                  <span className="pointer-events-none absolute left-2 top-2 inline-flex h-6 items-center gap-1 rounded-full bg-black/75 px-2 text-xs font-medium leading-none text-white shadow-sm backdrop-blur-sm">
                     <Sparkles className="size-3 fill-amber-400 text-amber-400" />
                     Suggested
-                  </>
-                }
-                foot={false}
-                overlay={
-                  <CarOverlay
-                    car={catalogCarToDiecast(car)}
-                    brandOnly
-                    noAssortment
-                    padRight
-                    detail={reason}
-                  />
-                }
-              />
-              {/* Add it without opening it: the same form, filled in from the casting. */}
-              <button
-                type="button"
-                onClick={() => {
-                  setAdding({ car, status: car.release_status === "Pre Order" ? "PO" : "In Hand" });
-                }}
-                aria-label="Add to my collection"
-                title="Add to my collection"
-                className="glass-btn-solid absolute bottom-3 right-3 grid size-8 cursor-pointer place-items-center rounded-full bg-primary/90 text-primary-foreground transition-transform hover:bg-primary active:scale-95"
-              >
-                <Plus className="size-4" />
-              </button>
-            </div>
-          ))}
+                  </span>
+                  {/* Add it without opening it: the same form, filled in from the casting. */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAdding({
+                        car,
+                        status: car.release_status === "Pre Order" ? "PO" : "In Hand",
+                      })
+                    }
+                    aria-label="Add to my collection"
+                    title="Add to my collection"
+                    className="glass-btn-solid absolute bottom-2 right-2 grid size-8 cursor-pointer place-items-center rounded-full bg-primary/90 text-primary-foreground transition-transform hover:bg-primary active:scale-95"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setViewing(car)}
+                  className="flex flex-1 flex-col gap-0.5 p-3 text-left"
+                >
+                  <span className="text-sm font-semibold leading-tight">{d.name}</span>
+                  <span className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+                    <span className="min-w-0">{brandLine || "—"}</span>
+                    <span className="shrink-0 tabular-nums">{car.mrp ? inr(car.mrp) : ""}</span>
+                  </span>
+                  <span className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                    {reason}
+                  </span>
+                </button>
+              </article>
+            );
+          })}
         </div>
       </section>
 
