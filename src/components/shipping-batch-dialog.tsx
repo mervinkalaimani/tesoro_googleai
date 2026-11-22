@@ -3,6 +3,7 @@ import {
   Truck,
   Clock,
   CheckCircle2,
+  Car,
   Package,
   AlertCircle,
   Loader2,
@@ -31,6 +32,7 @@ import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { cn } from "@/lib/utils";
+import { CarThumb } from "@/components/car-thumb";
 import { carNumberOf } from "@/lib/car-subline";
 import { isInHand, isIso } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
@@ -482,7 +484,7 @@ export function ShippingBatchDialog({
                 on a phone is still the order you work in — pick the batch, see
                 what is in it, then say what changes. On a desktop the cars move
                 to a rail on the right and stay visible for both halves. */}
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_1fr]">
+            <div className="grid gap-4 lg:grid-cols-[21rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
               {/* Batch selector — shipping ID or order ID, per idField. */}
               {!locked && (
                 <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
@@ -724,19 +726,27 @@ export function ShippingBatchDialog({
                       carsAccordionOpen ? "block" : "hidden lg:block",
                     )}
                   >
-                    <ul className="max-h-[22rem] space-y-1.5 overflow-y-auto">
+                    <ul className="grid max-h-[22rem] content-start gap-1.5 overflow-y-auto sm:grid-cols-2">
                       {matchedCars.map((car) => (
-                        <li key={car.id} className="rounded bg-background/60 px-2 py-1.5 text-xs">
-                          <div className="truncate font-medium text-foreground">
-                            {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-                          </div>
-                          <div className="mt-0.5 flex items-center justify-between gap-2">
-                            <span className="min-w-0 break-words text-xs text-muted-foreground">
+                        <li
+                          key={car.id}
+                          className="flex items-center gap-2 rounded bg-background/60 p-1.5 text-xs"
+                        >
+                          <CarThumb
+                            car={car}
+                            className="aspect-[4/3] w-14 shrink-0 rounded"
+                            fallback={<Car className="size-5 text-muted-foreground" />}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-foreground">
+                              {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+                            </div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">
                               {[car.brand || car.make, carNumberOf(car), car.assortment]
                                 .filter(Boolean)
                                 .join(" · ")}
-                            </span>
-                            <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+                            </div>
+                            <span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
                               {car.status}
                             </span>
                           </div>
