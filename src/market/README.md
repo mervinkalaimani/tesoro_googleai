@@ -37,7 +37,7 @@ npm run dev        # then open http://localhost:3000/market
 
 No environment variables are needed. Everything is seeded and runs in the browser.
 
-**The store is off by default.** The owner turns it on for every account in the **Admin Console → VIIV Shop (beta)** (stored in `deployment_settings` under `viiv_shop`, read by `src/market/enabled.ts`); there is no per-user switch. While it is off there is no sidebar link, `/market` shows an "off" page, catalogue cars show no sellers, and nothing is seeded or loaded.
+**The store is off by default.** The owner sets it in the **Admin Console → VIIV Shop (beta)** (between Subscriptions and Payments): **Off**, **For testing only** (on for admins, the demo account and the owner) or **Everyone**. It is stored in `deployment_settings` under `viiv_shop` and read by `src/market/enabled.ts`; there is no per-user switch. While it is off there is no sidebar link, `/market` shows an "off" page, catalogue cars show no sellers, and nothing is seeded or loaded.
 
 **Your Viiv login is your store account.** There is no separate sign-in: the first time you open the store, a store profile is created for your Viiv account (a demo guest gets one too). Buy, collect, or use **Become a seller** from Store account. The seeded sellers (**Garage 64**, **Diecast Dukaan**, **Pit Lane Models**, **Rev Kart**) are demo data you can buy from, not logins. _Reset demo data_ is on the Store account page; it keeps your account.
 

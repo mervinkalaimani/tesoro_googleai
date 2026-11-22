@@ -121,8 +121,12 @@ export function useOAuthProviders() {
 /** Whether a new signup is approved the moment it arrives. */
 export const AUTO_APPROVE_KEY = "auto_approve_signups";
 
-/** Whether VIIV Shop (beta) is switched on for every account. Only the owner moves it. */
+/** Who can see VIIV Shop (beta). Only the owner moves it. */
 export const VIIV_SHOP_KEY = "viiv_shop";
+export type ShopMode = "off" | "testing" | "everyone";
+export const SHOP_MODES: ShopMode[] = ["off", "testing", "everyone"];
+const toShopMode = (v: unknown): ShopMode =>
+  v === "testing" || v === "everyone" || v === "off" ? v : v === true ? "everyone" : "off";
 
 /** Whether the card checkout is offered at all, keys or no keys. */
 export const PAY_CARD_KEY = "pay_card";
@@ -202,4 +206,58 @@ export function useDeploymentFlag(key: string, fallback = false) {
   );
 
   return { on, loaded, save };
+}
+
+/**
+ * VIIV Shop's reach, one of off, testing (admins, the demo account and the owner) or
+ * everyone. Same table as the flags above, the value a bare jsonb string; a true left
+ * by the earlier on/off switch reads as everyone. Anything missing reads as off.
+ */
+const shopCache: { mode: ShopMode | null } = { mode: null };
+export function useShopMode() {
+  const [mode, setMode] = useState<ShopMode>(shopCache.mode ?? "off");
+  const [loaded, setLoaded] = useState(shopCache.mode !== null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { data, error } = await db()
+          .from(TABLE)
+          .select("value")
+          .eq("key", VIIV_SHOP_KEY)
+          .maybeSingle();
+        if (cancelled) return;
+        const got = error ? "off" : toShopMode((data as { value?: unknown } | null)?.value);
+        shopCache.mode = got;
+        setMode(got);
+      } catch {
+        if (!cancelled) setMode("off");
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const save = useCallback(
+    async (next: ShopMode) => {
+      const before = mode;
+      setMode(next);
+      const { error } = await db()
+        .from(TABLE)
+        .upsert(
+          { key: VIIV_SHOP_KEY, value: next, updated_at: new Date().toISOString() },
+          { onConflict: "key" },
+        );
+      if (error) setMode(before);
+      else shopCache.mode = next;
+      return { error: error?.message };
+    },
+    [mode],
+  );
+
+  return { mode, loaded, save };
 }

@@ -20,6 +20,7 @@ import {
   Home,
   History,
   PackageCheck,
+  ShoppingCart,
   Sparkles,
   LifeBuoy,
   Lightbulb,
@@ -53,7 +54,8 @@ import {
   SEARCH_ENGINES,
   type SearchEngine,
 } from "@/lib/car-image-search";
-import { SegmentControl } from "@/components/segment-control";
+import { CyclePill, SegmentControl } from "@/components/segment-control";
+import { useShopMode } from "@/lib/deployment-settings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { CataloguePhotos } from "@/components/catalogue-photos";
 import { MetadataEditor } from "@/components/metadata-editor";
@@ -251,6 +253,7 @@ export function SettingsPage() {
     setSummaryCardShown,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
+  const shop = useShopMode();
   const drawer = useCarDrawer();
   const { source } = useCarsSource();
 
@@ -908,6 +911,44 @@ export function SettingsPage() {
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </Link>
+            {/* VIIV SHOP (beta): who can see it. One setting for every account. */}
+            <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3.5">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <ShoppingCart className="size-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[15px] font-medium text-foreground">VIIV Shop (beta)</span>
+                <p className="text-xs text-muted-foreground">
+                  {shop.mode === "off" && "Off for everyone."}
+                  {shop.mode === "testing" && "On for admins, Mr VIIV and you only."}
+                  {shop.mode === "everyone" && "On for every account."}
+                </p>
+              </div>
+              <CyclePill
+                value={shop.mode}
+                disabled={!shop.loaded}
+                onChange={(v) => {
+                  void shop.save(v).then((res) => {
+                    if (res.error) {
+                      toast.error("Could not save that", { description: res.error });
+                      return;
+                    }
+                    toast.success(
+                      v === "off"
+                        ? "VIIV Shop is off for everyone"
+                        : v === "testing"
+                          ? "VIIV Shop is on for testing only"
+                          : "VIIV Shop is on for everyone",
+                    );
+                  });
+                }}
+                options={[
+                  { value: "off", label: "Off" },
+                  { value: "testing", label: "For testing only" },
+                  { value: "everyone", label: "Everyone" },
+                ]}
+              />
+            </div>
             {/* RAZORPAY & PRICES */}
             <Link
               to="/subscriptions"
