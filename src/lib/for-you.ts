@@ -1,4 +1,5 @@
 import type { CatalogCar } from "@/lib/catalog";
+import { parseDMY } from "@/lib/format";
 import { isIso } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 
@@ -91,8 +92,44 @@ const SPECIFIC: Attr[] = [
 type Seen = { label: string; weight: number; owned: number };
 
 /** The ranked pool, best first. The caller pages through it and may reshuffle it (see `reshuffle`). */
-export function forYou(cars: Diecast[], catalog: CatalogCar[], limit = 48): Suggestion[] {
+/** When a car was bought: its order date, else the day it landed. */
+const boughtOn = (c: Diecast) => parseDMY(c.orderDate) ?? parseDMY(c.date);
+
+/** The cars that count for a period: purchases inside it, plus the wishlist, which is taste and not a date. */
+function inPeriod(cars: Diecast[], days: number | null, now = Date.now()): Diecast[] {
+  if (!days) return cars;
+  return cars.filter((c) => {
+    if (isIso(c.status)) return true;
+    const d = boughtOn(c);
+    return !!d && now - d.getTime() <= days * 86_400_000;
+  });
+}
+
+/**
+ * What the chosen period looks like: how many cars were bought in it and how often.
+ * "Everything" measures from the first purchase to the last.
+ */
+export function purchaseStats(cars: Diecast[], days: number | null) {
   const now = Date.now();
+  const bought = inPeriod(cars, days, now).filter((c) => !isIso(c.status));
+  let span = days ? days / 30.44 : 0;
+  if (!days) {
+    const times = bought.map((c) => boughtOn(c)?.getTime()).filter((x): x is number => !!x);
+    span = times.length > 1 ? (Math.max(...times) - Math.min(...times)) / 86_400_000 / 30.44 : 1;
+  }
+  const months = Math.max(span, 1);
+  return { count: bought.length, perMonth: bought.length / months, months };
+}
+
+export function forYou(
+  cars: Diecast[],
+  catalog: CatalogCar[],
+  limit = 48,
+  /** Only cars bought in the last this-many days count; null is everything. */
+  periodDays: number | null = null,
+): Suggestion[] {
+  const now = Date.now();
+  cars = inPeriod(cars, periodDays, now);
   const ownedIds = new Set(cars.map((c) => norm(c.catalogId)).filter(Boolean));
   const book = Object.fromEntries(KEYS.map((k) => [k, new Map<string, Seen>()])) as Record<
     Attr,

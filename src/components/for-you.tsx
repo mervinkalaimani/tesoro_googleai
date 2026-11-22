@@ -8,8 +8,9 @@ import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { useCars } from "@/lib/cars-store";
 import { catalogCarToCatalogueCar, catalogCarToDiecast, type CatalogCar } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-store";
-import { forYou, reshuffle } from "@/lib/for-you";
+import { forYou, purchaseStats, reshuffle } from "@/lib/for-you";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 /**
  * One row of the same tiles the blister view lays out, so a set is as many castings as
@@ -29,6 +30,15 @@ function useColumns() {
   return n;
 }
 
+/** The buying periods on offer; the last is everything. */
+const PERIODS: { label: string; long: string; days: number | null }[] = [
+  { label: "1M", long: "the last month", days: 30 },
+  { label: "3M", long: "the last 3 months", days: 90 },
+  { label: "6M", long: "the last 6 months", days: 180 },
+  { label: "1Y", long: "the last year", days: 365 },
+  { label: "All", long: "total", days: null },
+];
+
 /**
  * Castings VIIV thinks you will want, each with the reason it is there. Hidden until
  * there is something to base it on. Opening one shows the casting and offers to add it.
@@ -44,7 +54,10 @@ export function ForYou({
   const cars = useCars();
   const { catalog } = useCatalog();
   const SET = useColumns();
-  const pool = useMemo(() => forYou(cars, catalog), [cars, catalog]);
+  // How far back your buying counts. Everything unless you narrow it.
+  const [period, setPeriod] = useState<number | null>(null);
+  const pool = useMemo(() => forYou(cars, catalog, 48, period), [cars, catalog, period]);
+  const stats = useMemo(() => purchaseStats(cars, period), [cars, period]);
   // A set at a time: Next and Back step through the ranking, Refresh reshuffles it.
   const [seed, setSeed] = useState(0);
   const [page, setPage] = useState(0);
@@ -67,16 +80,47 @@ export function ForYou({
     <>
       <section aria-label="For You" className="space-y-2">
         <div className="flex items-center justify-between gap-2 px-1">
-          {!hideHeading ? (
-            <div className="min-w-0">
-              <h2 className="text-display text-lg font-semibold">For You</h2>
-              <p className="text-xs text-muted-foreground">
-                Picked from the cars you own and what you like
-              </p>
+          <div className="min-w-0 space-y-1.5">
+            {!hideHeading && (
+              <div>
+                <h2 className="text-display text-lg font-semibold">For You</h2>
+                <p className="text-xs text-muted-foreground">
+                  Picked from the cars you own and what you like
+                </p>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.label}
+                  type="button"
+                  aria-pressed={period === p.days}
+                  onClick={() => {
+                    setPeriod(p.days);
+                    setPage(0);
+                  }}
+                  className={cn(
+                    "h-7 rounded-full px-2.5 text-xs font-medium transition-colors",
+                    period === p.days
+                      ? "border border-primary/50 bg-primary text-primary-foreground"
+                      : "glass-btn text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+              <span className="text-xs text-muted-foreground">
+                {stats.count} car{stats.count === 1 ? "" : "s"}
+                {period ? ` in ${PERIODS.find((p) => p.days === period)?.long}` : " in total"}
+                {" · "}
+                {stats.perMonth >= 1
+                  ? `about ${Math.round(stats.perMonth)} a month`
+                  : stats.count
+                    ? `about ${Math.round(1 / stats.perMonth)} months apart`
+                    : "none bought"}
+              </span>
             </div>
-          ) : (
-            <span />
-          )}
+          </div>
           <div className="flex shrink-0 items-center gap-1">
             <Button
               type="button"
