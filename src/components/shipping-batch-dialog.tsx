@@ -484,7 +484,7 @@ export function ShippingBatchDialog({
                 on a phone is still the order you work in — pick the batch, see
                 what is in it, then say what changes. On a desktop the cars move
                 to a rail on the right and stay visible for both halves. */}
-            <div className="grid gap-4 lg:grid-cols-[21rem_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
+            <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_1fr]">
               {/* Batch selector — shipping ID or order ID, per idField. */}
               {!locked && (
                 <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
@@ -726,7 +726,7 @@ export function ShippingBatchDialog({
                       carsAccordionOpen ? "block" : "hidden lg:block",
                     )}
                   >
-                    <ul className="grid max-h-[22rem] content-start gap-1.5 overflow-y-auto sm:grid-cols-2">
+                    <ul className="grid max-h-[22rem] content-start gap-1.5 overflow-y-auto">
                       {matchedCars.map((car) => (
                         <li
                           key={car.id}
@@ -746,9 +746,6 @@ export function ShippingBatchDialog({
                                 .filter(Boolean)
                                 .join(" · ")}
                             </div>
-                            <span className="mt-1 inline-block rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
-                              {car.status}
-                            </span>
                           </div>
                         </li>
                       ))}
