@@ -531,19 +531,21 @@ export function ShippingBatchDialog({
                 </div>
               )}
 
+              {locked && activeShippingId && (
+                <div className="flex items-center gap-1.5 lg:col-start-1 lg:row-start-1">
+                  <Package className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 truncate text-base font-semibold text-foreground">
+                    {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in{" "}
+                    <span className="font-mono text-primary">{activeShippingId}</span>
+                  </span>
+                </div>
+              )}
+
               {/* THE ORDER ITSELF — what is in it, and how to put more in.
                 A rail on the right from lg, the way the edit-car dialog keeps
                 the record beside the fields. */}
               {activeShippingId && (
                 <aside className="space-y-2 self-start rounded-xl border border-border bg-muted/40 p-3 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-                  <div className="flex items-center gap-1.5 border-b border-border pb-2">
-                    <Package className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 truncate font-semibold text-foreground">
-                      {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in{" "}
-                      <span className="font-mono text-primary">{activeShippingId}</span>
-                    </span>
-                  </div>
-
                   {/* Adding to the order comes first, above the list. It is the
                     thing you came here to do that the list cannot do for you,
                     and at the bottom of a panel of fourteen cars it was below
