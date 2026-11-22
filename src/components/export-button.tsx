@@ -23,6 +23,7 @@ export function ExportButton({
   label,
   iconOnly = true,
   iconOnlyOnMobile = false,
+  text = "Export",
   size = "icon",
   variant = "outline",
   className = "",
@@ -36,6 +37,8 @@ export function ExportButton({
   iconOnly?: boolean;
   /** The word from sm up, the icon alone on a phone. */
   iconOnlyOnMobile?: boolean;
+  /** The word beside the icon when it is shown. */
+  text?: string;
   size?: "sm" | "default" | "icon";
   variant?: "outline" | "ghost" | "default";
   className?: string;
@@ -50,7 +53,7 @@ export function ExportButton({
         type="button"
         variant={variant}
         size={size}
-        className={cn("size-8 shrink-0 p-0 justify-center", className)}
+        className={cn(iconOnly && "size-8 p-0", "shrink-0 justify-center", className)}
         disabled={empty}
         onClick={() => setOpen(true)}
         title={
@@ -61,8 +64,7 @@ export function ExportButton({
         aria-label={`Export ${label}`}
       >
         <Share2 className="size-3.5" />
-        {!iconOnly &&
-          (iconOnlyOnMobile ? <span className="hidden sm:inline">Export</span> : "Export")}
+        {!iconOnly && (iconOnlyOnMobile ? <span className="hidden sm:inline">{text}</span> : text)}
       </Button>
 
       {/* Mounted only once opened. An orders page can hold thirty of these, and

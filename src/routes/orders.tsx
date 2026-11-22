@@ -252,9 +252,11 @@ function ShipmentCard({
           rows={s.items}
           name={`order-${s.groupId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
           label={s.groupId ? `Order ${s.groupId}` : `${s.seller} order`}
-          iconOnly
-          size="icon"
-          className="size-8 shrink-0"
+          iconOnly={false}
+          text="Share"
+          variant="ghost"
+          size="sm"
+          className="min-w-0 flex-1 gap-1.5 sm:flex-none"
         />
         {s.shippingId ? (
           <Button
