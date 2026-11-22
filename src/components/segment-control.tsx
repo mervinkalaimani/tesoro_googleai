@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Check, ChevronsUpDown, Info } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
@@ -34,6 +34,28 @@ function SegmentRow<T extends string>({
   const containerRef = useRef<HTMLDivElement>(null);
   const activeBtnRef = useRef<HTMLButtonElement | null>(null);
 
+  // The selected pill is one element that slides to the chosen option, rather than a
+  // background that appears on it: where it is and how wide, measured off the button.
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  const [armed, setArmed] = useState(false);
+  useLayoutEffect(() => {
+    const measure = () => {
+      const b = activeBtnRef.current;
+      setPill(b ? { left: b.offsetLeft, width: b.offsetWidth } : null);
+    };
+    measure();
+    const c = containerRef.current;
+    if (!c) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(c);
+    return () => ro.disconnect();
+  }, [value, options.length]);
+  // Slide only once it has a place to slide from: the first paint just puts it there.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setArmed(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   // When value changes, scroll active item into view horizontally
   useEffect(() => {
     if (activeBtnRef.current && containerRef.current) {
@@ -50,12 +72,21 @@ function SegmentRow<T extends string>({
       ref={containerRef}
       className={cn(
         // Flow strictly left and right: flex-nowrap, whitespace-nowrap, overflow-y-hidden, touch-pan-x
-        "flex flex-nowrap min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto overflow-y-hidden whitespace-nowrap touch-pan-x overscroll-x-contain glass-btn !shadow-none scroll-px-[3px] rounded-full p-[3px] text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "flex flex-nowrap min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto overflow-y-hidden whitespace-nowrap touch-pan-x overscroll-x-contain relative glass-btn !shadow-none scroll-px-[3px] rounded-full p-[3px] text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         fill ? "w-full" : "inline-flex w-auto",
         disabled && "pointer-events-none opacity-50",
         className,
       )}
     >
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute top-[3px] h-6 rounded-full bg-foreground/10 ring-1 ring-inset ring-foreground/15",
+          armed && "transition-[left,width,opacity] duration-300 ease-out",
+          pill ? "opacity-100" : "opacity-0",
+        )}
+        style={{ left: pill?.left ?? 0, width: pill?.width ?? 0 }}
+      />
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -66,10 +97,10 @@ function SegmentRow<T extends string>({
             disabled={disabled}
             onClick={() => onChange(clearable && active ? ("" as T) : o.value)}
             className={cn(
-              "h-6 shrink-0 inline-flex items-center justify-center whitespace-nowrap snap-start select-none rounded-full px-3 text-center font-medium leading-none transition-colors",
+              "relative z-10 h-6 shrink-0 inline-flex items-center justify-center whitespace-nowrap snap-start select-none rounded-full px-3 text-center font-medium leading-none transition-colors",
               fill ? "flex-1 basis-0" : "",
               active
-                ? "bg-foreground/10 text-foreground ring-1 ring-inset ring-foreground/15 font-semibold"
+                ? "text-foreground font-semibold"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
