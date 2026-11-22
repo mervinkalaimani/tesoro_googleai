@@ -11,6 +11,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Trash2,
+  ShoppingCart,
   UserCheck,
   Users,
   UserX,
@@ -48,7 +49,7 @@ import { KpiBand, KpiTile } from "@/components/kpi";
 import { SegmentControl } from "@/components/segment-control";
 import { useApp } from "@/lib/store";
 import { Switch } from "@/components/ui/switch";
-import { AUTO_APPROVE_KEY, useDeploymentFlag } from "@/lib/deployment-settings";
+import { AUTO_APPROVE_KEY, useDeploymentFlag, VIIV_SHOP_KEY } from "@/lib/deployment-settings";
 
 export const Route = createFileRoute("/admin")({
   component: AdminPage,
@@ -119,6 +120,7 @@ function AdminPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const { query } = useApp();
   const autoApprove = useDeploymentFlag(AUTO_APPROVE_KEY);
+  const shop = useDeploymentFlag(VIIV_SHOP_KEY);
   const [segment, setSegment] = useState<UserSegment>("all");
   const [openSno, setOpenSno] = useState<number | null>(null);
 
@@ -361,6 +363,37 @@ function AdminPage() {
               toast.success(
                 v ? "New sign-ups are approved on arrival" : "New sign-ups wait for approval",
               );
+            });
+          }}
+        />
+      </div>
+
+      {/* VIIV Shop (beta) for everyone. One switch: off, nobody sees the shop, its sidebar
+          link or the sellers on catalogue cars; on, every account does. Only the owner moves it. */}
+      <div className="card-elevated flex items-center justify-between gap-4 px-4 py-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5 text-sm font-semibold">
+            <ShoppingCart className="size-4 text-primary" />
+            VIIV Shop (beta)
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {shop.on
+              ? "On for every account: the shop is in the sidebar and sellers show on catalogue cars."
+              : "Off for everyone. Turn it on to open the shop to every account."}
+            {!isOwner && " Only the owner can change this."}
+          </p>
+        </div>
+        <Switch
+          checked={shop.on}
+          disabled={!shop.loaded || !isOwner}
+          aria-label="VIIV Shop for all users"
+          onCheckedChange={(v) => {
+            void shop.save(Boolean(v)).then((res) => {
+              if (res.error) {
+                toast.error("Could not save that", { description: res.error });
+                return;
+              }
+              toast.success(v ? "VIIV Shop is on for everyone" : "VIIV Shop is off for everyone");
             });
           }}
         />

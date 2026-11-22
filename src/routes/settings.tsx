@@ -31,7 +31,6 @@ import {
   Layers,
   KeyRound,
   Tag,
-  ShoppingCart,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -84,7 +83,6 @@ import { SupabaseSyncCard } from "@/components/supabase-sync-card";
 import { WhatsNewList } from "@/components/whats-new";
 import { LATEST_BUILD } from "@/lib/whats-new";
 import { useAuth, fullName } from "@/lib/auth-store";
-import { setStoreEnabled, useStoreEnabled, useViivId } from "@/market/enabled";
 import { useCarsSource } from "@/lib/cars-store";
 
 export const Route = createFileRoute("/settings")({
@@ -253,8 +251,6 @@ export function SettingsPage() {
     setSummaryCardShown,
   } = useApp();
   const { profile, isGuest, isOwner, isAdmin, signOut } = useAuth();
-  const viivId = useViivId();
-  const storeOn = useStoreEnabled() === true;
   const drawer = useCarDrawer();
   const { source } = useCarsSource();
 
@@ -437,28 +433,6 @@ export function SettingsPage() {
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
             </button>
-
-            {/* VIIV STORE (beta): off until you switch it on. */}
-            <div
-              className="flex items-center gap-3.5 px-4 py-3.5"
-              title="VIIV Shop is in beta. Switching it on adds it to the sidebar and shows sellers on catalogue cars."
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
-                <ShoppingCart className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">VIIV Shop (beta)</span>
-                <p className="text-xs text-muted-foreground">
-                  Buy and sell cars. Off by default, set per account on this device.
-                </p>
-              </div>
-              <Switch
-                aria-label="VIIV Shop"
-                checked={storeOn}
-                disabled={!viivId}
-                onCheckedChange={(v) => viivId && setStoreEnabled(viivId, v)}
-              />
-            </div>
 
             {/* NOTIFICATIONS */}
             <button

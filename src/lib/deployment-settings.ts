@@ -121,6 +121,9 @@ export function useOAuthProviders() {
 /** Whether a new signup is approved the moment it arrives. */
 export const AUTO_APPROVE_KEY = "auto_approve_signups";
 
+/** Whether VIIV Shop (beta) is switched on for every account. Only the owner moves it. */
+export const VIIV_SHOP_KEY = "viiv_shop";
+
 /** Whether the card checkout is offered at all, keys or no keys. */
 export const PAY_CARD_KEY = "pay_card";
 
