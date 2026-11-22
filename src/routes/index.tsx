@@ -564,8 +564,8 @@ function TransitTracker({
   if (shipments.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+    <div className="flex min-w-0 flex-col">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-2">
         <div className="min-w-0">
           <h2 className="text-display truncate text-lg font-semibold">Transit tracker</h2>
           <p className="text-xs text-muted-foreground">
@@ -771,8 +771,8 @@ function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; no
   if (recent.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex items-center justify-between p-4">
+    <div className="flex min-w-0 flex-col">
+      <div className="flex items-center justify-between px-1 pb-2">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Recently added</h2>
           <p className="text-xs text-muted-foreground">
@@ -806,7 +806,7 @@ function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; no
 
           The caption is what each card is doing in here — it landed today, or
           two days ago — which is the only thing separating one from the next. */}
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-8 px-3 py-8 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {recent.map(({ r, dt }, i) => (
           <CompactCarCard
             key={r.id + i}
@@ -850,8 +850,8 @@ function ArrivingSoon({
   const { open: openDrawer } = useCarDrawer();
 
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex items-center justify-between p-4">
+    <div className="flex min-w-0 flex-col">
+      <div className="flex items-center justify-between px-1 pb-2">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Arriving soon</h2>
           <p className="text-xs text-muted-foreground">
@@ -860,7 +860,7 @@ function ArrivingSoon({
         </div>
         <CalendarClock className="size-4 text-accent" />
       </div>
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-8 px-3 py-8 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {arriving.map(({ car, day }, i) => (
           <CompactCarCard
             key={car.id + i}
@@ -1027,8 +1027,8 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
   if (loading || cars.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex items-center justify-between p-4">
+    <div className="flex min-w-0 flex-col">
+      <div className="flex items-center justify-between px-1 pb-2">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">New pre-orders</h2>
           <p className="text-xs text-muted-foreground">
@@ -1037,7 +1037,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
         </div>
         <ShoppingBag className="size-4 text-accent" />
       </div>
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-8 px-3 py-8 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {shelf.map(({ c, added }, i) => {
           // Shaped as a car for the card pointing to the actual car in the catalogue
           const asCar = toCarWithCatalogId(c, `preorder-${i}`);
@@ -1258,7 +1258,7 @@ function TopTenGrid({
   }
 
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden p-4">
+    <div className="flex min-w-0 flex-col px-1">
       {/* Title and control share the line at every width: the control is
           capped and scrolls sideways rather than dropping underneath. */}
       <div className="mb-1 flex items-center justify-between gap-3">
@@ -1495,8 +1495,8 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   if (isLoading || releases.length === 0) return null;
 
   return (
-    <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex items-center justify-between p-4">
+    <div className="flex min-w-0 flex-col">
+      <div className="flex items-center justify-between px-1 pb-2">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Recently Released</h2>
           <p className="text-xs text-muted-foreground">
@@ -1507,7 +1507,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         </div>
         <PackageCheck className="size-4 text-emerald-500" />
       </div>
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-8 px-3 py-8 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {releases.map((r) => {
           return (
             <div key={r.entry.car_id} className="relative w-36 shrink-0 snap-start sm:w-40">

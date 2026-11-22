@@ -169,7 +169,7 @@ function Shelf({
   children: React.ReactNode;
 }) {
   return (
-    <section className="card-elevated flex min-w-0 flex-col overflow-hidden">
+    <section className="card-elevated flex min-w-0 flex-col">
       <div className="flex items-center justify-between border-b border-border p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">{title}</h2>
@@ -177,7 +177,7 @@ function Shelf({
         </div>
         {icon}
       </div>
-      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto p-2.5 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-2.5 items-stretch gap-2.5 overflow-x-auto px-2.5 py-8 -my-5 [--frame-gap:0.625rem]">
         {children}
       </div>
     </section>
