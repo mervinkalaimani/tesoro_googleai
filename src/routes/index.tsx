@@ -806,7 +806,7 @@ function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; no
 
           The caption is what each card is doing in here — it landed today, or
           two days ago — which is the only thing separating one from the next. */}
-      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-8 px-3 py-8 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-14 px-3 py-14 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {recent.map(({ r, dt }, i) => (
           <CompactCarCard
             key={r.id + i}
@@ -860,7 +860,7 @@ function ArrivingSoon({
         </div>
         <CalendarClock className="size-4 text-accent" />
       </div>
-      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-8 px-3 py-8 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-14 px-3 py-14 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {arriving.map(({ car, day }, i) => (
           <CompactCarCard
             key={car.id + i}
@@ -1037,7 +1037,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
         </div>
         <ShoppingBag className="size-4 text-accent" />
       </div>
-      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-8 px-3 py-8 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-14 px-3 py-14 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {shelf.map(({ c, added }, i) => {
           // Shaped as a car for the card pointing to the actual car in the catalogue
           const asCar = toCarWithCatalogId(c, `preorder-${i}`);
@@ -1507,7 +1507,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         </div>
         <PackageCheck className="size-4 text-emerald-500" />
       </div>
-      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-8 px-3 py-8 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
+      <div className="flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-14 px-3 py-14 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {releases.map((r) => {
           return (
             <div key={r.entry.car_id} className="relative w-36 shrink-0 snap-start sm:w-40">
