@@ -33,7 +33,14 @@ function useColumns() {
  * Castings VIIV thinks you will want, each with the reason it is there. Hidden until
  * there is something to base it on. Opening one shows the casting and offers to add it.
  */
-export function ForYou() {
+export function ForYou({
+  onShown,
+  hideHeading = false,
+}: {
+  onShown?: (ids: string[]) => void;
+  /** Leave off the title and the line under it; the paging buttons stay. */
+  hideHeading?: boolean;
+}) {
   const cars = useCars();
   const { catalog } = useCatalog();
   const SET = useColumns();
@@ -47,17 +54,29 @@ export function ForYou() {
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<{ car: CatalogCar; status: string } | null>(null);
 
+  // Tell the page which castings are up here, so its list below can leave them out.
+  const shownKey = picks.map((p) => p.car.car_id).join("|");
+  useEffect(() => {
+    onShown?.(shownKey ? shownKey.split("|") : []);
+    return () => onShown?.([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the ids, not the callback
+  }, [shownKey]);
+
   if (!pool.length) return null;
   return (
     <>
       <section aria-label="For You" className="space-y-2">
         <div className="flex items-center justify-between gap-2 px-1">
-          <div className="min-w-0">
-            <h2 className="text-display text-lg font-semibold">For You</h2>
-            <p className="text-xs text-muted-foreground">
-              Picked from the cars you own and what you like
-            </p>
-          </div>
+          {!hideHeading ? (
+            <div className="min-w-0">
+              <h2 className="text-display text-lg font-semibold">For You</h2>
+              <p className="text-xs text-muted-foreground">
+                Picked from the cars you own and what you like
+              </p>
+            </div>
+          ) : (
+            <span />
+          )}
           <div className="flex shrink-0 items-center gap-1">
             <Button
               type="button"

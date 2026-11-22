@@ -544,8 +544,11 @@ function CatalogPage() {
   const matches = (c: CatalogCar, f: Filters, ...skip: (FilterKey | undefined)[]) =>
     FILTERS.every((d) => skip.includes(d.key) || f[d.key] === "all" || d.get(c) === f[d.key]);
 
+  // What For You is showing at the top: the list below does not repeat it.
+  const [suggested, setSuggested] = useState<Set<string>>(() => new Set());
+
   const rows = useMemo(() => {
-    let result = searched.filter((c) => matches(c, filters));
+    let result = searched.filter((c) => matches(c, filters) && !suggested.has(c.car_id));
     if (hideOwned) {
       result = result.filter((c) => {
         const cid = c.car_id.toUpperCase();
@@ -558,7 +561,18 @@ function CatalogPage() {
       result = result.filter((c) => !inSomePack.has(c.car_id.toUpperCase()));
     }
     return result.sort((a, b) => compareBy(a, b, sort, serials));
-  }, [searched, filters, hideOwned, hideInPacks, inSomePack, owned, myIso, sort, serials]);
+  }, [
+    searched,
+    filters,
+    hideOwned,
+    hideInPacks,
+    inSomePack,
+    owned,
+    myIso,
+    sort,
+    serials,
+    suggested,
+  ]);
 
   /**
    * The same list as one card per casting. Entries that agree on brand, make,
@@ -1069,7 +1083,7 @@ function CatalogPage() {
       />
 
       {/* The first thing in the list: what to look at before the whole catalogue. */}
-      <ForYou />
+      <ForYou hideHeading onShown={(ids) => setSuggested(new Set(ids))} />
 
       {isLoading && catalog.length === 0 ? (
         <TileGridSkeleton className={BLISTER_GRID_COLS} />
