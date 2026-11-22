@@ -31,33 +31,11 @@ import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { cn } from "@/lib/utils";
-import { STATUSES, STATUS_STYLES, isInHand, isIso, statusLabel, type Status } from "@/lib/status";
-import { isLate } from "@/lib/delivery-watch";
+import { isInHand, isIso } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 import { carSubLine, carSubLineParts } from "@/lib/car-subline";
 import { useCatalog } from "@/lib/catalog-store";
 import { catalogCarToCatalogueCar, catalogMatches, type CatalogCar } from "@/lib/catalog";
-
-const STATUS_CHOICES = STATUSES.map((value) => ({ value, label: statusLabel(value) }));
-
-/**
- * Every status a shipment can be moved to, in the order it moves through them.
- *
- * There were three — Ordered, In Transit, Delivered — which left On Hold and PO
- * reachable only through the dropdown above, although they are two of the four
- * the orders page is built around. ISO is not here: a wishlist entry is not
- * something a shipment becomes.
- *
- * The colours come from STATUS_STYLES, so a chip and the pill it sets are the
- * same colour rather than two hand-written guesses at it.
- */
-const QUICK_SET: { value: Status; label: string }[] = [
-  { value: "PO", label: "Pre-order" },
-  { value: "Ordered", label: "Ordered" },
-  { value: "On Hold", label: "On Hold" },
-  { value: "In Transit", label: "In Transit" },
-  { value: "In Hand", label: "Delivered" },
-];
 
 export interface ShippingBatchDialogProps {
   open: boolean;
@@ -100,7 +78,6 @@ export function ShippingBatchDialog({
   const [useCustom, setUseCustom] = useState(false);
   const [hideDelivered, setHideDelivered] = useState(excludeAvailable);
 
-  const [newStatus, setNewStatus] = useState("keep");
   const [newExpectedDate, setNewExpectedDate] = useState("");
   // Pre-filled from the order; only written when it differs from what was
   // loaded, so opening and saving an order never flattens cars that were placed
@@ -306,7 +283,7 @@ export function ShippingBatchDialog({
    * car already knows — its own seller, its own order date — is kept.
    */
   const joinOrder = (car: Diecast): Diecast => {
-    const status = newStatus !== "keep" ? newStatus : template?.status || car.status;
+    const status = template?.status || car.status;
     const expected = newExpectedDate || template?.expectedDate || car.expectedDate || "";
     const partner = updateTracking
       ? newPartner.trim()
@@ -383,14 +360,10 @@ export function ShippingBatchDialog({
       return;
     }
     const changesFields =
-      newStatus !== "keep" ||
-      orderDateChanged ||
-      Boolean(newExpectedDate) ||
-      updateTransitInfo ||
-      updateTracking;
+      orderDateChanged || Boolean(newExpectedDate) || updateTransitInfo || updateTracking;
     if (!changesFields && pendingCars.length === 0) {
       setErrorMessage(
-        "Please choose at least one field to update (Status, Order Date, Expected Date, Tracking, or Notes), or add a car to this order.",
+        "Please choose at least one field to change (Order Date, Expected Date, Tracking, or Notes), or add a car to this order.",
       );
       return;
     }
@@ -400,9 +373,6 @@ export function ShippingBatchDialog({
 
     try {
       const updates: ShippingBatchUpdates = {};
-      if (newStatus !== "keep") {
-        updates.status = newStatus;
-      }
       if (orderDateChanged) {
         updates.orderDate = newOrderDate;
       }
@@ -471,11 +441,12 @@ export function ShippingBatchDialog({
             <span className="grid size-6 shrink-0 place-items-center rounded-md bg-sky-500/15 text-sky-500">
               <Truck className="size-3.5" />
             </span>
-            Update order
+            Edit order
           </DialogTitle>
           <DialogDescription>
-            Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to set the status, dates
-            and notes across every car in it — or add cars to the order.
+            Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to change its dates,
+            tracking and notes across every car in it — or add cars to the order. To move it to a
+            new status, use Update status.
           </DialogDescription>
         </DialogHeader>
 
@@ -767,43 +738,6 @@ export function ShippingBatchDialog({
               <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-2">
                 <div className="space-y-2">
                   <IosGroup>
-                    <IosRow label="Status">
-                      <IosPicker
-                        label="Status"
-                        placeholder="Keep current"
-                        value={newStatus}
-                        onChange={setNewStatus}
-                        options={[{ value: "keep", label: "Keep current" }, ...STATUS_CHOICES]}
-                      />
-                    </IosRow>
-                  </IosGroup>
-                  {/* Quick status presets, one per status a shipment can take. */}
-                  <div className="flex flex-wrap items-center gap-1.5 px-1">
-                    {QUICK_SET.map(({ value, label }) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => {
-                          setNewStatus(value);
-                          // Arriving today, unless a day is already promised.
-                          if (isInHand(value) && !newExpectedDate) {
-                            setNewExpectedDate(new Date().toISOString().slice(0, 10));
-                          }
-                        }}
-                        className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors ${
-                          newStatus === value
-                            ? `font-semibold ${STATUS_STYLES[value]}`
-                            : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <IosGroup>
                     <IosRow label="Order date">
                       <div className="flex items-center justify-end gap-2">
                         {orderDateChanged && (
@@ -841,16 +775,7 @@ export function ShippingBatchDialog({
                             type="date"
                             label="Expected date"
                             value={newExpectedDate}
-                            onChange={(val) => {
-                              setNewExpectedDate(val);
-                              if (
-                                val &&
-                                newStatus === "keep" &&
-                                matchedCars.some((c) => isLate(c))
-                              ) {
-                                setNewStatus("Ordered");
-                              }
-                            }}
+                            onChange={setNewExpectedDate}
                           />
                         </div>
                       </div>
@@ -962,7 +887,7 @@ export function ShippingBatchDialog({
             ) : (
               <>
                 <CheckCircle2 className="size-3.5" />
-                Update {affected} Car{affected === 1 ? "" : "s"}
+                Save {affected} car{affected === 1 ? "" : "s"}
               </>
             )}
           </Button>

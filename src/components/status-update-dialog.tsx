@@ -165,6 +165,10 @@ export function StatusUpdateDialog({
   if (!lead) return null;
   const current = lead;
 
+  // An order that is already placed has its seller and order date: those are facts
+  // about the order, edited under Edit order, not asked again with every status.
+  const placed =
+    isBatch && items.every((c) => !isIso(c.status) && Boolean(c.seller) && Boolean(c.orderDate));
   const needsPurchase = statusNeedsPurchase(status);
   const needsTransit = statusNeedsTransit(status);
   const arrived = isInHand(status);
@@ -229,12 +233,13 @@ export function StatusUpdateDialog({
           return {
             ...c,
             status,
-            seller: needsPurchase ? seller.trim() : c.seller,
+            seller: needsPurchase && !placed ? seller.trim() : c.seller,
             paid: needsPurchase ? m.paid : c.paid,
             balance: needsPurchase ? m.balance : c.balance,
             payment: needsPurchase ? m.payment : c.payment,
-            orderDate: needsPurchase ? orderDate : c.orderDate,
-            orderMonth: needsPurchase ? deriveMonth(orderDate) || c.orderMonth : c.orderMonth,
+            orderDate: needsPurchase && !placed ? orderDate : c.orderDate,
+            orderMonth:
+              needsPurchase && !placed ? deriveMonth(orderDate) || c.orderMonth : c.orderMonth,
             expectedDate: needsPurchase ? expectedDate : c.expectedDate,
             date,
             month: date ? deriveMonth(date) || c.month : "",
@@ -403,20 +408,22 @@ export function StatusUpdateDialog({
 
           {needsPurchase && (
             <>
-              <div className="space-y-1.5">
-                <Label htmlFor="iso-seller" className="text-xs">
-                  Seller *
-                </Label>
-                <Combobox
-                  id="iso-seller"
-                  value={seller}
-                  onChange={setSeller}
-                  options={sellerOptions}
-                  placeholder="Who it came from"
-                  searchPlaceholder="Search sellers, or type a new one…"
-                  ariaLabel="Seller"
-                />
-              </div>
+              {!placed && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="iso-seller" className="text-xs">
+                    Seller *
+                  </Label>
+                  <Combobox
+                    id="iso-seller"
+                    value={seller}
+                    onChange={setSeller}
+                    options={sellerOptions}
+                    placeholder="Who it came from"
+                    searchPlaceholder="Search sellers, or type a new one…"
+                    ariaLabel="Seller"
+                  />
+                </div>
+              )}
 
               {!isBatch && (
                 <div className="grid grid-cols-2 gap-3">
@@ -447,17 +454,19 @@ export function StatusUpdateDialog({
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <Label htmlFor="iso-ordered" className="text-xs">
-                  Order date *
-                </Label>
-                <Input
-                  id="iso-ordered"
-                  type="date"
-                  value={orderDate}
-                  onChange={(e) => setOrderDate(e.target.value)}
-                />
-              </div>
+              {!placed && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="iso-ordered" className="text-xs">
+                    Order date *
+                  </Label>
+                  <Input
+                    id="iso-ordered"
+                    type="date"
+                    value={orderDate}
+                    onChange={(e) => setOrderDate(e.target.value)}
+                  />
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
