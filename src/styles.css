@@ -931,6 +931,14 @@ html.dark {
     background-color 0.3s,
     backdrop-filter 0.3s;
 }
+/* Dark mode: the bar sits over whatever scrolls beneath it, and a pale photograph turned
+   it a washed-out grey the search text could not be read on. Darken what is behind it
+   before blurring, and give it a dark tint of its own. */
+html.dark .app-top-bar {
+  background-color: oklch(0 0 0 / 0.5);
+  -webkit-backdrop-filter: blur(20px) brightness(0.45) saturate(1.2);
+  backdrop-filter: blur(20px) brightness(0.45) saturate(1.2);
+}
 html[data-pinned] .app-top-bar,
 .pin-band-on {
   background-color: var(--pin-bg);
