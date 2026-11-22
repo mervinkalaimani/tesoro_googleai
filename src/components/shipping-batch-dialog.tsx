@@ -107,8 +107,7 @@ export function ShippingBatchDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  /** The add-a-car panel opens to the right of the order, and the dialog widens for it. */
-  const [addOpen, setAddOpen] = useState(false);
+  const [carsAccordionOpen, setCarsAccordionOpen] = useState(false);
 
   // Showing delivered cars also lifts the caller's shipping-ID restriction:
   // that list was drawn from the same in-transit rows, so leaving it in place
@@ -231,7 +230,7 @@ export function ShippingBatchDialog({
     setPickerOpen(false);
     setPickerQuery("");
     setNewCarSeed(null);
-    setAddOpen(false);
+    setCarsAccordionOpen(false);
   }, [activeShippingId, open]);
 
   const orderDateChanged = Boolean(newOrderDate) && newOrderDate !== loadedOrderDate;
@@ -442,9 +441,7 @@ export function ShippingBatchDialog({
           one thing not on screen. */}
       {/* Dressed like Update status: the same dialog frame, the same header
           chip, the same borders and type sizes. Only the contents differ. */}
-      <DialogContent
-        className={cn("max-h-[90vh] overflow-y-auto sm:max-w-xl", addOpen && "lg:max-w-5xl")}
-      >
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl lg:max-w-5xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <span className="grid size-6 shrink-0 place-items-center rounded-md bg-sky-500/15 text-sky-500">
@@ -487,142 +484,283 @@ export function ShippingBatchDialog({
                 on a phone is still the order you work in — pick the batch, see
                 what is in it, then say what changes. On a desktop the cars move
                 to a rail on the right and stay visible for both halves. */}
-            <div className={cn("grid gap-4", addOpen && "lg:grid-cols-2")}>
-              <div className="min-w-0 space-y-4">
-                {/* Batch selector — shipping ID or order ID, per idField. */}
-                {!locked && (
-                  <div className="space-y-1.5">
-                    <IosGroup>
-                      <IosRow label={idLabel}>
-                        {useCustom ? (
-                          <IosInput
-                            label={idLabel}
-                            placeholder={
-                              idField === "orderId" ? "e.g. FIRY-2026-06-001" : "e.g. FIRY/02"
-                            }
-                            value={customShippingId}
-                            onChange={setCustomShippingId}
-                          />
-                        ) : (
-                          <IosPicker
-                            label={idLabel}
-                            placeholder="Select"
-                            value={selectedShippingId}
-                            onChange={setSelectedShippingId}
-                            options={shippingIdStats.map((item) => ({
-                              value: item.id,
-                              label: `${item.id} (${item.count} car${item.count === 1 ? "" : "s"}${item.sellers ? ` · ${item.sellers}` : ""})`,
-                            }))}
-                          />
-                        )}
-                      </IosRow>
-                      {/* Delivered cars were previously filtered out with no way back,
-                    so a batch that had already arrived could not be corrected. */}
-                      <IosRow label="Include delivered cars">
-                        <Switch
-                          checked={!hideDelivered}
-                          onCheckedChange={(v) => setHideDelivered(!v)}
+            <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_1fr]">
+              {/* Batch selector — shipping ID or order ID, per idField. */}
+              {!locked && (
+                <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
+                  <IosGroup>
+                    <IosRow label={idLabel}>
+                      {useCustom ? (
+                        <IosInput
+                          label={idLabel}
+                          placeholder={
+                            idField === "orderId" ? "e.g. FIRY-2026-06-001" : "e.g. FIRY/02"
+                          }
+                          value={customShippingId}
+                          onChange={setCustomShippingId}
                         />
-                      </IosRow>
-                    </IosGroup>
-                    {!allowedShippingIds && (
-                      <button
-                        type="button"
-                        onClick={() => setUseCustom(!useCustom)}
-                        className="px-1 text-xs text-primary hover:underline"
-                      >
-                        {useCustom ? "Choose from list" : "+ Enter custom ID"}
-                      </button>
-                    )}
-                  </div>
-                )}
+                      ) : (
+                        <IosPicker
+                          label={idLabel}
+                          placeholder="Select"
+                          value={selectedShippingId}
+                          onChange={setSelectedShippingId}
+                          options={shippingIdStats.map((item) => ({
+                            value: item.id,
+                            label: `${item.id} (${item.count} car${item.count === 1 ? "" : "s"}${item.sellers ? ` · ${item.sellers}` : ""})`,
+                          }))}
+                        />
+                      )}
+                    </IosRow>
+                    {/* Delivered cars were previously filtered out with no way back,
+                    so a batch that had already arrived could not be corrected. */}
+                    <IosRow label="Include delivered cars">
+                      <Switch
+                        checked={!hideDelivered}
+                        onCheckedChange={(v) => setHideDelivered(!v)}
+                      />
+                    </IosRow>
+                  </IosGroup>
+                  {!allowedShippingIds && (
+                    <button
+                      type="button"
+                      onClick={() => setUseCustom(!useCustom)}
+                      className="px-1 text-xs text-primary hover:underline"
+                    >
+                      {useCustom ? "Choose from list" : "+ Enter custom ID"}
+                    </button>
+                  )}
+                </div>
+              )}
 
-                {activeShippingId && (
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <Package className="size-4 shrink-0 text-muted-foreground" />
-                      <span className="min-w-0 truncate text-base font-semibold text-foreground">
-                        {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in{" "}
-                        <span className="font-mono text-primary">{activeShippingId}</span>
-                      </span>
-                    </span>
+              {locked && activeShippingId && (
+                <div className="flex items-center gap-1.5 lg:col-start-1 lg:row-start-1">
+                  <Package className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 truncate text-base font-semibold text-foreground">
+                    {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in{" "}
+                    <span className="font-mono text-primary">{activeShippingId}</span>
+                  </span>
+                </div>
+              )}
+
+              {/* THE ORDER ITSELF — what is in it, and how to put more in.
+                A rail on the right from lg, the way the edit-car dialog keeps
+                the record beside the fields. */}
+              {activeShippingId && (
+                <aside className="space-y-2 self-start rounded-xl border border-border bg-muted/40 p-3 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                  {/* Adding to the order comes first, above the list. It is the
+                    thing you came here to do that the list cannot do for you,
+                    and at the bottom of a panel of fourteen cars it was below
+                    the fold on every screen.
+
+                    An order grows: a car you forgot, or one you had been hunting
+                    for and have now actually bought, had no way in short of
+                    editing it and retyping the batch ID by hand. */}
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="mr-auto text-xs text-muted-foreground">Add a car</span>
                     <Button
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="h-8 shrink-0 gap-1.5"
-                      aria-pressed={addOpen}
-                      onClick={() => {
-                        setAddOpen((v) => !v);
-                        setPickerOpen(true);
-                      }}
+                      className="h-7 gap-1 px-2 text-xs"
+                      onClick={() => setPickerOpen((v) => !v)}
                     >
-                      <Plus className="size-3.5" />
-                      Add car
+                      <Sparkles className="size-3" />
+                      From Catalogue
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 gap-1 px-2 text-xs"
+                      onClick={() => setNewCarSeed(seedNewCar())}
+                    >
+                      <Plus className="size-3" />
+                      Add New
                     </Button>
                   </div>
-                )}
 
-                {pendingCars.length > 0 && (
-                  <div className="space-y-1 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.07] p-2">
-                    <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                      Joining on save — takes this order&apos;s status, dates and courier
-                    </p>
-                    {pendingCars.map((car) => (
-                      <div
-                        key={car.id}
-                        className="flex items-center justify-between gap-2 rounded bg-background/60 px-2 py-1 text-xs"
-                      >
-                        <span className="min-w-0 truncate font-medium text-foreground">
-                          {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPendingCars((prev) => prev.filter((c) => c.id !== car.id))
-                          }
-                          aria-label={`Remove ${car.name || "car"} from this order`}
-                          className="grid size-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                  {/* A link to the car's page: the wizard opens with what it read. */}
+                  <CarLinkField
+                    onFound={({ fields, imageUrl }) =>
+                      setNewCarSeed({
+                        ...seedNewCar(),
+                        ...fields,
+                        mrp: Number(fields.mrp) || 0,
+                        spent: Number(fields.mrp) || 0,
+                        expectedDate: fields.expectedDate ?? "",
+                        ...(imageUrl ? { imageUrl } : {}),
+                      })
+                    }
+                  />
 
-                {/* Mobile Accordion Toggle for Cars List (Closed by default on mobile) */}
-                <div>
-                  <ul className="grid max-h-48 content-start gap-1.5 overflow-y-auto">
-                    {matchedCars.map((car) => (
-                      <li
-                        key={car.id}
-                        className="flex items-center gap-2 rounded bg-background/60 p-1.5 text-xs"
-                      >
-                        <CarThumb
-                          car={car}
-                          className="aspect-[4/3] w-14 shrink-0 rounded"
-                          fallback={<Car className="size-5 text-muted-foreground" />}
+                  {pickerOpen && (
+                    <div className="space-y-1.5 rounded-lg border border-border bg-background p-2">
+                      <div className="relative">
+                        <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={pickerQuery}
+                          onChange={(e) => setPickerQuery(e.target.value)}
+                          placeholder="Search the catalogue…"
+                          className="h-8 pl-7 text-xs"
+                          autoComplete="off"
                         />
-                        <div className="min-w-0 flex-1">
-                          <div className="font-medium text-foreground">
+                      </div>
+                      <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
+                        {/* Your own ISO entries lead, because one of them being
+                          the car you just bought is the likeliest reason you
+                          opened this — and because picking one updates the row
+                          you already have instead of filing a second. */}
+                        {isoCandidates.map((car) => (
+                          <button
+                            key={car.id}
+                            type="button"
+                            onClick={() => setPendingCars((prev) => [...prev, car])}
+                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-xs hover:bg-muted"
+                          >
+                            {/* Name on its own line, brand and series under it:
+                              side by side this row was wider than a phone and
+                              the name was the half that got truncated. */}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium text-foreground">
+                                {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+                              </span>
+                              {carSubLineParts(car).length > 0 && (
+                                <span className="block truncate text-xs text-muted-foreground">
+                                  {carSubLine(car)}
+                                </span>
+                              )}
+                            </span>
+                            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
+                              Wishlist
+                            </span>
+                            <Plus className="size-3 shrink-0 text-muted-foreground" />
+                          </button>
+                        ))}
+                        {/* Everything else. Picking one opens the wizard rather
+                          than queueing a row: the catalogue says what the car
+                          is, not what you paid for it. */}
+                        {catalogCandidates.map((c) => (
+                          <button
+                            key={c.car_id}
+                            type="button"
+                            onClick={() => setNewCarSeed(seedFromCatalog(c))}
+                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-xs hover:bg-muted"
+                          >
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium text-foreground">
+                                {c.name || `${c.make} ${c.model}`.trim() || "Unnamed casting"}
+                              </span>
+                              <span className="block truncate text-xs text-muted-foreground">
+                                {carSubLine(catalogCarToCatalogueCar(c))}
+                              </span>
+                            </span>
+                            <Plus className="size-3 shrink-0 text-muted-foreground" />
+                          </button>
+                        ))}
+                        {isoCandidates.length === 0 && catalogCandidates.length === 0 && (
+                          <p className="px-1 py-2 text-center text-xs text-muted-foreground">
+                            {pickerQuery.trim().length >= 2
+                              ? "Nothing on your wishlist or in the catalogue matches that."
+                              : "Type a name to search — your wishlist shows first."}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {pendingCars.length > 0 && (
+                    <div className="space-y-1 rounded-lg border border-emerald-500/30 bg-emerald-500/[0.07] p-2">
+                      <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                        Joining on save — takes this order&apos;s status, dates and courier
+                      </p>
+                      {pendingCars.map((car) => (
+                        <div
+                          key={car.id}
+                          className="flex items-center justify-between gap-2 rounded bg-background/60 px-2 py-1 text-xs"
+                        >
+                          <span className="min-w-0 truncate font-medium text-foreground">
                             {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-                          </div>
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {[car.brand || car.make, carNumberOf(car), car.assortment]
-                              .filter(Boolean)
-                              .join(" · ")}
-                          </div>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingCars((prev) => prev.filter((c) => c.id !== car.id))
+                            }
+                            aria-label={`Remove ${car.name || "car"} from this order`}
+                            className="grid size-5 shrink-0 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                          >
+                            <X className="size-3" />
+                          </button>
                         </div>
-                      </li>
-                    ))}
-                    {matchedCars.length === 0 && (
-                      <li className="px-1 py-3 text-center text-xs text-muted-foreground">
-                        Nothing carries this shipping ID yet.
-                      </li>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Mobile Accordion Toggle for Cars List (Closed by default on mobile) */}
+                  <button
+                    type="button"
+                    onClick={() => setCarsAccordionOpen((v) => !v)}
+                    className="flex w-full items-center justify-between rounded-lg border border-border bg-background/80 px-2.5 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-muted lg:hidden"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Package className="size-3.5 text-muted-foreground" />
+                      <span>
+                        {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in order
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span>{carsAccordionOpen ? "Hide list" : "View list"}</span>
+                      <ChevronDown
+                        className={cn(
+                          "size-3.5 transition-transform duration-200",
+                          carsAccordionOpen && "rotate-180",
+                        )}
+                      />
+                    </span>
+                  </button>
+
+                  <div
+                    className={cn(
+                      "border-t border-border pt-2",
+                      carsAccordionOpen ? "block" : "hidden lg:block",
                     )}
-                  </ul>
-                </div>
+                  >
+                    <ul className="grid max-h-[22rem] content-start gap-1.5 overflow-y-auto">
+                      {matchedCars.map((car) => (
+                        <li
+                          key={car.id}
+                          className="flex items-center gap-2 rounded bg-background/60 p-1.5 text-xs"
+                        >
+                          <CarThumb
+                            car={car}
+                            className="aspect-[4/3] w-14 shrink-0 rounded"
+                            fallback={<Car className="size-5 text-muted-foreground" />}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium text-foreground">
+                              {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
+                            </div>
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {[car.brand || car.make, carNumberOf(car), car.assortment]
+                                .filter(Boolean)
+                                .join(" · ")}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                      {matchedCars.length === 0 && (
+                        <li className="px-1 py-3 text-center text-xs text-muted-foreground">
+                          Nothing carries this shipping ID yet.
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                </aside>
+              )}
+
+              {/* Form Updates */}
+              <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-2">
                 <div className="space-y-2">
                   <IosGroup>
                     <IosRow label="Order date">
@@ -753,141 +891,6 @@ export function ShippingBatchDialog({
                   </IosRow>
                 </IosGroup>
               </div>
-              {addOpen && activeShippingId && (
-                <aside className="space-y-2 self-start rounded-xl border border-border bg-muted/40 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold text-foreground">Add a car</span>
-                    <button
-                      type="button"
-                      onClick={() => setAddOpen(false)}
-                      aria-label="Close add car"
-                      className="grid size-6 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  </div>
-                  {/* Adding to the order comes first, above the list. It is the
-                    thing you came here to do that the list cannot do for you,
-                    and at the bottom of a panel of fourteen cars it was below
-                    the fold on every screen.
-
-                    An order grows: a car you forgot, or one you had been hunting
-                    for and have now actually bought, had no way in short of
-                    editing it and retyping the batch ID by hand. */}
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="mr-auto" />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 gap-1 px-2 text-xs"
-                      onClick={() => setPickerOpen((v) => !v)}
-                    >
-                      <Sparkles className="size-3" />
-                      From Catalogue
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 gap-1 px-2 text-xs"
-                      onClick={() => setNewCarSeed(seedNewCar())}
-                    >
-                      <Plus className="size-3" />
-                      Add New
-                    </Button>
-                  </div>
-
-                  {/* A link to the car's page: the wizard opens with what it read. */}
-                  <CarLinkField
-                    onFound={({ fields, imageUrl }) =>
-                      setNewCarSeed({
-                        ...seedNewCar(),
-                        ...fields,
-                        mrp: Number(fields.mrp) || 0,
-                        spent: Number(fields.mrp) || 0,
-                        expectedDate: fields.expectedDate ?? "",
-                        ...(imageUrl ? { imageUrl } : {}),
-                      })
-                    }
-                  />
-
-                  {pickerOpen && (
-                    <div className="space-y-1.5 rounded-lg border border-border bg-background p-2">
-                      <div className="relative">
-                        <Search className="pointer-events-none absolute left-2 top-1/2 size-3 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          value={pickerQuery}
-                          onChange={(e) => setPickerQuery(e.target.value)}
-                          placeholder="Search the catalogue…"
-                          className="h-8 pl-7 text-xs"
-                          autoComplete="off"
-                        />
-                      </div>
-                      <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
-                        {/* Your own ISO entries lead, because one of them being
-                          the car you just bought is the likeliest reason you
-                          opened this — and because picking one updates the row
-                          you already have instead of filing a second. */}
-                        {isoCandidates.map((car) => (
-                          <button
-                            key={car.id}
-                            type="button"
-                            onClick={() => setPendingCars((prev) => [...prev, car])}
-                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-xs hover:bg-muted"
-                          >
-                            {/* Name on its own line, brand and series under it:
-                              side by side this row was wider than a phone and
-                              the name was the half that got truncated. */}
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate font-medium text-foreground">
-                                {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
-                              </span>
-                              {carSubLineParts(car).length > 0 && (
-                                <span className="block truncate text-xs text-muted-foreground">
-                                  {carSubLine(car)}
-                                </span>
-                              )}
-                            </span>
-                            <span className="shrink-0 rounded-full bg-primary/15 px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-primary">
-                              Wishlist
-                            </span>
-                            <Plus className="size-3 shrink-0 text-muted-foreground" />
-                          </button>
-                        ))}
-                        {/* Everything else. Picking one opens the wizard rather
-                          than queueing a row: the catalogue says what the car
-                          is, not what you paid for it. */}
-                        {catalogCandidates.map((c) => (
-                          <button
-                            key={c.car_id}
-                            type="button"
-                            onClick={() => setNewCarSeed(seedFromCatalog(c))}
-                            className="flex w-full items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1.5 text-left text-xs hover:bg-muted"
-                          >
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate font-medium text-foreground">
-                                {c.name || `${c.make} ${c.model}`.trim() || "Unnamed casting"}
-                              </span>
-                              <span className="block truncate text-xs text-muted-foreground">
-                                {carSubLine(catalogCarToCatalogueCar(c))}
-                              </span>
-                            </span>
-                            <Plus className="size-3 shrink-0 text-muted-foreground" />
-                          </button>
-                        ))}
-                        {isoCandidates.length === 0 && catalogCandidates.length === 0 && (
-                          <p className="px-1 py-2 text-center text-xs text-muted-foreground">
-                            {pickerQuery.trim().length >= 2
-                              ? "Nothing on your wishlist or in the catalogue matches that."
-                              : "Type a name to search — your wishlist shows first."}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </aside>
-              )}
             </div>
           </div>
         )}
