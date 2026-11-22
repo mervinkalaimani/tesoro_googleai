@@ -24,9 +24,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { IosGroup, IosInput, IosPicker, IosRow } from "@/components/ios-field";
 import { Label } from "@/components/ui/label";
-import { Combobox } from "@/components/ui/combobox";
 import { Switch } from "@/components/ui/switch";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { optionsFor } from "@/lib/car-options";
@@ -390,17 +389,18 @@ export function StatusUpdateDialog({
           </div>
 
           {!isBatch && needsCarNumber(current.brand) && (
-            <div className="space-y-1.5">
-              <Label htmlFor="status-car-number" className="text-xs">
-                Car Number *
-              </Label>
-              <Input
-                id="status-car-number"
-                value={carNumber}
-                onChange={(e) => setCarNumber(e.target.value)}
-                placeholder="e.g. 1133 or KHMG217"
-              />
-              <p className="text-xs text-muted-foreground">
+            <div className="space-y-1">
+              <IosGroup>
+                <IosRow label="Car number *">
+                  <IosInput
+                    label="Car number"
+                    placeholder="e.g. 1133 or KHMG217"
+                    value={carNumber}
+                    onChange={setCarNumber}
+                  />
+                </IosRow>
+              </IosGroup>
+              <p className="px-1 text-xs text-muted-foreground">
                 {current.brand} collector number printed on the box.
               </p>
             </div>
@@ -408,162 +408,141 @@ export function StatusUpdateDialog({
 
           {needsPurchase && (
             <>
-              {!placed && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="iso-seller" className="text-xs">
-                    Seller *
-                  </Label>
-                  <Combobox
-                    id="iso-seller"
-                    value={seller}
-                    onChange={setSeller}
-                    options={sellerOptions}
-                    placeholder="Who it came from"
-                    searchPlaceholder="Search sellers, or type a new one…"
-                    ariaLabel="Seller"
-                  />
-                </div>
-              )}
-
-              {!isBatch && (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="iso-spent" className="text-xs">
-                      Cost *
-                    </Label>
-                    <Input
-                      id="iso-spent"
-                      inputMode="decimal"
-                      value={spent}
-                      onChange={(e) => setSpent(e.target.value)}
-                      placeholder="450"
+              <div className="space-y-2">
+                <IosGroup>
+                  {!placed && (
+                    <IosRow label="Seller *">
+                      <IosPicker
+                        label="Seller"
+                        allowNew
+                        placeholder="Who it came from"
+                        value={seller}
+                        onChange={setSeller}
+                        options={sellerOptions.map((v) => ({ value: v, label: v }))}
+                      />
+                    </IosRow>
+                  )}
+                  {!isBatch && (
+                    <>
+                      <IosRow label="Cost *">
+                        <IosInput
+                          label="Cost"
+                          inputMode="decimal"
+                          placeholder="450"
+                          value={spent}
+                          onChange={setSpent}
+                        />
+                      </IosRow>
+                      <IosRow label="MRP">
+                        <IosInput
+                          label="MRP"
+                          inputMode="decimal"
+                          placeholder="199"
+                          value={mrp}
+                          onChange={setMrp}
+                        />
+                      </IosRow>
+                    </>
+                  )}
+                  {!placed && (
+                    <IosRow label="Order date *">
+                      <IosInput
+                        type="date"
+                        label="Order date"
+                        value={orderDate}
+                        onChange={setOrderDate}
+                      />
+                    </IosRow>
+                  )}
+                  <IosRow label={arrived ? "Available date *" : "Expected date *"}>
+                    <IosInput
+                      type="date"
+                      label="Expected date"
+                      value={expectedDate}
+                      onChange={setExpectedDate}
                     />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="iso-mrp" className="text-xs">
-                      MRP
-                    </Label>
-                    <Input
-                      id="iso-mrp"
-                      inputMode="decimal"
-                      value={mrp}
-                      onChange={(e) => setMrp(e.target.value)}
-                      placeholder="199"
-                    />
-                  </div>
+                  </IosRow>
+                </IosGroup>
+                <div className="flex flex-wrap items-center gap-1.5 px-1">
+                  {(arrived ? [0] : [0, 3, 7]).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setExpectedIn(d)}
+                      className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                    >
+                      {d === 0 ? "Today" : `+${d} days`}
+                    </button>
+                  ))}
                 </div>
-              )}
-
-              {!placed && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="iso-ordered" className="text-xs">
-                    Order date *
-                  </Label>
-                  <Input
-                    id="iso-ordered"
-                    type="date"
-                    value={orderDate}
-                    onChange={(e) => setOrderDate(e.target.value)}
-                  />
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="iso-expected" className="text-xs">
-                    {arrived ? "Expected / available date *" : "Expected date *"}
-                  </Label>
-                  <div className="flex items-center gap-1">
-                    {(arrived ? [0] : [0, 3, 7]).map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setExpectedIn(d)}
-                        className="rounded border border-border bg-muted/50 px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground"
-                      >
-                        {d === 0 ? "Today" : `+${d}d`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <Input
-                  id="iso-expected"
-                  type="date"
-                  value={expectedDate}
-                  onChange={(e) => setExpectedDate(e.target.value)}
-                />
               </div>
 
               {outstanding > 0 && (
-                <label className="flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">Pay balance</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {payBalance
-                        ? `Records ${inrFull(outstanding)} as paid, settling ${
-                            isBatch ? "every car in the order" : "the car"
-                          }.`
-                        : `${inrFull(outstanding)} stays outstanding.`}
-                    </span>
-                  </span>
-                  <Switch
-                    checked={payBalance}
-                    onCheckedChange={(v) => {
-                      setPayTouched(true);
-                      setPayBalance(v);
-                    }}
-                    aria-label="Pay balance"
-                  />
-                </label>
+                <div className="space-y-1">
+                  <IosGroup>
+                    <IosRow label="Pay balance">
+                      <Switch
+                        checked={payBalance}
+                        onCheckedChange={(v) => {
+                          setPayTouched(true);
+                          setPayBalance(v);
+                        }}
+                        aria-label="Pay balance"
+                      />
+                    </IosRow>
+                  </IosGroup>
+                  <p className="px-1 text-xs text-muted-foreground">
+                    {payBalance
+                      ? `Records ${inrFull(outstanding)} as paid, settling ${
+                          isBatch ? "every car in the order" : "the car"
+                        }.`
+                      : `${inrFull(outstanding)} stays outstanding.`}
+                  </p>
+                </div>
               )}
             </>
           )}
 
           {needsTransit && (
             <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="iso-partner" className="text-xs">
-                    Delivery partner
-                  </Label>
-                  <Combobox
-                    id="iso-partner"
-                    value={partner}
-                    onChange={setPartner}
-                    options={DELIVERY_PARTNER_NAMES}
-                    placeholder="Courier"
-                    searchPlaceholder="Search or type a courier…"
-                    ariaLabel="Delivery partner"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="iso-tracking" className="text-xs">
-                    Tracking ID
-                  </Label>
-                  <Input
-                    id="iso-tracking"
-                    value={tracking}
-                    onChange={(e) => setTracking(e.target.value)}
-                    placeholder="AWB number"
-                    className="font-mono"
-                    autoComplete="off"
-                    spellCheck={false}
-                  />
+              <div className="space-y-2">
+                <IosGroup>
+                  <IosRow label="Courier">
+                    <IosPicker
+                      label="Delivery partner"
+                      placeholder="Select"
+                      allowNew
+                      clearable
+                      value={partner}
+                      onChange={setPartner}
+                      options={DELIVERY_PARTNER_NAMES.map((n) => ({ value: n, label: n }))}
+                    />
+                  </IosRow>
+                  <IosRow label="Tracking ID">
+                    <IosInput
+                      label="Tracking ID"
+                      placeholder="AWB number"
+                      autoComplete="off"
+                      value={tracking}
+                      onChange={setTracking}
+                    />
+                  </IosRow>
+                </IosGroup>
+                <div className="px-1">
+                  <TrackingLink partner={partner} trackingId={tracking} />
                 </div>
               </div>
-              <TrackingLink partner={partner} trackingId={tracking} />
 
-              <div className="space-y-1.5">
-                <Label htmlFor="iso-note" className="text-xs">
-                  Notes
-                </Label>
-                <Input
-                  id="iso-note"
-                  value={transitInfo}
-                  onChange={(e) => setTransitInfo(e.target.value)}
-                  placeholder={"e.g. Dispatched via Bluedart, awaiting tracking scan..."}
-                />
-              </div>
+              <IosGroup>
+                <IosRow label="Notes">
+                  <IosInput
+                    label="Notes"
+                    placeholder="e.g. Dispatched via Bluedart"
+                    value={transitInfo}
+                    onChange={setTransitInfo}
+                  />
+                </IosRow>
+              </IosGroup>
             </>
           )}
         </div>
