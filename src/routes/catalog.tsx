@@ -100,14 +100,14 @@ export const Route = createFileRoute("/catalog")({
 
 /**
  * The line under a casting's name in every catalogue view: who made it, its
- * number beside that, then the box. The series and sub series are left off —
+ * number beside that. The assortment, series and sub series are left off —
  * the catalogue is already sorted and filtered by them, and together they ran
  * the line past the width of a phone.
  */
 const catalogueLine = (
   car: Parameters<typeof carNumberOf>[0] & { brand?: string; assortment?: string },
 ) =>
-  [car.brand, carNumberOf(car), car.assortment]
+  [car.brand, carNumberOf(car)]
     .map((v) => String(v ?? "").trim())
     .filter(Boolean)
     .join(" · ") || "—";
@@ -729,7 +729,7 @@ function CatalogPage() {
                 synced={Boolean(c.synced_at)}
                 syncedSource={c.synced_source}
                 pack={c.is_multipack ? packLabel(c) : undefined}
-                overlay={<CarOverlay car={asCar(c)} brandOnly padRight />}
+                overlay={<CarOverlay car={asCar(c)} brandOnly noAssortment padRight />}
                 foot={false}
               />
               <AddPlus onClick={() => startAdd(c)} className="absolute bottom-3 right-3" />
@@ -1456,6 +1456,7 @@ function CatalogCard({
         <CarOverlay
           car={car}
           brandOnly
+          noAssortment
           small
           suffix={boxes ? `${boxes.assortments.length} boxes` : undefined}
           className="pb-12"

@@ -19,6 +19,7 @@ import type { Diecast } from "@/lib/types";
 export function CarOverlay({
   car,
   brandOnly = false,
+  noAssortment = false,
   padRight = false,
   suffix,
   detail,
@@ -28,6 +29,8 @@ export function CarOverlay({
   /** Replaces the series line, e.g. who a pre-order is coming from. */
   detail?: string;
   brandOnly?: boolean;
+  /** Leave the assortment (Box, Blister…) off the brand line. */
+  noAssortment?: boolean;
   /** Set at the end of the brand line, after a dot: a copy count, say. */
   suffix?: ReactNode;
   /** Smaller type, for the grid view. */
@@ -39,7 +42,9 @@ export function CarOverlay({
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   // brandOnly is the blister view: the packaging already says the series.
-  const brandLine = [car.brand, carNumberOf(car), car.assortment].filter(Boolean).join(" · ");
+  const brandLine = [car.brand, carNumberOf(car), noAssortment ? "" : car.assortment]
+    .filter(Boolean)
+    .join(" · ");
   // Make and model on the first line, whatever else the name says on the next.
   const lead = `${car.make} ${car.model}`.trim();
   const split =
