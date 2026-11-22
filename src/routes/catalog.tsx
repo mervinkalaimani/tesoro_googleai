@@ -845,6 +845,7 @@ function CatalogPage() {
             : `box${leads.length === 1 ? "" : "es"}`
         } · tap one to add it to your collection`}
       >
+        <ForYou modal />
         {isAdmin && (
           <>
             <Button
@@ -1067,8 +1068,6 @@ function CatalogPage() {
         active={filters.brand}
         onPick={(brand) => setFilters((f) => ({ ...f, brand }))}
       />
-
-      {segment === "all" && activeCount === 0 && !query.trim() && <ForYou />}
 
       {isLoading && catalog.length === 0 ? (
         <TileGridSkeleton className={BLISTER_GRID_COLS} />

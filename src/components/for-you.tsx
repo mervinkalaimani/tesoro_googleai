@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, Sparkles } from "lucide-react";
 
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
@@ -8,8 +8,10 @@ import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { useCars } from "@/lib/cars-store";
 import { catalogCarToCatalogueCar, catalogCarToDiecast, type CatalogCar } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-store";
+import { cn } from "@/lib/utils";
 import { forYou, reshuffle } from "@/lib/for-you";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 /**
  * One row of the same tiles the blister view lays out, so a set is as many castings as
@@ -33,7 +35,7 @@ function useColumns() {
  * Castings VIIV thinks you will want, each with the reason it is there. Hidden until
  * there is something to base it on. Opening one shows the casting and offers to add it.
  */
-export function ForYou() {
+export function ForYou({ modal = false }: { modal?: boolean }) {
   const cars = useCars();
   const { catalog } = useCatalog();
   const SET = useColumns();
@@ -46,13 +48,18 @@ export function ForYou() {
   const picks = ordered.slice(page * SET, page * SET + SET);
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<{ car: CatalogCar; status: string } | null>(null);
+  const [open, setOpen] = useState(false);
 
   if (!pool.length) return null;
-  return (
-    <section aria-label="For You" className="space-y-2">
-      <div className="flex items-center justify-between gap-2 px-1">
+  const body = (
+    <>
+      <div className={cn("flex items-center justify-between gap-2 px-1", modal && "pr-8")}>
         <div className="min-w-0">
-          <h2 className="text-display text-lg font-semibold">For You</h2>
+          {modal ? (
+            <DialogTitle className="text-display text-lg font-semibold">For You</DialogTitle>
+          ) : (
+            <h2 className="text-display text-lg font-semibold">For You</h2>
+          )}
           <p className="text-xs text-muted-foreground">
             Picked from the cars you own and what you like
           </p>
@@ -102,7 +109,10 @@ export function ForYou() {
           <BlisterTile
             key={car.car_id}
             car={catalogCarToDiecast(car)}
-            onOpen={() => setViewing(car)}
+            onOpen={() => {
+              setViewing(car);
+              setOpen(false);
+            }}
             showStatus={false}
             foot={false}
             overlay={
@@ -111,6 +121,36 @@ export function ForYou() {
           />
         ))}
       </div>
+    </>
+  );
+  return (
+    <>
+      {modal ? (
+        <>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={() => setOpen(true)}
+          >
+            <Sparkles className="size-4 text-accent" />
+            For You
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent className="max-h-[90vh] space-y-3 overflow-y-auto sm:max-w-3xl lg:max-w-5xl">
+              <DialogDescription className="sr-only">
+                Castings picked from the cars you own and what you like.
+              </DialogDescription>
+              {body}
+            </DialogContent>
+          </Dialog>
+        </>
+      ) : (
+        <section aria-label="For You" className="space-y-2">
+          {body}
+        </section>
+      )}
 
       <CatalogCarDetails
         car={viewing ? catalogCarToDiecast(viewing) : null}
@@ -133,6 +173,6 @@ export function ForYou() {
         prefillStatus={adding?.status ?? ""}
         draftScope="for-you"
       />
-    </section>
+    </>
   );
 }
