@@ -487,7 +487,7 @@ export function ShippingBatchDialog({
             <div className="grid gap-4 lg:grid-cols-2 lg:grid-rows-[auto_1fr]">
               {/* Batch selector — shipping ID or order ID, per idField. */}
               {!locked && (
-                <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
+                <div className="space-y-1.5 lg:col-start-2 lg:row-start-1">
                   <IosGroup>
                     <IosRow label={idLabel}>
                       {useCustom ? (
@@ -534,7 +534,7 @@ export function ShippingBatchDialog({
               )}
 
               {locked && activeShippingId && (
-                <div className="flex items-center gap-1.5 lg:col-start-1 lg:row-start-1">
+                <div className="flex items-center gap-1.5 lg:col-start-2 lg:row-start-1">
                   <Package className="size-4 shrink-0 text-muted-foreground" />
                   <span className="min-w-0 truncate text-base font-semibold text-foreground">
                     {matchedCars.length} car{matchedCars.length === 1 ? "" : "s"} in{" "}
@@ -547,7 +547,7 @@ export function ShippingBatchDialog({
                 A rail on the right from lg, the way the edit-car dialog keeps
                 the record beside the fields. */}
               {activeShippingId && (
-                <aside className="space-y-2 self-start rounded-xl border border-border bg-muted/40 p-3 lg:col-start-2 lg:row-span-2 lg:row-start-1">
+                <aside className="space-y-2 self-start rounded-xl border border-border bg-muted/40 p-3 lg:col-start-1 lg:row-span-2 lg:row-start-1">
                   {/* Adding to the order comes first, above the list. It is the
                     thing you came here to do that the list cannot do for you,
                     and at the bottom of a panel of fourteen cars it was below
@@ -760,7 +760,7 @@ export function ShippingBatchDialog({
               )}
 
               {/* Form Updates */}
-              <div className="min-w-0 space-y-4 lg:col-start-1 lg:row-start-2">
+              <div className="min-w-0 space-y-4 lg:col-start-2 lg:row-start-2">
                 <div className="space-y-2">
                   <IosGroup>
                     <IosRow label="Order date">
