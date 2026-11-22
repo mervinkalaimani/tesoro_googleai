@@ -57,7 +57,10 @@ export function CarOverlay({
       )}
     >
       {/* Sizes follow the width of the tile (cqw), so the words fit without being cut. */}
-      <div className="font-semibold leading-tight [font-size:clamp(13px,9cqw,19px)]" title={title}>
+      <div
+        className="font-semibold leading-tight [font-size:clamp(11px,6.5cqw,15px)]"
+        title={title}
+      >
         <span className="block">{first}</span>
         {rest && <span className="block">{rest}</span>}
         <ChangedDot car={car} className="ml-1.5 align-middle" />
