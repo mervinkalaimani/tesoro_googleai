@@ -73,6 +73,8 @@ export function ShippingBatchDialog({
   const { catalog } = useCatalog();
   const { updateCarsByShippingId, bulkUpdateCars } = useCarsActions();
   const idLabel = idField === "orderId" ? "Order ID" : "Shipping ID";
+  // Opened from an order's own card: it edits that order, with nothing to pick.
+  const locked = initialShippingId.trim() !== "";
 
   const [selectedShippingId, setSelectedShippingId] = useState(initialShippingId);
   const [customShippingId, setCustomShippingId] = useState("");
@@ -446,9 +448,19 @@ export function ShippingBatchDialog({
             Edit order
           </DialogTitle>
           <DialogDescription>
-            Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to change its dates,
-            tracking and notes across every car in it — or add cars to the order. To move it to a
-            new status, use Update status.
+            {locked ? (
+              <>
+                Change the dates, tracking and notes across every car in{" "}
+                <span className="font-mono text-foreground">{activeShippingId}</span>, or add cars
+                to it. To move it to a new status, use Update status.
+              </>
+            ) : (
+              <>
+                Pick {idField === "orderId" ? "an order ID" : "a shipping ID"} to change its dates,
+                tracking and notes across every car in it — or add cars to the order. To move it to
+                a new status, use Update status.
+              </>
+            )}
           </DialogDescription>
         </DialogHeader>
 
@@ -472,50 +484,52 @@ export function ShippingBatchDialog({
                 to a rail on the right and stay visible for both halves. */}
             <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_1fr]">
               {/* Batch selector — shipping ID or order ID, per idField. */}
-              <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
-                <IosGroup>
-                  <IosRow label={idLabel}>
-                    {useCustom ? (
-                      <IosInput
-                        label={idLabel}
-                        placeholder={
-                          idField === "orderId" ? "e.g. FIRY-2026-06-001" : "e.g. FIRY/02"
-                        }
-                        value={customShippingId}
-                        onChange={setCustomShippingId}
-                      />
-                    ) : (
-                      <IosPicker
-                        label={idLabel}
-                        placeholder="Select"
-                        value={selectedShippingId}
-                        onChange={setSelectedShippingId}
-                        options={shippingIdStats.map((item) => ({
-                          value: item.id,
-                          label: `${item.id} (${item.count} car${item.count === 1 ? "" : "s"}${item.sellers ? ` · ${item.sellers}` : ""})`,
-                        }))}
-                      />
-                    )}
-                  </IosRow>
-                  {/* Delivered cars were previously filtered out with no way back,
+              {!locked && (
+                <div className="space-y-1.5 lg:col-start-1 lg:row-start-1">
+                  <IosGroup>
+                    <IosRow label={idLabel}>
+                      {useCustom ? (
+                        <IosInput
+                          label={idLabel}
+                          placeholder={
+                            idField === "orderId" ? "e.g. FIRY-2026-06-001" : "e.g. FIRY/02"
+                          }
+                          value={customShippingId}
+                          onChange={setCustomShippingId}
+                        />
+                      ) : (
+                        <IosPicker
+                          label={idLabel}
+                          placeholder="Select"
+                          value={selectedShippingId}
+                          onChange={setSelectedShippingId}
+                          options={shippingIdStats.map((item) => ({
+                            value: item.id,
+                            label: `${item.id} (${item.count} car${item.count === 1 ? "" : "s"}${item.sellers ? ` · ${item.sellers}` : ""})`,
+                          }))}
+                        />
+                      )}
+                    </IosRow>
+                    {/* Delivered cars were previously filtered out with no way back,
                     so a batch that had already arrived could not be corrected. */}
-                  <IosRow label="Include delivered cars">
-                    <Switch
-                      checked={!hideDelivered}
-                      onCheckedChange={(v) => setHideDelivered(!v)}
-                    />
-                  </IosRow>
-                </IosGroup>
-                {!allowedShippingIds && (
-                  <button
-                    type="button"
-                    onClick={() => setUseCustom(!useCustom)}
-                    className="px-1 text-xs text-primary hover:underline"
-                  >
-                    {useCustom ? "Choose from list" : "+ Enter custom ID"}
-                  </button>
-                )}
-              </div>
+                    <IosRow label="Include delivered cars">
+                      <Switch
+                        checked={!hideDelivered}
+                        onCheckedChange={(v) => setHideDelivered(!v)}
+                      />
+                    </IosRow>
+                  </IosGroup>
+                  {!allowedShippingIds && (
+                    <button
+                      type="button"
+                      onClick={() => setUseCustom(!useCustom)}
+                      className="px-1 text-xs text-primary hover:underline"
+                    >
+                      {useCustom ? "Choose from list" : "+ Enter custom ID"}
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* THE ORDER ITSELF — what is in it, and how to put more in.
                 A rail on the right from lg, the way the edit-car dialog keeps
