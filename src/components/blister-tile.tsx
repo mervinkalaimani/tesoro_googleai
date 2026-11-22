@@ -150,7 +150,7 @@ export function BlisterTile({
       onClick={onOpen}
       title={title}
       className={cn(
-        "card-elevated group @container flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40",
+        "card-elevated group @container flex h-full w-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40",
         className,
       )}
     >
