@@ -7,6 +7,7 @@ import {
   BadgeCheck,
   Check,
   Filter,
+  X,
   Layers,
   Loader2,
   Merge,
@@ -763,6 +764,84 @@ function CatalogPage() {
       </div>
     );
 
+  // Chips collapse into the Filters button when they would no longer fit beside the segments;
+  // the button then slides to the end and turns into the X while the chips slide down over the row.
+  const regionRef = useRef<HTMLDivElement>(null);
+  const segmentRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const filterBtnRef = useRef<HTMLButtonElement>(null);
+  const [chipsCollapsed, setChipsCollapsed] = useState(false);
+  const [chipsOpen, setChipsOpen] = useState(false);
+  const [shift, setShift] = useState(0);
+  const slideAway = chipsCollapsed && chipsOpen;
+  const away = cn(
+    "transition-[translate,opacity] duration-300 ease-out",
+    slideAway && "pointer-events-none translate-y-full opacity-0",
+  );
+  useEffect(() => {
+    const region = regionRef.current;
+    const seg = segmentRef.current;
+    const meas = measureRef.current;
+    if (!region || !seg || !meas) return;
+    const check = () => {
+      if (!meas.offsetWidth) return;
+      setChipsCollapsed(region.clientWidth < seg.offsetWidth + 8 + 1 + 8 + meas.offsetWidth);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(region);
+    ro.observe(meas);
+    return () => ro.disconnect();
+  }, []);
+
+  const chips = (
+    <>
+      {FILTERS.map((d) => (
+        <FilterChipDropdown
+          key={d.key}
+          label={d.label}
+          value={filters[d.key]}
+          options={options[d.key].map((o) => ({ name: o.value, value: o.count }))}
+          onChange={(next) => setFilters((f) => ({ ...f, [d.key]: next }))}
+        />
+      ))}
+      {/* The two toggles read as chips beside the rest, because they
+                  narrow the list exactly like the others do — but they answer a
+                  different question. The five above ask what the casting *is*;
+                  these two ask what you already have. Hence the rule. */}
+      <div className="h-4 w-px shrink-0 bg-border/60" />
+      <ToggleChip label="Hide owned" active={hideOwned} onToggle={() => setHideOwned((v) => !v)} />
+      {/* Lit, a multipack is one line and the cars in it are not listed
+                  again on their own — the box is the thing you bought. */}
+      <ToggleChip
+        label="Combine multi pack"
+        active={hideInPacks}
+        onToggle={() => setHideInPacks((v) => !v)}
+      />
+      {/* One card per casting, or one per box. On, the Mainline and the
+                  Moving Parts of a Bronco ride together and the card says
+                  "2 boxes"; off, they are two cards with a price each. */}
+      <ToggleChip
+        label="Assortments"
+        active={!groupBoxes}
+        onToggle={() => setGroupBoxes((v) => !v)}
+      />
+      {activeCount > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setFilters(NO_FILTERS);
+            setHideInPacks(true);
+          }}
+          className="ml-1 cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+        >
+          Clear all
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
       <PageHeading
@@ -807,162 +886,184 @@ function CatalogPage() {
       <PageToolbar
         sticky={true}
         oneLine
+        overlay={
+          chipsCollapsed ? (
+            <div
+              aria-hidden={!chipsOpen}
+              className={cn(
+                "absolute inset-0 z-10 flex items-center gap-1.5 transition-[translate,visibility] duration-300 ease-out",
+                chipsOpen ? "visible translate-y-0" : "invisible -translate-y-full",
+              )}
+            >
+              <div className="no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto pr-10">
+                {chips}
+              </div>
+            </div>
+          ) : undefined
+        }
         left={
           // One row on the desktop, the way My Cars reads: what you are looking
           // at on the left, how it is narrowed beside it. The chips are hidden
           // on a phone, where they would be a wall — the funnel opens the same
           // filters there instead.
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
-            <CyclePill
-              separate="all"
-              value={segment}
-              onChange={setSegment}
-              className="h-8 w-auto max-sm:text-xs max-sm:[&>button]:px-2"
-              options={[
-                { value: "all", label: "All" },
-                { value: "released", label: "Released" },
-                { value: "preorder", label: "PO" },
-                { value: "iso", label: "My wishlist" },
-              ]}
-            />
+          <div
+            ref={regionRef}
+            className={cn(
+              "relative flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5",
+              away,
+            )}
+          >
+            <div ref={segmentRef} className="flex min-w-0 items-center">
+              <CyclePill
+                separate="all"
+                value={segment}
+                onChange={setSegment}
+                className="h-8 w-auto max-sm:text-xs max-sm:[&>button]:px-2"
+                options={[
+                  { value: "all", label: "All" },
+                  { value: "released", label: "Released" },
+                  { value: "preorder", label: "PO" },
+                  { value: "iso", label: "My wishlist" },
+                ]}
+              />
+            </div>
 
             <div className="hidden h-4 w-px shrink-0 bg-border/60 md:block" />
 
-            <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
-              {FILTERS.map((d) => (
-                <FilterChipDropdown
-                  key={d.key}
-                  label={d.label}
-                  value={filters[d.key]}
-                  options={options[d.key].map((o) => ({ name: o.value, value: o.count }))}
-                  onChange={(next) => setFilters((f) => ({ ...f, [d.key]: next }))}
-                />
-              ))}
-              {/* The two toggles read as chips beside the rest, because they
-                  narrow the list exactly like the others do — but they answer a
-                  different question. The five above ask what the casting *is*;
-                  these two ask what you already have. Hence the rule. */}
-              <div className="h-4 w-px shrink-0 bg-border/60" />
-              <ToggleChip
-                label="Hide owned"
-                active={hideOwned}
-                onToggle={() => setHideOwned((v) => !v)}
-              />
-              {/* Lit, a multipack is one line and the cars in it are not listed
-                  again on their own — the box is the thing you bought. */}
-              <ToggleChip
-                label="Combine multi pack"
-                active={hideInPacks}
-                onToggle={() => setHideInPacks((v) => !v)}
-              />
-              {/* One card per casting, or one per box. On, the Mainline and the
-                  Moving Parts of a Bronco ride together and the card says
-                  "2 boxes"; off, they are two cards with a price each. */}
-              <ToggleChip
-                label="Assortments"
-                active={!groupBoxes}
-                onToggle={() => setGroupBoxes((v) => !v)}
-              />
-              {activeCount > 0 && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFilters(NO_FILTERS);
-                    setHideInPacks(true);
-                  }}
-                  className="ml-1 cursor-pointer text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                >
-                  Clear all
-                </button>
-              )}
+            {/* The same chips, drawn once unseen on one line to learn their width. When they
+                no longer fit beside the segments they give way to the Filters button. */}
+            <div
+              ref={measureRef}
+              aria-hidden
+              className="pointer-events-none invisible absolute left-0 top-0 hidden w-max flex-nowrap items-center gap-1.5 md:flex"
+            >
+              {chips}
             </div>
+            {chipsCollapsed ? null : (
+              <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
+                {chips}
+              </div>
+            )}
           </div>
         }
         right={
-          <>
-            {/* Hide owned used to be a checkbox out here. It is a chip beside
+          <div ref={actionsRef} className="flex items-center gap-2">
+            <div className={cn("flex items-center gap-2", away)}>
+              {/* Hide owned used to be a checkbox out here. It is a chip beside
                 the other filters now — it narrows the list the same way they
                 do, so it reads the same way they do. */}
 
-            {/* Sort and group read as icons at every width, the way they do on
+              {/* Sort and group read as icons at every width, the way they do on
                 the other pages. */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="size-8 shrink-0"
-                  aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${
-                    sort.dir === "asc" ? "ascending" : "descending"
-                  }`}
-                  title="Sort"
-                >
-                  <ArrowUpDown className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
-                {SORTS.map((s) => (
-                  <DropdownMenuItem
-                    key={s.value}
-                    onSelect={() => sortBy(s.value)}
-                    className="justify-between text-xs"
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="size-8 shrink-0"
+                    aria-label={`Sort by ${SORTS.find((s) => s.value === sort.key)?.label}, ${
+                      sort.dir === "asc" ? "ascending" : "descending"
+                    }`}
+                    title="Sort"
                   >
-                    {s.label}
-                    {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <ArrowUpDown className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuLabel className="text-xs">Sort by</DropdownMenuLabel>
+                  {SORTS.map((s) => (
+                    <DropdownMenuItem
+                      key={s.value}
+                      onSelect={() => sortBy(s.value)}
+                      className="justify-between text-xs"
+                    >
+                      {s.label}
+                      {sort.key === s.value && <span>{sort.dir === "asc" ? "↑" : "↓"}</span>}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="icon"
-                  variant={group === "none" ? "outline" : "default"}
-                  className="size-8 shrink-0"
-                  aria-label={GROUPS.find((g) => g.value === group)?.label}
-                  title="Group"
-                >
-                  <Layers className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44">
-                <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
-                {GROUPS.map((g) => (
-                  <DropdownMenuItem
-                    key={g.value}
-                    onSelect={() => setGroup(g.value)}
-                    className="justify-between text-xs"
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant={group === "none" ? "outline" : "default"}
+                    className="size-8 shrink-0"
+                    aria-label={GROUPS.find((g) => g.value === group)?.label}
+                    title="Group"
                   >
-                    {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
-                    {group === g.value && <Check className="size-3.5" />}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+                    <Layers className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuLabel className="text-xs">Group by</DropdownMenuLabel>
+                  {GROUPS.map((g) => (
+                    <DropdownMenuItem
+                      key={g.value}
+                      onSelect={() => setGroup(g.value)}
+                      className="justify-between text-xs"
+                    >
+                      {g.label.replace(/^Group by /, "").replace(/^No grouping$/, "None")}
+                      {group === g.value && <Check className="size-3.5" />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             {/* Phone only. On the desktop every filter is a chip in the row
                 above, so a funnel that opened the same list again was a second
                 door to one room. */}
             <Button
+              ref={filterBtnRef}
               type="button"
               size="icon"
-              variant={activeCount > 0 ? "default" : "outline"}
-              onClick={openFilterModal}
-              className="relative size-8 shrink-0 md:hidden"
-              title="Filter castings"
-              aria-label={activeCount > 0 ? `Filters, ${activeCount} active` : "Filters"}
+              variant={activeCount > 0 && !slideAway ? "default" : "outline"}
+              onClick={() => {
+                if (chipsCollapsed && window.matchMedia("(min-width: 768px)").matches) {
+                  const g = actionsRef.current?.getBoundingClientRect();
+                  const bt = filterBtnRef.current?.getBoundingClientRect();
+                  if (g && bt) setShift(g.right - bt.right);
+                  setChipsOpen((v) => !v);
+                } else openFilterModal();
+              }}
+              className={cn(
+                "relative z-20 size-8 shrink-0 transition-transform duration-300 ease-out",
+                !chipsCollapsed && "md:hidden",
+              )}
+              style={{ transform: slideAway ? `translateX(${shift}px)` : undefined }}
+              title={slideAway ? "Close filters" : "Filter castings"}
+              aria-label={
+                slideAway
+                  ? "Close filters"
+                  : activeCount > 0
+                    ? `Filters, ${activeCount} active`
+                    : "Filters"
+              }
             >
-              <Filter className="size-4" />
-              {activeCount > 0 && (
+              <Filter
+                className={cn(
+                  "absolute size-4 transition-all duration-300",
+                  slideAway ? "rotate-90 scale-50 opacity-0" : "rotate-0 scale-100 opacity-100",
+                )}
+              />
+              <X
+                className={cn(
+                  "absolute size-4 transition-all duration-300",
+                  slideAway ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-50 opacity-0",
+                )}
+              />
+              {activeCount > 0 && !slideAway && (
                 <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-background text-xs font-bold text-foreground ring-1 ring-border">
                   {activeCount}
                 </span>
               )}
             </Button>
-            <ViewToggle value={view} onChange={setView} />
-          </>
+            <div className={cn("shrink-0", away)}>
+              <ViewToggle value={view} onChange={setView} />
+            </div>
+          </div>
         }
       />
 

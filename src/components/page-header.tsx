@@ -70,7 +70,13 @@ export function PageToolbar({
   className = "",
   sticky = false,
   oneLine = false,
+  overlay,
 }: {
+  /**
+   * Drawn over the whole band, clipped to it. A caller slides something in here to
+   * stand in for the controls instead of opening a card over them.
+   */
+  overlay?: ReactNode;
   left?: ReactNode;
   right?: ReactNode;
   /**
@@ -97,7 +103,12 @@ export function PageToolbar({
   oneLine?: boolean;
 }) {
   const inner = (
-    <div className={`flex flex-wrap items-center justify-between gap-2 ${className}`}>
+    <div
+      className={`flex flex-wrap items-center justify-between gap-2 ${
+        overlay ? "relative overflow-hidden" : ""
+      } ${className}`}
+    >
+      {overlay}
       {/* Full width on a phone, so a long segment control gets a line of its
           own to scroll along and the buttons drop beneath it rather than
           squeezing it into a corner. They share a line from md up — or at every
