@@ -31,6 +31,7 @@ import { deriveMonth, toDateInputValue } from "@/lib/date-utils";
 import { DELIVERY_PARTNER_NAMES } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
 import { cn } from "@/lib/utils";
+import { carNumberOf } from "@/lib/car-subline";
 import { isInHand, isIso } from "@/lib/status";
 import type { Diecast } from "@/lib/types";
 import { carSubLine, carSubLineParts } from "@/lib/car-subline";
@@ -713,8 +714,8 @@ export function ShippingBatchDialog({
                             {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
                           </div>
                           <div className="mt-0.5 flex items-center justify-between gap-2">
-                            <span className="min-w-0 truncate text-xs text-muted-foreground">
-                              {[car.brand || car.make, car.expectedDate || car.date || "No ETA"]
+                            <span className="min-w-0 break-words text-xs text-muted-foreground">
+                              {[car.brand || car.make, carNumberOf(car), car.assortment]
                                 .filter(Boolean)
                                 .join(" · ")}
                             </span>
