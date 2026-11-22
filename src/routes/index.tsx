@@ -393,7 +393,7 @@ function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto min-w-0 max-w-[1600px] space-y-5 overflow-x-hidden p-3 md:space-y-8 md:p-6">
+    <div className="mx-auto min-w-0 max-w-[1600px] space-y-9 overflow-x-hidden p-3 md:space-y-14 md:p-6">
       <PageHeading title={greeting} />
 
       {/* A release landing this week now lives behind the bell in the top bar,
