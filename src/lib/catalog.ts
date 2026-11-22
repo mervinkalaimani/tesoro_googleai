@@ -1074,7 +1074,7 @@ export async function getCastingOwners(
 export function siblingLabels(siblings: CatalogCar[]): { value: string; label: string }[] {
   const namings: ((c: CatalogCar) => string)[] = [
     (c) => c.assortment || "—",
-    (c) => [c.assortment || "—", c.car_number && `#${c.car_number}`].filter(Boolean).join(" "),
+    (c) => [c.assortment || "—", c.car_number].filter(Boolean).join(" "),
     (c) => [c.assortment || "—", c.car_id.split("-")[2] || c.car_id].filter(Boolean).join(" · "),
   ];
   const distinct = (name: (c: CatalogCar) => string) =>

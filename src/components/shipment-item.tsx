@@ -75,7 +75,7 @@ export function ShipmentItem({
   const heading = title || car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   // Brand, then the series it belongs to, then the number that tells it from
   // its near-twins — widest to narrowest, so the line reads down to the car.
-  const bits = (identity ?? [car.brand, car.series, car.carNumber || car.id]).filter(
+  const bits = (identity ?? [car.brand, car.carNumber || car.id, car.series]).filter(
     Boolean,
   ) as string[];
 

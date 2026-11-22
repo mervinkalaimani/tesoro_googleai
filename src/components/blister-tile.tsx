@@ -39,11 +39,7 @@ export function CarOverlay({
 }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   // brandOnly is the blister view: the packaging already says the series.
-  // These makers sell by casting number, so it follows the brand.
-  const numbered = /^(mini ?gt|kaido ?house|qube ?carz)$/i.test((car.brand || "").trim());
-  const brandLine = [car.brand, numbered ? carNumberOf(car) : "", car.assortment]
-    .filter(Boolean)
-    .join(" · ");
+  const brandLine = [car.brand, carNumberOf(car), car.assortment].filter(Boolean).join(" · ");
   // Make and model on the first line, whatever else the name says on the next.
   const lead = `${car.make} ${car.model}`.trim();
   const split =
@@ -251,7 +247,7 @@ export function BlisterTile({
               {/* One line, in the order the card itself prints them. Middle dots,
             and nothing left standing where a part is missing. */}
               <div className="mt-0.5 truncate text-xs text-muted-foreground">
-                {[car.brand, car.assortment, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
+                {[car.brand, carNumberOf(car), car.assortment].filter(Boolean).join(" · ") || "—"}
               </div>
             </div>
           ))}

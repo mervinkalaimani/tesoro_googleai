@@ -166,9 +166,7 @@ export function AddAnotherCarDialog({
               {car.name || `${car.make} ${car.model}`}
             </p>
             <p className="truncate text-xs text-muted-foreground">
-              {[car.brand, car.series, car.carNumber ? `#${car.carNumber}` : null]
-                .filter(Boolean)
-                .join(" · ")}
+              {[car.brand, car.carNumber, car.series].filter(Boolean).join(" · ")}
             </p>
           </div>
         </div>

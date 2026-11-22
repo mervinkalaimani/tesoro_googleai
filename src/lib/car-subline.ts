@@ -15,21 +15,25 @@ type SubLineFields = Partial<
  */
 export function carSubLineParts(r: SubLineFields, skipBrand = false, skipNumber = false): string[] {
   return [
-    ...(skipBrand ? [] : [r.brand, r.assortment]),
+    // The number follows the brand, everywhere. Dropped where it has a column of
+    // its own, so a row does not say the same thing twice.
+    ...(skipBrand ? [] : [r.brand]),
+    ...(skipNumber ? [] : [r.carNumber || r.caseNumber]),
+    ...(skipBrand ? [] : [r.assortment]),
     r.series,
     r.subSeries,
-    // Dropped where the number is printed in a column of its own -- the cars
-    // table puts it beside the assortment now, and a row should not say the
-    // same thing twice.
-    ...(skipNumber ? [] : [r.carNumber || r.caseNumber]),
   ]
-    .map((v) => String(v ?? "").trim())
+    .map((v) =>
+      String(v ?? "")
+        .replace(/^#/, "")
+        .trim(),
+    )
     .filter(Boolean);
 }
 
 /**
  * The line under a car's name, everywhere a car is listed:
- * brand · assortment · series · sub series · car or case number.
+ * brand · car or case number · assortment · series · sub series.
  *
  * `skipBrand` drops the first two, for a list that has a column of its own for
  * them — repeating "Hot Wheels · Mainline" under the name and again two columns

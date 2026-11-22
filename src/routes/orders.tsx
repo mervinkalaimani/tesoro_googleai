@@ -314,23 +314,30 @@ function ContentsItem({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   const kind = [
     car.brand,
+    (car.carNumber || "").replace(/^#/, ""),
     car.assortment,
     car.series,
     car.subSeries,
-    car.carNumber ? `#${car.carNumber.replace(/^#/, "")}` : "",
   ]
     .map((v) => (v || "").trim())
     .filter(Boolean)
     .join(" · ");
   return (
-    <div className="rounded-md border border-border bg-muted/20 px-3 py-2">
-      <button
-        type="button"
-        onClick={onOpen}
-        className="block max-w-full truncate text-left text-sm font-semibold hover:text-primary"
-      >
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      className="group cursor-pointer rounded-md border border-border bg-muted/20 px-3 py-2 transition-colors hover:border-primary/50 hover:bg-muted/40"
+    >
+      <span className="block max-w-full truncate text-left text-sm font-semibold group-hover:text-primary">
         {title}
-      </button>
+      </span>
       <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span className="min-w-0 truncate">{kind || "—"}</span>
         <span className="shrink-0 tabular-nums">

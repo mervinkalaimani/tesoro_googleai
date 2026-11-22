@@ -1998,7 +1998,7 @@ export function CarFormDialog({
             {previewName || "New casting"}
           </p>
           <p className="truncate text-xs text-muted-foreground">
-            {[form.brand, form.assortment, form.carNumber]
+            {[form.brand, form.carNumber, form.assortment]
               .map((x) => x?.trim())
               .filter(Boolean)
               .join(" · ") || "—"}
@@ -3118,13 +3118,7 @@ function CollectionSearch({
           )}
         </span>
         <span className="w-full truncate text-xs text-muted-foreground">
-          {[
-            car.brand,
-            car.assortment,
-            car.colour,
-            car.series,
-            car.carNumber ? `#${car.carNumber}` : null,
-          ]
+          {[car.brand, car.carNumber, car.assortment, car.colour, car.series]
             .filter(Boolean)
             .join(" · ")}
         </span>
