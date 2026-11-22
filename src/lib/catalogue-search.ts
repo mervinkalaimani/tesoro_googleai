@@ -111,7 +111,11 @@ export const PREORDER_WINDOW_DAYS = 7;
  * The pre-orders anyone has placed in the last week, through the
  * recent_preorders database function. Nothing for guests.
  */
-export function useRecentPreorders(enabled: boolean) {
+export function useRecentPreorders(
+  enabled: boolean,
+  days: number = PREORDER_WINDOW_DAYS,
+  lim = 24,
+) {
   const [state, setState] = useState<{ cars: RecentPreorder[]; loading: boolean }>({
     cars: [],
     loading: enabled,
@@ -126,8 +130,8 @@ export function useRecentPreorders(enabled: boolean) {
     void (async () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).rpc("recent_preorders", {
-        days: PREORDER_WINDOW_DAYS,
-        lim: 24,
+        days,
+        lim,
       });
       if (cancelled) return;
       const rows = (error ? [] : (data ?? [])) as (CatalogueRow & {
@@ -146,7 +150,7 @@ export function useRecentPreorders(enabled: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, days, lim]);
 
   return state;
 }

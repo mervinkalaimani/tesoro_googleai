@@ -12,7 +12,28 @@ import type { Diecast } from "@/lib/types";
  * of those it shares, and the most specific ones are kept as the reason printed on the
  * card, so a suggestion always says why it is there.
  */
-export type Suggestion = { car: CatalogCar; reason: string; score: number };
+export type Suggestion = {
+  car: CatalogCar;
+  reason: string;
+  score: number;
+  /** How many other collectors recently bought this casting, when anyone did. */
+  others?: number;
+  /** Liked for its own sake rather than for what it shares with you. */
+  popularOnly?: boolean;
+};
+
+/** One casting as the shared recent-purchases list names it: same brand, make, model, variant, colour and series. */
+export const castingKey = (c: {
+  brand?: string;
+  make?: string;
+  model?: string;
+  variant?: string;
+  colour?: string;
+  series?: string;
+}) =>
+  [c.brand, c.make, c.model, c.variant, c.colour, c.series]
+    .map((v) => (v || "").trim().toLowerCase())
+    .join("|");
 
 const norm = (v: string | null | undefined) => (v || "").trim().toLowerCase();
 
@@ -131,8 +152,25 @@ export function purchaseStats(cars: Diecast[], now = Date.now()) {
   return { days, count, perWeek: count / (days / 7), perMonth: count / (days / 30.44) };
 }
 
+/** "bought Ford recently" + "bought 3 Hot Wheels recently" reads as one: "bought Ford and 3 Hot Wheels recently". */
+function joinReasons(parts: string[]): string {
+  if (parts.length === 2) {
+    const m = /^bought (.+) recently$/;
+    const x = parts[0].match(m);
+    const y = parts[1].match(m);
+    if (x && y) return `bought ${x[1]} and ${y[1]} recently`;
+  }
+  return parts.join(" and ");
+}
+
 /** The ranked pool, best first. The caller pages through it and may reshuffle it (see `reshuffle`). */
-export function forYou(cars: Diecast[], catalog: CatalogCar[], limit = 48): Suggestion[] {
+export function forYou(
+  cars: Diecast[],
+  catalog: CatalogCar[],
+  limit = 48,
+  /** Other collectors' recent purchases, by `castingKey`: how many bought each. */
+  popular: Map<string, number> = new Map(),
+): Suggestion[] {
   const now = Date.now();
   const { days } = purchaseStats(cars, now);
   const recentIds = new Set(boughtWithin(cars, days, now).map((c) => c.id));
@@ -168,9 +206,12 @@ export function forYou(cars: Diecast[], catalog: CatalogCar[], limit = 48): Sugg
       const s = book[a].get(norm(ATTRS[a].cat(c)));
       if (s) hits.push({ a, value: ATTRS[a].coef * Math.log1p(s.weight), s });
     }
-    if (!hits.length) continue;
+    const others = popular.get(castingKey(c)) ?? 0;
+    if (!hits.length && !others) continue;
     hits.sort((x, y) => y.value - x.value);
     let score = hits.reduce((t, h) => t + h.value, 0);
+    // Many collectors buying the same casting is a reason of its own.
+    if (others) score += 6 * Math.log1p(others);
     // A card with a photograph sells itself; one without is a last resort.
     if (!c.image_url) score *= 0.5;
     // A casting filed lately is worth a look even when it is a modest match.
@@ -178,16 +219,22 @@ export function forYou(cars: Diecast[], catalog: CatalogCar[], limit = 48): Sugg
     if (!Number.isNaN(added) && now - added <= 45 * 86_400_000) score += 0.8;
     // The reason names the most specific things that carried the match, not just the
     // biggest: "you have a Skyline" says more than "you collect Hot Wheels".
-    const strong = hits.filter((h) => h.value >= hits[0].value * 0.4);
+    const strong = hits.filter((h) => h.value >= (hits[0]?.value ?? 0) * 0.4);
     const top = strong
       // "Hot Wheels Premium" already says the brand: drop the bare brand beside it.
       .filter((h) => !(h.a === "brand" && strong.some((x) => x.a === "assortment")))
       .sort((x, y) => SPECIFIC.indexOf(x.a) - SPECIFIC.indexOf(y.a))
       .slice(0, 2);
+    const taste = joinReasons(top.map((h) => ATTRS[h.a].say(h.s.label, h.s.owned, h.s.recent)));
+    const crowd = others
+      ? `${others} ${others === 1 ? "other has" : "others have"} recently purchased`
+      : "";
     scored.push({
       car: c,
       score,
-      reason: `Because you ${top.map((h) => ATTRS[h.a].say(h.s.label, h.s.owned, h.s.recent)).join(" and ")}`,
+      others: others || undefined,
+      popularOnly: !hits.length,
+      reason: taste ? `Because you ${taste}${crowd ? `, and ${crowd}` : ""}` : `Because ${crowd}`,
     });
   }
   scored.sort((a, b) => b.score - a.score);
@@ -205,7 +252,14 @@ export function forYou(cars: Diecast[], catalog: CatalogCar[], limit = 48): Sugg
     out.push(s);
     if (out.length >= limit) break;
   }
-  return out;
+  // Popular castings that match nothing of yours would never outscore a taste match, yet
+  // they are part of the point: bring the most bought of them in, a few places apart.
+  const crowd = scored
+    .filter((s) => s.popularOnly && !out.includes(s))
+    .sort((a, b) => (b.others ?? 0) - (a.others ?? 0))
+    .slice(0, 6);
+  crowd.forEach((s, i) => out.splice(Math.min(2 + i * 5, out.length), 0, s));
+  return out.slice(0, limit);
 }
 
 /**

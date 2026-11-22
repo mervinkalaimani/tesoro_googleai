@@ -5,10 +5,12 @@ import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
+import { useAuth } from "@/lib/auth-store";
 import { useCars } from "@/lib/cars-store";
+import { useRecentPreorders } from "@/lib/catalogue-search";
 import { catalogCarToCatalogueCar, catalogCarToDiecast, type CatalogCar } from "@/lib/catalog";
 import { useCatalog } from "@/lib/catalog-store";
-import { forYou, purchaseStats, reshuffle } from "@/lib/for-you";
+import { castingKey, forYou, MAX_WINDOW_DAYS, purchaseStats, reshuffle } from "@/lib/for-you";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -47,7 +49,15 @@ export function ForYou({
   const cars = useCars();
   const { catalog } = useCatalog();
   const SET = useColumns();
-  const pool = useMemo(() => forYou(cars, catalog), [cars, catalog]);
+  const { isGuest } = useAuth();
+  // What other collectors bought in the last two months, and how many of them each.
+  const { cars: shared } = useRecentPreorders(!isGuest, MAX_WINDOW_DAYS, 50);
+  const popular = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const s of shared) if (!s.inMyCollection) m.set(castingKey(s), Math.max(1, s.copies ?? 1));
+    return m;
+  }, [shared]);
+  const pool = useMemo(() => forYou(cars, catalog, 48, popular), [cars, catalog, popular]);
   // The period behind the picks is chosen for you (never more than two months), and shown.
   const stats = useMemo(() => purchaseStats(cars), [cars]);
   // A set at a time: Next and Back step through the ranking, Refresh reshuffles it.
