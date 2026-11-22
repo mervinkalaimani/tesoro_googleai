@@ -872,6 +872,12 @@ body::before {
 html:not(.dark) body::before {
   opacity: 0.7;
 }
+/* On a wide screen the blob is shorter: 62vh of a desktop window is most of the page. */
+@media (min-width: 768px) {
+  body::before {
+    height: 38vh;
+  }
+}
 /* Dark mode: the same blob, deeper and quieter. The colour is mixed toward black
    before it is thinned, so it reads as a tint in the dark rather than a lamp. */
 html.dark body::before {
