@@ -562,7 +562,7 @@ function TransitTracker({
 
   return (
     <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 p-4">
         <div className="min-w-0">
           <h2 className="text-display truncate text-lg font-semibold">Transit tracker</h2>
           <p className="text-xs text-muted-foreground">
@@ -769,7 +769,7 @@ function RecentlyAdded({ recent, now }: { recent: { r: Diecast; dt: Date }[]; no
 
   return (
     <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border p-4">
+      <div className="flex items-center justify-between p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Recently added</h2>
           <p className="text-xs text-muted-foreground">
@@ -848,7 +848,7 @@ function ArrivingSoon({
 
   return (
     <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border p-4">
+      <div className="flex items-center justify-between p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Arriving soon</h2>
           <p className="text-xs text-muted-foreground">
@@ -1025,7 +1025,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
 
   return (
     <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border p-4">
+      <div className="flex items-center justify-between p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">New pre-orders</h2>
           <p className="text-xs text-muted-foreground">
@@ -1493,7 +1493,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
 
   return (
     <div className="flex min-w-0 flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border p-4">
+      <div className="flex items-center justify-between p-4">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Recently Released</h2>
           <p className="text-xs text-muted-foreground">
