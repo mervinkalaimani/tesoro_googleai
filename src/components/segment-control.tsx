@@ -50,7 +50,7 @@ function SegmentRow<T extends string>({
       ref={containerRef}
       className={cn(
         // Flow strictly left and right: flex-nowrap, whitespace-nowrap, overflow-y-hidden, touch-pan-x
-        "flex flex-nowrap min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto overflow-y-hidden whitespace-nowrap touch-pan-x overscroll-x-contain glass-btn scroll-px-[3px] rounded-full p-[3px] text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "flex flex-nowrap min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto overflow-y-hidden whitespace-nowrap touch-pan-x overscroll-x-contain glass-btn !shadow-none scroll-px-[3px] rounded-full p-[3px] text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         fill ? "w-full" : "inline-flex w-auto",
         disabled && "pointer-events-none opacity-50",
         className,
@@ -69,7 +69,7 @@ function SegmentRow<T extends string>({
               "h-6 shrink-0 inline-flex items-center justify-center whitespace-nowrap snap-start select-none rounded-full px-3 text-center font-medium leading-none transition-colors",
               fill ? "flex-1 basis-0" : "",
               active
-                ? "bg-foreground/10 text-foreground shadow-xs ring-1 ring-foreground/15 font-semibold"
+                ? "bg-foreground/10 text-foreground ring-1 ring-inset ring-foreground/15 font-semibold"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
