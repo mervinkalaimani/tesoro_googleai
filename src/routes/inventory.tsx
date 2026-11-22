@@ -892,7 +892,10 @@ function InventoryPage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground hidden lg:inline-flex"
+                  className={cn(
+                    "h-8 px-2 text-xs text-muted-foreground hover:text-foreground hidden lg:inline-flex",
+                    away,
+                  )}
                   onClick={() => {
                     setSort("added");
                     setSortDir("desc");
@@ -910,7 +913,7 @@ function InventoryPage() {
         </div>
 
         {/* Row 2 on Mobile: Active filter chips and clear button if any filters applied */}
-        {activeCount > 0 && (
+        {activeCount > 0 && !slideAway && (
           <div
             className={cn(
               "flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5",
