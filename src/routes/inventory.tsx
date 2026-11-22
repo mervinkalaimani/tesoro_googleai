@@ -299,9 +299,6 @@ function InventoryPage() {
   const [chipsCollapsed, setChipsCollapsed] = useState(false);
   // On a wide screen the Filters button lays the chips out over the status control.
   const [chipsOpen, setChipsOpen] = useState(false);
-  const viewRef = useRef<HTMLDivElement>(null);
-  // How far the open panel reaches: from the status control to the end of the view toggle.
-  const [panelW, setPanelW] = useState<number | undefined>();
   usePinnedFlag(isScrolled);
 
   // Collapse the chips into the Filters button the moment they would no longer sit on
@@ -735,37 +732,66 @@ function InventoryPage() {
         {/* Main controls row: Status segment control, filter chips, actions and
             views. items-start so the actions stay level with the segment
             control on a narrower screen, where the chips wrap beneath it. */}
-        <div className="flex items-center justify-between gap-2 min-w-0 md:items-start">
-          {/* The status segments and the filter chips read as one control —
+        {/* The frame the toolbar slides in. Opening the filters slides the chips down over
+            it while the buttons slide out below: the same row, swapped, not a card. */}
+        <div className="relative overflow-hidden">
+          {chipsCollapsed && (
+            <div
+              aria-hidden={!chipsOpen}
+              className={cn(
+                "absolute inset-0 z-10 flex items-center gap-1.5 transition-[transform,visibility] duration-300 ease-out",
+                chipsOpen ? "visible translate-y-0" : "invisible -translate-y-full",
+              )}
+            >
+              <div className="no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto">
+                {chips}
+              </div>
+              <button
+                type="button"
+                aria-label="Close filters"
+                onClick={() => setChipsOpen(false)}
+                className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          )}
+          <div
+            className={cn(
+              "flex items-center justify-between gap-2 min-w-0 transition-[transform,opacity] duration-300 ease-out md:items-start",
+              chipsCollapsed && chipsOpen && "pointer-events-none translate-y-full opacity-0",
+            )}
+          >
+            {/* The status segments and the filter chips read as one control —
               status is a filter too — so they share a line wherever there is
               room for them. Below that width the chips wrap underneath, which
               is the two-row toolbar this used to be at every size. Nothing is
               ever scrolled out of reach on the way. */}
-          <div
-            ref={regionRef}
-            className="relative flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5"
-          >
-            {/* Status segment control: scrollable on mobile */}
             <div
-              ref={segmentRef}
-              className="flex flex-nowrap items-center min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
+              ref={regionRef}
+              className="relative flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5"
             >
-              <CyclePill
-                separate="all"
-                value={status}
-                onChange={setStatus}
-                options={statusSegmentOptions}
-                className="w-auto flex-nowrap"
-              />
-            </div>
+              {/* Status segment control: scrollable on mobile */}
+              <div
+                ref={segmentRef}
+                className="flex flex-nowrap items-center min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
+              >
+                <CyclePill
+                  separate="all"
+                  value={status}
+                  onChange={setStatus}
+                  options={statusSegmentOptions}
+                  className="w-auto flex-nowrap"
+                />
+              </div>
 
-            {/* The same rule the chips already use among themselves: a hairline
+              {/* The same rule the chips already use among themselves: a hairline
                 where one kind of control ends and another begins. It always has
                 something on both sides of it, because the chips beside it shrink
                 and wrap internally rather than dropping below. */}
-            <div className="hidden h-4 w-px shrink-0 bg-border/60 md:block" />
+              <div className="hidden h-4 w-px shrink-0 bg-border/60 md:block" />
 
-            {/* Chip dropdowns for Make, Model, Brand, Series, Seller +
+              {/* Chip dropdowns for Make, Model, Brand, Series, Seller +
                 multi-select chips. Hidden on mobile, where they live in the
                 filter sheet behind the button to the right.
 
@@ -773,103 +799,79 @@ function InventoryPage() {
                 chip that wraps, not the whole block: without it this is one
                 indivisible flex item wide enough to be pushed under the segment
                 control entirely, which is the two-row toolbar again. */}
-            {/* The same chips are drawn once, unseen and on one line, to learn how wide
+              {/* The same chips are drawn once, unseen and on one line, to learn how wide
                 they want to be. When that no longer fits beside the status
                 control they give way to one Filters button, rather than wrapping
                 onto a second row. */}
-            <div
-              ref={measureRef}
-              aria-hidden
-              className="pointer-events-none invisible absolute left-0 top-0 hidden w-max flex-nowrap items-center gap-1.5 md:flex"
-            >
-              {chips}
-            </div>
-            {chipsCollapsed && chipsOpen && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setChipsOpen(false)} />
-                <div
-                  style={{ width: panelW }}
-                  className="absolute left-0 top-0 z-50 flex w-full flex-wrap items-center gap-1.5 rounded-2xl border border-border bg-popover p-2 shadow-xl"
-                >
-                  {chips}
-                  <button
-                    type="button"
-                    aria-label="Close filters"
-                    onClick={() => setChipsOpen(false)}
-                    className="ml-auto grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="size-4" />
-                  </button>
-                </div>
-              </>
-            )}
-            {chipsCollapsed ? null : (
-              <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
+              <div
+                ref={measureRef}
+                aria-hidden
+                className="pointer-events-none invisible absolute left-0 top-0 hidden w-max flex-nowrap items-center gap-1.5 md:flex"
+              >
                 {chips}
               </div>
-            )}
-          </div>
+              {chipsCollapsed ? null : (
+                <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
+                  {chips}
+                </div>
+              )}
+            </div>
 
-          {/* Action buttons & Views */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            {/* Mobile Filter Button (opens bottom sheet modal) */}
-            <Button
-              size="icon"
-              variant={activeCount ? "default" : "outline"}
-              className={cn("size-8 relative shrink-0", !chipsCollapsed && "md:hidden")}
-              onClick={() =>
-                chipsCollapsed && window.matchMedia("(min-width: 768px)").matches
-                  ? (setPanelW(
-                      viewRef.current && regionRef.current
-                        ? viewRef.current.getBoundingClientRect().right -
-                            regionRef.current.getBoundingClientRect().left
-                        : undefined,
-                    ),
-                    setChipsOpen((v) => !v))
-                  : setMobileFilterOpen(true)
-              }
-              title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
-              aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
-            >
-              <Filter className="size-3.5 shrink-0" />
-              {activeCount ? (
-                <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-bold leading-none">
-                  {activeCount}
-                </span>
-              ) : null}
-            </Button>
-
-            <SortSelect
-              value={sort}
-              dir={sortDir}
-              onChange={(v, d) => {
-                setSort(v);
-                setSortDir(d);
-              }}
-              label="Sort cars"
-              triggerLabel="Sort"
-              neutral="added"
-              options={SORT_OPTIONS}
-              iconOnly={true}
-              className="size-8 justify-center"
-            />
-
-            {(sort !== "added" || sortDir !== "desc") && (
+            {/* Action buttons & Views */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {/* Mobile Filter Button (opens bottom sheet modal) */}
               <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground hidden lg:inline-flex"
-                onClick={() => {
-                  setSort("added");
-                  setSortDir("desc");
-                }}
+                size="icon"
+                variant={activeCount ? "default" : "outline"}
+                className={cn("size-8 relative shrink-0", !chipsCollapsed && "md:hidden")}
+                onClick={() =>
+                  chipsCollapsed && window.matchMedia("(min-width: 768px)").matches
+                    ? setChipsOpen((v) => !v)
+                    : setMobileFilterOpen(true)
+                }
+                title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
+                aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
               >
-                Reset
+                <Filter className="size-3.5 shrink-0" />
+                {activeCount ? (
+                  <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-bold leading-none">
+                    {activeCount}
+                  </span>
+                ) : null}
               </Button>
-            )}
 
-            <div ref={viewRef} className="shrink-0">
-              <ViewToggle value={view} onChange={setView} />
+              <SortSelect
+                value={sort}
+                dir={sortDir}
+                onChange={(v, d) => {
+                  setSort(v);
+                  setSortDir(d);
+                }}
+                label="Sort cars"
+                triggerLabel="Sort"
+                neutral="added"
+                options={SORT_OPTIONS}
+                iconOnly={true}
+                className="size-8 justify-center"
+              />
+
+              {(sort !== "added" || sortDir !== "desc") && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground hidden lg:inline-flex"
+                  onClick={() => {
+                    setSort("added");
+                    setSortDir("desc");
+                  }}
+                >
+                  Reset
+                </Button>
+              )}
+
+              <div className="shrink-0">
+                <ViewToggle value={view} onChange={setView} />
+              </div>
             </div>
           </div>
         </div>
