@@ -61,8 +61,15 @@ export function CarOverlay({
         className="font-semibold leading-tight [font-size:clamp(11px,6.5cqw,15px)]"
         title={title}
       >
-        <span className="block">{first}</span>
-        {rest && <span className="block">{rest}</span>}
+        {/* One line when it fits. When it does not, the rest drops to the next line as a
+            unit, so make and model stay together on the first. */}
+        <span className="inline-block">{first}</span>
+        {rest && (
+          <>
+            {" "}
+            <span className="inline-block">{rest}</span>
+          </>
+        )}
         <ChangedDot car={car} className="ml-1.5 align-middle" />
       </div>
       {(brandLine || suffix) && (
