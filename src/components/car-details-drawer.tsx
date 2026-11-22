@@ -3317,7 +3317,7 @@ function CatalogDetailsContent({
         </Panel>
       )}
       {(colours.length > 1 || siblings.length > 1) && (
-        <Panel title="Options" className="col-span-full space-y-4">
+        <Panel className="col-span-full space-y-4">
           {colours.length > 1 && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
@@ -3357,7 +3357,7 @@ function CatalogDetailsContent({
           <CarInTheBoxTab packCarId={shown?.car_id} onOpenEntry={onSelectCatalogCar} />
         </Panel>
       )}
-      <Panel title="Record" className="col-span-full">
+      <Panel className="col-span-full">
         <CatalogRecordTab
           siblings={recordSiblings}
           stacked={false}
