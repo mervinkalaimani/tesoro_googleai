@@ -86,7 +86,8 @@ export function ShippingBatchDialog({
   const [newOrderDate, setNewOrderDate] = useState("");
   const [loadedOrderDate, setLoadedOrderDate] = useState("");
   const [newTransitInfo, setNewTransitInfo] = useState("");
-  const [updateTransitInfo, setUpdateTransitInfo] = useState(false);
+  // A note typed here is written to every car in the order; left empty, notes stay as they are.
+  const updateTransitInfo = newTransitInfo.trim() !== "";
   const [newPartner, setNewPartner] = useState("");
   const [newTrackingId, setNewTrackingId] = useState("");
   const [updateTracking, setUpdateTracking] = useState(false);
@@ -212,7 +213,7 @@ export function ShippingBatchDialog({
     const placed = toDateInputValue(String(first("orderDate") ?? ""));
     setNewOrderDate(placed);
     setLoadedOrderDate(placed);
-    setNewTransitInfo(String(first("transitInfo") ?? ""));
+    setNewTransitInfo("");
     setNewPartner(String(first("deliveryPartner") ?? ""));
     setNewTrackingId(String(first("trackingId") ?? ""));
   }, [activeShippingId, hideDelivered, open]);
@@ -843,19 +844,28 @@ export function ShippingBatchDialog({
 
                 {/* Notes (Optional) */}
                 <IosGroup>
-                  <IosRow label="Update notes">
-                    <Switch checked={updateTransitInfo} onCheckedChange={setUpdateTransitInfo} />
+                  <IosRow label="Notes">
+                    <div className="flex items-center justify-end gap-2">
+                      <div className="min-w-0 flex-1">
+                        <IosInput
+                          label="Notes"
+                          placeholder="Add a note for every car"
+                          value={newTransitInfo}
+                          onChange={setNewTransitInfo}
+                        />
+                      </div>
+                      {newTransitInfo && (
+                        <button
+                          type="button"
+                          aria-label="Clear notes"
+                          onClick={() => setNewTransitInfo("")}
+                          className="shrink-0 text-xs text-primary"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   </IosRow>
-                  {updateTransitInfo && (
-                    <IosRow label="Notes">
-                      <IosInput
-                        label="Notes"
-                        placeholder="Dispatch notes, tracking code…"
-                        value={newTransitInfo}
-                        onChange={setNewTransitInfo}
-                      />
-                    </IosRow>
-                  )}
                 </IosGroup>
               </div>
             </div>
