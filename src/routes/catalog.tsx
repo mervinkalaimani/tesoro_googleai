@@ -64,7 +64,7 @@ import { searchCarImages } from "@/lib/car-image-search";
 import { groupCastings, type CastingGroup } from "@/lib/casting-group";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { RowListSkeleton, TileGridSkeleton } from "@/components/dashboard-skeletons";
+import { TileGridSkeleton } from "@/components/dashboard-skeletons";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -737,16 +737,6 @@ function CatalogPage() {
           );
         })}
       </div>
-    ) : view === "table" ? (
-      <CatalogTable
-        rows={list}
-        serials={serials}
-        owned={owned}
-        isIso={myIso}
-        onOpen={setViewing}
-        onAdd={startAdd}
-        onEdit={isAdmin ? setEditing : undefined}
-      />
     ) : (
       <div className={GRID_COLS}>
         {list.map((c) => (
@@ -1061,7 +1051,7 @@ function CatalogPage() {
               )}
             </Button>
             <div className={cn("shrink-0", away)}>
-              <ViewToggle value={view} onChange={setView} />
+              <ViewToggle value={view} onChange={setView} modes={["blister", "grid"]} />
             </div>
           </div>
         }
@@ -1078,11 +1068,7 @@ function CatalogPage() {
       />
 
       {isLoading && catalog.length === 0 ? (
-        view === "table" ? (
-          <RowListSkeleton rows={8} />
-        ) : (
-          <TileGridSkeleton className={BLISTER_GRID_COLS} />
-        )
+        <TileGridSkeleton className={BLISTER_GRID_COLS} />
       ) : rows.length === 0 ? (
         <div className="card-elevated p-8 text-center text-sm text-muted-foreground">
           {segment === "iso"
@@ -1471,229 +1457,6 @@ function CatalogCard({
         </div>
       </div>
     </article>
-  );
-}
-
-/**
- * The catalogue as a list.
- *
- * The one view that answers questions about the entries themselves rather than
- * about the cars — which is where the serial number, and who filed and last
- * corrected each one, belong. The grids are for finding a casting by looking at
- * it; this is for reading the catalogue.
- */
-function CatalogTable({
-  rows,
-  serials,
-  owned,
-  isIso: isoSet,
-  onOpen,
-  onAdd,
-  onEdit,
-}: {
-  rows: CatalogCar[];
-  serials: Map<string, number>;
-  owned: Set<string>;
-  isIso: Set<string>;
-  onOpen: (c: CatalogCar) => void;
-  onAdd: (c: CatalogCar) => void;
-  onEdit?: (c: CatalogCar) => void;
-}) {
-  return (
-    <>
-      {/* Phones get the same rows as cards: copying the design of list view from inventory */}
-      <div className="space-y-2 md:hidden">
-        {rows.map((c) => {
-          const car = asCar(c);
-          const cid = c.car_id.toUpperCase();
-          return (
-            <article key={c.car_id} className="card-elevated flex items-center overflow-hidden">
-              <button
-                type="button"
-                onClick={() => onOpen(c)}
-                className="flex min-w-0 flex-1 items-center gap-3 p-2.5 text-left transition-colors hover:bg-muted/30"
-              >
-                {/* Concentric with the card: its 1.5rem corner less the 0.625rem of
-                    room round the photograph, the same on every side. */}
-                <CarThumb
-                  car={car}
-                  className="size-16 shrink-0 overflow-hidden rounded-[calc(1.5rem-0.625rem)]"
-                />
-                <div className="min-w-0 flex-1 space-y-1">
-                  {/* NAME */}
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <span className="truncate text-sm font-semibold">{car.name || "—"}</span>
-                    {c.synced_at && (
-                      <BadgeCheck
-                        aria-label={isVerifiedByAdmin(c.synced_source) ? "Verified" : "Synced"}
-                        className="size-3.5 shrink-0 text-sky-400"
-                      >
-                        <title>
-                          {isVerifiedByAdmin(c.synced_source) ? VERIFIED_BY_ADMIN : "Synced"}
-                        </title>
-                      </BadgeCheck>
-                    )}
-                  </div>
-
-                  {/* WHAT KIND OF CAR */}
-                  <div className="truncate text-xs text-muted-foreground">{catalogueLine(car)}</div>
-
-                  {/* THE MARKS, on a line of their own: pre-order, wishlist and owned.
-                      The verified tick stays beside the name. */}
-                  {(isPreOrder(c) || isoSet.has(cid) || owned.has(cid)) && (
-                    <div className="flex items-center gap-1.5">
-                      {isPreOrder(c) && (
-                        <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.2 text-xs font-semibold text-amber-500">
-                          PO
-                        </span>
-                      )}
-                      {isoSet.has(cid) && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 py-0.2 text-xs font-semibold text-sky-500">
-                          <Bookmark className="size-3" />
-                          <span>Wishlist</span>
-                        </span>
-                      )}
-                      {owned.has(cid) && (
-                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-xs font-semibold text-emerald-500">
-                          <Check className="size-3" />
-                          <span>Owned</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </button>
-              <AddPlus onClick={() => onAdd(c)} className="mr-2.5" />
-            </article>
-          );
-        })}
-        {rows.length === 0 && (
-          <p className="card-elevated p-8 text-center text-sm text-muted-foreground">
-            No castings match those filters.
-          </p>
-        )}
-      </div>
-
-      {/* Desktop: clean table matching inventory */}
-      <div className="card-elevated hidden overflow-x-auto md:block max-h-[calc(100vh-10.5rem)] overflow-y-auto">
-        <table className="w-full min-w-[54rem] table-fixed text-sm">
-          <colgroup>
-            <col className="w-[4rem]" />
-            <col />
-            <col className="w-[10rem]" />
-            <col className="w-[10rem]" />
-            <col className="w-[6rem]" />
-            <col className="w-[7.5rem]" />
-            <col className="w-[7.5rem]" />
-            <col className="w-[7rem]" />
-          </colgroup>
-          <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur-xs text-left text-xs uppercase tracking-wide text-muted-foreground shadow-xs">
-            <tr>
-              <th className="px-3 py-2.5 text-right font-medium">S.No</th>
-              <th className="px-3 py-2.5 font-medium">Casting</th>
-              <th className="px-3 py-2.5 font-medium">Brand / Assortment</th>
-              <th className="px-3 py-2.5 font-medium">Series</th>
-              <th className="px-3 py-2.5 text-right font-medium">MRP</th>
-              <th className="px-3 py-2.5 font-medium">Added by</th>
-              <th className="px-3 py-2.5 font-medium">Updated by</th>
-              <th className="px-3 py-2.5 font-medium" />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((c) => {
-              const car = asCar(c);
-              const cid = c.car_id.toUpperCase();
-              return (
-                <tr
-                  key={c.car_id}
-                  className="border-t border-border align-middle hover:bg-muted/40"
-                >
-                  <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">
-                    {serials.get(c.car_id) ?? "—"}
-                  </td>
-                  <td className="px-3 py-2">
-                    <button
-                      type="button"
-                      onClick={() => onOpen(c)}
-                      className="flex w-full min-w-0 items-center gap-2 text-left"
-                    >
-                      <CarThumb car={car} className="size-9 shrink-0 rounded-md" />
-                      <span className="min-w-0">
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate font-medium">{car.name}</span>
-                          {isPreOrder(c) && (
-                            <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 text-xs font-semibold text-amber-500">
-                              PO
-                            </span>
-                          )}
-                          {c.is_multipack && (
-                            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-1.5 text-xs font-bold text-primary">
-                              <Package className="size-3" />
-                              {packLabel(c)}
-                            </span>
-                          )}
-                          {isoSet.has(cid) && (
-                            <span
-                              title="On your wishlist"
-                              className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 px-1.5 text-xs font-semibold text-sky-500"
-                            >
-                              <Bookmark className="size-3" />
-                              Wishlist
-                            </span>
-                          )}
-                          {owned.has(cid) && <Check className="size-3 shrink-0 text-emerald-500" />}
-                        </span>
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {catalogueLine(car)}
-                        </span>
-                      </span>
-                    </button>
-                  </td>
-                  <td className="truncate px-3 py-2">
-                    <span className="block truncate">{c.brand || "—"}</span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {c.assortment || "—"}
-                    </span>
-                  </td>
-                  <td className="truncate px-3 py-2 text-muted-foreground">
-                    <span className="block truncate">{c.series || "—"}</span>
-                    <span className="block truncate text-xs">{c.sub_series || ""}</span>
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {c.mrp ? inrPrice(c.mrp) : "—"}
-                  </td>
-                  <td className="truncate px-3 py-2 text-xs text-muted-foreground">
-                    {resolveCatalogUserFirstName(c.created_by)}
-                  </td>
-                  {/* Blank rather than "system": an entry nobody has corrected
-                      has no editor, and naming one would invent an edit. */}
-                  <td className="truncate px-3 py-2 text-xs text-muted-foreground">
-                    {c.updated_by ? resolveCatalogUserFirstName(c.updated_by) : "—"}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center justify-end gap-1.5">
-                      {onEdit && (
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          className="size-7 cursor-pointer"
-                          onClick={() => onEdit(c)}
-                          aria-label={`Edit ${car.name} in the catalogue`}
-                          title="Edit catalogue entry"
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                      )}
-                      <AddPlus onClick={() => onAdd(c)} className="size-7" />
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </>
   );
 }
 
