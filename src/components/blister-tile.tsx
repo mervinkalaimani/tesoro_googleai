@@ -121,10 +121,13 @@ export function BlisterTile({
   overlay,
   showStatus = true,
   smallPills = false,
+  badge,
   className = "",
 }: {
   /** Smaller tags on the photograph, for the dense grids. */
   smallPills?: boolean;
+  /** A chip of its own at the top left of the photograph, in place of the status or caption. */
+  badge?: ReactNode;
   car: Diecast;
   onOpen: () => void;
   /** One short word at the end of the second line — "Owned", a price, a day. */
@@ -191,7 +194,9 @@ export function BlisterTile({
           )}
         >
           {words &&
-            (car.status && showStatus ? (
+            (badge ? (
+              <span className={cn(PILL_ON_PHOTO, pill, "bg-black/75 text-white")}>{badge}</span>
+            ) : car.status && showStatus ? (
               <StatusPill status={car.status} className={cn(PILL_ON_PHOTO, pill)} />
             ) : caption ? (
               <span className={cn(PILL_ON_PHOTO, pill, "bg-black/75 text-white")}>{caption}</span>
