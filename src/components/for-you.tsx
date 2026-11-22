@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
+import { BLISTER_GRID_COLS } from "@/components/view-toggle";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { useCars } from "@/lib/cars-store";
@@ -10,8 +11,23 @@ import { useCatalog } from "@/lib/catalog-store";
 import { forYou, reshuffle } from "@/lib/for-you";
 import { Button } from "@/components/ui/button";
 
-/** How many castings a set holds. */
-const SET = 6;
+/**
+ * One row of the same tiles the blister view lays out, so a set is as many castings as
+ * that grid has columns at this width (2, 3, 4 or 5, on the same breakpoints).
+ */
+function useColumns() {
+  const [n, setN] = useState(5);
+  useEffect(() => {
+    const read = () => {
+      const w = window.innerWidth;
+      setN(w >= 1280 ? 5 : w >= 1024 ? 4 : w >= 640 ? 3 : 2);
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+  return n;
+}
 
 /**
  * Castings VIIV thinks you will want, each with the reason it is there. Hidden until
@@ -20,6 +36,7 @@ const SET = 6;
 export function ForYou() {
   const cars = useCars();
   const { catalog } = useCatalog();
+  const SET = useColumns();
   const pool = useMemo(() => forYou(cars, catalog), [cars, catalog]);
   // A set at a time: Next and Back step through the ranking, Refresh reshuffles it.
   const [seed, setSeed] = useState(0);
@@ -80,21 +97,18 @@ export function ForYou() {
           </Button>
         </div>
       </div>
-      <div className="no-scrollbar flex snap-x items-stretch gap-2.5 overflow-x-auto pb-2 [--frame-gap:0.625rem]">
+      <div className={BLISTER_GRID_COLS}>
         {picks.map(({ car, reason }) => (
-          <div key={car.car_id} className="w-40 shrink-0 snap-start">
-            <BlisterTile
-              car={catalogCarToDiecast(car)}
-              onOpen={() => setViewing(car)}
-              showStatus={false}
-              overlay={<CarOverlay car={catalogCarToDiecast(car)} brandOnly noAssortment />}
-              foot={
-                <div className="flex-1 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
-                  {reason}
-                </div>
-              }
-            />
-          </div>
+          <BlisterTile
+            key={car.car_id}
+            car={catalogCarToDiecast(car)}
+            onOpen={() => setViewing(car)}
+            showStatus={false}
+            foot={false}
+            overlay={
+              <CarOverlay car={catalogCarToDiecast(car)} brandOnly noAssortment detail={reason} />
+            }
+          />
         ))}
       </div>
 
