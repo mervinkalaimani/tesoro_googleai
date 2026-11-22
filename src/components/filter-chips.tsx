@@ -45,7 +45,7 @@ export function ToggleChip({
         "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap outline-none",
         active
           ? "border border-primary/50 bg-primary text-primary-foreground font-semibold shadow-xs"
-          : "border border-border/80 bg-background/90 text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+          : "glass-btn text-muted-foreground hover:text-foreground",
       )}
     >
       {icon}
@@ -98,7 +98,7 @@ export function FilterChipDropdown({
             "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors cursor-pointer outline-none shrink-0 whitespace-nowrap",
             isSelected
               ? "border border-primary/50 bg-primary text-primary-foreground font-semibold shadow-xs"
-              : "border border-border/80 bg-background/90 text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+              : "glass-btn text-muted-foreground hover:text-foreground",
           )}
         >
           <span>{isSelected ? `${label}: ${value}` : label}</span>

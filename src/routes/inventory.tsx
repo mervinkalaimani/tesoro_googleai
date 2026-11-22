@@ -299,6 +299,15 @@ function InventoryPage() {
   const [chipsCollapsed, setChipsCollapsed] = useState(false);
   // On a wide screen the Filters button lays the chips out over the status control.
   const [chipsOpen, setChipsOpen] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const filterBtnRef = useRef<HTMLButtonElement>(null);
+  // How far the Filters button slides to sit at the end of the row when it becomes the close X.
+  const [shift, setShift] = useState(0);
+  const slideAway = chipsCollapsed && chipsOpen;
+  const away = cn(
+    "transition-[translate,opacity] duration-300 ease-out",
+    slideAway && "pointer-events-none translate-y-full opacity-0",
+  );
   usePinnedFlag(isScrolled);
 
   // Collapse the chips into the Filters button the moment they would no longer sit on
@@ -739,29 +748,16 @@ function InventoryPage() {
             <div
               aria-hidden={!chipsOpen}
               className={cn(
-                "absolute inset-0 z-10 flex items-center gap-1.5 transition-[transform,visibility] duration-300 ease-out",
+                "absolute inset-0 z-10 flex items-center gap-1.5 transition-[translate,visibility] duration-300 ease-out",
                 chipsOpen ? "visible translate-y-0" : "invisible -translate-y-full",
               )}
             >
-              <div className="no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto">
+              <div className="no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto pr-10">
                 {chips}
               </div>
-              <button
-                type="button"
-                aria-label="Close filters"
-                onClick={() => setChipsOpen(false)}
-                className="grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="size-4" />
-              </button>
             </div>
           )}
-          <div
-            className={cn(
-              "flex items-center justify-between gap-2 min-w-0 transition-[transform,opacity] duration-300 ease-out md:items-start",
-              chipsCollapsed && chipsOpen && "pointer-events-none translate-y-full opacity-0",
-            )}
-          >
+          <div className={cn("flex items-center justify-between gap-2 min-w-0 md:items-start")}>
             {/* The status segments and the filter chips read as one control —
               status is a filter too — so they share a line wherever there is
               room for them. Below that width the chips wrap underneath, which
@@ -769,7 +765,10 @@ function InventoryPage() {
               ever scrolled out of reach on the way. */}
             <div
               ref={regionRef}
-              className="relative flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5"
+              className={cn(
+                "relative flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5",
+                away,
+              )}
             >
               {/* Status segment control: scrollable on mobile */}
               <div
@@ -818,42 +817,76 @@ function InventoryPage() {
             </div>
 
             {/* Action buttons & Views */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <div ref={actionsRef} className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               {/* Mobile Filter Button (opens bottom sheet modal) */}
               <Button
+                ref={filterBtnRef}
                 size="icon"
-                variant={activeCount ? "default" : "outline"}
-                className={cn("size-8 relative shrink-0", !chipsCollapsed && "md:hidden")}
-                onClick={() =>
-                  chipsCollapsed && window.matchMedia("(min-width: 768px)").matches
-                    ? setChipsOpen((v) => !v)
-                    : setMobileFilterOpen(true)
+                variant={activeCount && !slideAway ? "default" : "outline"}
+                className={cn(
+                  "size-8 relative z-20 shrink-0 transition-transform duration-300 ease-out",
+                  !chipsCollapsed && "md:hidden",
+                )}
+                style={{ transform: slideAway ? `translateX(${shift}px)` : undefined }}
+                onClick={() => {
+                  if (chipsCollapsed && window.matchMedia("(min-width: 768px)").matches) {
+                    const g = actionsRef.current?.getBoundingClientRect();
+                    const b = filterBtnRef.current?.getBoundingClientRect();
+                    if (g && b) setShift(g.right - b.right);
+                    setChipsOpen((v) => !v);
+                  } else setMobileFilterOpen(true);
+                }}
+                title={
+                  slideAway
+                    ? "Close filters"
+                    : activeCount
+                      ? `Filters (${activeCount} active)`
+                      : "Filters"
                 }
-                title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
-                aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
+                aria-label={
+                  slideAway
+                    ? "Close filters"
+                    : activeCount
+                      ? `Filters, ${activeCount} active`
+                      : "Filters"
+                }
               >
-                <Filter className="size-3.5 shrink-0" />
-                {activeCount ? (
+                {/* One button, two icons: the filter turns and fades as the X turns in. */}
+                <Filter
+                  className={cn(
+                    "absolute size-3.5 transition-all duration-300",
+                    slideAway ? "rotate-90 scale-50 opacity-0" : "rotate-0 scale-100 opacity-100",
+                  )}
+                />
+                <X
+                  className={cn(
+                    "absolute size-4 transition-all duration-300",
+                    slideAway ? "rotate-0 scale-100 opacity-100" : "-rotate-90 scale-50 opacity-0",
+                  )}
+                />
+                {activeCount && !slideAway ? (
                   <span className="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground font-bold leading-none">
                     {activeCount}
                   </span>
                 ) : null}
               </Button>
 
-              <SortSelect
-                value={sort}
-                dir={sortDir}
-                onChange={(v, d) => {
-                  setSort(v);
-                  setSortDir(d);
-                }}
-                label="Sort cars"
-                triggerLabel="Sort"
-                neutral="added"
-                options={SORT_OPTIONS}
-                iconOnly={true}
-                className="size-8 justify-center"
-              />
+              <div className={away}>
+                <SortSelect
+                  value={sort}
+                  dir={sortDir}
+                  onChange={(v, d) => {
+                    setSort(v);
+                    setSortDir(d);
+                  }}
+                  label="Sort cars"
+                  triggerLabel="Sort"
+                  neutral="added"
+                  options={SORT_OPTIONS}
+                  iconOnly={true}
+                  className="size-8 justify-center"
+                />
+              </div>
 
               {(sort !== "added" || sortDir !== "desc") && (
                 <Button
@@ -869,7 +902,7 @@ function InventoryPage() {
                 </Button>
               )}
 
-              <div className="shrink-0">
+              <div className={cn("shrink-0", away)}>
                 <ViewToggle value={view} onChange={setView} />
               </div>
             </div>
