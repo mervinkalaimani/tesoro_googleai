@@ -292,7 +292,32 @@ function InventoryPage() {
   const [isScrolled, setIsScrolled] = useState(false);
   // Whether the toolbar band has reached the top bar and is riding over the list.
   const bandRef = useRef<HTMLDivElement>(null);
+  const regionRef = useRef<HTMLDivElement>(null);
+  const segmentRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
+  // True once the chips would not fit on the segment control's line.
+  const [chipsCollapsed, setChipsCollapsed] = useState(false);
   usePinnedFlag(isScrolled);
+
+  // Collapse the chips into the Filters button the moment they would no longer sit on
+  // the status control's line: their one-line width (measured unseen) plus the status
+  // control and the hairline between them against the room there is.
+  useEffect(() => {
+    const region = regionRef.current;
+    const seg = segmentRef.current;
+    const meas = measureRef.current;
+    if (!region || !seg || !meas) return;
+    const check = () => {
+      if (!meas.offsetWidth) return; // below md the chips are not drawn at all
+      const need = seg.offsetWidth + 8 + 1 + 8 + meas.offsetWidth;
+      setChipsCollapsed(region.clientWidth < need);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(region);
+    ro.observe(meas);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -617,6 +642,61 @@ function InventoryPage() {
       : `${groups.length.toLocaleString()} castings · ${rows.length.toLocaleString()} cars`;
   const shown = display.slice(0, visibleCount);
 
+  const chips = (
+    <>
+      {FILTERS.map((d) => (
+        <FilterChipDropdown
+          key={d.key}
+          label={d.label}
+          value={filters[d.key]}
+          options={options[d.key]}
+          onChange={(v) => setFilters((prev) => ({ ...prev, [d.key]: v }))}
+        />
+      ))}
+
+      <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
+
+      {/* Multi-select toggle chips with x mark when enabled */}
+      <ToggleChip
+        label="Chase"
+        active={chaseOnly}
+        onToggle={() => setChaseOnly((v) => !v)}
+        icon={<ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />}
+      />
+      <ToggleChip
+        label="Favourites"
+        active={favOnly}
+        onToggle={() => setFavOnly((v) => !v)}
+        icon={<FavouriteMark className={favOnly ? "size-3" : "size-3 fill-none text-current"} />}
+      />
+      <ToggleChip
+        label="Show collapsed"
+        active={showCollapsed}
+        onToggle={() => onToggleShowCollapsed(!showCollapsed)}
+      />
+      {/* Only drawn when there is something hidden to reveal, so it is
+                  not a permanent control for a situation most people never
+                  reach. Nothing was deleted — this puts the rows back. */}
+      {inPackCount > 0 && (
+        <ToggleChip
+          label={`Combine multi pack (${inPackCount})`}
+          active={hideInPacks}
+          onToggle={() => setHideInPacks((v) => !v)}
+        />
+      )}
+
+      {activeCount > 0 && (
+        <button
+          type="button"
+          onClick={clearAllFilters}
+          className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1 cursor-pointer"
+        >
+          Clear all
+        </button>
+      )}
+    </>
+  );
+
   return (
     <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
       <PageHeading title="My Cars" subtitle={countCaption}>
@@ -656,9 +736,15 @@ function InventoryPage() {
               room for them. Below that width the chips wrap underneath, which
               is the two-row toolbar this used to be at every size. Nothing is
               ever scrolled out of reach on the way. */}
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <div
+            ref={regionRef}
+            className="relative flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1.5"
+          >
             {/* Status segment control: scrollable on mobile */}
-            <div className="flex flex-nowrap items-center min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar">
+            <div
+              ref={segmentRef}
+              className="flex flex-nowrap items-center min-w-0 overflow-x-auto overflow-y-hidden no-scrollbar"
+            >
               <CyclePill
                 separate="all"
                 value={status}
@@ -682,62 +768,22 @@ function InventoryPage() {
                 chip that wraps, not the whole block: without it this is one
                 indivisible flex item wide enough to be pushed under the segment
                 control entirely, which is the two-row toolbar again. */}
-            <div className="hidden min-w-0 flex-1 md:flex flex-wrap items-center gap-1.5">
-              {FILTERS.map((d) => (
-                <FilterChipDropdown
-                  key={d.key}
-                  label={d.label}
-                  value={filters[d.key]}
-                  options={options[d.key]}
-                  onChange={(v) => setFilters((prev) => ({ ...prev, [d.key]: v }))}
-                />
-              ))}
-
-              <div className="h-4 w-px bg-border/60 mx-1 shrink-0" />
-
-              {/* Multi-select toggle chips with x mark when enabled */}
-              <ToggleChip
-                label="Chase"
-                active={chaseOnly}
-                onToggle={() => setChaseOnly((v) => !v)}
-                icon={
-                  <ChaseMark className={chaseOnly ? "size-3" : "size-3 fill-none text-current"} />
-                }
-              />
-              <ToggleChip
-                label="Favourites"
-                active={favOnly}
-                onToggle={() => setFavOnly((v) => !v)}
-                icon={
-                  <FavouriteMark className={favOnly ? "size-3" : "size-3 fill-none text-current"} />
-                }
-              />
-              <ToggleChip
-                label="Show collapsed"
-                active={showCollapsed}
-                onToggle={() => onToggleShowCollapsed(!showCollapsed)}
-              />
-              {/* Only drawn when there is something hidden to reveal, so it is
-                  not a permanent control for a situation most people never
-                  reach. Nothing was deleted — this puts the rows back. */}
-              {inPackCount > 0 && (
-                <ToggleChip
-                  label={`Combine multi pack (${inPackCount})`}
-                  active={hideInPacks}
-                  onToggle={() => setHideInPacks((v) => !v)}
-                />
-              )}
-
-              {activeCount > 0 && (
-                <button
-                  type="button"
-                  onClick={clearAllFilters}
-                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 ml-1 cursor-pointer"
-                >
-                  Clear all
-                </button>
-              )}
+            {/* The same chips are drawn once, unseen and on one line, to learn how wide
+                they want to be. When that no longer fits beside the status
+                control they give way to one Filters button, rather than wrapping
+                onto a second row. */}
+            <div
+              ref={measureRef}
+              aria-hidden
+              className="pointer-events-none invisible absolute left-0 top-0 hidden w-max flex-nowrap items-center gap-1.5 md:flex"
+            >
+              {chips}
             </div>
+            {chipsCollapsed ? null : (
+              <div className="hidden min-w-0 flex-1 flex-wrap items-center gap-1.5 md:flex">
+                {chips}
+              </div>
+            )}
           </div>
 
           {/* Action buttons & Views */}
@@ -746,7 +792,7 @@ function InventoryPage() {
             <Button
               size="icon"
               variant={activeCount ? "default" : "outline"}
-              className="size-8 relative shrink-0 md:hidden"
+              className={cn("size-8 relative shrink-0", !chipsCollapsed && "md:hidden")}
               onClick={() => setMobileFilterOpen(true)}
               title={activeCount ? `Filters (${activeCount} active)` : "Filters"}
               aria-label={activeCount ? `Filters, ${activeCount} active` : "Filters"}
@@ -796,7 +842,12 @@ function InventoryPage() {
 
         {/* Row 2 on Mobile: Active filter chips and clear button if any filters applied */}
         {activeCount > 0 && (
-          <div className="flex md:hidden items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+          <div
+            className={cn(
+              "flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5",
+              !chipsCollapsed && "md:hidden",
+            )}
+          >
             {FILTERS.map((d) => {
               if (filters[d.key] === "all") return null;
               return (
