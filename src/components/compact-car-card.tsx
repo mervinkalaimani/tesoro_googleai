@@ -78,7 +78,7 @@ export function CompactCarCard({
       showStatus={!hideStatus}
       smallPills
       foot={false}
-      overlay={<CarOverlay car={car} small padRight={marksOffset} detail={detail} />}
+      overlay={<CarOverlay car={car} brandOnly padRight={marksOffset} detail={detail} />}
       className={className}
     />
   );

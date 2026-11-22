@@ -22,7 +22,6 @@ export function CarOverlay({
   padRight = false,
   suffix,
   detail,
-  small = false,
   className,
 }: {
   car: Diecast;
@@ -32,6 +31,7 @@ export function CarOverlay({
   /** Set at the end of the brand line, after a dot: a copy count, say. */
   suffix?: ReactNode;
   /** Smaller type, for the grid view. */
+  /** Ignored: sizes now follow the tile width. */
   small?: boolean;
   /** Room at the right for a button laid over the corner. */
   padRight?: boolean;
@@ -44,6 +44,12 @@ export function CarOverlay({
   const brandLine = [car.brand, numbered ? carNumberOf(car) : "", car.assortment]
     .filter(Boolean)
     .join(" · ");
+  // Make and model on the first line, whatever else the name says on the next.
+  const lead = `${car.make} ${car.model}`.trim();
+  const split =
+    lead && title.toLowerCase().startsWith(lead.toLowerCase()) && title.length > lead.length;
+  const first = split ? title.slice(0, lead.length) : title;
+  const rest = split ? title.slice(lead.length).trim() : "";
   const seriesLine =
     detail ?? (brandOnly ? "" : [car.series, car.subSeries].filter(Boolean).join(" · "));
   return (
@@ -54,23 +60,17 @@ export function CarOverlay({
         className,
       )}
     >
+      {/* Sizes follow the width of the tile (cqw), so the words fit without being cut. */}
       <div
-        className={cn(
-          "line-clamp-2 font-semibold leading-tight",
-          small ? "text-[11px] sm:text-[13px]" : "text-[15px]",
-        )}
+        className="font-semibold leading-tight [font-size:clamp(11px,7.5cqw,17px)]"
         title={title}
       >
-        {title}
+        <span className="block">{first}</span>
+        {rest && <span className="block">{rest}</span>}
         <ChangedDot car={car} className="ml-1.5 align-middle" />
       </div>
       {(brandLine || suffix) && (
-        <div
-          className={cn(
-            "mt-px truncate text-white/80",
-            small ? "text-[9px] sm:text-[11px]" : "text-xs",
-          )}
-        >
+        <div className="mt-px break-words text-white/80 [font-size:clamp(9px,5cqw,12px)]">
           {brandLine}
           {suffix && (
             <>
@@ -80,7 +80,11 @@ export function CarOverlay({
           )}
         </div>
       )}
-      {seriesLine && <div className="truncate text-xs text-white/60">{seriesLine}</div>}
+      {seriesLine && (
+        <div className="break-words text-white/60 [font-size:clamp(9px,5cqw,12px)]">
+          {seriesLine}
+        </div>
+      )}
     </div>
   );
 }
@@ -143,7 +147,7 @@ export function BlisterTile({
       onClick={onOpen}
       title={title}
       className={cn(
-        "card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40",
+        "card-elevated group @container flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40",
         className,
       )}
     >
