@@ -43,7 +43,6 @@ import {
   isPreOrder,
   needsPurchase as statusNeedsPurchase,
   needsTransit as statusNeedsTransit,
-  nextInFlow,
   normaliseStatus,
   toneFor,
   type Status,
@@ -146,10 +145,8 @@ export function StatusUpdateDialog({
     const car = lead;
     if (!car) return;
     const today = new Date().toISOString().slice(0, 10);
-    // Preselect where the car would normally go next, so the common case is one
-    // click — the same move the old button made, just with its consequences
-    // spelled out.
-    setStatus(nextInFlow(car.status));
+    // Opens on where it is now: moving it on is always a choice, never a default.
+    setStatus((normaliseStatus(car.status) || "Ordered") as NextStatus);
     setSeller(car.seller || "");
     setSpent(car.spent ? String(car.spent) : "");
     setMrp(car.mrp ? String(car.mrp) : "");
