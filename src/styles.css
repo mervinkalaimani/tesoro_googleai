@@ -871,21 +871,21 @@ html:not(.dark) body::before {
     height: 38vh;
   }
 }
-/* Dark mode: the same blob, deeper and quieter. The colour is mixed toward black
-   before it is thinned, so it reads as a tint in the dark rather than a lamp. */
+/* Dark mode: the same blob, much fainter but in the pure theme colour, so what is
+   left of it stays vivid instead of going muddy. */
 html.dark body::before {
-  --glow: color-mix(in oklab, var(--primary) 62%, black);
+  --glow: var(--primary);
   background:
     radial-gradient(
       130% 100% at 50% 0%,
-      color-mix(in oklab, var(--glow) 16%, transparent) 0%,
-      color-mix(in oklab, var(--glow) 11%, transparent) 45%,
-      color-mix(in oklab, var(--glow) 5%, transparent) 78%,
+      color-mix(in oklab, var(--glow) 12%, transparent) 0%,
+      color-mix(in oklab, var(--glow) 8%, transparent) 45%,
+      color-mix(in oklab, var(--glow) 4%, transparent) 78%,
       transparent 100%
     ),
     radial-gradient(
       60% 80% at 88% 6%,
-      color-mix(in oklab, var(--glow) 8%, transparent),
+      color-mix(in oklab, var(--glow) 6%, transparent),
       transparent 100%
     );
 }
