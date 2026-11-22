@@ -51,6 +51,7 @@ import {
 import type { Diecast } from "@/lib/types";
 
 type NextStatus = Status;
+const FLOW_ORDER: NextStatus[] = ["ISO", "PO", "Ordered", "In Transit", "In Hand"];
 
 const num = (v: string) => {
   const n = Number(String(v).replace(/[^\d.-]/g, ""));
@@ -110,6 +111,14 @@ export function StatusUpdateDialog({
   }, [lead?.status]);
 
   const [status, setStatus] = useState<NextStatus>("In Hand");
+  // The way an order goes, left to right; anything else the car is on (an older
+  // spelling) leads the line so staying put is still a choice. On Hold is not a step.
+  const flow = [
+    ...choices.filter((s) => s !== "On Hold" && !FLOW_ORDER.includes(s)),
+    ...FLOW_ORDER.filter((s) => choices.includes(s)),
+  ];
+  const hold = choices.includes("On Hold") ? ("On Hold" as NextStatus) : null;
+  const flowIndex = flow.indexOf(status);
   const [seller, setSeller] = useState("");
   const [spent, setSpent] = useState("");
   const [mrp, setMrp] = useState("");
@@ -306,7 +315,6 @@ export function StatusUpdateDialog({
   };
 
   const StatusIcon = iconFor(status);
-  const count = choices.length;
 
   return (
     <Dialog
@@ -351,41 +359,95 @@ export function StatusUpdateDialog({
             </div>
           )}
 
-          {/* Every status, with the one the car is on marked. */}
-          <div className="space-y-1.5">
+          {/* Where it is on the way, in one line: the steps up to the chosen one
+              fill in. On Hold sits off to the side, it is not a step. */}
+          <div className="space-y-2">
             <Label className="text-xs font-semibold">New Status</Label>
-            <div
-              className={`grid grid-cols-3 gap-1.5 ${count > 8 ? "sm:grid-cols-3" : "sm:grid-cols-4"}`}
-            >
-              {choices.map((s) => {
+            <ol className="flex items-start" aria-label="New status">
+              {flow.map((s, i) => {
                 const Icon = iconFor(s);
                 const selected = status === s;
+                const reached = flowIndex >= i;
                 const isCurrent = s.toLowerCase() === (current.status || "").trim().toLowerCase();
                 return (
+                  <li key={s} className="relative flex min-w-0 flex-1 flex-col items-center">
+                    {i > 0 && (
+                      <span
+                        aria-hidden
+                        className={`absolute right-1/2 top-4 h-0.5 w-full -translate-y-1/2 ${
+                          reached ? "bg-primary" : "bg-border"
+                        }`}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setStatus(s)}
+                      aria-pressed={selected}
+                      className="group relative flex min-w-0 flex-col items-center gap-1"
+                    >
+                      <span
+                        className={`grid size-8 place-items-center rounded-full border-2 transition-colors ${
+                          selected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : reached
+                              ? "border-primary bg-background text-primary"
+                              : "border-border bg-background text-muted-foreground group-hover:border-primary/50"
+                        }`}
+                      >
+                        <Icon className="size-3.5" />
+                      </span>
+                      <span
+                        className={`text-center text-[11px] leading-tight ${
+                          selected ? "font-semibold text-primary" : "text-muted-foreground"
+                        }`}
+                      >
+                        {isInHand(s) ? "Delivered" : statusLabel(s)}
+                      </span>
+                      {isCurrent && (
+                        <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-muted-foreground">
+                          Now
+                        </span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+              {hold && (
+                <li className="ml-2 flex shrink-0 flex-col items-center border-l border-border pl-2">
                   <button
-                    key={s}
                     type="button"
-                    onClick={() => setStatus(s)}
-                    aria-pressed={selected}
-                    className={`relative flex flex-col items-center justify-center gap-1 rounded-lg border px-2 py-2 text-center text-xs font-medium transition-colors ${
-                      selected
-                        ? "border-primary bg-primary/10 font-semibold text-primary shadow-xs"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                    }`}
+                    onClick={() => setStatus(hold)}
+                    aria-pressed={status === hold}
+                    className="group flex flex-col items-center gap-1"
                   >
-                    <Icon className="size-3.5 shrink-0" />
-                    <span className="leading-tight">
-                      {isInHand(s) ? "Delivered" : statusLabel(s)}
+                    <span
+                      className={`grid size-8 place-items-center rounded-full border-2 border-dashed transition-colors ${
+                        status === hold
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground group-hover:border-primary/50"
+                      }`}
+                    >
+                      {(() => {
+                        const HoldIcon = iconFor(hold);
+                        return <HoldIcon className="size-3.5" />;
+                      })()}
                     </span>
-                    {isCurrent && (
-                      <span className="text-xs font-semibold uppercase leading-none tracking-wide text-muted-foreground">
-                        Current
+                    <span
+                      className={`text-[11px] leading-tight ${
+                        status === hold ? "font-semibold text-primary" : "text-muted-foreground"
+                      }`}
+                    >
+                      {statusLabel(hold)}
+                    </span>
+                    {current.status?.toLowerCase() === "on hold" && (
+                      <span className="text-[9px] font-semibold uppercase leading-none tracking-wide text-muted-foreground">
+                        Now
                       </span>
                     )}
                   </button>
-                );
-              })}
-            </div>
+                </li>
+              )}
+            </ol>
           </div>
 
           {!isBatch && needsCarNumber(current.brand) && (
