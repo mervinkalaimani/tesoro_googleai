@@ -18,7 +18,6 @@ export function CompactCarCard({
   hideStatus = false,
   className = "",
   copies = 1,
-  marksOffset = false,
 }: {
   /** Moves the chase / favourite marks left, clear of a button laid over the top-right corner. */
   marksOffset?: boolean;
@@ -78,7 +77,7 @@ export function CompactCarCard({
       showStatus={!hideStatus}
       smallPills
       foot={false}
-      overlay={<CarOverlay car={car} brandOnly padRight={marksOffset} detail={detail} />}
+      overlay={<CarOverlay car={car} brandOnly detail={detail} />}
       className={className}
     />
   );

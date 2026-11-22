@@ -55,7 +55,7 @@ export function CarOverlay({
   return (
     <div
       className={cn(
-        "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-3.5 pb-3 pt-14 text-white",
+        "pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/55 to-transparent px-2 pb-2.5 pt-14 text-white",
         padRight && "pr-14",
         className,
       )}
@@ -70,7 +70,7 @@ export function CarOverlay({
         <ChangedDot car={car} className="ml-1.5 align-middle" />
       </div>
       {(brandLine || suffix) && (
-        <div className="mt-px break-words text-white/80 [font-size:clamp(9px,5cqw,12px)]">
+        <div className="mt-px whitespace-nowrap text-white/80 [font-size:clamp(8px,4.6cqw,12px)]">
           {brandLine}
           {suffix && (
             <>
