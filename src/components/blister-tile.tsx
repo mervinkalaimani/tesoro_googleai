@@ -21,10 +21,13 @@ export function CarOverlay({
   brandOnly = false,
   padRight = false,
   suffix,
+  detail,
   small = false,
   className,
 }: {
   car: Diecast;
+  /** Replaces the series line, e.g. who a pre-order is coming from. */
+  detail?: string;
   brandOnly?: boolean;
   /** Set at the end of the brand line, after a dot: a copy count, say. */
   suffix?: ReactNode;
@@ -37,7 +40,8 @@ export function CarOverlay({
   const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
   // brandOnly is the blister view: the packaging already says the series.
   const brandLine = [car.brand, car.assortment].filter(Boolean).join(" · ");
-  const seriesLine = brandOnly ? "" : [car.series, car.subSeries].filter(Boolean).join(" · ");
+  const seriesLine =
+    detail ?? (brandOnly ? "" : [car.series, car.subSeries].filter(Boolean).join(" · "));
   return (
     <div
       className={cn(

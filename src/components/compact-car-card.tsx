@@ -1,23 +1,13 @@
-import { SyncedMark } from "@/components/synced-badge";
-import { carNumberOf } from "@/lib/car-subline";
-import { CopiesBadge } from "@/components/copies-badge";
-import { ChaseMark, FavouriteMark, ChangedDot } from "@/components/car-marks";
-import { StatusPill } from "@/components/status-pill";
-import { rarityOf } from "@/lib/rarity";
-
-import type { Diecast } from "@/lib/types";
-import { CarThumb } from "@/components/car-thumb";
+import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { inr } from "@/lib/format";
 
+import type { Diecast } from "@/lib/types";
+
 /**
- * The densest of the three views: as many castings on screen at once as will
- * still read.
- *
- * Everything that is a detail rather than an identity is gone. At this size a
- * row of chips would cover the photograph it is sitting on, and the photograph
- * is the entire reason to be in a grid rather than the table. What is left is
- * what tells one casting from another at a glance — the picture, the name, the
- * brand, the price — plus the two flags worth spotting across a whole page.
+ * The compact grid card: the photograph in the shape of the packaging, with the
+ * name, brand and price laid over it on a dark fade. Every card in the app that
+ * used to be a landscape photo over a text block is this one tile now (see
+ * BlisterTile).
  */
 export function CompactCarCard({
   car,
@@ -26,11 +16,10 @@ export function CompactCarCard({
   synced,
   syncedSource,
   detail,
-  statusInPhoto = false,
   hideStatus = false,
-  marksOffset = false,
   className = "",
   copies = 1,
+  marksOffset = false,
 }: {
   /** Moves the chase / favourite marks left, clear of a button laid over the top-right corner. */
   marksOffset?: boolean;
@@ -79,99 +68,26 @@ export function CompactCarCard({
   copiesExpanded?: boolean;
   onToggleCopies?: () => void;
 }) {
-  const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
-
   return (
-    <button
-      type="button"
-      onClick={onOpen}
-      title={title}
-      // h-full so a card fills whatever cell it is given. In a row of them the
-      // tallest used to set the height and the rest floated at the top, which
-      // read as a list of different-sized things rather than one shelf.
-      // No content-visibility here: in a sideways shelf the cards not yet
-      // painted stood in at a guessed 220px, and the row grew to that — a
-      // blank band under the cards in Recently added.
-      className={`card-elevated group flex h-full flex-col overflow-hidden text-left transition-colors hover:border-primary/40 ${className}`}
-    >
-      {/* shrink-0, or the picture is the part that gives when a card is asked to
-          be shorter than its contents — and then a row of cards that agree on
-          their height disagrees on where the photograph ends. */}
-      <div className="relative shrink-0">
-        <CarThumb car={car} className="aspect-[16/10] w-full" />
-
-        <SyncedMark synced={synced} source={syncedSource} />
-
-        {copies > 1 && (
-          <div className="pointer-events-none absolute bottom-1 left-1">
-            <CopiesBadge n={copies} className="bg-black/75 backdrop-blur-sm" />
-          </div>
-        )}
-
-        {statusInPhoto && car.status && (
-          <div className="pointer-events-none absolute bottom-1 right-1">
-            <StatusPill
-              status={car.status}
-              className="text-xs px-1.5 py-0 leading-tight shadow-sm backdrop-blur-sm"
-            />
-          </div>
-        )}
-
-        {(car.chase || car.favourite) && (
-          <div
-            className={`pointer-events-none absolute top-1 flex items-center gap-1 ${marksOffset ? "right-9" : "right-1"}`}
-          >
-            {car.chase && (
-              <span className="grid size-5 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-                <ChaseMark rarity={rarityOf(car)} className="size-3" />
-              </span>
-            )}
-            {car.favourite && (
-              <span className="grid size-5 place-items-center rounded-full bg-black/70 backdrop-blur-sm">
-                <FavouriteMark className="size-3" />
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-col p-2">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="truncate text-xs font-semibold leading-tight group-hover:text-primary">
-            {title}
-          </span>
-          <ChangedDot car={car} />
-        </div>
-        {/* Second line: who made it, and which box it came in. */}
-        <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
-          <span className="flex items-center gap-1 min-w-0 truncate text-xs">
-            {!statusInPhoto && !hideStatus && car.status && (
-              <StatusPill
-                status={car.status}
-                className="text-xs px-1.5 py-0 leading-tight shrink-0"
-              />
-            )}
-            <span className="truncate text-muted-foreground">
-              {[car.brand, carNumberOf(car)].filter(Boolean).join(" · ") || "—"}
-            </span>
-          </span>
-          <span className="shrink-0 truncate text-xs text-muted-foreground/80">
-            {car.assortment || ""}
-          </span>
-        </div>
-        {/* Third line: which series, and what it cost. A caller with something
-            better to say on either side says it -- a shelf of one assortment
-            has no use for the name of it, and a catalogue card has no price of
-            its own, so the day or the Owned badge goes there instead. */}
-        <div className="mt-0.5 flex items-baseline justify-between gap-1.5">
-          <span className="truncate text-xs text-muted-foreground">
-            {detail || car.series || "—"}
-          </span>
-          <span className="shrink-0 text-xs tabular-nums text-muted-foreground/80">
-            {caption || (car.spent ? inr(car.spent) : "—")}
-          </span>
-        </div>
-      </div>
-    </button>
+    <BlisterTile
+      car={car}
+      onOpen={onOpen}
+      caption={caption}
+      synced={synced}
+      syncedSource={syncedSource}
+      copies={copies}
+      showStatus={!hideStatus}
+      foot={false}
+      overlay={
+        <CarOverlay
+          car={car}
+          small
+          padRight={marksOffset}
+          detail={detail}
+          suffix={car.spent ? inr(car.spent) : undefined}
+        />
+      }
+      className={className}
+    />
   );
 }
