@@ -6,6 +6,9 @@ import { carSubLine } from "@/lib/car-subline";
 import { inrFull } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { RecentSearches } from "@/components/recent-searches";
+import { useCars } from "@/lib/cars-store";
+import { rarityOf } from "@/lib/rarity";
+import { isIso } from "@/lib/status";
 
 const SEARCH_TIPS: [string, string][] = [
   ["make = toyota", "to search one field"],
@@ -15,22 +18,47 @@ const SEARCH_TIPS: [string, string][] = [
   ["> / <", "for cost & year"],
 ];
 
-const POPULAR_MAKES = [
-  "Porsche",
-  "Nissan",
-  "Toyota",
-  "Hot Wheels",
-  "Ferrari",
-  "BMW",
-  "Ford",
-  "Honda",
-];
 const QUICK_MARKS = [
-  { label: "Favourites", query: "fav" },
-  { label: "Chase", query: "chase" },
-  { label: "Treasure Hunt (TH)", query: "th" },
-  { label: "Super TH (STH)", query: "sth" },
+  { label: "Favourites", query: "fav", has: (c: Diecast) => Boolean(c.favourite) },
+  { label: "Chase", query: "chase", has: (c: Diecast) => rarityOf(c) === "Chase" },
+  { label: "Treasure Hunt (TH)", query: "th", has: (c: Diecast) => rarityOf(c) === "TH" },
+  { label: "Super TH (STH)", query: "sth", has: (c: Diecast) => rarityOf(c) === "STH" },
 ];
+
+/** How many makes and brands the shortcuts show. */
+const TOP = 8;
+
+/**
+ * The shortcuts under an empty search come from your own collection, not from a fixed list: a mark
+ * only if you own one, and the makes and brands you own the most of.
+ */
+function useCollectionShortcuts() {
+  const mine = useCars();
+  return useMemo(() => {
+    const owned = mine.filter((c) => !isIso(c.status));
+    const marks = QUICK_MARKS.map((m) => ({ ...m, n: owned.filter(m.has).length })).filter(
+      (m) => m.n > 0,
+    );
+    const counts = new Map<string, { label: string; n: number }>();
+    const add = (name: string | undefined, seen: Set<string>) => {
+      const label = (name || "").trim();
+      const k = label.toLowerCase();
+      if (!k || k === "na" || k === "-" || seen.has(k)) return;
+      seen.add(k);
+      const at = counts.get(k);
+      if (at) at.n += 1;
+      else counts.set(k, { label, n: 1 });
+    };
+    // One car counts once for a name, whether the name is its make or its brand.
+    for (const c of owned) {
+      const seen = new Set<string>();
+      add(c.make, seen);
+      add(c.brand, seen);
+    }
+    const top = [...counts.values()].sort((a, b) => b.n - a.n).slice(0, TOP);
+    return { marks, top };
+  }, [mine]);
+}
 
 export function SearchSuggestionsTray({
   open,
@@ -50,6 +78,7 @@ export function SearchSuggestionsTray({
   className?: string;
 }) {
   const trimmed = query.trim();
+  const { marks, top } = useCollectionShortcuts();
 
   const groups = useMemo(() => (open ? groupedSuggestions(query, cars) : []), [open, query, cars]);
   const matches = useMemo(
@@ -164,42 +193,48 @@ export function SearchSuggestionsTray({
           <div className="space-y-3">
             <RecentSearches onPick={onSelectQuery} />
 
-            <section>
-              <div className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <Sparkles className="size-3 text-primary" />
-                <span>Quick Filters</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {QUICK_MARKS.map((m) => (
-                  <button
-                    key={m.query}
-                    type="button"
-                    onClick={() => onSelectQuery(m.query)}
-                    className="inline-flex items-center gap-1 rounded-full border border-border/80 bg-card px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 active:scale-95"
-                  >
-                    <span>{m.label}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
+            {marks.length > 0 && (
+              <section>
+                <div className="mb-1.5 flex items-center gap-1 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <Sparkles className="size-3 text-primary" />
+                  <span>Quick Filters</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {marks.map((m) => (
+                    <button
+                      key={m.query}
+                      type="button"
+                      onClick={() => onSelectQuery(m.query)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 active:scale-95"
+                    >
+                      <span>{m.label}</span>
+                      <span className="tabular-nums text-muted-foreground">{m.n}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
 
-            <section>
-              <h3 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Popular Makes & Brands
-              </h3>
-              <div className="flex flex-wrap gap-1.5">
-                {POPULAR_MAKES.map((make) => (
-                  <button
-                    key={make}
-                    type="button"
-                    onClick={() => onSelectQuery(make)}
-                    className="inline-flex items-center rounded-full border border-border/80 bg-card px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 active:scale-95"
-                  >
-                    <span>{make}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
+            {top.length > 0 && (
+              <section>
+                <h3 className="mb-1.5 px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Your Top Makes & Brands
+                </h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {top.map((t) => (
+                    <button
+                      key={t.label}
+                      type="button"
+                      onClick={() => onSelectQuery(t.label)}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-card px-2.5 py-1 text-xs text-foreground transition-colors hover:border-primary/50 hover:bg-primary/10 active:scale-95"
+                    >
+                      <span>{t.label}</span>
+                      <span className="tabular-nums text-muted-foreground">{t.n}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
 
