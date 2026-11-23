@@ -20,6 +20,7 @@ export function CarOverlay({
   car,
   brandOnly = false,
   noAssortment = false,
+  small = false,
   padRight = false,
   suffix,
   detail,
@@ -36,8 +37,7 @@ export function CarOverlay({
   noAssortment?: boolean;
   /** Set at the end of the brand line, after a dot: a copy count, say. */
   suffix?: ReactNode;
-  /** Smaller type, for the grid view. */
-  /** Ignored: sizes now follow the tile width. */
+  /** Smaller type, for the grid view (sizes still follow the tile width). */
   small?: boolean;
   /** Room at the right for a button laid over the corner. */
   padRight?: boolean;
@@ -66,7 +66,10 @@ export function CarOverlay({
     >
       {/* Sizes follow the width of the tile (cqw), so the words fit without being cut. */}
       <div
-        className="font-semibold leading-tight [font-size:clamp(11px,6.5cqw,15px)]"
+        className={cn(
+          "font-semibold leading-tight",
+          small ? "[font-size:clamp(9px,5cqw,11px)]" : "[font-size:clamp(11px,6.5cqw,15px)]",
+        )}
         title={title}
       >
         {/* One line when it fits. When it does not, the rest drops to the next line as a
@@ -81,7 +84,12 @@ export function CarOverlay({
         <ChangedDot car={car} className="ml-1.5 align-middle" />
       </div>
       {(brandLine || suffix) && (
-        <div className="mt-px whitespace-nowrap text-white/80 [font-size:clamp(10px,5.4cqw,13px)]">
+        <div
+          className={cn(
+            "mt-px whitespace-nowrap text-white/80",
+            small ? "[font-size:clamp(8px,4.2cqw,10px)]" : "[font-size:clamp(10px,5.4cqw,13px)]",
+          )}
+        >
           {brandLine}
           {suffix && (
             <>
@@ -94,7 +102,8 @@ export function CarOverlay({
       {seriesLine && (
         <div
           className={cn(
-            "break-words text-white/60 [font-size:clamp(10px,5.4cqw,13px)]",
+            "break-words text-white/60",
+            small ? "[font-size:clamp(8px,4.2cqw,10px)]" : "[font-size:clamp(10px,5.4cqw,13px)]",
             detailClassName,
           )}
         >
