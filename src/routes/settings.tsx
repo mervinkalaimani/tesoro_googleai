@@ -343,7 +343,7 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={() => changeView("account")}
-            className="group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:bg-primary/10 active:scale-[0.995]"
+            className="group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
           >
             <TierAvatar
               url={profile?.avatar_url}
@@ -384,7 +384,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("subscription")}
-              className="group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:bg-primary/10 active:scale-[0.995]"
+              className="group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Sparkles className="size-4" />
@@ -406,7 +406,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("homepage")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Home className="size-4" />
@@ -423,7 +423,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("display")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Palette className="size-4" />
@@ -440,7 +440,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("notifications")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Bell className="size-4" />
@@ -457,7 +457,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("privacy")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <ShieldCheck className="size-4" />
@@ -474,7 +474,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("onboarding")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Compass className="size-4" />
@@ -497,7 +497,7 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={() => changeView("advanced")}
-                className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+                className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <Wrench className="size-4" />
@@ -517,7 +517,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("help")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <LifeBuoy className="size-4" />
@@ -532,7 +532,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("activity")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <History className="size-4" />
@@ -548,7 +548,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("whats_new")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Sparkles className="size-4" />
@@ -841,7 +841,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("search_engine")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Search className="size-4" />
@@ -861,7 +861,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("diagnostics")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Wrench className="size-4" />
@@ -879,7 +879,7 @@ export function SettingsPage() {
             {/* USERS */}
             <Link
               to="/admin"
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <ShieldCheck className="size-4" />
@@ -897,7 +897,7 @@ export function SettingsPage() {
             {/* PRO USERS */}
             <Link
               to="/subscriptions"
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Sparkles className="size-4" />
@@ -952,7 +952,7 @@ export function SettingsPage() {
             <Link
               to="/subscriptions"
               search={{ tab: "payment" }}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <CreditCard className="size-4" />
@@ -969,7 +969,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("metadata")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Layers className="size-4" />
@@ -989,7 +989,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("auth_providers")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <KeyRound className="size-4" />
@@ -1007,7 +1007,7 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("database")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Database className="size-4" />
@@ -1081,7 +1081,7 @@ export function SettingsPage() {
                   key={target}
                   type="button"
                   onClick={() => changeView(target)}
-                  className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+                  className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
                 >
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                     <Icon className="size-4" />
@@ -1511,7 +1511,7 @@ export function SettingsPage() {
                       setSearchEngine(engine.value);
                       toast.success(`Search engine set to ${engine.label}`);
                     }}
-                    className="flex w-full items-start justify-between gap-4 p-4 text-left transition-colors hover:bg-primary/10 active:bg-primary/20"
+                    className="flex w-full items-start justify-between gap-4 p-4 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
                   >
                     <div className="space-y-0.5">
                       <div className="flex items-center gap-2">
