@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useStoreEnabled } from "@/market/enabled";
 import { BookOpen, Plus, RefreshCw, Search, ShoppingCart, Undo2, X } from "lucide-react";
@@ -41,8 +41,33 @@ function DesktopNav() {
       : []),
     { title: "Catalogue", url: "/catalog", on: pathname.startsWith("/catalog") },
   ];
+  // One line that slides to the page you are on, rather than a line that appears under it: where
+  // it is and how wide, measured off the active link.
+  const navRef = useRef<HTMLElement>(null);
+  const [line, setLine] = useState<{ left: number; width: number } | null>(null);
+  const [armed, setArmed] = useState(false);
+  const active = items.find((i) => i.on)?.url ?? "";
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const measure = () => {
+      const el = nav.querySelector<HTMLElement>("[aria-current='page']");
+      setLine(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [active, plan]);
+  // Slide only once it has somewhere to slide from: the first paint just puts it there.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setArmed(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
   return (
     <nav
+      ref={navRef}
       aria-label="Main"
       className="absolute inset-y-0 left-1/2 hidden -translate-x-1/2 items-stretch gap-7 md:flex"
     >
@@ -53,15 +78,24 @@ function DesktopNav() {
           aria-current={i.on ? "page" : undefined}
           className={cn(
             "relative flex items-center text-[15px] transition-colors",
-            // The line sits on the bar's own bottom edge, in the theme colour, under the page you are on.
             i.on
-              ? "font-semibold text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary"
+              ? "font-semibold text-foreground"
               : "font-medium text-muted-foreground hover:text-foreground",
           )}
         >
           {i.title}
         </Link>
       ))}
+      {/* In the theme colour, on the bar's own bottom edge. */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -bottom-px h-0.5 rounded-full bg-primary",
+          armed && "transition-[left,width,opacity] duration-300 ease-out",
+          line ? "opacity-100" : "opacity-0",
+        )}
+        style={{ left: line?.left ?? 0, width: line?.width ?? 0 }}
+      />
     </nav>
   );
 }
