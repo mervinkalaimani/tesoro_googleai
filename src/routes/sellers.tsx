@@ -84,12 +84,8 @@ function Count({ n, status, label }: { n: number; status: string; label?: string
 /** A seller with a VIIV profile: someone has registered their details here. */
 function Verified() {
   return (
-    <span
-      title="Registered with VIIV"
-      className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
-    >
-      <BadgeCheck className="size-3.5" />
-      Verified
+    <span title="Registered with VIIV" className="inline-flex shrink-0">
+      <BadgeCheck className="size-5 fill-sky-500 text-white" aria-label="Verified" />
     </span>
   );
 }
