@@ -120,7 +120,7 @@ export function AppSidebar() {
 
       <SidebarContent>
         {/* What you came to do: add a car, or look one up. Above Home. */}
-        <SidebarGroup className="pb-0">
+        <SidebarGroup className="pb-0 group-data-[collapsible=icon]:px-[5.5px]">
           <SidebarGroupContent>
             <SidebarMenu className="gap-2.5">
               <SidebarMenuItem>
@@ -130,10 +130,12 @@ export function AppSidebar() {
                     if (isMobile) setOpenMobile(false);
                     window.dispatchEvent(new Event(ADD_CAR_EVENT));
                   }}
-                  className="relative h-10 bg-primary text-[14px] font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
+                  className="relative h-10 bg-primary text-[14px] font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
                 >
                   <Plus className="size-4.5" />
-                  <span className="group-data-[collapsible=icon]:hidden">Add car</span>
+                  <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+                    Add car
+                  </span>
                   {pendingDraft && (
                     <span
                       aria-label="Unfinished car saved"
@@ -147,7 +149,7 @@ export function AppSidebar() {
                   asChild
                   isActive={pathname.startsWith("/catalog")}
                   tooltip="Catalogue"
-                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
+                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
                 >
                   <Link
                     to="/catalog"
@@ -156,7 +158,9 @@ export function AppSidebar() {
                     }}
                   >
                     <BookOpen className="size-4.5" />
-                    <span className="group-data-[collapsible=icon]:hidden">Catalogue</span>
+                    <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+                      Catalogue
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -165,7 +169,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Home */}
-        <SidebarGroup className="pb-0">
+        <SidebarGroup className="pb-0 group-data-[collapsible=icon]:px-[5.5px]">
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -173,7 +177,7 @@ export function AppSidebar() {
                   asChild
                   isActive={pathname === "/"}
                   tooltip="Home"
-                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
+                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
                 >
                   <Link
                     to="/"
@@ -182,7 +186,9 @@ export function AppSidebar() {
                     }}
                   >
                     <Home className="size-4.5" />
-                    <span className="group-data-[collapsible=icon]:hidden">Home</span>
+                    <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+                      Home
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -198,7 +204,10 @@ export function AppSidebar() {
         }))
           .filter((group) => group.items.length > 0)
           .map((group) => (
-            <SidebarGroup key={group.title} className="py-1">
+            <SidebarGroup
+              key={group.title}
+              className="py-1 group-data-[collapsible=icon]:px-[5.5px]"
+            >
               <SidebarGroupLabel className="text-xs font-semibold tracking-wider text-muted-foreground/80 uppercase">
                 {group.title}
               </SidebarGroupLabel>
@@ -212,7 +221,7 @@ export function AppSidebar() {
                           asChild
                           isActive={active}
                           tooltip={item.title}
-                          className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
+                          className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
                         >
                           <Link
                             to={item.url}
@@ -221,7 +230,7 @@ export function AppSidebar() {
                             }}
                           >
                             <item.icon className="size-4.5" />
-                            <span className="group-data-[collapsible=icon]:hidden">
+                            <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
                               {item.title}
                             </span>
                           </Link>
@@ -263,7 +272,7 @@ export function AppSidebar() {
             install's own settings, which is a different subject and belongs
             under its own heading rather than tucked beside Home. */}
         {isAdmin && persona === "admin" && (
-          <SidebarGroup className="py-1">
+          <SidebarGroup className="py-1 group-data-[collapsible=icon]:px-[5.5px]">
             <SidebarGroupLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/80">
               Admin
             </SidebarGroupLabel>
@@ -274,7 +283,7 @@ export function AppSidebar() {
                     asChild
                     isActive={pathname === "/dashboard"}
                     tooltip="Admin Dashboard"
-                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
+                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
                   >
                     <Link
                       to="/dashboard"
@@ -283,7 +292,9 @@ export function AppSidebar() {
                       }}
                     >
                       <LayoutDashboard className="size-4.5" />
-                      <span className="group-data-[collapsible=icon]:hidden">Admin Dashboard</span>
+                      <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+                        Admin Dashboard
+                      </span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -291,7 +302,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     tooltip="Admin Console"
-                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
+                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
                   >
                     <Link
                       to="/settings"
@@ -301,7 +312,9 @@ export function AppSidebar() {
                       }}
                     >
                       <Wrench className="size-4.5" />
-                      <span className="group-data-[collapsible=icon]:hidden">Admin Console</span>
+                      <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+                        Admin Console
+                      </span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -309,7 +322,7 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         )}
-        <SidebarGroup className="py-1">
+        <SidebarGroup className="py-1 group-data-[collapsible=icon]:px-[5.5px]">
           <SidebarGroupContent>
             <SidebarMenu className="gap-1">
               {SHOP_LINKS.filter((l) => !l.store || storeOn).map((item) => (
@@ -318,7 +331,7 @@ export function AppSidebar() {
                     asChild
                     isActive={pathname.startsWith(item.url)}
                     tooltip={item.title}
-                    className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
+                    className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
                   >
                     <Link
                       to={item.url}
@@ -327,7 +340,7 @@ export function AppSidebar() {
                       }}
                     >
                       <item.icon className="size-4.5" />
-                      <span className="flex items-center gap-1.5 group-data-[collapsible=icon]:hidden">
+                      <span className="flex items-center gap-1.5 overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
                         {item.store ? (
                           <>
                             <HomeScreenMark className="w-10" /> Shop
