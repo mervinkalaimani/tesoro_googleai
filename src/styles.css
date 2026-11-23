@@ -1015,6 +1015,27 @@ html[data-pinned] .app-top-bar,
   backdrop-filter: blur(14px);
 }
 
+/* The search field in the top bar: a pane of glass with a bright edge, not a grey outline. */
+input.search-glass {
+  background: linear-gradient(160deg, oklch(1 0 0 / 0.62), oklch(1 0 0 / 0.34));
+  -webkit-backdrop-filter: blur(16px) saturate(1.6);
+  backdrop-filter: blur(16px) saturate(1.6);
+  border: 1px solid oklch(1 0 0 / 0.85);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.9) inset,
+    0 4px 14px -6px color-mix(in oklab, var(--primary) 35%, transparent);
+}
+input.search-glass:focus-visible {
+  border-color: color-mix(in oklab, var(--primary) 70%, transparent);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--primary) 18%, transparent),
+    0 4px 14px -6px color-mix(in oklab, var(--primary) 45%, transparent);
+}
+html.dark input.search-glass {
+  background: linear-gradient(160deg, oklch(1 0 0 / 0.1), oklch(1 0 0 / 0.04));
+  border-color: oklch(1 0 0 / 0.16);
+  box-shadow: 0 1px 0 oklch(1 0 0 / 0.18) inset;
+}
 /* A heart tapped: it squeezes in, swells past its size and settles, a ring opens round it
    and a handful of specks fly out. */
 @keyframes heart-pop {

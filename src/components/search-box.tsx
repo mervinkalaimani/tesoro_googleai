@@ -189,7 +189,7 @@ export function SearchBox({
         // would sit on top of it.
         placeholder=""
         aria-label={onUsers ? "Search users" : "Search cars"}
-        className={query ? "pl-9 pr-24" : "pl-9 pr-18"}
+        className={cn("search-glass", query ? "pl-9 pr-24" : "pl-9 pr-18")}
       />
       {!query && (
         <div
