@@ -6,13 +6,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Boxes,
   Truck,
-  Clock3,
   ShoppingBag,
   Sparkles,
   Info,
   ChevronRight,
   AlertTriangle,
-  PauseCircle,
   Plus,
   CalendarClock,
   PackageCheck,
@@ -305,7 +303,11 @@ function DashboardPage() {
   const [revealInvestment, setRevealInvestment] = useState(false);
   const totals = useMemo(() => {
     const owned = data.filter((r) => !isIso(r.status));
-    return { count: owned.length, spent: owned.reduce((s, r) => s + (r.spent || 0), 0) };
+    return {
+      count: owned.length,
+      inHand: owned.filter((r) => normaliseStatus(r.status) === "In Hand").length,
+      spent: owned.reduce((s, r) => s + (r.spent || 0), 0),
+    };
   }, [data]);
   const investmentHidden = hideInvestment && !revealInvestment;
 
@@ -330,36 +332,13 @@ function DashboardPage() {
       ordersTab?: "late";
     }[] = [
       {
-        key: "inhand",
-        label: "In hand",
-        tone: "emerald",
-        icon: <Boxes className="size-4" />,
-        value: countOf("In Hand"),
-        status: "In Hand",
-      },
-      {
+        // Everything still coming: shipped, bought and waiting, or held by the seller. It was three
+        // tiles; the row reads faster with one.
         key: "transit",
-        label: "In transit",
+        label: "On the way",
         tone: "blue",
         icon: <Truck className="size-4" />,
-        value: countOf("In Transit"),
-        status: "In Transit",
-      },
-      {
-        key: "ordered",
-        label: "Ordered",
-        tone: "orange",
-        icon: <Clock3 className="size-4" />,
-        value: countOf("Ordered"),
-        status: "Ordered",
-      },
-      {
-        key: "onhold",
-        label: "On hold",
-        tone: "zinc",
-        icon: <PauseCircle className="size-4" />,
-        value: countOf("On Hold"),
-        status: "On Hold",
+        value: countOf("In Transit") + countOf("Ordered") + countOf("On Hold"),
       },
       {
         key: "po",
@@ -430,6 +409,8 @@ function DashboardPage() {
             icon={<Car className="size-4" />}
             label="Cars"
             value={totals.count.toLocaleString()}
+            sub={`${totals.inHand.toLocaleString()} in hand`}
+            subVisibleOnMobile
             tone="primary"
           />
           <KpiTile
