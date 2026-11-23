@@ -66,7 +66,7 @@ const SORT_LABELS: Record<SortField, string> = {
 const clean = (v: string | null | undefined) => (v || "").trim();
 
 /** A count that only draws attention when there is something to count. */
-function Count({ n, status }: { n: number; status: string }) {
+function Count({ n, status, label }: { n: number; status: string; label?: string }) {
   if (!n) return <span className="text-sm tabular-nums text-muted-foreground/50">—</span>;
   return (
     <span
@@ -76,6 +76,7 @@ function Count({ n, status }: { n: number; status: string }) {
       )}
     >
       {n}
+      {label && ` ${label}`}
     </span>
   );
 }
@@ -215,12 +216,21 @@ function SellersPage() {
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium text-foreground">
-                  {sellerLabel(g.label, shop)}
+                {/* The name and what was spent share the first line. */}
+                <span className="flex items-baseline justify-between gap-2">
+                  <span className="truncate font-medium text-foreground">
+                    {sellerLabel(g.label, shop)}
+                  </span>
+                  <span className="shrink-0 font-medium tabular-nums">{inr(g.spent)}</span>
                 </span>
-                <span className="block text-xs text-muted-foreground">
-                  {g.orders || "no"} {g.orders === 1 ? "order" : "orders"} · {g.shipments || "no"}{" "}
-                  {g.shipments === 1 ? "shipment" : "shipments"}
+                <span className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+                  <span>
+                    {g.orders || "no"} {g.orders === 1 ? "order" : "orders"} · {g.shipments || "no"}{" "}
+                    {g.shipments === 1 ? "shipment" : "shipments"}
+                  </span>
+                  <span className="shrink-0">
+                    {g.items.length} {g.items.length === 1 ? "car" : "cars"}
+                  </span>
                 </span>
                 {shop?.location && (
                   <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
@@ -230,19 +240,15 @@ function SellersPage() {
                 )}
                 {(g.po > 0 || g.pending > 0 || g.owed > 0) && (
                   <span className="mt-1 flex flex-wrap items-center gap-1.5">
-                    {g.po > 0 && <Count n={g.po} status="PO" />}
-                    {g.pending > 0 && <Count n={g.pending} status="Ordered" />}
+                    {g.po > 0 && <Count n={g.po} status="PO" label="pre-orders" />}
+                    {g.pending > 0 && <Count n={g.pending} status="Ordered" label="pending" />}
                     {g.owed > 0 && (
-                      <span className="text-xs text-muted-foreground">owed {inr(g.owed)}</span>
+                      <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium tabular-nums text-amber-700 dark:text-amber-300">
+                        owed {inr(g.owed)}
+                      </span>
                     )}
                   </span>
                 )}
-              </span>
-              <span className="shrink-0 text-right">
-                <span className="block font-medium tabular-nums">{inr(g.spent)}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {g.items.length} {g.items.length === 1 ? "car" : "cars"}
-                </span>
               </span>
               <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden />
             </button>
