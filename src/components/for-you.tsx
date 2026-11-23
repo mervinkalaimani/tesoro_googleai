@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuickAdd } from "@/components/use-quick-add";
 import { useAddToIso } from "@/lib/quick-iso";
 import { Heart, Plus, RefreshCw, Sparkles, ThumbsDown } from "lucide-react";
 
@@ -78,6 +79,7 @@ export function ForYou({
   const { isGuest, isAdmin, user } = useAuth();
   const { ids: dismissed, dismiss } = useDismissed(user?.id);
   const addToIso = useAddToIso();
+  const quickAdd = useQuickAdd();
   // What other collectors bought in the last two months, and how many of them each.
   const { cars: shared } = useRecentPreorders(!isGuest, MAX_WINDOW_DAYS, 50);
   const popular = useMemo(() => {
@@ -201,9 +203,7 @@ export function ForYou({
               {/* Add it without opening it: the same form, filled in from the casting. */}
               <button
                 type="button"
-                onClick={() =>
-                  setAdding({ car, status: car.release_status === "Pre Order" ? "PO" : "In Hand" })
-                }
+                onClick={() => quickAdd.start(car)}
                 aria-label="Add to my collection"
                 title="Add to my collection"
                 className="glass-btn-solid absolute bottom-3 right-3 grid size-8 cursor-pointer place-items-center rounded-full bg-primary/90 text-primary-foreground transition-transform hover:bg-primary active:scale-95"
@@ -215,6 +215,7 @@ export function ForYou({
         </div>
       </section>
 
+      {quickAdd.node}
       <CatalogCarDetails
         car={viewing ? catalogCarToDiecast(viewing) : null}
         catalogCar={viewing ?? undefined}

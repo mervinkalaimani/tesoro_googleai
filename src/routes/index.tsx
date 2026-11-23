@@ -1,4 +1,5 @@
 import { SUMMARY_ITEMS } from "@/lib/summary-cards";
+import { useQuickAdd } from "@/components/use-quick-add";
 import { useAddToIso } from "@/lib/quick-iso";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -900,6 +901,7 @@ const preorderAsCar = (c: RecentPreorder, key: string) =>
 function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: boolean }) {
   const { isAdmin, isOwner, isGuest } = useAuth();
   const addToIso = useAddToIso();
+  const quickAdd = useQuickAdd();
   const { catalog, findMatchingInCatalog, getCatalogCarById, updateCatalogCar, addCatalogCar } =
     useCatalog();
   const [adding, setAdding] = useState<RecentPreorder | null>(null);
@@ -1063,10 +1065,9 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
               {!c.inMyCollection && (
                 <>
                   <QuickAdd
-                    onClick={() => {
-                      setAddingIso(false);
-                      setAdding(c);
-                    }}
+                    onClick={() =>
+                      quickAdd.start({ ...catalogEntryFor(c), release_status: "Pre Order" })
+                    }
                   />
                   {!isGuest && <QuickIso onClick={() => addToIso(catalogEntryFor(c))} />}
                 </>
@@ -1076,6 +1077,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
         })}
       </div>
       {/* What the casting is, pointing to the actual car in the catalogue */}
+      {quickAdd.node}
       <CatalogCarDetails
         car={viewingCar}
         catalogCar={viewingCatalogCar}
@@ -1501,6 +1503,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   const { catalog, isLoading, updateCatalogCar } = useCatalog();
   const { isAdmin, isOwner, isGuest } = useAuth();
   const addToIso = useAddToIso();
+  const quickAdd = useQuickAdd();
   const cars = useCars();
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<CatalogCar | null>(null);
@@ -1566,12 +1569,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
               />
               {!ownedIds.has(r.entry.car_id.trim().toUpperCase()) && (
                 <>
-                  <QuickAdd
-                    onClick={() => {
-                      setAddingIso(false);
-                      setAdding(r.entry);
-                    }}
-                  />
+                  <QuickAdd onClick={() => quickAdd.start(r.entry)} />
                   {!isGuest && <QuickIso onClick={() => addToIso(r.entry)} />}
                 </>
               )}
@@ -1580,6 +1578,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         })}
       </div>
 
+      {quickAdd.node}
       <CatalogCarDetails
         car={viewing ? asCar(viewing) : null}
         catalogCar={viewing}
