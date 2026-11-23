@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
-import { ArrowRight, Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Plus, RefreshCw, Sparkles, Tag, ThumbsDown, ThumbsUp } from "lucide-react";
+import { CarThumb } from "@/components/car-thumb";
 
-import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
@@ -40,6 +40,9 @@ function ForYouCarousel({
 }) {
   const track = useRef<HTMLDivElement>(null);
   const [front, setFront] = useState(0);
+  // Where the track is, in whole slides and fractions, so each card can size itself by how far it
+  // is from the middle.
+  const [pos, setPos] = useState(0);
   const n = picks.length;
   const at = picks[Math.min(front, n - 1)];
 
@@ -53,138 +56,139 @@ function ForYouCarousel({
   const goTo = (i: number) => track.current?.scrollTo({ left: i * step(), behavior: "smooth" });
   const onScroll = () => {
     const el = track.current;
-    if (el) setFront(Math.max(0, Math.min(n - 1, Math.round(el.scrollLeft / step()))));
+    if (!el) return;
+    const p = el.scrollLeft / step();
+    setPos(p);
+    setFront(Math.max(0, Math.min(n - 1, Math.round(p))));
   };
 
   if (!n || !at) return null;
   const btn =
-    "grid size-9 cursor-pointer place-items-center rounded-full transition-transform active:scale-95";
-  const actions = (pick: Pick) => (
-    <div className="flex items-center gap-2">
-      <button
-        type="button"
-        onClick={() => onDismiss(pick.car.car_id)}
-        aria-label="Not interested"
-        title="Not interested: don't suggest this again"
-        className={`${btn} glass-btn text-foreground`}
-      >
-        <ThumbsDown className="size-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => onLike(pick.car.car_id)}
-        aria-label="Show more like this"
-        title="Show more cars like this"
-        className={`${btn} glass-btn text-foreground`}
-      >
-        <ThumbsUp className="size-4" />
-      </button>
-      <WishlistHeart
-        entry={pick.car}
-        className={`${btn} border border-white/50 bg-white/25 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-md hover:bg-white/35`}
-      />
-      <button
-        type="button"
-        onClick={() => onAdd(pick.car)}
-        aria-label="Add to my collection"
-        title="Add to my collection"
-        className={`${btn} glass-btn-solid ml-auto bg-primary/90 text-primary-foreground hover:bg-primary`}
-      >
-        <Plus className="size-4" />
-      </button>
-    </div>
-  );
-  const c = catalogCarToDiecast(at.car);
-  const facts: [string, string | undefined][] = [
-    ["Brand", c.brand],
-    ["Number", c.carNumber],
-    ["Series", c.series],
-    ["Assortment", c.assortment],
-    ["Colour", c.colour],
-    ["Type", c.type],
-    ["Year", c.year],
-  ];
-
+    "grid cursor-pointer place-items-center rounded-full transition-transform active:scale-95";
   return (
-    <div className="sm:grid sm:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] sm:items-center sm:gap-6">
-      <div className="min-w-0">
-        <div
-          ref={track}
-          onScroll={onScroll}
-          className="no-scrollbar -mx-3 flex snap-x snap-mandatory items-center gap-3 overflow-x-auto px-[19%] py-3 sm:mx-0 sm:px-[24%]"
-          style={{ overscrollBehaviorX: "contain" }}
-        >
-          {picks.map((p, i) => (
-            <div key={p.car.car_id} className="w-[62%] shrink-0 snap-center sm:w-[52%]">
-              <BlisterTile
-                car={catalogCarToDiecast(p.car)}
-                onOpen={() => (i === front ? onOpen(p.car) : goTo(i))}
-                showStatus={false}
-                foot={false}
-                overlay={<CarOverlay car={catalogCarToDiecast(p.car)} brandOnly noAssortment />}
-              />
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center justify-center gap-2 pt-1" role="tablist">
-          {picks.map((p, i) => (
-            <button
+    <div className="min-w-0 [container-type:inline-size]">
+      <div
+        ref={track}
+        onScroll={onScroll}
+        className="no-scrollbar -mx-3 flex snap-x snap-mandatory items-center gap-3 overflow-x-auto px-[15cqw] py-4 sm:mx-0 sm:gap-5 sm:px-[36cqw]"
+        style={{ overscrollBehaviorX: "contain" }}
+      >
+        {picks.map((p, i) => {
+          const c = catalogCarToDiecast(p.car);
+          const d = Math.min(2, Math.abs(i - pos));
+          const isFront = i === front;
+          const stats = (
+            [
+              ["Number", c.carNumber],
+              ["Colour", c.colour],
+              ["Type", c.type],
+            ] as [string, string | undefined][]
+          )
+            .filter(([, v]) => (v || "").trim())
+            .slice(0, 3);
+          return (
+            <div
               key={p.car.car_id}
-              type="button"
-              role="tab"
-              aria-selected={i === front}
-              aria-label={`Show suggestion ${i + 1} of ${n}`}
-              onClick={() => goTo(i)}
-              className={`h-2 cursor-pointer rounded-full transition-all ${
-                i === front ? "w-5 bg-foreground" : "w-2 bg-foreground/30"
-              }`}
-            />
-          ))}
-        </div>
-        {/* A phone has no pane beside the carousel: the reason and the buttons go here. */}
-        <div className="space-y-2 px-1 pt-3 sm:hidden">
-          <p className="text-xs text-muted-foreground">{at.reason}</p>
-          {actions(at)}
-        </div>
-      </div>
-      <div className="card-elevated glass-pane !bg-white/95 dark:!bg-neutral-900/95 hidden min-h-[19rem] flex-col gap-3 p-5 sm:flex">
-        <div
-          key={at.car.car_id}
-          className="animate-in fade-in flex flex-1 flex-col gap-3 duration-300"
-        >
-          <div className="min-w-0">
-            <div className="mb-1 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
-              <Sparkles className="size-3 fill-amber-400 text-amber-400" />
-              Suggested
-            </div>
-            <div className="line-clamp-2 text-xl font-semibold leading-tight">
-              {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">{at.reason}</p>
-          </div>
-          <dl className="grid flex-1 grid-cols-2 content-start gap-x-4 gap-y-3">
-            {facts
-              .filter(([, v]) => (v || "").trim())
-              .map(([k, v]) => (
-                <div key={k} className="min-w-0">
-                  <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    {k}
-                  </dt>
-                  <dd className="truncate text-sm font-medium">{v}</dd>
+              // The cars either side are smaller and a little dimmer, so the front one is the card.
+              style={{ transform: `scale(${1 - 0.09 * d})`, opacity: 1 - 0.18 * d }}
+              className="w-[70cqw] shrink-0 snap-center snap-always transition-[transform,opacity] duration-150 sm:w-[28cqw]"
+            >
+              <article className="card-elevated flex flex-col gap-2 overflow-hidden p-2.5">
+                <button
+                  type="button"
+                  onClick={() => (isFront ? onOpen(p.car) : goTo(i))}
+                  className="block w-full cursor-pointer overflow-hidden rounded-2xl"
+                  aria-label={isFront ? `Open ${c.name}` : `Show ${c.name}`}
+                >
+                  <CarThumb car={c} className="aspect-[4/3] w-full [&_img]:object-cover" />
+                </button>
+                <div className="space-y-0.5 px-1">
+                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                    <Sparkles className="size-3 fill-amber-400 text-amber-400" />
+                    Suggested
+                  </div>
+                  <div className="line-clamp-1 text-lg font-semibold leading-tight">
+                    {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Tag className="size-3 shrink-0" />
+                    <span className="truncate">
+                      {[c.brand, c.series].filter(Boolean).join(" · ") || "—"}
+                    </span>
+                  </div>
                 </div>
-              ))}
-          </dl>
-          {actions(at)}
-          <Button
+                <div className="px-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider">
+                    Description
+                  </div>
+                  <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                    {p.reason}
+                  </p>
+                </div>
+                {stats.length > 0 && (
+                  <dl className="flex gap-5 px-1">
+                    {stats.map(([k, v]) => (
+                      <div key={k} className="min-w-0">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wider">{k}</dt>
+                        <dd className="truncate text-xs font-medium text-primary">{v}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+                <div
+                  className={`flex items-center gap-2 px-1 pb-1 ${isFront ? "" : "pointer-events-none"}`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onDismiss(p.car.car_id)}
+                    aria-label="Not interested"
+                    title="Not interested: don't suggest this again"
+                    className={`${btn} glass-btn size-8 text-foreground`}
+                  >
+                    <ThumbsDown className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onLike(p.car.car_id)}
+                    aria-label="Show more like this"
+                    title="Show more cars like this"
+                    className={`${btn} glass-btn size-8 text-foreground`}
+                  >
+                    <ThumbsUp className="size-4" />
+                  </button>
+                  <WishlistHeart
+                    entry={p.car}
+                    className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onAdd(p.car)}
+                    aria-label="Add to my collection"
+                    title="Add to my collection"
+                    className={`${btn} glass-btn-solid ml-auto size-11 bg-primary/90 text-primary-foreground hover:bg-primary`}
+                  >
+                    <Plus className="size-5" />
+                  </button>
+                </div>
+              </article>
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex items-center justify-center gap-2" role="tablist">
+        {picks.map((p, i) => (
+          <button
+            key={p.car.car_id}
             type="button"
-            variant="outline"
-            className="shrink-0 gap-1.5"
-            onClick={() => onOpen(at.car)}
-          >
-            View details
-            <ArrowRight className="size-4" />
-          </Button>
-        </div>
+            role="tab"
+            aria-selected={i === front}
+            aria-label={`Show suggestion ${i + 1} of ${n}`}
+            onClick={() => goTo(i)}
+            className={`h-2 cursor-pointer rounded-full transition-all ${
+              i === front ? "w-5 bg-foreground" : "w-2 bg-foreground/30"
+            }`}
+          />
+        ))}
       </div>
     </div>
   );
