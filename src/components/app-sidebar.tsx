@@ -15,7 +15,6 @@ import {
   BookOpen,
   Plus,
   Store,
-  Database,
   Sparkles,
   ChevronRight,
 } from "lucide-react";
@@ -34,7 +33,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useCarsSource } from "@/lib/cars-store";
 import { cn } from "@/lib/utils";
 import { useStoreEnabled } from "@/market/enabled";
 import { openProDialog } from "@/components/pro-dialog";
@@ -81,9 +79,8 @@ const NAV_GROUPS: {
 ];
 
 export function AppSidebar() {
-  const { isAdmin, isOwner, isGuest, plan, profile } = useAuth();
+  const { isAdmin, isGuest, plan, profile } = useAuth();
   const { persona } = usePersona();
-  const { source } = useCarsSource();
   const { isMobile, setOpenMobile } = useSidebar();
   const storeOn = useStoreEnabled() === true;
   const pathname = useRouterState({ select: (r) => r.location.pathname });
@@ -362,27 +359,6 @@ export function AppSidebar() {
           {/* Export and the CSV template have moved into the Add car dialog,
               alongside bulk entry and CSV upload — every way cars come in or go
               out, on one row. */}
-
-          {/* Matches the Settings tab it links to: connection details are the
-              owner's, not every admin's. */}
-          {isOwner && (
-            <div className="border-b border-sidebar-border pb-3">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">Database</div>
-              <Link
-                to="/settings"
-                className="mt-1 flex items-center gap-1.5 text-sm text-foreground transition-colors hover:text-primary"
-                title="Supabase database settings"
-              >
-                <Database className="size-3.5 shrink-0 text-primary" />
-                <span className="truncate text-xs">Supabase synced</span>
-                <span
-                  className={`ml-auto inline-block size-1.5 shrink-0 rounded-full ${
-                    source === "supabase" ? "bg-emerald-500" : "bg-primary/80"
-                  }`}
-                />
-              </Link>
-            </div>
-          )}
 
           {/* Who is signed in, and signing out, are in the top bar now — behind
               the avatar in the far corner, which is where every other app on the
