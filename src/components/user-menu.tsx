@@ -33,7 +33,7 @@ function initialsOf(name: string, fallback: string): string {
  */
 export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
   const { profile, isAdmin, isGuest } = useAuth();
-  const { persona } = usePersona();
+  const { persona, enabled: personasOn } = usePersona();
   const plan = planOf(profile);
 
   const name = fullName(profile);
@@ -94,8 +94,14 @@ export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
         </div>
 
         <DropdownMenuSeparator />
-        <PersonaPicker className="px-2 pb-1.5" />
-        <DropdownMenuSeparator />
+        {/* The picker and its own rule, only while the shop is in testing: with no picker the two
+            rules would sit side by side. */}
+        {personasOn && (
+          <>
+            <PersonaPicker className="px-2 pb-1.5" />
+            <DropdownMenuSeparator />
+          </>
+        )}
 
         <DropdownMenuItem asChild>
           <Link to="/settings" className="cursor-pointer gap-2">
