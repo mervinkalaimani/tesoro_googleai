@@ -162,7 +162,7 @@ export function SearchBox({
 
   return (
     <div ref={containerRef} className={cn("relative max-w-2xl flex-1 md:ml-2", className)}>
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-foreground/70" />
       <Input
         ref={inputRef}
         value={query}
@@ -194,7 +194,7 @@ export function SearchBox({
       {!query && (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 left-9 flex items-center gap-1.5 overflow-hidden pr-20 text-sm text-muted-foreground"
+          className="pointer-events-none absolute inset-y-0 left-9 flex items-center gap-1.5 overflow-hidden pr-20 text-sm text-foreground/70"
         >
           <span className="shrink-0">{onUsers ? "Search users" : "Search"}</span>
           {!onUsers && (
@@ -217,7 +217,7 @@ export function SearchBox({
               setQuery("");
               inputRef.current?.focus();
             }}
-            className="grid size-6 cursor-pointer place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            className="grid size-6 cursor-pointer place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
           >
             <X className="size-3.5" />
           </button>
@@ -240,7 +240,7 @@ export function SearchBox({
                 "grid size-7 cursor-pointer place-items-center rounded-md transition-colors active:scale-95",
                 advancedOpen
                   ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                  : "text-foreground/70 hover:bg-muted hover:text-foreground",
               )}
             >
               <Filter className="size-4" />
@@ -250,7 +250,7 @@ export function SearchBox({
               aria-label="Search by image"
               title="Scan to search with VIIV Scan, or read a barcode"
               onClick={() => setScanOpen(true)}
-              className="grid size-7 cursor-pointer place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+              className="grid size-7 cursor-pointer place-items-center rounded-md text-foreground/70 transition-colors hover:bg-muted hover:text-foreground active:scale-95"
             >
               <Camera className="size-4" />
             </button>
