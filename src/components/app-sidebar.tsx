@@ -1,14 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
-  Home,
   LayoutDashboard,
   Wrench,
   Star,
   Boxes,
-  Truck,
   Copy,
-  Car,
   CalendarDays,
   ShoppingBag,
   ShoppingCart,
@@ -58,7 +55,6 @@ const NAV_GROUPS: {
   {
     title: "My Cars",
     items: [
-      { title: "My Cars", url: "/inventory", icon: Car },
       { title: "Favourites", url: "/favourites", icon: Star, needs: "pro" },
       { title: "Collection", url: "/collection", icon: Boxes, needs: "pro" },
     ],
@@ -66,7 +62,6 @@ const NAV_GROUPS: {
   {
     title: "My Orders",
     items: [
-      { title: "My Orders", url: "/orders", icon: Truck, needs: "plus" },
       { title: "Pre-orders", url: "/preorders", icon: ShoppingBag, needs: "pro" },
       { title: "Duplicates", url: "/duplicates", icon: Copy, needs: "pro" },
     ],
@@ -170,35 +165,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Home */}
-        <SidebarGroup className="pb-0 group-data-[collapsible=icon]:px-[5.5px]">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === "/"}
-                  tooltip="Home"
-                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
-                >
-                  <Link
-                    to="/"
-                    onClick={() => {
-                      if (isMobile) setOpenMobile(false);
-                    }}
-                  >
-                    <Home className="size-4.5" />
-                    <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
-                      Home
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Sections: My Cars, My Orders, Habit */}
+        {/* Sections. Home, My Cars and My Orders are in the top bar. */}
         {NAV_GROUPS.map((g) => ({
           ...g,
           // Items the plan doesn't include are left out, not shown locked.

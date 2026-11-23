@@ -1,12 +1,13 @@
 import { startTransition, useEffect, useRef, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { useStoreEnabled } from "@/market/enabled";
-import { BookOpen, Plus, RefreshCw, Search, ShoppingCart, Undo2 } from "lucide-react";
+import { BookOpen, Plus, RefreshCw, Search, ShoppingCart, Undo2, X } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCars, useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
 import { useAuth } from "@/lib/auth-store";
+import { planIncludes } from "@/lib/tiers";
 import { openProDialog } from "@/components/pro-dialog";
 import { useCatalog } from "@/lib/catalog-store";
 import type { Diecast } from "@/lib/types";
@@ -24,6 +25,44 @@ import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 
 /** Fired by the sidebar's Add car button; the top bar owns the dialogs it opens. */
 export const ADD_CAR_EVENT = "viiv:add-car";
+
+/**
+ * Home, My Cars and My Orders, in the middle of the bar on a desktop. The sidebar keeps the rest; a
+ * phone has the bottom bar for these. My Orders is a Plus feature, left out where the plan lacks it.
+ */
+function DesktopNav() {
+  const { plan } = useAuth();
+  const pathname = useRouterState({ select: (r) => r.location.pathname });
+  const items = [
+    { title: "Home", url: "/", on: pathname === "/" },
+    { title: "My Cars", url: "/inventory", on: pathname.startsWith("/inventory") },
+    ...(planIncludes(plan, "plus")
+      ? [{ title: "My Orders", url: "/orders", on: pathname.startsWith("/orders") }]
+      : []),
+  ];
+  return (
+    <nav
+      aria-label="Main"
+      className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-7 md:flex"
+    >
+      {items.map((i) => (
+        <Link
+          key={i.url}
+          to={i.url}
+          aria-current={i.on ? "page" : undefined}
+          className={cn(
+            "text-[15px] transition-colors",
+            i.on
+              ? "font-semibold text-foreground"
+              : "font-medium text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {i.title}
+        </Link>
+      ))}
+    </nav>
+  );
+}
 
 /**
  * Desktop search: an icon beside the bell that opens the field in place, over the right of the bar.
@@ -75,12 +114,18 @@ function DesktopSearch() {
         )}
       </Button>
       {open && (
-        <div className="absolute right-0 top-1/2 z-50 w-[min(36rem,calc(100vw-24rem))] -translate-y-1/2 animate-in fade-in slide-in-from-right-2">
-          <SearchBox
-            className="w-full max-w-none md:ml-0"
-            autoFocus
-            onEscape={() => setOpen(false)}
-          />
+        <div className="absolute right-0 top-1/2 z-50 flex w-[min(25rem,calc(100vw-26rem))] -translate-y-1/2 items-center gap-1.5 animate-in fade-in slide-in-from-right-2">
+          <SearchBox className="min-w-0 flex-1 md:ml-0" autoFocus onEscape={() => setOpen(false)} />
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-9 shrink-0 rounded-full"
+            onClick={() => setOpen(false)}
+            aria-label="Close search"
+            title="Close search (Esc)"
+          >
+            <X className="size-4.5" />
+          </Button>
         </div>
       )}
     </div>
@@ -173,6 +218,7 @@ export function TopBar() {
           was already under your thumb. Swiping in from the edge still works for
           anyone who has learned it. */}
       <SidebarTrigger className="hidden md:inline-flex" />
+      <DesktopNav />
       {/* A phone's wordmark. On a desktop it lives in the sidebar's header. */}
       <Link to="/" aria-label="VIIV home" className="shrink-0 md:hidden">
         <HomeScreenMark className="w-[80px]" />
