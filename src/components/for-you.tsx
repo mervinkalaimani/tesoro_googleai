@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
-import { Plus, RefreshCw, Sparkles, Tag, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 import { CarThumb } from "@/components/car-thumb";
 
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -79,13 +79,10 @@ function ForYouCarousel({
           const isFront = i === front;
           const stats = (
             [
-              ["Number", c.carNumber],
               ["Colour", c.colour],
-              ["Type", c.type],
+              ["Series", c.series],
             ] as [string, string | undefined][]
-          )
-            .filter(([, v]) => (v || "").trim())
-            .slice(0, 2);
+          ).filter(([, v]) => (v || "").trim());
           return (
             <div
               key={p.car.car_id}
@@ -111,20 +108,9 @@ function ForYouCarousel({
                     <div className="line-clamp-2 text-base font-semibold leading-tight">
                       {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
                     </div>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Tag className="size-3 shrink-0" />
-                      <span className="truncate">
-                        {[c.brand, c.series].filter(Boolean).join(" · ") || "—"}
-                      </span>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {[c.brand, c.carNumber, c.assortment].filter(Boolean).join(" · ") || "—"}
                     </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-wider">
-                      Description
-                    </div>
-                    <p className="line-clamp-3 text-xs leading-snug text-muted-foreground">
-                      {p.reason}
-                    </p>
                   </div>
                   {stats.length > 0 && (
                     <dl className="flex gap-4">
@@ -138,6 +124,9 @@ function ForYouCarousel({
                       ))}
                     </dl>
                   )}
+                  <p className="line-clamp-3 text-xs leading-snug text-muted-foreground">
+                    {p.reason}
+                  </p>
                   <div
                     className={`flex items-center gap-1.5 ${isFront ? "" : "pointer-events-none"}`}
                   >
