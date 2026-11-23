@@ -158,12 +158,25 @@ export function SellerEditDialog({
           )}
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" disabled={busy} onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex flex-row items-center justify-between gap-2 border-t border-border pt-3 sm:justify-between">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={() => onOpenChange(false)}
+            className="text-muted-foreground hover:text-foreground"
+          >
             Cancel
           </Button>
-          <Button disabled={busy} onClick={() => void save()} className="gap-1.5">
-            {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+          <Button
+            type="button"
+            size="sm"
+            disabled={busy}
+            onClick={() => void save()}
+            className="gap-1.5"
+          >
+            {busy ? <Loader2 className="size-3.5 animate-spin" /> : null}
             Save
           </Button>
         </DialogFooter>

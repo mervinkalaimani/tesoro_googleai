@@ -177,6 +177,8 @@ export function SellerOrdersDialog({
   const [only, setOnly] = useState<string>("");
   const [openRows, setOpenRows] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState(false);
+  // Phone: the sheet has risen to the top, so the header pins and the name steps down.
+  const [pinned, setPinned] = useState(false);
 
   const mine = useMemo(() => bySeller(cars, seller), [cars, seller]);
   const all = useMemo(() => bundle(mine, by), [mine, by]);
@@ -240,7 +242,7 @@ export function SellerOrdersDialog({
         {/* The shop's picture across the top, edge to edge on a phone like a car's page,
             with Edit and Close as dark round buttons over its corner. Without a picture
             the initials on a tint stand in. */}
-        <div className="relative -mx-4 -mt-4 h-72 shrink-0 overflow-hidden bg-primary/12 sm:mx-0 sm:mt-0 sm:h-48 sm:rounded-2xl">
+        <div className="h-72 shrink-0 overflow-hidden bg-primary/12 max-sm:absolute max-sm:inset-x-0 max-sm:top-0 sm:relative sm:h-48 sm:rounded-2xl">
           {shop?.image_url ? (
             <img
               src={transformImageUrl(shop.image_url, "detail")}
@@ -252,351 +254,379 @@ export function SellerOrdersDialog({
               {name.slice(0, 2)}
             </span>
           )}
-          <div className="absolute right-3 top-3 flex items-center gap-2">
-            {/* The shop's own details, corrected by the person who bought from
+        </div>
+
+        <div className="absolute right-3 top-3 z-30 flex sm:right-9 sm:top-9 items-center gap-2">
+          {/* The shop's own details, corrected by the person who bought from
                 it. Pro writes this table; everybody signed in reads it. */}
-            {isPro && !isGuest && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                aria-label={`Edit ${name}`}
-                title={`Edit ${name}`}
-                className="grid size-10 place-items-center rounded-full bg-foreground text-background shadow-md transition-opacity hover:opacity-90"
-              >
-                <Pencil className="size-4" />
-              </button>
-            )}
+          {isPro && !isGuest && (
             <button
               type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close"
-              title="Close"
+              onClick={() => setEditing(true)}
+              aria-label={`Edit ${name}`}
+              title={`Edit ${name}`}
               className="grid size-10 place-items-center rounded-full bg-foreground text-background shadow-md transition-opacity hover:opacity-90"
             >
-              <X className="size-5" />
+              <Pencil className="size-4" />
             </button>
-          </div>
+          )}
+          <button
+            type="button"
+            onClick={() => onOpenChange(false)}
+            aria-label="Close"
+            title="Close"
+            className="grid size-10 place-items-center rounded-full bg-foreground text-background shadow-md transition-opacity hover:opacity-90"
+          >
+            <X className="size-5" />
+          </button>
         </div>
 
-        {/* The sheet the name sits on, rising over the bottom of the picture on a phone. */}
-        <div className="relative flex shrink-0 items-center gap-3 max-sm:-mx-4 max-sm:-mt-10 max-sm:rounded-t-3xl max-sm:bg-background max-sm:px-4 max-sm:pt-5">
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <DialogTitle className="truncate !pr-0 text-xl font-bold tracking-tight sm:text-2xl">
-                {name}
-              </DialogTitle>
-              {shop && <VerifiedBadge />}
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
-              {shop?.store_name && (
-                <span className="inline-flex min-w-0 items-center gap-1">
-                  <Store className="size-3.5 shrink-0" />
-                  <span className="truncate">{shop.store_name}</span>
-                </span>
+        <div
+          onScroll={(e) => setPinned(e.currentTarget.scrollTop > 240)}
+          className="max-sm:absolute max-sm:inset-0 max-sm:z-10 max-sm:overflow-y-auto max-sm:overscroll-contain sm:contents"
+        >
+          <div className="h-72 shrink-0 sm:hidden" />
+          <div className="flex flex-col gap-4 max-sm:-mt-10 max-sm:min-h-[calc(100%-15.5rem)] max-sm:rounded-t-3xl max-sm:border-t max-sm:border-border max-sm:bg-background max-sm:px-4 max-sm:pb-4 sm:contents">
+            {/* The sheet the name sits on, rising over the bottom of the picture on a phone. */}
+            <div
+              className={cn(
+                "relative flex shrink-0 items-center gap-3 max-sm:sticky max-sm:top-0 max-sm:z-20 max-sm:-mx-4 max-sm:rounded-t-3xl max-sm:bg-background max-sm:px-4 max-sm:pb-2 max-sm:pt-5 max-sm:transition-[padding] max-sm:duration-200",
+                pinned &&
+                  "max-sm:pr-28 max-sm:pt-[max(0.75rem,env(safe-area-inset-top))] max-sm:shadow-sm",
               )}
-              {shop?.location && (
-                <span className="inline-flex min-w-0 items-center gap-1">
-                  <MapPin className="size-3.5 shrink-0" />
-                  <span className="truncate">{shop.location}</span>
-                </span>
-              )}
-              <DialogDescription className="sr-only">
-                Everything bought from them, by order or by shipment.
-              </DialogDescription>
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <DialogTitle
+                    className={cn(
+                      "truncate !pr-0 text-xl font-bold tracking-tight transition-[font-size] duration-200 sm:text-2xl",
+                      pinned && "max-sm:text-base",
+                    )}
+                  >
+                    {name}
+                  </DialogTitle>
+                  {shop && <VerifiedBadge />}
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
+                  {shop?.store_name && (
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <Store className="size-3.5 shrink-0" />
+                      <span className="truncate">{shop.store_name}</span>
+                    </span>
+                  )}
+                  {shop?.location && (
+                    <span className="inline-flex min-w-0 items-center gap-1">
+                      <MapPin className="size-3.5 shrink-0" />
+                      <span className="truncate">{shop.location}</span>
+                    </span>
+                  )}
+                  <DialogDescription className="sr-only">
+                    Everything bought from them, by order or by shipment.
+                  </DialogDescription>
+                </div>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {shop?.phone && (
+                  <Action href={`tel:${shop.phone.replace(/\s+/g, "")}`} label={`Call ${name}`}>
+                    <Phone className="size-4" />
+                  </Action>
+                )}
+                {wa && (
+                  <Action href={wa} external label={`WhatsApp ${name}`}>
+                    <WhatsAppMark />
+                  </Action>
+                )}
+              </div>
             </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {shop?.phone && (
-              <Action href={`tel:${shop.phone.replace(/\s+/g, "")}`} label={`Call ${name}`}>
-                <Phone className="size-4" />
-              </Action>
-            )}
-            {wa && (
-              <Action href={wa} external label={`WhatsApp ${name}`}>
-                <WhatsAppMark />
-              </Action>
-            )}
-          </div>
-        </div>
 
-        {/* The scroll area reaches out into the dialog's padding on both sides, so the tiles'
+            {/* The scroll area reaches out into the dialog's padding on both sides, so the tiles'
             shadows are not cut off at its edge. */}
-        <div className="-mx-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4 sm:-mx-6 sm:px-6">
-          {/* THE BAND, in the same tiles every other screen opens with: an
+            <div className="min-h-0 flex-1 space-y-4 pb-4 sm:-mx-6 sm:overflow-y-auto sm:px-6 max-sm:overflow-visible">
+              {/* THE BAND, in the same tiles every other screen opens with: an
               icon chip, the label, the number. It used to be its own thing --
               ten cells divided by hairlines -- which made the one screen about
               a shop's money look unlike every screen about yours. */}
-          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:gap-3 lg:grid-cols-5">
-            <KpiTile label="Cars" value={String(mine.length)} icon={<Car className="size-4" />} />
-            <KpiTile
-              label="Orders"
-              value={String(totals.orders)}
-              icon={<Receipt className="size-4" />}
-            />
-            <KpiTile
-              label="Shipments"
-              value={String(totals.shipments)}
-              icon={<Truck className="size-4" />}
-              tone="sky"
-            />
-            <KpiTile
-              label="Pre-orders"
-              value={String(totals.po)}
-              icon={<ShoppingBag className="size-4" />}
-              tone="violet"
-            />
-            <KpiTile
-              label="Pending"
-              value={String(totals.pending)}
-              icon={<Clock3 className="size-4" />}
-              tone="amber"
-              valueTone={totals.pending ? "amber" : undefined}
-            />
-            <KpiTile
-              label="Spent"
-              value={inrFull(totals.spent)}
-              icon={<Banknote className="size-4" />}
-            />
-            <KpiTile
-              label="Shipping"
-              value={inrFull(totals.shipping)}
-              icon={<Package className="size-4" />}
-            />
-            <KpiTile
-              label="Paid"
-              value={inrFull(totals.paid)}
-              icon={<CheckCircle2 className="size-4" />}
-              tone="emerald"
-            />
-            <KpiTile
-              label="Balance"
-              value={inrFull(totals.owed)}
-              icon={<Scale className="size-4" />}
-              tone={totals.owed > 0 ? "amber" : "emerald"}
-              valueTone={totals.owed > 0 ? "amber" : undefined}
-            />
-            {/* Two dates rather than a number. At the tile's own size they
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:gap-3 lg:grid-cols-5 max-sm:[&>*]:!rounded-2xl max-sm:[&>*]:!px-2.5 max-sm:[&>*]:!py-2 max-sm:[&>*>div:first-child]:text-[9px] max-sm:[&>*>div:nth-child(2)]:!mt-0.5 max-sm:[&>*>div:nth-child(2)]:!text-base">
+                <KpiTile
+                  label="Cars"
+                  value={String(mine.length)}
+                  icon={<Car className="size-4" />}
+                />
+                <KpiTile
+                  label="Orders"
+                  value={String(totals.orders)}
+                  icon={<Receipt className="size-4" />}
+                />
+                <KpiTile
+                  label="Shipments"
+                  value={String(totals.shipments)}
+                  icon={<Truck className="size-4" />}
+                  tone="sky"
+                />
+                <KpiTile
+                  label="Pre-orders"
+                  value={String(totals.po)}
+                  icon={<ShoppingBag className="size-4" />}
+                  tone="violet"
+                />
+                <KpiTile
+                  label="Pending"
+                  value={String(totals.pending)}
+                  icon={<Clock3 className="size-4" />}
+                  tone="amber"
+                  valueTone={totals.pending ? "amber" : undefined}
+                />
+                <KpiTile
+                  label="Spent"
+                  value={inrFull(totals.spent)}
+                  icon={<Banknote className="size-4" />}
+                />
+                <KpiTile
+                  label="Shipping"
+                  value={inrFull(totals.shipping)}
+                  icon={<Package className="size-4" />}
+                />
+                <KpiTile
+                  label="Paid"
+                  value={inrFull(totals.paid)}
+                  icon={<CheckCircle2 className="size-4" />}
+                  tone="emerald"
+                />
+                <KpiTile
+                  label="Balance"
+                  value={inrFull(totals.owed)}
+                  icon={<Scale className="size-4" />}
+                  tone={totals.owed > 0 ? "amber" : "emerald"}
+                  valueTone={totals.owed > 0 ? "amber" : undefined}
+                />
+                {/* Two dates rather than a number. At the tile's own size they
                 fill the card and clip, so this one value steps down. */}
-            <KpiTile
-              label="Bought between"
-              value={
-                <span className="block truncate text-xs font-semibold leading-snug md:text-sm">
-                  {totals.first && totals.last
-                    ? `${formatDayMonthYear(totals.first)} – ${formatDayMonthYear(totals.last)}`
-                    : "—"}
-                </span>
-              }
-              icon={<CalendarRange className="size-4" />}
-            />
-          </div>
+                <KpiTile
+                  label="Bought between"
+                  value={
+                    <span className="block truncate text-xs font-semibold leading-snug md:text-sm">
+                      {totals.first && totals.last
+                        ? `${formatDayMonthYear(totals.first)} – ${formatDayMonthYear(totals.last)}`
+                        : "—"}
+                    </span>
+                  }
+                  icon={<CalendarRange className="size-4" />}
+                />
+              </div>
 
-          {/* WHAT IS BEING LISTED, then which of it. Two different questions,
+              {/* WHAT IS BEING LISTED, then which of it. Two different questions,
               so two controls: the segment says how the cars are bundled and
               the pills say which bundles to show. */}
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Which bundles: All is the default and leads, the rest cycle through the statuses
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Which bundles: All is the default and leads, the rest cycle through the statuses
                 that are actually here, each with its count. */}
-            {marks.length > 1 && (
-              <CyclePill<string>
-                separate="all"
-                value={only || "all"}
-                onChange={(v) => setOnly(v === "all" ? "" : v)}
-                className="h-9"
-                options={[
-                  { value: "all", label: `All ${all.length}` },
-                  ...marks.map(([status, n]) => ({ value: status, label: `${status} ${n}` })),
-                ]}
-              />
-            )}
+                {marks.length > 1 && (
+                  <CyclePill<string>
+                    separate="all"
+                    value={only || "all"}
+                    onChange={(v) => setOnly(v === "all" ? "" : v)}
+                    className="h-9"
+                    options={[
+                      { value: "all", label: `All ${all.length}` },
+                      ...marks.map(([status, n]) => ({ value: status, label: `${status} ${n}` })),
+                    ]}
+                  />
+                )}
 
-            <SegmentControl<GroupBy>
-              fill
-              value={by}
-              onChange={(v) => {
-                setBy(v);
-                setOpenRows(new Set());
-                setOnly("");
-              }}
-              className="h-9 w-full sm:w-64"
-              options={[
-                { value: "orderId", label: "Order ID" },
-                { value: "shippingId", label: "Shipping ID" },
-              ]}
-            />
+                <SegmentControl<GroupBy>
+                  fill
+                  value={by}
+                  onChange={(v) => {
+                    setBy(v);
+                    setOpenRows(new Set());
+                    setOnly("");
+                  }}
+                  className="h-9 w-full sm:w-64"
+                  options={[
+                    { value: "orderId", label: "Order ID" },
+                    { value: "shippingId", label: "Shipping ID" },
+                  ]}
+                />
 
-            {only && (
-              <span className="shrink-0 text-xs text-muted-foreground">
-                showing {bundles.length} of {all.length}
-              </span>
-            )}
-          </div>
+                {only && (
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    showing {bundles.length} of {all.length}
+                  </span>
+                )}
+              </div>
 
-          {/* THE ORDERS, as a table where there is width for one and as cards
+              {/* THE ORDERS, as a table where there is width for one and as cards
               where there is not. Same rows either way. */}
-          <div className="hidden overflow-hidden rounded-2xl border border-border sm:block">
-            <table className="w-full table-fixed text-sm">
-              <colgroup>
-                <col className="w-[13rem]" />
-                <col className="w-[7rem]" />
-                <col />
-                <col className="w-[7rem]" />
-                <col className="w-[6rem]" />
-                <col className="w-[7rem]" />
-              </colgroup>
-              <thead className="bg-muted/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-3 py-2.5 font-medium">{idLabel}</th>
-                  <th className="px-3 py-2.5 font-medium">Date</th>
-                  <th className="px-3 py-2.5 font-medium">Cars</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Spent</th>
-                  <th className="px-3 py-2.5 text-right font-medium">Shipping</th>
-                  <th className="px-3 py-2.5 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bundles.map((b) => {
-                  const isOpen = openRows.has(b.id);
-                  return [
-                    <tr
-                      key={b.id}
-                      onClick={() => toggle(b.id)}
-                      className="cursor-pointer border-t border-border/60 hover:bg-primary/[0.06]"
-                    >
-                      <td className="px-3 py-3">
-                        <div className="flex min-w-0 items-center gap-1.5">
-                          <ChevronRight
-                            className={cn(
-                              "size-3.5 shrink-0 text-muted-foreground transition-transform",
-                              isOpen && "rotate-90",
-                            )}
-                          />
-                          <span className="truncate font-mono text-xs font-semibold">{b.id}</span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-xs text-muted-foreground">
-                        {formatDayMonthYear(b.day) || "—"}
-                      </td>
-                      <td className="px-3 py-3 text-muted-foreground">
-                        {b.cars.length} {b.cars.length === 1 ? "car" : "cars"}
-                      </td>
-                      <td className="px-3 py-3 text-right font-semibold tabular-nums">
-                        {inrFull(b.spent)}
-                      </td>
-                      <td className="px-3 py-3 text-right text-xs tabular-nums text-muted-foreground">
-                        {b.shipping ? inrFull(b.shipping) : "—"}
-                      </td>
-                      <td className="px-3 py-3">
-                        {b.status ? <StatusPill status={b.status} /> : "—"}
-                      </td>
-                    </tr>,
-                    // The cars inside, as rows of the same table rather than as
-                    // cards: a bundle of twelve should read as twelve lines.
-                    ...(isOpen
-                      ? b.cars.map((car, i) => (
-                          <tr
-                            key={`${b.id}|${car.id || i}`}
-                            onClick={() => onSelectCar?.(car)}
-                            className={cn(
-                              "border-t border-border/40 bg-muted/20",
-                              onSelectCar && "cursor-pointer hover:bg-primary/[0.06]",
-                            )}
-                          >
-                            <td className="py-2 pl-8 pr-3" colSpan={2}>
-                              <div className="truncate text-xs font-medium">{car.name || "—"}</div>
-                              <div className="truncate text-xs text-muted-foreground">
-                                {carSubLine(car)}
-                              </div>
-                            </td>
-                            <td className="px-3 py-2" colSpan={2}>
-                              <span className="tabular-nums text-xs">
-                                {inrFull(Number(car.spent) || 0)}
+              <div className="hidden overflow-hidden rounded-2xl border border-border sm:block">
+                <table className="w-full table-fixed text-sm">
+                  <colgroup>
+                    <col className="w-[13rem]" />
+                    <col className="w-[7rem]" />
+                    <col />
+                    <col className="w-[7rem]" />
+                    <col className="w-[6rem]" />
+                    <col className="w-[7rem]" />
+                  </colgroup>
+                  <thead className="bg-muted/60 text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2.5 font-medium">{idLabel}</th>
+                      <th className="px-3 py-2.5 font-medium">Date</th>
+                      <th className="px-3 py-2.5 font-medium">Cars</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Spent</th>
+                      <th className="px-3 py-2.5 text-right font-medium">Shipping</th>
+                      <th className="px-3 py-2.5 font-medium">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bundles.map((b) => {
+                      const isOpen = openRows.has(b.id);
+                      return [
+                        <tr
+                          key={b.id}
+                          onClick={() => toggle(b.id)}
+                          className="cursor-pointer border-t border-border/60 hover:bg-primary/[0.06]"
+                        >
+                          <td className="px-3 py-3">
+                            <div className="flex min-w-0 items-center gap-1.5">
+                              <ChevronRight
+                                className={cn(
+                                  "size-3.5 shrink-0 text-muted-foreground transition-transform",
+                                  isOpen && "rotate-90",
+                                )}
+                              />
+                              <span className="truncate font-mono text-xs font-semibold">
+                                {b.id}
                               </span>
-                            </td>
-                            {/* Shipping is charged on the parcel, not on the
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 text-xs text-muted-foreground">
+                            {formatDayMonthYear(b.day) || "—"}
+                          </td>
+                          <td className="px-3 py-3 text-muted-foreground">
+                            {b.cars.length} {b.cars.length === 1 ? "car" : "cars"}
+                          </td>
+                          <td className="px-3 py-3 text-right font-semibold tabular-nums">
+                            {inrFull(b.spent)}
+                          </td>
+                          <td className="px-3 py-3 text-right text-xs tabular-nums text-muted-foreground">
+                            {b.shipping ? inrFull(b.shipping) : "—"}
+                          </td>
+                          <td className="px-3 py-3">
+                            {b.status ? <StatusPill status={b.status} /> : "—"}
+                          </td>
+                        </tr>,
+                        // The cars inside, as rows of the same table rather than as
+                        // cards: a bundle of twelve should read as twelve lines.
+                        ...(isOpen
+                          ? b.cars.map((car, i) => (
+                              <tr
+                                key={`${b.id}|${car.id || i}`}
+                                onClick={() => onSelectCar?.(car)}
+                                className={cn(
+                                  "border-t border-border/40 bg-muted/20",
+                                  onSelectCar && "cursor-pointer hover:bg-primary/[0.06]",
+                                )}
+                              >
+                                <td className="py-2 pl-8 pr-3" colSpan={2}>
+                                  <div className="truncate text-xs font-medium">
+                                    {car.name || "—"}
+                                  </div>
+                                  <div className="truncate text-xs text-muted-foreground">
+                                    {carSubLine(car)}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2" colSpan={2}>
+                                  <span className="tabular-nums text-xs">
+                                    {inrFull(Number(car.spent) || 0)}
+                                  </span>
+                                </td>
+                                {/* Shipping is charged on the parcel, not on the
                                 car. Printing a share of it against each one
                                 read as though every car had paid it. */}
-                            <td />
-                            <td className="px-3 py-2">
-                              <StatusPill status={car.status} />
-                            </td>
-                          </tr>
-                        ))
-                      : []),
-                  ];
+                                <td />
+                                <td className="px-3 py-2">
+                                  <StatusPill status={car.status} />
+                                </td>
+                              </tr>
+                            ))
+                          : []),
+                      ];
+                    })}
+                    {bundles.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                          {only ? "Nothing in that state." : "Nothing from this seller yet."}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="space-y-2 sm:hidden">
+                {bundles.map((b) => {
+                  const isOpen = openRows.has(b.id);
+                  return (
+                    <div key={b.id} className="overflow-hidden rounded-2xl border border-border">
+                      <button
+                        type="button"
+                        onClick={() => toggle(b.id)}
+                        className="w-full px-3 py-2.5 text-left"
+                      >
+                        <div className="flex items-baseline gap-2">
+                          <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-semibold">
+                            {b.id}
+                          </span>
+                          <span className="shrink-0 font-semibold tabular-nums">
+                            {inrFull(b.spent)}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground">
+                          {formatDayMonthYear(b.day) || "—"} · {b.cars.length}{" "}
+                          {b.cars.length === 1 ? "car" : "cars"}
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <span className="text-xs text-muted-foreground">
+                            Shipping {b.shipping ? inrFull(b.shipping) : "—"}
+                          </span>
+                          {b.status && <StatusPill status={b.status} />}
+                        </div>
+                      </button>
+                      {isOpen && (
+                        <ul className="divide-y divide-border/60 border-t border-border/60 bg-muted/20">
+                          {b.cars.map((car, i) => (
+                            <li key={`${b.id}|${car.id || i}`}>
+                              <button
+                                type="button"
+                                onClick={() => onSelectCar?.(car)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left"
+                              >
+                                <span className="min-w-0 flex-1">
+                                  <span className="block truncate text-xs font-medium">
+                                    {car.name || "—"}
+                                  </span>
+                                  <span className="block truncate text-xs text-muted-foreground">
+                                    {carSubLine(car)}
+                                  </span>
+                                </span>
+                                <span className="shrink-0 text-xs tabular-nums">
+                                  {inrFull(Number(car.spent) || 0)}
+                                </span>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  );
                 })}
                 {bundles.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                      {only ? "Nothing in that state." : "Nothing from this seller yet."}
-                    </td>
-                  </tr>
+                  <p className="p-8 text-center text-sm text-muted-foreground">
+                    {only ? "Nothing in that state." : "Nothing from this seller yet."}
+                  </p>
                 )}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="space-y-2 sm:hidden">
-            {bundles.map((b) => {
-              const isOpen = openRows.has(b.id);
-              return (
-                <div key={b.id} className="overflow-hidden rounded-2xl border border-border">
-                  <button
-                    type="button"
-                    onClick={() => toggle(b.id)}
-                    className="w-full px-3 py-2.5 text-left"
-                  >
-                    <div className="flex items-baseline gap-2">
-                      <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-semibold">
-                        {b.id}
-                      </span>
-                      <span className="shrink-0 font-semibold tabular-nums">
-                        {inrFull(b.spent)}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">
-                      {formatDayMonthYear(b.day) || "—"} · {b.cars.length}{" "}
-                      {b.cars.length === 1 ? "car" : "cars"}
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <span className="text-xs text-muted-foreground">
-                        Shipping {b.shipping ? inrFull(b.shipping) : "—"}
-                      </span>
-                      {b.status && <StatusPill status={b.status} />}
-                    </div>
-                  </button>
-                  {isOpen && (
-                    <ul className="divide-y divide-border/60 border-t border-border/60 bg-muted/20">
-                      {b.cars.map((car, i) => (
-                        <li key={`${b.id}|${car.id || i}`}>
-                          <button
-                            type="button"
-                            onClick={() => onSelectCar?.(car)}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-left"
-                          >
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-xs font-medium">
-                                {car.name || "—"}
-                              </span>
-                              <span className="block truncate text-xs text-muted-foreground">
-                                {carSubLine(car)}
-                              </span>
-                            </span>
-                            <span className="shrink-0 text-xs tabular-nums">
-                              {inrFull(Number(car.spent) || 0)}
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              );
-            })}
-            {bundles.length === 0 && (
-              <p className="p-8 text-center text-sm text-muted-foreground">
-                {only ? "Nothing in that state." : "Nothing from this seller yet."}
-              </p>
-            )}
+              </div>
+            </div>
           </div>
         </div>
       </DialogContent>
