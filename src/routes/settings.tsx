@@ -354,9 +354,7 @@ export function SettingsPage() {
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate text-base font-medium text-foreground transition-colors group-hover:text-primary">
-                  {display}
-                </span>
+                <span className="truncate text-base font-medium text-foreground">{display}</span>
                 {isOwner && (
                   <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                     Owner
