@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowRight, Eye, EyeOff, Flame, Gem, Star } from "lucide-react";
 
@@ -122,14 +122,23 @@ const WIDE_RIGHT = [
 type Step = { x: number; scale: number; turn: number; z: number; opacity: number };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-function PrizedCoverflow({
+export function PrizedCoverflow({
   cars,
   onOpen,
   wide = false,
+  renderPanel,
+  autoplay = wide,
+  onFront,
 }: {
   cars: Diecast[];
   onOpen: (c: Diecast) => void;
   wide?: boolean;
+  /** Replaces the details panel's contents (and its hide switch) for another shelf, e.g. For You. */
+  renderPanel?: (index: number) => ReactNode;
+  /** Turn by itself every few seconds. */
+  autoplay?: boolean;
+  /** Told which car is in front, so a caller can lay its own controls under the row. */
+  onFront?: (index: number) => void;
 }) {
   const n = cars.length;
   const wrap = (i: number) => ((i % n) + n) % n;
@@ -146,7 +155,8 @@ function PrizedCoverflow({
   const hovering = useRef(false);
   // The details panel on the wide shelf; with it hidden, the cards carry the
   // name themselves. Remembered on this device.
-  const [showPanel, setShowPanel] = useState(true);
+  const [panelPref, setShowPanel] = useState(true);
+  const showPanel = renderPanel ? true : panelPref;
   useEffect(() => {
     try {
       if (localStorage.getItem("dg.prizedPanel") === "0") setShowPanel(false);
@@ -192,13 +202,13 @@ function PrizedCoverflow({
   // The wide shelf turns by itself, one car at a time, and waits while the
   // pointer is on it.
   useEffect(() => {
-    if (!wide) return;
+    if (!autoplay) return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const iv = window.setInterval(() => {
       if (!hovering.current && document.visibilityState === "visible") go(1);
     }, 4500);
     return () => window.clearInterval(iv);
-  }, [wide, n]);
+  }, [autoplay, n]);
 
   // A trackpad's two-finger sideways swipe, a mouse's sideways wheel (or shift +
   // wheel) moves the row as it comes, on any screen size, and it settles when the
@@ -262,6 +272,11 @@ function PrizedCoverflow({
   const base = Math.round(pos);
   const reach = wide ? Math.min(10, n) + 1 : Math.min(5, n) + 1;
   const behind = wide ? 3 : Math.floor(reach / 2) + 1;
+  const frontIdx = wrap(base);
+  useEffect(() => {
+    if (n) onFront?.(frontIdx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- told on a change of car only
+  }, [frontIdx, n]);
   const offsets = Array.from({ length: reach + 2 }, (_, i) => i - behind);
 
   return (
@@ -345,9 +360,10 @@ function PrizedCoverflow({
               zIndex: 100 - Math.round(st.m * 10),
               // The cards that run in under the details pane are held back, so what it frosts is a
               // wash of their colour and not a row of recognisable cards.
-              opacity: wide && showPanel && st.side > 0
-                ? st.opacity * (1 - 0.65 * Math.min(1, st.m * 2)) // the front car (m = 0) stays solid
-                : st.opacity,
+              opacity:
+                wide && showPanel && st.side > 0
+                  ? st.opacity * (1 - 0.65 * Math.min(1, st.m * 2)) // the front car (m = 0) stays solid
+                  : st.opacity,
               pointerEvents: st.opacity < 0.05 ? "none" : undefined,
               transform: `translate(-50%, -50%) translateX(${st.side * st.x * 100}%) translateZ(${st.z}px) rotateY(${-st.side * st.turn}deg) scale(${st.scale})`,
               willChange: "transform, opacity",
@@ -394,67 +410,76 @@ function PrizedCoverflow({
         // quarters of the frame's height, two fifths of its width, centred
         // vertically. Keyed on the car so a new one fades in.
         <div className="card-elevated glass-pane !bg-white/95 dark:!bg-neutral-900/95 absolute right-3 top-1/2 z-[200] flex h-[75%] w-[40%] -translate-y-1/2 flex-col gap-3 overflow-hidden p-5 duration-300">
-          {(() => {
-            const c = cars[wrap(base)];
-            const facts: [string, string | undefined][] = [
-              ["Brand", c.brand],
-              ["Number", c.carNumber],
-              ["Series", c.series],
-              ["Sub series", c.subSeries],
-              ["Assortment", c.assortment],
-              ["Colour", c.colour],
-              ["Type", c.type],
-              ["Status", c.status ? statusLabel(c.status) : ""],
-              ["Year", c.year],
-              // What it cost goes through inrFull, which honours the hide-amounts switch.
-              ["Paid", Number(c.spent) > 0 ? inrFull(Number(c.spent)) : ""],
-              ["Sold by", c.seller],
-            ];
-            return (
-              <div
-                key={wrap(base)}
-                className="animate-in fade-in flex min-h-0 flex-1 flex-col gap-3 duration-300"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="line-clamp-2 text-xl font-semibold leading-tight">
-                      {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={togglePanel}
-                    aria-label="Hide details panel"
-                    title="Hide details panel"
-                    className="glass-btn grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-foreground"
-                  >
-                    <EyeOff className="size-4" />
-                  </button>
-                </div>
-                <dl className="grid min-h-0 flex-1 grid-cols-2 content-start gap-x-4 gap-y-3 overflow-hidden">
-                  {facts
-                    .filter(([, v]) => (v || "").trim())
-                    .map(([k, v]) => (
-                      <div key={k} className="min-w-0">
-                        <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                          {k}
-                        </dt>
-                        <dd className="truncate text-sm font-medium">{v}</dd>
-                      </div>
-                    ))}
-                </dl>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="shrink-0 gap-1.5"
-                  onClick={() => onOpen(c)}
+          {renderPanel ? (
+            <div
+              key={frontIdx}
+              className="animate-in fade-in flex min-h-0 flex-1 flex-col gap-3 duration-300"
+            >
+              {renderPanel(frontIdx)}
+            </div>
+          ) : (
+            (() => {
+              const c = cars[wrap(base)];
+              const facts: [string, string | undefined][] = [
+                ["Brand", c.brand],
+                ["Number", c.carNumber],
+                ["Series", c.series],
+                ["Sub series", c.subSeries],
+                ["Assortment", c.assortment],
+                ["Colour", c.colour],
+                ["Type", c.type],
+                ["Status", c.status ? statusLabel(c.status) : ""],
+                ["Year", c.year],
+                // What it cost goes through inrFull, which honours the hide-amounts switch.
+                ["Paid", Number(c.spent) > 0 ? inrFull(Number(c.spent)) : ""],
+                ["Sold by", c.seller],
+              ];
+              return (
+                <div
+                  key={wrap(base)}
+                  className="animate-in fade-in flex min-h-0 flex-1 flex-col gap-3 duration-300"
                 >
-                  View details
-                  <ArrowRight className="size-4" />
-                </Button>
-              </div>
-            );
-          })()}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="line-clamp-2 text-xl font-semibold leading-tight">
+                        {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={togglePanel}
+                      aria-label="Hide details panel"
+                      title="Hide details panel"
+                      className="glass-btn grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-foreground"
+                    >
+                      <EyeOff className="size-4" />
+                    </button>
+                  </div>
+                  <dl className="grid min-h-0 flex-1 grid-cols-2 content-start gap-x-4 gap-y-3 overflow-hidden">
+                    {facts
+                      .filter(([, v]) => (v || "").trim())
+                      .map(([k, v]) => (
+                        <div key={k} className="min-w-0">
+                          <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                            {k}
+                          </dt>
+                          <dd className="truncate text-sm font-medium">{v}</dd>
+                        </div>
+                      ))}
+                  </dl>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0 gap-1.5"
+                    onClick={() => onOpen(c)}
+                  >
+                    View details
+                    <ArrowRight className="size-4" />
+                  </Button>
+                </div>
+              );
+            })()
+          )}
         </div>
       )}
     </div>

@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
-import { Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
+import { ArrowRight, Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 
-import { BlisterTile, CarOverlay } from "@/components/blister-tile";
-import { BLISTER_GRID_COLS } from "@/components/view-toggle";
+import { PrizedCoverflow } from "@/components/prized-shelf";
 import { CarFormDialog } from "@/components/car-form-dialog";
 import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
@@ -16,22 +15,141 @@ import { useCatalog } from "@/lib/catalog-store";
 import { castingKey, forYou, MAX_WINDOW_DAYS, purchaseStats, reshuffle } from "@/lib/for-you";
 import { Button } from "@/components/ui/button";
 
+/** How many castings the fan shows at a time. */
+const SET = 5;
+
+type Pick = { car: CatalogCar; reason: string };
+
 /**
- * One row of the same tiles the blister view lays out, so a set is as many castings as
- * that grid has columns at this width (2, 3, 4 or 5, on the same breakpoints).
+ * The picks as a coverflow: one car in front, the rest fanned behind it. On a wide screen the
+ * front car's details and its buttons are on glass to the right; on a phone they sit under it.
  */
-function useColumns() {
-  const [n, setN] = useState(5);
-  useEffect(() => {
-    const read = () => {
-      const w = window.innerWidth;
-      setN(w >= 1280 ? 5 : w >= 1024 ? 4 : w >= 640 ? 3 : 2);
-    };
-    read();
-    window.addEventListener("resize", read);
-    return () => window.removeEventListener("resize", read);
-  }, []);
-  return n;
+function ForYouFan({
+  picks,
+  wide,
+  onOpen,
+  onDismiss,
+  onLike,
+  onAdd,
+}: {
+  picks: Pick[];
+  wide: boolean;
+  onOpen: (car: CatalogCar) => void;
+  onDismiss: (id: string) => void;
+  onLike: (id: string) => void;
+  onAdd: (car: CatalogCar) => void;
+}) {
+  const [front, setFront] = useState(0);
+  const cars = useMemo(() => picks.map((p) => catalogCarToDiecast(p.car)), [picks]);
+  const at = picks[Math.min(front, picks.length - 1)];
+  const btn =
+    "grid size-9 cursor-pointer place-items-center rounded-full transition-transform active:scale-95";
+  const actions = (pick: Pick) => (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => onDismiss(pick.car.car_id)}
+        aria-label="Not interested"
+        title="Not interested: don't suggest this again"
+        className={`${btn} glass-btn text-foreground`}
+      >
+        <ThumbsDown className="size-4" />
+      </button>
+      <button
+        type="button"
+        onClick={() => onLike(pick.car.car_id)}
+        aria-label="Show more like this"
+        title="Show more cars like this"
+        className={`${btn} glass-btn text-foreground`}
+      >
+        <ThumbsUp className="size-4" />
+      </button>
+      <WishlistHeart
+        entry={pick.car}
+        className={`${btn} border border-white/50 bg-white/25 text-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-md hover:bg-white/35`}
+      />
+      <button
+        type="button"
+        onClick={() => onAdd(pick.car)}
+        aria-label="Add to my collection"
+        title="Add to my collection"
+        className={`${btn} glass-btn-solid ml-auto bg-primary/90 text-primary-foreground hover:bg-primary`}
+      >
+        <Plus className="size-4" />
+      </button>
+    </div>
+  );
+  if (!picks.length) return null;
+  return (
+    <>
+      <PrizedCoverflow
+        cars={cars}
+        wide={wide}
+        autoplay={false}
+        onFront={setFront}
+        onOpen={() => at && onOpen(at.car)}
+        renderPanel={
+          wide
+            ? (i) => {
+                const pick = picks[Math.min(i, picks.length - 1)];
+                const c = cars[Math.min(i, cars.length - 1)];
+                const facts: [string, string | undefined][] = [
+                  ["Brand", c.brand],
+                  ["Number", c.carNumber],
+                  ["Series", c.series],
+                  ["Assortment", c.assortment],
+                  ["Colour", c.colour],
+                  ["Type", c.type],
+                  ["Year", c.year],
+                ];
+                return (
+                  <>
+                    <div className="min-w-0">
+                      <div className="mb-1 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-medium text-white">
+                        <Sparkles className="size-3 fill-amber-400 text-amber-400" />
+                        Suggested
+                      </div>
+                      <div className="line-clamp-2 text-xl font-semibold leading-tight">
+                        {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">{pick.reason}</p>
+                    </div>
+                    <dl className="grid min-h-0 flex-1 grid-cols-2 content-start gap-x-4 gap-y-3 overflow-hidden">
+                      {facts
+                        .filter(([, v]) => (v || "").trim())
+                        .map(([k, v]) => (
+                          <div key={k} className="min-w-0">
+                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                              {k}
+                            </dt>
+                            <dd className="truncate text-sm font-medium">{v}</dd>
+                          </div>
+                        ))}
+                    </dl>
+                    {actions(pick)}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="shrink-0 gap-1.5"
+                      onClick={() => onOpen(pick.car)}
+                    >
+                      View details
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  </>
+                );
+              }
+            : undefined
+        }
+      />
+      {!wide && at && (
+        <div className="space-y-2 px-1 pt-2">
+          <p className="text-xs text-muted-foreground">{at.reason}</p>
+          {actions(at)}
+        </div>
+      )}
+    </>
+  );
 }
 
 /** The castings this person said no (or yes please) to, kept on this device. */
@@ -77,7 +195,6 @@ export function ForYou({
 }) {
   const cars = useCars();
   const { catalog, updateCatalogCar } = useCatalog();
-  const SET = useColumns();
   const { isGuest, isAdmin, user } = useAuth();
   const { ids: dismissed, dismiss, ready } = useDismissed(user?.id);
   // What the ranking has learned from thumbs-down is taken when the section opens and on each
@@ -127,6 +244,18 @@ export function ForYou({
   }, [shownKey]);
 
   if (!pool.length) return null;
+  const fanProps = {
+    picks,
+    onOpen: setViewing,
+    onDismiss: dismiss,
+    onLike: (id: string) => {
+      // More like this: its traits count for you, and the set is dealt again.
+      like(id);
+      setSeed(Math.floor(Math.random() * 2 ** 31) + 1);
+      setLearned(dismissed);
+    },
+    onAdd: (car: CatalogCar) => quickAdd.start(car),
+  };
   return (
     <>
       <section
@@ -170,74 +299,12 @@ export function ForYou({
             </Button>
           </div>
         </div>
-        <div className={BLISTER_GRID_COLS}>
-          {picks.map(({ car, reason }) => (
-            <div key={car.car_id} className="relative h-full">
-              <BlisterTile
-                car={catalogCarToDiecast(car)}
-                onOpen={() => setViewing(car)}
-                showStatus={false}
-                badge={
-                  <>
-                    <Sparkles className="size-3 fill-amber-400 text-amber-400" />
-                    Suggested
-                  </>
-                }
-                foot={false}
-                overlay={
-                  <CarOverlay
-                    car={catalogCarToDiecast(car)}
-                    brandOnly
-                    noAssortment
-                    padRight
-                    detail={reason}
-                    detailClassName="leading-snug [font-size:clamp(9px,4.2cqw,11px)]"
-                  />
-                }
-              />
-              {/* Top right: not for me (it never comes back up here), or more like this. */}
-              <div className="absolute right-2 top-2 flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => dismiss(car.car_id)}
-                  aria-label="Not interested"
-                  title="Not interested: don't suggest this again"
-                  className="grid size-6 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
-                >
-                  <ThumbsDown className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // More like this: its traits count for you, and the set is dealt again.
-                    like(car.car_id);
-                    setSeed(Math.floor(Math.random() * 2 ** 31) + 1);
-                    setLearned(dismissed);
-                  }}
-                  aria-label="Show more like this"
-                  title="Show more cars like this"
-                  className="grid size-6 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
-                >
-                  <ThumbsUp className="size-3.5" />
-                </button>
-              </div>
-              {/* On top of the +: put it on my ISO list. */}
-              <WishlistHeart
-                entry={car}
-                className="absolute bottom-14 right-3 grid size-8 cursor-pointer place-items-center rounded-full border border-white/50 bg-white/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_12px_rgba(0,0,0,0.25)] backdrop-blur-md transition-colors hover:bg-white/35"
-              />
-              {/* Add it without opening it: the same form, filled in from the casting. */}
-              <button
-                type="button"
-                onClick={() => quickAdd.start(car)}
-                aria-label="Add to my collection"
-                title="Add to my collection"
-                className="glass-btn-solid absolute bottom-3 right-3 grid size-8 cursor-pointer place-items-center rounded-full bg-primary/90 text-primary-foreground transition-transform hover:bg-primary active:scale-95"
-              >
-                <Plus className="size-4" />
-              </button>
-            </div>
-          ))}
+        {/* Wide screens: the fan with the details beside it. A phone gets the narrow fan. */}
+        <div className="hidden sm:block">
+          <ForYouFan wide {...fanProps} />
+        </div>
+        <div className="sm:hidden">
+          <ForYouFan wide={false} {...fanProps} />
         </div>
       </section>
 
