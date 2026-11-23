@@ -123,18 +123,27 @@ function ForYouCarousel({
               key={i}
               // The cars either side are smaller and a little dimmer, so the front one is the card.
               style={{ transform: `scale(${1 - 0.09 * d})`, opacity: 1 - 0.18 * d }}
-              className="w-[84cqw] shrink-0 snap-center snap-always transition-[transform,opacity] duration-150 sm:w-[34cqw] sm:snap-start"
+              className="w-[var(--sw)] shrink-0 snap-center snap-always transition-[transform,opacity] duration-300 [--sw:84cqw] sm:snap-start sm:[--sw:34cqw]"
             >
-              <article className="card-elevated flex overflow-hidden">
+              <article
+                // A car behind is just its picture; when it comes to the front the card stretches
+                // out from the picture to its full width and the details fade in.
+                className="card-elevated mx-auto flex overflow-hidden transition-[width] duration-300 ease-out"
+                style={{ width: isFront ? "100%" : "46%" }}
+              >
                 <button
                   type="button"
                   onClick={() => (isFront ? onOpen(p.car) : goTo(i))}
-                  className="relative block aspect-[534/658] w-[46%] shrink-0 cursor-pointer overflow-hidden"
+                  className="relative block aspect-[534/658] w-[calc(var(--sw)*0.46)] shrink-0 cursor-pointer overflow-hidden"
                   aria-label={isFront ? `Open ${c.name}` : `Show ${c.name}`}
                 >
                   <CarThumb car={c} className="absolute inset-0 size-full" />
                 </button>
-                <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 p-3">
+                <div
+                  className={`flex w-[calc(var(--sw)*0.54)] shrink-0 flex-col justify-between gap-2 p-3 transition-opacity duration-300 ${
+                    isFront ? "opacity-100" : "pointer-events-none opacity-0"
+                  }`}
+                >
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
                       <Sparkles className="size-3 fill-amber-400 text-amber-400" />
