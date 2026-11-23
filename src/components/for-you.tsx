@@ -140,7 +140,7 @@ function ForYouCarousel({
                       <Sparkles className="size-3 fill-amber-400 text-amber-400" />
                       Suggested
                     </div>
-                    <div className="line-clamp-2 text-base font-semibold leading-tight">
+                    <div className="line-clamp-2 text-sm font-semibold leading-tight">
                       {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
