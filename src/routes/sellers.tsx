@@ -26,7 +26,6 @@ import { useAuth } from "@/lib/auth-store";
 import { PageHeading } from "@/components/page-header";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { SortSelect, type SortDir } from "@/components/filter-select";
-import { ExportButton } from "@/components/export-button";
 import { useRegisterExportScope } from "@/lib/export-scope";
 import { Button } from "@/components/ui/button";
 import { ProGate } from "@/components/pro-gate";
@@ -191,7 +190,6 @@ function SellersPage() {
             dir: f === "name" ? ("asc" as const) : ("desc" as const),
           }))}
         />
-        <ExportButton rows={filtered} name="sellers" label="Sellers" iconOnly />
       </PageHeading>
 
       {/* A phone gets one card per seller; the wide table with its eight columns is for

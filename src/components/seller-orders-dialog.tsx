@@ -362,7 +362,7 @@ export function SellerOrdersDialog({
               icon chip, the label, the number. It used to be its own thing --
               ten cells divided by hairlines -- which made the one screen about
               a shop's money look unlike every screen about yours. */}
-              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:gap-3 lg:grid-cols-5 max-sm:[&>*]:!rounded-2xl max-sm:[&>*]:!px-2.5 max-sm:[&>*]:!py-2 max-sm:[&>*>div:first-child]:text-[9px] max-sm:[&>*>div:nth-child(2)]:!mt-0.5 max-sm:[&>*>div:nth-child(2)]:!text-base">
+              <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 md:gap-3 lg:grid-cols-5 max-sm:[&>*]:!rounded-2xl max-sm:[&>*]:!px-2.5 max-sm:[&>*]:!py-2 max-sm:[&>*>div:first-child]:text-[9px] max-sm:[&>*>div:nth-child(2)]:!mt-0.5 max-sm:[&>*>div:nth-child(2)]:!text-base [&>*>div:nth-child(3)]:!text-foreground/70">
                 <KpiTile
                   label="Cars"
                   value={String(mine.length)}
