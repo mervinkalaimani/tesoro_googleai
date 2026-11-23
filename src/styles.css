@@ -440,14 +440,14 @@
    one (outline, secondary), `glass-btn-solid` the orange one, which stays
    saturated but gets a specular top edge and a soft coloured glow. */
 @utility glass-btn {
-  /* The light-mode pane is a near-white pill with a hairline and a soft, wide drop shadow, so it
-     reads as lifted off the page instead of vanishing into it. Dark mode overrides all of this. */
-  background: oklch(1 0 0 / 0.94);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid oklch(0.2 0.014 245 / 0.05);
+  /* Light-mode glass: a see-through frosted pane (the page glow shows through it), a bright edge,
+     a hairline ring and a soft wide shadow that lifts it off the page. Dark mode overrides this. */
+  background: linear-gradient(160deg, oklch(1 0 0 / 0.72), oklch(1 0 0 / 0.42));
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid oklch(1 0 0 / 0.75);
   box-shadow:
-    0 1px 2px oklch(0.2 0.014 245 / 0.06),
+    0 0 0 0.5px oklch(0.2 0.014 245 / 0.07),
     0 6px 20px -4px oklch(0.2 0.014 245 / 0.16);
 }
 @utility glass-btn-solid {
