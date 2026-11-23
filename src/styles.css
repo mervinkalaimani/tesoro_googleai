@@ -104,18 +104,18 @@
 }
 
 /*
-   Red (stored as "crimson"), which was the default until the app became VIIV. Still a choice,
+   Ferrari red (stored as "crimson"), which was the default until the app became VIIV. Still a choice,
    and still what everybody who picked it keeps: their stored preference names
    it, so it has to go on meaning what it meant.
 */
 :root[data-accent="crimson"] {
-  --primary: oklch(0.6 0.25 29);
+  --primary: oklch(0.55 0.24 28);
   --primary-foreground: oklch(0.99 0 0);
-  --ring: oklch(0.6 0.25 29);
-  --chart-1: oklch(0.6 0.25 29);
-  --sidebar-primary: oklch(0.6 0.25 29);
+  --ring: oklch(0.55 0.24 28);
+  --chart-1: oklch(0.55 0.24 28);
+  --sidebar-primary: oklch(0.55 0.24 28);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-ring: oklch(0.6 0.25 29);
+  --sidebar-ring: oklch(0.55 0.24 28);
 }
 
 :root[data-accent="blue"] {
@@ -196,13 +196,13 @@
 }
 
 :root.dark[data-accent="crimson"] {
-  --primary: oklch(0.66 0.25 29);
+  --primary: oklch(0.62 0.25 28);
   --primary-foreground: oklch(0.99 0 0);
-  --ring: oklch(0.66 0.25 29);
-  --chart-1: oklch(0.66 0.25 29);
-  --sidebar-primary: oklch(0.66 0.25 29);
+  --ring: oklch(0.62 0.25 28);
+  --chart-1: oklch(0.62 0.25 28);
+  --sidebar-primary: oklch(0.62 0.25 28);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-ring: oklch(0.66 0.25 29);
+  --sidebar-ring: oklch(0.62 0.25 28);
 }
 
 :root.dark[data-accent="blue"] {
