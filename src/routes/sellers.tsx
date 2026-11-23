@@ -8,7 +8,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { BadgeCheck, ChevronRight, MapPin, Pencil, Phone, Receipt } from "lucide-react";
+import { ChevronRight, MapPin, Pencil, Phone, Receipt } from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
@@ -24,6 +24,7 @@ import { SellerEditDialog } from "@/components/seller-edit-dialog";
 import { sellerKey, sellerLabel, useSellerDetails, whatsappHref } from "@/lib/seller-details";
 import { useAuth } from "@/lib/auth-store";
 import { PageHeading } from "@/components/page-header";
+import { VerifiedBadge } from "@/components/verified-badge";
 import { SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { useRegisterExportScope } from "@/lib/export-scope";
@@ -77,18 +78,6 @@ function Count({ n, status, label }: { n: number; status: string; label?: string
     >
       {label && `${label} `}
       {n}
-    </span>
-  );
-}
-
-/** A seller with a VIIV profile: someone has registered their details here. */
-function Verified() {
-  return (
-    <span title="Registered with VIIV" className="inline-flex shrink-0">
-      <BadgeCheck
-        className="size-5 fill-sky-500 text-sky-500 [&_path:last-child]:text-white"
-        aria-label="Verified"
-      />
     </span>
   );
 }
@@ -234,7 +223,7 @@ function SellersPage() {
                     <span className="truncate font-medium text-foreground">
                       {sellerLabel(g.label, shop)}
                     </span>
-                    {shop && <Verified />}
+                    {shop && <VerifiedBadge />}
                   </span>
                   <span className="shrink-0 font-medium tabular-nums">{inr(g.spent)}</span>
                 </span>
@@ -324,7 +313,7 @@ function SellersPage() {
                         >
                           {sellerLabel(g.label, shop)}
                         </button>
-                        {shop && <Verified />}
+                        {shop && <VerifiedBadge />}
                       </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                         <span>

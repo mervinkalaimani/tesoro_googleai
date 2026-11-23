@@ -38,6 +38,7 @@ import {
 } from "lucide-react";
 
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { VerifiedBadge } from "@/components/verified-badge";
 import { KpiTile } from "@/components/kpi";
 import { SegmentControl } from "@/components/segment-control";
 import { StatusPill } from "@/components/status-pill";
@@ -251,9 +252,12 @@ export function SellerOrdersDialog({
             )}
           </span>
           <div className="min-w-0 flex-1">
-            <DialogTitle className="truncate text-2xl font-bold tracking-tight sm:text-3xl">
-              {name}
-            </DialogTitle>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <DialogTitle className="truncate !pr-0 text-xl font-bold tracking-tight sm:text-2xl">
+                {name}
+              </DialogTitle>
+              {shop && <VerifiedBadge />}
+            </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
               {shop?.store_name && (
                 <span className="inline-flex min-w-0 items-center gap-1">
