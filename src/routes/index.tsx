@@ -7,6 +7,7 @@ import {
   Boxes,
   Truck,
   Clock3,
+  PauseCircle,
   ShoppingBag,
   Sparkles,
   Info,
@@ -312,10 +313,14 @@ function DashboardPage() {
   }, [data]);
   const investmentHidden = hideInvestment && !revealInvestment;
 
-  // The Wishlist is the least urgent tile: when a label or a line of text in another tile would be cut short,
-  // it steps aside so the rest have the room. Re-judged whenever the width changes.
+  // When a label or a line of text would be cut short, tiles step aside in order of how little they
+  // matter: the Wishlist first, then (if something is on hold) the Pre-orders, whose count moves to a
+  // line under On hold. Re-judged whenever the width changes.
   const bandRef = useRef<HTMLDivElement>(null);
-  const [crowded, setCrowded] = useState(false);
+  const [crowded, setCrowded] = useState(0);
+  const onHoldCount = data.filter((r) => normaliseStatus(r.status) === "On Hold").length;
+  const maxCrowd = useRef(1);
+  maxCrowd.current = onHoldCount > 0 ? 2 : 1;
   useEffect(() => {
     let frame = 0;
     let width = window.innerWidth;
@@ -326,15 +331,15 @@ function DashboardPage() {
           ...(bandRef.current?.querySelectorAll<HTMLElement>("[data-kpi-sub],[data-kpi-label]") ??
             []),
         ].some((el) => el.scrollWidth > el.clientWidth + 1);
-        // Only ever ask while the Wishlist is showing: once it has stepped aside the lines fit,
-        // which says nothing about whether they would with it back.
-        setCrowded((was) => (was ? was : cut));
+        // Only ever steps up: once a tile has stepped aside the lines fit, which says nothing about
+        // whether they would with it back.
+        setCrowded((was) => (cut && was < maxCrowd.current ? was + 1 : was));
       });
     };
     const onResize = () => {
       if (window.innerWidth === width) return;
       width = window.innerWidth;
-      setCrowded(false);
+      setCrowded(0);
       judge();
     };
     judge();
@@ -365,6 +370,8 @@ function DashboardPage() {
       status?: string;
       ordersTab?: "late";
       sub?: string;
+      /** Said small, on the number's own line. */
+      inline?: string;
     }[] = [
       {
         // On a ship: only while something is, and then third in the row.
@@ -376,12 +383,23 @@ function DashboardPage() {
         status: "In Transit",
       },
       {
-        // Bought and waiting. (On hold is counted under Pre-orders.)
+        // Bought and waiting.
         key: "ordered",
         label: "Ordered",
         tone: "orange",
         icon: <Clock3 className="size-4" />,
         value: countOf("Ordered"),
+      },
+      {
+        // Held by the seller until you ask. When the Pre-orders tile has stepped aside for want of
+        // room, its count rides on this one's own line ("2  137 PO").
+        key: "onhold",
+        label: "On hold",
+        tone: "zinc",
+        icon: <PauseCircle className="size-4" />,
+        value: countOf("On Hold"),
+        status: "On Hold",
+        inline: crowded >= 2 ? `${countOf("PO").toLocaleString()} PO` : undefined,
       },
       {
         key: "po",
@@ -390,8 +408,6 @@ function DashboardPage() {
         icon: <ShoppingBag className="size-4" />,
         value: countOf("PO"),
         status: "PO",
-        // What is being held for you by the seller, kept with the orders still to come.
-        sub: countOf("On Hold") ? `${countOf("On Hold").toLocaleString()} on hold` : undefined,
       },
       {
         key: "late",
@@ -426,7 +442,7 @@ function DashboardPage() {
         (uses(useCases, "tracking") || !TRACKING_CARDS.includes(d.key)) &&
         (typeof d.value === "number" ? d.value > 0 : true),
     );
-  }, [data, summaryCards, hiddenSummary, useCases]);
+  }, [data, summaryCards, hiddenSummary, useCases, crowded]);
 
   // A brand-new account has nothing to chart. Guarded on the unfiltered list and
   // on loading, so a search that matches nothing still shows the real dashboard.
@@ -492,13 +508,30 @@ function DashboardPage() {
               }
             />
             {kpis
-              .filter((k) => !(crowded && k.key === "iso"))
+              .filter(
+                (k) =>
+                  !(crowded >= 1 && k.key === "iso") &&
+                  !(crowded >= 2 && k.key === "po" && onHoldCount > 0),
+              )
               .map((k) => (
                 <KpiTile
                   key={k.key}
                   icon={k.icon}
                   label={k.label}
-                  value={typeof k.value === "number" ? k.value.toLocaleString() : k.value}
+                  value={
+                    k.inline ? (
+                      <>
+                        {typeof k.value === "number" ? k.value.toLocaleString() : k.value}
+                        <span className="ml-2 text-sm font-medium text-muted-foreground">
+                          {k.inline}
+                        </span>
+                      </>
+                    ) : typeof k.value === "number" ? (
+                      k.value.toLocaleString()
+                    ) : (
+                      k.value
+                    )
+                  }
                   tone={k.tone}
                   status={k.status}
                   ordersTab={k.ordersTab}
