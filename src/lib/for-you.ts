@@ -123,7 +123,15 @@ const SPECIFIC: Attr[] = [
   "brand",
 ];
 
-type Seen = { label: string; weight: number; owned: number; recent: number };
+type Seen = { label: string; weight: number; owned: number; recent: number; n: number };
+
+/**
+ * One or two cars are not a taste: a single Mustang may be a one-off and a fantasy
+ * car just a fantasy car. An attribute only counts once this many of your cars share it.
+ */
+const PATTERN = 3;
+/** The attributes that say something on their own; colour, year, type and scale only add to these. */
+const CORE: Attr[] = ["brand", "make", "model", "series", "subSeries", "assortment"];
 
 /** When a car was bought: its order date, else the day it landed. */
 const boughtOn = (c: Diecast) => parseDMY(c.orderDate) ?? parseDMY(c.date);
@@ -189,8 +197,15 @@ export function forYou(
       const value = ATTRS[a].car(c);
       const k = norm(value);
       if (!k || k === "na" || k === "-") continue;
-      const s = book[a].get(k) ?? { label: (value || "").trim(), weight: 0, owned: 0, recent: 0 };
+      const s = book[a].get(k) ?? {
+        label: (value || "").trim(),
+        weight: 0,
+        owned: 0,
+        recent: 0,
+        n: 0,
+      };
       s.weight += w;
+      s.n += 1;
       if (!wished) s.owned += 1;
       if (recent) s.recent += 1;
       book[a].set(k, s);
@@ -204,9 +219,11 @@ export function forYou(
     const hits: { a: Attr; value: number; s: Seen }[] = [];
     for (const a of KEYS) {
       const s = book[a].get(norm(ATTRS[a].cat(c)));
-      if (s) hits.push({ a, value: ATTRS[a].coef * Math.log1p(s.weight), s });
+      if (s && s.n >= PATTERN) hits.push({ a, value: ATTRS[a].coef * Math.log1p(s.weight), s });
     }
     const others = popular.get(castingKey(c)) ?? 0;
+    // A pattern means a core attribute shared by several of your cars, not a stray match.
+    if (!hits.some((h) => CORE.includes(h.a))) hits.length = 0;
     if (!hits.length && !others) continue;
     hits.sort((x, y) => y.value - x.value);
     let score = hits.reduce((t, h) => t + h.value, 0);
