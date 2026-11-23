@@ -470,9 +470,17 @@ function DashboardPage() {
               key="total-cars"
               icon={<Car className="size-4" />}
               label="Cars"
-              value={totals.count.toLocaleString()}
-              sub={`${totals.inHand.toLocaleString()} in hand`}
-              subVisibleOnMobile
+              // In hand out of everything owned: "1,325 /1,475", the total small.
+              value={
+                <span
+                  title={`${totals.inHand.toLocaleString()} in hand of ${totals.count.toLocaleString()} cars`}
+                >
+                  {totals.inHand.toLocaleString()}
+                  <span className="ml-1 text-sm font-medium text-muted-foreground">
+                    /{totals.count.toLocaleString()}
+                  </span>
+                </span>
+              }
               tone="primary"
             />
             <KpiTile
