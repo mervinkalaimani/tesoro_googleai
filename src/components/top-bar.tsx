@@ -44,7 +44,7 @@ function DesktopNav() {
   return (
     <nav
       aria-label="Main"
-      className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-7 md:flex"
+      className="absolute inset-y-0 left-1/2 hidden -translate-x-1/2 items-stretch gap-7 md:flex"
     >
       {items.map((i) => (
         <Link
@@ -52,9 +52,10 @@ function DesktopNav() {
           to={i.url}
           aria-current={i.on ? "page" : undefined}
           className={cn(
-            "text-[15px] transition-colors",
+            "relative flex items-center text-[15px] transition-colors",
+            // The line sits on the bar's own bottom edge, in the theme colour, under the page you are on.
             i.on
-              ? "font-semibold text-foreground"
+              ? "font-semibold text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:rounded-full after:bg-primary"
               : "font-medium text-muted-foreground hover:text-foreground",
           )}
         >
