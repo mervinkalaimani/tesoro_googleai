@@ -8,7 +8,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ChevronRight, MapPin, Pencil, Phone, Receipt } from "lucide-react";
+import { BadgeCheck, ChevronRight, MapPin, Pencil, Phone, Receipt } from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
@@ -77,6 +77,19 @@ function Count({ n, status, label }: { n: number; status: string; label?: string
     >
       {label && `${label} `}
       {n}
+    </span>
+  );
+}
+
+/** A seller with a VIIV profile: someone has registered their details here. */
+function Verified() {
+  return (
+    <span
+      title="Registered with VIIV"
+      className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"
+    >
+      <BadgeCheck className="size-3.5" />
+      Verified
     </span>
   );
 }
@@ -218,8 +231,11 @@ function SellersPage() {
               <span className="min-w-0 flex-1">
                 {/* The name and what was spent share the first line. */}
                 <span className="flex items-baseline justify-between gap-2">
-                  <span className="truncate font-medium text-foreground">
-                    {sellerLabel(g.label, shop)}
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span className="truncate font-medium text-foreground">
+                      {sellerLabel(g.label, shop)}
+                    </span>
+                    {shop && <Verified />}
                   </span>
                   <span className="shrink-0 font-medium tabular-nums">{inr(g.spent)}</span>
                 </span>
@@ -301,13 +317,16 @@ function SellersPage() {
                       {/* The name is the door. The row used to open in place to the
                     cars, which is the same list the dialog already draws
                     better, with the orders and the money on it. */}
-                      <button
-                        type="button"
-                        className="max-w-full truncate text-left font-medium text-foreground"
-                        title={`Everything bought from ${g.label}`}
-                      >
-                        {sellerLabel(g.label, shop)}
-                      </button>
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <button
+                          type="button"
+                          className="max-w-full truncate text-left font-medium text-foreground"
+                          title={`Everything bought from ${g.label}`}
+                        >
+                          {sellerLabel(g.label, shop)}
+                        </button>
+                        {shop && <Verified />}
+                      </div>
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                         <span>
                           {g.orders || "no"} {g.orders === 1 ? "order" : "orders"} ·{" "}
