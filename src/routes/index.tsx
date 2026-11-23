@@ -11,6 +11,7 @@ import {
   ChevronRight,
   AlertTriangle,
   PauseCircle,
+  Heart,
   Plus,
   CalendarClock,
   PackageCheck,
@@ -1058,12 +1059,22 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
                 className="w-full"
               />
               {!c.inMyCollection && (
-                <QuickAdd
-                  onClick={() => {
-                    setAddingIso(false);
-                    setAdding(c);
-                  }}
-                />
+                <>
+                  <QuickAdd
+                    onClick={() => {
+                      setAddingIso(false);
+                      setAdding(c);
+                    }}
+                  />
+                  {!isGuest && (
+                    <QuickIso
+                      onClick={() => {
+                        setAddingIso(true);
+                        setAdding(c);
+                      }}
+                    />
+                  )}
+                </>
               )}
             </div>
           );
@@ -1476,12 +1487,28 @@ function QuickAdd({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** The round heart laid over the top corner of a shelf card: put it on my ISO list. */
+function QuickIso({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Add to my ISO list"
+      title="Add to my ISO list"
+      className="absolute right-2 top-2 grid size-7 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
+    >
+      <Heart className="size-4" />
+    </button>
+  );
+}
+
 function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   const { catalog, isLoading, updateCatalogCar } = useCatalog();
   const { isAdmin, isOwner, isGuest } = useAuth();
   const cars = useCars();
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<CatalogCar | null>(null);
+  const [addingIso, setAddingIso] = useState(false);
   const [editingCatalog, setEditingCatalog] = useState<CatalogCar | null>(null);
 
   /** Castings you are waiting on, so "My PO" has something to narrow against. */
@@ -1542,7 +1569,22 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
                 className="w-full"
               />
               {!ownedIds.has(r.entry.car_id.trim().toUpperCase()) && (
-                <QuickAdd onClick={() => setAdding(r.entry)} />
+                <>
+                  <QuickAdd
+                    onClick={() => {
+                      setAddingIso(false);
+                      setAdding(r.entry);
+                    }}
+                  />
+                  {!isGuest && (
+                    <QuickIso
+                      onClick={() => {
+                        setAddingIso(true);
+                        setAdding(r.entry);
+                      }}
+                    />
+                  )}
+                </>
               )}
             </div>
           );
@@ -1565,15 +1607,21 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         onAdd={(pick) => {
           const target = pick ?? viewing;
           setViewing(null);
+          setAddingIso(false);
           setAdding(target);
         }}
       />
       <CarFormDialog
         open={adding !== null}
-        onOpenChange={(v) => !v && setAdding(null)}
+        onOpenChange={(v) => {
+          if (!v) {
+            setAdding(null);
+            setAddingIso(false);
+          }
+        }}
         mode="add"
         prefill={adding ? catalogCarToCatalogueCar(adding) : null}
-        prefillStatus=""
+        prefillStatus={addingIso ? "ISO" : ""}
       />
       {isAdmin && (
         <CatalogFormDialog
