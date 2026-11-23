@@ -1,20 +1,35 @@
 import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useStoreEnabled } from "@/market/enabled";
-import { BookOpen, Plus, RefreshCw, Search, ShoppingCart, Undo2, X } from "lucide-react";
-import { MegaMenu } from "@/components/mega-menu";
+import {
+  BookOpen,
+  Boxes,
+  CalendarDays,
+  Car,
+  ChevronDown,
+  Copy,
+  Plus,
+  RefreshCw,
+  ShoppingBag,
+  ShoppingCart,
+  Star,
+  Store,
+  Truck,
+  Undo2,
+  type LucideIcon,
+} from "lucide-react";
+import { createPortal } from "react-dom";
 import { ADD_CAR_EVENT } from "@/lib/add-car-event";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCars, useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
 import { useAuth } from "@/lib/auth-store";
-import { planIncludes } from "@/lib/tiers";
+import { planIncludes, type PaidPlan } from "@/lib/tiers";
 import { openProDialog } from "@/components/pro-dialog";
 import { useCatalog } from "@/lib/catalog-store";
 import type { Diecast } from "@/lib/types";
 import { HomeScreenMark } from "@/components/brand-mark";
 import { SearchBox } from "@/components/search-box";
-import { useApp } from "@/lib/store";
 import { NotificationCenter } from "@/components/notification-center";
 import { WhatsNewStar } from "@/components/whats-new";
 import { AccountButton } from "@/components/account-button";
@@ -27,32 +42,166 @@ import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 /** Fired by the sidebar's Add car button; the top bar owns the dialogs it opens. */
 export { ADD_CAR_EVENT } from "@/lib/add-car-event";
 
+type NavLink = { title: string; url: string; icon: LucideIcon; needs?: PaidPlan };
+type NavTab = {
+  title: string;
+  url: string;
+  /** Paths that make this tab the page you are on. */
+  match: string[];
+  needs?: PaidPlan;
+  /** What opens under the tab. */
+  items?: NavLink[];
+};
+
+const TABS: NavTab[] = [
+  { title: "Home", url: "/", match: ["/"] },
+  {
+    title: "My Cars",
+    url: "/inventory",
+    match: ["/inventory", "/favourites", "/collection"],
+    items: [
+      { title: "My Cars", url: "/inventory", icon: Car },
+      { title: "Favourites", url: "/favourites", icon: Star, needs: "pro" },
+      { title: "Collection", url: "/collection", icon: Boxes, needs: "pro" },
+    ],
+  },
+  {
+    title: "My Orders",
+    url: "/orders",
+    match: ["/orders", "/preorders", "/duplicates"],
+    needs: "plus",
+    items: [
+      { title: "My Orders", url: "/orders", icon: Truck, needs: "plus" },
+      { title: "Pre-orders", url: "/preorders", icon: ShoppingBag, needs: "pro" },
+      { title: "Duplicates", url: "/duplicates", icon: Copy, needs: "pro" },
+    ],
+  },
+  {
+    title: "Habit",
+    url: "/habits",
+    match: ["/habits", "/sellers"],
+    needs: "pro",
+    items: [
+      { title: "Habit", url: "/habits", icon: CalendarDays, needs: "pro" },
+      { title: "Sellers", url: "/sellers", icon: Store, needs: "pro" },
+    ],
+  },
+  { title: "Catalogue", url: "/catalog", match: ["/catalog"] },
+];
+
+/** The pane that opens under a tab: a pane of glass in the page body, so it can blur what is under it. */
+function TabMenu({
+  tab,
+  items,
+  active,
+  pathname,
+}: {
+  tab: NavTab;
+  items: NavLink[];
+  active: boolean;
+  pathname: string;
+}) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const timer = useRef(0);
+  const [pos, setPos] = useState<{ left: number } | null>(null);
+
+  const show = () => {
+    window.clearTimeout(timer.current);
+    const r = wrapRef.current?.getBoundingClientRect();
+    if (r) setPos({ left: r.left - 14 });
+  };
+  const hide = () => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setPos(null), 140);
+  };
+  useEffect(() => setPos(null), [pathname]);
+  useEffect(() => {
+    if (!pos) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPos(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pos]);
+
+  return (
+    <div
+      ref={wrapRef}
+      data-active={active ? "true" : undefined}
+      className="relative flex items-stretch"
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+    >
+      <Link
+        to={tab.url}
+        aria-current={active ? "page" : undefined}
+        aria-haspopup="true"
+        aria-expanded={pos !== null}
+        className={cn(
+          "flex items-center gap-1 text-[15px] transition-colors",
+          active
+            ? "font-semibold text-foreground"
+            : "font-medium text-muted-foreground hover:text-foreground",
+        )}
+      >
+        {tab.title}
+        <ChevronDown
+          className={cn("size-3 opacity-60 transition-transform duration-200", pos && "rotate-180")}
+        />
+      </Link>
+      {pos &&
+        createPortal(
+          <div
+            className="fixed top-14 z-50 pt-1.5 animate-in fade-in slide-in-from-top-1 duration-150"
+            style={{ left: pos.left }}
+            onMouseEnter={show}
+            onMouseLeave={hide}
+          >
+            <div className="card-elevated glass-pane min-w-52 space-y-0.5 p-2">
+              {items.map((i) => (
+                <Link
+                  key={i.url}
+                  to={i.url}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] font-medium transition-colors hover:bg-primary/10",
+                    pathname.startsWith(i.url) ? "bg-primary/10 text-primary" : "text-foreground",
+                  )}
+                >
+                  <i.icon className="size-4.5 shrink-0" />
+                  {i.title}
+                </Link>
+              ))}
+            </div>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
 /**
- * Home, My Cars, My Orders and the Catalogue, in the middle of the bar on a desktop. The sidebar keeps the rest; a
- * phone has the bottom bar for these. My Orders is a Plus feature, left out where the plan lacks it.
+ * The tabs in the middle of the bar on a desktop. Where a tab has pages under it, hovering it opens
+ * them; the plan decides which are there. A phone has the bottom bar for these.
  */
 function DesktopNav() {
   const { plan } = useAuth();
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const items = [
-    { title: "Home", url: "/", on: pathname === "/" },
-    { title: "My Cars", url: "/inventory", on: pathname.startsWith("/inventory") },
-    ...(planIncludes(plan, "plus")
-      ? [{ title: "My Orders", url: "/orders", on: pathname.startsWith("/orders") }]
-      : []),
-    { title: "Catalogue", url: "/catalog", on: pathname.startsWith("/catalog") },
-  ];
+  const tabs = TABS.filter((t) => !t.needs || planIncludes(plan, t.needs)).map((t) => ({
+    tab: t,
+    items: (t.items ?? []).filter((i) => !i.needs || planIncludes(plan, i.needs)),
+    on: t.match.some((m) => (m === "/" ? pathname === "/" : pathname.startsWith(m))),
+  }));
   // One line that slides to the page you are on, rather than a line that appears under it: where
-  // it is and how wide, measured off the active link.
+  // it is and how wide, measured off the active tab.
   const navRef = useRef<HTMLElement>(null);
   const [line, setLine] = useState<{ left: number; width: number } | null>(null);
   const [armed, setArmed] = useState(false);
-  const active = items.find((i) => i.on)?.url ?? "";
+  const active = tabs.find((t) => t.on)?.tab.url ?? "";
   useLayoutEffect(() => {
     const nav = navRef.current;
     if (!nav) return;
     const measure = () => {
-      const el = nav.querySelector<HTMLElement>("[aria-current='page']");
+      const el = nav.querySelector<HTMLElement>("[data-active='true']");
       // Out to the half-way point between this tab and the next on each side.
       const half = parseFloat(getComputedStyle(nav).columnGap || "0") / 2;
       setLine(el ? { left: el.offsetLeft - half, width: el.offsetWidth + half * 2 } : null);
@@ -72,23 +221,32 @@ function DesktopNav() {
     <nav
       ref={navRef}
       aria-label="Main"
-      className="absolute inset-y-0 left-1/2 hidden -translate-x-1/2 items-stretch gap-7 md:flex"
+      className="relative hidden items-stretch gap-7 self-stretch md:flex"
     >
-      {items.map((i) => (
-        <Link
-          key={i.url}
-          to={i.url}
-          aria-current={i.on ? "page" : undefined}
-          className={cn(
-            "relative flex items-center text-[15px] transition-colors",
-            i.on
-              ? "font-semibold text-foreground"
-              : "font-medium text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {i.title}
-        </Link>
-      ))}
+      {tabs.map(({ tab, items, on }) =>
+        items.length > 1 ? (
+          <TabMenu key={tab.url} tab={tab} items={items} active={on} pathname={pathname} />
+        ) : (
+          <div
+            key={tab.url}
+            data-active={on ? "true" : undefined}
+            className="relative flex items-stretch"
+          >
+            <Link
+              to={tab.url}
+              aria-current={on ? "page" : undefined}
+              className={cn(
+                "flex items-center text-[15px] transition-colors",
+                on
+                  ? "font-semibold text-foreground"
+                  : "font-medium text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {tab.title}
+            </Link>
+          </div>
+        ),
+      )}
       {/* In the theme colour, on the bar's own bottom edge. */}
       <span
         aria-hidden
@@ -100,74 +258,6 @@ function DesktopNav() {
         style={{ left: line?.left ?? 0, width: line?.width ?? 0 }}
       />
     </nav>
-  );
-}
-
-/**
- * Desktop search: an icon beside the bell that opens the field in place, over the right of the bar.
- * ⌘K and "/" open it too. Whatever was typed keeps filtering the page after it closes, and the icon
- * says so.
- */
-function DesktopSearch() {
-  const { query } = useApp();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      const typing = t?.closest("input, textarea, select, [contenteditable='true']");
-      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (e.key === "/" && !typing)) {
-        e.preventDefault();
-        setOpen(true);
-      }
-    };
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    document.addEventListener("mousedown", onDown);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.removeEventListener("mousedown", onDown);
-    };
-  }, []);
-
-  return (
-    <div ref={ref} className="relative hidden md:block">
-      <Button
-        variant="outline"
-        size="icon"
-        className="relative size-9 rounded-full"
-        onClick={() => setOpen((v) => !v)}
-        aria-label={query ? `Search: filtering by “${query}”` : "Search"}
-        aria-expanded={open}
-        title="Search (⌘K)"
-      >
-        <Search className="size-4.5" />
-        {query && (
-          <span
-            aria-hidden
-            className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-primary"
-          />
-        )}
-      </Button>
-      {open && (
-        <div className="absolute right-0 top-1/2 z-50 flex w-[min(25rem,calc(100vw-26rem))] -translate-y-1/2 items-center gap-1.5 animate-in fade-in slide-in-from-right-2">
-          <SearchBox className="min-w-0 flex-1 md:ml-0" autoFocus onEscape={() => setOpen(false)} />
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-9 shrink-0 rounded-full"
-            onClick={() => setOpen(false)}
-            aria-label="Close search"
-            title="Close search (Esc)"
-          >
-            <X className="size-4.5" />
-          </Button>
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -256,13 +346,19 @@ export function TopBar() {
           holds, so on a phone this opened a second copy of the navigation that
           was already under your thumb. Swiping in from the edge still works for
           anyone who has learned it. */}
-      <MegaMenu />
+      <Link to="/" aria-label="VIIV home" className="hidden shrink-0 md:block">
+        <HomeScreenMark className="w-[84px]" />
+      </Link>
+      {/* An invisible divider: room between the wordmark and the tabs, and the tabs and the search. */}
+      <span aria-hidden className="mx-3 hidden h-6 w-px md:block" />
       <DesktopNav />
+      <span aria-hidden className="mx-3 hidden h-6 w-px md:block" />
+      {/* The search bar follows the tabs. A phone searches from the bottom bar. */}
+      <SearchBox className="hidden max-w-md md:block" />
       {/* A phone's wordmark. On a desktop it sits in front of the menu button. */}
       <Link to="/" aria-label="VIIV home" className="shrink-0 md:hidden">
         <HomeScreenMark className="w-[80px]" />
       </Link>
-      {/* Desktop searches here, live. A phone searches from the bottom bar. */}
       <div className="ml-auto flex items-center gap-1.5">
         {/* Only while it means something: it shows itself when there is
             something to reverse and withdraws half a minute later. */}
@@ -279,7 +375,28 @@ export function TopBar() {
           </Button>
         )}
 
-        <DesktopSearch />
+        {/* Before the search: what you came to do. */}
+        <Button
+          onClick={openAdd}
+          aria-label="Add car"
+          className="relative hidden h-9 gap-1.5 rounded-full px-3.5 md:inline-flex"
+          title={
+            pendingDraft === "bulk"
+              ? "You have an unfinished table of cars — pick up where you left off"
+              : pendingDraft === "car"
+                ? "You have an unfinished car — pick up where you left off"
+                : "Add car"
+          }
+        >
+          <Plus className="size-4.5" />
+          Add car
+          {pendingDraft && (
+            <span
+              aria-label="Unfinished car saved"
+              className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-amber-400"
+            />
+          )}
+        </Button>
         <WhatsNewStar />
         <NotificationCenter />
         {/* Reading right to left from the corner: who you are, then the thing

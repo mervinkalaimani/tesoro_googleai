@@ -1,13 +1,20 @@
+import { Link } from "@tanstack/react-router";
+import { LayoutDashboard, Settings, ShoppingCart, Sparkles, Wrench } from "lucide-react";
+
 import { ProChip, TierAvatar } from "@/components/tier-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { PersonaPicker } from "@/components/persona-picker";
+import { openProDialog } from "@/components/pro-dialog";
 import { useAuth, fullName } from "@/lib/auth-store";
-import { planOf } from "@/lib/tiers";
+import { usePersona } from "@/lib/persona";
+import { paidPlanOf, planOf } from "@/lib/tiers";
+import { useStoreEnabled } from "@/market/enabled";
 
 /** "Mervin Kalaimani" -> "MK"; a single name gives one letter. */
 function initialsOf(name: string, fallback: string): string {
@@ -26,7 +33,9 @@ function initialsOf(name: string, fallback: string): string {
  * anyone looks for Settings, admin, and the way out.
  */
 export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
-  const { profile, isAdmin } = useAuth();
+  const { profile, isAdmin, isGuest } = useAuth();
+  const { persona } = usePersona();
+  const storeOn = useStoreEnabled() === true;
   const plan = planOf(profile);
 
   const name = fullName(profile);
@@ -88,6 +97,57 @@ export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
 
         <DropdownMenuSeparator />
         <PersonaPicker className="px-2 pb-1.5" />
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem asChild>
+          <Link to="/settings" className="cursor-pointer gap-2">
+            <Settings className="size-4" />
+            Settings
+          </Link>
+        </DropdownMenuItem>
+        {storeOn && (
+          <DropdownMenuItem asChild>
+            <Link to="/market" className="cursor-pointer gap-2">
+              <ShoppingCart className="size-4" />
+              VIIV Shop
+            </Link>
+          </DropdownMenuItem>
+        )}
+        {/* The admin's two pages, with the rest of what is about you rather than about your cars. */}
+        {isAdmin && persona === "admin" && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/dashboard" className="cursor-pointer gap-2">
+                <LayoutDashboard className="size-4" />
+                Admin Dashboard
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to="/settings" search={{ tab: "advanced" }} className="cursor-pointer gap-2">
+                <Wrench className="size-4" />
+                Admin Console
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
+        {paidPlanOf(profile) !== "pro" && !isGuest && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onSelect={() => openProDialog()}
+              className="cursor-pointer gap-2 text-primary"
+            >
+              <Sparkles className="size-4" />
+              Subscribe now
+            </DropdownMenuItem>
+          </>
+        )}
+        {isGuest && (
+          <div className="mx-2 mb-1.5 mt-1 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs leading-snug text-muted-foreground">
+            Guest mode: sample cars, stored only in this browser.
+          </div>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
