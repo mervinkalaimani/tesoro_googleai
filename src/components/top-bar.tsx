@@ -161,8 +161,8 @@ export function TopBar() {
               />
             )}
           </Button>
-          {/* The sidebar is the way to the store and the catalogue on desktop;
-              below md it is hidden, so they are one tap here instead. */}
+          {/* Below md the sidebar is hidden, so the shop is one tap here. The catalogue sits beside
+              Add car on every width. */}
           {storeOn && (
             <Button
               asChild
@@ -180,11 +180,14 @@ export function TopBar() {
             asChild
             variant="outline"
             size="icon"
-            className="size-9 rounded-full max-md:order-1 md:hidden"
+            // Outlined in the accent on desktop, beside the solid Add car: a plain grey outline
+            // there read as the disabled one of the pair.
+            className="size-9 rounded-full max-md:order-1 md:w-auto md:gap-1.5 md:border-primary/60 md:px-3.5 md:text-primary md:hover:bg-primary/10 md:hover:text-primary"
             title="Catalogue"
           >
             <Link to="/catalog" aria-label="Catalogue">
               <BookOpen className="size-4.5" />
+              <span className="max-md:sr-only">Catalogue</span>
             </Link>
           </Button>
           {/* On a phone the order reads: catalogue, shop, add car, then you. */}
