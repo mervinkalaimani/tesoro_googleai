@@ -319,7 +319,9 @@ export function SellerOrdersDialog({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+        {/* The scroll area reaches out into the dialog's padding on both sides, so the tiles'
+            shadows are not cut off at its edge. */}
+        <div className="-mx-4 min-h-0 flex-1 space-y-4 overflow-y-auto px-4 pb-4 sm:-mx-6 sm:px-6">
           {/* THE BAND, in the same tiles every other screen opens with: an
               icon chip, the label, the number. It used to be its own thing --
               ten cells divided by hairlines -- which made the one screen about
