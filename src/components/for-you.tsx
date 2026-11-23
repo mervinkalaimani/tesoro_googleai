@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, RefreshCw, Sparkles } from "lucide-react";
+import { Plus, RefreshCw, Sparkles } from "lucide-react";
 
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
@@ -60,12 +60,10 @@ export function ForYou({
   const pool = useMemo(() => forYou(cars, catalog, 48, popular), [cars, catalog, popular]);
   // The period behind the picks is chosen for you (never more than two months), and shown.
   const stats = useMemo(() => purchaseStats(cars), [cars]);
-  // A set at a time: Next and Back step through the ranking, Refresh reshuffles it.
+  // One set at a time; Refresh reshuffles the ranking and brings up another.
   const [seed, setSeed] = useState(0);
-  const [page, setPage] = useState(0);
   const ordered = useMemo(() => reshuffle(pool, seed), [pool, seed]);
-  const pages = Math.max(1, Math.ceil(ordered.length / SET));
-  const picks = ordered.slice(page * SET, page * SET + SET);
+  const picks = ordered.slice(0, SET);
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<{ car: CatalogCar; status: string } | null>(null);
 
@@ -110,34 +108,10 @@ export function ForYou({
               size="icon"
               variant="outline"
               className="size-8"
-              aria-label="Previous set"
-              title="Back"
-              disabled={page === 0}
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-            >
-              <ChevronLeft className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="size-8"
-              aria-label="Next set"
-              title="Next"
-              onClick={() => setPage((p) => (p + 1) % pages)}
-            >
-              <ChevronRight className="size-4" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="size-8"
               aria-label="Refresh suggestions"
               title="Refresh"
               onClick={() => {
                 setSeed(Math.floor(Math.random() * 2 ** 31) + 1);
-                setPage(0);
               }}
             >
               <RefreshCw className="size-4" />
