@@ -498,9 +498,9 @@ export function NotificationCenter() {
           ref={growFromBell}
           align="end"
           collisionPadding={8}
-          className="notif-pop w-[calc(100vw-1rem)] max-h-[min(34rem,calc(100svh-5rem))] overflow-y-auto p-0 data-[state=closed]:animate-none data-[state=open]:animate-none sm:w-[26rem]"
+          className="notif-pop card-elevated glass-pane w-[calc(100vw-1rem)] max-h-[min(34rem,calc(100svh-5rem))] overflow-y-auto !rounded-3xl p-0 data-[state=closed]:animate-none data-[state=open]:animate-none sm:w-[26rem]"
         >
-          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-popover px-3 py-2.5">
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-white/50 bg-white/40 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
             <h2 className="text-sm font-semibold">Notifications</h2>
             <div className="flex items-center gap-1">
               {count > 0 && (

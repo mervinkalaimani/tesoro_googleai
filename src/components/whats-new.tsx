@@ -69,9 +69,9 @@ export function WhatsNewStar() {
 
       <PopoverContent
         align="end"
-        className="w-[min(24rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100svh-5rem))] overflow-y-auto p-0"
+        className="card-elevated glass-pane w-[min(24rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100svh-5rem))] overflow-y-auto !rounded-3xl p-0"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-popover px-3 py-2.5">
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-white/50 bg-white/40 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
           <h2 className="text-sm font-semibold">What&apos;s new</h2>
           <span className="text-xs text-muted-foreground">Build {LATEST_BUILD}</span>
         </div>
