@@ -123,7 +123,7 @@ function ForYouCarousel({
               key={i}
               // Every card is the same size with its details; the ones either side are a little dimmer.
               style={{ opacity: 1 - 0.18 * d }}
-              className="w-[var(--sw)] shrink-0 snap-start snap-always transition-opacity duration-300 [--sw:84cqw] sm:[--sw:34cqw]"
+              className="w-[var(--sw)] shrink-0 snap-start snap-always transition-opacity duration-300 [--sw:calc((100cqw_-_0.75rem)/1.05)] sm:[--sw:34cqw]"
             >
               <article className="card-elevated flex overflow-hidden">
                 <button
