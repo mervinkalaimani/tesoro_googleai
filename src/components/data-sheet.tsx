@@ -239,7 +239,12 @@ export function DataSheet<T>({
                 <td
                   className={cn(
                     cell,
-                    "sticky left-0 z-10 bg-inherit text-center tabular-nums text-muted-foreground",
+                    "sticky left-0 z-10 bg-background text-center tabular-nums text-muted-foreground",
+                    // Opaque, so cells scrolling under it do not show through: the row's own
+                    // tint mixed into the page colour rather than laid over it.
+                    "group-even:bg-[color-mix(in_oklab,var(--muted)_20%,var(--background))]",
+                    onOpen &&
+                      "group-hover:bg-[color-mix(in_oklab,var(--primary)_10%,var(--background))]",
                   )}
                 >
                   {i + 1}
