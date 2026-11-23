@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
 import { Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -45,6 +45,20 @@ function ForYouCarousel({
   const [pos, setPos] = useState(0);
   const n = picks.length;
   const at = picks[Math.min(front, n - 1)];
+  // The row loops: the picks are laid out three times and the track rests in the middle copy, so
+  // swiping past the last one runs on into the first. When it stops in an outer copy it is moved,
+  // unseen, a whole copy over.
+  const slides = n > 1 ? [...picks, ...picks, ...picks] : picks;
+  const idle = useRef(0);
+  // On a wide screen two cars are in focus side by side; on a phone, one.
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const read = () => setWide(mq.matches);
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
 
   /** Pixels from one slide's centre to the next. */
   const step = () => {
@@ -59,8 +73,22 @@ function ForYouCarousel({
     if (!el) return;
     const p = el.scrollLeft / step();
     setPos(p);
-    setFront(Math.max(0, Math.min(n - 1, Math.round(p))));
+    setFront(((Math.round(p) % n) + n) % n);
+    if (n < 2) return;
+    window.clearTimeout(idle.current);
+    idle.current = window.setTimeout(() => {
+      const r = Math.round(el.scrollLeft / step());
+      if (r < n) el.scrollLeft += n * step();
+      else if (r >= 2 * n) el.scrollLeft -= n * step();
+    }, 120);
   };
+  // Start in the middle copy, and again whenever the number of picks changes.
+  useLayoutEffect(() => {
+    const el = track.current;
+    if (el && n > 1) el.scrollLeft = n * step();
+    return () => window.clearTimeout(idle.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- placed on a change of count only
+  }, [n]);
 
   if (!n || !at) return null;
   const btn =
@@ -70,13 +98,17 @@ function ForYouCarousel({
       <div
         ref={track}
         onScroll={onScroll}
-        className="no-scrollbar -mx-3 flex snap-x snap-mandatory items-center gap-3 overflow-x-auto px-[8cqw] py-4 sm:mx-0 sm:gap-5 sm:px-[29cqw]"
+        className="no-scrollbar -mx-3 flex snap-x snap-mandatory items-center gap-3 overflow-x-auto px-[8cqw] py-4 sm:mx-0 sm:gap-5 sm:scroll-pl-[calc(16cqw-0.625rem)] sm:px-[calc(16cqw-0.625rem)]"
         style={{ overscrollBehaviorX: "contain" }}
       >
-        {picks.map((p, i) => {
+        {slides.map((p, i) => {
           const c = catalogCarToDiecast(p.car);
-          const d = Math.min(2, Math.abs(i - pos));
-          const isFront = i === front;
+          const r = Math.round(pos);
+          const d = Math.min(
+            2,
+            wide ? Math.min(Math.abs(i - pos), Math.abs(i - pos - 1)) : Math.abs(i - pos),
+          );
+          const isFront = i === r || (wide && i === r + 1);
           const stats = (
             [
               ["Colour", c.colour],
@@ -85,10 +117,10 @@ function ForYouCarousel({
           ).filter(([, v]) => (v || "").trim());
           return (
             <div
-              key={p.car.car_id}
+              key={i}
               // The cars either side are smaller and a little dimmer, so the front one is the card.
               style={{ transform: `scale(${1 - 0.09 * d})`, opacity: 1 - 0.18 * d }}
-              className="w-[84cqw] shrink-0 snap-center snap-always transition-[transform,opacity] duration-150 sm:w-[42cqw]"
+              className="w-[84cqw] shrink-0 snap-center snap-always transition-[transform,opacity] duration-150 sm:w-[34cqw] sm:snap-start"
             >
               <article className="card-elevated flex overflow-hidden">
                 <button
@@ -176,7 +208,7 @@ function ForYouCarousel({
             role="tab"
             aria-selected={i === front}
             aria-label={`Show suggestion ${i + 1} of ${n}`}
-            onClick={() => goTo(i)}
+            onClick={() => goTo(Math.round(pos) - front + i)}
             className={`h-2 cursor-pointer rounded-full transition-all ${
               i === front ? "w-5 bg-foreground" : "w-2 bg-foreground/30"
             }`}
