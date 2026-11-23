@@ -23,7 +23,7 @@ import { SellerOrdersDialog } from "@/components/seller-orders-dialog";
 import { SellerEditDialog } from "@/components/seller-edit-dialog";
 import { sellerKey, sellerLabel, useSellerDetails, whatsappHref } from "@/lib/seller-details";
 import { useAuth } from "@/lib/auth-store";
-import { PageHeading, PageToolbar } from "@/components/page-header";
+import { PageHeading } from "@/components/page-header";
 import { SortSelect, type SortDir } from "@/components/filter-select";
 import { ExportButton } from "@/components/export-button";
 import { useRegisterExportScope } from "@/lib/export-scope";
@@ -170,192 +170,247 @@ function SellersPage() {
       <PageHeading
         title="Sellers"
         subtitle={`${groups.length} ${groups.length === 1 ? "seller" : "sellers"} · ${inr(total)} spent`}
-      />
-
-      <PageToolbar
-        sticky
-        oneLine
-        right={
-          <>
-            <SortSelect
-              value={sortField}
-              dir={dir}
-              onChange={(v, d) => {
-                setSortField(v);
-                setDir(d);
-              }}
-              iconOnly
-              neutral="spent"
-              options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
-                value: f,
-                label: SORT_LABELS[f],
-                dir: f === "name" ? ("asc" as const) : ("desc" as const),
-              }))}
-            />
-            <ExportButton rows={filtered} name="sellers" label="Sellers" iconOnly />
-          </>
-        }
-      />
-
-      <GroupTable
-        minWidth="min-w-[56rem]"
-        head={
-          <>
-            <Th>Seller</Th>
-            <Th align="right">Cars</Th>
-            <Th align="right">Pre-orders</Th>
-            <Th align="right">Pending</Th>
-            <Th align="right">Spent</Th>
-            <Th align="right">Balance</Th>
-            <Th className="hidden sm:table-cell">Last bought</Th>
-            <Th />
-            <Th className="w-8" />
-          </>
-        }
       >
+        <SortSelect
+          value={sortField}
+          dir={dir}
+          onChange={(v, d) => {
+            setSortField(v);
+            setDir(d);
+          }}
+          iconOnly
+          neutral="spent"
+          options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
+            value: f,
+            label: SORT_LABELS[f],
+            dir: f === "name" ? ("asc" as const) : ("desc" as const),
+          }))}
+        />
+        <ExportButton rows={filtered} name="sellers" label="Sellers" iconOnly />
+      </PageHeading>
+
+      {/* A phone gets one card per seller; the wide table with its eight columns is for
+          a screen that has the room. */}
+      <div className="space-y-2 md:hidden">
         {groups.map((g) => {
           const shop = shops.get(g.key) || null;
-          const wa = whatsappHref(shop);
           return (
-            <tr
+            <button
               key={g.key}
+              type="button"
               onClick={() => setSeller(g.label)}
-              className="cursor-pointer border-t border-border/60 transition-colors hover:bg-primary/[0.06] active:bg-primary/10"
+              className="card-elevated flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/10"
             >
-              <td className="px-3 py-2.5">
-                <div className="flex min-w-0 items-center gap-2.5">
-                  <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/12 text-xs font-semibold uppercase text-primary">
-                    {shop?.image_url ? (
-                      <img
-                        src={transformImageUrl(shop.image_url, "thumb")}
-                        alt=""
-                        loading="lazy"
-                        decoding="async"
-                        className="size-full object-cover"
-                      />
-                    ) : (
-                      initials(sellerLabel(g.label, shop))
+              <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/12 text-xs font-semibold uppercase text-primary">
+                {shop?.image_url ? (
+                  <img
+                    src={transformImageUrl(shop.image_url, "thumb")}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  initials(sellerLabel(g.label, shop))
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium text-foreground">
+                  {sellerLabel(g.label, shop)}
+                </span>
+                <span className="block text-xs text-muted-foreground">
+                  {g.orders || "no"} {g.orders === 1 ? "order" : "orders"} · {g.shipments || "no"}{" "}
+                  {g.shipments === 1 ? "shipment" : "shipments"}
+                </span>
+                {shop?.location && (
+                  <span className="mt-0.5 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                    <MapPin className="size-3 shrink-0" />
+                    {shop.location}
+                  </span>
+                )}
+                {(g.po > 0 || g.pending > 0 || g.owed > 0) && (
+                  <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {g.po > 0 && <Count n={g.po} status="PO" />}
+                    {g.pending > 0 && <Count n={g.pending} status="Ordered" />}
+                    {g.owed > 0 && (
+                      <span className="text-xs text-muted-foreground">owed {inr(g.owed)}</span>
                     )}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    {/* The name is the door. The row used to open in place to the
-                    cars, which is the same list the dialog already draws
-                    better, with the orders and the money on it. */}
-                    <button
-                      type="button"
-                      className="max-w-full truncate text-left font-medium text-foreground"
-                      title={`Everything bought from ${g.label}`}
-                    >
-                      {sellerLabel(g.label, shop)}
-                    </button>
-                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                      <span>
-                        {g.orders || "no"} {g.orders === 1 ? "order" : "orders"} ·{" "}
-                        {g.shipments || "no"} {g.shipments === 1 ? "shipment" : "shipments"}
-                      </span>
-                      {shop?.prefer === "store" && shop.store_name && (
-                        <span className="truncate">· {g.label}</span>
-                      )}
-                      {shop?.location && (
-                        <span className="inline-flex items-center gap-1 truncate">
-                          <MapPin className="size-3 shrink-0" />
-                          {shop.location}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
-                {g.items.length}
-              </td>
-              <td className="px-3 py-2.5 text-right">
-                <Count n={g.po} status="PO" />
-              </td>
-              <td className="px-3 py-2.5 text-right">
-                <Count n={g.pending} status="Ordered" />
-              </td>
-              <td className="px-3 py-2.5 text-right font-medium tabular-nums">{inr(g.spent)}</td>
-              <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
-                {g.owed ? inr(g.owed) : "—"}
-              </td>
-              <td className="hidden px-3 py-2.5 text-xs text-muted-foreground sm:table-cell">
-                {g.last ? formatDayMonthYear(g.last) : "—"}
-              </td>
-              <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-end gap-0.5">
-                  {shop?.phone && (
-                    <Button
-                      asChild
-                      size="icon"
-                      variant="ghost"
-                      className="size-8 text-muted-foreground"
-                      title={`Call ${shop.phone}`}
-                    >
-                      <a
-                        href={`tel:${shop.phone.replace(/s+/g, "")}`}
-                        aria-label={`Call ${g.label}`}
-                      >
-                        <Phone className="size-3.5" />
-                      </a>
-                    </Button>
-                  )}
-                  {wa && (
-                    <Button
-                      asChild
-                      size="icon"
-                      variant="ghost"
-                      className="size-8 text-muted-foreground"
-                      title={`WhatsApp ${g.label}`}
-                    >
-                      <a
-                        href={wa}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        aria-label={`WhatsApp ${g.label}`}
-                      >
-                        <WhatsAppMark />
-                      </a>
-                    </Button>
-                  )}
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="size-8 text-muted-foreground"
-                    title={`Orders from ${g.label}`}
-                    aria-label={`Orders from ${g.label}`}
-                    onClick={() => setSeller(g.label)}
-                  >
-                    <Receipt className="size-3.5" />
-                  </Button>
-                  {canEdit && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="size-8 text-muted-foreground"
-                      title={`Edit ${g.label}`}
-                      aria-label={`Edit ${g.label}`}
-                      onClick={() => setEditing(g.label)}
-                    >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                  )}
-                </div>
-              </td>
-              <td className="w-8 pr-3">
-                <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden />
-              </td>
-            </tr>
+                )}
+              </span>
+              <span className="shrink-0 text-right">
+                <span className="block font-medium tabular-nums">{inr(g.spent)}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {g.items.length} {g.items.length === 1 ? "car" : "cars"}
+                </span>
+              </span>
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/60" aria-hidden />
+            </button>
           );
         })}
-        {groups.length === 0 && (
-          <tr>
-            <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">
-              No sellers yet.
-            </td>
-          </tr>
-        )}
-      </GroupTable>
+      </div>
+
+      <div className="max-md:hidden">
+        <GroupTable
+          minWidth="min-w-[56rem]"
+          head={
+            <>
+              <Th>Seller</Th>
+              <Th align="right">Cars</Th>
+              <Th align="right">Pre-orders</Th>
+              <Th align="right">Pending</Th>
+              <Th align="right">Spent</Th>
+              <Th align="right">Balance</Th>
+              <Th className="hidden sm:table-cell">Last bought</Th>
+              <Th />
+              <Th className="w-8" />
+            </>
+          }
+        >
+          {groups.map((g) => {
+            const shop = shops.get(g.key) || null;
+            const wa = whatsappHref(shop);
+            return (
+              <tr
+                key={g.key}
+                onClick={() => setSeller(g.label)}
+                className="cursor-pointer border-t border-border/60 transition-colors hover:bg-primary/[0.06] active:bg-primary/10"
+              >
+                <td className="px-3 py-2.5">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/12 text-xs font-semibold uppercase text-primary">
+                      {shop?.image_url ? (
+                        <img
+                          src={transformImageUrl(shop.image_url, "thumb")}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          className="size-full object-cover"
+                        />
+                      ) : (
+                        initials(sellerLabel(g.label, shop))
+                      )}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      {/* The name is the door. The row used to open in place to the
+                    cars, which is the same list the dialog already draws
+                    better, with the orders and the money on it. */}
+                      <button
+                        type="button"
+                        className="max-w-full truncate text-left font-medium text-foreground"
+                        title={`Everything bought from ${g.label}`}
+                      >
+                        {sellerLabel(g.label, shop)}
+                      </button>
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>
+                          {g.orders || "no"} {g.orders === 1 ? "order" : "orders"} ·{" "}
+                          {g.shipments || "no"} {g.shipments === 1 ? "shipment" : "shipments"}
+                        </span>
+                        {shop?.prefer === "store" && shop.store_name && (
+                          <span className="truncate">· {g.label}</span>
+                        )}
+                        {shop?.location && (
+                          <span className="inline-flex items-center gap-1 truncate">
+                            <MapPin className="size-3 shrink-0" />
+                            {shop.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
+                  {g.items.length}
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <Count n={g.po} status="PO" />
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <Count n={g.pending} status="Ordered" />
+                </td>
+                <td className="px-3 py-2.5 text-right font-medium tabular-nums">{inr(g.spent)}</td>
+                <td className="px-3 py-2.5 text-right tabular-nums text-muted-foreground">
+                  {g.owed ? inr(g.owed) : "—"}
+                </td>
+                <td className="hidden px-3 py-2.5 text-xs text-muted-foreground sm:table-cell">
+                  {g.last ? formatDayMonthYear(g.last) : "—"}
+                </td>
+                <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-end gap-0.5">
+                    {shop?.phone && (
+                      <Button
+                        asChild
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-muted-foreground"
+                        title={`Call ${shop.phone}`}
+                      >
+                        <a
+                          href={`tel:${shop.phone.replace(/s+/g, "")}`}
+                          aria-label={`Call ${g.label}`}
+                        >
+                          <Phone className="size-3.5" />
+                        </a>
+                      </Button>
+                    )}
+                    {wa && (
+                      <Button
+                        asChild
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-muted-foreground"
+                        title={`WhatsApp ${g.label}`}
+                      >
+                        <a
+                          href={wa}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          aria-label={`WhatsApp ${g.label}`}
+                        >
+                          <WhatsAppMark />
+                        </a>
+                      </Button>
+                    )}
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="size-8 text-muted-foreground"
+                      title={`Orders from ${g.label}`}
+                      aria-label={`Orders from ${g.label}`}
+                      onClick={() => setSeller(g.label)}
+                    >
+                      <Receipt className="size-3.5" />
+                    </Button>
+                    {canEdit && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-8 text-muted-foreground"
+                        title={`Edit ${g.label}`}
+                        aria-label={`Edit ${g.label}`}
+                        onClick={() => setEditing(g.label)}
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                </td>
+                <td className="w-8 pr-3">
+                  <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden />
+                </td>
+              </tr>
+            );
+          })}
+          {groups.length === 0 && (
+            <tr>
+              <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">
+                No sellers yet.
+              </td>
+            </tr>
+          )}
+        </GroupTable>
+      </div>
 
       <SellerOrdersDialog
         open={seller !== null}
