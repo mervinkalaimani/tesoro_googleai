@@ -440,12 +440,17 @@ function HabitsPage() {
           icon={<CalendarDays className="size-4" />}
           label="Current streak"
           value={
-            daysWithoutBuying !== null
-              ? `${daysWithoutBuying} ${daysWithoutBuying === 1 ? "day" : "days"}`
-              : `${stats.streak} ${unit}${stats.streak === 1 ? "" : "s"}`
+            daysWithoutBuying !== null ? (
+              <>
+                {daysWithoutBuying}
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                  {daysWithoutBuying === 1 ? "day" : "days"} without buying
+                </span>
+              </>
+            ) : (
+              `${stats.streak} ${unit}${stats.streak === 1 ? "" : "s"}`
+            )
           }
-          sub="(days without buying)"
-          subVisibleOnMobile
           tone="emerald"
         />
       </section>
