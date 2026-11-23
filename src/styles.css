@@ -966,6 +966,13 @@ html.dark .app-top-bar {
   -webkit-backdrop-filter: blur(20px) brightness(0.45) saturate(1.2);
   backdrop-filter: blur(20px) brightness(0.45) saturate(1.2);
 }
+/* Light mode: mostly opaque, so what scrolls under the bar softens into a tint instead of
+   showing through as words. */
+html:not(.dark) .app-top-bar {
+  background-color: oklch(0.98 0.004 240 / 0.86);
+  -webkit-backdrop-filter: blur(28px) saturate(1.3);
+  backdrop-filter: blur(28px) saturate(1.3);
+}
 html[data-pinned] .app-top-bar,
 .pin-band-on {
   background-color: var(--pin-bg);
