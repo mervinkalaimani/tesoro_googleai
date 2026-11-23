@@ -1,6 +1,6 @@
 import { SUMMARY_ITEMS } from "@/lib/summary-cards";
 import { useQuickAdd } from "@/components/use-quick-add";
-import { useAddToIso } from "@/lib/quick-iso";
+import { WishlistHeart } from "@/components/wishlist-heart";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -13,7 +13,6 @@ import {
   ChevronRight,
   AlertTriangle,
   PauseCircle,
-  Heart,
   Plus,
   CalendarClock,
   PackageCheck,
@@ -900,7 +899,6 @@ const preorderAsCar = (c: RecentPreorder, key: string) =>
  */
 function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: boolean }) {
   const { isAdmin, isOwner, isGuest } = useAuth();
-  const addToIso = useAddToIso();
   const quickAdd = useQuickAdd();
   const { catalog, findMatchingInCatalog, getCatalogCarById, updateCatalogCar, addCatalogCar } =
     useCatalog();
@@ -1059,19 +1057,17 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
                   c.inMyCollection ? "In your collection" : added ? daysAgo(added, now) : undefined
                 }
                 marksOffset
-                padRight={!c.inMyCollection}
+                padRight={!c.inMyCollection || !isGuest}
                 className="w-full"
               />
               {!c.inMyCollection && (
-                <>
-                  <QuickAdd
-                    onClick={() =>
-                      quickAdd.start({ ...catalogEntryFor(c), release_status: "Pre Order" })
-                    }
-                  />
-                  {!isGuest && <QuickIso onClick={() => addToIso(catalogEntryFor(c))} />}
-                </>
+                <QuickAdd
+                  onClick={() =>
+                    quickAdd.start({ ...catalogEntryFor(c), release_status: "Pre Order" })
+                  }
+                />
               )}
+              {!isGuest && <WishlistHeart entry={catalogEntryFor(c)} above={!c.inMyCollection} />}
             </div>
           );
         })}
@@ -1484,25 +1480,9 @@ function QuickAdd({ onClick }: { onClick: () => void }) {
   );
 }
 
-/** The round heart laid over the top corner of a shelf card: put it on my ISO list. */
-function QuickIso({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="Add to my ISO list"
-      title="Add to my ISO list"
-      className="absolute right-2 top-2 grid size-7 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
-    >
-      <Heart className="size-4" />
-    </button>
-  );
-}
-
 function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   const { catalog, isLoading, updateCatalogCar } = useCatalog();
   const { isAdmin, isOwner, isGuest } = useAuth();
-  const addToIso = useAddToIso();
   const quickAdd = useQuickAdd();
   const cars = useCars();
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
@@ -1564,14 +1544,17 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
                 onOpen={() => setViewing(r.entry)}
                 caption={releasedLabel(r.daysAgo)}
                 marksOffset
-                padRight={!ownedIds.has(r.entry.car_id.trim().toUpperCase())}
+                padRight={!ownedIds.has(r.entry.car_id.trim().toUpperCase()) || !isGuest}
                 className="w-full"
               />
               {!ownedIds.has(r.entry.car_id.trim().toUpperCase()) && (
-                <>
-                  <QuickAdd onClick={() => quickAdd.start(r.entry)} />
-                  {!isGuest && <QuickIso onClick={() => addToIso(r.entry)} />}
-                </>
+                <QuickAdd onClick={() => quickAdd.start(r.entry)} />
+              )}
+              {!isGuest && (
+                <WishlistHeart
+                  entry={r.entry}
+                  above={!ownedIds.has(r.entry.car_id.trim().toUpperCase())}
+                />
               )}
             </div>
           );

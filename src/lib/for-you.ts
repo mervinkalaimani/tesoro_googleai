@@ -47,7 +47,8 @@ type Attr =
   | "assortment"
   | "size"
   | "year"
-  | "type";
+  | "type"
+  | "rarity";
 
 type Def = {
   /** How much a match is worth: the model says more about taste than the year. */
@@ -56,6 +57,11 @@ type Def = {
   cat: (c: CatalogCar) => string | undefined;
   /** The reason, finishing "Because you …". */
   say: (label: string, owned: number, recent: number) => string;
+};
+
+const special = (r: string | undefined | null) => {
+  const v = (r || "").trim();
+  return v && v.toLowerCase() !== "normal" ? v : undefined;
 };
 
 const ATTRS: Record<Attr, Def> = {
@@ -107,6 +113,13 @@ const ATTRS: Record<Attr, Def> = {
     say: (l) => `like ${l} models`,
   },
   type: { coef: 0.6, car: (c) => c.type, cat: (c) => c.type, say: (l) => `like ${l}` },
+  // Only the special ones say anything: "Normal" is what nearly every car is.
+  rarity: {
+    coef: 0.8,
+    car: (c) => special(c.rarity),
+    cat: (c) => special(c.rarity),
+    say: (l) => `like ${l} cars`,
+  },
 };
 const KEYS = Object.keys(ATTRS) as Attr[];
 /** When a reason names two things, the narrower one comes first. */
@@ -120,6 +133,7 @@ const SPECIFIC: Attr[] = [
   "type",
   "size",
   "year",
+  "rarity",
   "brand",
 ];
 
@@ -262,12 +276,12 @@ export function forYou(
     // Each match with something turned down takes away, more the more times it was.
     for (const a of KEYS) {
       const n = against[a].get(norm(ATTRS[a].cat(c))) ?? 0;
-      if (n) score -= ATTRS[a].coef * (a === "brand" ? 0.5 : 1.5) * Math.log1p(n);
+      if (n) score -= ATTRS[a].coef * (a === "brand" ? 1 : 1.5) * Math.log1p(n);
     }
     // And each match with something asked for adds, the same way.
     for (const a of KEYS) {
       const n = toward[a].get(norm(ATTRS[a].cat(c))) ?? 0;
-      if (n) score += ATTRS[a].coef * (a === "brand" ? 0.5 : 1.5) * Math.log1p(n);
+      if (n) score += ATTRS[a].coef * (a === "brand" ? 1 : 1.5) * Math.log1p(n);
     }
     if (score <= 0) continue;
     // A card with a photograph sells itself; one without is a last resort.
