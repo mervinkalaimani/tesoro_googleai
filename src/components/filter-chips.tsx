@@ -44,7 +44,7 @@ export function ToggleChip({
       className={cn(
         "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors cursor-pointer shrink-0 whitespace-nowrap outline-none",
         active
-          ? "border border-primary/50 bg-primary text-primary-foreground font-semibold shadow-xs"
+          ? "glass-btn font-semibold text-primary ring-1 ring-primary/60"
           : "glass-btn text-muted-foreground hover:text-foreground",
       )}
     >
@@ -58,7 +58,7 @@ export function ToggleChip({
             e.stopPropagation();
             onToggle();
           }}
-          className="grid size-3.5 place-items-center rounded-full hover:bg-primary-foreground/20 text-primary-foreground ml-0.5"
+          className="grid size-3.5 place-items-center rounded-full text-primary hover:bg-primary/20 ml-0.5"
           title={`Remove ${label}`}
         >
           <X className="size-2.5" />
@@ -97,7 +97,7 @@ export function FilterChipDropdown({
           className={cn(
             "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors cursor-pointer outline-none shrink-0 whitespace-nowrap",
             isSelected
-              ? "border border-primary/50 bg-primary text-primary-foreground font-semibold shadow-xs"
+              ? "glass-btn font-semibold text-primary ring-1 ring-primary/60"
               : "glass-btn text-muted-foreground hover:text-foreground",
           )}
         >
@@ -110,7 +110,7 @@ export function FilterChipDropdown({
                 e.stopPropagation();
                 onChange("all");
               }}
-              className="grid size-3.5 place-items-center rounded-full hover:bg-primary-foreground/20 text-primary-foreground ml-0.5"
+              className="grid size-3.5 place-items-center rounded-full text-primary hover:bg-primary/20 ml-0.5"
               title={`Clear ${label} filter`}
             >
               <X className="size-2.5" />
