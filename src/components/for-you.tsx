@@ -4,6 +4,7 @@ import { Plus, RefreshCw, Sparkles } from "lucide-react";
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
 import { CarFormDialog } from "@/components/car-form-dialog";
+import { CatalogFormDialog } from "@/components/catalog-form-dialog";
 import { CatalogCarDetails } from "@/components/car-details-drawer";
 import { useAuth } from "@/lib/auth-store";
 import { useCars } from "@/lib/cars-store";
@@ -47,9 +48,9 @@ export function ForYou({
   framed?: boolean;
 }) {
   const cars = useCars();
-  const { catalog } = useCatalog();
+  const { catalog, updateCatalogCar } = useCatalog();
   const SET = useColumns();
-  const { isGuest } = useAuth();
+  const { isGuest, isAdmin } = useAuth();
   // What other collectors bought in the last two months, and how many of them each.
   const { cars: shared } = useRecentPreorders(!isGuest, MAX_WINDOW_DAYS, 50);
   const popular = useMemo(() => {
@@ -65,6 +66,8 @@ export function ForYou({
   const ordered = useMemo(() => reshuffle(pool, seed), [pool, seed]);
   const picks = ordered.slice(0, SET);
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
+  // An admin corrects the casting from its page, and lands back on it after saving.
+  const [editing, setEditing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<{ car: CatalogCar; status: string } | null>(null);
 
   // Tell the page which castings are up here, so its list below can leave them out.
@@ -165,6 +168,11 @@ export function ForYou({
         preOrder={viewing?.release_status === "Pre Order"}
         owned={false}
         onClose={() => setViewing(null)}
+        canEdit={isAdmin}
+        onEdit={() => {
+          setEditing(viewing);
+          setViewing(null);
+        }}
         onAdd={(pick) => {
           const car = pick ?? viewing;
           if (car)
@@ -172,6 +180,20 @@ export function ForYou({
           setViewing(null);
         }}
       />
+      {isAdmin && (
+        <CatalogFormDialog
+          open={editing !== null}
+          entry={editing}
+          catalog={catalog}
+          onClose={() => setEditing(null)}
+          canDelete={false}
+          onSave={async (saved) => {
+            const ok = await updateCatalogCar(saved);
+            if (ok) setViewing(saved);
+            return ok;
+          }}
+        />
+      )}
       <CarFormDialog
         open={adding !== null}
         onOpenChange={(v) => !v && setAdding(null)}

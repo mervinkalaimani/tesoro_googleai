@@ -1209,7 +1209,8 @@ function DesktopShell({
           </div>
           {below && <div className="min-w-0">{below}</div>}
         </div>
-        <div className="flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain pb-2 [&>*]:shrink-0">
+        {/* Padded out and pulled back in, so the cards' shadows have room before the scroll edge. */}
+        <div className="-mx-4 -mt-3 flex min-h-0 min-w-0 flex-col gap-3 overflow-y-auto overflow-x-hidden overscroll-contain px-4 pb-6 pt-3 [&>*]:shrink-0">
           {children}
         </div>
       </div>
