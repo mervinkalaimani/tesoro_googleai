@@ -510,7 +510,7 @@ function HabitsPage() {
           <div ref={scrollContainerRef} key={`d-${mode}-${range}`} className="overflow-x-auto py-4">
             <div className="inline-flex min-w-full flex-col gap-1.5 pr-4">
               <div className="flex items-center gap-[6px]">
-                <div className="sticky left-0 z-10 mr-1.5 h-4 w-10 shrink-0 bg-card pl-2 pr-1 border-r border-border/40" />
+                <div className="sticky left-0 z-10 mr-1.5 h-4 w-10 shrink-0 pl-2 pr-1 border-r border-border/40" />
                 {grid.map((week, i) => {
                   const first = week.find(Boolean) as Cell | undefined;
                   const showLabel = first && first.date.getDate() <= 7;
@@ -530,7 +530,7 @@ function HabitsPage() {
                 })}
               </div>
               <div className="flex gap-[6px]">
-                <div className="sticky left-0 z-10 mr-1.5 flex w-10 shrink-0 flex-col gap-[6px] bg-card pl-2 pr-1 text-xs font-medium text-muted-foreground border-r border-border/40">
+                <div className="sticky left-0 z-10 mr-1.5 flex w-10 shrink-0 flex-col gap-[6px] pl-2 pr-1 text-xs font-medium text-muted-foreground border-r border-border/40">
                   {DAYS.map((d, i) => (
                     <span key={i} className="h-5 leading-5 text-center">
                       {d}
@@ -698,7 +698,7 @@ function PeriodSquare({
 function MatrixHeader({ labels }: { labels: string[] }) {
   return (
     <div className="flex items-center gap-[6px] text-xs text-muted-foreground">
-      <div className="sticky left-0 z-10 mr-1.5 h-4 w-16 shrink-0 bg-card pl-4 pr-2 border-r border-border/40" />
+      <div className="sticky left-0 z-10 mr-1.5 h-4 w-16 shrink-0 pl-4 pr-2 border-r border-border/40" />
       {labels.map((label, i) => (
         <span key={i} className="w-5 shrink-0 whitespace-nowrap text-center">
           {label}
@@ -723,7 +723,7 @@ function MatrixRow({
 }) {
   return (
     <div className="flex items-center gap-[6px]">
-      <div className="sticky left-0 z-10 mr-1.5 flex h-5 w-16 shrink-0 items-center bg-card pl-4 pr-2 text-xs font-medium leading-5 text-muted-foreground border-r border-border/40">
+      <div className="sticky left-0 z-10 mr-1.5 flex h-5 w-16 shrink-0 items-center pl-4 pr-2 text-xs font-medium leading-5 text-muted-foreground border-r border-border/40">
         {row.year}
       </div>
       {row.cells.map((bucket, i) =>
