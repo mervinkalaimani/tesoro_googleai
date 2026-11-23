@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useStoreEnabled } from "@/market/enabled";
 import { BookOpen, Plus, RefreshCw, ShoppingCart, Undo2 } from "lucide-react";
@@ -21,6 +21,9 @@ import { BulkAddCarsDialog } from "@/components/bulk-add-cars-dialog";
 import { BULK_DRAFT_KEY, CAR_DRAFT_KEY, readDraft } from "@/lib/form-draft";
 import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 
+/** Fired by the sidebar's Add car button; the top bar owns the dialogs it opens. */
+export const ADD_CAR_EVENT = "viiv:add-car";
+
 /** How long the undo button stays on screen after the edit it would reverse. */
 const UNDO_WINDOW_MS = 30_000;
 
@@ -37,6 +40,29 @@ export function TopBar() {
   const [uploadOpen, setUploadOpen] = useState(false);
   /** Which unfinished thing is waiting: a single car, a bulk table, or neither. */
   const [pendingDraft, setPendingDraft] = useState<"car" | "bulk" | null>(null);
+
+  const openAdd = () => {
+    // A free collection at its ceiling is told here rather than after the form has been filled in:
+    // the database would refuse the row either way. The catalogue is untouched by this.
+    if (atCarLimit) {
+      openProDialog("Max cars reached for your plan");
+      return;
+    }
+    // In a transition, so the press is not what pays for the form: mounting Add a car is a quarter
+    // of a second of work, and doing it inside the click handler made the tap itself block.
+    startTransition(() => {
+      if (pendingDraft === "bulk") setBulkOpen(true);
+      else setAddOpen(true);
+    });
+  };
+  // The sidebar's Add car button asks for the same dialogs; they live here.
+  const openAddRef = useRef(openAdd);
+  openAddRef.current = openAdd;
+  useEffect(() => {
+    const on = () => openAddRef.current();
+    window.addEventListener(ADD_CAR_EVENT, on);
+    return () => window.removeEventListener(ADD_CAR_EVENT, on);
+  }, []);
   const [fresh, setFresh] = useState(false);
 
   // A tab that was evicted mid-form comes back to the inventory, not to the
@@ -117,33 +143,12 @@ export function TopBar() {
             // go where the work is: a bulk table is not reachable from the
             // single-car form, and clicking + used to open a blank one and
             // leave the badge lit for ever.
-            onClick={() => {
-              // A free collection at its ceiling is told here rather than after
-              // the form has been filled in: the database would refuse the row
-              // either way, and finding that out at the end is the worse way to
-              // find out. The catalogue is untouched by this — filing a casting
-              // is not adding a car.
-              if (atCarLimit) {
-                openProDialog("Max cars reached for your plan");
-                return;
-              }
-              // In a transition, so the press is not what pays for the form.
-              // Mounting Add a car is a quarter of a second of work -- the
-              // catalogue it searches is sixteen hundred castings -- and doing
-              // it inside the click handler meant the tap itself was the thing
-              // that blocked, which is what the browser reports as INP. React
-              // can interrupt a transition to paint; it cannot interrupt this
-              // handler.
-              startTransition(() => {
-                if (pendingDraft === "bulk") setBulkOpen(true);
-                else setAddOpen(true);
-              });
-            }}
+            onClick={openAdd}
             aria-label="Add car"
             // Round and wordless where the bar is tight; named where there is
             // room for it. Two unlabelled icons side by side is a guess, and
             // the desktop bar has the width to say which is which.
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-full p-0 max-md:order-3 md:order-2 md:w-auto md:gap-1.5 md:px-3.5"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-full p-0 max-md:order-3 md:hidden"
             title={
               pendingDraft === "bulk"
                 ? "You have an unfinished table of cars — pick up where you left off"
@@ -180,9 +185,7 @@ export function TopBar() {
             asChild
             variant="outline"
             size="icon"
-            // Outlined in the accent on desktop, beside the solid Add car: a plain grey outline
-            // there read as the disabled one of the pair.
-            className="size-9 rounded-full max-md:order-1 md:order-1 md:w-auto md:gap-1.5 md:border-primary/60 md:px-3.5 md:text-primary md:hover:bg-primary/10 md:hover:text-primary"
+            className="size-9 rounded-full max-md:order-1 md:hidden"
             title="Catalogue"
           >
             <Link to="/catalog" aria-label="Catalogue">

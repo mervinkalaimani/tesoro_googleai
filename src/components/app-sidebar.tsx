@@ -1,6 +1,6 @@
 import { isIso } from "@/lib/status";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Home,
   LayoutDashboard,
@@ -16,6 +16,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   BookOpen,
+  Plus,
   Store,
   Database,
   Sparkles,
@@ -51,11 +52,13 @@ import { useAuth } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { usePersona } from "@/lib/persona";
 import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
+import { ADD_CAR_EVENT } from "@/components/top-bar";
+import { BULK_DRAFT_KEY, CAR_DRAFT_KEY, readDraft } from "@/lib/form-draft";
+import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 
 /** Below the sections, above the totals: the store and the shared catalogue. */
 const SHOP_LINKS: { title: string; url: string; icon: LucideIcon; store?: boolean }[] = [
   { title: "VIIV Shop", url: "/market", icon: ShoppingCart, store: true },
-  { title: "Catalogue", url: "/catalog", icon: BookOpen },
 ];
 
 const NAV_GROUPS: {
@@ -107,6 +110,24 @@ export function AppSidebar() {
   const storeOn = useStoreEnabled() === true;
   const [localReveal, setLocalReveal] = useState(false);
   const pathname = useRouterState({ select: (r) => r.location.pathname });
+  // An unfinished car or table waiting to be picked up, as the top bar's button used to say.
+  const [pendingDraft, setPendingDraft] = useState(false);
+  useEffect(() => {
+    const check = () =>
+      setPendingDraft(
+        carDraftHasContent(readDraft(CAR_DRAFT_KEY)) ||
+          bulkDraftHasContent(readDraft(BULK_DRAFT_KEY)),
+      );
+    check();
+    window.addEventListener("focus", check);
+    document.addEventListener("visibilitychange", check);
+    const id = window.setInterval(check, 4000);
+    return () => {
+      window.removeEventListener("focus", check);
+      document.removeEventListener("visibilitychange", check);
+      window.clearInterval(id);
+    };
+  }, []);
 
   const stats = useMemo(() => {
     const total = data.length;
@@ -132,7 +153,52 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* Home at the top */}
+        {/* What you came to do: add a car, or look one up. Above Home. */}
+        <SidebarGroup className="pb-0">
+          <SidebarGroupContent>
+            <SidebarMenu className="gap-1">
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip="Add car"
+                  onClick={() => {
+                    if (isMobile) setOpenMobile(false);
+                    window.dispatchEvent(new Event(ADD_CAR_EVENT));
+                  }}
+                  className="relative h-10 bg-primary text-[14px] font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground group-data-[collapsible=icon]:!size-9"
+                >
+                  <Plus className="size-4.5" />
+                  <span>Add car</span>
+                  {pendingDraft && (
+                    <span
+                      aria-label="Unfinished car saved"
+                      className="absolute right-2 top-2 size-2.5 rounded-full border-2 border-sidebar bg-amber-400"
+                    />
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/catalog")}
+                  tooltip="Catalogue"
+                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                >
+                  <Link
+                    to="/catalog"
+                    onClick={() => {
+                      if (isMobile) setOpenMobile(false);
+                    }}
+                  >
+                    <BookOpen className="size-4.5" />
+                    <span>Catalogue</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Home */}
         <SidebarGroup className="pb-0">
           <SidebarGroupContent>
             <SidebarMenu>
