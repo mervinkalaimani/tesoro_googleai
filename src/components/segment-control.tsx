@@ -4,6 +4,13 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+/** The text colours out of a tone (a status's badge classes), for a label sitting on the tone's own fill. */
+const toneText = (tone?: string) =>
+  (tone || "")
+    .split(/\s+/)
+    .filter((c) => /^(dark:)?text-/.test(c))
+    .join(" ");
+
 function SegmentRow<T extends string>({
   value,
   onChange,
@@ -15,7 +22,7 @@ function SegmentRow<T extends string>({
 }: {
   value: T;
   onChange: (v: T) => void;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; tone?: string }[];
   className?: string;
   disabled?: boolean;
   /**
@@ -67,6 +74,7 @@ function SegmentRow<T extends string>({
     }
   }, [value]);
 
+  const activeTone = options.find((o) => o.value === value)?.tone;
   return (
     <div
       ref={containerRef}
@@ -81,7 +89,10 @@ function SegmentRow<T extends string>({
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute top-[3px] h-6 rounded-full bg-foreground/10 ring-1 ring-inset ring-foreground/15",
+          "pointer-events-none absolute top-[3px] h-6 rounded-full",
+          activeTone
+            ? `border ${activeTone}`
+            : "bg-foreground/10 ring-1 ring-inset ring-foreground/15",
           armed && "transition-[left,width,opacity] duration-300 ease-out",
           pill ? "opacity-100" : "opacity-0",
         )}
@@ -100,7 +111,7 @@ function SegmentRow<T extends string>({
               "relative z-10 h-6 shrink-0 inline-flex items-center justify-center whitespace-nowrap snap-start select-none rounded-full px-3 text-center font-medium leading-none transition-colors",
               fill ? "flex-1 basis-0" : "",
               active
-                ? "text-foreground font-semibold"
+                ? cn("font-semibold", toneText(o.tone) || "text-foreground")
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
@@ -133,7 +144,7 @@ export function CyclePill<T extends string>({
 }: {
   value: T;
   onChange: (v: T) => void;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; tone?: string }[];
   className?: string;
   separate?: T;
   disabled?: boolean;
@@ -223,6 +234,7 @@ export function CyclePill<T extends string>({
                       aria-label={`${shown.label}. Tap for the next, press and hold for all.`}
                       className={cn(
                         pill(!onSeparate),
+                        !onSeparate && shown.tone && `!bg-none ${shown.tone}`,
                         "select-none pr-3 [-webkit-touch-callout:none]",
                         phoneOnly && "min-w-0 shrink",
                       )}
@@ -309,7 +321,7 @@ export function CyclePill<T extends string>({
 export function SegmentControl<T extends string>(props: {
   value: T;
   onChange: (v: T) => void;
-  options: { value: T; label: string }[];
+  options: { value: T; label: string; tone?: string }[];
   className?: string;
   disabled?: boolean;
   clearable?: boolean;

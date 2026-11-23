@@ -446,7 +446,12 @@ export function SellerOrdersDialog({
                     className="h-9"
                     options={[
                       { value: "all", label: `All ${all.length}` },
-                      ...marks.map(([status, n]) => ({ value: status, label: `${status} ${n}` })),
+                      // Each status in its own colours, as its badge has on the list.
+                      ...marks.map(([status, n]) => ({
+                        value: status,
+                        label: `${status} ${n}`,
+                        tone: styleFor(status),
+                      })),
                     ]}
                   />
                 )}
