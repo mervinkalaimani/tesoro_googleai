@@ -128,7 +128,7 @@ function useScrollCompact(enabled: boolean) {
 /** The frosted glass every piece of the bar is cut from. */
 const GLASS = NAV_GLASS;
 
-const HOME_CIRCLE = `${GLASS} flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full text-muted-foreground transition-all duration-200 before:inset-x-2 hover:text-foreground active:scale-95`;
+const HOME_CIRCLE = `${GLASS} flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full text-foreground/85 transition-all duration-200 before:inset-x-2 hover:text-foreground active:scale-95`;
 
 function HomeCircle({
   className = "",
@@ -335,11 +335,11 @@ export function MobileNav() {
                   sizing
                 } ${
                   active
-                    ? "font-semibold text-primary"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "font-semibold text-foreground"
+                    : "text-foreground/85 hover:text-foreground"
                 }`}
               >
-                <t.icon className={`size-5 ${active ? "stroke-[2.4]" : ""}`} />
+                <t.icon className={`size-5 ${active ? "stroke-[2.4] text-primary" : ""}`} />
                 {/* Every tab names itself. */}
                 <span className="whitespace-nowrap text-xs font-medium leading-none">
                   {t.title}
@@ -359,7 +359,7 @@ export function MobileNav() {
           // ml-auto so a bar that hugs its tabs leaves the gap here, against
           // Search, rather than trailing off the right of the row.
           className={`${GLASS} ml-auto grid size-[58px] shrink-0 place-items-center rounded-full before:inset-x-2 active:scale-95 ${
-            filtering ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            filtering ? "text-primary" : "text-foreground/85 hover:text-foreground"
           }`}
           style={{
             opacity: searchOpen ? 0 : 1,

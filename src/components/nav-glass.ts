@@ -11,7 +11,7 @@
  * gives a translucent panel an edge against a dark page. Whatever uses this
  * sets `before:inset-x-*` for how far in from the corners the highlight runs.
  */
-export const NAV_GLASS = `pointer-events-auto relative border border-white/70 bg-gradient-to-br from-white/70 to-white/35
+export const NAV_GLASS = `pointer-events-auto relative border border-white/70 bg-gradient-to-br from-white/82 to-white/58
   shadow-[0_0_0_0.5px_rgba(0,0,0,0.06),0_10px_30px_-10px_rgba(0,0,0,0.3)]
   backdrop-blur-2xl backdrop-saturate-[1.8] dark:border-white/10 dark:from-white/10 dark:to-white/[0.04] dark:bg-background/60
   dark:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.5)]
