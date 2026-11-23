@@ -69,6 +69,7 @@ export function WhatsNewStar() {
 
       <PopoverContent
         align="end"
+        sideOffset={16}
         className="card-elevated glass-pane w-[min(24rem,calc(100vw-1.5rem))] max-h-[min(32rem,calc(100svh-5rem))] overflow-y-auto !rounded-3xl p-0"
       >
         <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-white/50 bg-white/40 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">

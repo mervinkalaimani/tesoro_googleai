@@ -464,11 +464,7 @@ export function NotificationCenter() {
       {open &&
         typeof document !== "undefined" &&
         createPortal(
-          <div
-            aria-hidden
-            onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 bg-black/50 animate-in fade-in"
-          />,
+          <div aria-hidden onClick={() => setOpen(false)} className="fixed inset-0 z-40" />,
           document.body,
         )}
       <Popover open={open} onOpenChange={setOpen}>
@@ -497,6 +493,9 @@ export function NotificationCenter() {
         <PopoverContent
           ref={growFromBell}
           align="end"
+          // Hangs 16px under the bar's trigger, which is where the tabs' dropdowns hang: the same
+          // gap below the top bar.
+          sideOffset={16}
           collisionPadding={8}
           className="notif-pop card-elevated glass-pane w-[calc(100vw-1rem)] max-h-[min(34rem,calc(100svh-5rem))] overflow-y-auto !rounded-3xl p-0 data-[state=closed]:animate-none data-[state=open]:animate-none sm:w-[26rem]"
         >

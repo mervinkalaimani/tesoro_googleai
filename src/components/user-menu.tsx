@@ -71,7 +71,8 @@ export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
       <DropdownMenuContent
         side={sidebar ? "top" : "bottom"}
         align={sidebar ? "start" : "end"}
-        sideOffset={6}
+        // 16px under the avatar: the same 6px under the bar as the tabs' dropdowns.
+        sideOffset={sidebar ? 6 : 16}
         // The same pane as the tabs' dropdowns: glass, rounded, rows that tint in the accent.
         className="card-elevated glass-pane w-60 space-y-0.5 !rounded-3xl border-0 p-2"
       >
