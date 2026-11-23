@@ -927,7 +927,7 @@ function InventoryPage() {
                   key={d.key}
                   type="button"
                   onClick={() => setFilters((prev) => ({ ...prev, [d.key]: "all" }))}
-                  className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-semibold border border-primary/50 bg-primary text-primary-foreground shadow-xs shrink-0 whitespace-nowrap cursor-pointer"
+                  className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs glass-btn font-semibold text-primary ring-1 ring-primary/60 shrink-0 whitespace-nowrap cursor-pointer"
                 >
                   <span>
                     {d.label}: {filters[d.key]}
