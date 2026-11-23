@@ -540,25 +540,31 @@ function HabitsPage() {
                 {grid.map((week, wi) => (
                   <div key={wi} className="flex shrink-0 flex-col gap-[6px]">
                     {week.map((cell, di) => {
-                      if (!cell) return <span key={di} className="size-5" />;
+                      // Every square has its grey first, future days too; only the ones with
+                      // cars pop up in colour on top of it.
+                      if (!cell)
+                        return <span key={di} className="size-5 rounded-[4px] bg-muted/50" />;
                       const lv = level(cell.count);
                       return (
-                        <button
-                          key={di}
-                          type="button"
-                          title={`${formatDMY(cell.date)} — ${cell.count} car${cell.count === 1 ? "" : "s"}${cell.spent ? ` · ${inr(cell.spent)}` : ""}`}
-                          onClick={() =>
-                            setSelected((prev) =>
-                              prev === cell.key ? null : cell.count ? cell.key : null,
-                            )
-                          }
-                          style={{ "--d": `${popDelay(cell.key)}ms` } as CSSProperties}
-                          className={`cell-pop size-5 rounded-[4px] ${LEVEL_CLASS[lv]} ${
-                            selected === cell.key
-                              ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
-                              : ""
-                          } ${cell.count ? "cursor-pointer" : "cursor-default"}`}
-                        />
+                        <span key={di} className="relative size-5 rounded-[4px] bg-muted/50">
+                          <button
+                            type="button"
+                            title={`${formatDMY(cell.date)} — ${cell.count} car${cell.count === 1 ? "" : "s"}${cell.spent ? ` · ${inr(cell.spent)}` : ""}`}
+                            onClick={() =>
+                              setSelected((prev) =>
+                                prev === cell.key ? null : cell.count ? cell.key : null,
+                              )
+                            }
+                            style={{ "--d": `${popDelay(cell.key)}ms` } as CSSProperties}
+                            className={`absolute inset-0 rounded-[4px] ${
+                              lv > 0 ? `cell-pop ${LEVEL_CLASS[lv]}` : ""
+                            } ${
+                              selected === cell.key
+                                ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                                : ""
+                            } ${cell.count ? "cursor-pointer" : "cursor-default"}`}
+                          />
+                        </span>
                       );
                     })}
                   </div>
@@ -683,15 +689,17 @@ function PeriodSquare({
   delay?: number;
 }) {
   return (
-    <button
-      type="button"
-      title={`${bucket.label} — ${bucket.count} car${bucket.count === 1 ? "" : "s"}${bucket.spent ? ` · ${inr(bucket.spent)}` : ""}`}
-      onClick={() => onSelect(bucket.count ? bucket.key : null)}
-      style={{ "--d": `${delay}ms` } as CSSProperties}
-      className={`cell-pop ${SQUARE} ${LEVEL_CLASS[level]} ${
-        selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
-      } ${bucket.count ? "cursor-pointer" : "cursor-default"}`}
-    />
+    <span className={`relative ${SQUARE} bg-muted/50`}>
+      <button
+        type="button"
+        title={`${bucket.label} — ${bucket.count} car${bucket.count === 1 ? "" : "s"}${bucket.spent ? ` · ${inr(bucket.spent)}` : ""}`}
+        onClick={() => onSelect(bucket.count ? bucket.key : null)}
+        style={{ "--d": `${delay}ms` } as CSSProperties}
+        className={`absolute inset-0 rounded-[4px] ${level > 0 ? `cell-pop ${LEVEL_CLASS[level]}` : ""} ${
+          selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""
+        } ${bucket.count ? "cursor-pointer" : "cursor-default"}`}
+      />
+    </span>
   );
 }
 
@@ -737,7 +745,7 @@ function MatrixRow({
             delay={delayOf(bucket.key)}
           />
         ) : (
-          <span key={i} className={`${SQUARE} bg-muted/25`} />
+          <span key={i} className={`${SQUARE} bg-muted/50`} />
         ),
       )}
     </div>
@@ -771,11 +779,11 @@ function InsightCard({
   const max = rows[0]?.value || 1;
   return (
     <div className="card-elevated min-w-0 overflow-hidden p-3 sm:p-4">
-      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground sm:gap-2 sm:text-xs">
+      <div className="flex items-center justify-between gap-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground sm:gap-2 sm:text-xs">
+        <span className="truncate">{title}</span>
         <span className="grid size-5 shrink-0 place-items-center rounded-md bg-primary/15 text-primary sm:size-6">
           {icon}
         </span>
-        <span className="truncate">{title}</span>
       </div>
       <ul className="mt-2.5 space-y-1.5 sm:mt-3 sm:space-y-2">
         {rows.map((r, ri) => (

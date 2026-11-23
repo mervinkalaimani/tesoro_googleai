@@ -8,7 +8,7 @@
  */
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { MapPin, Pencil, Phone, Receipt } from "lucide-react";
+import { ChevronRight, MapPin, Pencil, Phone, Receipt } from "lucide-react";
 
 import { useCars } from "@/lib/cars-store";
 import { useApp } from "@/lib/store";
@@ -209,6 +209,7 @@ function SellersPage() {
             <Th align="right">Balance</Th>
             <Th className="hidden sm:table-cell">Last bought</Th>
             <Th />
+            <Th className="w-8" />
           </>
         }
       >
@@ -216,7 +217,11 @@ function SellersPage() {
           const shop = shops.get(g.key) || null;
           const wa = whatsappHref(shop);
           return (
-            <tr key={g.key} className="border-t border-border/60 hover:bg-muted/30">
+            <tr
+              key={g.key}
+              onClick={() => setSeller(g.label)}
+              className="cursor-pointer border-t border-border/60 transition-colors hover:bg-primary/[0.06] active:bg-primary/10"
+            >
               <td className="px-3 py-2.5">
                 <div className="flex min-w-0 items-center gap-2.5">
                   <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/12 text-xs font-semibold uppercase text-primary">
@@ -238,8 +243,7 @@ function SellersPage() {
                     better, with the orders and the money on it. */}
                     <button
                       type="button"
-                      onClick={() => setSeller(g.label)}
-                      className="max-w-full truncate text-left font-medium text-sky-500 hover:underline"
+                      className="max-w-full truncate text-left font-medium text-foreground"
                       title={`Everything bought from ${g.label}`}
                     >
                       {sellerLabel(g.label, shop)}
@@ -278,7 +282,7 @@ function SellersPage() {
               <td className="hidden px-3 py-2.5 text-xs text-muted-foreground sm:table-cell">
                 {g.last ? formatDayMonthYear(g.last) : "—"}
               </td>
-              <td className="px-2 py-2.5">
+              <td className="px-2 py-2.5" onClick={(e) => e.stopPropagation()}>
                 <div className="flex items-center justify-end gap-0.5">
                   {shop?.phone && (
                     <Button
@@ -337,6 +341,9 @@ function SellersPage() {
                     </Button>
                   )}
                 </div>
+              </td>
+              <td className="w-8 pr-3">
+                <ChevronRight className="size-4 text-muted-foreground/60" aria-hidden />
               </td>
             </tr>
           );
