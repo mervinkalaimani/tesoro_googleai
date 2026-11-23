@@ -1054,10 +1054,17 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
                   c.inMyCollection ? "In your collection" : added ? daysAgo(added, now) : undefined
                 }
                 marksOffset
+                padRight={!c.inMyCollection}
                 className="w-full"
               />
-              {/* No + over the photo. Adding it is a button in the details view,
-                  one tap further in and beside the thing it describes. */}
+              {!c.inMyCollection && (
+                <QuickAdd
+                  onClick={() => {
+                    setAddingIso(false);
+                    setAdding(c);
+                  }}
+                />
+              )}
             </div>
           );
         })}
@@ -1454,6 +1461,21 @@ function TopDetailDialog({
  * can carry — there is a seller to contact and usually a balance to settle — so
  * that lives in the bell, not here. This shelf is for everyone.
  */
+/** The round + laid over the bottom corner of a shelf card. */
+function QuickAdd({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Add to my collection"
+      title="Add to my collection"
+      className="glass-btn-solid absolute bottom-2 right-2 grid size-7 cursor-pointer place-items-center rounded-full bg-primary/90 text-primary-foreground transition-transform hover:bg-primary active:scale-95"
+    >
+      <Plus className="size-4" />
+    </button>
+  );
+}
+
 function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   const { catalog, isLoading, updateCatalogCar } = useCatalog();
   const { isAdmin, isOwner, isGuest } = useAuth();
@@ -1516,8 +1538,12 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
                 onOpen={() => setViewing(r.entry)}
                 caption={releasedLabel(r.daysAgo)}
                 marksOffset
+                padRight={!ownedIds.has(r.entry.car_id.trim().toUpperCase())}
                 className="w-full"
               />
+              {!ownedIds.has(r.entry.car_id.trim().toUpperCase()) && (
+                <QuickAdd onClick={() => setAdding(r.entry)} />
+              )}
             </div>
           );
         })}

@@ -18,9 +18,12 @@ export function CompactCarCard({
   hideStatus = false,
   className = "",
   copies = 1,
+  padRight = false,
 }: {
   /** Moves the chase / favourite marks left, clear of a button laid over the top-right corner. */
   marksOffset?: boolean;
+  /** Room at the right of the words for a button laid over the bottom corner. */
+  padRight?: boolean;
   car: Diecast;
   onOpen: () => void;
   /**
@@ -77,7 +80,7 @@ export function CompactCarCard({
       showStatus={!hideStatus}
       smallPills
       foot={false}
-      overlay={<CarOverlay car={car} brandOnly detail={detail} />}
+      overlay={<CarOverlay car={car} brandOnly detail={detail} padRight={padRight} />}
       className={className}
     />
   );
