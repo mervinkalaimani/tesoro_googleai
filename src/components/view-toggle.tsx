@@ -18,14 +18,13 @@ const MODES: { value: ViewMode; label: string; icon: typeof List }[] = [
 
 /** Column counts for the two grids, shared so every page matches: 2 cols on a phone */
 export const GRID_COLS =
-  "grid gap-2 sm:gap-3 grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8";
+  "grid gap-2 sm:gap-3 grid-cols-4 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8";
 /**
- * Blister view: a column fewer than the grid on a phone, because a blister
- * card is taller than it is wide. From a half-width window up it takes the size
- * the grid used to have (4 / 5 / 6 columns) and the grid is a step smaller (5 / 6 / 8).
+ * Blister view: the size the grid used to have at every width (3 columns on a phone,
+ * then 4 / 5 / 6), and the grid is a step smaller (4 on a phone, then 5 / 6 / 8).
  */
 export const BLISTER_GRID_COLS =
-  "grid gap-2.5 sm:gap-3 grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6";
+  "grid gap-2.5 sm:gap-3 grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6";
 
 export function ViewToggle({
   value,
