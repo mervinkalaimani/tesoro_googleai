@@ -15,7 +15,7 @@ import { useApp } from "@/lib/store";
 import { filterRows } from "@/lib/search";
 import type { Diecast } from "@/lib/types";
 import { formatDayMonthYear, inr, parseDMY } from "@/lib/format";
-import { canBeLate, isPreOrder, styleFor } from "@/lib/status";
+import { canBeLate, isInHand, isPreOrder, styleFor } from "@/lib/status";
 import { transformImageUrl } from "@/lib/image-transform";
 import { cn } from "@/lib/utils";
 import { GroupTable, Th } from "@/components/group-table";
@@ -134,7 +134,10 @@ function SellersPage() {
 
     const built = [...map.entries()].map(([key, { label, items }]) => {
       const spent = items.reduce((s, r) => s + (r.spent || 0), 0);
-      const paid = items.reduce((s, r) => s + (r.paid || 0), 0);
+      const paid = items.reduce(
+        (s, r) => s + (isInHand(r.status) ? r.spent || 0 : Math.min(r.paid || 0, r.spent || 0)),
+        0,
+      );
       const days = items
         .map((r) => parseDMY(dayOf(r)))
         .filter((d): d is Date => Boolean(d))

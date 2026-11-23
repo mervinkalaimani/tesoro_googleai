@@ -51,7 +51,22 @@ import { transformImageUrl } from "@/lib/image-transform";
 import { cn } from "@/lib/utils";
 import type { Diecast } from "@/lib/types";
 import { sellerKey, sellerLabel, useSellerDetails, whatsappHref } from "@/lib/seller-details";
-import { isPreOrder, canBeLate, normaliseStatus, statusRank, styleFor } from "@/lib/status";
+import {
+  isInHand,
+  isPreOrder,
+  canBeLate,
+  normaliseStatus,
+  statusRank,
+  styleFor,
+} from "@/lib/status";
+
+/** What has been paid on a car: everything for one already in hand, else what was recorded. */
+export const paidOf = (c: {
+  status?: string | null;
+  spent?: number | null;
+  paid?: number | null;
+}) =>
+  isInHand(c.status) ? Number(c.spent) || 0 : Math.min(Number(c.paid) || 0, Number(c.spent) || 0);
 
 type GroupBy = "orderId" | "shippingId";
 
@@ -109,7 +124,7 @@ function bundle(cars: Diecast[], by: GroupBy): Bundle[] {
       at.cars.push(car);
       at.spent += Number(car.spent) || 0;
       at.shipping += Number(car.shippingCost) || 0;
-      at.paid += Number(car.paid) || 0;
+      at.paid += paidOf(car);
       if (day && (!at.day || day < at.day)) at.day = day;
     } else {
       map.set(id, {
@@ -118,7 +133,7 @@ function bundle(cars: Diecast[], by: GroupBy): Bundle[] {
         cars: [car],
         spent: Number(car.spent) || 0,
         shipping: Number(car.shippingCost) || 0,
-        paid: Number(car.paid) || 0,
+        paid: paidOf(car),
         status: "",
       });
     }
@@ -201,7 +216,7 @@ export function SellerOrdersDialog({
   const totals = useMemo(() => {
     const spent = mine.reduce((s, c) => s + (Number(c.spent) || 0), 0);
     const shipping = mine.reduce((s, c) => s + (Number(c.shippingCost) || 0), 0);
-    const paid = mine.reduce((s, c) => s + (Number(c.paid) || 0), 0);
+    const paid = mine.reduce((s, c) => s + paidOf(c), 0);
     const days = mine
       .map((c) => parseDMY(clean(c.orderDate) || clean(c.date)))
       .filter((d): d is Date => Boolean(d))
