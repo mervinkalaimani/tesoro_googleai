@@ -519,10 +519,11 @@ html.dark .card-elevated {
       color-mix(in oklab, var(--primary) 1.5%, transparent)
     ),
     linear-gradient(160deg, oklch(1 0 0 / 0.04), oklch(1 0 0 / 0.012));
-  border: 1px solid color-mix(in oklab, var(--primary) 12%, oklch(1 0 0 / 0.1));
+  /* The tint stays; the stroke around it is kept quiet. */
+  border: 1px solid oklch(1 0 0 / 0.07);
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.22) inset,
-    0 -1px 0 oklch(1 0 0 / 0.03) inset,
+    0 1px 0 oklch(1 0 0 / 0.09) inset,
+    0 -1px 0 oklch(1 0 0 / 0.02) inset,
     0 18px 40px -18px oklch(0 0 0 / 0.7);
 }
 
