@@ -163,7 +163,7 @@ export function KpiTile({
         search={{ tab: ordersTab }}
         className={cn(
           shell,
-          "transition-all hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98]",
+          "transition-all hover:border-primary/40 hover:bg-primary/[0.06] active:scale-[0.98]",
         )}
         title={`Show ${label.toLowerCase()} orders`}
       >
@@ -180,7 +180,7 @@ export function KpiTile({
       search={{ status }}
       className={cn(
         shell,
-        "transition-all hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98]",
+        "transition-all hover:border-primary/40 hover:bg-primary/[0.06] active:scale-[0.98]",
       )}
       title={`Show ${label.toLowerCase()} cars in inventory`}
     >

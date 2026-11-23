@@ -1133,7 +1133,7 @@ function InventoryPage() {
                     key={r.id + i}
                     onClick={() => openDrawer(r)}
                     className={cn(
-                      "cursor-pointer border-t border-border/60 hover:bg-muted/30",
+                      "cursor-pointer border-t border-border/60 hover:bg-primary/[0.06]",
                       // An opened-out copy is indented under the row it belongs
                       // to, so a group still reads as one thing.
                       !lead && "bg-muted/20",

@@ -435,7 +435,7 @@ export function SellerOrdersDialog({
                     <tr
                       key={b.id}
                       onClick={() => toggle(b.id)}
-                      className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
+                      className="cursor-pointer border-t border-border/60 hover:bg-primary/[0.06]"
                     >
                       <td className="px-3 py-3">
                         <div className="flex min-w-0 items-center gap-1.5">
@@ -473,7 +473,7 @@ export function SellerOrdersDialog({
                             onClick={() => onSelectCar?.(car)}
                             className={cn(
                               "border-t border-border/40 bg-muted/20",
-                              onSelectCar && "cursor-pointer hover:bg-muted/40",
+                              onSelectCar && "cursor-pointer hover:bg-primary/[0.06]",
                             )}
                           >
                             <td className="py-2 pl-8 pr-3" colSpan={2}>

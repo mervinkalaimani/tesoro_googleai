@@ -68,7 +68,7 @@ export function DuplicatesButton({
         "flex w-full items-center gap-2 rounded-xl border px-3 py-2.5 text-left transition-colors",
         sure
           ? "border-amber-500/60 bg-amber-500/15 hover:bg-amber-500/25"
-          : "border-border/70 bg-muted/20 hover:bg-muted/40",
+          : "border-border/70 bg-muted/20 hover:bg-primary/[0.06]",
         className,
       )}
     >

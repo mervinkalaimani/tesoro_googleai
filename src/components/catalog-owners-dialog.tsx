@@ -253,7 +253,7 @@ export function CatalogOwnersDialog({
             sorted.map((u) => (
               <div
                 key={`${u.auth_uid}@${u.assortment ?? ""}`}
-                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-muted/30 transition-colors"
+                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg hover:bg-primary/[0.06] transition-colors"
               >
                 <div className="min-w-0 flex items-center gap-2.5">
                   <div className="size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold uppercase shrink-0">

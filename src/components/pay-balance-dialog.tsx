@@ -131,9 +131,7 @@ export function PayBalanceDialog({
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">
-              Balance
-            </div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground">Balance</div>
             <div className="mt-0.5 text-sm font-semibold tabular-nums text-amber-500">
               {inrFull(due)}
             </div>
@@ -145,7 +143,9 @@ export function PayBalanceDialog({
             type="button"
             onClick={() => setMode("full")}
             className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors ${
-              mode === "full" ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"
+              mode === "full"
+                ? "border-primary bg-primary/10"
+                : "border-border hover:bg-primary/[0.06]"
             }`}
           >
             <span className="text-sm font-medium">Pay the full balance</span>
@@ -156,7 +156,9 @@ export function PayBalanceDialog({
             type="button"
             onClick={() => setMode("custom")}
             className={`flex w-full items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors ${
-              mode === "custom" ? "border-primary bg-primary/10" : "border-border hover:bg-muted/40"
+              mode === "custom"
+                ? "border-primary bg-primary/10"
+                : "border-border hover:bg-primary/[0.06]"
             }`}
           >
             <span className="text-sm font-medium">Pay a part of it</span>

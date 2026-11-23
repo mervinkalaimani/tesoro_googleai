@@ -92,7 +92,7 @@ export function GroupRow({
     <tr
       onClick={onToggle}
       aria-expanded={open}
-      className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
+      className="cursor-pointer border-t border-border/60 hover:bg-primary/[0.06]"
     >
       <td className="px-3 py-2.5">
         <div className="flex min-w-0 items-center gap-1.5">
@@ -154,7 +154,7 @@ export function CarSubRow({
       onClick={onOpen}
       className={cn(
         "border-t border-border/40 bg-muted/20",
-        onOpen && "cursor-pointer hover:bg-muted/40",
+        onOpen && "cursor-pointer hover:bg-primary/[0.06]",
       )}
     >
       {/* w-full max-w-0: take the width the other columns leave and truncate to it,

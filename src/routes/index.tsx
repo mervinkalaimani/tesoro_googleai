@@ -670,7 +670,7 @@ function TransitTracker({
                   const days = daysBetween(s.ordered, now);
                   const late = eta < now;
                   return (
-                    <tr key={s.key} className="border-t border-border/60 hover:bg-muted/30">
+                    <tr key={s.key} className="border-t border-border/60 hover:bg-primary/[0.06]">
                       <td className="min-w-[13rem] px-4 py-2.5">
                         <div className="font-medium">{s.seller}</div>
                         <div className="text-xs text-muted-foreground">{s.status}</div>
@@ -1419,7 +1419,7 @@ function TopDetailDialog({
                   onClose();
                   drawer.open(r);
                 }}
-                className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-1 py-2.5 text-left hover:bg-muted/40"
+                className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-1 py-2.5 text-left hover:bg-primary/[0.06]"
               >
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{r.name || "Unnamed car"}</div>

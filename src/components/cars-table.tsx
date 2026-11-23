@@ -277,7 +277,7 @@ export function CarListCard({
           type="button"
           aria-expanded={copiesExpanded}
           onClick={onToggleCopies}
-          className="w-full border-t border-border/60 px-3 py-1.5 text-left text-xs font-medium text-primary hover:bg-muted/40"
+          className="w-full border-t border-border/60 px-3 py-1.5 text-left text-xs font-medium text-primary hover:bg-primary/[0.06]"
         >
           {copiesExpanded ? "Hide the other copies" : `Show all ${copies} copies`}
         </button>
@@ -382,7 +382,7 @@ export function CarsTable({
                 <tr
                   key={(r.id || "") + i}
                   onClick={() => open(r)}
-                  className="cursor-pointer border-t border-border/60 hover:bg-muted/30"
+                  className="cursor-pointer border-t border-border/60 hover:bg-primary/[0.06]"
                 >
                   <td className="px-3 py-2.5 md:px-4">
                     <div className="flex min-w-0 items-center gap-1.5">

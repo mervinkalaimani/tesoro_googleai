@@ -489,7 +489,7 @@ export function UploadCarsDialog({
             className={`relative flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-all ${
               isDragging
                 ? "border-primary bg-primary/5 shadow-inner"
-                : "border-border/80 bg-muted/10 hover:border-primary/50 hover:bg-muted/30"
+                : "border-border/80 bg-muted/10 hover:border-primary/50 hover:bg-primary/[0.06]"
             }`}
           >
             <input
@@ -619,7 +619,7 @@ export function UploadCarsDialog({
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {previewCars.slice(0, rowsShown).map((car, i) => (
-                      <tr key={`${car.id}-${i}`} className="hover:bg-muted/30">
+                      <tr key={`${car.id}-${i}`} className="hover:bg-primary/[0.06]">
                         <td className="whitespace-nowrap px-2.5 py-1.5">
                           {/* Only a real entry gets an ID here. An unmatched row
                               is filed a day after it is saved and is given its

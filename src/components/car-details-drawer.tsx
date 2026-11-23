@@ -1932,7 +1932,8 @@ function BuyersList({
             key={`${o.auth_uid}@${o.assortment}`}
             className={cn(
               "flex items-center justify-between gap-3 rounded-xl border border-border bg-background/85 p-3",
-              you && "cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/40",
+              you &&
+                "cursor-pointer transition-colors hover:border-primary/50 hover:bg-primary/[0.06]",
             )}
             // Your own row opens your own car.
             {...(you

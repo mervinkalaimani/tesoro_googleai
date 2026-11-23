@@ -1032,7 +1032,7 @@ export function ImageSearchDialog({
                                 openCar(car);
                                 toast.success(`Opened: ${car.name || car.model}`);
                               }}
-                              className="group flex items-center gap-3 p-2.5 rounded-lg border border-border/70 hover:border-primary/60 hover:bg-muted/30 cursor-pointer transition-all active:scale-[0.99]"
+                              className="group flex items-center gap-3 p-2.5 rounded-lg border border-border/70 hover:border-primary/60 hover:bg-primary/[0.06] cursor-pointer transition-all active:scale-[0.99]"
                             >
                               <div className="size-14 rounded-md overflow-hidden bg-muted/50 shrink-0 border border-border/50">
                                 <CarThumb car={car} className="size-full object-cover" />

@@ -882,7 +882,7 @@ function DayList({ items }: { items: Diecast[] }) {
         <li
           key={(r.id || "") + i}
           onClick={() => open(r)}
-          className="cursor-pointer rounded-md px-2 py-2.5 hover:bg-muted/40"
+          className="cursor-pointer rounded-md px-2 py-2.5 hover:bg-primary/[0.06]"
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">

@@ -158,7 +158,7 @@ function MobileAccountMenu() {
             <Link
               to="/inventory"
               onClick={close}
-              className="group block card-elevated p-3.5 transition-colors hover:bg-muted/40 active:scale-[0.98]"
+              className="group block card-elevated p-3.5 transition-colors hover:bg-primary/[0.06] active:scale-[0.98]"
             >
               <div className="flex items-center justify-between">
                 <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -206,7 +206,7 @@ function MobileAccountMenu() {
               to="/settings"
               search={{ tab: "advanced" }}
               onClick={close}
-              className="group mt-2.5 flex items-center gap-3.5 card-elevated px-3.5 py-3 transition-colors hover:bg-muted/40 active:scale-[0.98]"
+              className="group mt-2.5 flex items-center gap-3.5 card-elevated px-3.5 py-3 transition-colors hover:bg-primary/[0.06] active:scale-[0.98]"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
                 <Wrench className="size-4" />
@@ -223,7 +223,7 @@ function MobileAccountMenu() {
             <Link
               to="/settings"
               onClick={close}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/40 active:bg-muted/60"
+              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-muted/60"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
                 <Settings className="size-4" />

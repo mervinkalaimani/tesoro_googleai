@@ -223,7 +223,7 @@ function MonthGrid({
                         {owned ? (
                           <button
                             type="button"
-                            className="block w-full px-3 py-2 text-left hover:bg-muted/40"
+                            className="block w-full px-3 py-2 text-left hover:bg-primary/[0.06]"
                             onClick={() => onOpen(owned)}
                           >
                             {body}
@@ -232,7 +232,7 @@ function MonthGrid({
                           <Link
                             to="/catalog/$carId"
                             params={{ carId: row.car_id }}
-                            className="block px-3 py-2 hover:bg-muted/40"
+                            className="block px-3 py-2 hover:bg-primary/[0.06]"
                           >
                             {body}
                           </Link>
@@ -501,7 +501,7 @@ function ReleasesPage() {
                   </>
                 );
                 const rowClass =
-                  "flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-muted/40";
+                  "flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-primary/[0.06]";
 
                 return (
                   <li key={row.car_id}>

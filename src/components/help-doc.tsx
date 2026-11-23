@@ -110,7 +110,7 @@ function ContactRow({
   return (
     <a
       href={href}
-      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30 active:bg-muted/50"
+      className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
     >
       <Icon className="size-4 shrink-0 text-muted-foreground" />
       <span className="truncate text-[15px] font-medium text-primary">{children}</span>

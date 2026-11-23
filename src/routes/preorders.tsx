@@ -576,7 +576,7 @@ function PreOrderOrdersTable({
               key={g.key}
               className="border-t border-border/60 odd:bg-transparent even:bg-muted/30"
             >
-              <tr onClick={() => toggle(g.key)} className="cursor-pointer hover:bg-muted/40">
+              <tr onClick={() => toggle(g.key)} className="cursor-pointer hover:bg-primary/[0.06]">
                 <td className="px-4 py-1.5 align-middle">
                   <div className="flex items-center gap-2">
                     <ChevronDown

@@ -320,7 +320,7 @@ function ContentsItem({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
           onOpen();
         }
       }}
-      className="group cursor-pointer rounded-md border border-border bg-muted/20 px-3 py-2 transition-colors hover:border-primary/50 hover:bg-muted/40"
+      className="group cursor-pointer rounded-md border border-border bg-muted/20 px-3 py-2 transition-colors hover:border-primary/50 hover:bg-primary/[0.06]"
     >
       <span className="block max-w-full truncate text-left text-sm font-semibold group-hover:text-primary">
         {title}

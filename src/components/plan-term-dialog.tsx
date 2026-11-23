@@ -206,7 +206,7 @@ export function PlanTermDialog() {
                     ? "border-primary bg-primary/10 ring-1 ring-primary"
                     : best
                       ? "border-primary/60 bg-primary/5 hover:bg-primary/10"
-                      : "border-border bg-muted/20 hover:bg-muted/40",
+                      : "border-border bg-muted/20 hover:bg-primary/[0.06]",
                 )}
               >
                 <div className="min-w-0 flex-1">
