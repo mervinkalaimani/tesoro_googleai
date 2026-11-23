@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw, Sparkles, ThumbsDown } from "lucide-react";
+import { Heart, Plus, RefreshCw, Sparkles, ThumbsDown } from "lucide-react";
 
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
@@ -169,21 +169,31 @@ export function ForYou({
                     brandOnly
                     noAssortment
                     padRight
-                    className="pr-24"
                     detail={reason}
                   />
                 }
               />
-              {/* Not for me: this casting never comes back up here. */}
-              <button
-                type="button"
-                onClick={() => dismiss(car.car_id)}
-                aria-label="Not interested"
-                title="Not interested: don't suggest this again"
-                className="glass-btn absolute bottom-3 right-14 grid size-8 cursor-pointer place-items-center rounded-full text-white transition-transform hover:bg-white/20 active:scale-95"
-              >
-                <ThumbsDown className="size-4" />
-              </button>
+              {/* Top right: not for me (it never comes back up here), or put it on my ISO list. */}
+              <div className="absolute right-2 top-2 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => dismiss(car.car_id)}
+                  aria-label="Not interested"
+                  title="Not interested: don't suggest this again"
+                  className="grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
+                >
+                  <ThumbsDown className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdding({ car, status: "ISO" })}
+                  aria-label="Add to my ISO list"
+                  title="Add to my ISO list"
+                  className="grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
+                >
+                  <Heart className="size-4" />
+                </button>
+              </div>
               {/* Add it without opening it: the same form, filled in from the casting. */}
               <button
                 type="button"
