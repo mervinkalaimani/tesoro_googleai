@@ -405,7 +405,7 @@ export function SellerOrdersDialog({
                 <KpiTile
                   label="Paid"
                   value={inrFull(totals.paid)}
-                  sub={`PO ${inrFull(totals.paidPo)} · Orders ${inrFull(totals.paid - totals.paidPo)}`}
+                  sub={`Orders ${inrFull(totals.paid - totals.paidPo)} · PO ${inrFull(totals.paidPo)}`}
                   subVisibleOnMobile
                   icon={<CheckCircle2 className="size-4" />}
                   tone="emerald"
