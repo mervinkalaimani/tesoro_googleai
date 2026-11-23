@@ -499,7 +499,7 @@ export function NotificationCenter() {
           collisionPadding={8}
           className="notif-pop card-elevated glass-pane w-[calc(100vw-1rem)] max-h-[min(34rem,calc(100svh-5rem))] overflow-y-auto !rounded-3xl p-0 data-[state=closed]:animate-none data-[state=open]:animate-none sm:w-[26rem]"
         >
-          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-white/50 bg-white/40 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-white/50 bg-white/90 px-4 py-3 backdrop-blur-2xl dark:border-white/10 dark:bg-neutral-900/90">
             <h2 className="text-sm font-semibold">Notifications</h2>
             <div className="flex items-center gap-1">
               {count > 0 && (
@@ -965,33 +965,37 @@ function Section({
 }) {
   return (
     <section className="border-b border-border last:border-b-0">
-      <div
-        className={`flex items-center justify-between gap-2 border-b border-border px-3 py-2 ${TONES[tone]}`}
-      >
-        <h3 className="flex min-w-0 items-center gap-2 text-xs font-semibold">
-          <span data-icon className="grid size-5 shrink-0 place-items-center rounded">
-            {icon}
-          </span>
-          <span className="truncate">{title}</span>
-        </h3>
-        <div className="flex shrink-0 items-center gap-1">
-          <Link
-            to={link.to}
-            onClick={link.onClick}
-            className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-          >
-            All
-          </Link>
-          <button
-            type="button"
-            onClick={() => onToggle(id)}
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? `Show: ${title}` : `Hide: ${title}`}
-            title={collapsed ? "Show this section" : "Hide this section"}
-            className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            {collapsed ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
-          </button>
+      {/* The section's title stays pinned under the panel's own header while its rows scroll past, on a
+          frosted base so they do not show through the tint. */}
+      <div className="sticky top-[49px] z-[9] bg-white/90 backdrop-blur-2xl dark:bg-neutral-900/90">
+        <div
+          className={`flex items-center justify-between gap-2 border-b border-border px-3 py-2 ${TONES[tone]}`}
+        >
+          <h3 className="flex min-w-0 items-center gap-2 text-xs font-semibold">
+            <span data-icon className="grid size-5 shrink-0 place-items-center rounded">
+              {icon}
+            </span>
+            <span className="truncate">{title}</span>
+          </h3>
+          <div className="flex shrink-0 items-center gap-1">
+            <Link
+              to={link.to}
+              onClick={link.onClick}
+              className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              All
+            </Link>
+            <button
+              type="button"
+              onClick={() => onToggle(id)}
+              aria-expanded={!collapsed}
+              aria-label={collapsed ? `Show: ${title}` : `Hide: ${title}`}
+              title={collapsed ? "Show this section" : "Hide this section"}
+              className="grid size-6 place-items-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              {collapsed ? <ChevronDown className="size-4" /> : <ChevronUp className="size-4" />}
+            </button>
+          </div>
         </div>
       </div>
       {!collapsed && <div className="space-y-2 p-3">{children}</div>}
