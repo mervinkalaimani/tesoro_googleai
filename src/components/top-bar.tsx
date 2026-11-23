@@ -2,7 +2,8 @@ import { startTransition, useEffect, useLayoutEffect, useRef, useState } from "r
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useStoreEnabled } from "@/market/enabled";
 import { BookOpen, Plus, RefreshCw, Search, ShoppingCart, Undo2, X } from "lucide-react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
+import { MegaMenu } from "@/components/mega-menu";
+import { ADD_CAR_EVENT } from "@/lib/add-car-event";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCars, useCarsRefresh, useCarsUndo } from "@/lib/cars-store";
@@ -24,7 +25,7 @@ import { BULK_DRAFT_KEY, CAR_DRAFT_KEY, readDraft } from "@/lib/form-draft";
 import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 
 /** Fired by the sidebar's Add car button; the top bar owns the dialogs it opens. */
-export const ADD_CAR_EVENT = "viiv:add-car";
+export { ADD_CAR_EVENT } from "@/lib/add-car-event";
 
 /**
  * Home, My Cars, My Orders and the Catalogue, in the middle of the bar on a desktop. The sidebar keeps the rest; a
@@ -255,9 +256,9 @@ export function TopBar() {
           holds, so on a phone this opened a second copy of the navigation that
           was already under your thumb. Swiping in from the edge still works for
           anyone who has learned it. */}
-      <SidebarTrigger className="hidden md:inline-flex" />
+      <MegaMenu />
       <DesktopNav />
-      {/* A phone's wordmark. On a desktop it lives in the sidebar's header. */}
+      {/* A phone's wordmark. On a desktop it sits in front of the menu button. */}
       <Link to="/" aria-label="VIIV home" className="shrink-0 md:hidden">
         <HomeScreenMark className="w-[80px]" />
       </Link>
@@ -341,7 +342,7 @@ export function TopBar() {
             </Link>
           </Button>
           {/* On a phone the order reads: catalogue, shop, add car, then you. */}
-          <div className="flex items-center max-md:order-4 md:hidden">
+          <div className="flex items-center max-md:order-4 md:order-3">
             <AccountButton />
           </div>
         </div>

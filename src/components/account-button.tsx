@@ -8,6 +8,7 @@ import { paidPlanOf } from "@/lib/tiers";
 import { TierAvatar } from "@/components/tier-avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { UserMenu } from "@/components/user-menu";
 import { PersonaPicker } from "@/components/persona-picker";
 import { usePersona } from "@/lib/persona";
 import { useCars } from "@/lib/cars-store";
@@ -32,7 +33,9 @@ function initialsOf(name: string, fallback: string): string {
 export function AccountButton() {
   return (
     <>
-      {/* On a desktop the account lives at the foot of the sidebar (UserMenu). */}
+      <span className="hidden md:inline-flex">
+        <UserMenu />
+      </span>
       <span className="inline-flex md:hidden">
         <MobileAccountMenu />
       </span>
