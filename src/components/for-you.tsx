@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus, RefreshCw, Sparkles } from "lucide-react";
+import { Plus, RefreshCw, Sparkles, ThumbsDown } from "lucide-react";
 
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
@@ -32,6 +32,30 @@ function useColumns() {
   return n;
 }
 
+/** The castings this person said no to, kept on this device. */
+function useDismissed(uid?: string) {
+  const key = `viiv.forYou.dismissed.${uid ?? "guest"}`;
+  const [ids, setIds] = useState<string[]>([]);
+  useEffect(() => {
+    try {
+      setIds(JSON.parse(localStorage.getItem(key) || "[]"));
+    } catch {
+      setIds([]);
+    }
+  }, [key]);
+  const dismiss = (id: string) =>
+    setIds((prev) => {
+      const next = [...prev, id];
+      try {
+        localStorage.setItem(key, JSON.stringify(next));
+      } catch {
+        /* the pick is still hidden for this visit */
+      }
+      return next;
+    });
+  return { ids, dismiss };
+}
+
 /**
  * Castings VIIV thinks you will want, each with the reason it is there. Hidden until
  * there is something to base it on. Opening one shows the casting and offers to add it.
@@ -50,7 +74,8 @@ export function ForYou({
   const cars = useCars();
   const { catalog, updateCatalogCar } = useCatalog();
   const SET = useColumns();
-  const { isGuest, isAdmin } = useAuth();
+  const { isGuest, isAdmin, user } = useAuth();
+  const { ids: dismissed, dismiss } = useDismissed(user?.id);
   // What other collectors bought in the last two months, and how many of them each.
   const { cars: shared } = useRecentPreorders(!isGuest, MAX_WINDOW_DAYS, 50);
   const popular = useMemo(() => {
@@ -58,7 +83,10 @@ export function ForYou({
     for (const s of shared) if (!s.inMyCollection) m.set(castingKey(s), Math.max(1, s.copies ?? 1));
     return m;
   }, [shared]);
-  const pool = useMemo(() => forYou(cars, catalog, 48, popular), [cars, catalog, popular]);
+  const pool = useMemo(() => {
+    const no = new Set(dismissed);
+    return forYou(cars, catalog, 48, popular).filter((s) => !no.has(s.car.car_id));
+  }, [cars, catalog, popular, dismissed]);
   // The period behind the picks is chosen for you (never more than two months), and shown.
   const stats = useMemo(() => purchaseStats(cars), [cars]);
   // One set at a time; Refresh reshuffles the ranking and brings up another.
@@ -141,10 +169,21 @@ export function ForYou({
                     brandOnly
                     noAssortment
                     padRight
+                    className="pr-24"
                     detail={reason}
                   />
                 }
               />
+              {/* Not for me: this casting never comes back up here. */}
+              <button
+                type="button"
+                onClick={() => dismiss(car.car_id)}
+                aria-label="Not interested"
+                title="Not interested: don't suggest this again"
+                className="glass-btn absolute bottom-3 right-14 grid size-8 cursor-pointer place-items-center rounded-full text-white transition-transform hover:bg-white/20 active:scale-95"
+              >
+                <ThumbsDown className="size-4" />
+              </button>
               {/* Add it without opening it: the same form, filled in from the casting. */}
               <button
                 type="button"
