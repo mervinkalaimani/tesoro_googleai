@@ -57,7 +57,7 @@ export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
           <TierAvatar
             url={profile?.avatar_url}
             initials={initialsOf(name, display)}
-            className="size-9 shrink-0 border border-border"
+            className="size-9 shrink-0 border-2 border-white/80 shadow-[0_0_0_0.5px_rgba(0,0,0,0.08),0_6px_16px_-6px_rgba(0,0,0,0.35)] dark:border-white/20"
             fallbackClassName="bg-muted text-xs font-semibold"
           />
           {sidebar && (

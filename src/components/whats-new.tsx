@@ -58,7 +58,7 @@ export function WhatsNewStar() {
         <Button
           variant="ghost"
           size="icon"
-          className="relative size-9 shrink-0 rounded-full bg-muted/60 hover:bg-muted"
+          className="glass-btn relative size-9 shrink-0 rounded-full hover:!bg-white/70 dark:hover:!bg-white/15"
           title={`What's new in build ${LATEST_BUILD}`}
           aria-label="What's new"
         >
