@@ -85,7 +85,8 @@ export function ForYou({
   }, [shared]);
   const pool = useMemo(() => {
     const no = new Set(dismissed);
-    return forYou(cars, catalog, 48, popular).filter((s) => !no.has(s.car.car_id));
+    const disliked = catalog.filter((c) => no.has(c.car_id));
+    return forYou(cars, catalog, 48, popular, disliked).filter((s) => !no.has(s.car.car_id));
   }, [cars, catalog, popular, dismissed]);
   // The period behind the picks is chosen for you (never more than two months), and shown.
   const stats = useMemo(() => purchaseStats(cars), [cars]);

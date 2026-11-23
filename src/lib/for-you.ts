@@ -178,6 +178,8 @@ export function forYou(
   limit = 48,
   /** Other collectors' recent purchases, by `castingKey`: how many bought each. */
   popular: Map<string, number> = new Map(),
+  /** Castings the person turned down: what they share is shown less. */
+  disliked: CatalogCar[] = [],
 ): Suggestion[] {
   const now = Date.now();
   const { days } = purchaseStats(cars, now);
@@ -213,6 +215,19 @@ export function forYou(
   }
   if (!cars.length) return [];
 
+  // What the turned-down castings have in common, counted: each one is a vote against its
+  // make, model, series and the like. A brand alone says little, so it counts for less.
+  const against = Object.fromEntries(KEYS.map((k) => [k, new Map<string, number>()])) as Record<
+    Attr,
+    Map<string, number>
+  >;
+  for (const d of disliked) {
+    for (const a of KEYS) {
+      const k = norm(ATTRS[a].cat(d));
+      if (k && k !== "na" && k !== "-") against[a].set(k, (against[a].get(k) ?? 0) + 1);
+    }
+  }
+
   const scored: Suggestion[] = [];
   for (const c of catalog) {
     if (!c.car_id || ownedIds.has(norm(c.car_id))) continue;
@@ -229,6 +244,12 @@ export function forYou(
     let score = hits.reduce((t, h) => t + h.value, 0);
     // Many collectors buying the same casting is a reason of its own.
     if (others) score += 6 * Math.log1p(others);
+    // Each match with something turned down takes away, more the more times it was.
+    for (const a of KEYS) {
+      const n = against[a].get(norm(ATTRS[a].cat(c))) ?? 0;
+      if (n) score -= ATTRS[a].coef * (a === "brand" ? 0.5 : 1.5) * Math.log1p(n);
+    }
+    if (score <= 0) continue;
     // A card with a photograph sells itself; one without is a last resort.
     if (!c.image_url) score *= 0.5;
     // A casting filed lately is worth a look even when it is a modest match.
