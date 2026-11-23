@@ -67,7 +67,17 @@ function useRotatingExample(enabled: boolean) {
  * The desktop search field. Live: every keystroke filters the page behind it,
  * with no suggestion list in the way.
  */
-export function SearchBox({ className }: { className?: string }) {
+export function SearchBox({
+  className,
+  autoFocus = false,
+  onEscape,
+}: {
+  className?: string;
+  /** Focus the field as it mounts: it was opened to be typed in. */
+  autoFocus?: boolean;
+  /** Escape was pressed in the field. */
+  onEscape?: () => void;
+}) {
   const { query, setQuery } = useApp();
   const cars = useCars();
   const { open: openCar } = useCarDrawer();
@@ -113,6 +123,10 @@ export function SearchBox({ className }: { className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { example, visible } = useRotatingExample(!query && !onUsers);
+
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, [autoFocus]);
 
   // "/" or Ctrl/⌘+K from anywhere that is not already a text field.
   useEffect(() => {
@@ -168,6 +182,7 @@ export function SearchBox({ className }: { className?: string }) {
             inputRef.current?.blur();
             setAdvancedOpen(false);
             setIsFocused(false);
+            onEscape?.();
           }
         }}
         // The visible hint is the animated overlay below; a real placeholder

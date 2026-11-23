@@ -1,7 +1,7 @@
 import { startTransition, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useStoreEnabled } from "@/market/enabled";
-import { BookOpen, Plus, RefreshCw, ShoppingCart, Undo2 } from "lucide-react";
+import { BookOpen, Plus, RefreshCw, Search, ShoppingCart, Undo2 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { useCatalog } from "@/lib/catalog-store";
 import type { Diecast } from "@/lib/types";
 import { HomeScreenMark } from "@/components/brand-mark";
 import { SearchBox } from "@/components/search-box";
+import { useApp } from "@/lib/store";
 import { NotificationCenter } from "@/components/notification-center";
 import { WhatsNewStar } from "@/components/whats-new";
 import { AccountButton } from "@/components/account-button";
@@ -23,6 +24,68 @@ import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 
 /** Fired by the sidebar's Add car button; the top bar owns the dialogs it opens. */
 export const ADD_CAR_EVENT = "viiv:add-car";
+
+/**
+ * Desktop search: an icon beside the bell that opens the field in place, over the right of the bar.
+ * ⌘K and "/" open it too. Whatever was typed keeps filtering the page after it closes, and the icon
+ * says so.
+ */
+function DesktopSearch() {
+  const { query } = useApp();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      const typing = t?.closest("input, textarea, select, [contenteditable='true']");
+      if ((e.key === "k" && (e.metaKey || e.ctrlKey)) || (e.key === "/" && !typing)) {
+        e.preventDefault();
+        setOpen(true);
+      }
+    };
+    const onDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onDown);
+    };
+  }, []);
+
+  return (
+    <div ref={ref} className="relative hidden md:block">
+      <Button
+        variant="outline"
+        size="icon"
+        className="relative size-9 rounded-full"
+        onClick={() => setOpen((v) => !v)}
+        aria-label={query ? `Search: filtering by “${query}”` : "Search"}
+        aria-expanded={open}
+        title="Search (⌘K)"
+      >
+        <Search className="size-4.5" />
+        {query && (
+          <span
+            aria-hidden
+            className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full border-2 border-background bg-primary"
+          />
+        )}
+      </Button>
+      {open && (
+        <div className="absolute right-0 top-1/2 z-50 w-[min(36rem,calc(100vw-24rem))] -translate-y-1/2 animate-in fade-in slide-in-from-right-2">
+          <SearchBox
+            className="w-full max-w-none md:ml-0"
+            autoFocus
+            onEscape={() => setOpen(false)}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** How long the undo button stays on screen after the edit it would reverse. */
 const UNDO_WINDOW_MS = 30_000;
@@ -115,7 +178,6 @@ export function TopBar() {
         <HomeScreenMark className="w-[80px]" />
       </Link>
       {/* Desktop searches here, live. A phone searches from the bottom bar. */}
-      <SearchBox className="hidden md:block" />
       <div className="ml-auto flex items-center gap-1.5">
         {/* Only while it means something: it shows itself when there is
             something to reverse and withdraws half a minute later. */}
@@ -132,6 +194,7 @@ export function TopBar() {
           </Button>
         )}
 
+        <DesktopSearch />
         <WhatsNewStar />
         <NotificationCenter />
         {/* Reading right to left from the corner: who you are, then the thing
