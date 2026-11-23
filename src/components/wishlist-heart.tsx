@@ -9,6 +9,27 @@ import { useCars, useCarsActions } from "@/lib/cars-store";
 import { useAddToIso } from "@/lib/quick-iso";
 import { isIso } from "@/lib/status";
 
+/** The ring and specks that fly out of a heart as it pops. */
+export function HeartBurst() {
+  return (
+    <>
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-full border-2 border-red-400"
+        style={{ animation: "heart-ring 0.6s ease-out forwards" }}
+      />
+      {[0, 60, 120, 180, 240, 300].map((a) => (
+        <span
+          key={a}
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 -ml-[3px] -mt-[3px] size-1.5 rounded-full bg-red-400"
+          style={{ ["--a" as string]: `${a}deg`, animation: "heart-speck 0.6s ease-out forwards" }}
+        />
+      ))}
+    </>
+  );
+}
+
 /** The wish for this casting, when it is on the list. */
 export function useWishFor(entry: CatalogCar) {
   const cars = useCars();
@@ -64,11 +85,10 @@ export function WishlistHeart({
           `absolute right-2 ${above ? "bottom-11" : "bottom-2"} grid size-7 cursor-pointer place-items-center rounded-full border border-white/50 bg-white/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_12px_rgba(0,0,0,0.25)] backdrop-blur-md transition-colors hover:bg-white/35`
         }
       >
+        {popped && <HeartBurst />}
         <Heart
           className={on ? "size-4 fill-red-500 text-red-500" : "size-4"}
-          style={
-            popped ? { animation: "heart-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1)" } : undefined
-          }
+          style={popped ? { animation: "heart-pop 0.6s ease-out" } : undefined}
         />
       </button>
       <Dialog open={asking} onOpenChange={setAsking}>

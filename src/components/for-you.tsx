@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { HeartBurst } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
 import { useAddToIso } from "@/lib/quick-iso";
 import { Heart, Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -46,22 +47,16 @@ function HeartButton({ onAdd }: { onAdd: () => void }) {
       disabled={popped}
       onClick={() => {
         setPopped(true);
-        window.setTimeout(onAdd, 550);
+        window.setTimeout(onAdd, 650);
       }}
       aria-label="Add to my ISO list"
       title="Add to my ISO list"
       className="absolute bottom-14 right-3 grid size-8 cursor-pointer place-items-center rounded-full border border-white/50 bg-white/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_12px_rgba(0,0,0,0.25)] backdrop-blur-md transition-colors hover:bg-white/35"
     >
-      {popped && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-full border-2 border-red-400"
-          style={{ animation: "heart-ring 0.55s ease-out forwards" }}
-        />
-      )}
+      {popped && <HeartBurst />}
       <Heart
         className={popped ? "size-4 fill-red-500 text-red-500" : "size-4"}
-        style={popped ? { animation: "heart-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1)" } : undefined}
+        style={popped ? { animation: "heart-pop 0.6s ease-out" } : undefined}
       />
     </button>
   );
