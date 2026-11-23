@@ -398,11 +398,6 @@ export function SellerOrdersDialog({
                   icon={<Banknote className="size-4" />}
                 />
                 <KpiTile
-                  label="Shipping"
-                  value={inrFull(totals.shipping)}
-                  icon={<Package className="size-4" />}
-                />
-                <KpiTile
                   label="Paid"
                   value={inrFull(totals.paid)}
                   sub={`Orders ${inrFull(totals.paid - totals.paidPo)} · PO ${inrFull(totals.paidPo)}`}
@@ -416,6 +411,11 @@ export function SellerOrdersDialog({
                   icon={<Scale className="size-4" />}
                   tone={totals.owed > 0 ? "amber" : "emerald"}
                   valueTone={totals.owed > 0 ? "amber" : undefined}
+                />
+                <KpiTile
+                  label="Shipping"
+                  value={inrFull(totals.shipping)}
+                  icon={<Package className="size-4" />}
                 />
                 {/* Two dates rather than a number. At the tile's own size they
                 fill the card and clip, so this one value steps down. */}
