@@ -1,4 +1,5 @@
 import { SUMMARY_ITEMS } from "@/lib/summary-cards";
+import { useAddToIso } from "@/lib/quick-iso";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -898,6 +899,7 @@ const preorderAsCar = (c: RecentPreorder, key: string) =>
  */
 function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: boolean }) {
   const { isAdmin, isOwner, isGuest } = useAuth();
+  const addToIso = useAddToIso();
   const { catalog, findMatchingInCatalog, getCatalogCarById, updateCatalogCar, addCatalogCar } =
     useCatalog();
   const [adding, setAdding] = useState<RecentPreorder | null>(null);
@@ -1066,14 +1068,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
                       setAdding(c);
                     }}
                   />
-                  {!isGuest && (
-                    <QuickIso
-                      onClick={() => {
-                        setAddingIso(true);
-                        setAdding(c);
-                      }}
-                    />
-                  )}
+                  {!isGuest && <QuickIso onClick={() => addToIso(catalogEntryFor(c))} />}
                 </>
               )}
             </div>
@@ -1505,6 +1500,7 @@ function QuickIso({ onClick }: { onClick: () => void }) {
 function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   const { catalog, isLoading, updateCatalogCar } = useCatalog();
   const { isAdmin, isOwner, isGuest } = useAuth();
+  const addToIso = useAddToIso();
   const cars = useCars();
   const [viewing, setViewing] = useState<CatalogCar | null>(null);
   const [adding, setAdding] = useState<CatalogCar | null>(null);
@@ -1576,14 +1572,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
                       setAdding(r.entry);
                     }}
                   />
-                  {!isGuest && (
-                    <QuickIso
-                      onClick={() => {
-                        setAddingIso(true);
-                        setAdding(r.entry);
-                      }}
-                    />
-                  )}
+                  {!isGuest && <QuickIso onClick={() => addToIso(r.entry)} />}
                 </>
               )}
             </div>

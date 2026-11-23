@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAddToIso } from "@/lib/quick-iso";
 import { Heart, Plus, RefreshCw, Sparkles, ThumbsDown } from "lucide-react";
 
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
@@ -76,6 +77,7 @@ export function ForYou({
   const SET = useColumns();
   const { isGuest, isAdmin, user } = useAuth();
   const { ids: dismissed, dismiss } = useDismissed(user?.id);
+  const addToIso = useAddToIso();
   // What other collectors bought in the last two months, and how many of them each.
   const { cars: shared } = useRecentPreorders(!isGuest, MAX_WINDOW_DAYS, 50);
   const popular = useMemo(() => {
@@ -188,7 +190,7 @@ export function ForYou({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setAdding({ car, status: "ISO" })}
+                  onClick={() => addToIso(car)}
                   aria-label="Add to my ISO list"
                   title="Add to my ISO list"
                   className="grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
