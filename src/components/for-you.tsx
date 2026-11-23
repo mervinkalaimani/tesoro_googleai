@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { HeartBurst } from "@/components/wishlist-heart";
+import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
-import { useAddToIso } from "@/lib/quick-iso";
-import { Heart, Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
@@ -33,33 +32,6 @@ function useColumns() {
     return () => window.removeEventListener("resize", read);
   }, []);
   return n;
-}
-
-/**
- * Glass heart: tapped, it fills red and pops, and only then puts the car on the ISO list,
- * which takes the card off the shelf, so the pop has time to be seen.
- */
-function HeartButton({ onAdd }: { onAdd: () => void }) {
-  const [popped, setPopped] = useState(false);
-  return (
-    <button
-      type="button"
-      disabled={popped}
-      onClick={() => {
-        setPopped(true);
-        window.setTimeout(onAdd, 650);
-      }}
-      aria-label="Add to my ISO list"
-      title="Add to my ISO list"
-      className="absolute bottom-14 right-3 grid size-8 cursor-pointer place-items-center rounded-full border border-white/50 bg-white/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_12px_rgba(0,0,0,0.25)] backdrop-blur-md transition-colors hover:bg-white/35"
-    >
-      {popped && <HeartBurst />}
-      <Heart
-        className={popped ? "size-4 fill-red-500 text-red-500" : "size-4"}
-        style={popped ? { animation: "heart-pop 0.6s ease-out" } : undefined}
-      />
-    </button>
-  );
 }
 
 /** The castings this person said no (or yes please) to, kept on this device. */
@@ -107,7 +79,6 @@ export function ForYou({
   const { isGuest, isAdmin, user } = useAuth();
   const { ids: dismissed, dismiss } = useDismissed(user?.id);
   const { ids: liked, dismiss: like } = useDismissed(user?.id, "liked");
-  const addToIso = useAddToIso();
   const quickAdd = useQuickAdd();
   // What other collectors bought in the last two months, and how many of them each.
   const { cars: shared } = useRecentPreorders(!isGuest, MAX_WINDOW_DAYS, 50);
@@ -239,7 +210,10 @@ export function ForYou({
                 </button>
               </div>
               {/* On top of the +: put it on my ISO list. */}
-              <HeartButton onAdd={() => addToIso(car)} />
+              <WishlistHeart
+                entry={car}
+                className="absolute bottom-14 right-3 grid size-8 cursor-pointer place-items-center rounded-full border border-white/50 bg-white/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_12px_rgba(0,0,0,0.25)] backdrop-blur-md transition-colors hover:bg-white/35"
+              />
               {/* Add it without opening it: the same form, filled in from the casting. */}
               <button
                 type="button"

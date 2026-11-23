@@ -3,7 +3,8 @@ import { searchCarImages } from "./car-image-search";
 // Best-effort client-side car image lookup via Wikipedia REST summary.
 // Cached in localStorage; returns null when nothing usable is found.
 
-const CACHE_KEY = "diecast:car-image-cache:v1";
+// v2: v1 held pictures of towers and solar farms, picked for sharing one word with a model.
+const CACHE_KEY = "diecast:car-image-cache:v2";
 const NEG = "__none__";
 
 type Cache = Record<string, string>;
@@ -26,12 +27,24 @@ function saveCache(cache: Cache) {
   }
 }
 
-async function wikiSummary(title: string): Promise<string | null> {
+/** Every word of the model is in the page title: "Fossil" alone is not "Fossil Transporter". */
+const namesModel = (title: string, model: string) => {
+  const have = new Set(title.toLowerCase().split(/[^a-z0-9]+/));
+  const need = model
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 1);
+  return need.length > 0 && need.every((w) => have.has(w));
+};
+
+async function wikiSummary(title: string, model: string): Promise<string | null> {
   const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}?redirect=true`;
   try {
     const res = await fetch(url, { headers: { accept: "application/json" } });
     if (!res.ok) return null;
     const data = await res.json();
+    // A page that merely shares a word with the model is not a picture of the car.
+    if (!namesModel(String(data?.title ?? ""), model)) return null;
     const src: string | undefined = data?.originalimage?.source || data?.thumbnail?.source;
     return src || null;
   } catch {
@@ -39,7 +52,7 @@ async function wikiSummary(title: string): Promise<string | null> {
   }
 }
 
-async function wikiSearch(q: string): Promise<string | null> {
+async function wikiSearch(q: string, model: string): Promise<string | null> {
   const url = `https://en.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=${encodeURIComponent(
     q,
   )}&gsrlimit=1&prop=pageimages&piprop=original|thumbnail&pithumbsize=600&format=json&origin=*`;
@@ -50,9 +63,11 @@ async function wikiSearch(q: string): Promise<string | null> {
     const pages = data?.query?.pages;
     if (!pages) return null;
     for (const p of Object.values<{
+      title?: string;
       original?: { source?: string };
       thumbnail?: { source?: string };
     }>(pages)) {
+      if (!namesModel(String(p?.title ?? ""), model)) continue;
       const src = p?.original?.source || p?.thumbnail?.source;
       if (src) return src;
     }
@@ -130,12 +145,12 @@ export async function findCarImage(
     ].filter(Boolean);
 
     for (const q of queries) {
-      url = await wikiSummary(q);
+      url = await wikiSummary(q, model);
       if (url) break;
     }
     if (!url) {
       for (const q of queries) {
-        url = await wikiSearch(q);
+        url = await wikiSearch(q, model);
         if (url) break;
       }
     }

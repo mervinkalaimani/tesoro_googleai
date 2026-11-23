@@ -200,7 +200,13 @@ export function forYou(
   const now = Date.now();
   const { days } = purchaseStats(cars, now);
   const recentIds = new Set(boughtWithin(cars, days, now).map((c) => c.id));
-  const ownedIds = new Set(cars.map((c) => norm(c.catalogId)).filter(Boolean));
+  // On the wishlist is not owned: those castings stay, and their heart shows it.
+  const ownedIds = new Set(
+    cars
+      .filter((c) => !isIso(c.status))
+      .map((c) => norm(c.catalogId))
+      .filter(Boolean),
+  );
   const book = Object.fromEntries(KEYS.map((k) => [k, new Map<string, Seen>()])) as Record<
     Attr,
     Map<string, Seen>
