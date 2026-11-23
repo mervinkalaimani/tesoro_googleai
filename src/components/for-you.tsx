@@ -83,9 +83,12 @@ function ForYouCarousel({
     }, 120);
   };
   // Start in the middle copy, and again whenever the number of picks changes.
+  const frontRef = useRef(0);
+  frontRef.current = front;
   useLayoutEffect(() => {
     const el = track.current;
-    if (el && n > 1) el.scrollLeft = n * step();
+    // Keep the place: a dismissed pick takes only its own card out, the rest stay where they are.
+    if (el && n > 1) el.scrollLeft = (n + Math.min(frontRef.current, n - 1)) * step();
     return () => window.clearTimeout(idle.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- placed on a change of count only
   }, [n]);

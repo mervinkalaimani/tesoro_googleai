@@ -347,16 +347,17 @@ export function forYou(
  */
 export function reshuffle(pool: Suggestion[], seed: number): Suggestion[] {
   if (!seed) return pool;
-  let a = seed >>> 0;
-  const rand = () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  // Each casting's draw comes from the seed and its own id, not from its place in the list, so
+  // taking one casting out (a thumbs-down) leaves every other one exactly where it was.
+  const rand = (id: string) => {
+    let h = (seed ^ 0x9e3779b9) >>> 0;
+    for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x85ebca6b) >>> 0;
+    h = Math.imul(h ^ (h >>> 15), h | 1);
+    h ^= h + Math.imul(h ^ (h >>> 7), h | 61);
+    return ((h ^ (h >>> 14)) >>> 0) / 4294967296;
   };
   return pool
-    .map((s) => ({ s, k: s.score * (0.55 + 0.45 * rand()) }))
+    .map((s) => ({ s, k: s.score * (0.55 + 0.45 * rand(s.car.car_id)) }))
     .sort((x, y) => y.k - x.k)
     .map((x) => x.s);
 }
