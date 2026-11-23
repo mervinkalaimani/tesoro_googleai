@@ -38,12 +38,14 @@ function useColumns() {
 function useDismissed(uid?: string, kind: "dismissed" | "liked" = "dismissed") {
   const key = `viiv.forYou.${kind}.${uid ?? "guest"}`;
   const [ids, setIds] = useState<string[]>([]);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     try {
       setIds(JSON.parse(localStorage.getItem(key) || "[]"));
     } catch {
       setIds([]);
     }
+    setReady(true);
   }, [key]);
   const dismiss = (id: string) =>
     setIds((prev) => {
@@ -55,7 +57,7 @@ function useDismissed(uid?: string, kind: "dismissed" | "liked" = "dismissed") {
       }
       return next;
     });
-  return { ids, dismiss };
+  return { ids, dismiss, ready };
 }
 
 /**
@@ -77,7 +79,14 @@ export function ForYou({
   const { catalog, updateCatalogCar } = useCatalog();
   const SET = useColumns();
   const { isGuest, isAdmin, user } = useAuth();
-  const { ids: dismissed, dismiss } = useDismissed(user?.id);
+  const { ids: dismissed, dismiss, ready } = useDismissed(user?.id);
+  // What the ranking has learned from thumbs-down is taken when the section opens and on each
+  // refresh, not on every tap: a dismissed card just leaves and the next one comes in, rather
+  // than the whole set being dealt again.
+  const [learned, setLearned] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (ready && learned === null) setLearned(dismissed);
+  }, [ready, learned, dismissed]);
   const { ids: liked, dismiss: like } = useDismissed(user?.id, "liked");
   const quickAdd = useQuickAdd();
   // What other collectors bought in the last two months, and how many of them each.
@@ -90,13 +99,14 @@ export function ForYou({
   const pool = useMemo(() => {
     const no = new Set(dismissed);
     const yes = new Set(liked);
-    const disliked = catalog.filter((c) => no.has(c.car_id));
+    const taught = new Set(learned ?? dismissed);
+    const disliked = catalog.filter((c) => taught.has(c.car_id));
     const wanted = catalog.filter((c) => yes.has(c.car_id));
     // A casting already answered, either way, is not asked about again.
     return forYou(cars, catalog, 48, popular, disliked, wanted).filter(
       (s) => !no.has(s.car.car_id) && !yes.has(s.car.car_id),
     );
-  }, [cars, catalog, popular, dismissed, liked]);
+  }, [cars, catalog, popular, dismissed, liked, learned]);
   // The period behind the picks is chosen for you (never more than two months), and shown.
   const stats = useMemo(() => purchaseStats(cars), [cars]);
   // One set at a time; Refresh reshuffles the ranking and brings up another.
@@ -153,6 +163,7 @@ export function ForYou({
               title="Refresh"
               onClick={() => {
                 setSeed(Math.floor(Math.random() * 2 ** 31) + 1);
+                setLearned(dismissed);
               }}
             >
               <RefreshCw className="size-4" />
@@ -201,6 +212,7 @@ export function ForYou({
                     // More like this: its traits count for you, and the set is dealt again.
                     like(car.car_id);
                     setSeed(Math.floor(Math.random() * 2 ** 31) + 1);
+                    setLearned(dismissed);
                   }}
                   aria-label="Show more like this"
                   title="Show more cars like this"
