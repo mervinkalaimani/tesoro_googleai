@@ -52,7 +52,9 @@ function DesktopNav() {
     if (!nav) return;
     const measure = () => {
       const el = nav.querySelector<HTMLElement>("[aria-current='page']");
-      setLine(el ? { left: el.offsetLeft, width: el.offsetWidth } : null);
+      // Out to the half-way point between this tab and the next on each side.
+      const half = parseFloat(getComputedStyle(nav).columnGap || "0") / 2;
+      setLine(el ? { left: el.offsetLeft - half, width: el.offsetWidth + half * 2 } : null);
     };
     measure();
     const ro = new ResizeObserver(measure);
