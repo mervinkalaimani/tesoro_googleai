@@ -49,6 +49,8 @@ type NavTab = {
   /** Paths that make this tab the page you are on. */
   match: string[];
   needs?: PaidPlan;
+  /** Only while the VIIV Shop is switched on for this account. */
+  shop?: boolean;
   /** What opens under the tab. */
   items?: NavLink[];
 };
@@ -87,6 +89,7 @@ const TABS: NavTab[] = [
     ],
   },
   { title: "Catalogue", url: "/catalog", match: ["/catalog"] },
+  { title: "VIIV Shop", url: "/market", match: ["/market"], shop: true },
 ];
 
 /** The pane that opens under a tab: a pane of glass in the page body, so it can blur what is under it. */
@@ -185,8 +188,11 @@ function TabMenu({
  */
 function DesktopNav() {
   const { plan } = useAuth();
+  const storeOn = useStoreEnabled() === true;
   const pathname = useRouterState({ select: (r) => r.location.pathname });
-  const tabs = TABS.filter((t) => !t.needs || planIncludes(plan, t.needs)).map((t) => ({
+  const tabs = TABS.filter(
+    (t) => (!t.needs || planIncludes(plan, t.needs)) && (!t.shop || storeOn),
+  ).map((t) => ({
     tab: t,
     items: (t.items ?? []).filter((i) => !i.needs || planIncludes(plan, i.needs)),
     on: t.match.some((m) => (m === "/" ? pathname === "/" : pathname.startsWith(m))),
@@ -210,7 +216,7 @@ function DesktopNav() {
     const ro = new ResizeObserver(measure);
     ro.observe(nav);
     return () => ro.disconnect();
-  }, [active, plan]);
+  }, [active, plan, storeOn]);
   // Slide only once it has somewhere to slide from: the first paint just puts it there.
   useEffect(() => {
     const id = requestAnimationFrame(() => setArmed(true));

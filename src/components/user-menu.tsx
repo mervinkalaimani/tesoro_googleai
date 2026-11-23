@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { LayoutDashboard, Settings, ShoppingCart, Sparkles, Wrench } from "lucide-react";
+import { LayoutDashboard, Settings, Sparkles, Wrench } from "lucide-react";
 
 import { ProChip, TierAvatar } from "@/components/tier-avatar";
 import {
@@ -14,7 +14,6 @@ import { openProDialog } from "@/components/pro-dialog";
 import { useAuth, fullName } from "@/lib/auth-store";
 import { usePersona } from "@/lib/persona";
 import { paidPlanOf, planOf } from "@/lib/tiers";
-import { useStoreEnabled } from "@/market/enabled";
 
 /** "Mervin Kalaimani" -> "MK"; a single name gives one letter. */
 function initialsOf(name: string, fallback: string): string {
@@ -35,7 +34,6 @@ function initialsOf(name: string, fallback: string): string {
 export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
   const { profile, isAdmin, isGuest } = useAuth();
   const { persona } = usePersona();
-  const storeOn = useStoreEnabled() === true;
   const plan = planOf(profile);
 
   const name = fullName(profile);
@@ -105,14 +103,6 @@ export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
             Settings
           </Link>
         </DropdownMenuItem>
-        {storeOn && (
-          <DropdownMenuItem asChild>
-            <Link to="/market" className="cursor-pointer gap-2">
-              <ShoppingCart className="size-4" />
-              VIIV Shop
-            </Link>
-          </DropdownMenuItem>
-        )}
         {/* The admin's two pages, with the rest of what is about you rather than about your cars. */}
         {isAdmin && persona === "admin" && (
           <>
