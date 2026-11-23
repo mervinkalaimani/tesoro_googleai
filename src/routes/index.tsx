@@ -490,31 +490,29 @@ function DashboardPage() {
               icon={<Wallet className="size-4" />}
               label="Invested"
               tone="primary"
-              value={
-                <span className="flex items-center gap-1.5">
-                  <span className="truncate">
-                    {investmentHidden ? "••••••" : inrFull(totals.spent)}
-                  </span>
-                  {/* With every cost hidden there is nothing for the eye to reveal. */}
-                  {!hideCost && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (hideInvestment) setRevealInvestment((v) => !v);
-                        else setHideInvestment(true);
-                      }}
-                      aria-label={investmentHidden ? "Show investment" : "Hide investment"}
-                      className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"
-                    >
-                      {investmentHidden ? (
-                        <EyeOff className="size-3.5" />
-                      ) : (
-                        <Eye className="size-3.5" />
-                      )}
-                    </button>
-                  )}
-                </span>
+              value={investmentHidden ? "••••••" : inrFull(totals.spent)}
+              // The eye sits on the header line, at the end, so the number has the whole width.
+              // With every cost hidden there is nothing for it to reveal.
+              action={
+                !hideCost && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (hideInvestment) setRevealInvestment((v) => !v);
+                      else setHideInvestment(true);
+                    }}
+                    aria-label={investmentHidden ? "Show investment" : "Hide investment"}
+                    className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+                  >
+                    {investmentHidden ? (
+                      <EyeOff className="size-3.5" />
+                    ) : (
+                      <Eye className="size-3.5" />
+                    )}
+                  </button>
+                )
               }
             />
             {kpis

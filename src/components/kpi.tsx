@@ -92,6 +92,7 @@ export function KpiTile({
   status,
   ordersTab,
   to,
+  action,
   className,
   subVisibleOnMobile = false,
 }: {
@@ -113,6 +114,8 @@ export function KpiTile({
   ordersTab?: "late";
   /** A page to open, for a tile that is not one status. */
   to?: "/inventory" | "/orders";
+  /** A small control at the end of the header line. */
+  action?: ReactNode;
   className?: string;
   subVisibleOnMobile?: boolean;
 }) {
@@ -132,13 +135,14 @@ export function KpiTile({
         <span data-kpi-label className="truncate">
           {label}
         </span>
+        {action ? <span className="ml-auto shrink-0">{action}</span> : null}
       </div>
       {/* The label stays at the top of every tile, so the titles line up across a row; the number and
           its line share out whatever height is left under it. */}
       <div className="flex flex-1 flex-col justify-center">
         <div
           className={cn(
-            "text-display mt-1 truncate text-2xl font-semibold leading-none tabular-nums md:mt-2 md:text-3xl",
+            "text-display mt-1 truncate text-xl font-semibold leading-none tabular-nums md:mt-2 md:text-2xl",
             valueTone ? TONE_VALUE[valueTone] : undefined,
           )}
         >
