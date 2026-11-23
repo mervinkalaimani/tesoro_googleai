@@ -85,7 +85,10 @@ function Count({ n, status, label }: { n: number; status: string; label?: string
 function Verified() {
   return (
     <span title="Registered with VIIV" className="inline-flex shrink-0">
-      <BadgeCheck className="size-5 fill-sky-500 text-white" aria-label="Verified" />
+      <BadgeCheck
+        className="size-5 fill-sky-500 text-sky-500 [&_path:last-child]:text-white"
+        aria-label="Verified"
+      />
     </span>
   );
 }
