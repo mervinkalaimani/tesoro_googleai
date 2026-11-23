@@ -70,7 +70,7 @@ function ForYouCarousel({
       <div
         ref={track}
         onScroll={onScroll}
-        className="no-scrollbar -mx-3 flex snap-x snap-mandatory items-center gap-3 overflow-x-auto px-[15cqw] py-4 sm:mx-0 sm:gap-5 sm:px-[36cqw]"
+        className="no-scrollbar -mx-3 flex snap-x snap-mandatory items-center gap-3 overflow-x-auto px-[8cqw] py-4 sm:mx-0 sm:gap-5 sm:px-[29cqw]"
         style={{ overscrollBehaviorX: "contain" }}
       >
         {picks.map((p, i) => {
@@ -85,90 +85,94 @@ function ForYouCarousel({
             ] as [string, string | undefined][]
           )
             .filter(([, v]) => (v || "").trim())
-            .slice(0, 3);
+            .slice(0, 2);
           return (
             <div
               key={p.car.car_id}
               // The cars either side are smaller and a little dimmer, so the front one is the card.
               style={{ transform: `scale(${1 - 0.09 * d})`, opacity: 1 - 0.18 * d }}
-              className="w-[70cqw] shrink-0 snap-center snap-always transition-[transform,opacity] duration-150 sm:w-[28cqw]"
+              className="w-[84cqw] shrink-0 snap-center snap-always transition-[transform,opacity] duration-150 sm:w-[42cqw]"
             >
-              <article className="card-elevated flex flex-col gap-2 overflow-hidden p-2.5">
+              <article className="card-elevated flex overflow-hidden">
                 <button
                   type="button"
                   onClick={() => (isFront ? onOpen(p.car) : goTo(i))}
-                  className="block w-full cursor-pointer overflow-hidden rounded-2xl"
+                  className="relative block aspect-[534/658] w-[46%] shrink-0 cursor-pointer overflow-hidden"
                   aria-label={isFront ? `Open ${c.name}` : `Show ${c.name}`}
                 >
-                  <CarThumb car={c} className="aspect-[4/3] w-full [&_img]:object-cover" />
+                  <CarThumb car={c} className="absolute inset-0 size-full" />
                 </button>
-                <div className="space-y-0.5 px-1">
-                  <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                    <Sparkles className="size-3 fill-amber-400 text-amber-400" />
-                    Suggested
+                <div className="flex min-w-0 flex-1 flex-col justify-between gap-2 p-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                      <Sparkles className="size-3 fill-amber-400 text-amber-400" />
+                      Suggested
+                    </div>
+                    <div className="line-clamp-2 text-base font-semibold leading-tight">
+                      {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                    </div>
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Tag className="size-3 shrink-0" />
+                      <span className="truncate">
+                        {[c.brand, c.series].filter(Boolean).join(" · ") || "—"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="line-clamp-1 text-lg font-semibold leading-tight">
-                    {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider">
+                      Description
+                    </div>
+                    <p className="line-clamp-3 text-xs leading-snug text-muted-foreground">
+                      {p.reason}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Tag className="size-3 shrink-0" />
-                    <span className="truncate">
-                      {[c.brand, c.series].filter(Boolean).join(" · ") || "—"}
-                    </span>
-                  </div>
-                </div>
-                <div className="px-1">
-                  <div className="text-[10px] font-semibold uppercase tracking-wider">
-                    Description
-                  </div>
-                  <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-                    {p.reason}
-                  </p>
-                </div>
-                {stats.length > 0 && (
-                  <dl className="flex gap-5 px-1">
-                    {stats.map(([k, v]) => (
-                      <div key={k} className="min-w-0">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wider">{k}</dt>
-                        <dd className="truncate text-xs font-medium text-primary">{v}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
-                <div
-                  className={`flex items-center gap-2 px-1 pb-1 ${isFront ? "" : "pointer-events-none"}`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onDismiss(p.car.car_id)}
-                    aria-label="Not interested"
-                    title="Not interested: don't suggest this again"
-                    className={`${btn} glass-btn size-8 text-foreground`}
+                  {stats.length > 0 && (
+                    <dl className="flex gap-4">
+                      {stats.map(([k, v]) => (
+                        <div key={k} className="min-w-0">
+                          <dt className="text-[10px] font-semibold uppercase tracking-wider">
+                            {k}
+                          </dt>
+                          <dd className="truncate text-xs font-medium text-primary">{v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  <div
+                    className={`flex items-center gap-1.5 ${isFront ? "" : "pointer-events-none"}`}
                   >
-                    <ThumbsDown className="size-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onLike(p.car.car_id)}
-                    aria-label="Show more like this"
-                    title="Show more cars like this"
-                    className={`${btn} glass-btn size-8 text-foreground`}
-                  >
-                    <ThumbsUp className="size-4" />
-                  </button>
-                  <WishlistHeart
-                    entry={p.car}
-                    className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => onAdd(p.car)}
-                    aria-label="Add to my collection"
-                    title="Add to my collection"
-                    className={`${btn} glass-btn-solid ml-auto size-11 bg-primary/90 text-primary-foreground hover:bg-primary`}
-                  >
-                    <Plus className="size-5" />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onDismiss(p.car.car_id)}
+                      aria-label="Not interested"
+                      title="Not interested: don't suggest this again"
+                      className={`${btn} glass-btn size-8 text-foreground`}
+                    >
+                      <ThumbsDown className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onLike(p.car.car_id)}
+                      aria-label="Show more like this"
+                      title="Show more cars like this"
+                      className={`${btn} glass-btn size-8 text-foreground`}
+                    >
+                      <ThumbsUp className="size-4" />
+                    </button>
+                    <WishlistHeart
+                      entry={p.car}
+                      className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => onAdd(p.car)}
+                      aria-label="Add to my collection"
+                      title="Add to my collection"
+                      className={`${btn} glass-btn-solid ml-auto size-11 bg-primary/90 text-primary-foreground hover:bg-primary`}
+                    >
+                      <Plus className="size-5" />
+                    </button>
+                  </div>
                 </div>
               </article>
             </div>
