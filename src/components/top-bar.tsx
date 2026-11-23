@@ -143,7 +143,7 @@ export function TopBar() {
             // Round and wordless where the bar is tight; named where there is
             // room for it. Two unlabelled icons side by side is a guess, and
             // the desktop bar has the width to say which is which.
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-full p-0 max-md:order-3 md:w-auto md:gap-1.5 md:px-3.5"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-full p-0 max-md:order-3 md:order-2 md:w-auto md:gap-1.5 md:px-3.5"
             title={
               pendingDraft === "bulk"
                 ? "You have an unfinished table of cars — pick up where you left off"
@@ -182,7 +182,7 @@ export function TopBar() {
             size="icon"
             // Outlined in the accent on desktop, beside the solid Add car: a plain grey outline
             // there read as the disabled one of the pair.
-            className="size-9 rounded-full max-md:order-1 md:w-auto md:gap-1.5 md:border-primary/60 md:px-3.5 md:text-primary md:hover:bg-primary/10 md:hover:text-primary"
+            className="size-9 rounded-full max-md:order-1 md:order-1 md:w-auto md:gap-1.5 md:border-primary/60 md:px-3.5 md:text-primary md:hover:bg-primary/10 md:hover:text-primary"
             title="Catalogue"
           >
             <Link to="/catalog" aria-label="Catalogue">
@@ -191,7 +191,7 @@ export function TopBar() {
             </Link>
           </Button>
           {/* On a phone the order reads: catalogue, shop, add car, then you. */}
-          <div className="flex items-center max-md:order-4">
+          <div className="flex items-center max-md:order-4 md:order-3">
             <AccountButton />
           </div>
         </div>
