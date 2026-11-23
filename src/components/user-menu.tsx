@@ -1,11 +1,7 @@
-import { Link } from "@tanstack/react-router";
-import { Settings, Wrench } from "lucide-react";
-
 import { ProChip, TierAvatar } from "@/components/tier-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -29,7 +25,7 @@ function initialsOf(name: string, fallback: string): string {
  * every other application on the machine puts it, so it is the first place
  * anyone looks for Settings, admin, and the way out.
  */
-export function UserMenu() {
+export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
   const { profile, isAdmin } = useAuth();
   const plan = planOf(profile);
 
@@ -44,18 +40,32 @@ export function UserMenu() {
           type="button"
           aria-label={`Account: ${display}`}
           title={display}
-          className="size-9 rounded-full outline-none ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0 flex items-center justify-center"
+          className={
+            sidebar
+              ? // The foot of the sidebar: the face and the name when open, the face alone on the rail.
+                "flex h-11 w-full items-center gap-2.5 overflow-hidden rounded-md px-1.5 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring group-data-[collapsible=icon]:size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!px-0"
+              : "size-9 rounded-full outline-none ring-offset-background transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0 flex items-center justify-center"
+          }
         >
           <TierAvatar
             url={profile?.avatar_url}
             initials={initialsOf(name, display)}
-            className="size-9 border border-border"
+            className="size-9 shrink-0 border border-border"
             fallbackClassName="bg-muted text-xs font-semibold"
           />
+          {sidebar && (
+            <span className="min-w-0 flex-1 overflow-hidden whitespace-nowrap text-sm font-medium transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:flex-none group-data-[collapsible=icon]:opacity-0">
+              <span className="block truncate">{display}</span>
+            </span>
+          )}
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent
+        side={sidebar ? "top" : "bottom"}
+        align={sidebar ? "start" : "end"}
+        className="w-56"
+      >
         {/* The name is the heading, not a menu item: it is what the avatar
             stands for, and there is nothing to do to it here. */}
         <div className="px-2 py-1.5">
@@ -78,19 +88,6 @@ export function UserMenu() {
 
         <DropdownMenuSeparator />
         <PersonaPicker className="px-2 pb-1.5" />
-        <DropdownMenuSeparator />
-
-        {/* Admin Console used to be here. It lives in the sidebar's own
-            Admin section now, next to the dashboard it belongs with -- two
-            doors to one room, one of them behind an avatar, was one too many.
-            The phone keeps its copy in the account sheet, which is the only
-            way there without a sidebar. */}
-        <DropdownMenuItem asChild>
-          <Link to="/settings" className="cursor-pointer gap-2">
-            <Settings className="size-4" />
-            Settings
-          </Link>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { PersonaPicker } from "@/components/persona-picker";
 import { usePersona } from "@/lib/persona";
-import { UserMenu } from "@/components/user-menu";
 import { useCars } from "@/lib/cars-store";
 import { useAuth, fullName } from "@/lib/auth-store";
 import { useApp } from "@/lib/store";
@@ -33,9 +32,7 @@ function initialsOf(name: string, fallback: string): string {
 export function AccountButton() {
   return (
     <>
-      <span className="hidden md:inline-flex">
-        <UserMenu />
-      </span>
+      {/* On a desktop the account lives at the foot of the sidebar (UserMenu). */}
       <span className="inline-flex md:hidden">
         <MobileAccountMenu />
       </span>

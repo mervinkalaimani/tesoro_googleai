@@ -14,6 +14,7 @@ import {
   ShoppingCart,
   BookOpen,
   Plus,
+  Settings,
   Store,
   Sparkles,
   ChevronRight,
@@ -41,6 +42,7 @@ import { useAuth } from "@/lib/auth-store";
 import { usePersona } from "@/lib/persona";
 import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
 import { ADD_CAR_EVENT } from "@/components/top-bar";
+import { UserMenu } from "@/components/user-menu";
 import { BULK_DRAFT_KEY, CAR_DRAFT_KEY, readDraft } from "@/lib/form-draft";
 import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 
@@ -358,7 +360,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border group-data-[collapsible=icon]:px-[5.5px]">
         <div className="space-y-3 px-1 py-2 group-data-[collapsible=icon]:hidden">
           {isGuest && (
             <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5">
@@ -379,6 +381,32 @@ export function AppSidebar() {
               the avatar in the far corner, which is where every other app on the
               machine keeps them. */}
         </div>
+        {/* Settings, then who you are: the two things that belong to you and not to a page. */}
+        <SidebarMenu className="gap-1">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname.startsWith("/settings")}
+              tooltip="Settings"
+              className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
+            >
+              <Link
+                to="/settings"
+                onClick={() => {
+                  if (isMobile) setOpenMobile(false);
+                }}
+              >
+                <Settings className="size-4.5" />
+                <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
+                  Settings
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <UserMenu sidebar />
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

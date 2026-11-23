@@ -194,7 +194,7 @@ export function TopBar() {
             </Link>
           </Button>
           {/* On a phone the order reads: catalogue, shop, add car, then you. */}
-          <div className="flex items-center max-md:order-4 md:order-3">
+          <div className="flex items-center max-md:order-4 md:hidden">
             <AccountButton />
           </div>
         </div>
