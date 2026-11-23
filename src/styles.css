@@ -458,6 +458,23 @@
     0 1px 0 oklch(1 0 0 / 0.5) inset,
     0 10px 24px -10px var(--primary);
 }
+/* The selected segment: a raised pane of glass sliding inside the glass base. Bright top edge,
+   a cool body, a hairline ring and a short soft shadow underneath. */
+.seg-glass-pill {
+  background: linear-gradient(180deg, oklch(1 0 0 / 0.95), oklch(0.95 0.012 245 / 0.8));
+  border: 1px solid oklch(1 0 0 / 0.9);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 1) inset,
+    0 0 0 0.5px oklch(0.2 0.014 245 / 0.12),
+    0 4px 10px -3px oklch(0.2 0.014 245 / 0.22);
+}
+html.dark .seg-glass-pill {
+  background: linear-gradient(180deg, oklch(1 0 0 / 0.2), oklch(1 0 0 / 0.08));
+  border: 1px solid oklch(1 0 0 / 0.18);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.3) inset,
+    0 4px 10px -3px oklch(0 0 0 / 0.5);
+}
 html.dark .glass-btn {
   background: linear-gradient(160deg, oklch(1 0 0 / 0.08), oklch(1 0 0 / 0.025));
   border: 1px solid oklch(1 0 0 / 0.14);

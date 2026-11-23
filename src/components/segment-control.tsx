@@ -90,9 +90,7 @@ function SegmentRow<T extends string>({
         aria-hidden
         className={cn(
           "pointer-events-none absolute top-[3px] h-6 rounded-full",
-          activeTone
-            ? `border ${activeTone}`
-            : "bg-foreground/10 ring-1 ring-inset ring-foreground/15",
+          activeTone ? `border ${activeTone}` : "seg-glass-pill",
           armed && "transition-[left,width,opacity] duration-300 ease-out",
           pill ? "opacity-100" : "opacity-0",
         )}
