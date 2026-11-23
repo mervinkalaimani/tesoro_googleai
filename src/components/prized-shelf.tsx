@@ -345,7 +345,9 @@ function PrizedCoverflow({
               zIndex: 100 - Math.round(st.m * 10),
               // The cards that run in under the details pane are held back, so what it frosts is a
               // wash of their colour and not a row of recognisable cards.
-              opacity: wide && showPanel && st.side > 0 ? st.opacity * 0.35 : st.opacity,
+              opacity: wide && showPanel && st.side > 0
+                ? st.opacity * (1 - 0.65 * Math.min(1, st.m * 2)) // the front car (m = 0) stays solid
+                : st.opacity,
               pointerEvents: st.opacity < 0.05 ? "none" : undefined,
               transform: `translate(-50%, -50%) translateX(${st.side * st.x * 100}%) translateZ(${st.z}px) rotateY(${-st.side * st.turn}deg) scale(${st.scale})`,
               willChange: "transform, opacity",
