@@ -91,6 +91,7 @@ export function KpiTile({
   valueTone,
   status,
   ordersTab,
+  to,
   className,
   subVisibleOnMobile = false,
 }: {
@@ -110,6 +111,8 @@ export function KpiTile({
    * worked out from the expected date, so the inventory has no filter for it.
    */
   ordersTab?: "late";
+  /** A page to open, for a tile that is not one status. */
+  to?: "/inventory" | "/orders";
   className?: string;
   subVisibleOnMobile?: boolean;
 }) {
@@ -175,6 +178,21 @@ export function KpiTile({
           "transition-all hover:border-primary/40 hover:bg-primary/[0.06] active:scale-[0.98]",
         )}
         title={`Show ${label.toLowerCase()} orders`}
+      >
+        {body}
+      </Link>
+    );
+  }
+
+  if (!status && to) {
+    return (
+      <Link
+        to={to}
+        className={cn(
+          shell,
+          "transition-all hover:border-primary/40 hover:bg-primary/[0.06] active:scale-[0.98]",
+        )}
+        title={`Open ${label.toLowerCase()}`}
       >
         {body}
       </Link>

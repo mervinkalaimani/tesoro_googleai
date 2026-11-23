@@ -389,6 +389,7 @@ function DashboardPage() {
         tone: "orange",
         icon: <Clock3 className="size-4" />,
         value: countOf("Ordered"),
+        status: "Ordered",
       },
       {
         // Held by the seller until you ask. When the Pre-orders tile has stepped aside for want of
@@ -470,6 +471,7 @@ function DashboardPage() {
               key="total-cars"
               icon={<Car className="size-4" />}
               label="Cars"
+              to="/inventory"
               // In hand out of everything owned: "1,325 /1,475", the total small.
               value={
                 <span
