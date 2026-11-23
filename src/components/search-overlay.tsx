@@ -126,14 +126,14 @@ export function MobileSearchBar({ onDrawerChange }: { onDrawerChange?: (open: bo
         // used to carry its own copy without the hairline along the top, so
         // against a dark page it read as a box with no top edge and a barely
         // visible left one, sitting beside pills that had both.
-        className={`${NAV_GLASS} flex h-[58px] min-w-0 flex-1 items-center gap-1.5 rounded-full pl-4 pr-1.5 before:inset-x-6`}
+        className={`${NAV_GLASS} flex h-[64px] min-w-0 flex-1 items-center gap-1.5 rounded-full pl-4 pr-1.5 before:inset-x-6`}
         style={{
           // Closed, only the circle at the right-hand end is uncovered — exactly
           // where the search button sits — so opening reads as that button
           // stretching out to the left.
           clipPath: open
-            ? "inset(0 0 0 0 round 29px)"
-            : "inset(0 0 0 calc(100% - 58px) round 29px)",
+            ? "inset(0 0 0 0 round 32px)"
+            : "inset(0 0 0 calc(100% - 64px) round 32px)",
           opacity: open ? 1 : 0,
           pointerEvents: open ? "auto" : "none",
           transition: open

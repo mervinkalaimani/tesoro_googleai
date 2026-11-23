@@ -644,7 +644,7 @@ input[type="date"]::-webkit-date-and-time-value {
    inside is squashed on the way. */
 @keyframes nav-split {
   from {
-    clip-path: inset(0 calc(100% - 58px) 0 0 round 29px);
+    clip-path: inset(0 calc(100% - 64px) 0 0 round 32px);
     transform: translateX(-66px);
     opacity: 0.4;
   }
@@ -658,7 +658,7 @@ input[type="date"]::-webkit-date-and-time-value {
 }
 @keyframes nav-merge {
   from {
-    clip-path: inset(0 calc(100% - 58px) 0 0 round 29px);
+    clip-path: inset(0 calc(100% - 64px) 0 0 round 32px);
     opacity: 0.4;
   }
   40% {

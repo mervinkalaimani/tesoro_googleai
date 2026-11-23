@@ -128,7 +128,7 @@ function useScrollCompact(enabled: boolean) {
 /** The frosted glass every piece of the bar is cut from. */
 const GLASS = NAV_GLASS;
 
-const HOME_CIRCLE = `${GLASS} flex size-[58px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full text-foreground/85 transition-all duration-200 before:inset-x-2 hover:text-foreground active:scale-95`;
+const HOME_CIRCLE = `${GLASS} flex size-[64px] shrink-0 flex-col items-center justify-center gap-0.5 rounded-full text-foreground/85 transition-all duration-200 before:inset-x-2 hover:text-foreground active:scale-95`;
 
 function HomeCircle({
   className = "",
@@ -267,12 +267,12 @@ export function MobileNav() {
   // bar hugs them rather than stretching two half-bar buttons across the row —
   // the space the third would have taken falls between the bar and Search.
   //
-  // 184px is everything the row spends before the tabs: 32 of page padding, the
-  // two 58px circles, three 8px gaps, 12 of the bar's own padding and the 8
+  // 200px is everything the row spends before the tabs: 32 of page padding, the
+  // two 64px circles, three 8px gaps, 8 of the bar's own padding and the 8
   // between three tabs. Taking it off the viewport and dividing by three is the
   // width the orders bar arrives at on its own.
   const short = tabs.length < 3;
-  const sizing = short ? "w-[calc((100vw-184px)/3)] shrink-0" : "flex-1";
+  const sizing = short ? "w-[calc((100vw-200px)/3)] shrink-0" : "min-w-0 flex-1 basis-0";
 
   return (
     <nav
@@ -304,7 +304,7 @@ export function MobileNav() {
         <div
           key={navMode}
           ref={tabsRef}
-          className={`${GLASS} flex min-h-[58px] min-w-0 items-stretch gap-1 rounded-[2.5rem] p-1.5 transition-[opacity,transform] duration-200 before:inset-x-4 ${
+          className={`${GLASS} flex min-h-[64px] min-w-0 items-stretch gap-1 rounded-[2.5rem] p-1 transition-[opacity,transform] duration-200 before:inset-x-4 ${
             short ? "flex-none" : "flex-1"
           } ${
             split ? (sectioned ? "animate-nav-split" : "animate-nav-merge") : ""
@@ -313,7 +313,7 @@ export function MobileNav() {
           {pill && (
             <span
               aria-hidden
-              className={`seg-glass-pill pointer-events-none absolute rounded-[1.75rem] ${
+              className={`seg-glass-pill pointer-events-none absolute rounded-[2rem] ${
                 pillSeen.current
                   ? "transition-[left,top,width,height] duration-300 ease-out motion-reduce:transition-none"
                   : ""
@@ -331,7 +331,7 @@ export function MobileNav() {
                 key={t.url}
                 to={t.url}
                 aria-current={active ? "page" : undefined}
-                className={`relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-[1.75rem] px-1 py-1.5 transition-colors duration-300 ease-out motion-reduce:transition-none ${
+                className={`relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-[2rem] px-1 py-2.5 transition-colors duration-300 ease-out motion-reduce:transition-none ${
                   sizing
                 } ${
                   active
@@ -358,7 +358,7 @@ export function MobileNav() {
           aria-expanded={searchOpen}
           // ml-auto so a bar that hugs its tabs leaves the gap here, against
           // Search, rather than trailing off the right of the row.
-          className={`${GLASS} ml-auto grid size-[58px] shrink-0 place-items-center rounded-full before:inset-x-2 active:scale-95 ${
+          className={`${GLASS} ml-auto grid size-[64px] shrink-0 place-items-center rounded-full before:inset-x-2 active:scale-95 ${
             filtering ? "text-primary" : "text-foreground/85 hover:text-foreground"
           }`}
           style={{
@@ -381,7 +381,7 @@ export function MobileNav() {
         <div className="pointer-events-none absolute inset-0 flex items-center gap-2">
           {sectioned ? (
             // The section's Home circle is already in this spot.
-            <span aria-hidden className="size-[58px] shrink-0" />
+            <span aria-hidden className="size-[64px] shrink-0" />
           ) : (
             <HomeCircle
               style={{
