@@ -416,11 +416,6 @@ function PrizedCoverflow({
                     <div className="line-clamp-2 text-xl font-semibold leading-tight">
                       {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
                     </div>
-                    {(c.make || c.model) && c.name && (
-                      <div className="mt-0.5 truncate text-sm text-muted-foreground">
-                        {`${c.make} ${c.model}`.trim()}
-                      </div>
-                    )}
                   </div>
                   <button
                     type="button"
