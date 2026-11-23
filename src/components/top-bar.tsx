@@ -143,7 +143,7 @@ export function TopBar() {
             // Round and wordless where the bar is tight; named where there is
             // room for it. Two unlabelled icons side by side is a guess, and
             // the desktop bar has the width to say which is which.
-            className="relative flex size-9 shrink-0 items-center justify-center rounded-full p-0 md:w-auto md:gap-1.5 md:px-3.5"
+            className="relative flex size-9 shrink-0 items-center justify-center rounded-full p-0 max-md:order-3 md:w-auto md:gap-1.5 md:px-3.5"
             title={
               pendingDraft === "bulk"
                 ? "You have an unfinished table of cars — pick up where you left off"
@@ -168,7 +168,7 @@ export function TopBar() {
               asChild
               variant="outline"
               size="icon"
-              className="size-9 rounded-full md:hidden"
+              className="size-9 rounded-full max-md:order-2 md:hidden"
               title="VIIV Shop"
             >
               <Link to="/market" aria-label="VIIV Shop">
@@ -180,14 +180,17 @@ export function TopBar() {
             asChild
             variant="outline"
             size="icon"
-            className="size-9 rounded-full md:hidden"
+            className="size-9 rounded-full max-md:order-1 md:hidden"
             title="Catalogue"
           >
             <Link to="/catalog" aria-label="Catalogue">
               <BookOpen className="size-4.5" />
             </Link>
           </Button>
-          <AccountButton />
+          {/* On a phone the order reads: catalogue, shop, add car, then you. */}
+          <div className="max-md:order-4">
+            <AccountButton />
+          </div>
         </div>
       </div>
       <CarFormDialog
