@@ -535,7 +535,7 @@ function HabitsPage() {
                 })}
               </div>
               <div className="flex gap-[6px]">
-                <div className="sticky left-0 z-10 mr-1.5 flex w-10 shrink-0 flex-col gap-[6px] pl-2 pr-1 text-xs font-medium text-muted-foreground border-r border-border/40">
+                <div className="sticky left-0 z-10 mr-1.5 flex w-10 rounded-l-lg bg-white/70 backdrop-blur-md dark:bg-white/10 shrink-0 flex-col gap-[6px] pl-2 pr-1 text-xs font-medium text-muted-foreground border-r border-border/40">
                   {DAYS.map((d, i) => (
                     <span key={i} className="h-5 leading-5 text-center">
                       {d}
