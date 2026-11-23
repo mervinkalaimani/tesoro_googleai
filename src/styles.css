@@ -515,11 +515,11 @@ html.dark .card-elevated {
   background:
     linear-gradient(
       160deg,
-      color-mix(in oklab, var(--primary) 14%, transparent),
-      color-mix(in oklab, var(--primary) 3%, transparent)
+      color-mix(in oklab, var(--primary) 7%, transparent),
+      color-mix(in oklab, var(--primary) 1.5%, transparent)
     ),
-    linear-gradient(160deg, oklch(1 0 0 / 0.05), oklch(1 0 0 / 0.015));
-  border: 1px solid color-mix(in oklab, var(--primary) 24%, oklch(1 0 0 / 0.1));
+    linear-gradient(160deg, oklch(1 0 0 / 0.04), oklch(1 0 0 / 0.012));
+  border: 1px solid color-mix(in oklab, var(--primary) 12%, oklch(1 0 0 / 0.1));
   box-shadow:
     0 1px 0 oklch(1 0 0 / 0.22) inset,
     0 -1px 0 oklch(1 0 0 / 0.03) inset,

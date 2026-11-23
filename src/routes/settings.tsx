@@ -330,7 +330,8 @@ export function SettingsPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6">
+    // No bold type anywhere on Settings: titles included, whichever shared component draws them.
+    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6 [&_h1]:!font-medium [&_h2]:!font-medium [&_h3]:!font-medium">
       {/* ========================================================================= */}
       {/* ROOT SETTINGS SCREEN (Apple Inset Grouped Table View)                    */}
       {/* ========================================================================= */}
@@ -348,12 +349,12 @@ export function SettingsPage() {
               url={profile?.avatar_url}
               initials={initials}
               className="size-14 border border-border/80 shadow-xs"
-              fallbackClassName="bg-muted text-base font-semibold text-foreground"
+              fallbackClassName="bg-muted text-base font-medium text-foreground"
             />
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="truncate text-base font-semibold text-foreground transition-colors group-hover:text-primary">
+                <span className="truncate text-base font-medium text-foreground transition-colors group-hover:text-primary">
                   {display}
                 </span>
                 {isOwner && (
@@ -387,7 +388,7 @@ export function SettingsPage() {
               onClick={() => changeView("subscription")}
               className="group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:border-border hover:bg-muted/30 active:scale-[0.995]"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Sparkles className="size-4" />
               </div>
               <span className="min-w-0 flex-1 text-[15px] font-medium text-foreground">
@@ -409,7 +410,7 @@ export function SettingsPage() {
               onClick={() => changeView("homepage")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Home className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -426,7 +427,7 @@ export function SettingsPage() {
               onClick={() => changeView("display")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Palette className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -443,7 +444,7 @@ export function SettingsPage() {
               onClick={() => changeView("notifications")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Bell className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -460,7 +461,7 @@ export function SettingsPage() {
               onClick={() => changeView("privacy")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <ShieldCheck className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -477,7 +478,7 @@ export function SettingsPage() {
               onClick={() => changeView("onboarding")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Compass className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -500,7 +501,7 @@ export function SettingsPage() {
                 onClick={() => changeView("advanced")}
                 className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
               >
-                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                   <Wrench className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -520,7 +521,7 @@ export function SettingsPage() {
               onClick={() => changeView("help")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <LifeBuoy className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -535,7 +536,7 @@ export function SettingsPage() {
               onClick={() => changeView("activity")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <History className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -551,7 +552,7 @@ export function SettingsPage() {
               onClick={() => changeView("whats_new")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Sparkles className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -570,7 +571,7 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
-                className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-[15px] font-semibold text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15"
+                className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-[15px] font-medium text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15"
               >
                 <LogOut className="size-4" />
                 {isGuest ? "Leave Demo Mode" : "Log Out"}
@@ -633,7 +634,7 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={() => void handleSignOut()}
-                className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-[15px] font-semibold text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15"
+                className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-[15px] font-medium text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15"
               >
                 <LogOut className="size-4" />
                 {isGuest ? "Leave Demo Mode" : "Log Out"}
@@ -652,7 +653,7 @@ export function SettingsPage() {
 
           {/* Appearance Group */}
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Appearance
             </div>
             <div className="divide-y divide-border/60 overflow-hidden card-elevated">
@@ -712,7 +713,7 @@ export function SettingsPage() {
           {/* The row of counts at the top. A master switch, and — once it is on —
               every card in it, each with its own. */}
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Summary cards
             </div>
             <div className="divide-y divide-border/60 overflow-hidden card-elevated">
@@ -751,7 +752,7 @@ export function SettingsPage() {
               its control on the right. The longer explanations are tooltips, and
               what a mode means is said by its own label. */}
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Shelves
             </div>
             <div className="divide-y divide-border/60 overflow-hidden card-elevated">
@@ -844,7 +845,7 @@ export function SettingsPage() {
               onClick={() => changeView("search_engine")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Search className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -864,7 +865,7 @@ export function SettingsPage() {
               onClick={() => changeView("diagnostics")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Wrench className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -882,7 +883,7 @@ export function SettingsPage() {
               to="/admin"
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <ShieldCheck className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -900,7 +901,7 @@ export function SettingsPage() {
               to="/subscriptions"
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Sparkles className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -913,7 +914,7 @@ export function SettingsPage() {
             </Link>
             {/* VIIV SHOP (beta): who can see it. One setting for every account. */}
             <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 px-4 py-3.5">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <ShoppingCart className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -955,7 +956,7 @@ export function SettingsPage() {
               search={{ tab: "payment" }}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <CreditCard className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -972,7 +973,7 @@ export function SettingsPage() {
               onClick={() => changeView("metadata")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Layers className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -992,7 +993,7 @@ export function SettingsPage() {
               onClick={() => changeView("auth_providers")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <KeyRound className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -1010,7 +1011,7 @@ export function SettingsPage() {
               onClick={() => changeView("database")}
               className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                 <Database className="size-4" />
               </div>
               <div className="min-w-0 flex-1">
@@ -1084,7 +1085,7 @@ export function SettingsPage() {
                   onClick={() => changeView(target)}
                   className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-muted/30 active:bg-muted/50"
                 >
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary/12 text-primary">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white">
                     <Icon className="size-4" />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -1159,7 +1160,7 @@ export function SettingsPage() {
           {/* What VIIV is used for: asked once after sign-in, changed here. The
               details that are not ticked are left off the screen, not deleted. */}
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               What you use VIIV for
             </div>
             <div className="divide-y divide-border/60 overflow-hidden card-elevated">
@@ -1225,7 +1226,7 @@ export function SettingsPage() {
           {/* Admin: push to this device when someone new asks to join */}
           {(isAdmin || isOwner) && !isGuest && (
             <div className="space-y-1.5">
-              <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Admin
               </div>
               <AdminPushCard />
@@ -1234,7 +1235,7 @@ export function SettingsPage() {
 
           {/* Delivery Alerts */}
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Deliveries &amp; Shipments
             </div>
             <div className="divide-y divide-border/60 overflow-hidden card-elevated">
@@ -1293,7 +1294,7 @@ export function SettingsPage() {
 
           {/* In-App Alerts */}
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Banner Alerts
             </div>
             <div className="overflow-hidden card-elevated">
@@ -1316,7 +1317,7 @@ export function SettingsPage() {
 
           {/* Notification Management */}
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               History &amp; Dismissals
             </div>
             <div className="overflow-hidden card-elevated">
@@ -1327,7 +1328,7 @@ export function SettingsPage() {
                 <button
                   type="button"
                   onClick={resetDismissedNotices}
-                  className="glass-btn inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-foreground transition-colors active:scale-95"
+                  className="glass-btn inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium text-foreground transition-colors active:scale-95"
                 >
                   <RotateCcw className="size-3.5" />
                   Reset
@@ -1353,7 +1354,7 @@ export function SettingsPage() {
           />
 
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Data Health &amp; Identifiers
             </div>
             <div className="overflow-hidden card-elevated p-5">
@@ -1370,7 +1371,7 @@ export function SettingsPage() {
           </div>
 
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Collection Integrity
             </div>
             <div className="overflow-hidden card-elevated p-5">
@@ -1435,7 +1436,7 @@ export function SettingsPage() {
                   <Database className="size-5" />
                 </div>
                 <div>
-                  <div className="text-sm font-semibold text-foreground">
+                  <div className="text-sm font-medium text-foreground">
                     {source === "supabase" ? "Connected to Supabase" : "Local Browser Database"}
                   </div>
                   <div className="text-xs text-muted-foreground">
@@ -1466,7 +1467,7 @@ export function SettingsPage() {
           {isOwner ? (
             <div className="space-y-6">
               <div className="space-y-1.5">
-                <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Supabase Synchronization
                 </div>
                 <SupabaseSyncCard />
@@ -1475,7 +1476,7 @@ export function SettingsPage() {
           ) : (
             <div className="card-elevated p-6 text-center">
               <ShieldCheck className="mx-auto size-10 text-muted-foreground/60" />
-              <h3 className="mt-2 text-base font-semibold text-foreground">Owner Configuration</h3>
+              <h3 className="mt-2 text-base font-medium text-foreground">Owner Configuration</h3>
               <p className="mx-auto mt-1 max-w-sm text-xs text-muted-foreground">
                 Database connection endpoints, API keys, and table configurations are managed by the
                 collection owner. Contact the administrator to modify database settings.
@@ -1497,7 +1498,7 @@ export function SettingsPage() {
           />
 
           <div className="space-y-1.5">
-            <div className="px-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <div className="px-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Web Image Lookup Provider
             </div>
             <div className="divide-y divide-border/60 overflow-hidden card-elevated">
@@ -1520,12 +1521,12 @@ export function SettingsPage() {
                           {engine.label}
                         </span>
                         {engine.value === "bing" && (
-                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                             Recommended
                           </span>
                         )}
                         {engine.value === "auto" && (
-                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">
+                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                             Smart Fallback
                           </span>
                         )}
@@ -1568,7 +1569,7 @@ function SubpageHeader({
         <span>{backLabel}</span>
       </button>
 
-      <h2 className="text-lg font-semibold tracking-tight text-foreground">{title}</h2>
+      <h2 className="text-lg font-medium tracking-tight text-foreground">{title}</h2>
 
       {/* Placeholder to keep title optically centered */}
       <div className="w-16" aria-hidden="true" />
