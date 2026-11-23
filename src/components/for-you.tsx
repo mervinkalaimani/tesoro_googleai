@@ -329,32 +329,14 @@ export function ForYou({
         aria-label="For You"
         className={framed ? "card-elevated space-y-2 p-3 [--frame-gap:0.75rem]" : "space-y-2"}
       >
-        <div className="flex items-center justify-between gap-2 px-1">
-          <div className="min-w-0 space-y-1.5">
-            {!hideHeading && (
-              <div>
-                <h2 className="text-display text-lg font-semibold">For You</h2>
-                <p className="text-xs text-muted-foreground">
-                  Picked from the cars you own and what you like
-                </p>
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {stats.count
-                ? `Based on the last ${stats.days} days · ${stats.count} car${stats.count === 1 ? "" : "s"} · ${
-                    stats.perWeek >= 1
-                      ? `about ${Math.round(stats.perWeek)} a week`
-                      : `about ${Math.max(1, Math.round(stats.perMonth))} a month`
-                  }`
-                : `Nothing bought in the last ${stats.days} days · picked from what you own`}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
+        <div className="min-w-0 space-y-0.5 px-1">
+          <div className="flex items-center gap-2">
+            {!hideHeading && <h2 className="text-display text-lg font-semibold">For You</h2>}
             <Button
               type="button"
               size="icon"
               variant="outline"
-              className="size-8"
+              className="size-8 shrink-0"
               aria-label="Refresh suggestions"
               title="Refresh"
               onClick={() => {
@@ -365,6 +347,16 @@ export function ForYou({
               <RefreshCw className="size-4" />
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            {!hideHeading && "Picked from the cars you own and what you like · "}
+            {stats.count
+              ? `Based on the last ${stats.days} days · ${stats.count} car${stats.count === 1 ? "" : "s"} · ${
+                  stats.perWeek >= 1
+                    ? `about ${Math.round(stats.perWeek)} a week`
+                    : `about ${Math.max(1, Math.round(stats.perMonth))} a month`
+                }`
+              : `Nothing bought in the last ${stats.days} days · picked from what you own`}
+          </p>
         </div>
         <ForYouCarousel {...fanProps} />
       </section>
