@@ -431,10 +431,7 @@
   backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid oklch(1 0 0 / 0.6);
   border-radius: 1.5rem;
-  box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.9) inset,
-    0 -1px 0 oklch(0 0 0 / 0.03) inset,
-    0 18px 40px -18px oklch(0.3 0.05 60 / 0.25);
+  box-shadow: 0 18px 40px -18px oklch(0.3 0.05 60 / 0.25);
 }
 /* Glass buttons: the same pane as a card, smaller. `glass-btn` is the quiet
    one (outline, secondary), `glass-btn-solid` the orange one, which stays
@@ -521,10 +518,7 @@ html.dark .card-elevated {
     linear-gradient(160deg, oklch(1 0 0 / 0.04), oklch(1 0 0 / 0.012));
   /* The tint stays; the stroke around it is kept quiet. */
   border: 1px solid oklch(1 0 0 / 0.07);
-  box-shadow:
-    0 1px 0 oklch(1 0 0 / 0.09) inset,
-    0 -1px 0 oklch(1 0 0 / 0.02) inset,
-    0 18px 40px -18px oklch(0 0 0 / 0.7);
+  box-shadow: 0 18px 40px -18px oklch(0 0 0 / 0.7);
 }
 
 /* Hover or selected: an interactive card lights up in the theme colour, a thin ring
