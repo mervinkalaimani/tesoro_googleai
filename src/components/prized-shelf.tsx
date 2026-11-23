@@ -393,7 +393,7 @@ function PrizedCoverflow({
         // The front car's details, on glass over the right of the fan: three
         // quarters of the frame's height, two fifths of its width, centred
         // vertically. Keyed on the car so a new one fades in.
-        <div className="card-elevated glass-pane absolute right-3 top-1/2 z-[200] flex h-[75%] w-[40%] -translate-y-1/2 flex-col gap-3 overflow-hidden p-5 duration-300">
+        <div className="card-elevated glass-pane !bg-white/95 dark:!bg-neutral-900/95 absolute right-3 top-1/2 z-[200] flex h-[75%] w-[40%] -translate-y-1/2 flex-col gap-3 overflow-hidden p-5 duration-300">
           {(() => {
             const c = cars[wrap(base)];
             const facts: [string, string | undefined][] = [
