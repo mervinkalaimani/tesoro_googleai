@@ -239,18 +239,23 @@ export function SellerOrdersDialog({
         {/* THE SHOP, at the size of a title. The picture is a tile rather than a
             circle: a shop is a place, and the round frame is what accounts
             wear everywhere else in the app. */}
+        {/* The shop's picture at the top, the way a car's is on its page: wide, the
+            full width of the panel. Without one, the initials on a tint stand in. */}
+        <div className="relative h-36 w-full shrink-0 overflow-hidden rounded-2xl bg-primary/12 sm:h-48">
+          {shop?.image_url ? (
+            <img
+              src={transformImageUrl(shop.image_url, "card")}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : (
+            <span className="grid size-full place-items-center text-4xl font-bold uppercase text-primary/60">
+              {name.slice(0, 2)}
+            </span>
+          )}
+        </div>
+
         <div className="flex shrink-0 items-center gap-3">
-          <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-primary/12 text-sm font-bold uppercase text-primary sm:size-14">
-            {shop?.image_url ? (
-              <img
-                src={transformImageUrl(shop.image_url, "thumb")}
-                alt=""
-                className="size-full object-cover"
-              />
-            ) : (
-              name.slice(0, 2)
-            )}
-          </span>
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
               <DialogTitle className="truncate !pr-0 text-xl font-bold tracking-tight sm:text-2xl">
