@@ -130,10 +130,10 @@ export function AppSidebar() {
                     if (isMobile) setOpenMobile(false);
                     window.dispatchEvent(new Event(ADD_CAR_EVENT));
                   }}
-                  className="relative h-10 bg-primary text-[14px] font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground group-data-[collapsible=icon]:!size-9"
+                  className="relative h-10 bg-primary text-[14px] font-semibold text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
                 >
                   <Plus className="size-4.5" />
-                  <span>Add car</span>
+                  <span className="group-data-[collapsible=icon]:hidden">Add car</span>
                   {pendingDraft && (
                     <span
                       aria-label="Unfinished car saved"
@@ -147,7 +147,7 @@ export function AppSidebar() {
                   asChild
                   isActive={pathname.startsWith("/catalog")}
                   tooltip="Catalogue"
-                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
                 >
                   <Link
                     to="/catalog"
@@ -156,7 +156,7 @@ export function AppSidebar() {
                     }}
                   >
                     <BookOpen className="size-4.5" />
-                    <span>Catalogue</span>
+                    <span className="group-data-[collapsible=icon]:hidden">Catalogue</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -173,7 +173,7 @@ export function AppSidebar() {
                   asChild
                   isActive={pathname === "/"}
                   tooltip="Home"
-                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
                 >
                   <Link
                     to="/"
@@ -182,7 +182,7 @@ export function AppSidebar() {
                     }}
                   >
                     <Home className="size-4.5" />
-                    <span>Home</span>
+                    <span className="group-data-[collapsible=icon]:hidden">Home</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -212,7 +212,7 @@ export function AppSidebar() {
                           asChild
                           isActive={active}
                           tooltip={item.title}
-                          className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                          className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
                         >
                           <Link
                             to={item.url}
@@ -221,7 +221,9 @@ export function AppSidebar() {
                             }}
                           >
                             <item.icon className="size-4.5" />
-                            <span>{item.title}</span>
+                            <span className="group-data-[collapsible=icon]:hidden">
+                              {item.title}
+                            </span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -272,7 +274,7 @@ export function AppSidebar() {
                     asChild
                     isActive={pathname === "/dashboard"}
                     tooltip="Admin Dashboard"
-                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
                   >
                     <Link
                       to="/dashboard"
@@ -281,7 +283,7 @@ export function AppSidebar() {
                       }}
                     >
                       <LayoutDashboard className="size-4.5" />
-                      <span>Admin Dashboard</span>
+                      <span className="group-data-[collapsible=icon]:hidden">Admin Dashboard</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -289,7 +291,7 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     tooltip="Admin Console"
-                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                    className="h-9 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
                   >
                     <Link
                       to="/settings"
@@ -299,7 +301,7 @@ export function AppSidebar() {
                       }}
                     >
                       <Wrench className="size-4.5" />
-                      <span>Admin Console</span>
+                      <span className="group-data-[collapsible=icon]:hidden">Admin Console</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -316,7 +318,7 @@ export function AppSidebar() {
                     asChild
                     isActive={pathname.startsWith(item.url)}
                     tooltip={item.title}
-                    className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9"
+                    className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:!p-0"
                   >
                     <Link
                       to={item.url}
@@ -325,7 +327,7 @@ export function AppSidebar() {
                       }}
                     >
                       <item.icon className="size-4.5" />
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 group-data-[collapsible=icon]:hidden">
                         {item.store ? (
                           <>
                             <HomeScreenMark className="w-10" /> Shop
