@@ -2419,7 +2419,7 @@ function CarShelfRow({
         )}
       </div>
 
-      <div className="-mx-1 flex min-w-0 snap-x scroll-px-1 items-stretch gap-3 overflow-x-auto px-1 pb-1 no-scrollbar md:grid md:grid-cols-4 md:overflow-hidden md:[&>*:nth-child(n+5)]:hidden">
+      <div className="-mx-3 -my-8 flex min-w-0 snap-x scroll-px-3 items-stretch gap-3 overflow-x-auto px-3 py-8 no-scrollbar md:grid md:grid-cols-4 md:overflow-visible md:[&>*:nth-child(n+5)]:hidden">
         {cars.map((related) => (
           <RelatedCarCard
             key={related.id}

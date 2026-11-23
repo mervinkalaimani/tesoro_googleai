@@ -61,6 +61,9 @@
 :root {
   --viiv-orange: oklch(0.75 0.25 51);
   --viiv-orange-ink: oklch(0.22 0.02 50);
+  /* The second accent: splashes of colour, never text on a light surface (about 1:1 there). */
+  --viiv-yellow: #fffc31;
+  --viiv-yellow-ink: oklch(0.22 0.02 50);
 }
 
 :root {
