@@ -101,7 +101,7 @@ function ForYouCarousel({
       <div
         ref={track}
         onScroll={onScroll}
-        className="no-scrollbar flex snap-x snap-mandatory items-center gap-3 overflow-x-auto px-[8cqw] py-4 sm:mx-0 sm:gap-5 sm:scroll-pl-[calc(16cqw-0.625rem)] sm:px-[calc(16cqw-0.625rem)] [mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]"
+        className="no-scrollbar flex snap-x snap-mandatory items-center gap-3 overflow-x-auto py-4 sm:gap-5 [mask-image:linear-gradient(to_right,black_94%,transparent)]"
         style={{ overscrollBehaviorX: "contain" }}
       >
         {slides.map((p, i) => {
@@ -123,7 +123,7 @@ function ForYouCarousel({
               key={i}
               // Every card is the same size with its details; the ones either side are a little dimmer.
               style={{ opacity: 1 - 0.18 * d }}
-              className="w-[var(--sw)] shrink-0 snap-center snap-always transition-opacity duration-300 [--sw:84cqw] sm:snap-start sm:[--sw:34cqw]"
+              className="w-[var(--sw)] shrink-0 snap-start snap-always transition-opacity duration-300 [--sw:84cqw] sm:[--sw:34cqw]"
             >
               <article className="card-elevated flex overflow-hidden">
                 <button
