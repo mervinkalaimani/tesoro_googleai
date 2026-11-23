@@ -17,6 +17,10 @@ import {
   CalendarClock,
   PackageCheck,
   Bookmark,
+  Car,
+  Eye,
+  EyeOff,
+  Wallet,
 } from "lucide-react";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { TRACKING_CARDS, uses } from "@/lib/use-cases";
@@ -25,7 +29,7 @@ import { TrackingLink } from "@/components/tracking-link";
 import { trackingPageFor } from "@/lib/tracking";
 
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
-import { isInHand, isOpenOrder, normaliseStatus, type Status } from "@/lib/status";
+import { isInHand, isIso, isOpenOrder, normaliseStatus, type Status } from "@/lib/status";
 import { isLate, arrivingWithin } from "@/lib/delivery-watch";
 import type { Diecast } from "@/lib/types";
 import { ARRIVING_WINDOW_DEFAULT, useApp, type ReleasedPreference } from "@/lib/store";
@@ -237,6 +241,9 @@ function DashboardPage() {
     transitEtaDays,
     arrivingSoon,
     arrivingDays,
+    hideInvestment,
+    setHideInvestment,
+    hideCost,
     releasedShelf,
     showRecentlyAdded,
     showNewPreorders,
@@ -292,6 +299,15 @@ function DashboardPage() {
   // the app already knows which of the two it is.
   const first = (profile?.first_name || "").trim().split(/\s+/)[0] || "";
   const greeting = first ? `Hello ${first}` : "Hello";
+
+  // The totals that used to sit at the foot of the sidebar: what you own, and what it cost. Wishlist
+  // rows are not owned, so they are not in either.
+  const [revealInvestment, setRevealInvestment] = useState(false);
+  const totals = useMemo(() => {
+    const owned = data.filter((r) => !isIso(r.status));
+    return { count: owned.length, spent: owned.reduce((s, r) => s + (r.spent || 0), 0) };
+  }, [data]);
+  const investmentHidden = hideInvestment && !revealInvestment;
 
   const kpis = useMemo(() => {
     const countOf = (s: Status) => data.filter((r) => normaliseStatus(r.status) === s).length;
@@ -409,6 +425,45 @@ function DashboardPage() {
         <KpiBand
           className={quiet ? "[&>*]:min-h-20 [&>*]:justify-between md:[&>*]:min-h-32" : undefined}
         >
+          <KpiTile
+            key="total-cars"
+            icon={<Car className="size-4" />}
+            label="Total cars"
+            value={totals.count.toLocaleString()}
+            tone="primary"
+          />
+          <KpiTile
+            key="total-investment"
+            icon={<Wallet className="size-4" />}
+            label="Total investment"
+            tone="primary"
+            value={
+              <span className="flex items-center gap-1.5">
+                <span className="truncate">
+                  {investmentHidden ? "••••••" : inrFull(totals.spent)}
+                </span>
+                {/* With every cost hidden there is nothing for the eye to reveal. */}
+                {!hideCost && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (hideInvestment) setRevealInvestment((v) => !v);
+                      else setHideInvestment(true);
+                    }}
+                    aria-label={investmentHidden ? "Show investment" : "Hide investment"}
+                    className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+                  >
+                    {investmentHidden ? (
+                      <EyeOff className="size-3.5" />
+                    ) : (
+                      <Eye className="size-3.5" />
+                    )}
+                  </button>
+                )}
+              </span>
+            }
+          />
           {kpis.map((k) => (
             <KpiTile
               key={k.key}

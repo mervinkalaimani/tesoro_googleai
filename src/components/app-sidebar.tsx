@@ -1,6 +1,5 @@
-import { isIso } from "@/lib/status";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Home,
   LayoutDashboard,
@@ -10,8 +9,6 @@ import {
   Truck,
   Copy,
   Car,
-  Eye,
-  EyeOff,
   CalendarDays,
   ShoppingBag,
   ShoppingCart,
@@ -23,7 +20,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { filterRows } from "@/lib/search";
 
 import {
   Sidebar,
@@ -38,18 +34,12 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useCars, useCarsSource } from "@/lib/cars-store";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { useCatalog } from "@/lib/catalog-store";
-import { isPackMember, packMemberIds } from "@/lib/pack";
-import { inrFull } from "@/lib/format";
+import { useCarsSource } from "@/lib/cars-store";
 import { cn } from "@/lib/utils";
 import { useStoreEnabled } from "@/market/enabled";
 import { openProDialog } from "@/components/pro-dialog";
 import { paidPlanOf, planIncludes, type PaidPlan } from "@/lib/tiers";
-import { useApp } from "@/lib/store";
 import { useAuth } from "@/lib/auth-store";
-import { Button } from "@/components/ui/button";
 import { usePersona } from "@/lib/persona";
 import { HomeScreenMark, MonogramMark } from "@/components/brand-mark";
 import { ADD_CAR_EVENT } from "@/components/top-bar";
@@ -91,24 +81,11 @@ const NAV_GROUPS: {
 ];
 
 export function AppSidebar() {
-  const allCars = useCars();
-  const { hideInvestment, setHideInvestment, hideCost, query } = useApp();
   const { isAdmin, isOwner, isGuest, plan, profile } = useAuth();
   const { persona } = usePersona();
   const { source } = useCarsSource();
-  const allMatching = useMemo(() => filterRows(allCars, query), [allCars, query]);
-  const { packMembers } = useCatalog();
-  const memberIds = useMemo(() => packMemberIds(packMembers), [packMembers]);
-  // A car that only comes inside a box is not a separate thing you bought. The
-  // box carries the count and the money; counting its five castings as well
-  // would say you own six things and spent the price twice.
-  const data = useMemo(
-    () => allMatching.filter((r) => !isIso(r.status) && !isPackMember(r, memberIds)),
-    [allMatching, memberIds],
-  );
   const { isMobile, setOpenMobile } = useSidebar();
   const storeOn = useStoreEnabled() === true;
-  const [localReveal, setLocalReveal] = useState(false);
   const pathname = useRouterState({ select: (r) => r.location.pathname });
   // An unfinished car or table waiting to be picked up, as the top bar's button used to say.
   const [pendingDraft, setPendingDraft] = useState(false);
@@ -128,14 +105,6 @@ export function AppSidebar() {
       window.clearInterval(id);
     };
   }, []);
-
-  const stats = useMemo(() => {
-    const total = data.length;
-    const spent = data.reduce((s, r) => s + (r.spent || 0), 0);
-    return { total, spent };
-  }, [data]);
-
-  const hidden = hideInvestment && !localReveal;
 
   return (
     <Sidebar collapsible="icon">
@@ -414,57 +383,6 @@ export function AppSidebar() {
               </Link>
             </div>
           )}
-
-          <div>
-            <div className="text-xs uppercase tracking-wider text-muted-foreground">Total cars</div>
-            <div className="text-display text-lg font-semibold tabular-nums">
-              {stats.total.toLocaleString()}
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">
-                Total investment
-              </div>
-              {/* With every cost hidden there is nothing for the eye to reveal. */}
-              {!hideCost && (
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => {
-                        if (hideInvestment) setLocalReveal((v) => !v);
-                        else setHideInvestment(true);
-                      }}
-                      aria-label={hidden ? "Show investment" : "Hide investment"}
-                    >
-                      {hidden ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent side="top" align="end" className="w-64 p-3 text-xs">
-                    <div className="font-semibold text-foreground">Did you know?</div>
-                    <p className="mt-1 text-muted-foreground">
-                      You can hide all cost information in Settings. Go to Settings → Display to
-                      hide your cost info across the app.
-                    </p>
-                    <Link
-                      to="/settings"
-                      search={{ tab: "display" }}
-                      onClick={() => isMobile && setOpenMobile(false)}
-                      className="mt-2 inline-block font-medium text-primary hover:underline"
-                    >
-                      Open Display settings
-                    </Link>
-                  </PopoverContent>
-                </Popover>
-              )}
-            </div>
-            <div className="text-display text-lg font-semibold tabular-nums">
-              {hidden ? "••••••" : inrFull(stats.spent)}
-            </div>
-          </div>
 
           {/* Who is signed in, and signing out, are in the top bar now — behind
               the avatar in the far corner, which is where every other app on the
