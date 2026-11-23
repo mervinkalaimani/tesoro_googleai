@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Boxes,
   Truck,
+  Clock3,
   ShoppingBag,
   Sparkles,
   Info,
@@ -330,15 +331,30 @@ function DashboardPage() {
       value: number | string;
       status?: string;
       ordersTab?: "late";
+      sub?: string;
     }[] = [
       {
-        // Everything still coming: shipped, bought and waiting, or held by the seller. It was three
-        // tiles; the row reads faster with one.
+        // On a ship: only while something is, and then third in the row.
         key: "transit",
-        label: "On the way",
+        label: "In transit",
         tone: "blue",
         icon: <Truck className="size-4" />,
-        value: countOf("In Transit") + countOf("Ordered") + countOf("On Hold"),
+        value: countOf("In Transit"),
+        status: "In Transit",
+      },
+      {
+        // Bought and waiting, or held by the seller: one tile, with the split underneath.
+        key: "ordered",
+        label: "Ordered",
+        tone: "orange",
+        icon: <Clock3 className="size-4" />,
+        value: countOf("Ordered") + countOf("On Hold"),
+        sub: [
+          countOf("Ordered") ? `${countOf("Ordered").toLocaleString()} ordered` : "",
+          countOf("On Hold") ? `${countOf("On Hold").toLocaleString()} on hold` : "",
+        ]
+          .filter(Boolean)
+          .join(" · "),
       },
       {
         key: "po",
@@ -349,14 +365,6 @@ function DashboardPage() {
         status: "PO",
       },
       {
-        key: "iso",
-        label: "Wishlist",
-        tone: "sky",
-        icon: <Bookmark className="size-4" />,
-        value: countOf("ISO"),
-        status: "ISO",
-      },
-      {
         key: "late",
         label: "Late",
         tone: "rose",
@@ -365,6 +373,14 @@ function DashboardPage() {
         // The one tile that is not a status, and so the one that used to be a
         // dead number: My Orders has a Late segment, worked out the same way.
         ordersTab: "late",
+      },
+      {
+        key: "iso",
+        label: "Wishlist",
+        tone: "sky",
+        icon: <Bookmark className="size-4" />,
+        value: countOf("ISO"),
+        status: "ISO",
       },
     ];
     // Settings → Homepage can switch the whole row off, or single cards, and
@@ -454,6 +470,8 @@ function DashboardPage() {
               tone={k.tone}
               status={k.status}
               ordersTab={k.ordersTab}
+              sub={k.sub}
+              subVisibleOnMobile={Boolean(k.sub)}
             />
           ))}
         </KpiBand>
