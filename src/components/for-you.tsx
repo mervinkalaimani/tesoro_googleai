@@ -129,12 +129,13 @@ function ForYouCarousel({
                 <button
                   type="button"
                   onClick={() => (isFront ? onOpen(p.car) : goTo(i))}
-                  className="relative block aspect-[534/658] w-[calc(var(--sw)*0.46)] shrink-0 cursor-pointer overflow-hidden"
+                  className="relative block aspect-[534/658] w-36 shrink-0 sm:w-40 cursor-pointer overflow-hidden"
                   aria-label={isFront ? `Open ${c.name}` : `Show ${c.name}`}
                 >
                   <CarThumb car={c} className="absolute inset-0 size-full" />
                 </button>
-                <div className="flex w-[calc(var(--sw)*0.54)] shrink-0 flex-col justify-between gap-2 p-3">
+                {/* Compact enough that the picture, the size of a Recently added card, sets the card's height. */}
+                <div className="flex min-w-0 flex-1 flex-col justify-between gap-1 overflow-hidden p-2">
                   <div className="space-y-0.5">
                     <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
                       <Sparkles className="size-3 fill-amber-400 text-amber-400" />
@@ -159,7 +160,7 @@ function ForYouCarousel({
                       ))}
                     </dl>
                   )}
-                  <p className="line-clamp-3 text-xs leading-snug text-muted-foreground">
+                  <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
                     {p.reason}
                   </p>
                   <div
@@ -170,31 +171,31 @@ function ForYouCarousel({
                       onClick={() => onDismiss(p.car.car_id)}
                       aria-label="Not interested"
                       title="Not interested: don't suggest this again"
-                      className={`${btn} glass-btn size-8 text-foreground`}
+                      className={`${btn} glass-btn size-7 text-foreground`}
                     >
-                      <ThumbsDown className="size-4" />
+                      <ThumbsDown className="size-3.5" />
                     </button>
                     <button
                       type="button"
                       onClick={() => onLike(p.car.car_id)}
                       aria-label="Show more like this"
                       title="Show more cars like this"
-                      className={`${btn} glass-btn size-8 text-foreground`}
+                      className={`${btn} glass-btn size-7 text-foreground`}
                     >
-                      <ThumbsUp className="size-4" />
+                      <ThumbsUp className="size-3.5" />
                     </button>
                     <WishlistHeart
                       entry={p.car}
-                      className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
+                      className={`${btn} size-7 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
                     />
                     <button
                       type="button"
                       onClick={() => onAdd(p.car)}
                       aria-label="Add to my collection"
                       title="Add to my collection"
-                      className={`${btn} glass-btn-solid ml-auto size-11 bg-primary/90 text-primary-foreground hover:bg-primary`}
+                      className={`${btn} glass-btn-solid ml-auto size-9 bg-primary/90 text-primary-foreground hover:bg-primary`}
                     >
-                      <Plus className="size-5" />
+                      <Plus className="size-4" />
                     </button>
                   </div>
                 </div>
