@@ -40,7 +40,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { VerifiedBadge } from "@/components/verified-badge";
 import { KpiTile } from "@/components/kpi";
-import { SegmentControl } from "@/components/segment-control";
+import { CyclePill, SegmentControl } from "@/components/segment-control";
 import { StatusPill } from "@/components/status-pill";
 import { useAuth } from "@/lib/auth-store";
 import { useCars } from "@/lib/cars-store";
@@ -386,6 +386,21 @@ export function SellerOrdersDialog({
               so two controls: the segment says how the cars are bundled and
               the pills say which bundles to show. */}
           <div className="flex flex-wrap items-center gap-2">
+            {/* Which bundles: All is the default and leads, the rest cycle through the statuses
+                that are actually here, each with its count. */}
+            {marks.length > 1 && (
+              <CyclePill<string>
+                separate="all"
+                value={only || "all"}
+                onChange={(v) => setOnly(v === "all" ? "" : v)}
+                className="h-9"
+                options={[
+                  { value: "all", label: `All ${all.length}` },
+                  ...marks.map(([status, n]) => ({ value: status, label: `${status} ${n}` })),
+                ]}
+              />
+            )}
+
             <SegmentControl<GroupBy>
               fill
               value={by}
@@ -400,22 +415,6 @@ export function SellerOrdersDialog({
                 { value: "shippingId", label: "Shipping ID" },
               ]}
             />
-
-            {marks.length > 1 && (
-              <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <Mark on={only === ""} onClick={() => setOnly("")} label="All" n={all.length} />
-                {marks.map(([status, n]) => (
-                  <Mark
-                    key={status}
-                    on={only === status}
-                    onClick={() => setOnly(only === status ? "" : status)}
-                    label={status}
-                    n={n}
-                    tone={styleFor(status)}
-                  />
-                ))}
-              </div>
-            )}
 
             {only && (
               <span className="shrink-0 text-xs text-muted-foreground">
@@ -598,38 +597,6 @@ export function SellerOrdersDialog({
           same seller, opened from the page about them. */}
       <SellerEditDialog open={editing} onOpenChange={setEditing} seller={seller} details={shop} />
     </Dialog>
-  );
-}
-
-/** One status filter: what it is, how many, and whether it is the one on. */
-function Mark({
-  on,
-  onClick,
-  label,
-  n,
-  tone,
-}: {
-  on: boolean;
-  onClick: () => void;
-  label: string;
-  n: number;
-  tone?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={on}
-      className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-        on
-          ? "border-foreground bg-foreground text-background"
-          : cn("border-border hover:bg-muted", tone),
-      )}
-    >
-      {label}
-      <span className={cn("tabular-nums", on ? "opacity-70" : "text-muted-foreground")}>{n}</span>
-    </button>
   );
 }
 
