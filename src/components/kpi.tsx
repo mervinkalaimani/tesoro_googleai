@@ -138,6 +138,7 @@ export function KpiTile({
       </div>
       {sub && (
         <div
+          data-kpi-sub
           className={cn(
             "mt-1 truncate font-mono text-xs",
             subVisibleOnMobile ? "block" : "hidden md:block",

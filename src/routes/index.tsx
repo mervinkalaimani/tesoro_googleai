@@ -312,6 +312,38 @@ function DashboardPage() {
   }, [data]);
   const investmentHidden = hideInvestment && !revealInvestment;
 
+  // The Wishlist is the least urgent tile: when a line of text in another tile would be cut short,
+  // it steps aside so the rest have the room. Re-judged whenever the width changes.
+  const bandRef = useRef<HTMLDivElement>(null);
+  const [crowded, setCrowded] = useState(false);
+  useEffect(() => {
+    let frame = 0;
+    let width = window.innerWidth;
+    const judge = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        const cut = [
+          ...(bandRef.current?.querySelectorAll<HTMLElement>("[data-kpi-sub]") ?? []),
+        ].some((el) => el.scrollWidth > el.clientWidth + 1);
+        // Only ever ask while the Wishlist is showing: once it has stepped aside the lines fit,
+        // which says nothing about whether they would with it back.
+        setCrowded((was) => (was ? was : cut));
+      });
+    };
+    const onResize = () => {
+      if (window.innerWidth === width) return;
+      width = window.innerWidth;
+      setCrowded(false);
+      judge();
+    };
+    judge();
+    window.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.cancelAnimationFrame(frame);
+    };
+  });
+
   const kpis = useMemo(() => {
     const countOf = (s: Status) => data.filter((r) => normaliseStatus(r.status) === s).length;
 
@@ -417,64 +449,68 @@ function DashboardPage() {
         // short, and the numbers are what is left to look at. They take the
         // room the shelves would have had rather than sitting in a thin strip
         // above nothing.
-        <KpiBand
-          className={quiet ? "[&>*]:min-h-20 [&>*]:justify-between md:[&>*]:min-h-32" : undefined}
-        >
-          <KpiTile
-            key="total-cars"
-            icon={<Car className="size-4" />}
-            label="Cars"
-            value={totals.count.toLocaleString()}
-            sub={`${totals.inHand.toLocaleString()} in hand`}
-            subVisibleOnMobile
-            tone="primary"
-          />
-          <KpiTile
-            key="total-investment"
-            icon={<Wallet className="size-4" />}
-            label="Invested"
-            tone="primary"
-            value={
-              <span className="flex items-center gap-1.5">
-                <span className="truncate">
-                  {investmentHidden ? "••••••" : inrFull(totals.spent)}
-                </span>
-                {/* With every cost hidden there is nothing for the eye to reveal. */}
-                {!hideCost && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (hideInvestment) setRevealInvestment((v) => !v);
-                      else setHideInvestment(true);
-                    }}
-                    aria-label={investmentHidden ? "Show investment" : "Hide investment"}
-                    className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"
-                  >
-                    {investmentHidden ? (
-                      <EyeOff className="size-3.5" />
-                    ) : (
-                      <Eye className="size-3.5" />
-                    )}
-                  </button>
-                )}
-              </span>
-            }
-          />
-          {kpis.map((k) => (
+        <div ref={bandRef}>
+          <KpiBand
+            className={quiet ? "[&>*]:min-h-20 [&>*]:justify-between md:[&>*]:min-h-32" : undefined}
+          >
             <KpiTile
-              key={k.key}
-              icon={k.icon}
-              label={k.label}
-              value={typeof k.value === "number" ? k.value.toLocaleString() : k.value}
-              tone={k.tone}
-              status={k.status}
-              ordersTab={k.ordersTab}
-              sub={k.sub}
-              subVisibleOnMobile={Boolean(k.sub)}
+              key="total-cars"
+              icon={<Car className="size-4" />}
+              label="Cars"
+              value={totals.count.toLocaleString()}
+              sub={`${totals.inHand.toLocaleString()} in hand`}
+              subVisibleOnMobile
+              tone="primary"
             />
-          ))}
-        </KpiBand>
+            <KpiTile
+              key="total-investment"
+              icon={<Wallet className="size-4" />}
+              label="Invested"
+              tone="primary"
+              value={
+                <span className="flex items-center gap-1.5">
+                  <span className="truncate">
+                    {investmentHidden ? "••••••" : inrFull(totals.spent)}
+                  </span>
+                  {/* With every cost hidden there is nothing for the eye to reveal. */}
+                  {!hideCost && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (hideInvestment) setRevealInvestment((v) => !v);
+                        else setHideInvestment(true);
+                      }}
+                      aria-label={investmentHidden ? "Show investment" : "Hide investment"}
+                      className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:text-foreground"
+                    >
+                      {investmentHidden ? (
+                        <EyeOff className="size-3.5" />
+                      ) : (
+                        <Eye className="size-3.5" />
+                      )}
+                    </button>
+                  )}
+                </span>
+              }
+            />
+            {kpis
+              .filter((k) => !(crowded && k.key === "iso"))
+              .map((k) => (
+                <KpiTile
+                  key={k.key}
+                  icon={k.icon}
+                  label={k.label}
+                  value={typeof k.value === "number" ? k.value.toLocaleString() : k.value}
+                  tone={k.tone}
+                  status={k.status}
+                  ordersTab={k.ordersTab}
+                  sub={k.sub}
+                  subVisibleOnMobile={Boolean(k.sub)}
+                />
+              ))}
+          </KpiBand>
+        </div>
       )}
 
       <MySubscriptionRequest />
