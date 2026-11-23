@@ -225,6 +225,7 @@ export function SellerOrdersDialog({
       spent,
       shipping,
       paid,
+      paidPo: mine.filter((c) => isPreOrder(c.status)).reduce((n, c) => n + paidOf(c), 0),
       owed: Math.max(spent - paid, 0),
       po: mine.filter((c) => isPreOrder(c.status)).length,
       pending: mine.filter((c) => canBeLate(c.status)).length,
@@ -404,6 +405,8 @@ export function SellerOrdersDialog({
                 <KpiTile
                   label="Paid"
                   value={inrFull(totals.paid)}
+                  sub={`PO ${inrFull(totals.paidPo)} · Orders ${inrFull(totals.paid - totals.paidPo)}`}
+                  subVisibleOnMobile
                   icon={<CheckCircle2 className="size-4" />}
                   tone="emerald"
                 />
