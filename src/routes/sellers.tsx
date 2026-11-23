@@ -75,8 +75,8 @@ function Count({ n, status, label }: { n: number; status: string; label?: string
         styleFor(status),
       )}
     >
+      {label && `${label} `}
       {n}
-      {label && ` ${label}`}
     </span>
   );
 }
@@ -241,10 +241,10 @@ function SellersPage() {
                 {(g.po > 0 || g.pending > 0 || g.owed > 0) && (
                   <span className="mt-1 flex flex-wrap items-center gap-1.5">
                     {g.po > 0 && <Count n={g.po} status="PO" label="PO" />}
-                    {g.pending > 0 && <Count n={g.pending} status="Ordered" label="pending" />}
+                    {g.pending > 0 && <Count n={g.pending} status="Ordered" label="Pending" />}
                     {g.owed > 0 && (
                       <span className="inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium tabular-nums text-amber-700 dark:text-amber-300">
-                        owed {inr(g.owed)}
+                        Owed {inr(g.owed)}
                       </span>
                     )}
                   </span>
