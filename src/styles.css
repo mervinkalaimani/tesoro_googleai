@@ -530,6 +530,36 @@ html.dark .glass-btn:hover {
   }
 }
 
+/* A pane of glass laid over something busy (the Prized possessions details over the fan of cards):
+   it is lit from the top left, picks up the colour of what is behind it and the accent, and is
+   frosted enough to keep its words readable. A flat milky white over it is not glass. */
+.card-elevated.glass-pane {
+  background: linear-gradient(
+    150deg,
+    oklch(1 0 0 / 0.62),
+    oklch(1 0 0 / 0.3) 55%,
+    color-mix(in oklab, var(--primary) 9%, oklch(1 0 0 / 0.3))
+  );
+  -webkit-backdrop-filter: blur(34px) saturate(2) brightness(1.05);
+  backdrop-filter: blur(34px) saturate(2) brightness(1.05);
+  border: 1px solid oklch(1 0 0 / 0.7);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.95) inset,
+    0 -1px 0 oklch(1 0 0 / 0.3) inset,
+    0 24px 48px -20px oklch(0.3 0.05 60 / 0.32);
+}
+html.dark .card-elevated.glass-pane {
+  background: linear-gradient(
+    150deg,
+    oklch(1 0 0 / 0.16),
+    oklch(1 0 0 / 0.05) 55%,
+    color-mix(in oklab, var(--primary) 12%, oklch(1 0 0 / 0.04))
+  );
+  border: 1px solid oklch(1 0 0 / 0.14);
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.22) inset,
+    0 24px 48px -20px oklch(0 0 0 / 0.6);
+}
 html.dark .card-elevated {
   /* The glass carries the theme colour in its own pane, so it keeps its intensity now the
      glow behind the page is faint: a tint of the theme over the usual white sheen. */
