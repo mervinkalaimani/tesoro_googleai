@@ -34,6 +34,39 @@ function useColumns() {
   return n;
 }
 
+/**
+ * Glass heart: tapped, it fills red and pops, and only then puts the car on the ISO list,
+ * which takes the card off the shelf, so the pop has time to be seen.
+ */
+function HeartButton({ onAdd }: { onAdd: () => void }) {
+  const [popped, setPopped] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={popped}
+      onClick={() => {
+        setPopped(true);
+        window.setTimeout(onAdd, 550);
+      }}
+      aria-label="Add to my ISO list"
+      title="Add to my ISO list"
+      className="absolute bottom-14 right-3 grid size-8 cursor-pointer place-items-center rounded-full border border-white/50 bg-white/25 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.6),0_4px_12px_rgba(0,0,0,0.25)] backdrop-blur-md transition-colors hover:bg-white/35"
+    >
+      {popped && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-full border-2 border-red-400"
+          style={{ animation: "heart-ring 0.55s ease-out forwards" }}
+        />
+      )}
+      <Heart
+        className={popped ? "size-4 fill-red-500 text-red-500" : "size-4"}
+        style={popped ? { animation: "heart-pop 0.5s cubic-bezier(0.3, 1.6, 0.5, 1)" } : undefined}
+      />
+    </button>
+  );
+}
+
 /** The castings this person said no (or yes please) to, kept on this device. */
 function useDismissed(uid?: string, kind: "dismissed" | "liked" = "dismissed") {
   const key = `viiv.forYou.${kind}.${uid ?? "guest"}`;
@@ -185,16 +218,16 @@ export function ForYou({
                   />
                 }
               />
-              {/* Top right: not for me (it never comes back up here), or put it on my ISO list. */}
-              <div className="absolute right-2 top-2 flex items-center gap-1.5">
+              {/* Top right: not for me (it never comes back up here), or more like this. */}
+              <div className="absolute right-2 top-2 flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => dismiss(car.car_id)}
                   aria-label="Not interested"
                   title="Not interested: don't suggest this again"
-                  className="grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
+                  className="grid size-6 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
                 >
-                  <ThumbsDown className="size-4" />
+                  <ThumbsDown className="size-3.5" />
                 </button>
                 <button
                   type="button"
@@ -205,20 +238,13 @@ export function ForYou({
                   }}
                   aria-label="Show more like this"
                   title="Show more cars like this"
-                  className="grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
+                  className="grid size-6 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
                 >
-                  <ThumbsUp className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => addToIso(car)}
-                  aria-label="Add to my ISO list"
-                  title="Add to my ISO list"
-                  className="grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
-                >
-                  <Heart className="size-4" />
+                  <ThumbsUp className="size-3.5" />
                 </button>
               </div>
+              {/* On top of the +: put it on my ISO list. */}
+              <HeartButton onAdd={() => addToIso(car)} />
               {/* Add it without opening it: the same form, filled in from the casting. */}
               <button
                 type="button"
