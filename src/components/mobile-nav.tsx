@@ -313,7 +313,7 @@ export function MobileNav() {
           {pill && (
             <span
               aria-hidden
-              className={`pointer-events-none absolute rounded-[1.75rem] bg-foreground/[0.04] shadow-[inset_0_1px_0_oklch(1_0_0/0.22)] ring-1 ring-inset ring-foreground/15 backdrop-blur-sm ${
+              className={`seg-glass-pill pointer-events-none absolute rounded-[1.75rem] ${
                 pillSeen.current
                   ? "transition-[left,top,width,height] duration-300 ease-out motion-reduce:transition-none"
                   : ""
