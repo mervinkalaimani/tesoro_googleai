@@ -409,7 +409,7 @@ function HabitsPage() {
         </div>
       </PageHeading>
 
-      <section className="grid grid-cols-2 gap-2 pb-1 sm:grid-cols-4 md:no-scrollbar md:-mx-4 md:-my-8 md:flex md:snap-x md:scroll-px-4 md:gap-3 md:overflow-x-auto md:px-4 md:py-8 md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
+      <section className="grid grid-cols-2 gap-2 pb-1 sm:grid-cols-4 md:no-scrollbar md:-mx-4 md:-mt-8 md:mb-3 md:flex md:snap-x md:scroll-px-4 md:gap-3 md:overflow-x-auto md:px-4 md:py-8 md:[&>*]:min-w-[9.5rem] md:[&>*]:flex-1">
         <KpiTile
           icon={<CalendarDays className="size-4" />}
           label={`Active ${unit}s`}
