@@ -115,7 +115,7 @@ export function KpiTile({
 }) {
   const body = (
     <>
-      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground md:gap-2 md:text-xs">
+      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground md:gap-2 md:text-xs">
         <span
           className={cn(
             "grid size-5 shrink-0 place-items-center md:size-6",

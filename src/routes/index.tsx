@@ -428,14 +428,14 @@ function DashboardPage() {
           <KpiTile
             key="total-cars"
             icon={<Car className="size-4" />}
-            label="Total cars"
+            label="Cars"
             value={totals.count.toLocaleString()}
             tone="primary"
           />
           <KpiTile
             key="total-investment"
             icon={<Wallet className="size-4" />}
-            label="Total investment"
+            label="Invested"
             tone="primary"
             value={
               <span className="flex items-center gap-1.5">
