@@ -104,18 +104,18 @@
 }
 
 /*
-   Crimson, which was the default until the app became VIIV. Still a choice,
+   Red (stored as "crimson"), which was the default until the app became VIIV. Still a choice,
    and still what everybody who picked it keeps: their stored preference names
    it, so it has to go on meaning what it meant.
 */
 :root[data-accent="crimson"] {
-  --primary: oklch(0.62 0.27 18);
+  --primary: oklch(0.6 0.25 29);
   --primary-foreground: oklch(0.99 0 0);
-  --ring: oklch(0.62 0.27 18);
-  --chart-1: oklch(0.62 0.27 18);
-  --sidebar-primary: oklch(0.62 0.27 18);
+  --ring: oklch(0.6 0.25 29);
+  --chart-1: oklch(0.6 0.25 29);
+  --sidebar-primary: oklch(0.6 0.25 29);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-ring: oklch(0.62 0.27 18);
+  --sidebar-ring: oklch(0.6 0.25 29);
 }
 
 :root[data-accent="blue"] {
@@ -196,13 +196,13 @@
 }
 
 :root.dark[data-accent="crimson"] {
-  --primary: oklch(0.68 0.27 18);
+  --primary: oklch(0.66 0.25 29);
   --primary-foreground: oklch(0.99 0 0);
-  --ring: oklch(0.68 0.27 18);
-  --chart-1: oklch(0.68 0.27 18);
-  --sidebar-primary: oklch(0.68 0.27 18);
+  --ring: oklch(0.66 0.25 29);
+  --chart-1: oklch(0.66 0.25 29);
+  --sidebar-primary: oklch(0.66 0.25 29);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-ring: oklch(0.68 0.27 18);
+  --sidebar-ring: oklch(0.66 0.25 29);
 }
 
 :root.dark[data-accent="blue"] {

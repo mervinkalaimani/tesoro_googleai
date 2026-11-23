@@ -46,7 +46,7 @@ export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   // box. Crimson stays below it: it was the default until the rebrand, and
   // everybody who has one stored keeps it.
   { value: "viiv", label: "ViiV Orange" },
-  { value: "crimson", label: "Crimson" },
+  { value: "crimson", label: "Red" },
   { value: "blue", label: "Blue" },
   { value: "emerald", label: "Emerald" },
   { value: "violet", label: "Violet" },
