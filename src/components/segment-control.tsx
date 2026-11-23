@@ -80,7 +80,7 @@ function SegmentRow<T extends string>({
       ref={containerRef}
       className={cn(
         // Flow strictly left and right: flex-nowrap, whitespace-nowrap, overflow-y-hidden, touch-pan-x
-        "flex flex-nowrap min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto overflow-y-hidden whitespace-nowrap touch-pan-x overscroll-x-contain relative glass-btn !shadow-none scroll-px-[3px] rounded-full p-[3px] text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "flex flex-nowrap min-w-0 max-w-full h-8 shrink-0 items-center snap-x overflow-x-auto overflow-y-hidden whitespace-nowrap touch-pan-x overscroll-x-contain relative glass-btn [html.dark_&]:!shadow-none scroll-px-[3px] rounded-full p-[3px] text-xs [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         fill ? "w-full" : "inline-flex w-auto",
         disabled && "pointer-events-none opacity-50",
         className,
