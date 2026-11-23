@@ -385,7 +385,9 @@ export function TopBar() {
         <Button
           onClick={openAdd}
           aria-label="Add car"
-          className="relative hidden h-9 gap-1.5 rounded-full px-3.5 md:inline-flex"
+          // Exactly the height of the bell and the avatar (36px); the glow is held in close so the button does
+          // not read taller than they are.
+          className="relative hidden h-9 gap-1.5 rounded-full px-3.5 md:inline-flex !shadow-[0_1px_0_oklch(1_0_0/0.5)_inset,0_5px_10px_-6px_var(--primary)]"
           title={
             pendingDraft === "bulk"
               ? "You have an unfinished table of cars — pick up where you left off"
