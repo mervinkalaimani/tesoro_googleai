@@ -28,6 +28,7 @@ import {
   MapPin,
   Package,
   Pencil,
+  X,
   Phone,
   Receipt,
   Scale,
@@ -230,11 +231,14 @@ export function SellerOrdersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[calc(100dvh-3rem)] w-full max-w-full flex-col gap-4 overflow-hidden sm:max-w-6xl max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none">
+      <DialogContent
+        hideClose
+        className="flex max-h-[calc(100dvh-3rem)] w-full max-w-full flex-col gap-4 overflow-hidden sm:max-w-6xl max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none"
+      >
         {/* THE SHOP, at the size of a title. The picture is a tile rather than a
             circle: a shop is a place, and the round frame is what accounts
             wear everywhere else in the app. */}
-        <div className="flex shrink-0 items-start gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl bg-primary/12 text-sm font-bold uppercase text-primary sm:size-14">
             {shop?.image_url ? (
               <img
@@ -292,6 +296,16 @@ export function SellerOrdersDialog({
                 <WhatsAppMark />
               </Action>
             )}
+            {/* Close sits with the others, in the same round button, at the end. */}
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              aria-label="Close"
+              title="Close"
+              className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="size-4" />
+            </button>
           </div>
         </div>
 
