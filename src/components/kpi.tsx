@@ -152,7 +152,9 @@ export function KpiTile({
   );
 
   const shell = cn(
-    "card-elevated flex min-w-0 flex-col overflow-hidden p-3.5 text-left md:p-4",
+    // When a row of tiles is stretched to the tallest, the spare height is shared out evenly round
+    // the content rather than left in a heap under it.
+    "card-elevated flex min-w-0 flex-col justify-evenly overflow-hidden p-3.5 text-left md:p-4",
     className,
   );
 
