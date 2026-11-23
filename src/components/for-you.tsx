@@ -171,6 +171,7 @@ export function ForYou({
                     noAssortment
                     padRight
                     detail={reason}
+                    detailClassName="leading-snug [font-size:clamp(9px,4.2cqw,11px)]"
                   />
                 }
               />

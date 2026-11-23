@@ -23,11 +23,14 @@ export function CarOverlay({
   padRight = false,
   suffix,
   detail,
+  detailClassName,
   className,
 }: {
   car: Diecast;
   /** Replaces the series line, e.g. who a pre-order is coming from. */
   detail?: string;
+  /** Type size for that line, when it is more than a series name. */
+  detailClassName?: string;
   brandOnly?: boolean;
   /** Leave the assortment (Box, Blister…) off the brand line. */
   noAssortment?: boolean;
@@ -89,7 +92,12 @@ export function CarOverlay({
         </div>
       )}
       {seriesLine && (
-        <div className="break-words text-white/60 [font-size:clamp(10px,5.4cqw,13px)]">
+        <div
+          className={cn(
+            "break-words text-white/60 [font-size:clamp(10px,5.4cqw,13px)]",
+            detailClassName,
+          )}
+        >
           {seriesLine}
         </div>
       )}
