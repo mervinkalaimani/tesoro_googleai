@@ -312,7 +312,7 @@ function DashboardPage() {
   }, [data]);
   const investmentHidden = hideInvestment && !revealInvestment;
 
-  // The Wishlist is the least urgent tile: when a line of text in another tile would be cut short,
+  // The Wishlist is the least urgent tile: when a label or a line of text in another tile would be cut short,
   // it steps aside so the rest have the room. Re-judged whenever the width changes.
   const bandRef = useRef<HTMLDivElement>(null);
   const [crowded, setCrowded] = useState(false);
@@ -323,7 +323,8 @@ function DashboardPage() {
       window.cancelAnimationFrame(frame);
       frame = window.requestAnimationFrame(() => {
         const cut = [
-          ...(bandRef.current?.querySelectorAll<HTMLElement>("[data-kpi-sub]") ?? []),
+          ...(bandRef.current?.querySelectorAll<HTMLElement>("[data-kpi-sub],[data-kpi-label]") ??
+            []),
         ].some((el) => el.scrollWidth > el.clientWidth + 1);
         // Only ever ask while the Wishlist is showing: once it has stepped aside the lines fit,
         // which says nothing about whether they would with it back.
@@ -375,18 +376,12 @@ function DashboardPage() {
         status: "In Transit",
       },
       {
-        // Bought and waiting, or held by the seller: one tile, with the split underneath.
+        // Bought and waiting. (On hold is counted under Pre-orders.)
         key: "ordered",
         label: "Ordered",
         tone: "orange",
         icon: <Clock3 className="size-4" />,
-        value: countOf("Ordered") + countOf("On Hold"),
-        sub: [
-          countOf("Ordered") ? `${countOf("Ordered").toLocaleString()} ordered` : "",
-          countOf("On Hold") ? `${countOf("On Hold").toLocaleString()} on hold` : "",
-        ]
-          .filter(Boolean)
-          .join(" · "),
+        value: countOf("Ordered"),
       },
       {
         key: "po",
@@ -395,6 +390,8 @@ function DashboardPage() {
         icon: <ShoppingBag className="size-4" />,
         value: countOf("PO"),
         status: "PO",
+        // What is being held for you by the seller, kept with the orders still to come.
+        sub: countOf("On Hold") ? `${countOf("On Hold").toLocaleString()} on hold` : undefined,
       },
       {
         key: "late",

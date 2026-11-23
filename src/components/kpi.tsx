@@ -126,35 +126,39 @@ export function KpiTile({
         >
           {icon}
         </span>
-        <span className="truncate">{label}</span>
+        <span data-kpi-label className="truncate">
+          {label}
+        </span>
       </div>
-      <div
-        className={cn(
-          "text-display mt-1 truncate text-2xl font-semibold leading-none tabular-nums md:mt-2 md:text-3xl",
-          valueTone ? TONE_VALUE[valueTone] : undefined,
-        )}
-      >
-        {value}
-      </div>
-      {sub && (
+      {/* The label stays at the top of every tile, so the titles line up across a row; the number and
+          its line share out whatever height is left under it. */}
+      <div className="flex flex-1 flex-col justify-center">
         <div
-          data-kpi-sub
           className={cn(
-            "mt-1 truncate font-mono text-xs",
-            subVisibleOnMobile ? "block" : "hidden md:block",
-            valueTone ? cn(TONE_VALUE[valueTone], "opacity-80") : "text-muted-foreground",
+            "text-display mt-1 truncate text-2xl font-semibold leading-none tabular-nums md:mt-2 md:text-3xl",
+            valueTone ? TONE_VALUE[valueTone] : undefined,
           )}
         >
-          {sub}
+          {value}
         </div>
-      )}
+        {sub && (
+          <div
+            data-kpi-sub
+            className={cn(
+              "mt-1 truncate font-mono text-xs",
+              subVisibleOnMobile ? "block" : "hidden md:block",
+              valueTone ? cn(TONE_VALUE[valueTone], "opacity-80") : "text-muted-foreground",
+            )}
+          >
+            {sub}
+          </div>
+        )}
+      </div>
     </>
   );
 
   const shell = cn(
-    // When a row of tiles is stretched to the tallest, the spare height is shared out evenly round
-    // the content rather than left in a heap under it.
-    "card-elevated flex min-w-0 flex-col justify-evenly overflow-hidden p-3.5 text-left md:p-4",
+    "card-elevated flex min-w-0 flex-col overflow-hidden p-3.5 text-left md:p-4",
     className,
   );
 
