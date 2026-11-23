@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuickAdd } from "@/components/use-quick-add";
 import { useAddToIso } from "@/lib/quick-iso";
-import { Heart, Plus, RefreshCw, Sparkles, ThumbsDown } from "lucide-react";
+import { Heart, Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
 
 import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { BLISTER_GRID_COLS } from "@/components/view-toggle";
@@ -34,9 +34,9 @@ function useColumns() {
   return n;
 }
 
-/** The castings this person said no to, kept on this device. */
-function useDismissed(uid?: string) {
-  const key = `viiv.forYou.dismissed.${uid ?? "guest"}`;
+/** The castings this person said no (or yes please) to, kept on this device. */
+function useDismissed(uid?: string, kind: "dismissed" | "liked" = "dismissed") {
+  const key = `viiv.forYou.${kind}.${uid ?? "guest"}`;
   const [ids, setIds] = useState<string[]>([]);
   useEffect(() => {
     try {
@@ -78,6 +78,7 @@ export function ForYou({
   const SET = useColumns();
   const { isGuest, isAdmin, user } = useAuth();
   const { ids: dismissed, dismiss } = useDismissed(user?.id);
+  const { ids: liked, dismiss: like } = useDismissed(user?.id, "liked");
   const addToIso = useAddToIso();
   const quickAdd = useQuickAdd();
   // What other collectors bought in the last two months, and how many of them each.
@@ -89,9 +90,14 @@ export function ForYou({
   }, [shared]);
   const pool = useMemo(() => {
     const no = new Set(dismissed);
+    const yes = new Set(liked);
     const disliked = catalog.filter((c) => no.has(c.car_id));
-    return forYou(cars, catalog, 48, popular, disliked).filter((s) => !no.has(s.car.car_id));
-  }, [cars, catalog, popular, dismissed]);
+    const wanted = catalog.filter((c) => yes.has(c.car_id));
+    // A casting already answered, either way, is not asked about again.
+    return forYou(cars, catalog, 48, popular, disliked, wanted).filter(
+      (s) => !no.has(s.car.car_id) && !yes.has(s.car.car_id),
+    );
+  }, [cars, catalog, popular, dismissed, liked]);
   // The period behind the picks is chosen for you (never more than two months), and shown.
   const stats = useMemo(() => purchaseStats(cars), [cars]);
   // One set at a time; Refresh reshuffles the ranking and brings up another.
@@ -189,6 +195,19 @@ export function ForYou({
                   className="grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
                 >
                   <ThumbsDown className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // More like this: its traits count for you, and the set is dealt again.
+                    like(car.car_id);
+                    setSeed(Math.floor(Math.random() * 2 ** 31) + 1);
+                  }}
+                  aria-label="Show more like this"
+                  title="Show more cars like this"
+                  className="grid size-8 cursor-pointer place-items-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-transform hover:bg-black/75 active:scale-95"
+                >
+                  <ThumbsUp className="size-4" />
                 </button>
                 <button
                   type="button"

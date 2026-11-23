@@ -5,8 +5,7 @@ import { CarThumb } from "@/components/car-thumb";
 import { SegmentControl } from "@/components/segment-control";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { IosGroup, IosInput, IosPicker, IosRow } from "@/components/ios-field";
 import { catalogCarToDiecast, type CatalogCar } from "@/lib/catalog";
 import { makeBlankCar, useCars, useCarsActions } from "@/lib/cars-store";
 import { carNumberOf } from "@/lib/car-subline";
@@ -161,8 +160,6 @@ export function QuickAddDialog({
     onClose();
   };
 
-  const label = "block text-xs text-muted-foreground";
-
   return (
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[92vh] gap-4 overflow-y-auto overflow-x-hidden sm:max-w-md [&>*]:min-w-0">
@@ -182,54 +179,87 @@ export function QuickAddDialog({
           </div>
         </div>
 
-        <div className="min-w-0 space-y-3">
-          {boxes.length > 0 && (
-            <div className="min-w-0 space-y-1.5">
-              <Label className={label}>Which one</Label>
-              <SegmentControl
-                row
-                value={entry.car_id}
-                onChange={setPickedId}
-                options={boxes.map((b) => ({
-                  value: b.car_id,
-                  label: (b.assortment || "").trim() || b.car_id,
-                }))}
+        {/* The phone form, the way iOS Settings lays one out: the label on the left, the
+            answer on the right, the choices in a pop-up menu. */}
+        <div className="min-w-0 space-y-2.5">
+          <IosGroup>
+            {boxes.length > 0 && (
+              <IosRow label="Which one">
+                <IosPicker
+                  label="Which one"
+                  value={entry.car_id}
+                  onChange={setPickedId}
+                  options={boxes.map((b) => ({
+                    value: b.car_id,
+                    label: (b.assortment || "").trim() || b.car_id,
+                  }))}
+                />
+              </IosRow>
+            )}
+            <IosRow label="Status">
+              <IosPicker
+                label="Status"
+                value={status}
+                onChange={setStatus}
+                options={STATUS_CHOICES}
               />
-            </div>
-          )}
-
-          <div className="min-w-0 space-y-1.5">
-            <Label className={label}>Status</Label>
-            <SegmentControl row value={status} onChange={setStatus} options={STATUS_CHOICES} />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
-            <div className="min-w-0 space-y-1.5">
-              <Label htmlFor="quick-spent" className={label}>
-                What it cost
-              </Label>
-              <Input
-                id="quick-spent"
-                type="number"
+            </IosRow>
+            <IosRow label="What it cost">
+              <IosInput
+                label="What it cost"
                 inputMode="decimal"
-                min="0"
                 placeholder={entry.mrp ? `₹ ${entry.mrp}` : "₹"}
                 value={spent}
-                onChange={(e) => setSpent(e.target.value)}
+                onChange={(v) => setSpent(v.replace(/[^0-9.]/g, ""))}
               />
-            </div>
-            <div className="min-w-0 space-y-1.5">
-              <Label htmlFor="quick-date" className={label}>
-                Order date
-              </Label>
-              <Input
-                id="quick-date"
+            </IosRow>
+            <IosRow label="Order date">
+              <IosInput label="Order date" type="date" value={orderDate} onChange={setOrderDate} />
+            </IosRow>
+            <IosRow label={open ? "Expected on" : "Arrived on"}>
+              <IosInput
+                label={open ? "Expected on" : "Arrived on"}
                 type="date"
-                value={orderDate}
-                onChange={(e) => setOrderDate(e.target.value)}
+                value={dayOn}
+                onChange={setDayOn}
               />
-            </div>
-          </div>
+            </IosRow>
+            <IosRow label="Seller">
+              <IosPicker
+                label="Seller"
+                value={seller}
+                onChange={setSeller}
+                options={quickSellers.map((s) => ({ value: s, label: s }))}
+                placeholder="Who you bought it from"
+                allowNew
+                clearable
+              />
+            </IosRow>
+            <IosRow label="Payment">
+              <IosPicker
+                label="Payment"
+                value={payment}
+                onChange={(v) => {
+                  setPayment(v);
+                  if (v !== "Partial") setAdvance("");
+                }}
+                options={PAYMENT_CHOICES}
+                placeholder="Not said"
+                clearable
+              />
+            </IosRow>
+            {payment === "Partial" && (
+              <IosRow label="Advance paid">
+                <IosInput
+                  label="Advance paid"
+                  inputMode="decimal"
+                  placeholder="₹ paid so far"
+                  value={advance}
+                  onChange={(v) => setAdvance(v.replace(/[^0-9.]/g, ""))}
+                />
+              </IosRow>
+            )}
+          </IosGroup>
 
           {quickCosts.length > 0 && (
             <SegmentControl
@@ -239,71 +269,6 @@ export function QuickAddDialog({
               onChange={setSpent}
               options={quickCosts}
             />
-          )}
-
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="quick-day" className={label}>
-              {open ? "Expected on" : "Arrived on"}
-            </Label>
-            <Input
-              id="quick-day"
-              type="date"
-              value={dayOn}
-              onChange={(e) => setDayOn(e.target.value)}
-            />
-          </div>
-
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="quick-seller" className={label}>
-              Seller
-            </Label>
-            <Input
-              id="quick-seller"
-              placeholder="Who you bought it from"
-              value={seller}
-              onChange={(e) => setSeller(e.target.value)}
-            />
-          </div>
-
-          {quickSellers.length > 0 && (
-            <SegmentControl
-              row
-              clearable
-              value={quickSellers.includes(seller.trim()) ? seller.trim() : ""}
-              onChange={setSeller}
-              options={quickSellers.map((s) => ({ value: s, label: s }))}
-            />
-          )}
-
-          <div className="min-w-0 space-y-1.5">
-            <Label className={label}>Payment</Label>
-            <SegmentControl
-              row
-              clearable
-              value={payment}
-              onChange={(v) => {
-                setPayment(v);
-                if (v !== "Partial") setAdvance("");
-              }}
-              options={PAYMENT_CHOICES}
-            />
-          </div>
-
-          {payment === "Partial" && (
-            <div className="min-w-0 space-y-1.5">
-              <Label htmlFor="quick-advance" className={label}>
-                Advance paid
-              </Label>
-              <Input
-                id="quick-advance"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                placeholder="₹ paid so far"
-                value={advance}
-                onChange={(e) => setAdvance(e.target.value)}
-              />
-            </div>
           )}
         </div>
 

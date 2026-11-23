@@ -180,6 +180,8 @@ export function forYou(
   popular: Map<string, number> = new Map(),
   /** Castings the person turned down: what they share is shown less. */
   disliked: CatalogCar[] = [],
+  /** Castings the person asked for more of: what they share is shown more. */
+  wanted: CatalogCar[] = [],
 ): Suggestion[] {
   const now = Date.now();
   const { days } = purchaseStats(cars, now);
@@ -228,6 +230,17 @@ export function forYou(
     }
   }
 
+  const toward = Object.fromEntries(KEYS.map((k) => [k, new Map<string, number>()])) as Record<
+    Attr,
+    Map<string, number>
+  >;
+  for (const d of wanted) {
+    for (const a of KEYS) {
+      const k = norm(ATTRS[a].cat(d));
+      if (k && k !== "na" && k !== "-") toward[a].set(k, (toward[a].get(k) ?? 0) + 1);
+    }
+  }
+
   const scored: Suggestion[] = [];
   for (const c of catalog) {
     if (!c.car_id || ownedIds.has(norm(c.car_id))) continue;
@@ -239,7 +252,9 @@ export function forYou(
     const others = popular.get(castingKey(c)) ?? 0;
     // A pattern means a core attribute shared by several of your cars, not a stray match.
     if (!hits.some((h) => CORE.includes(h.a))) hits.length = 0;
-    if (!hits.length && !others) continue;
+    // Something you asked for more of can bring a casting up with nothing else behind it.
+    const likedAlike = CORE.some((a) => toward[a].has(norm(ATTRS[a].cat(c))));
+    if (!hits.length && !others && !likedAlike) continue;
     hits.sort((x, y) => y.value - x.value);
     let score = hits.reduce((t, h) => t + h.value, 0);
     // Many collectors buying the same casting is a reason of its own.
@@ -248,6 +263,11 @@ export function forYou(
     for (const a of KEYS) {
       const n = against[a].get(norm(ATTRS[a].cat(c))) ?? 0;
       if (n) score -= ATTRS[a].coef * (a === "brand" ? 0.5 : 1.5) * Math.log1p(n);
+    }
+    // And each match with something asked for adds, the same way.
+    for (const a of KEYS) {
+      const n = toward[a].get(norm(ATTRS[a].cat(c))) ?? 0;
+      if (n) score += ATTRS[a].coef * (a === "brand" ? 0.5 : 1.5) * Math.log1p(n);
     }
     if (score <= 0) continue;
     // A card with a photograph sells itself; one without is a last resort.
@@ -271,8 +291,12 @@ export function forYou(
       car: c,
       score,
       others: others || undefined,
-      popularOnly: !hits.length,
-      reason: taste ? `Because you ${taste}${crowd ? `, and ${crowd}` : ""}` : `Because ${crowd}`,
+      popularOnly: !hits.length && !likedAlike,
+      reason: taste
+        ? `Because you ${taste}${crowd ? `, and ${crowd}` : ""}`
+        : crowd
+          ? `Because ${crowd}`
+          : "Because you asked for more like this",
     });
   }
   scored.sort((a, b) => b.score - a.score);
