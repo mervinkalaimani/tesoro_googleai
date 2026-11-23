@@ -234,28 +234,52 @@ export function SellerOrdersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         hideClose
+        hideDragHandle
         className="flex max-h-[calc(100dvh-3rem)] w-full max-w-full flex-col gap-4 overflow-hidden sm:max-w-6xl max-sm:fixed max-sm:inset-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:rounded-none"
       >
-        {/* THE SHOP, at the size of a title. The picture is a tile rather than a
-            circle: a shop is a place, and the round frame is what accounts
-            wear everywhere else in the app. */}
-        {/* The shop's picture at the top, the way a car's is on its page: wide, the
-            full width of the panel. Without one, the initials on a tint stand in. */}
-        <div className="relative h-36 w-full shrink-0 overflow-hidden rounded-2xl bg-primary/12 sm:h-48">
+        {/* The shop's picture across the top, edge to edge on a phone like a car's page,
+            with Edit and Close as dark round buttons over its corner. Without a picture
+            the initials on a tint stand in. */}
+        <div className="relative -mx-4 -mt-4 h-72 shrink-0 overflow-hidden bg-primary/12 sm:mx-0 sm:mt-0 sm:h-48 sm:rounded-2xl">
           {shop?.image_url ? (
             <img
-              src={transformImageUrl(shop.image_url, "card")}
+              src={transformImageUrl(shop.image_url, "detail")}
               alt=""
               className="size-full object-cover"
             />
           ) : (
-            <span className="grid size-full place-items-center text-4xl font-bold uppercase text-primary/60">
+            <span className="grid size-full place-items-center text-6xl font-bold uppercase text-primary/50">
               {name.slice(0, 2)}
             </span>
           )}
+          <div className="absolute right-3 top-3 flex items-center gap-2">
+            {/* The shop's own details, corrected by the person who bought from
+                it. Pro writes this table; everybody signed in reads it. */}
+            {isPro && !isGuest && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                aria-label={`Edit ${name}`}
+                title={`Edit ${name}`}
+                className="grid size-10 place-items-center rounded-full bg-foreground text-background shadow-md transition-opacity hover:opacity-90"
+              >
+                <Pencil className="size-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              aria-label="Close"
+              title="Close"
+              className="grid size-10 place-items-center rounded-full bg-foreground text-background shadow-md transition-opacity hover:opacity-90"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        {/* The sheet the name sits on, rising over the bottom of the picture on a phone. */}
+        <div className="relative flex shrink-0 items-center gap-3 max-sm:-mx-4 max-sm:-mt-10 max-sm:rounded-t-3xl max-sm:bg-background max-sm:px-4 max-sm:pt-5">
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
               <DialogTitle className="truncate !pr-0 text-xl font-bold tracking-tight sm:text-2xl">
@@ -282,19 +306,6 @@ export function SellerOrdersDialog({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
-            {/* The shop's own details, corrected by the person who bought from
-                it. Pro writes this table; everybody signed in reads it. */}
-            {isPro && !isGuest && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                aria-label={`Edit ${name}`}
-                title={`Edit ${name}`}
-                className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Pencil className="size-4" />
-              </button>
-            )}
             {shop?.phone && (
               <Action href={`tel:${shop.phone.replace(/\s+/g, "")}`} label={`Call ${name}`}>
                 <Phone className="size-4" />
@@ -305,16 +316,6 @@ export function SellerOrdersDialog({
                 <WhatsAppMark />
               </Action>
             )}
-            {/* Close sits with the others, in the same round button, at the end. */}
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              aria-label="Close"
-              title="Close"
-              className="grid size-9 shrink-0 place-items-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <X className="size-4" />
-            </button>
           </div>
         </div>
 
