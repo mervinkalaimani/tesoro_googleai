@@ -122,7 +122,7 @@ export function AppSidebar() {
         {/* What you came to do: add a car, or look one up. Above Home. */}
         <SidebarGroup className="pb-0">
           <SidebarGroupContent>
-            <SidebarMenu className="gap-1">
+            <SidebarMenu className="gap-2.5">
               <SidebarMenuItem>
                 <SidebarMenuButton
                   tooltip="Add car"
