@@ -9,7 +9,6 @@ import {
   CalendarDays,
   ShoppingBag,
   ShoppingCart,
-  BookOpen,
   Plus,
   Settings,
   Store,
@@ -116,7 +115,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {/* What you came to do: add a car, or look one up. Above Home. */}
+        {/* What you came to do: add a car. */}
         <SidebarGroup className="pb-0 group-data-[collapsible=icon]:px-[5.5px]">
           <SidebarGroupContent>
             <SidebarMenu className="gap-2.5">
@@ -139,26 +138,6 @@ export function AppSidebar() {
                       className="absolute right-2 top-2 size-2.5 rounded-full border-2 border-sidebar bg-amber-400"
                     />
                   )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname.startsWith("/catalog")}
-                  tooltip="Catalogue"
-                  className="h-10 text-[14px] font-medium group-data-[collapsible=icon]:!size-9 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-0 group-data-[collapsible=icon]:!p-0"
-                >
-                  <Link
-                    to="/catalog"
-                    onClick={() => {
-                      if (isMobile) setOpenMobile(false);
-                    }}
-                  >
-                    <BookOpen className="size-4.5" />
-                    <span className="overflow-hidden whitespace-nowrap transition-[opacity,width] duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
-                      Catalogue
-                    </span>
-                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

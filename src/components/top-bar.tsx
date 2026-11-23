@@ -27,7 +27,7 @@ import { bulkDraftHasContent, carDraftHasContent } from "@/lib/draft-content";
 export const ADD_CAR_EVENT = "viiv:add-car";
 
 /**
- * Home, My Cars and My Orders, in the middle of the bar on a desktop. The sidebar keeps the rest; a
+ * Home, My Cars, My Orders and the Catalogue, in the middle of the bar on a desktop. The sidebar keeps the rest; a
  * phone has the bottom bar for these. My Orders is a Plus feature, left out where the plan lacks it.
  */
 function DesktopNav() {
@@ -39,6 +39,7 @@ function DesktopNav() {
     ...(planIncludes(plan, "plus")
       ? [{ title: "My Orders", url: "/orders", on: pathname.startsWith("/orders") }]
       : []),
+    { title: "Catalogue", url: "/catalog", on: pathname.startsWith("/catalog") },
   ];
   return (
     <nav
