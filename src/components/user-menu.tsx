@@ -71,11 +71,13 @@ export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
       <DropdownMenuContent
         side={sidebar ? "top" : "bottom"}
         align={sidebar ? "start" : "end"}
-        className="w-56"
+        sideOffset={6}
+        // The same pane as the tabs' dropdowns: glass, rounded, rows that tint in the accent.
+        className="card-elevated glass-pane w-60 space-y-0.5 !rounded-3xl border-0 p-2"
       >
         {/* The name is the heading, not a menu item: it is what the avatar
             stands for, and there is nothing to do to it here. */}
-        <div className="px-2 py-1.5">
+        <div className="px-3 py-2">
           {/* The tier beside the name: this menu is the one place the account
               is named, so it is where "which account is this" belongs. */}
           <div className="flex items-center gap-1.5">
@@ -93,35 +95,45 @@ export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
           )}
         </div>
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="mx-1 bg-border/60" />
         {/* The picker and its own rule, only while the shop is in testing: with no picker the two
             rules would sit side by side. */}
         {personasOn && (
           <>
             <PersonaPicker className="px-2 pb-1.5" />
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="mx-1 bg-border/60" />
           </>
         )}
 
         <DropdownMenuItem asChild>
-          <Link to="/settings" className="cursor-pointer gap-2">
-            <Settings className="size-4" />
+          <Link
+            to="/settings"
+            className="cursor-pointer gap-2.5 rounded-xl px-3 py-2 text-[14px] font-medium focus:bg-primary/10 data-[highlighted]:bg-primary/10"
+          >
+            <Settings className="size-4.5" />
             Settings
           </Link>
         </DropdownMenuItem>
         {/* The admin's two pages, with the rest of what is about you rather than about your cars. */}
         {isAdmin && persona === "admin" && (
           <>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="mx-1 bg-border/60" />
             <DropdownMenuItem asChild>
-              <Link to="/dashboard" className="cursor-pointer gap-2">
-                <LayoutDashboard className="size-4" />
+              <Link
+                to="/dashboard"
+                className="cursor-pointer gap-2.5 rounded-xl px-3 py-2 text-[14px] font-medium focus:bg-primary/10 data-[highlighted]:bg-primary/10"
+              >
+                <LayoutDashboard className="size-4.5" />
                 Admin Dashboard
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/settings" search={{ tab: "advanced" }} className="cursor-pointer gap-2">
-                <Wrench className="size-4" />
+              <Link
+                to="/settings"
+                search={{ tab: "advanced" }}
+                className="cursor-pointer gap-2.5 rounded-xl px-3 py-2 text-[14px] font-medium focus:bg-primary/10 data-[highlighted]:bg-primary/10"
+              >
+                <Wrench className="size-4.5" />
                 Admin Console
               </Link>
             </DropdownMenuItem>
@@ -129,12 +141,12 @@ export function UserMenu({ sidebar = false }: { sidebar?: boolean }) {
         )}
         {paidPlanOf(profile) !== "pro" && !isGuest && (
           <>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="mx-1 bg-border/60" />
             <DropdownMenuItem
               onSelect={() => openProDialog()}
-              className="cursor-pointer gap-2 text-primary"
+              className="cursor-pointer gap-2.5 rounded-xl px-3 py-2 text-[14px] font-medium focus:bg-primary/10 data-[highlighted]:bg-primary/10 text-primary"
             >
-              <Sparkles className="size-4" />
+              <Sparkles className="size-4.5" />
               Subscribe now
             </DropdownMenuItem>
           </>
