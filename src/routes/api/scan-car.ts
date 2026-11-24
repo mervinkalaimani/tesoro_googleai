@@ -532,7 +532,23 @@ async function handler({ request }: { request: Request }) {
     return cars.length > 0 && !incomplete(cars.length, seenFrom(r.parsed));
   };
 
-  const run = await hedged(modelsToTry, ask, complete, HEDGE_AFTER_MS);
+  // "High demand" (503), "try again later" and rate limits pass on their own, and every model
+  // answering them at once is what a busy minute looks like. Ask the whole list again after a
+  // short wait, twice, while there is still time; a missing model or a bad key is not retried.
+  const busy = (m: string) =>
+    /\b503\b|\b429\b|UNAVAILABLE|RESOURCE_EXHAUSTED|high demand|overloaded|try again later/i.test(
+      m,
+    );
+  const began = Date.now();
+  let run = await hedged(modelsToTry, ask, complete, HEDGE_AFTER_MS);
+  for (const wait of [1_500, 3_500]) {
+    if (run.results.length || !busy(run.error) || Date.now() - began > 25_000) break;
+    await new Promise((r) => setTimeout(r, wait));
+    run = await hedged(modelsToTry, ask, complete, HEDGE_AFTER_MS);
+  }
+  if (!run.results.length && busy(run.error)) {
+    run.error = "VIIV Scan is busy right now. Give it a moment and try again.";
+  }
   // Every model gave up. "This operation was aborted" is the timeout talking,
   // and naming the last model tried says nothing a person can act on.
   if (run.results.length === 0 && /abort|timed? ?out|deadline/i.test(run.error)) {
