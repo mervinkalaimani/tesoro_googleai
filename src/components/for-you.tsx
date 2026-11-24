@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
 import { Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -45,11 +45,7 @@ function ForYouCarousel({
   const [pos, setPos] = useState(0);
   const n = picks.length;
   const at = picks[Math.min(front, n - 1)];
-  // The row loops: the picks are laid out three times and the track rests in the middle copy, so
-  // swiping past the last one runs on into the first. When it stops in an outer copy it is moved,
-  // unseen, a whole copy over.
-  const slides = n > 1 ? [...picks, ...picks, ...picks] : picks;
-  const idle = useRef(0);
+  const slides = picks;
   // On a wide screen two cars are in focus side by side; on a phone, one.
   const [wide, setWide] = useState(false);
   useEffect(() => {
@@ -73,25 +69,10 @@ function ForYouCarousel({
     if (!el) return;
     const p = el.scrollLeft / step();
     setPos(p);
-    setFront(((Math.round(p) % n) + n) % n);
-    if (n < 2) return;
-    window.clearTimeout(idle.current);
-    idle.current = window.setTimeout(() => {
-      const r = Math.round(el.scrollLeft / step());
-      if (r < n) el.scrollLeft += n * step();
-      else if (r >= 2 * n) el.scrollLeft -= n * step();
-    }, 120);
+    // No looping: the row stops at the last card, where the last dot is the one that is lit.
+    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 2;
+    setFront(atEnd && n > 1 ? n - 1 : Math.max(0, Math.min(n - 1, Math.round(p))));
   };
-  // Start in the middle copy, and again whenever the number of picks changes.
-  const frontRef = useRef(0);
-  frontRef.current = front;
-  useLayoutEffect(() => {
-    const el = track.current;
-    // Keep the place: a dismissed pick takes only its own card out, the rest stay where they are.
-    if (el && n > 1) el.scrollLeft = (n + Math.min(frontRef.current, n - 1)) * step();
-    return () => window.clearTimeout(idle.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- placed on a change of count only
-  }, [n]);
 
   if (!n || !at) return null;
   const btn =
@@ -101,7 +82,8 @@ function ForYouCarousel({
       <div
         ref={track}
         onScroll={onScroll}
-        className="no-scrollbar flex snap-x snap-mandatory items-center gap-3 overflow-x-auto py-4 sm:gap-5 [mask-image:linear-gradient(to_right,black_94%,transparent)]"
+        // Room round the cards (padding, pulled back with negative margins) so the frame and its shadow are not clipped by the scroll area.
+        className="no-scrollbar -mx-3 -my-8 flex snap-x snap-mandatory items-center gap-3 overflow-x-auto scroll-pl-3 px-3 py-10 sm:gap-5 [mask-image:linear-gradient(to_right,black_94%,transparent)]"
         style={{ overscrollBehaviorX: "contain" }}
       >
         {slides.map((p, i) => {
@@ -123,13 +105,13 @@ function ForYouCarousel({
               key={i}
               // Every card is the same size with its details; the ones either side are a little dimmer.
               style={{ opacity: 1 - 0.18 * d }}
-              className="w-[var(--sw)] shrink-0 snap-start snap-always transition-opacity duration-300 [--sw:calc((100cqw_-_0.75rem)/1.05)] sm:[--sw:34cqw]"
+              className="w-[var(--sw)] shrink-0 snap-start snap-always transition-opacity duration-300 [--sw:calc((100cqw_-_0.75rem)/1.05)] sm:[--sw:calc((100cqw_-_2.5rem)/2.3)]"
             >
               <article className="card-elevated flex overflow-hidden">
                 <button
                   type="button"
                   onClick={() => (isFront ? onOpen(p.car) : goTo(i))}
-                  className="relative block aspect-[534/658] w-36 shrink-0 sm:w-40 cursor-pointer overflow-hidden"
+                  className="relative block aspect-[534/658] w-36 shrink-0 cursor-pointer sm:w-[calc(var(--sw)*0.42)] overflow-hidden"
                   aria-label={isFront ? `Open ${c.name}` : `Show ${c.name}`}
                 >
                   <CarThumb car={c} className="absolute inset-0 size-full" />
@@ -141,7 +123,7 @@ function ForYouCarousel({
                       <Sparkles className="size-3 fill-amber-400 text-amber-400" />
                       Suggested
                     </div>
-                    <div className="line-clamp-2 text-sm font-semibold leading-tight">
+                    <div className="line-clamp-2 text-sm font-semibold leading-tight sm:text-base">
                       {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
