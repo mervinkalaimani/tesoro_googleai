@@ -1,6 +1,6 @@
 import { SUMMARY_ITEMS } from "@/lib/summary-cards";
 import { useQuickAdd } from "@/components/use-quick-add";
-import { WishlistHeart } from "@/components/wishlist-heart";
+import { ShelfCard } from "@/components/shelf-card";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -1174,28 +1174,21 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
           const asCar = toCarWithCatalogId(c, `preorder-${i}`);
           return (
             <div key={asCar.id ?? i} className="relative w-36 shrink-0 snap-start sm:w-40">
-              <CompactCarCard
+              <ShelfCard
                 car={asCar}
-                // What the casting is, for everybody. An admin used to be sent
-                // straight into the catalogue form instead, which is an odd
-                // answer to tapping a card: the first thing you want is to see
-                // the car, and the details view carries an Edit button.
+                entry={catalogEntryFor(c)}
+                // What the casting is, for everybody: the details view carries an Edit button.
                 onOpen={() => setViewing(c)}
                 caption={
                   c.inMyCollection ? "In your collection" : added ? daysAgo(added, now) : undefined
                 }
-                marksOffset
-                padRight={!c.inMyCollection || !isGuest}
-                className="w-full"
+                onAdd={
+                  c.inMyCollection
+                    ? undefined
+                    : () => quickAdd.start({ ...catalogEntryFor(c), release_status: "Pre Order" })
+                }
+                wish={!isGuest}
               />
-              {!c.inMyCollection && (
-                <QuickAdd
-                  onClick={() =>
-                    quickAdd.start({ ...catalogEntryFor(c), release_status: "Pre Order" })
-                  }
-                />
-              )}
-              {!isGuest && <WishlistHeart entry={catalogEntryFor(c)} above={!c.inMyCollection} />}
             </div>
           );
         })}
@@ -1593,21 +1586,6 @@ function TopDetailDialog({
  * can carry — there is a seller to contact and usually a balance to settle — so
  * that lives in the bell, not here. This shelf is for everyone.
  */
-/** The round + laid over the bottom corner of a shelf card. */
-function QuickAdd({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="Add to my collection"
-      title="Add to my collection"
-      className="glass-btn-solid absolute bottom-2 right-2 grid size-7 cursor-pointer place-items-center rounded-full bg-primary/90 text-primary-foreground transition-transform hover:bg-primary active:scale-95"
-    >
-      <Plus className="size-4" />
-    </button>
-  );
-}
-
 function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
   const { catalog, isLoading, updateCatalogCar } = useCatalog();
   const { isAdmin, isOwner, isGuest } = useAuth();
@@ -1667,23 +1645,18 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
         {releases.map((r) => {
           return (
             <div key={r.entry.car_id} className="relative w-36 shrink-0 snap-start sm:w-40">
-              <CompactCarCard
+              <ShelfCard
                 car={asCar(r.entry)}
+                entry={r.entry}
                 onOpen={() => setViewing(r.entry)}
                 caption={releasedLabel(r.daysAgo)}
-                marksOffset
-                padRight={!ownedIds.has(r.entry.car_id.trim().toUpperCase()) || !isGuest}
-                className="w-full"
+                onAdd={
+                  ownedIds.has(r.entry.car_id.trim().toUpperCase())
+                    ? undefined
+                    : () => quickAdd.start(r.entry)
+                }
+                wish={!isGuest}
               />
-              {!ownedIds.has(r.entry.car_id.trim().toUpperCase()) && (
-                <QuickAdd onClick={() => quickAdd.start(r.entry)} />
-              )}
-              {!isGuest && (
-                <WishlistHeart
-                  entry={r.entry}
-                  above={!ownedIds.has(r.entry.car_id.trim().toUpperCase())}
-                />
-              )}
             </div>
           );
         })}
