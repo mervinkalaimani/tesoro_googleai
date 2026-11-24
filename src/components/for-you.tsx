@@ -250,12 +250,15 @@ export function ForYou({
   onShown,
   hideHeading = false,
   framed = false,
+  headless = false,
 }: {
   onShown?: (ids: string[]) => void;
   /** Leave off the title and the line under it; the paging buttons stay. */
   hideHeading?: boolean;
   /** Sit in a frame of its own, apart from the list it leads. */
   framed?: boolean;
+  /** Show nothing: only say, through onShown, which castings are suggested. */
+  headless?: boolean;
 }) {
   const cars = useCars();
   const { catalog, updateCatalogCar } = useCatalog();
@@ -307,7 +310,7 @@ export function ForYou({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on the ids, not the callback
   }, [shownKey]);
 
-  if (!pool.length) return null;
+  if (!pool.length || headless) return null;
   const fanProps = {
     picks,
     onOpen: setViewing,

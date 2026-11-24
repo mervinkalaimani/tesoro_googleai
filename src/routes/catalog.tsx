@@ -545,10 +545,10 @@ function CatalogPage() {
     FILTERS.every((d) => skip.includes(d.key) || f[d.key] === "all" || d.get(c) === f[d.key]);
 
   // What For You is showing at the top: the list below does not repeat it.
-  const [suggested, setSuggested] = useState<Set<string>>(() => new Set());
+  const [suggested, setSuggested] = useState<string[]>([]);
 
   const rows = useMemo(() => {
-    let result = searched.filter((c) => matches(c, filters) && !suggested.has(c.car_id));
+    let result = searched.filter((c) => matches(c, filters));
     if (hideOwned) {
       result = result.filter((c) => {
         const cid = c.car_id.toUpperCase();
@@ -560,7 +560,13 @@ function CatalogPage() {
     if (hideInPacks) {
       result = result.filter((c) => !inSomePack.has(c.car_id.toUpperCase()));
     }
-    return result.sort((a, b) => compareBy(a, b, sort, serials));
+    result.sort((a, b) => compareBy(a, b, sort, serials));
+    // The suggested castings lead the list, as part of it: the same tiles, first.
+    const rank = new Map(suggested.map((id, i) => [id, i]));
+    const lead = result.filter((c) => rank.has(c.car_id));
+    if (!lead.length) return result;
+    lead.sort((a, b) => rank.get(a.car_id)! - rank.get(b.car_id)!);
+    return [...lead, ...result.filter((c) => !rank.has(c.car_id))];
   }, [
     searched,
     filters,
@@ -740,7 +746,15 @@ function CatalogPage() {
               <BlisterTile
                 car={asCar(c)}
                 onOpen={() => setViewing(c)}
-                caption={myIso.has(cid) ? "Wishlist" : owned.has(cid) ? "Owned" : undefined}
+                caption={
+                  myIso.has(cid)
+                    ? "Wishlist"
+                    : owned.has(cid)
+                      ? "Owned"
+                      : suggested.includes(c.car_id)
+                        ? "Suggested"
+                        : undefined
+                }
                 synced={Boolean(c.synced_at)}
                 syncedSource={c.synced_source}
                 pack={c.is_multipack ? packLabel(c) : undefined}
@@ -1083,7 +1097,7 @@ function CatalogPage() {
       />
 
       {/* The first thing in the list: what to look at before the whole catalogue. */}
-      <ForYou hideHeading framed onShown={(ids) => setSuggested(new Set(ids))} />
+      <ForYou headless onShown={setSuggested} />
 
       {isLoading && catalog.length === 0 ? (
         <TileGridSkeleton className={BLISTER_GRID_COLS} />
