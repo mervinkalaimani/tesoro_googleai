@@ -166,27 +166,24 @@ function ForYouCarousel({
                   </button>
                 </div>
               </div>
-              <div className="flex flex-1 flex-col items-start gap-1 p-2 text-left">
-                <div className="mt-auto flex w-full flex-col items-end gap-2 pt-1.5">
-                  <div className="flex w-full items-center gap-2">
-                    <WishlistHeart
-                      entry={p.car}
-                      onAdded={() => onWished(p.car.car_id)}
-                      label="Wishlist"
-                      className={`${btn} !flex h-8 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border border-border bg-muted/60 px-3 text-foreground hover:bg-muted`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => onAdd(p.car)}
-                      aria-label="Add to my collection"
-                      title="Add to my collection"
-                      className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center gap-1 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-95"
-                    >
-                      <Plus className="size-3.5" />
-                      Add
-                    </button>
-                  </div>
-                </div>
+              {/* Two square halves along the card's bottom edge. */}
+              <div className="flex w-full">
+                <WishlistHeart
+                  entry={p.car}
+                  onAdded={() => onWished(p.car.car_id)}
+                  label="Wishlist"
+                  className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border-t border-border bg-muted/60 px-3 text-foreground transition-colors hover:bg-muted"
+                />
+                <button
+                  type="button"
+                  onClick={() => onAdd(p.car)}
+                  aria-label="Add to my collection"
+                  title="Add to my collection"
+                  className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center gap-1 bg-primary px-4 text-sm font-medium text-primary-foreground transition-[filter] hover:brightness-110"
+                >
+                  <Plus className="size-3.5" />
+                  Add
+                </button>
               </div>
             </article>
           );
