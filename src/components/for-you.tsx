@@ -16,13 +16,13 @@ import { castingKey, forYou, MAX_WINDOW_DAYS, purchaseStats, reshuffle } from "@
 import { Button } from "@/components/ui/button";
 
 /** How many castings the row holds. */
-const SET = 6;
+const SET = 10;
 
 type Pick = { car: CatalogCar; reason: string };
 
 /**
  * The picks as a row of cards the width of a blister-view tile, as many across as that grid
- * has columns, so all six are in view on a wide screen and the arrows at the bottom right move
+ * has columns, so the first few are in view on a wide screen and the arrows at the bottom right move
  * along it on a smaller one.
  */
 function ForYouCarousel({
