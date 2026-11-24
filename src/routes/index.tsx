@@ -1179,9 +1179,8 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
                 entry={catalogEntryFor(c)}
                 // What the casting is, for everybody: the details view carries an Edit button.
                 onOpen={() => setViewing(c)}
-                caption={
-                  c.inMyCollection ? "In your collection" : added ? daysAgo(added, now) : undefined
-                }
+                caption={added ? daysAgo(added, now) : undefined}
+                owned={c.inMyCollection}
                 onAdd={
                   c.inMyCollection
                     ? undefined
@@ -1650,6 +1649,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
                 entry={r.entry}
                 onOpen={() => setViewing(r.entry)}
                 caption={releasedLabel(r.daysAgo)}
+                owned={ownedIds.has(r.entry.car_id.trim().toUpperCase())}
                 onAdd={
                   ownedIds.has(r.entry.car_id.trim().toUpperCase())
                     ? undefined

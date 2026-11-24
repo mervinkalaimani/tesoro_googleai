@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { CarThumb } from "@/components/car-thumb";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import type { CatalogCar } from "@/lib/catalog";
@@ -15,6 +15,7 @@ export function ShelfCard({
   caption,
   onOpen,
   onAdd,
+  owned = false,
   wish = true,
 }: {
   car: Diecast;
@@ -23,6 +24,8 @@ export function ShelfCard({
   caption?: string;
   onOpen: () => void;
   onAdd?: () => void;
+  /** Already yours: the buttons give way to the word Owned, across the whole footer. */
+  owned?: boolean;
   /** Offer the wishlist (not for a guest). */
   wish?: boolean;
 }) {
@@ -49,21 +52,27 @@ export function ShelfCard({
           <span className="line-clamp-1 text-[10px] font-medium text-white/85">{line || "—"}</span>
         </span>
       </button>
-      {(wish || onAdd) && (
-        <div className="mt-auto flex w-full">
-          {wish && <WishlistHeart entry={entry} label="Wishlist" className={seg} />}
-          {onAdd && (
-            <button
-              type="button"
-              onClick={onAdd}
-              aria-label="Add to my collection"
-              className={`${seg} !font-semibold text-primary`}
-            >
-              <Plus className="size-3.5" />
-              Add
-            </button>
-          )}
+      {owned ? (
+        <div className="glass-btn mt-auto flex h-9 w-full items-center justify-center gap-1 !rounded-none text-xs font-semibold text-foreground">
+          <Check className="size-3.5 text-emerald-500" />
+          Owned
         </div>
+      ) : (
+        (wish || onAdd) && (
+          <div className="mt-auto flex w-full">
+            {wish && <WishlistHeart entry={entry} className={seg} />}
+            {onAdd && (
+              <button
+                type="button"
+                onClick={onAdd}
+                aria-label="Add to my collection"
+                className={`${seg} text-primary`}
+              >
+                <Plus className="size-4" />
+              </button>
+            )}
+          </div>
+        )
       )}
     </article>
   );
