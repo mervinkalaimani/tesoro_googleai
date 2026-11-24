@@ -104,7 +104,7 @@ const WIDE_LEFT = [
   { x: 1.1, scale: 0.64, turn: 50, z: -170, opacity: 0 },
 ];
 /** Where the front car's centre sits across the row, as a fraction of its width. */
-const WIDE_FRONT = 0.2;
+const WIDE_FRONT = 0.31;
 /* Two cars show to the right of the front one; the other five fan out behind the
    details pane, so they read as a stack under the glass. */
 const WIDE_RIGHT = [
@@ -270,7 +270,7 @@ function PrizedCoverflow({
       className={cn(
         // Clipped with room to spare on every side: the cars beyond the ends are
         // cut off, but a shadow is not cropped to the frame's edge.
-        "relative select-none [clip-path:inset(-4rem_-1.5rem)]",
+        "relative select-none [clip-path:inset(-4rem_-1.5rem_-4rem_0)]",
         wide
           ? "mx-auto mt-4 aspect-[100/33] max-w-[1800px] [perspective:1500px]"
           : "mt-3 aspect-[100/52] [perspective:900px]",
