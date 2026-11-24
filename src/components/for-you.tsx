@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
-import { ChevronRight, Plus, RefreshCw, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
+} from "lucide-react";
 import { CarThumb } from "@/components/car-thumb";
 
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -15,15 +23,15 @@ import { useCatalog } from "@/lib/catalog-store";
 import { castingKey, forYou, MAX_WINDOW_DAYS, purchaseStats, reshuffle } from "@/lib/for-you";
 import { Button } from "@/components/ui/button";
 
-/** How many castings the carousel holds at a time. */
-const SET = 5;
+/** How many castings the row holds. */
+const SET = 6;
 
 type Pick = { car: CatalogCar; reason: string };
 
 /**
- * The picks as a flat, snapping carousel: the front car centred with its neighbours peeking in at
- * both edges, and a dot for each pick under it. On a wide screen the front car's details and
- * buttons sit on glass to the right; on a phone the reason and buttons sit under the dots.
+ * The picks as a row of cards the width of a blister-view tile, as many across as that grid
+ * has columns, so all six are in view on a wide screen and the arrows at the bottom right move
+ * along it on a smaller one.
  */
 function ForYouCarousel({
   picks,
@@ -39,53 +47,30 @@ function ForYouCarousel({
   onAdd: (car: CatalogCar) => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
-  const [front, setFront] = useState(0);
-  // Where the track is, in whole slides and fractions, so each card can size itself by how far it
-  // is from the middle.
-  const [pos, setPos] = useState(0);
   const n = picks.length;
-  const at = picks[Math.min(front, n - 1)];
-  const slides = picks;
-  // On a wide screen two cars are in focus side by side; on a phone, one.
-  const [wide, setWide] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)");
-    const read = () => setWide(mq.matches);
-    read();
-    mq.addEventListener("change", read);
-    return () => mq.removeEventListener("change", read);
-  }, []);
+  // Where the row is, in whole cards and fractions.
+  const [pos, setPos] = useState(0);
+  const [atEnd, setAtEnd] = useState(false);
+  const raf = useRef(0);
 
-  /** Pixels from one slide's centre to the next. */
+  /** Pixels from one card to the next. */
   const step = () => {
     const el = track.current;
     const a = el?.children[0] as HTMLElement | undefined;
     const b = el?.children[1] as HTMLElement | undefined;
     return a && b ? b.offsetLeft - a.offsetLeft : (a?.offsetWidth ?? 1);
   };
-  const raf = useRef(0);
   /** Stop a spring in flight and give the browser's own snapping back. */
   const settle = () => {
     cancelAnimationFrame(raf.current);
     if (track.current) track.current.style.scrollSnapType = "";
   };
-  /** Where the row rests with slide `i` first, or, for the last one, in the middle. */
-  const restFor = (i: number) => {
-    const el = track.current;
-    const slide = el?.children[i] as HTMLElement | undefined;
-    if (!el || !slide) return 0;
-    const left =
-      i === n - 1 && n > 1
-        ? slide.offsetLeft - (el.clientWidth - slide.offsetWidth) / 2
-        : i * step();
-    return Math.max(0, Math.min(el.scrollWidth - el.clientWidth, left));
-  };
-  /** Glide to a card on a spring: it overshoots a little and settles, instead of easing flat. */
+  /** Glide to card `i` on a spring: it overshoots a little and settles, instead of easing flat. */
   const goTo = (i: number) => {
     const el = track.current;
     if (!el) return;
     settle();
-    const target = restFor(i);
+    const target = Math.max(0, Math.min(el.scrollWidth - el.clientWidth, i * step()));
     // Snapping would fight the spring; it is handed back when the card has settled.
     el.style.scrollSnapType = "none";
     let x = el.scrollLeft;
@@ -107,157 +92,135 @@ function ForYouCarousel({
     raf.current = requestAnimationFrame(tick);
   };
   useEffect(() => () => cancelAnimationFrame(raf.current), []);
-  const [end, setEnd] = useState(false);
   const onScroll = () => {
     const el = track.current;
     if (!el) return;
-    const p = el.scrollLeft / step();
-    setPos(p);
-    // No looping: the row stops at the last card, which comes to rest in the middle.
-    const atEnd = n > 1 && el.scrollLeft >= el.scrollWidth - el.clientWidth - 2;
-    setEnd(atEnd);
-    setFront(atEnd ? n - 1 : Math.max(0, Math.min(n - 1, Math.round(p))));
+    setPos(el.scrollLeft / step());
+    setAtEnd(el.scrollLeft >= el.scrollWidth - el.clientWidth - 2);
   };
+  // Whether there is anywhere to go: with every card in view, the arrows have nothing to do.
+  const [fits, setFits] = useState(true);
+  useEffect(() => {
+    const el = track.current;
+    if (!el) return;
+    const read = () => setFits(el.scrollWidth <= el.clientWidth + 2);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [n]);
 
-  if (!n || !at) return null;
+  if (!n) return null;
   const btn =
     "grid cursor-pointer place-items-center rounded-full transition-transform active:scale-95";
+  const atStart = pos < 0.05;
   return (
-    <div className="min-w-0 [container-type:inline-size] [--sw:calc((100cqw_-_0.75rem)/1.05)] sm:[--sw:calc((100cqw_-_2.5rem)/2.3)]">
+    <div className="min-w-0 [container-type:inline-size] [--sw:calc((100cqw_-_1.25rem)/2.4)] sm:[--sw:calc((100cqw_-_2.25rem)/3.4)] lg:[--sw:calc((100cqw_-_3rem)/4.4)] xl:[--sw:calc((100cqw_-_3.75rem)/5.4)]">
       <div
         ref={track}
         onScroll={onScroll}
         // A finger or wheel takes over from a spring still running.
         onPointerDown={settle}
         onWheel={settle}
-        // Room round the cards (padding, pulled back with negative margins) so the frame and its shadow are not clipped by the scroll area.
-        className="no-scrollbar -mx-3 -my-8 flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto scroll-pl-3 px-3 py-10 pr-[calc((100cqw_-_var(--sw))/2)] sm:gap-5"
+        className="no-scrollbar -mx-3 -my-8 flex snap-x snap-mandatory items-stretch gap-2.5 overflow-x-auto scroll-pl-3 px-3 py-10 sm:gap-3"
         style={{ overscrollBehaviorX: "contain" }}
       >
-        {slides.map((p, i) => {
+        {picks.map((p) => {
           const c = catalogCarToDiecast(p.car);
-          // At the end the last card is in the middle, which counts as the pair (the one before it and itself).
-          const eff = end ? (wide ? n - 2 : n - 1) : pos;
-          const r = Math.round(eff);
-          const d = Math.min(
-            2,
-            wide ? Math.min(Math.abs(i - eff), Math.abs(i - eff - 1)) : Math.abs(i - eff),
-          );
-          const isFront = i === r || (wide && i === r + 1);
-          const stats = (
-            [
-              ["Colour", c.colour],
-              ["Series", c.series],
-            ] as [string, string | undefined][]
-          ).filter(([, v]) => (v || "").trim());
           return (
-            <div
-              key={i}
-              // Every card is the same size with its details; the ones either side are a little dimmer.
-              style={{ opacity: 1 - 0.18 * d }}
-              className={`flex w-[var(--sw)] shrink-0 snap-always transition-opacity duration-300 ${i === n - 1 && n > 1 ? "snap-center" : "snap-start"}`}
+            <article
+              key={p.car.car_id}
+              className="flex w-[var(--sw)] shrink-0 snap-start snap-always flex-col"
             >
-              <article className="flex w-full flex-col">
-                {/* The picture on a soft wash of the theme colour, with room round the car. */}
-                <button
-                  type="button"
-                  onClick={() => (isFront ? onOpen(p.car) : goTo(i))}
-                  className="relative block aspect-[4/3] w-full shrink-0 cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-b from-primary/25 via-primary/10 to-transparent sm:aspect-[16/9]"
-                  aria-label={isFront ? `Open ${c.name}` : `Show ${c.name}`}
-                >
-                  <CarThumb
-                    car={c}
-                    className="absolute inset-0 size-full p-4 [&_img]:object-contain"
-                  />
-                </button>
-                <div className="flex flex-1 flex-col items-center gap-1.5 px-2 pt-5 text-center">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                    <Sparkles className="size-3 fill-amber-400 text-amber-400" />
-                    Suggested
-                  </span>
-                  <h3 className="line-clamp-2 min-h-[2.5em] text-xl font-semibold leading-tight sm:text-2xl sm:min-h-[2.5em]">
-                    {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
-                  </h3>
-                  <p className="text-sm font-medium">
-                    {[c.brand, c.carNumber, c.assortment].filter(Boolean).join(" · ") || "—"}
-                  </p>
-                  {stats.length > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {stats.map(([k, v]) => `${k} ${v}`).join(" · ")}
-                    </p>
-                  )}
-                  <p className="line-clamp-2 min-h-[2.4em] text-xs leading-snug text-muted-foreground">
-                    {p.reason}
-                  </p>
-                  <div
-                    className={`mt-auto flex flex-col items-center gap-3 pt-4 ${isFront ? "" : "pointer-events-none"}`}
-                  >
-                    <div className="flex items-center gap-5">
-                      <button
-                        type="button"
-                        onClick={() => onAdd(p.car)}
-                        aria-label="Add to my collection"
-                        title="Add to my collection"
-                        className="inline-flex h-11 cursor-pointer items-center gap-1.5 rounded-full bg-primary px-6 text-base font-medium text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-95"
-                      >
-                        <Plus className="size-4" />
-                        Add
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpen(p.car)}
-                        className="inline-flex cursor-pointer items-center gap-0.5 text-base font-medium text-primary hover:underline"
-                      >
-                        Details
-                        <ChevronRight className="size-4" />
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => onDismiss(p.car.car_id)}
-                        aria-label="Not interested"
-                        title="Not interested: don't suggest this again"
-                        className={`${btn} glass-btn size-8 text-foreground`}
-                      >
-                        <ThumbsDown className="size-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onLike(p.car.car_id)}
-                        aria-label="Show more like this"
-                        title="Show more cars like this"
-                        className={`${btn} glass-btn size-8 text-foreground`}
-                      >
-                        <ThumbsUp className="size-4" />
-                      </button>
-                      <WishlistHeart
-                        entry={p.car}
-                        className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
-                      />
-                    </div>
+              {/* The picture fills its tile, as in the blister view. */}
+              <button
+                type="button"
+                onClick={() => onOpen(p.car)}
+                className="relative block aspect-[534/658] w-full shrink-0 cursor-pointer overflow-hidden rounded-2xl"
+                aria-label={`Open ${c.name}`}
+              >
+                <CarThumb car={c} className="absolute inset-0 size-full" />
+              </button>
+              <div className="flex flex-1 flex-col items-center gap-1 px-1 pt-3 text-center">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+                  <Sparkles className="size-2.5 fill-amber-400 text-amber-400" />
+                  Suggested
+                </span>
+                <h3 className="line-clamp-2 min-h-[2.5em] text-sm font-semibold leading-tight">
+                  {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                </h3>
+                <p className="line-clamp-1 text-[11px] font-medium">
+                  {[c.brand, c.carNumber, c.assortment].filter(Boolean).join(" · ") || "—"}
+                </p>
+                <p className="line-clamp-3 min-h-[3.6em] text-[10px] leading-snug text-muted-foreground">
+                  {p.reason}
+                </p>
+                <div className="mt-auto flex flex-col items-center gap-2 pt-2">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onAdd(p.car)}
+                      aria-label="Add to my collection"
+                      title="Add to my collection"
+                      className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-95"
+                    >
+                      <Plus className="size-3.5" />
+                      Add
+                    </button>
+                    <WishlistHeart
+                      entry={p.car}
+                      className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => onDismiss(p.car.car_id)}
+                      aria-label="Not interested"
+                      title="Not interested: don't suggest this again"
+                      className={`${btn} glass-btn size-7 text-foreground`}
+                    >
+                      <ThumbsDown className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onLike(p.car.car_id)}
+                      aria-label="Show more like this"
+                      title="Show more cars like this"
+                      className={`${btn} glass-btn size-7 text-foreground`}
+                    >
+                      <ThumbsUp className="size-3.5" />
+                    </button>
                   </div>
                 </div>
-              </article>
-            </div>
+              </div>
+            </article>
           );
         })}
       </div>
-      <div className="flex items-center justify-center gap-2" role="tablist">
-        {picks.map((p, i) => (
+      {/* Left and right, bottom right; they go when every card is already in view. */}
+      {!fits && (
+        <div className="flex items-center justify-end gap-2 pt-1">
           <button
-            key={p.car.car_id}
             type="button"
-            role="tab"
-            aria-selected={i === front}
-            aria-label={`Show suggestion ${i + 1} of ${n}`}
-            onClick={() => goTo(Math.round(pos) - front + i)}
-            className={`h-2 cursor-pointer rounded-full transition-all ${
-              i === front ? "w-5 bg-foreground" : "w-2 bg-foreground/30"
-            }`}
-          />
-        ))}
-      </div>
+            onClick={() => goTo(Math.max(0, Math.round(pos) - 1))}
+            disabled={atStart}
+            aria-label="Previous"
+            className={`${btn} glass-btn size-9 text-foreground disabled:cursor-default disabled:opacity-40`}
+          >
+            <ChevronLeft className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => goTo(Math.min(n - 1, Math.round(pos) + 1))}
+            disabled={atEnd}
+            aria-label="Next"
+            className={`${btn} glass-btn size-9 text-foreground disabled:cursor-default disabled:opacity-40`}
+          >
+            <ChevronRight className="size-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
