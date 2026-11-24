@@ -465,12 +465,12 @@
 :root {
   --primary-glow:
     0 0 1.5em 0.05em color-mix(in oklab, var(--primary) 24%, transparent),
-    0 0 5em 0.6em color-mix(in oklab, var(--primary) 11%, transparent),
-    0 0 12em 3em color-mix(in oklab, var(--primary) 5%, transparent);
+    0 0 7em 1em color-mix(in oklab, var(--primary) 12%, transparent),
+    0 0 20em 5em color-mix(in oklab, var(--primary) 6%, transparent);
   --primary-glow-soft:
     0 0 1.5em 0 color-mix(in oklab, var(--primary) 16%, transparent),
-    0 0 5em 0.5em color-mix(in oklab, var(--primary) 8%, transparent),
-    0 0 12em 2.5em color-mix(in oklab, var(--primary) 4%, transparent);
+    0 0 7em 0.8em color-mix(in oklab, var(--primary) 9%, transparent),
+    0 0 20em 4em color-mix(in oklab, var(--primary) 5%, transparent);
 }
 /* Anything that turns theme-coloured when hovered (a row, an option, a tile) spills that colour:
    the same light as a button, so the colour has a source and does not stop at the border. */
