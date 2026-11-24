@@ -30,12 +30,14 @@ function ForYouCarousel({
   onOpen,
   onDismiss,
   onLike,
+  onWished,
   onAdd,
 }: {
   picks: Pick[];
   onOpen: (car: CatalogCar) => void;
   onDismiss: (id: string) => void;
   onLike: (id: string) => void;
+  onWished: (id: string) => void;
   onAdd: (car: CatalogCar) => void;
 }) {
   const track = useRef<HTMLDivElement>(null);
@@ -179,6 +181,7 @@ function ForYouCarousel({
                     </button>
                     <WishlistHeart
                       entry={p.car}
+                      onAdded={() => onWished(p.car.car_id)}
                       className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
                     />
                   </div>
@@ -317,6 +320,8 @@ export function ForYou({
       setSeed(Math.floor(Math.random() * 2 ** 31) + 1);
       setLearned(dismissed);
     },
+    // The heart plays out, rests a second, then the car gives way to the next one.
+    onWished: (id: string) => window.setTimeout(() => like(id), 1000),
     onAdd: (car: CatalogCar) => quickAdd.start(car),
   };
   return (

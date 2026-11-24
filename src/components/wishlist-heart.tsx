@@ -47,8 +47,11 @@ export function WishlistHeart({
   entry,
   above = false,
   className,
+  onAdded,
 }: {
   entry: CatalogCar;
+  /** Called when this tap put it on the list. */
+  onAdded?: () => void;
   /** Sit on top of the + at the bottom corner; without a + the heart takes its place. */
   above?: boolean;
   className?: string;
@@ -74,6 +77,7 @@ export function WishlistHeart({
         onClick={() => {
           if (on) return setAsking(true);
           addToIso(entry);
+          onAdded?.();
           setPopped(true);
           window.setTimeout(() => setPopped(false), 600);
         }}
