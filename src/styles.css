@@ -456,7 +456,27 @@
   border: 1px solid oklch(1 0 0 / 0.35);
   box-shadow:
     0 1px 0 oklch(1 0 0 / 0.5) inset,
-    0 10px 24px -10px var(--primary);
+    0 10px 24px -10px var(--primary),
+    var(--primary-glow);
+}
+/* A button in the theme colour is a light: it lights what is under and around it, and the light
+   thins out with distance (three rings, each wider and fainter). Sized in em, so a bigger
+   button throws further. It lands on the card beneath because that is what is there. */
+:root {
+  --primary-glow:
+    0 0 1em 0.05em color-mix(in oklab, var(--primary) 42%, transparent),
+    0 0 2.6em 0.3em color-mix(in oklab, var(--primary) 22%, transparent),
+    0 0 5.5em 1em color-mix(in oklab, var(--primary) 10%, transparent);
+  --primary-glow-soft:
+    0 0 1em 0.05em color-mix(in oklab, var(--primary) 36%, transparent),
+    0 0 2.6em 0.3em color-mix(in oklab, var(--primary) 20%, transparent),
+    0 0 5em 0.8em color-mix(in oklab, var(--primary) 9%, transparent);
+}
+/* The outlined version (Update order, Pay): a dimmer light, for a button that is not filled. */
+html .primary-glow-soft {
+  box-shadow:
+    0 1px 0 oklch(1 0 0 / 0.2) inset,
+    var(--primary-glow-soft);
 }
 /* The selected segment: a raised pane of glass sliding inside the glass base. Bright top edge,
    a cool body, a hairline ring and a short soft shadow underneath. */

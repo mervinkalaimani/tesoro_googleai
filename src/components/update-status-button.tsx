@@ -42,7 +42,7 @@ export function UpdateStatusButton({
       title={title ?? "Update status"}
       className={cn(
         // Styled like the Pay button beside it: glass with its plain edge, the text in the theme colour.
-        "gap-1.5 !border-primary/40 !text-primary hover:!bg-primary/10",
+        "primary-glow-soft gap-1.5 !border-primary/40 !text-primary hover:!bg-primary/10",
         className,
       )}
     >
