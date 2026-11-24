@@ -6,7 +6,6 @@ import {
   ChevronRight,
   Plus,
   RefreshCw,
-  Sparkles,
   ThumbsDown,
   ThumbsUp,
 } from "lucide-react";
@@ -133,29 +132,47 @@ function ForYouCarousel({
               className="flex w-[var(--sw)] shrink-0 snap-start snap-always flex-col"
             >
               {/* The picture fills its tile, as in the blister view. */}
-              <button
-                type="button"
-                onClick={() => onOpen(p.car)}
-                className="relative block aspect-[534/658] w-full shrink-0 cursor-pointer overflow-hidden rounded-2xl"
-                aria-label={`Open ${c.name}`}
-              >
-                <CarThumb car={c} className="absolute inset-0 size-full" />
-              </button>
-              <div className="flex flex-1 flex-col items-center gap-1 px-1 pt-3 text-center">
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
-                  <Sparkles className="size-2.5 fill-amber-400 text-amber-400" />
-                  Suggested
-                </span>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => onOpen(p.car)}
+                  className="relative block aspect-[534/658] w-full shrink-0 cursor-pointer overflow-hidden rounded-2xl"
+                  aria-label={`Open ${c.name}`}
+                >
+                  <CarThumb car={c} className="absolute inset-0 size-full" />
+                </button>
+                <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onDismiss(p.car.car_id)}
+                    aria-label="Not interested"
+                    title="Not interested: don't suggest this again"
+                    className={`${btn} glass-btn size-6 text-foreground`}
+                  >
+                    <ThumbsDown className="size-3" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onLike(p.car.car_id)}
+                    aria-label="Show more like this"
+                    title="Show more cars like this"
+                    className={`${btn} glass-btn size-6 text-foreground`}
+                  >
+                    <ThumbsUp className="size-3" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-1 flex-col items-start gap-1 px-1 pt-3 text-left">
                 <h3 className="line-clamp-2 min-h-[2.5em] text-sm font-semibold leading-tight">
                   {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
                 </h3>
                 <p className="line-clamp-1 text-[11px] font-medium">
                   {[c.brand, c.carNumber, c.assortment].filter(Boolean).join(" · ") || "—"}
                 </p>
-                <p className="line-clamp-3 min-h-[3.6em] text-[10px] leading-snug text-muted-foreground">
+                <p className="line-clamp-2 min-h-[2.4em] text-[10px] leading-snug text-muted-foreground">
                   {p.reason}
                 </p>
-                <div className="mt-auto flex flex-col items-center gap-2 pt-2">
+                <div className="mt-auto flex flex-col items-start gap-2 pt-1.5">
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
@@ -171,26 +188,6 @@ function ForYouCarousel({
                       entry={p.car}
                       className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
                     />
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => onDismiss(p.car.car_id)}
-                      aria-label="Not interested"
-                      title="Not interested: don't suggest this again"
-                      className={`${btn} glass-btn size-7 text-foreground`}
-                    >
-                      <ThumbsDown className="size-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onLike(p.car.car_id)}
-                      aria-label="Show more like this"
-                      title="Show more cars like this"
-                      className={`${btn} glass-btn size-7 text-foreground`}
-                    >
-                      <ThumbsUp className="size-3.5" />
-                    </button>
                   </div>
                 </div>
               </div>
@@ -337,7 +334,9 @@ export function ForYou({
       >
         <div className="min-w-0 space-y-0.5 px-1">
           <div className="flex items-center gap-2">
-            {!hideHeading && <h2 className="text-display text-lg font-semibold">For You</h2>}
+            {!hideHeading && (
+              <h2 className="text-display text-lg font-semibold">Suggested for you</h2>
+            )}
             <Button
               type="button"
               size="icon"
