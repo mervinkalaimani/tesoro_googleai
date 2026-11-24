@@ -97,7 +97,7 @@ export function WishlistHeart({
           className={on ? "size-4 fill-red-500 text-red-500" : "size-4"}
           style={popped ? { animation: "heart-pop 0.6s ease-out" } : undefined}
         />
-        {label && <span className="text-sm font-medium">{label}</span>}
+        {label && <span className="text-sm font-medium max-sm:hidden">{label}</span>}
       </button>
       <Dialog open={asking} onOpenChange={setAsking}>
         <DialogContent className="sm:max-w-md">

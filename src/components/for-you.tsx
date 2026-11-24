@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
 import { ChevronLeft, ChevronRight, Plus, RefreshCw, ThumbsDown, ThumbsUp } from "lucide-react";
@@ -140,9 +140,7 @@ function ForYouCarousel({
                   <h3 className="line-clamp-2 text-sm font-semibold leading-tight">
                     {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
                   </h3>
-                  <p className="line-clamp-1 text-[11px] font-medium text-white/90">
-                    {[c.brand, c.carNumber, c.assortment].filter(Boolean).join(" · ") || "—"}
-                  </p>
+                  <BrandLine brand={c.brand} number={c.carNumber} assortment={c.assortment} />
                   <p className="line-clamp-2 text-[10px] leading-snug text-white/75">{p.reason}</p>
                 </div>
                 <div className="absolute right-2 top-2 flex items-center gap-1.5">
@@ -181,8 +179,8 @@ function ForYouCarousel({
                   title="Add to my collection"
                   className="glass-btn !inline-flex h-10 flex-1 cursor-pointer items-center justify-center gap-1 !rounded-none px-4 text-sm font-semibold text-primary"
                 >
-                  <Plus className="size-3.5" />
-                  Add
+                  <Plus className="size-4 sm:size-3.5" />
+                  <span className="max-sm:hidden">Add</span>
                 </button>
               </div>
             </article>
@@ -213,6 +211,45 @@ function ForYouCarousel({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Brand · number · assortment on one line. When that is too long and would be cut off, the
+ * number goes first: brand and assortment say more than a catalogue number does.
+ */
+function BrandLine({
+  brand,
+  number,
+  assortment,
+}: {
+  brand?: string;
+  number?: string;
+  assortment?: string;
+}) {
+  const box = useRef<HTMLParagraphElement>(null);
+  const probe = useRef<HTMLSpanElement>(null);
+  const [dropNumber, setDropNumber] = useState(false);
+  const full = [brand, number, assortment].filter(Boolean).join(" · ") || "—";
+  const short = [brand, assortment].filter(Boolean).join(" · ") || "—";
+  useLayoutEffect(() => {
+    const read = () => {
+      if (box.current && probe.current)
+        setDropNumber(Boolean(number) && probe.current.offsetWidth > box.current.clientWidth);
+    };
+    read();
+    const ro = new ResizeObserver(read);
+    if (box.current) ro.observe(box.current);
+    return () => ro.disconnect();
+  }, [full, number]);
+  return (
+    <p ref={box} className="relative truncate text-[11px] font-medium text-white/90">
+      {/* The full line, unseen, to measure against the room there is. */}
+      <span ref={probe} aria-hidden className="invisible absolute left-0 top-0 whitespace-nowrap">
+        {full}
+      </span>
+      {dropNumber ? short : full}
+    </p>
   );
 }
 
