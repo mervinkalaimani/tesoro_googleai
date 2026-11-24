@@ -380,7 +380,7 @@ function PrizedCoverflow({
           onClick={togglePanel}
           aria-label="Show details panel"
           title="Show details panel"
-          className="glass-btn absolute right-3 top-3 z-[200] grid size-9 cursor-pointer place-items-center rounded-full text-foreground"
+          className="glass-btn absolute right-6 top-3 z-[200] grid size-9 cursor-pointer place-items-center rounded-full text-foreground"
         >
           <Eye className="size-4" />
         </button>
@@ -389,7 +389,7 @@ function PrizedCoverflow({
         // The front car's details, on glass over the right of the fan: three
         // quarters of the frame's height, two fifths of its width, centred
         // vertically. Keyed on the car so a new one fades in.
-        <div className="card-elevated glass-pane !bg-white/95 dark:!bg-neutral-900/95 absolute right-3 top-1/2 z-[200] flex h-[75%] w-[40%] -translate-y-1/2 flex-col gap-3 overflow-hidden p-5 duration-300">
+        <div className="card-elevated glass-pane !bg-white/95 dark:!bg-neutral-900/95 absolute right-6 top-1/2 z-[200] flex h-[75%] w-[40%] -translate-y-1/2 flex-col gap-3 overflow-hidden p-5 duration-300">
           {(() => {
             const c = cars[wrap(base)];
             const facts: [string, string | undefined][] = [
