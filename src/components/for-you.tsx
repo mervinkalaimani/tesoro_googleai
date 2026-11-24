@@ -172,14 +172,14 @@ function ForYouCarousel({
                   entry={p.car}
                   onAdded={() => onWished(p.car.car_id)}
                   label="Wishlist"
-                  className="flex h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap border-t border-border bg-muted/60 px-3 text-foreground transition-colors hover:bg-muted"
+                  className="glass-btn !flex h-10 flex-1 cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap !rounded-none px-3 text-foreground"
                 />
                 <button
                   type="button"
                   onClick={() => onAdd(p.car)}
                   aria-label="Add to my collection"
                   title="Add to my collection"
-                  className="inline-flex h-10 flex-1 cursor-pointer items-center justify-center gap-1 bg-primary px-4 text-sm font-medium text-primary-foreground transition-[filter] hover:brightness-110"
+                  className="glass-btn !inline-flex h-10 flex-1 cursor-pointer items-center justify-center gap-1 !rounded-none px-4 text-sm font-medium text-foreground"
                 >
                   <Plus className="size-3.5" />
                   Add
