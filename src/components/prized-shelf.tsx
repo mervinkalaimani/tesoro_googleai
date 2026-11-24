@@ -104,7 +104,7 @@ const WIDE_LEFT = [
   { x: 1.1, scale: 0.64, turn: 50, z: -170, opacity: 0 },
 ];
 /** Where the front car's centre sits across the row, as a fraction of its width. */
-const WIDE_FRONT = 0.34;
+const WIDE_FRONT = 0.2;
 /* Two cars show to the right of the front one; the other five fan out behind the
    details pane, so they read as a stack under the glass. */
 const WIDE_RIGHT = [
