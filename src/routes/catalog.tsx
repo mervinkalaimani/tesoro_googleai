@@ -18,6 +18,7 @@ import {
   Store,
   Trash2,
   Bookmark,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -545,7 +546,19 @@ function CatalogPage() {
     FILTERS.every((d) => skip.includes(d.key) || f[d.key] === "all" || d.get(c) === f[d.key]);
 
   // What For You is showing at the top: the list below does not repeat it.
-  const [suggested, setSuggested] = useState<string[]>([]);
+  const [picked, setPicked] = useState<string[]>([]);
+  // Only the first row of the grid is suggested: as many as it has columns (see BLISTER_GRID_COLS).
+  const [cols, setCols] = useState(6);
+  useEffect(() => {
+    const read = () => {
+      const w = window.innerWidth;
+      setCols(w >= 1280 ? 6 : w >= 1024 ? 5 : w >= 640 ? 4 : 3);
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => window.removeEventListener("resize", read);
+  }, []);
+  const suggested = useMemo(() => picked.slice(0, cols), [picked, cols]);
 
   const rows = useMemo(() => {
     let result = searched.filter((c) => matches(c, filters));
@@ -747,13 +760,16 @@ function CatalogPage() {
                 car={asCar(c)}
                 onOpen={() => setViewing(c)}
                 caption={
-                  myIso.has(cid)
-                    ? "Wishlist"
-                    : owned.has(cid)
-                      ? "Owned"
-                      : suggested.includes(c.car_id)
-                        ? "Suggested"
-                        : undefined
+                  myIso.has(cid) ? (
+                    "Wishlist"
+                  ) : owned.has(cid) ? (
+                    "Owned"
+                  ) : suggested.includes(c.car_id) ? (
+                    <>
+                      <Sparkles className="size-3 fill-amber-400 text-amber-400" />
+                      Suggested
+                    </>
+                  ) : undefined
                 }
                 synced={Boolean(c.synced_at)}
                 syncedSource={c.synced_source}
@@ -1097,7 +1113,7 @@ function CatalogPage() {
       />
 
       {/* The first thing in the list: what to look at before the whole catalogue. */}
-      <ForYou headless onShown={setSuggested} />
+      <ForYou headless onShown={setPicked} />
 
       {isLoading && catalog.length === 0 ? (
         <TileGridSkeleton className={BLISTER_GRID_COLS} />

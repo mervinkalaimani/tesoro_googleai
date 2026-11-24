@@ -148,7 +148,7 @@ export function BlisterTile({
   car: Diecast;
   onOpen: () => void;
   /** One short word at the end of the second line — "Owned", a price, a day. */
-  caption?: string;
+  caption?: ReactNode;
   /** The catalogue entry has been checked against the maker's site. */
   synced?: boolean;
   syncedSource?: string | null;
