@@ -179,7 +179,7 @@ function ForYouCarousel({
                   onClick={() => onAdd(p.car)}
                   aria-label="Add to my collection"
                   title="Add to my collection"
-                  className="glass-btn !inline-flex h-10 flex-1 cursor-pointer items-center justify-center gap-1 !rounded-none px-4 text-sm font-medium text-foreground"
+                  className="glass-btn !inline-flex h-10 flex-1 cursor-pointer items-center justify-center gap-1 !rounded-none px-4 text-sm font-semibold text-primary"
                 >
                   <Plus className="size-3.5" />
                   Add
