@@ -82,7 +82,7 @@ const ATTRS: Record<Attr, Def> = {
     coef: 2.5,
     car: (c) => c.model,
     cat: (c) => c.model,
-    say: (l, o) => (o ? `have a ${l}` : `like the ${l}`),
+    say: (l, o) => (o ? `have ${o} ${l} cars` : `like the ${l}`),
   },
   colour: {
     coef: 1,
@@ -137,13 +137,31 @@ const SPECIFIC: Attr[] = [
   "brand",
 ];
 
-type Seen = { label: string; weight: number; owned: number; recent: number; n: number };
+type Seen = {
+  label: string;
+  weight: number;
+  owned: number;
+  recent: number;
+  n: number;
+  /** The months (YYYY-MM) in which cars with this were bought, and when the last one was. */
+  months: Set<string>;
+  last: number;
+};
 
 /**
- * One or two cars are not a taste: a single Mustang may be a one-off and a fantasy
- * car just a fantasy car. An attribute only counts once this many of your cars share it.
+ * A few cars are not a taste: a single Skyline may be a one-off and a fantasy car just a
+ * fantasy car. An attribute only counts once more than ten of the cars you own share it...
  */
-const PATTERN = 3;
+const PATTERN = 11;
+/** ...they were bought across at least this many different months, not in one splurge... */
+const MIN_MONTHS = 3;
+/** ...and you are still buying it: the latest of them is no older than this. */
+const STILL_BUYING_DAYS = 90;
+/** Whether what you own with this attribute is a habit: plenty of cars, on a regular interval, still going. */
+const isHabit = (s: Seen, now: number) =>
+  s.owned >= PATTERN &&
+  s.months.size >= MIN_MONTHS &&
+  now - s.last <= STILL_BUYING_DAYS * 86_400_000;
 /** The attributes that say something on their own; colour, year, type and scale only add to these. */
 const CORE: Attr[] = ["brand", "make", "model", "series", "subSeries", "assortment"];
 
@@ -223,10 +241,19 @@ export function forYou(
         owned: 0,
         recent: 0,
         n: 0,
+        months: new Set<string>(),
+        last: 0,
       };
       s.weight += w;
       s.n += 1;
-      if (!wished) s.owned += 1;
+      if (!wished) {
+        s.owned += 1;
+        const d = boughtOn(c);
+        if (d) {
+          s.months.add(`${d.getFullYear()}-${d.getMonth()}`);
+          s.last = Math.max(s.last, d.getTime());
+        }
+      }
       if (recent) s.recent += 1;
       book[a].set(k, s);
     }
@@ -263,7 +290,7 @@ export function forYou(
     const hits: { a: Attr; value: number; s: Seen }[] = [];
     for (const a of KEYS) {
       const s = book[a].get(norm(ATTRS[a].cat(c)));
-      if (s && s.n >= PATTERN) hits.push({ a, value: ATTRS[a].coef * Math.log1p(s.weight), s });
+      if (s && isHabit(s, now)) hits.push({ a, value: ATTRS[a].coef * Math.log1p(s.weight), s });
     }
     const others = popular.get(castingKey(c)) ?? 0;
     // A pattern means a core attribute shared by several of your cars, not a stray match.
