@@ -472,6 +472,11 @@
     0 0 2.6em 0.3em color-mix(in oklab, var(--primary) 20%, transparent),
     0 0 5em 0.8em color-mix(in oklab, var(--primary) 9%, transparent);
 }
+/* Anything that turns theme-coloured when hovered (a row, an option, a tile) spills that colour:
+   the same light as a button, so the colour has a source and does not stop at the border. */
+html [class*="hover:border-primary"]:hover {
+  box-shadow: var(--primary-glow-soft);
+}
 /* The outlined version (Update order, Pay): a dimmer light, for a button that is not filled. */
 html .primary-glow-soft {
   box-shadow:
