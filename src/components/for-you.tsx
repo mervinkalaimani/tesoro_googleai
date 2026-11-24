@@ -124,19 +124,19 @@ function ForYouCarousel({
           return (
             <article
               key={p.car.car_id}
-              className="flex w-[var(--sw)] shrink-0 snap-start snap-always flex-col"
+              className="flex w-[var(--sw)] shrink-0 snap-start snap-always flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
             >
               {/* The picture fills its tile, as in the blister view. */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => onOpen(p.car)}
-                  className="relative block aspect-[534/658] w-full shrink-0 cursor-pointer overflow-hidden rounded-2xl"
+                  className="relative block aspect-[534/658] w-full shrink-0 cursor-pointer overflow-hidden"
                   aria-label={`Open ${c.name}`}
                 >
                   <CarThumb car={c} className="absolute inset-0 size-full" />
                 </button>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-[6.25rem] flex-col gap-0.5 overflow-hidden rounded-b-2xl bg-black/40 px-2.5 pb-2.5 pt-2 text-left text-white backdrop-blur-md backdrop-saturate-150">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-[6.25rem] flex-col gap-0.5 overflow-hidden bg-black/40 px-2.5 pb-2.5 pt-2 text-left text-white backdrop-blur-md backdrop-saturate-150">
                   <h3 className="line-clamp-2 text-sm font-semibold leading-tight">
                     {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
                   </h3>
@@ -166,14 +166,14 @@ function ForYouCarousel({
                   </button>
                 </div>
               </div>
-              <div className="flex flex-1 flex-col items-start gap-1 px-0 pt-2 text-left">
+              <div className="flex flex-1 flex-col items-start gap-1 p-2 text-left">
                 <div className="mt-auto flex w-full flex-col items-end gap-2 pt-1.5">
                   <div className="flex w-full items-center gap-2">
                     <WishlistHeart
                       entry={p.car}
                       onAdded={() => onWished(p.car.car_id)}
                       label="Wishlist"
-                      className={`${btn} !flex h-8 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border border-white/50 bg-white/25 px-3 text-foreground backdrop-blur-md hover:bg-white/35`}
+                      className={`${btn} !flex h-8 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border border-border bg-muted/60 px-3 text-foreground hover:bg-muted`}
                     />
                     <button
                       type="button"
