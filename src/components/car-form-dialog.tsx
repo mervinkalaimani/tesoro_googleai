@@ -73,6 +73,7 @@ import {
   ClearableInput,
   Field,
   FormSection,
+  IosFormProvider,
   PillButton,
   PillRow,
 } from "@/components/form-parts";
@@ -2678,204 +2679,208 @@ export function CarFormDialog({
           "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
         )}
       >
-        <form
-          onSubmit={(e) => void handleSubmit(e)}
-          className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden"
-        >
-          <EditorShell
-            title={mode === "add" ? "Add a car" : "Update car"}
-            description={
-              mode === "add"
-                ? "Find the car, then say what your copy cost."
-                : "Status, logistics, payment and flags. What the car is stays as catalogued."
-            }
-            steps={
-              mode === "add" ? WIZARD_STEPS.map((s) => ({ id: s.id, label: s.label })) : undefined
-            }
-            current={currentStep}
-            onStep={(id) => {
-              setValidationError(null);
-              setCurrentStep(id);
-            }}
-            rail={isEdit || currentStep === LAST_STEP ? rail : []}
-            summary={summary}
-            alerts={
-              <>
-                {/* Under the picture of the car being described, as a count.
+        <IosFormProvider value={isEdit && isMobile}>
+          <form
+            onSubmit={(e) => void handleSubmit(e)}
+            className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden"
+          >
+            <EditorShell
+              title={mode === "add" ? "Add a car" : "Update car"}
+              description={
+                mode === "add"
+                  ? "Find the car, then say what your copy cost."
+                  : "Status, logistics, payment and flags. What the car is stays as catalogued."
+              }
+              steps={
+                mode === "add" ? WIZARD_STEPS.map((s) => ({ id: s.id, label: s.label })) : undefined
+              }
+              current={currentStep}
+              onStep={(id) => {
+                setValidationError(null);
+                setCurrentStep(id);
+              }}
+              rail={isEdit || currentStep === LAST_STEP ? rail : []}
+              summary={summary}
+              alerts={
+                <>
+                  {/* Under the picture of the car being described, as a count.
                     Reading the entries is comparing two descriptions field by
                     field, which wants the width of a dialog. */}
-                <DuplicatesButton hits={duplicates} onClick={() => setDupesOpen(true)} />
-                {(isEdit || currentStep === LAST_STEP) && (
-                  <ThingsLeft items={thingsLeft} done="Every required field is in" />
-                )}
-              </>
-            }
-            actions={actions}
-          >
-            {restored && (
-              <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
-                <span className="flex items-center gap-2 text-foreground">
-                  <RotateCcw className="size-3.5 shrink-0 text-primary" />
-                  Picked up where you left off — nothing you typed was lost.
-                </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs"
-                  onClick={discard}
-                >
-                  Start fresh
-                </Button>
-              </div>
-            )}
+                  <DuplicatesButton hits={duplicates} onClick={() => setDupesOpen(true)} />
+                  {(isEdit || currentStep === LAST_STEP) && (
+                    <ThingsLeft items={thingsLeft} done="Every required field is in" />
+                  )}
+                </>
+              }
+              actions={actions}
+            >
+              {restored && (
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs">
+                  <span className="flex items-center gap-2 text-foreground">
+                    <RotateCcw className="size-3.5 shrink-0 text-primary" />
+                    Picked up where you left off — nothing you typed was lost.
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs"
+                    onClick={discard}
+                  >
+                    Start fresh
+                  </Button>
+                </div>
+              )}
 
-            {/* Adding marks the field itself; editing has no step fields to mark. */}
-            {validationError && mode !== "add" && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                <AlertCircle className="size-4 shrink-0" />
-                <span>{validationError.message}</span>
-              </div>
-            )}
+              {/* Adding marks the field itself; editing has no step fields to mark. */}
+              {validationError && mode !== "add" && (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                  <AlertCircle className="size-4 shrink-0" />
+                  <span>{validationError.message}</span>
+                </div>
+              )}
 
-            {/* ---------------- STEP 1: WHICH CAR ---------------- */}
-            {mode === "add" && currentStep === 1 && (
-              <div className="space-y-4">
-                {/* Above the search rather than below: by the time three fields
+              {/* ---------------- STEP 1: WHICH CAR ---------------- */}
+              {mode === "add" && currentStep === 1 && (
+                <div className="space-y-4">
+                  {/* Above the search rather than below: by the time three fields
                       agree with something on the ISO list, the useful moment is
                       before the rest is typed out by hand. */}
-                {!isoDismissed && (
-                  <IsoSuggestions
-                    matches={isoMatches}
-                    onUse={setIsoStatusCar}
-                    onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
-                    onDismiss={() => setIsoDismissed(true)}
+                  {!isoDismissed && (
+                    <IsoSuggestions
+                      matches={isoMatches}
+                      onUse={setIsoStatusCar}
+                      onBulk={onSwitchToBulk ? sendIsoToBulk : undefined}
+                      onDismiss={() => setIsoDismissed(true)}
+                    />
+                  )}
+
+                  <div className="space-y-1.5">
+                    <CollectionSearch
+                      cars={cars}
+                      onPick={pickFromCatalogue}
+                      searchAll={!isGuest}
+                      wide
+                      autoFocus={!isMobile}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Pick a car and the fourteen fields that describe the casting fill themselves
+                      in. Your collection first, then every collection.
+                    </p>
+                  </div>
+
+                  <CarLinkField
+                    onFound={({ fields, imageUrl }) =>
+                      applyScan({
+                        ...fields,
+                        mrp: fields.mrp ? Number(fields.mrp) : undefined,
+                        ...(imageUrl ? { imageUrl } : {}),
+                      })
+                    }
                   />
-                )}
 
-                <div className="space-y-1.5">
-                  <CollectionSearch
-                    cars={cars}
-                    onPick={pickFromCatalogue}
-                    searchAll={!isGuest}
-                    wide
-                    autoFocus={!isMobile}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Pick a car and the fourteen fields that describe the casting fill themselves in.
-                    Your collection first, then every collection.
-                  </p>
-                </div>
-
-                <CarLinkField
-                  onFound={({ fields, imageUrl }) =>
-                    applyScan({
-                      ...fields,
-                      mrp: fields.mrp ? Number(fields.mrp) : undefined,
-                      ...(imageUrl ? { imageUrl } : {}),
-                    })
-                  }
-                />
-
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                  {/* The route counts the scan before it spends a model call.
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                    {/* The route counts the scan before it spends a model call.
                       This is so what is left is read before the camera opens
                       rather than after. */}
-                  <button
-                    type="button"
-                    disabled={scansRemaining === 0}
-                    // Pro has the one scan, which reads a single car, several, or a
-                    // multi-car pack from a photo. Everyone else has the card
-                    // scanner, which reads one.
-                    onClick={() => (isPro ? setMultiScanOpen(true) : setScanOpen(true))}
-                    title={
-                      scansRemaining === 0
-                        ? "No scans left this month"
-                        : isPro
-                          ? "Read one car, several, or a multi-car pack from a photo"
-                          : "Read make, model and series off the card"
-                    }
-                    className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
-                  >
-                    <span className="flex items-center gap-2 text-sm font-semibold">
-                      {scansRemaining === 0 ? (
-                        <Lock className="size-4 text-muted-foreground" />
-                      ) : (
-                        <ScanLine className="size-4 text-primary" />
-                      )}
-                      {isPro ? "Scan" : "Scan a card"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {scansRemaining === null
-                        ? isPro
-                          ? "Cars and multi-packs from one photo"
-                          : "Read make, model and series off the card"
-                        : scansRemaining === 0
-                          ? "None left this month"
-                          : `${scansRemaining} left this month`}
-                    </span>
-                  </button>
-                  {isPro && !isGuest && (
                     <button
                       type="button"
-                      // Scans kept from the phone, waiting to be added here.
-                      onClick={() => setSavedOpen(true)}
-                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                      disabled={scansRemaining === 0}
+                      // Pro has the one scan, which reads a single car, several, or a
+                      // multi-car pack from a photo. Everyone else has the card
+                      // scanner, which reads one.
+                      onClick={() => (isPro ? setMultiScanOpen(true) : setScanOpen(true))}
+                      title={
+                        scansRemaining === 0
+                          ? "No scans left this month"
+                          : isPro
+                            ? "Read one car, several, or a multi-car pack from a photo"
+                            : "Read make, model and series off the card"
+                      }
+                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:border-border"
                     >
                       <span className="flex items-center gap-2 text-sm font-semibold">
-                        <Bookmark className="size-4 text-primary" />
-                        Saved scans
-                        {savedScans.scans.length > 0 && (
-                          <span className="rounded-full bg-primary/15 px-1.5 text-xs text-primary">
-                            {savedScans.scans.length}
-                          </span>
+                        {scansRemaining === 0 ? (
+                          <Lock className="size-4 text-muted-foreground" />
+                        ) : (
+                          <ScanLine className="size-4 text-primary" />
                         )}
-                      </span>
-                      <span className="text-xs text-muted-foreground">Scans kept to add later</span>
-                    </button>
-                  )}
-                  {onSwitchToBulk && (
-                    <button
-                      type="button"
-                      // A Pro feature, phone included: the table has a card layout
-                      // for a small screen. Left on the screen for everyone, so a
-                      // free account sees what it is missing and is shown the plan.
-                      // Wrapped, not passed directly: onSwitchToBulk takes seed
-                      // cars, and a bare handler would hand it the click event
-                      // as the batch to prefill.
-                      onClick={() => (isPro ? onSwitchToBulk() : openProDialog("Add in bulk"))}
-                      className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
-                    >
-                      <span className="flex items-center gap-2 text-sm font-semibold">
-                        <Layers className="size-4 text-primary" />
-                        <span>Add in bulk</span>
-                        {!isPro && (
-                          <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
-                            Pro
-                          </span>
-                        )}
+                        {isPro ? "Scan" : "Scan a card"}
                       </span>
                       <span className="text-xs text-muted-foreground">
-                        Several at once, or a CSV
+                        {scansRemaining === null
+                          ? isPro
+                            ? "Cars and multi-packs from one photo"
+                            : "Read make, model and series off the card"
+                          : scansRemaining === 0
+                            ? "None left this month"
+                            : `${scansRemaining} left this month`}
                       </span>
                     </button>
-                  )}
+                    {isPro && !isGuest && (
+                      <button
+                        type="button"
+                        // Scans kept from the phone, waiting to be added here.
+                        onClick={() => setSavedOpen(true)}
+                        className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                      >
+                        <span className="flex items-center gap-2 text-sm font-semibold">
+                          <Bookmark className="size-4 text-primary" />
+                          Saved scans
+                          {savedScans.scans.length > 0 && (
+                            <span className="rounded-full bg-primary/15 px-1.5 text-xs text-primary">
+                              {savedScans.scans.length}
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Scans kept to add later
+                        </span>
+                      </button>
+                    )}
+                    {onSwitchToBulk && (
+                      <button
+                        type="button"
+                        // A Pro feature, phone included: the table has a card layout
+                        // for a small screen. Left on the screen for everyone, so a
+                        // free account sees what it is missing and is shown the plan.
+                        // Wrapped, not passed directly: onSwitchToBulk takes seed
+                        // cars, and a bare handler would hand it the click event
+                        // as the batch to prefill.
+                        onClick={() => (isPro ? onSwitchToBulk() : openProDialog("Add in bulk"))}
+                        className="flex min-h-[4.5rem] flex-col items-start gap-1 rounded-xl border-[1.5px] border-border bg-background p-3 text-left transition-colors hover:border-primary"
+                      >
+                        <span className="flex items-center gap-2 text-sm font-semibold">
+                          <Layers className="size-4 text-primary" />
+                          <span>Add in bulk</span>
+                          {!isPro && (
+                            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-primary">
+                              Pro
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Several at once, or a CSV
+                        </span>
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={startByHand}
+                    className="text-xs text-primary underline underline-offset-2"
+                  >
+                    Not in the catalogue? Enter it manually →
+                  </button>
                 </div>
+              )}
 
-                <button
-                  type="button"
-                  onClick={startByHand}
-                  className="text-xs text-primary underline underline-offset-2"
-                >
-                  Not in the catalogue? Enter it manually →
-                </button>
-              </div>
-            )}
-
-            {/* ---------------- STEP 2: YOUR COPY ---------------- */}
-            {(isEdit || currentStep === LAST_STEP) && copyFields}
-          </EditorShell>
-        </form>
+              {/* ---------------- STEP 2: YOUR COPY ---------------- */}
+              {(isEdit || currentStep === LAST_STEP) && copyFields}
+            </EditorShell>
+          </form>
+        </IosFormProvider>
       </DialogContent>
 
       {/* Deleting closes this dialog; anything showing the car behind it — the

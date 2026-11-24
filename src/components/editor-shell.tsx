@@ -3,6 +3,7 @@ import { Check, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { activeSection } from "@/lib/editor-rail";
+import { useIosForm } from "@/components/form-parts";
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 /**
@@ -81,6 +82,7 @@ export function EditorShell({
   actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
+  const ios = useIosForm();
   const scroller = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState("");
   // The sections themselves are the caller's children, so the rail finds them
@@ -126,7 +128,9 @@ export function EditorShell({
             <DialogTitle className="truncate text-xl font-bold tracking-tight sm:text-2xl">
               {title}
             </DialogTitle>
-            <DialogDescription className="mt-0.5 text-xs">{description}</DialogDescription>
+            <DialogDescription className={cn("mt-0.5 text-xs", ios && "sr-only")}>
+              {description}
+            </DialogDescription>
           </div>
           {steps && (
             <StepPills steps={steps} current={current} onStep={onStep} className="hidden sm:flex" />

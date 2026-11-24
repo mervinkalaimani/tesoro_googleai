@@ -44,7 +44,9 @@ import {
   Field,
   FormSection,
   InfoTip,
+  IosFormProvider,
 } from "@/components/form-parts";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { MultipackField } from "@/components/multipack-field";
 import { DuplicatesButton, DuplicatesDialog } from "@/components/duplicates-dialog";
 import { findDuplicates, matchPercent, needsCarNumber } from "@/lib/duplicate";
@@ -112,6 +114,7 @@ export function CatalogFormDialog({
   const { user, profile, isAdmin } = useAuth();
   const scansRemaining = scansLeft(profile);
   const isNew = entry === "new" || !entry;
+  const isMobile = useIsMobile();
   /** The entry being edited, when there is one: what a merge folds away. */
   const entryId = entry && entry !== "new" ? entry.car_id : "";
   /** The saved entry, narrowed: "new" is not a row and has nothing to merge. */
@@ -1184,370 +1187,374 @@ export function CatalogFormDialog({
             "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
           )}
         >
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void save();
-            }}
-            className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden"
-          >
-            <EditorShell
-              title={isNew ? "Add a casting" : "Update casting"}
-              description={
-                isImageOnly
-                  ? "You can update or propose the photo for this catalogue casting."
-                  : isNew
-                    ? "What the casting is, and what it retails for. Everyone browses the same one."
-                    : "Changes are written into this casting for every collector who owns one."
-              }
-              rail={rail}
-              headerAction={
-                !isImageOnly && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={scansRemaining === 0}
-                    title={
-                      scansRemaining === null
-                        ? undefined
-                        : scansRemaining === 0
-                          ? "No scans left this month"
-                          : `${scansRemaining} scans left this month`
-                    }
-                    className="h-8 shrink-0 gap-1.5 px-3 text-xs"
-                    onClick={() => setScanOpen(true)}
-                  >
-                    {scansRemaining === 0 ? (
-                      <Lock className="size-3.5" />
-                    ) : (
-                      <ScanLine className="size-3.5" />
-                    )}
-                    Scan card
-                  </Button>
-                )
-              }
-              summary={summary}
-              alerts={
-                <>
-                  {/* Under the preview of the casting being filed, as a count.
+          <IosFormProvider value={!isNew && isMobile}>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void save();
+              }}
+              className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden"
+            >
+              <EditorShell
+                title={isNew ? "Add a casting" : "Update casting"}
+                description={
+                  isImageOnly
+                    ? "You can update or propose the photo for this catalogue casting."
+                    : isNew
+                      ? "What the casting is, and what it retails for. Everyone browses the same one."
+                      : "Changes are written into this casting for every collector who owns one."
+                }
+                rail={rail}
+                headerAction={
+                  !isImageOnly && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={scansRemaining === 0}
+                      title={
+                        scansRemaining === null
+                          ? undefined
+                          : scansRemaining === 0
+                            ? "No scans left this month"
+                            : `${scansRemaining} scans left this month`
+                      }
+                      className="h-8 shrink-0 gap-1.5 px-3 text-xs"
+                      onClick={() => setScanOpen(true)}
+                    >
+                      {scansRemaining === 0 ? (
+                        <Lock className="size-3.5" />
+                      ) : (
+                        <ScanLine className="size-3.5" />
+                      )}
+                      Scan card
+                    </Button>
+                  )
+                }
+                summary={summary}
+                alerts={
+                  <>
+                    {/* Under the preview of the casting being filed, as a count.
                       The entries themselves need the width of a dialog to be
                       worth reading, so that is where they are. */}
-                  <DuplicatesButton hits={duplicates} onClick={() => setDupesOpen(true)} />
-                  {isNew && duplicates.length > 0 && (
-                    <div
-                      data-duplicate-confirm
-                      className="space-y-2.5 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3"
-                    >
-                      <p className="text-xs font-medium text-foreground">
-                        This casting{" "}
-                        {duplicates.some((d) => d.match >= 100) ? "matches" : "may match"} one the
-                        catalogue already has. Add that one instead, or say below that this is a
-                        different release.
-                      </p>
-                      <label className="flex cursor-pointer select-none items-start gap-2.5">
-                        <Checkbox
-                          checked={confirmNotDuplicate}
-                          onCheckedChange={(checked) => setConfirmNotDuplicate(checked === true)}
-                          className="mt-0.5"
-                        />
-                        <span className="text-xs font-semibold leading-tight text-foreground">
-                          This is not a duplicate — it is a genuinely different release
-                        </span>
-                      </label>
-                    </div>
-                  )}
-                  <ThingsLeft items={thingsLeft} done="Every required field is in" />
-                </>
-              }
-              actions={actions}
-            >
-              {isNew && !isImageOnly && (
-                <CarLinkField
-                  className="mb-4"
-                  onFound={({ fields, imageUrl }) =>
-                    onApplyScan({ ...fields, ...(imageUrl ? { imageUrl } : {}) })
-                  }
-                />
-              )}
-              <FormSection
-                id="identity"
-                title="Car details"
-                description="Make, model and the details that tell releases apart."
-                badge={identityBadge}
-                badgeTone={identityBadge === "not set" ? "warn" : "muted"}
-                open={showIdentity}
-                onToggle={() => setShowIdentity((v) => !v)}
+                    <DuplicatesButton hits={duplicates} onClick={() => setDupesOpen(true)} />
+                    {isNew && duplicates.length > 0 && (
+                      <div
+                        data-duplicate-confirm
+                        className="space-y-2.5 rounded-xl border border-amber-500/50 bg-amber-500/10 p-3"
+                      >
+                        <p className="text-xs font-medium text-foreground">
+                          This casting{" "}
+                          {duplicates.some((d) => d.match >= 100) ? "matches" : "may match"} one the
+                          catalogue already has. Add that one instead, or say below that this is a
+                          different release.
+                        </p>
+                        <label className="flex cursor-pointer select-none items-start gap-2.5">
+                          <Checkbox
+                            checked={confirmNotDuplicate}
+                            onCheckedChange={(checked) => setConfirmNotDuplicate(checked === true)}
+                            className="mt-0.5"
+                          />
+                          <span className="text-xs font-semibold leading-tight text-foreground">
+                            This is not a duplicate — it is a genuinely different release
+                          </span>
+                        </label>
+                      </div>
+                    )}
+                    <ThingsLeft items={thingsLeft} done="Every required field is in" />
+                  </>
+                }
+                actions={actions}
               >
-                {/* The same thirteen fields the car form edits, from the same
+                {isNew && !isImageOnly && (
+                  <CarLinkField
+                    className="mb-4"
+                    onFound={({ fields, imageUrl }) =>
+                      onApplyScan({ ...fields, ...(imageUrl ? { imageUrl } : {}) })
+                    }
+                  />
+                )}
+                <FormSection
+                  id="identity"
+                  title="Car details"
+                  description="Make, model and the details that tell releases apart."
+                  badge={identityBadge}
+                  badgeTone={identityBadge === "not set" ? "warn" : "muted"}
+                  open={showIdentity}
+                  onToggle={() => setShowIdentity((v) => !v)}
+                >
+                  {/* The same thirteen fields the car form edits, from the same
                     component — so a brand narrows its assortments here too, and
                     the labels cannot drift apart again. The assortment is
                     omitted: it has a section of its own, because a casting can
                     be sold in more than one box. */}
-                <CatalogueFields
-                  values={catalogueValues}
-                  onChange={setCatalogueValue}
-                  cars={cars}
-                  omit={["assortment"]}
-                  disabled={isImageOnly}
-                  errorFor={(k) => errorFor(k)}
-                />
+                  <CatalogueFields
+                    values={catalogueValues}
+                    onChange={setCatalogueValue}
+                    cars={cars}
+                    omit={["assortment"]}
+                    disabled={isImageOnly}
+                    errorFor={(k) => errorFor(k)}
+                  />
 
-                <div className="mt-3 border-t border-border/50 pt-3">
-                  <Field label="Display name">
-                    <ClearableInput
-                      disabled={isImageOnly}
-                      value={form.name || ""}
-                      onChange={(e) => set("name", e.target.value)}
-                      placeholder={autoName || "Make Model Variant"}
-                      aria-label="Display name"
-                    />
-                    <p className="pt-1 text-xs text-muted-foreground">
-                      Built from make, model and variant if you leave it blank.
-                    </p>
-                  </Field>
-                </div>
-              </FormSection>
+                  <div className="mt-3 border-t border-border/50 pt-3">
+                    <Field label="Display name">
+                      <ClearableInput
+                        disabled={isImageOnly}
+                        value={form.name || ""}
+                        onChange={(e) => set("name", e.target.value)}
+                        placeholder={autoName || "Make Model Variant"}
+                        aria-label="Display name"
+                      />
+                      <p className="pt-1 text-xs text-muted-foreground">
+                        Built from make, model and variant if you leave it blank.
+                      </p>
+                    </Field>
+                  </div>
+                </FormSection>
 
-              {/* One casting, every box it is sold in. Deliberately before
+                {/* One casting, every box it is sold in. Deliberately before
                   Release & price: which boxes exist decides what the prices are
                   a list of, and the release date is the casting's either way. */}
-              <FormSection
-                id="assortments"
-                title="Assortments"
-                description="Every box this casting is sold in, and what each retails for."
-                badge={assortmentsBadge}
-                badgeTone={boxes[0].assortment ? "muted" : "warn"}
-                open={showAssortments}
-                onToggle={() => setShowAssortments((v) => !v)}
-              >
-                <AssortmentHeader />
-                <div className="space-y-2">
-                  <AssortmentRow
-                    assortment={form.assortment || ""}
-                    mrp={Number(form.mrp) || 0}
-                    options={assortmentOptions(form.assortment || "")}
-                    cars={cars}
-                    brand={form.brand || ""}
-                    allowCustom={isAdmin}
-                    disabled={isImageOnly || !form.brand}
-                    assortmentError={errorFor("assortment")}
-                    onAssortment={(v) => setCatalogueValue("assortment", v)}
-                    onMrp={(v) => {
-                      set("mrp", v);
-                      setValidationError((x) => (x && x.field === "mrp" ? null : x));
-                    }}
-                  />
-                  {!isPack &&
-                    extras.map((x, i) => (
-                      <AssortmentRow
-                        key={x.car_id ?? `new-${i}`}
-                        assortment={x.assortment}
-                        mrp={x.mrp}
-                        options={assortmentOptions(x.assortment)}
-                        cars={cars}
-                        brand={form.brand || ""}
-                        allowCustom={isAdmin}
-                        disabled={isImageOnly || !form.brand}
-                        filedAs={x.car_id}
-                        onAssortment={(v) =>
-                          setExtras((rows) =>
-                            rows.map((r, j) => (j === i ? { ...r, assortment: v } : r)),
-                          )
-                        }
-                        onMrp={(v) => {
-                          setExtras((rows) => rows.map((r, j) => (j === i ? { ...r, mrp: v } : r)));
-                          setValidationError((e) => (e && e.field === "mrp" ? null : e));
-                        }}
-                        // A row already on file is a catalogue entry other people
-                        // may own a copy from, so it is not something this form
-                        // throws away. Removing it is the Remove button on that
-                        // entry, with the count of cars it would orphan.
-                        onRemove={
-                          x.car_id
-                            ? undefined
-                            : () => setExtras((rows) => rows.filter((_, j) => j !== i))
-                        }
-                        onDetach={
-                          x.car_id && isAdmin ? () => void detachEntry(x.car_id!) : undefined
-                        }
-                      />
-                    ))}
-                </div>
-                {!isImageOnly && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-2.5 gap-1.5"
-                    disabled={isPack || !form.brand}
-                    onClick={() => setExtras((rows) => [...rows, { assortment: "", mrp: 0 }])}
-                  >
-                    <Plus className="size-4" />
-                    Add an assortment
-                  </Button>
-                )}
-                {!isImageOnly && isAdmin && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="ml-2 mt-2.5 gap-1.5"
-                    disabled={isPack || !form.brand || linking}
-                    onClick={() => setPicking(true)}
-                    title="A box of this casting that is already in the catalogue under its own entry"
-                  >
-                    {linking ? (
-                      <Loader2 className="size-4 animate-spin" />
-                    ) : (
-                      <Link2 className="size-4" />
-                    )}
-                    Add from catalogue
-                  </Button>
-                )}
-                <p className="mt-2 text-xs text-muted-foreground">
-                  {isPack
-                    ? "A multipack is the product, so it has one assortment and one price. Untick Multipack below to file this casting in more than one box."
-                    : "Each box is its own catalogue entry with its own ID and price, and they read as one casting in the catalogue. Everything above — colour, series, car number — is shared by all of them."}
-                </p>
-              </FormSection>
-
-              <FormSection
-                id="multipack"
-                title="Multipack"
-                description="Whether this entry is a box of cars rather than one."
-                badge={packBadge(isPack, declaredSize, members.length)}
-                open={showPack}
-                onToggle={() => setShowPack((v) => !v)}
-              >
-                <MultipackField
-                  isPack={isPack}
-                  packSize={declaredSize}
-                  members={members}
-                  onPackChange={onPackChange}
-                  onSizeChange={(v) => set("pack_size", v)}
-                  onMembersChange={setMembers}
-                  // Same rule as Add a car: a casting filed in more than one
-                  // box is not itself a box, and a tick that opens a dialog
-                  // offering to delete those boxes reads as a tick that does
-                  // not work.
-                  disabled={isImageOnly || (!isPack && namedExtras.length > 0)}
-                  canEditMembers={isAdmin}
-                  selfCarId={entry && entry !== "new" ? entry.car_id : ""}
-                  onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
-                  addNewLabel="New casting"
-                />
-              </FormSection>
-
-              <FormSection
-                id="release"
-                title="Release status"
-                description="Whether it is out yet, and which case it shipped in."
-                badge={releaseBadge}
-                open={showRelease}
-                onToggle={() => setShowRelease((v) => !v)}
-              >
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  <Field label="Release status">
-                    <SegmentControl<ReleaseStatus>
-                      row
-                      fill
-                      disabled={isImageOnly}
-                      value={form.release_status ?? "Released"}
-                      onChange={(v) => set("release_status", v)}
-                      className="h-9 w-full"
-                      options={[
-                        { value: "Released", label: "Released" },
-                        { value: "Pre Order", label: "Pre Order" },
-                      ]}
+                <FormSection
+                  id="assortments"
+                  title="Assortments"
+                  description="Every box this casting is sold in, and what each retails for."
+                  badge={assortmentsBadge}
+                  badgeTone={boxes[0].assortment ? "muted" : "warn"}
+                  open={showAssortments}
+                  onToggle={() => setShowAssortments((v) => !v)}
+                >
+                  <AssortmentHeader />
+                  <div className="space-y-2">
+                    <AssortmentRow
+                      assortment={form.assortment || ""}
+                      mrp={Number(form.mrp) || 0}
+                      options={assortmentOptions(form.assortment || "")}
+                      cars={cars}
+                      brand={form.brand || ""}
+                      allowCustom={isAdmin}
+                      disabled={isImageOnly || !form.brand}
+                      assortmentError={errorFor("assortment")}
+                      onAssortment={(v) => setCatalogueValue("assortment", v)}
+                      onMrp={(v) => {
+                        set("mrp", v);
+                        setValidationError((x) => (x && x.field === "mrp" ? null : x));
+                      }}
                     />
-                  </Field>
-
-                  {isPreOrder ? (
-                    <Field label="Expected by">
-                      <Select
-                        disabled={isImageOnly}
-                        value={eta}
-                        onValueChange={(v) => set("expected_date", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Month and year" />
-                        </SelectTrigger>
-                        {/* Seven months, and the other seventeen are a scroll
-                            away — the same list the car form shows. */}
-                        <SelectContent className="max-h-[242px]">
-                          {etaOptions.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="px-1 pt-1 text-xs text-muted-foreground">
-                        Saved as the 1st of that month, which is where the calendar puts it.
-                      </p>
-                    </Field>
-                  ) : (
-                    <Field label="Released on">
-                      <ClearableInput
-                        type="date"
-                        disabled={isImageOnly}
-                        max={localDay()}
-                        value={releasedOnInput(form.released_at)}
-                        onChange={(e) => set("released_at", e.target.value || null)}
-                        aria-label="Released on"
-                      />
-                      <p className="px-1 pt-1 text-xs text-muted-foreground">
-                        What Recently Released dates this by. Left empty, the day the first
-                        collector receives one fills it in.
-                      </p>
-                    </Field>
+                    {!isPack &&
+                      extras.map((x, i) => (
+                        <AssortmentRow
+                          key={x.car_id ?? `new-${i}`}
+                          assortment={x.assortment}
+                          mrp={x.mrp}
+                          options={assortmentOptions(x.assortment)}
+                          cars={cars}
+                          brand={form.brand || ""}
+                          allowCustom={isAdmin}
+                          disabled={isImageOnly || !form.brand}
+                          filedAs={x.car_id}
+                          onAssortment={(v) =>
+                            setExtras((rows) =>
+                              rows.map((r, j) => (j === i ? { ...r, assortment: v } : r)),
+                            )
+                          }
+                          onMrp={(v) => {
+                            setExtras((rows) =>
+                              rows.map((r, j) => (j === i ? { ...r, mrp: v } : r)),
+                            );
+                            setValidationError((e) => (e && e.field === "mrp" ? null : e));
+                          }}
+                          // A row already on file is a catalogue entry other people
+                          // may own a copy from, so it is not something this form
+                          // throws away. Removing it is the Remove button on that
+                          // entry, with the count of cars it would orphan.
+                          onRemove={
+                            x.car_id
+                              ? undefined
+                              : () => setExtras((rows) => rows.filter((_, j) => j !== i))
+                          }
+                          onDetach={
+                            x.car_id && isAdmin ? () => void detachEntry(x.car_id!) : undefined
+                          }
+                        />
+                      ))}
+                  </div>
+                  {!isImageOnly && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2.5 gap-1.5"
+                      disabled={isPack || !form.brand}
+                      onClick={() => setExtras((rows) => [...rows, { assortment: "", mrp: 0 }])}
+                    >
+                      <Plus className="size-4" />
+                      Add an assortment
+                    </Button>
                   )}
+                  {!isImageOnly && isAdmin && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="ml-2 mt-2.5 gap-1.5"
+                      disabled={isPack || !form.brand || linking}
+                      onClick={() => setPicking(true)}
+                      title="A box of this casting that is already in the catalogue under its own entry"
+                    >
+                      {linking ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Link2 className="size-4" />
+                      )}
+                      Add from catalogue
+                    </Button>
+                  )}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {isPack
+                      ? "A multipack is the product, so it has one assortment and one price. Untick Multipack below to file this casting in more than one box."
+                      : "Each box is its own catalogue entry with its own ID and price, and they read as one casting in the catalogue. Everything above — colour, series, car number — is shared by all of them."}
+                  </p>
+                </FormSection>
 
-                  {/* Which carton the run shipped in. It sits here and not with
+                <FormSection
+                  id="multipack"
+                  title="Multipack"
+                  description="Whether this entry is a box of cars rather than one."
+                  badge={packBadge(isPack, declaredSize, members.length)}
+                  open={showPack}
+                  onToggle={() => setShowPack((v) => !v)}
+                >
+                  <MultipackField
+                    isPack={isPack}
+                    packSize={declaredSize}
+                    members={members}
+                    onPackChange={onPackChange}
+                    onSizeChange={(v) => set("pack_size", v)}
+                    onMembersChange={setMembers}
+                    // Same rule as Add a car: a casting filed in more than one
+                    // box is not itself a box, and a tick that opens a dialog
+                    // offering to delete those boxes reads as a tick that does
+                    // not work.
+                    disabled={isImageOnly || (!isPack && namedExtras.length > 0)}
+                    canEditMembers={isAdmin}
+                    selfCarId={entry && entry !== "new" ? entry.car_id : ""}
+                    onAddNew={isAdmin ? () => setAddingMember(true) : undefined}
+                    addNewLabel="New casting"
+                  />
+                </FormSection>
+
+                <FormSection
+                  id="release"
+                  title="Release status"
+                  description="Whether it is out yet, and which case it shipped in."
+                  badge={releaseBadge}
+                  open={showRelease}
+                  onToggle={() => setShowRelease((v) => !v)}
+                >
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <Field label="Release status">
+                      <SegmentControl<ReleaseStatus>
+                        row
+                        fill
+                        disabled={isImageOnly}
+                        value={form.release_status ?? "Released"}
+                        onChange={(v) => set("release_status", v)}
+                        className="h-9 w-full"
+                        options={[
+                          { value: "Released", label: "Released" },
+                          { value: "Pre Order", label: "Pre Order" },
+                        ]}
+                      />
+                    </Field>
+
+                    {isPreOrder ? (
+                      <Field label="Expected by">
+                        <Select
+                          disabled={isImageOnly}
+                          value={eta}
+                          onValueChange={(v) => set("expected_date", v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Month and year" />
+                          </SelectTrigger>
+                          {/* Seven months, and the other seventeen are a scroll
+                            away — the same list the car form shows. */}
+                          <SelectContent className="max-h-[242px]">
+                            {etaOptions.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>
+                                {o.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="px-1 pt-1 text-xs text-muted-foreground">
+                          Saved as the 1st of that month, which is where the calendar puts it.
+                        </p>
+                      </Field>
+                    ) : (
+                      <Field label="Released on">
+                        <ClearableInput
+                          type="date"
+                          disabled={isImageOnly}
+                          max={localDay()}
+                          value={releasedOnInput(form.released_at)}
+                          onChange={(e) => set("released_at", e.target.value || null)}
+                          aria-label="Released on"
+                        />
+                        <p className="px-1 pt-1 text-xs text-muted-foreground">
+                          What Recently Released dates this by. Left empty, the day the first
+                          collector receives one fills it in.
+                        </p>
+                      </Field>
+                    )}
+
+                    {/* Which carton the run shipped in. It sits here and not with
                       the identity fields because it does not name the casting:
                       the same car comes back in a later case and is still the
                       same car, which is also why the ID does not read it. */}
-                  <Field label="Case / Mix">
-                    <Combobox
-                      clearable
-                      disabled={isImageOnly}
-                      value={form.case_number || ""}
-                      onChange={(v) => set("case_number", v)}
-                      options={caseOptions}
-                      placeholder="e.g. 2026 K Case"
-                      searchPlaceholder="Search cases, or type a new one…"
-                    />
-                    <p className="px-1 pt-1 text-xs text-muted-foreground">
-                      The case this release shipped in. A collector&rsquo;s own Case / Mix is on
-                      their car and is not set from here.
-                    </p>
-                  </Field>
-                </div>
-              </FormSection>
+                    <Field label="Case / Mix">
+                      <Combobox
+                        clearable
+                        disabled={isImageOnly}
+                        value={form.case_number || ""}
+                        onChange={(v) => set("case_number", v)}
+                        options={caseOptions}
+                        placeholder="e.g. 2026 K Case"
+                        searchPlaceholder="Search cases, or type a new one…"
+                      />
+                      <p className="px-1 pt-1 text-xs text-muted-foreground">
+                        The case this release shipped in. A collector&rsquo;s own Case / Mix is on
+                        their car and is not set from here.
+                      </p>
+                    </Field>
+                  </div>
+                </FormSection>
 
-              <FormSection
-                id="photo"
-                title="Photo"
-                description="The picture everyone browsing the catalogue will see."
-                badge={photoBadge}
-                open={showPhoto}
-                onToggle={() => setShowPhoto((v) => !v)}
-              >
-                {/* layout="split": on a desktop the frame is smaller and the
+                <FormSection
+                  id="photo"
+                  title="Photo"
+                  description="The picture everyone browsing the catalogue will see."
+                  badge={photoBadge}
+                  open={showPhoto}
+                  onToggle={() => setShowPhoto((v) => !v)}
+                >
+                  {/* layout="split": on a desktop the frame is smaller and the
                     found photos fill the space to its right, the same as the
                     car form. A full-width frame put the suggestions below the
                     fold of the section. */}
-                <CarPhotoField
-                  value={form.image_url || ""}
-                  onChange={(url) => set("image_url", url)}
-                  suggestions={imageSuggestions}
-                  searchQuery={webSearchWords}
-                  layout="split"
-                />
-              </FormSection>
-            </EditorShell>
-          </form>
+                  <CarPhotoField
+                    value={form.image_url || ""}
+                    onChange={(url) => set("image_url", url)}
+                    suggestions={imageSuggestions}
+                    searchQuery={webSearchWords}
+                    layout="split"
+                  />
+                </FormSection>
+              </EditorShell>
+            </form>
+          </IosFormProvider>
         </DialogContent>
       </Dialog>
 

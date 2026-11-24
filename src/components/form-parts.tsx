@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { createContext, useContext, useRef } from "react";
 import { AlertCircle, ChevronRight, ExternalLink, Info, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -15,6 +15,19 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
  * like. Three forms edit the same thirteen catalogue fields; they should not
  * disagree about how a label is spelled or where a clear button sits.
  */
+
+/**
+ * On a phone, the update forms read like iOS Settings: each field is a row with its label on the
+ * left and its answer on the right, and the explanatory text is left out. The form turns this on
+ * for the phone; the desktop layout does not use it.
+ */
+const IosFormContext = createContext(false);
+export const IosFormProvider = IosFormContext.Provider;
+export const useIosForm = () => useContext(IosFormContext);
+
+/** Borderless, right-aligned answers inside an iOS row. */
+const IOS_ANSWER =
+  "[&_input]:h-11 [&_input]:border-0 [&_input]:bg-transparent [&_input]:pl-0 [&_input]:pr-6 [&_input]:text-right [&_input]:text-[15px] [&_input]:shadow-none [&_input]:ring-0 [&_[role=combobox]]:h-11 [&_[role=combobox]]:justify-end [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent [&_[role=combobox]]:px-0 [&_[role=combobox]]:text-[15px] [&_[role=combobox]]:shadow-none [&_[role=combobox]]:ring-0 [&_[role=combobox]>span]:text-right";
 
 /** A labelled field, with room for the message when it is the one that failed. */
 export function Field({
@@ -38,6 +51,41 @@ export function Field({
   /** Marks the label with a star. Says nothing about validation, which is the form's. */
   required?: boolean;
 }) {
+  const ios = useIosForm();
+  if (ios) {
+    return (
+      <div
+        data-field={name}
+        aria-invalid={error ? true : undefined}
+        className={cn(
+          "flex min-h-11 w-full min-w-0 scroll-mt-24 scroll-mb-28 flex-wrap items-center justify-between gap-x-4 rounded-xl border border-border/60 bg-muted/40 px-3.5 has-[.glass-btn]:flex-col has-[.glass-btn]:items-stretch has-[.glass-btn]:gap-1.5 has-[.glass-btn]:py-2.5 has-[textarea]:flex-col has-[textarea]:items-stretch has-[textarea]:py-2.5",
+          IOS_ANSWER,
+          error && "border-destructive",
+          className,
+        )}
+      >
+        <Label
+          className={cn(
+            "flex shrink-0 items-center gap-1 text-[15px] font-normal",
+            error && "text-destructive",
+          )}
+        >
+          {label}
+          {required && <span className="text-primary">*</span>}
+          {info && <InfoTip label={label} text={info} />}
+        </Label>
+        <div className="min-w-0 flex-1 text-right has-[.glass-btn]:text-left has-[textarea]:text-left">
+          {children}
+        </div>
+        {error && (
+          <p role="alert" className="flex w-full items-center gap-1 pb-2 text-xs text-destructive">
+            <AlertCircle className="size-3 shrink-0" />
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
   return (
     <div
       data-field={name}
@@ -169,6 +217,7 @@ export function FormSection({
   onToggle: () => void;
   children: React.ReactNode;
 }) {
+  const ios = useIosForm();
   return (
     <section
       data-section={id}
@@ -196,7 +245,7 @@ export function FormSection({
           <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {title}
           </span>
-          {description && (
+          {description && !ios && (
             <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
           )}
         </span>
@@ -220,7 +269,15 @@ export function FormSection({
         />
       </button>
       {open && (
-        <div className="rounded-b-xl border-t border-border/70 bg-card p-3.5">{children}</div>
+        <div
+          className={cn(
+            "rounded-b-xl border-t border-border/70 bg-card p-3.5",
+            // The sentences under the fields are left out, and the rows sit close.
+            ios && "bg-transparent p-2.5 [&_p.text-muted-foreground]:hidden",
+          )}
+        >
+          {children}
+        </div>
       )}
     </section>
   );
