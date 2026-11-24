@@ -1,5 +1,6 @@
 import { SUMMARY_ITEMS } from "@/lib/summary-cards";
 import { useQuickAdd } from "@/components/use-quick-add";
+import { SpringRow } from "@/components/spring-row";
 import { ShelfCard } from "@/components/shelf-card";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -15,7 +16,6 @@ import {
   AlertTriangle,
   Plus,
   CalendarClock,
-  PackageCheck,
   Bookmark,
   Car,
   Eye,
@@ -1166,9 +1166,8 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
             The newest castings other collectors have pre-ordered
           </p>
         </div>
-        <ShoppingBag className="size-4 text-accent" />
       </div>
-      <div className="no-scrollbar flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-14 px-3 py-14 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
+      <SpringRow className="no-scrollbar flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-14 px-3 py-14 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {shelf.map(({ c, added }, i) => {
           // Shaped as a car for the card pointing to the actual car in the catalogue
           const asCar = toCarWithCatalogId(c, `preorder-${i}`);
@@ -1191,7 +1190,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
             </div>
           );
         })}
-      </div>
+      </SpringRow>
       {/* What the casting is, pointing to the actual car in the catalogue */}
       {quickAdd.node}
       <CatalogCarDetails
@@ -1638,9 +1637,8 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
               : "Pre-orders that have started arriving"}
           </p>
         </div>
-        <PackageCheck className="size-4 text-emerald-500" />
       </div>
-      <div className="no-scrollbar flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-14 px-3 py-14 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
+      <SpringRow className="no-scrollbar flex snap-x scroll-px-3 items-stretch gap-2.5 overflow-x-auto -mx-3 -my-14 px-3 py-14 md:-mx-6 md:scroll-px-6 md:px-6 [--frame-gap:0.625rem]">
         {releases.map((r) => {
           return (
             <div key={r.entry.car_id} className="relative w-36 shrink-0 snap-start sm:w-40">
@@ -1660,7 +1658,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
             </div>
           );
         })}
-      </div>
+      </SpringRow>
 
       {quickAdd.node}
       <CatalogCarDetails
