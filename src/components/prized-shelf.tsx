@@ -272,8 +272,8 @@ function PrizedCoverflow({
         // cut off, but a shadow is not cropped to the frame's edge.
         "relative select-none [clip-path:inset(-4rem_-1.5rem)]",
         wide
-          ? "mx-auto mt-4 aspect-[100/39] max-w-[1800px] [perspective:1500px]"
-          : "mt-3 aspect-[100/62] [perspective:900px]",
+          ? "mx-auto mt-4 aspect-[100/33] max-w-[1800px] [perspective:1500px]"
+          : "mt-3 aspect-[100/52] [perspective:900px]",
       )}
       style={{ touchAction: "pan-y", overscrollBehaviorX: "contain" }}
       onPointerEnter={() => {
@@ -338,7 +338,7 @@ function PrizedCoverflow({
             }}
             className={cn(
               "absolute top-1/2 aspect-[534/658] overflow-hidden rounded-3xl border border-white/15 text-left shadow-[0_1px_2px_rgba(0,0,0,0.12),0_10px_22px_-6px_rgba(0,0,0,0.28),0_28px_56px_-18px_rgba(0,0,0,0.38)]",
-              wide ? "w-[26%]" : "w-[46%]",
+              wide ? "w-[21%]" : "w-[38%]",
             )}
             style={{
               left: wide ? `${WIDE_FRONT * 100}%` : "50%",
