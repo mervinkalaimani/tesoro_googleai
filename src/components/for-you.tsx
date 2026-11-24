@@ -1,14 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import { useQuickAdd } from "@/components/use-quick-add";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  RefreshCw,
-  ThumbsDown,
-  ThumbsUp,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, RefreshCw, ThumbsDown, ThumbsUp } from "lucide-react";
 import { CarThumb } from "@/components/car-thumb";
 
 import { CarFormDialog } from "@/components/car-form-dialog";
@@ -141,24 +134,24 @@ function ForYouCarousel({
                 >
                   <CarThumb car={c} className="absolute inset-0 size-full" />
                 </button>
-                <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+                <div className="absolute right-2 top-2 flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => onDismiss(p.car.car_id)}
                     aria-label="Not interested"
                     title="Not interested: don't suggest this again"
-                    className={`${btn} glass-btn size-6 text-foreground`}
+                    className={`${btn} size-8 border border-white/40 bg-black/35 text-white shadow-sm backdrop-blur-md backdrop-saturate-150 hover:bg-black/50`}
                   >
-                    <ThumbsDown className="size-3" />
+                    <ThumbsDown className="size-4" />
                   </button>
                   <button
                     type="button"
                     onClick={() => onLike(p.car.car_id)}
                     aria-label="Show more like this"
                     title="Show more cars like this"
-                    className={`${btn} glass-btn size-6 text-foreground`}
+                    className={`${btn} size-8 border border-white/40 bg-black/35 text-white shadow-sm backdrop-blur-md backdrop-saturate-150 hover:bg-black/50`}
                   >
-                    <ThumbsUp className="size-3" />
+                    <ThumbsUp className="size-4" />
                   </button>
                 </div>
               </div>
