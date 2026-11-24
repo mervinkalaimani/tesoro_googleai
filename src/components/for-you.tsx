@@ -136,6 +136,15 @@ function ForYouCarousel({
                 >
                   <CarThumb car={c} className="absolute inset-0 size-full" />
                 </button>
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-0.5 rounded-b-2xl bg-black/40 px-2.5 pb-2.5 pt-2 text-left text-white backdrop-blur-md backdrop-saturate-150">
+                  <h3 className="line-clamp-2 text-sm font-semibold leading-tight">
+                    {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
+                  </h3>
+                  <p className="line-clamp-1 text-[11px] font-medium text-white/90">
+                    {[c.brand, c.carNumber, c.assortment].filter(Boolean).join(" · ") || "—"}
+                  </p>
+                  <p className="line-clamp-2 text-[10px] leading-snug text-white/75">{p.reason}</p>
+                </div>
                 <div className="absolute right-2 top-2 flex items-center gap-1.5">
                   <button
                     type="button"
@@ -157,16 +166,7 @@ function ForYouCarousel({
                   </button>
                 </div>
               </div>
-              <div className="flex flex-1 flex-col items-start gap-1 px-1 pt-3 text-left">
-                <h3 className="line-clamp-2 min-h-[2.5em] text-sm font-semibold leading-tight">
-                  {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
-                </h3>
-                <p className="line-clamp-1 text-[11px] font-medium">
-                  {[c.brand, c.carNumber, c.assortment].filter(Boolean).join(" · ") || "—"}
-                </p>
-                <p className="line-clamp-2 min-h-[2.4em] text-[10px] leading-snug text-muted-foreground">
-                  {p.reason}
-                </p>
+              <div className="flex flex-1 flex-col items-start gap-1 px-0 pt-2 text-left">
                 <div className="mt-auto flex w-full flex-col items-end gap-2 pt-1.5">
                   <div className="flex w-full items-center gap-2">
                     <WishlistHeart
