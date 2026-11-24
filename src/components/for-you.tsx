@@ -168,19 +168,19 @@ function ForYouCarousel({
                   {p.reason}
                 </p>
                 <div className="mt-auto flex w-full flex-col items-end gap-2 pt-1.5">
-                  <div className="flex items-center gap-2">
+                  <div className="flex w-full items-center gap-2">
                     <WishlistHeart
                       entry={p.car}
                       onAdded={() => onWished(p.car.car_id)}
                       label="Wishlist"
-                      className={`${btn} !flex h-8 items-center gap-1.5 whitespace-nowrap border border-white/50 bg-white/25 px-3 text-foreground backdrop-blur-md hover:bg-white/35`}
+                      className={`${btn} !flex h-8 flex-1 items-center justify-center gap-1.5 whitespace-nowrap border border-white/50 bg-white/25 px-3 text-foreground backdrop-blur-md hover:bg-white/35`}
                     />
                     <button
                       type="button"
                       onClick={() => onAdd(p.car)}
                       aria-label="Add to my collection"
                       title="Add to my collection"
-                      className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-95"
+                      className="inline-flex h-8 flex-1 cursor-pointer items-center justify-center gap-1 rounded-full bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-transform hover:brightness-110 active:scale-95"
                     >
                       <Plus className="size-3.5" />
                       Add
