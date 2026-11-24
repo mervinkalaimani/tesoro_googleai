@@ -167,8 +167,13 @@ function ForYouCarousel({
                 <p className="line-clamp-2 min-h-[2.4em] text-[10px] leading-snug text-muted-foreground">
                   {p.reason}
                 </p>
-                <div className="mt-auto flex flex-col items-start gap-2 pt-1.5">
+                <div className="mt-auto flex w-full flex-col items-end gap-2 pt-1.5">
                   <div className="flex items-center gap-2">
+                    <WishlistHeart
+                      entry={p.car}
+                      onAdded={() => onWished(p.car.car_id)}
+                      className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
+                    />
                     <button
                       type="button"
                       onClick={() => onAdd(p.car)}
@@ -179,11 +184,6 @@ function ForYouCarousel({
                       <Plus className="size-3.5" />
                       Add
                     </button>
-                    <WishlistHeart
-                      entry={p.car}
-                      onAdded={() => onWished(p.car.car_id)}
-                      className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
-                    />
                   </div>
                 </div>
               </div>
