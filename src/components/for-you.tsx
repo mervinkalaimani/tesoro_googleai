@@ -136,7 +136,7 @@ function ForYouCarousel({
                 >
                   <CarThumb car={c} className="absolute inset-0 size-full" />
                 </button>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-0.5 rounded-b-2xl bg-black/40 px-2.5 pb-2.5 pt-2 text-left text-white backdrop-blur-md backdrop-saturate-150">
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 flex h-[6.25rem] flex-col gap-0.5 overflow-hidden rounded-b-2xl bg-black/40 px-2.5 pb-2.5 pt-2 text-left text-white backdrop-blur-md backdrop-saturate-150">
                   <h3 className="line-clamp-2 text-sm font-semibold leading-tight">
                     {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
                   </h3>
