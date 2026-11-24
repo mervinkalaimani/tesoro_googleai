@@ -181,6 +181,8 @@ export function StatusUpdateDialog({
     ? batch.shippingId || batch.seller
     : current.name || `${current.make} ${current.model}`.trim() || "Unnamed car";
   const wasIso = isIso(current.status);
+  // A placed order keeps its release date; the date is asked for a wish, or for the arrival.
+  const askDate = arrived || (isBatch ? items.some((c) => isIso(c.status)) : wasIso);
   const unchanged = status === normaliseStatus(current.status);
   const statusName = isInHand(status) ? "Delivered" : status;
 
@@ -245,7 +247,9 @@ export function StatusUpdateDialog({
             orderDate: needsPurchase && !placed ? orderDate : c.orderDate,
             orderMonth:
               needsPurchase && !placed ? deriveMonth(orderDate) || c.orderMonth : c.orderMonth,
-            expectedDate: needsPurchase ? expectedDate : c.expectedDate,
+            // The release date is the casting's, not the day it was moved: only a wish, which has
+            // none yet, takes the date given here.
+            expectedDate: needsPurchase && isIso(c.status) ? expectedDate : c.expectedDate,
             date,
             month: date ? deriveMonth(date) || c.month : "",
             transitInfo: needsTransit ? transitInfo.trim() : "",
@@ -282,7 +286,8 @@ export function StatusUpdateDialog({
         payment: needsPurchase ? m.payment : car.payment,
         orderDate: needsPurchase ? orderDate : car.orderDate,
         orderMonth: needsPurchase ? deriveMonth(orderDate) || car.orderMonth : car.orderMonth,
-        expectedDate: needsPurchase ? expectedDate : car.expectedDate,
+        // As above: a placed order keeps its release date through every status change.
+        expectedDate: needsPurchase && wasIso ? expectedDate : car.expectedDate,
         date,
         month: date ? deriveMonth(date) || car.month : "",
         transitInfo: needsTransit ? transitInfo.trim() : "",
@@ -466,27 +471,31 @@ export function StatusUpdateDialog({
                       />
                     </IosRow>
                   )}
-                  <IosRow label={arrived ? "Available date *" : "Expected date *"}>
-                    <IosInput
-                      type="date"
-                      label="Expected date"
-                      value={expectedDate}
-                      onChange={setExpectedDate}
-                    />
-                  </IosRow>
+                  {askDate && (
+                    <IosRow label={arrived ? "Available date *" : "Expected date *"}>
+                      <IosInput
+                        type="date"
+                        label="Expected date"
+                        value={expectedDate}
+                        onChange={setExpectedDate}
+                      />
+                    </IosRow>
+                  )}
                 </IosGroup>
-                <div className="flex flex-wrap items-center gap-1.5 px-1">
-                  {(arrived ? [0] : [0, 3, 7]).map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setExpectedIn(d)}
-                      className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
-                    >
-                      {d === 0 ? "Today" : `+${d} days`}
-                    </button>
-                  ))}
-                </div>
+                {askDate && (
+                  <div className="flex flex-wrap items-center gap-1.5 px-1">
+                    {(arrived ? [0] : [0, 3, 7]).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setExpectedIn(d)}
+                        className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                      >
+                        {d === 0 ? "Today" : `+${d} days`}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {outstanding > 0 && (
