@@ -48,10 +48,13 @@ export function WishlistHeart({
   above = false,
   className,
   onAdded,
+  label,
 }: {
   entry: CatalogCar;
   /** Called when this tap put it on the list. */
   onAdded?: () => void;
+  /** A word beside the heart, making it a pill. */
+  label?: string;
   /** Sit on top of the + at the bottom corner; without a + the heart takes its place. */
   above?: boolean;
   className?: string;
@@ -94,6 +97,7 @@ export function WishlistHeart({
           className={on ? "size-4 fill-red-500 text-red-500" : "size-4"}
           style={popped ? { animation: "heart-pop 0.6s ease-out" } : undefined}
         />
+        {label && <span className="text-sm font-medium">{label}</span>}
       </button>
       <Dialog open={asking} onOpenChange={setAsking}>
         <DialogContent className="sm:max-w-md">

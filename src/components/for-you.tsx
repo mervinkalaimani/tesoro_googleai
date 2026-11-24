@@ -172,7 +172,8 @@ function ForYouCarousel({
                     <WishlistHeart
                       entry={p.car}
                       onAdded={() => onWished(p.car.car_id)}
-                      className={`${btn} size-8 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
+                      label="Wishlist"
+                      className={`${btn} !flex h-8 items-center gap-1.5 whitespace-nowrap border border-white/50 bg-white/25 px-3 text-foreground backdrop-blur-md hover:bg-white/35`}
                     />
                     <button
                       type="button"
