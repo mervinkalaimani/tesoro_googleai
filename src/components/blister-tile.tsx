@@ -197,7 +197,7 @@ export function BlisterTile({
           }
         />
 
-        <SyncedMark synced={synced} source={syncedSource} />
+        {!words && <SyncedMark synced={synced} source={syncedSource} />}
         {words}
         {/* The pills on the photograph. With words laid over the bottom they all
             go in one row along the top: the same height, 8px in from the corner
@@ -218,6 +218,7 @@ export function BlisterTile({
             ) : caption ? (
               <span className={cn(PILL_ON_PHOTO, pill, "bg-black/75 text-white")}>{caption}</span>
             ) : null)}
+          {words && <SyncedMark inline small={smallPills} synced={synced} source={syncedSource} />}
           {pack && (
             <span
               title="A multi-pack: several cars in one box"

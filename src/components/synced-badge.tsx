@@ -55,7 +55,18 @@ export function SyncedBadge({
 }
 
 /** The same mark as an icon on a photograph, for tiles with no room for a word. */
-export function SyncedMark({ synced, source }: { synced?: boolean; source?: string | null }) {
+export function SyncedMark({
+  synced,
+  source,
+  inline = false,
+  small = false,
+}: {
+  synced?: boolean;
+  source?: string | null;
+  /** Sits in a row of pills, after the others, rather than in the photograph's corner. */
+  inline?: boolean;
+  small?: boolean;
+}) {
   if (!synced) return null;
   const admin = isVerifiedByAdmin(source);
   return (
@@ -63,7 +74,11 @@ export function SyncedMark({ synced, source }: { synced?: boolean; source?: stri
       title={
         admin ? VERIFIED_BY_ADMIN : "Synced: photo and details checked against the maker's site"
       }
-      className="pointer-events-auto absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-sky-500 text-white shadow-sm"
+      className={
+        inline
+          ? `pointer-events-auto grid shrink-0 place-items-center rounded-full bg-sky-500 text-white shadow-sm ${small ? "size-5" : "size-6"}`
+          : "pointer-events-auto absolute left-1 top-1 grid size-6 place-items-center rounded-full bg-sky-500 text-white shadow-sm"
+      }
     >
       <BadgeCheck aria-label={admin ? "Verified" : "Synced"} className="size-3.5" />
     </span>
