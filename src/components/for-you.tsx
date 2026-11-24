@@ -63,35 +63,85 @@ function ForYouCarousel({
     const b = el?.children[1] as HTMLElement | undefined;
     return a && b ? b.offsetLeft - a.offsetLeft : (a?.offsetWidth ?? 1);
   };
-  const goTo = (i: number) => track.current?.scrollTo({ left: i * step(), behavior: "smooth" });
+  const raf = useRef(0);
+  /** Stop a spring in flight and give the browser's own snapping back. */
+  const settle = () => {
+    cancelAnimationFrame(raf.current);
+    if (track.current) track.current.style.scrollSnapType = "";
+  };
+  /** Where the row rests with slide `i` first, or, for the last one, in the middle. */
+  const restFor = (i: number) => {
+    const el = track.current;
+    const slide = el?.children[i] as HTMLElement | undefined;
+    if (!el || !slide) return 0;
+    const left =
+      i === n - 1 && n > 1
+        ? slide.offsetLeft - (el.clientWidth - slide.offsetWidth) / 2
+        : i * step();
+    return Math.max(0, Math.min(el.scrollWidth - el.clientWidth, left));
+  };
+  /** Glide to a card on a spring: it overshoots a little and settles, instead of easing flat. */
+  const goTo = (i: number) => {
+    const el = track.current;
+    if (!el) return;
+    settle();
+    const target = restFor(i);
+    // Snapping would fight the spring; it is handed back when the card has settled.
+    el.style.scrollSnapType = "none";
+    let x = el.scrollLeft;
+    let v = 0;
+    let last = performance.now();
+    const tick = (now: number) => {
+      const dt = Math.min(0.032, (now - last) / 1000);
+      last = now;
+      v += (-170 * (x - target) - 17 * v) * dt;
+      x += v * dt;
+      el.scrollLeft = x;
+      if (Math.abs(x - target) < 0.5 && Math.abs(v) < 6) {
+        el.scrollLeft = target;
+        el.style.scrollSnapType = "";
+        return;
+      }
+      raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+  };
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+  const [end, setEnd] = useState(false);
   const onScroll = () => {
     const el = track.current;
     if (!el) return;
     const p = el.scrollLeft / step();
     setPos(p);
-    // No looping: the row stops at the last card, where the last dot is the one that is lit.
-    const atEnd = el.scrollLeft >= el.scrollWidth - el.clientWidth - 2;
-    setFront(atEnd && n > 1 ? n - 1 : Math.max(0, Math.min(n - 1, Math.round(p))));
+    // No looping: the row stops at the last card, which comes to rest in the middle.
+    const atEnd = n > 1 && el.scrollLeft >= el.scrollWidth - el.clientWidth - 2;
+    setEnd(atEnd);
+    setFront(atEnd ? n - 1 : Math.max(0, Math.min(n - 1, Math.round(p))));
   };
 
   if (!n || !at) return null;
   const btn =
     "grid cursor-pointer place-items-center rounded-full transition-transform active:scale-95";
   return (
-    <div className="min-w-0 [container-type:inline-size]">
+    <div className="min-w-0 [container-type:inline-size] [--sw:calc((100cqw_-_0.75rem)/1.05)] sm:[--sw:calc((100cqw_-_2.5rem)/2.3)]">
       <div
         ref={track}
         onScroll={onScroll}
+        // A finger or wheel takes over from a spring still running.
+        onPointerDown={settle}
+        onWheel={settle}
         // Room round the cards (padding, pulled back with negative margins) so the frame and its shadow are not clipped by the scroll area.
-        className="no-scrollbar -mx-3 -my-8 flex snap-x snap-mandatory items-center gap-3 overflow-x-auto scroll-pl-3 px-3 py-10 sm:gap-5 [mask-image:linear-gradient(to_right,black_94%,transparent)]"
+        className="no-scrollbar -mx-3 -my-8 flex snap-x snap-mandatory items-stretch gap-3 overflow-x-auto scroll-pl-3 px-3 py-10 pr-[calc((100cqw_-_var(--sw))/2)] sm:gap-5"
         style={{ overscrollBehaviorX: "contain" }}
       >
         {slides.map((p, i) => {
           const c = catalogCarToDiecast(p.car);
-          const r = Math.round(pos);
+          // At the end the last card is in the middle, which counts as the pair (the one before it and itself).
+          const eff = end ? (wide ? n - 2 : n - 1) : pos;
+          const r = Math.round(eff);
           const d = Math.min(
             2,
-            wide ? Math.min(Math.abs(i - pos), Math.abs(i - pos - 1)) : Math.abs(i - pos),
+            wide ? Math.min(Math.abs(i - eff), Math.abs(i - eff - 1)) : Math.abs(i - eff),
           );
           const isFront = i === r || (wide && i === r + 1);
           const stats = (
@@ -105,9 +155,9 @@ function ForYouCarousel({
               key={i}
               // Every card is the same size with its details; the ones either side are a little dimmer.
               style={{ opacity: 1 - 0.18 * d }}
-              className="w-[var(--sw)] shrink-0 snap-start snap-always transition-opacity duration-300 [--sw:calc((100cqw_-_0.75rem)/1.05)] sm:[--sw:calc((100cqw_-_2.5rem)/2.3)]"
+              className={`flex w-[var(--sw)] shrink-0 snap-always transition-opacity duration-300 ${i === n - 1 && n > 1 ? "snap-center" : "snap-start"}`}
             >
-              <article className="card-elevated flex overflow-hidden">
+              <article className="card-elevated flex w-full overflow-hidden">
                 <button
                   type="button"
                   onClick={() => (isFront ? onOpen(p.car) : goTo(i))}
@@ -116,68 +166,71 @@ function ForYouCarousel({
                 >
                   <CarThumb car={c} className="absolute inset-0 size-full" />
                 </button>
-                {/* Compact enough that the picture, the size of a Recently added card, sets the card's height. */}
-                <div className="flex min-w-0 flex-1 flex-col justify-between gap-1 overflow-hidden p-2">
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                {/* The details: what it is, a line of facts, why it was picked, then the buttons.
+                    Compact on a phone, where the picture sets the height; roomier from sm. */}
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5 overflow-hidden p-2 sm:gap-3 sm:p-5">
+                  <div className="space-y-0.5 sm:space-y-1.5">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary sm:text-[11px]">
                       <Sparkles className="size-3 fill-amber-400 text-amber-400" />
                       Suggested
-                    </div>
-                    <div className="line-clamp-2 text-sm font-semibold leading-tight sm:text-base">
+                    </span>
+                    <h3 className="line-clamp-2 text-sm font-semibold leading-tight sm:text-xl">
                       {c.name || `${c.make} ${c.model}`.trim() || "Unnamed car"}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
+                    </h3>
+                    <p className="truncate text-xs text-muted-foreground sm:text-sm">
                       {[c.brand, c.carNumber, c.assortment].filter(Boolean).join(" · ") || "—"}
-                    </div>
+                    </p>
                   </div>
                   {stats.length > 0 && (
-                    <dl className="flex gap-4">
+                    <dl className="flex flex-wrap gap-x-4 gap-y-1 sm:gap-x-6">
                       {stats.map(([k, v]) => (
                         <div key={k} className="min-w-0">
-                          <dt className="text-[10px] font-semibold uppercase tracking-wider">
+                          <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                             {k}
                           </dt>
-                          <dd className="truncate text-xs font-medium text-primary">{v}</dd>
+                          <dd className="truncate text-xs font-semibold sm:text-sm">{v}</dd>
                         </div>
                       ))}
                     </dl>
                   )}
-                  <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                  {/* Why it is here, set apart from the facts by an accent rule. */}
+                  <p className="line-clamp-2 border-l-2 border-primary pl-2 text-xs leading-snug text-foreground/75 sm:line-clamp-3 sm:pl-3 sm:text-sm">
                     {p.reason}
                   </p>
                   <div
-                    className={`flex items-center gap-1.5 ${isFront ? "" : "pointer-events-none"}`}
+                    className={`mt-auto flex items-center gap-1.5 sm:gap-2 ${isFront ? "" : "pointer-events-none"}`}
                   >
                     <button
                       type="button"
                       onClick={() => onDismiss(p.car.car_id)}
                       aria-label="Not interested"
                       title="Not interested: don't suggest this again"
-                      className={`${btn} glass-btn size-7 text-foreground`}
+                      className={`${btn} glass-btn size-7 text-foreground sm:size-9`}
                     >
-                      <ThumbsDown className="size-3.5" />
+                      <ThumbsDown className="size-3.5 sm:size-4" />
                     </button>
                     <button
                       type="button"
                       onClick={() => onLike(p.car.car_id)}
                       aria-label="Show more like this"
                       title="Show more cars like this"
-                      className={`${btn} glass-btn size-7 text-foreground`}
+                      className={`${btn} glass-btn size-7 text-foreground sm:size-9`}
                     >
-                      <ThumbsUp className="size-3.5" />
+                      <ThumbsUp className="size-3.5 sm:size-4" />
                     </button>
                     <WishlistHeart
                       entry={p.car}
-                      className={`${btn} size-7 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35`}
+                      className={`${btn} size-7 border border-white/50 bg-white/25 text-foreground backdrop-blur-md hover:bg-white/35 sm:size-9`}
                     />
                     <button
                       type="button"
                       onClick={() => onAdd(p.car)}
                       aria-label="Add to my collection"
                       title="Add to my collection"
-                      className={`${btn} glass-btn-solid ml-auto size-9 bg-primary/90 text-primary-foreground hover:bg-primary`}
+                      className={`${btn} glass-btn-solid ml-auto size-9 bg-primary/90 text-primary-foreground hover:bg-primary sm:flex sm:h-10 sm:w-auto sm:flex-row sm:items-center sm:gap-1.5 sm:px-4`}
                     >
                       <Plus className="size-4" />
+                      <span className="hidden text-sm font-semibold sm:inline">Add</span>
                     </button>
                   </div>
                 </div>
