@@ -536,7 +536,7 @@ html.dark .glass-btn:hover {
     150deg,
     oklch(1 0 0 / 0.8),
     oklch(1 0 0 / 0.62) 55%,
-    color-mix(in oklab, var(--primary) 9%, oklch(1 0 0 / 0.62))
+    oklch(1 0 0 / 0.62)
   );
   -webkit-backdrop-filter: blur(64px) saturate(2) brightness(1.06);
   backdrop-filter: blur(64px) saturate(2) brightness(1.06);
@@ -551,7 +551,7 @@ html.dark .card-elevated.glass-pane {
     150deg,
     oklch(1 0 0 / 0.16),
     oklch(1 0 0 / 0.05) 55%,
-    color-mix(in oklab, var(--primary) 12%, oklch(1 0 0 / 0.04))
+    oklch(1 0 0 / 0.05)
   );
   border: 1px solid oklch(1 0 0 / 0.14);
   box-shadow:
@@ -559,16 +559,10 @@ html.dark .card-elevated.glass-pane {
     0 24px 48px -20px oklch(0 0 0 / 0.6);
 }
 html.dark .card-elevated {
-  /* The glass carries the theme colour in its own pane, so it keeps its intensity now the
-     glow behind the page is faint: a tint of the theme over the usual white sheen. */
-  background:
-    linear-gradient(
-      160deg,
-      color-mix(in oklab, var(--primary) 7%, transparent),
-      color-mix(in oklab, var(--primary) 1.5%, transparent)
-    ),
-    linear-gradient(160deg, oklch(1 0 0 / 0.04), oklch(1 0 0 / 0.012));
-  /* The tint stays; the stroke around it is kept quiet. */
+  /* Neutral glass. Colour on a card has to have a source (a glow behind it, a lit button on it);
+     a tint with nothing behind it is colour from nowhere. */
+  background: linear-gradient(160deg, oklch(1 0 0 / 0.05), oklch(1 0 0 / 0.02));
+  /* The stroke is kept quiet. */
   border: 1px solid oklch(1 0 0 / 0.07);
   box-shadow: 0 18px 40px -18px oklch(0 0 0 / 0.7);
 }
