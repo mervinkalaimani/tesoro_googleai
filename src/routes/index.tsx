@@ -1,6 +1,7 @@
 import { SUMMARY_ITEMS } from "@/lib/summary-cards";
 import { useQuickAdd } from "@/components/use-quick-add";
 import { SpringRow } from "@/components/spring-row";
+import { SellerAccounts } from "@/components/seller-accounts";
 import { ShelfCard } from "@/components/shelf-card";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -564,6 +565,9 @@ function DashboardPage() {
           all on a quiet week, so it costs the tracker no room when there is
           nothing to show. */}
       {!loading && <ForYou />}
+
+      {/* Right after the suggestions: who you owe, what is on hold, what is on its way. */}
+      {!loading && <SellerAccounts cars={data} />}
 
       {!loading && showRecentlyAdded && <RecentlyAdded recent={recent} now={now} />}
 
