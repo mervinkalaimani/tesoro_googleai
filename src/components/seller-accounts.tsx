@@ -62,7 +62,7 @@ const sum = (list: Diecast[], f: (c: Diecast) => number) => list.reduce((s, c) =
 /**
  * The cars due this month, by seller, by order, or one by one: what each is, what it cost, what
  * has been paid (an advance on a pre-order included) and what is left. When nothing is due this
- * month, next month's. A car with no expected date is not here.
+ * month, next month's. Cars on hold are always here; any other car with no expected date is not.
  */
 export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const { open: openCar, openBatch, openSeller } = useCarDrawer();
@@ -92,14 +92,19 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const m = useMemo(() => {
     const now = new Date();
     const thisMonth = now.getFullYear() * 12 + now.getMonth();
+    // The month is worked out from the cars on their way; a car on hold is here whatever its date.
     const due = cars.filter(
       (c) => STATUS_ORDER.includes(normaliseStatus(c.status)) && etaOf(c) !== null,
     );
     const inThis = due.filter((c) => monthIndex(etaOf(c)!) === thisMonth);
     const month = inThis.length ? thisMonth : thisMonth + 1;
-    const list = (inThis.length ? inThis : due.filter((c) => monthIndex(etaOf(c)!) === month)).sort(
-      (a, b) => sortKey(a) - sortKey(b),
-    );
+    const held = (c: Diecast) => normaliseStatus(c.status) === "On Hold";
+    const list = [
+      ...(inThis.length ? inThis : due.filter((c) => monthIndex(etaOf(c)!) === month)).filter(
+        (c) => !held(c),
+      ),
+      ...cars.filter(held),
+    ].sort((a, b) => Number(held(a)) - Number(held(b)) || sortKey(a) - sortKey(b));
     return { list, label: MONTHS[month % 12], thisMonth: inThis.length > 0 };
   }, [cars]);
 
