@@ -116,6 +116,10 @@ type Ctx = {
   open: (car: Diecast) => void;
   openCar: (car: Diecast) => void;
   close: () => void;
+  /** An order's Update order dialog, by shipping ID or order ID. */
+  openBatch: (id: string, field?: "shippingId" | "orderId") => void;
+  /** Everything from one seller. */
+  openSeller: (name: string) => void;
 };
 
 const CarDrawerCtx = createContext<Ctx | null>(null);
@@ -224,7 +228,19 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <CarDrawerCtx.Provider value={{ open, openCar: open, close }}>
+    <CarDrawerCtx.Provider
+      value={{
+        open,
+        openCar: open,
+        close,
+        openBatch: (id, field = "shippingId") => {
+          setBatchShippingId(id);
+          setBatchField(field);
+          setBatchOpen(true);
+        },
+        openSeller: setSellerOpen,
+      }}
+    >
       {children}
 
       {/* Car Details Popup Modal matching the exact screenshot design */}

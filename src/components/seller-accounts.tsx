@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useCarDrawer } from "@/components/car-details-drawer";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentControl } from "@/components/segment-control";
 import { inrFull } from "@/lib/format";
@@ -46,6 +47,7 @@ const unpaid = (c: Diecast) => Math.max(c.balance ?? (c.spent || 0) - (c.paid ||
  * this month. By seller, by order, or car by car.
  */
 export function SellerAccounts({ cars }: { cars: Diecast[] }) {
+  const { open: openCar, openBatch, openSeller } = useCarDrawer();
   const [view, setView] = useState<View>("seller");
   const [total, setTotal] = useState(false);
   useEffect(() => {
@@ -74,11 +76,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     const now = new Date();
     const thisMonth = now.getFullYear() * 12 + now.getMonth();
     const flying = mine.filter(inFlight);
-    // Late ones count as this month: they are still due, and a month that has gone is not "next".
-    const dueNow = flying.filter((c) => {
-      const mo = monthOf(c);
-      return mo !== null && mo <= thisMonth;
-    });
+    // Only this month's cars; when there are none, next month's.
+    const dueNow = flying.filter((c) => monthOf(c) === thisMonth);
     const month = dueNow.length ? thisMonth : thisMonth + 1;
     const arriving = dueNow.length ? dueNow : flying.filter((c) => monthOf(c) === month);
     return {
@@ -125,6 +124,13 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   );
 
   if (!groups.length && !rows.length) return null;
+
+  /** A seller's row opens that seller's orders; an order's row opens the order. */
+  const open = (g: { key: string; seller: string }) => {
+    if (view === "order") {
+      if (g.key !== "No order ID") openBatch(g.key, "shippingId");
+    } else openSeller(g.seller);
+  };
 
   const th = "px-2 py-1.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
@@ -175,8 +181,19 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
               </thead>
               <tbody>
                 {rows.map((c, i) => (
-                  <tr key={c.id ?? i} className="border-b border-border/50">
-                    <td className={cn(td, "truncate")}>{c.name}</td>
+                  <tr
+                    key={c.id ?? i}
+                    onClick={() => openCar(c)}
+                    className="cursor-pointer border-b border-border/50 hover:bg-muted/40"
+                  >
+                    <td className={cn(td, "truncate")}>
+                      <button
+                        type="button"
+                        className="max-w-full cursor-pointer truncate text-left"
+                      >
+                        {c.name}
+                      </button>
+                    </td>
                     <td className={td}>
                       <span className={cn("rounded-full px-2 py-0.5", styleFor(c.status))}>
                         {normaliseStatus(c.status) || "—"}
@@ -220,8 +237,19 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
               </thead>
               <tbody>
                 {groups.map((g) => (
-                  <tr key={g.key} className="border-b border-border/50">
-                    <td className={cn(td, "truncate font-medium")}>{g.key}</td>
+                  <tr
+                    key={g.key}
+                    onClick={() => open(g)}
+                    className="cursor-pointer border-b border-border/50 hover:bg-muted/40"
+                  >
+                    <td className={cn(td, "truncate font-medium")}>
+                      <button
+                        type="button"
+                        className="max-w-full cursor-pointer truncate text-left"
+                      >
+                        {g.key}
+                      </button>
+                    </td>
                     {view === "order" && (
                       <td className={cn(td, "truncate text-muted-foreground")}>{g.seller}</td>
                     )}
