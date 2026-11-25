@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { SegmentControl } from "@/components/segment-control";
 import { inrFull } from "@/lib/format";
 import { toDateInputValue } from "@/lib/date-utils";
-import { isOnHold, isPreOrder, normaliseStatus, styleFor } from "@/lib/status";
+import { normaliseStatus, styleFor } from "@/lib/status";
 import { cn } from "@/lib/utils";
 import type { Diecast } from "@/lib/types";
 
@@ -12,6 +12,8 @@ type View = "seller" | "order" | "car";
 const VIEW_KEY = "viiv.accounts.view";
 const TOTAL_KEY = "viiv.accounts.total";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+/** The cars this frame is about: not yet here, and not a wish. In the order they are shown. */
+const STATUS_ORDER = ["Ordered", "In Transit", "On Hold", "PO"];
 
 const remembered = <T extends string>(key: string, ok: readonly T[], fallback: T): T => {
   try {
@@ -22,32 +24,45 @@ const remembered = <T extends string>(key: string, ok: readonly T[], fallback: T
   }
 };
 
-/** The month an expected date falls in, as year * 12 + month, or null when it has none. */
-const monthOf = (c: Diecast): number | null => {
+/** The expected date as [year, month 1-12, day], or null when the car has none. */
+const etaOf = (c: Diecast): [number, number, number] | null => {
   const iso = toDateInputValue(c.expectedDate);
   if (!iso) return null;
-  const [y, m] = iso.split("-").map(Number);
-  return y * 12 + (m - 1);
+  const [y, m, d] = iso.split("-").map(Number);
+  return [y, m, d];
+};
+const monthIndex = (e: [number, number, number]) => e[0] * 12 + (e[1] - 1);
+const sortKey = (c: Diecast) => {
+  const e = etaOf(c);
+  return e ? e[0] * 10000 + e[1] * 100 + e[2] : 0;
+};
+const dayMonth = (e: [number, number, number]) => `${e[2]} ${MONTHS[e[1] - 1]}`;
+const dayOf = (c: Diecast) => {
+  const e = etaOf(c);
+  return e ? dayMonth(e) : "—";
 };
 
-/** "3 Dec" from an expected date; "—" when there is none. */
-const shortDay = (d: string) => {
-  const iso = toDateInputValue(d);
-  if (!iso) return "—";
-  const [, m, day] = iso.split("-").map(Number);
-  return `${day} ${MONTHS[m - 1]}`;
+/** "3 Dec", or "3–10 Dec" when the cars do not all arrive on the same day. */
+const range = (list: Diecast[]) => {
+  const dates = list.map(etaOf).filter((e): e is [number, number, number] => e !== null);
+  if (!dates.length) return "—";
+  dates.sort((a, b) => a[0] * 10000 + a[1] * 100 + a[2] - (b[0] * 10000 + b[1] * 100 + b[2]));
+  const [first, last] = [dates[0], dates[dates.length - 1]];
+  if (first[2] === last[2] && first[1] === last[1]) return dayMonth(first);
+  return first[1] === last[1]
+    ? `${first[2]}–${last[2]} ${MONTHS[first[1] - 1]}`
+    : `${dayMonth(first)} – ${dayMonth(last)}`;
 };
 
-/** The statuses this frame is about, in the order they are shown. */
-const STATUS_ORDER = ["Ordered", "In Transit", "On Hold", "PO"];
-
-const inFlight = (c: Diecast) => ["Ordered", "In Transit"].includes(normaliseStatus(c.status));
-const unpaid = (c: Diecast) => Math.max(c.balance ?? (c.spent || 0) - (c.paid || 0), 0);
+const cost = (c: Diecast) => c.spent || 0;
+const paid = (c: Diecast) => Math.min(c.paid || 0, cost(c) || c.paid || 0);
+const balance = (c: Diecast) => Math.max(c.balance ?? cost(c) - (c.paid || 0), 0);
+const sum = (list: Diecast[], f: (c: Diecast) => number) => list.reduce((s, c) => s + f(c), 0);
 
 /**
- * Who you owe and what is coming from them: the cars on hold, what is left to pay, what has gone
- * into pre-orders, and the cars arriving this month: or next month, when nothing is arriving
- * this month. By seller, by order, or car by car.
+ * The cars due this month, by seller, by order, or one by one: what each is, what it cost, what
+ * has been paid (an advance on a pre-order included) and what is left. When nothing is due this
+ * month, next month's. A car with no expected date is not here.
  */
 export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const { open: openCar, openBatch, openSeller } = useCarDrawer();
@@ -75,73 +90,56 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   };
 
   const m = useMemo(() => {
-    // A car with no expected date is not in this frame at all, and an order whose cars have none goes with them.
-    const mine = cars.filter((c) => (c.seller || "").trim() && monthOf(c) !== null);
     const now = new Date();
     const thisMonth = now.getFullYear() * 12 + now.getMonth();
-    const flying = mine.filter(inFlight);
-    // Only this month's cars; when there are none, next month's.
-    const dueNow = flying.filter((c) => monthOf(c) === thisMonth);
-    const month = dueNow.length ? thisMonth : thisMonth + 1;
-    const arriving = dueNow.length ? dueNow : flying.filter((c) => monthOf(c) === month);
-    return {
-      mine,
-      arriving: new Set(arriving),
-      label: MONTHS[((month % 12) + 12) % 12],
-      thisMonth: dueNow.length > 0,
-    };
+    const due = cars.filter(
+      (c) => STATUS_ORDER.includes(normaliseStatus(c.status)) && etaOf(c) !== null,
+    );
+    const inThis = due.filter((c) => monthIndex(etaOf(c)!) === thisMonth);
+    const month = inThis.length ? thisMonth : thisMonth + 1;
+    const list = (inThis.length ? inThis : due.filter((c) => monthIndex(etaOf(c)!) === month)).sort(
+      (a, b) => sortKey(a) - sortKey(b),
+    );
+    return { list, label: MONTHS[month % 12], thisMonth: inThis.length > 0 };
   }, [cars]);
 
-  const hold = useMemo(() => m.mine.filter((c) => isOnHold(c.status)), [m]);
-  const keyOf = (c: Diecast) => (view === "order" ? c.shippingId || "No order ID" : c.seller);
-
+  const keyOf = (c: Diecast) =>
+    view === "order" ? c.shippingId || "No order ID" : c.seller || "No seller";
   const groups = useMemo(() => {
-    const map = new Map<string, { key: string; seller: string; list: Diecast[] }>();
-    for (const c of m.mine) {
-      const k = keyOf(c);
-      const g = map.get(k) ?? { key: k, seller: c.seller, list: [] };
-      g.list.push(c);
-      map.set(k, g);
-    }
-    return [...map.values()]
-      .map((g) => ({
-        ...g,
-        statuses: STATUS_ORDER.filter((st) => g.list.some((c) => normaliseStatus(c.status) === st)),
-        hold: g.list.filter((c) => isOnHold(c.status)).length,
-        arriving: g.list.filter((c) => m.arriving.has(c)).length,
-        // What is still to pay on what is on its way or held: delivered cars are not this frame's business.
-        owe: g.list
-          .filter((c) => inFlight(c) || isOnHold(c.status))
-          .reduce((s, c) => s + unpaid(c), 0),
-        poPaid: g.list.filter((c) => isPreOrder(c.status)).reduce((s, c) => s + (c.paid || 0), 0),
-      }))
-      .filter((g) => g.hold || g.arriving || g.owe || g.poPaid)
-      .sort((a, b) => b.owe - a.owe || a.key.localeCompare(b.key));
+    const map = new Map<string, Diecast[]>();
+    for (const c of m.list) map.set(keyOf(c), [...(map.get(keyOf(c)) ?? []), c]);
+    return [...map.entries()].map(([key, list]) => ({
+      key,
+      list,
+      seller: list[0].seller,
+      statuses: STATUS_ORDER.filter((st) => list.some((c) => normaliseStatus(c.status) === st)),
+    }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyOf follows view
   }, [m, view]);
 
-  const rows = useMemo(
-    () =>
-      [...hold, ...m.arriving].sort(
-        (a, b) => Number(isOnHold(a.status)) - Number(isOnHold(b.status)),
-      ),
-    [hold, m],
-  );
+  if (!m.list.length) return null;
 
-  if (!groups.length && !rows.length) return null;
-
-  /** A seller's row opens that seller's orders; an order's row opens the order. */
   const open = (g: { key: string; seller: string }) => {
     if (view === "order") {
       if (g.key !== "No order ID") openBatch(g.key, "shippingId");
-    } else openSeller(g.seller);
+    } else if (g.seller) openSeller(g.seller);
   };
 
   const th = "px-2 py-1.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
-  const sum = (f: (g: (typeof groups)[number]) => number) => groups.reduce((s, g) => s + f(g), 0);
   const foot = "border-t border-border font-medium";
+  const pills = (statuses: string[]) => (
+    <div className="flex flex-wrap gap-1">
+      {statuses.map((st) => (
+        <span key={st} className={cn("rounded-full px-2 py-0.5", styleFor(st))}>
+          {st}
+        </span>
+      ))}
+    </div>
+  );
+  const row = "cursor-pointer border-b border-border/50 hover:bg-muted/40";
+  const link = "max-w-full cursor-pointer truncate text-left";
 
   return (
     <section aria-label="Sellers" className="card-elevated space-y-2 p-3 [--frame-gap:0.75rem]">
@@ -150,8 +148,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
           <h2 className="text-display text-lg font-semibold">Sellers</h2>
           <p className="text-xs text-muted-foreground">
             {m.thisMonth
-              ? `Arriving this month (${m.label})`
-              : `Nothing arriving this month, so expected in ${m.label}`}
+              ? `Cars due this month (${m.label})`
+              : `Nothing due this month, so cars due in ${m.label}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -172,57 +170,48 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[34rem] table-fixed text-xs">
+        <table className="w-full min-w-[44rem] text-xs">
           {view === "car" ? (
             <>
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className={cn(th, "w-[34%]")}>Car</th>
-                  <th className={cn(th, "w-[14%]")}>Status</th>
-                  <th className={cn(th, "w-[24%]")}>Seller · order</th>
-                  <th className={cn(th, "w-[14%]", num)}>Cost</th>
-                  <th className={cn(th, "w-[14%]", num)}>Expected</th>
+                  <th className={th}>Car</th>
+                  <th className={th}>Status</th>
+                  <th className={th}>Seller</th>
+                  <th className={th}>Order ID</th>
+                  <th className={cn(th, num)}>Cost</th>
+                  <th className={cn(th, num)}>Paid</th>
+                  <th className={cn(th, num)}>Balance</th>
+                  <th className={cn(th, num)}>Expected</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((c, i) => (
-                  <tr
-                    key={c.id ?? i}
-                    onClick={() => openCar(c)}
-                    className="cursor-pointer border-b border-border/50 hover:bg-muted/40"
-                  >
-                    <td className={cn(td, "truncate")}>
-                      <button
-                        type="button"
-                        className="max-w-full cursor-pointer truncate text-left"
-                      >
+                {m.list.map((c, i) => (
+                  <tr key={c.id ?? i} onClick={() => openCar(c)} className={row}>
+                    <td className={cn(td, "max-w-[14rem] font-medium")}>
+                      <button type="button" className={link}>
                         {c.name}
                       </button>
                     </td>
-                    <td className={td}>
-                      <span className={cn("rounded-full px-2 py-0.5", styleFor(c.status))}>
-                        {normaliseStatus(c.status) || "—"}
-                      </span>
-                    </td>
-                    <td className={cn(td, "truncate text-muted-foreground")}>
-                      {[c.seller, c.shippingId].filter(Boolean).join(" · ")}
-                    </td>
-                    <td className={cn(td, num)}>{inrFull(c.spent || 0)}</td>
-                    <td className={cn(td, num, !c.expectedDate && "text-muted-foreground")}>
-                      {shortDay(c.expectedDate)}
-                    </td>
+                    <td className={td}>{pills([normaliseStatus(c.status)])}</td>
+                    <td className={cn(td, "text-muted-foreground")}>{c.seller || "—"}</td>
+                    <td className={cn(td, "text-muted-foreground")}>{c.shippingId || "—"}</td>
+                    <td className={cn(td, num)}>{inrFull(cost(c))}</td>
+                    <td className={cn(td, num)}>{inrFull(paid(c))}</td>
+                    <td className={cn(td, num)}>{inrFull(balance(c))}</td>
+                    <td className={cn(td, num)}>{dayOf(c)}</td>
                   </tr>
                 ))}
               </tbody>
               {total && (
                 <tfoot>
                   <tr>
-                    <td className={cn(td, foot)} colSpan={3}>
-                      Total · {rows.length} car{rows.length === 1 ? "" : "s"}
+                    <td className={cn(td, foot)} colSpan={4}>
+                      Total · {m.list.length} car{m.list.length === 1 ? "" : "s"}
                     </td>
-                    <td className={cn(td, foot, num)}>
-                      {inrFull(rows.reduce((s, c) => s + (c.spent || 0), 0))}
-                    </td>
+                    <td className={cn(td, foot, num)}>{inrFull(sum(m.list, cost))}</td>
+                    <td className={cn(td, foot, num)}>{inrFull(sum(m.list, paid))}</td>
+                    <td className={cn(td, foot, num)}>{inrFull(sum(m.list, balance))}</td>
                     <td className={cn(td, foot)} />
                   </tr>
                 </tfoot>
@@ -234,57 +223,46 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
                 <tr className="border-b border-border text-left">
                   <th className={th}>{view === "order" ? "Order ID" : "Seller"}</th>
                   {view === "order" && <th className={th}>Seller</th>}
+                  <th className={cn(th, num)}>Cars</th>
                   <th className={th}>Status</th>
-                  <th className={cn(th, num)}>On hold</th>
-                  <th className={cn(th, num)}>Arriving {m.label}</th>
-                  <th className={cn(th, num)}>You owe</th>
-                  <th className={cn(th, num)}>PO paid</th>
+                  <th className={cn(th, num)}>Cost</th>
+                  <th className={cn(th, num)}>Paid</th>
+                  <th className={cn(th, num)}>Balance</th>
+                  <th className={cn(th, num)}>Arrival</th>
                 </tr>
               </thead>
               <tbody>
                 {groups.map((g) => (
-                  <tr
-                    key={g.key}
-                    onClick={() => open(g)}
-                    className="cursor-pointer border-b border-border/50 hover:bg-muted/40"
-                  >
-                    <td className={cn(td, "truncate font-medium")}>
-                      <button
-                        type="button"
-                        className="max-w-full cursor-pointer truncate text-left"
-                      >
+                  <tr key={g.key} onClick={() => open(g)} className={row}>
+                    <td className={cn(td, "font-medium")}>
+                      <button type="button" className={link}>
                         {g.key}
                       </button>
                     </td>
                     {view === "order" && (
-                      <td className={cn(td, "truncate text-muted-foreground")}>{g.seller}</td>
+                      <td className={cn(td, "text-muted-foreground")}>{g.seller || "—"}</td>
                     )}
-                    <td className={td}>
-                      <div className="flex flex-wrap gap-1">
-                        {g.statuses.map((st) => (
-                          <span key={st} className={cn("rounded-full px-2 py-0.5", styleFor(st))}>
-                            {st}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className={cn(td, num)}>{g.hold}</td>
-                    <td className={cn(td, num)}>{g.arriving}</td>
-                    <td className={cn(td, num)}>{inrFull(g.owe)}</td>
-                    <td className={cn(td, num)}>{inrFull(g.poPaid)}</td>
+                    <td className={cn(td, num)}>{g.list.length}</td>
+                    <td className={td}>{pills(g.statuses)}</td>
+                    <td className={cn(td, num)}>{inrFull(sum(g.list, cost))}</td>
+                    <td className={cn(td, num)}>{inrFull(sum(g.list, paid))}</td>
+                    <td className={cn(td, num)}>{inrFull(sum(g.list, balance))}</td>
+                    <td className={cn(td, num, "whitespace-nowrap")}>{range(g.list)}</td>
                   </tr>
                 ))}
               </tbody>
               {total && (
                 <tfoot>
                   <tr>
-                    <td className={cn(td, foot)} colSpan={view === "order" ? 3 : 2}>
+                    <td className={cn(td, foot)} colSpan={view === "order" ? 2 : 1}>
                       Total
                     </td>
-                    <td className={cn(td, foot, num)}>{sum((g) => g.hold)}</td>
-                    <td className={cn(td, foot, num)}>{sum((g) => g.arriving)}</td>
-                    <td className={cn(td, foot, num)}>{inrFull(sum((g) => g.owe))}</td>
-                    <td className={cn(td, foot, num)}>{inrFull(sum((g) => g.poPaid))}</td>
+                    <td className={cn(td, foot, num)}>{m.list.length}</td>
+                    <td className={cn(td, foot)} />
+                    <td className={cn(td, foot, num)}>{inrFull(sum(m.list, cost))}</td>
+                    <td className={cn(td, foot, num)}>{inrFull(sum(m.list, paid))}</td>
+                    <td className={cn(td, foot, num)}>{inrFull(sum(m.list, balance))}</td>
+                    <td className={cn(td, foot, num, "whitespace-nowrap")}>{range(m.list)}</td>
                   </tr>
                 </tfoot>
               )}
