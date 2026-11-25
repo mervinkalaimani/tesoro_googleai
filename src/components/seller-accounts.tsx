@@ -136,10 +136,10 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     } else if (g.seller) openSeller(g.seller);
   };
 
-  const th = "px-2 py-1.5 font-normal text-muted-foreground";
+  const th = "sticky top-0 z-10 bg-card px-2 py-1.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
-  const foot = "border-t border-border font-medium";
+  const foot = "sticky bottom-0 z-10 border-t border-border bg-card font-medium";
   const pills = (statuses: string[]) => (
     <div className="flex flex-wrap gap-1">
       {statuses.map((st) => (
@@ -189,7 +189,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
           />
         </div>
       </div>
-      <div className="overflow-x-auto">
+      {/* Eight rows show; the rest scroll, under a header and a total that stay put. */}
+      <div className="max-h-[23rem] overflow-auto">
         <table className="w-full min-w-[44rem] text-xs">
           {view === "car" ? (
             <>
