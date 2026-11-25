@@ -166,7 +166,16 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
               : `Nothing due this month, so cars due in ${m.label}`}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {m.previous > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowPrev((v) => !v)}
+              className="glass-btn cursor-pointer rounded-full px-3 py-1 text-xs font-medium text-foreground"
+            >
+              {showPrev ? "Hide previous cars" : `Show previous cars (${m.previous})`}
+            </button>
+          )}
           <label className="flex cursor-pointer items-center gap-1.5 text-xs">
             <Checkbox checked={total} onCheckedChange={(v) => pickTotal(v === true)} />
             Total
@@ -183,17 +192,6 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
           />
         </div>
       </div>
-      {m.previous > 0 && (
-        <div className="px-1">
-          <button
-            type="button"
-            onClick={() => setShowPrev((v) => !v)}
-            className="glass-btn cursor-pointer rounded-full px-3 py-1 text-xs font-medium text-foreground"
-          >
-            {showPrev ? "Hide previous cars" : `Show previous cars (${m.previous})`}
-          </button>
-        </div>
-      )}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[44rem] text-xs">
           {view === "car" ? (
