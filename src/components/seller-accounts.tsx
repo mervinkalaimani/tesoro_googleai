@@ -38,6 +38,9 @@ const shortDay = (d: string) => {
   return `${day} ${MONTHS[m - 1]}`;
 };
 
+/** The statuses this frame is about, in the order they are shown. */
+const STATUS_ORDER = ["Ordered", "In Transit", "On Hold", "PO"];
+
 const inFlight = (c: Diecast) => ["Ordered", "In Transit"].includes(normaliseStatus(c.status));
 const unpaid = (c: Diecast) => Math.max(c.balance ?? (c.spent || 0) - (c.paid || 0), 0);
 
@@ -102,6 +105,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     return [...map.values()]
       .map((g) => ({
         ...g,
+        statuses: STATUS_ORDER.filter((st) => g.list.some((c) => normaliseStatus(c.status) === st)),
         hold: g.list.filter((c) => isOnHold(c.status)).length,
         arriving: g.list.filter((c) => m.arriving.has(c)).length,
         // What is still to pay on what is on its way or held: delivered cars are not this frame's business.
@@ -229,6 +233,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
                 <tr className="border-b border-border text-left">
                   <th className={th}>{view === "order" ? "Order ID" : "Seller"}</th>
                   {view === "order" && <th className={th}>Seller</th>}
+                  <th className={th}>Status</th>
                   <th className={cn(th, num)}>On hold</th>
                   <th className={cn(th, num)}>Arriving {m.label}</th>
                   <th className={cn(th, num)}>You owe</th>
@@ -253,6 +258,15 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
                     {view === "order" && (
                       <td className={cn(td, "truncate text-muted-foreground")}>{g.seller}</td>
                     )}
+                    <td className={td}>
+                      <div className="flex flex-wrap gap-1">
+                        {g.statuses.map((st) => (
+                          <span key={st} className={cn("rounded-full px-2 py-0.5", styleFor(st))}>
+                            {st}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
                     <td className={cn(td, num)}>{g.hold}</td>
                     <td className={cn(td, num)}>{g.arriving}</td>
                     <td className={cn(td, num)}>{inrFull(g.owe)}</td>
@@ -263,7 +277,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
               {total && (
                 <tfoot>
                   <tr>
-                    <td className={cn(td, foot)} colSpan={view === "order" ? 2 : 1}>
+                    <td className={cn(td, foot)} colSpan={view === "order" ? 3 : 2}>
                       Total
                     </td>
                     <td className={cn(td, foot, num)}>{sum((g) => g.hold)}</td>
