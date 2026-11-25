@@ -121,9 +121,10 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
 
   const rows = useMemo(
     () =>
-      [...hold, ...m.arriving].sort(
-        (a, b) => Number(isOnHold(a.status)) - Number(isOnHold(b.status)),
-      ),
+      // A car with no expected date has nothing to say about when it comes: it is left out here.
+      [...hold, ...m.arriving]
+        .filter((c) => monthOf(c) !== null)
+        .sort((a, b) => Number(isOnHold(a.status)) - Number(isOnHold(b.status))),
     [hold, m],
   );
 
