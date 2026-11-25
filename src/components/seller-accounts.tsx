@@ -101,7 +101,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     );
     const inThis = due.filter((c) => monthIndex(etaOf(c)!) === thisMonth);
     const month = inThis.length ? thisMonth : thisMonth + 1;
-    const previous = due.filter((c) => monthIndex(etaOf(c)!) < thisMonth);
+    const previous = due.filter((c) => monthIndex(etaOf(c)!) < month);
     const list = [
       ...(inThis.length ? inThis : due.filter((c) => monthIndex(etaOf(c)!) === month)),
       ...(showPrev ? previous : []),
@@ -153,14 +153,12 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const link = "max-w-full cursor-pointer truncate text-left";
 
   return (
-    <section aria-label="Sellers" className="card-elevated space-y-2 p-3 [--frame-gap:0.75rem]">
+    <section aria-label="Cars due" className="card-elevated space-y-2 p-3 [--frame-gap:0.75rem]">
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="min-w-0">
-          <h2 className="text-display text-lg font-semibold">Sellers</h2>
+          <h2 className="text-display text-lg font-semibold">Cars Due</h2>
           <p className="text-xs text-muted-foreground">
-            {m.thisMonth
-              ? `Cars due this month (${m.label})`
-              : `Nothing due this month, so cars due in ${m.label}`}
+            {m.thisMonth ? `This month (${m.label})` : `Next month (${m.label})`}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
