@@ -75,7 +75,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   };
 
   const m = useMemo(() => {
-    const mine = cars.filter((c) => (c.seller || "").trim());
+    // A car with no expected date is not in this frame at all, and an order whose cars have none goes with them.
+    const mine = cars.filter((c) => (c.seller || "").trim() && monthOf(c) !== null);
     const now = new Date();
     const thisMonth = now.getFullYear() * 12 + now.getMonth();
     const flying = mine.filter(inFlight);
@@ -121,10 +122,9 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
 
   const rows = useMemo(
     () =>
-      // A car with no expected date has nothing to say about when it comes: it is left out here.
-      [...hold, ...m.arriving]
-        .filter((c) => monthOf(c) !== null)
-        .sort((a, b) => Number(isOnHold(a.status)) - Number(isOnHold(b.status))),
+      [...hold, ...m.arriving].sort(
+        (a, b) => Number(isOnHold(a.status)) - Number(isOnHold(b.status)),
+      ),
     [hold, m],
   );
 
