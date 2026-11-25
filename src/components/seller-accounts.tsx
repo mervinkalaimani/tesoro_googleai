@@ -68,6 +68,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const { open: openCar, openBatch, openSeller } = useCarDrawer();
   const [view, setView] = useState<View>("seller");
   const [total, setTotal] = useState(false);
+  /** Cars due in months that have gone, loaded on request. */
+  const [showPrev, setShowPrev] = useState(false);
   useEffect(() => {
     setView(remembered<View>(VIEW_KEY, ["seller", "order", "car"], "seller"));
     setTotal(remembered(TOTAL_KEY, ["1", "0"], "0") === "1");
@@ -99,14 +101,21 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     const inThis = due.filter((c) => monthIndex(etaOf(c)!) === thisMonth);
     const month = inThis.length ? thisMonth : thisMonth + 1;
     const held = (c: Diecast) => normaliseStatus(c.status) === "On Hold";
+    const previous = due.filter((c) => monthIndex(etaOf(c)!) < thisMonth && !held(c));
     const list = [
       ...(inThis.length ? inThis : due.filter((c) => monthIndex(etaOf(c)!) === month)).filter(
         (c) => !held(c),
       ),
+      ...(showPrev ? previous : []),
       ...cars.filter(held),
     ].sort((a, b) => Number(held(a)) - Number(held(b)) || sortKey(a) - sortKey(b));
-    return { list, label: MONTHS[month % 12], thisMonth: inThis.length > 0 };
-  }, [cars]);
+    return {
+      list,
+      previous: previous.length,
+      label: MONTHS[month % 12],
+      thisMonth: inThis.length > 0,
+    };
+  }, [cars, showPrev]);
 
   const keyOf = (c: Diecast) =>
     view === "order" ? c.shippingId || "No order ID" : c.seller || "No seller";
@@ -122,7 +131,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyOf follows view
   }, [m, view]);
 
-  if (!m.list.length) return null;
+  if (!m.list.length && !m.previous) return null;
 
   const open = (g: { key: string; seller: string }) => {
     if (view === "order") {
@@ -174,6 +183,17 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
           />
         </div>
       </div>
+      {m.previous > 0 && (
+        <div className="px-1">
+          <button
+            type="button"
+            onClick={() => setShowPrev((v) => !v)}
+            className="glass-btn cursor-pointer rounded-full px-3 py-1 text-xs font-medium text-foreground"
+          >
+            {showPrev ? "Hide previous cars" : `Show previous cars (${m.previous})`}
+          </button>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[44rem] text-xs">
           {view === "car" ? (
