@@ -153,10 +153,12 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   useEffect(() => {
     setView(remembered<View>(VIEW_KEY, ["seller", "order", "car"], "seller"));
   }, []);
-  /** Click a heading to sort by it, again to reverse, once more to go back to date order. */
+  /** Click a heading to sort by it, biggest or last first; again to reverse, once more to go back to date order. */
   const [sort, setSort] = useState<Sort>(null);
   const toggle = (key: string) =>
-    setSort((s) => (!s || s.key !== key ? { key, dir: 1 } : s.dir === 1 ? { key, dir: -1 } : null));
+    setSort((s) =>
+      !s || s.key !== key ? { key, dir: -1 } : s.dir === -1 ? { key, dir: 1 } : null,
+    );
   /** The seller or order whose cars are showing: one at a time. */
   const [openKey, setOpenKey] = useState<string | null>(null);
   const pick = (v: View) => {
@@ -244,7 +246,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   if (!m.list.length && !m.previous) return null;
 
   /** The headings sort on a wide screen; a phone has none, so its sort is an icon with a menu.
-      Tapping a row sorts by it, again reverses, once more puts the cars back in date order. */
+      Tapping a row sorts by it descending, again ascending, once more puts the cars back in date order. */
   const phoneSorts: [string, string][] =
     view === "car"
       ? [
