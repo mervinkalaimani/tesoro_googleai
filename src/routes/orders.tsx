@@ -214,28 +214,7 @@ function ShipmentCard({
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
         <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs tabular-nums">
           <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
-          <div className="min-w-0">
-            <dt className="inline text-[10px] uppercase tracking-wider text-muted-foreground">
-              Cars{" "}
-            </dt>
-            <dd className="inline">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCarsOpen((v) => !v);
-                }}
-                aria-expanded={carsOpen}
-                aria-label={`${carsOpen ? "Hide" : "Show"} the ${s.items.length} car${s.items.length === 1 ? "" : "s"}`}
-                className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-primary"
-              >
-                {s.items.length}
-                <ChevronDown
-                  className={`size-3.5 transition-transform duration-200 ${carsOpen ? "rotate-180" : ""}`}
-                />
-              </button>
-            </dd>
-          </div>
+          <InlineFact label="Cars" value={String(s.items.length)} />
           <InlineFact
             label={s.delivered ? "Delivered" : "Expected"}
             value={shortDate(s.eta)}
