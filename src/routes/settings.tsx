@@ -352,7 +352,7 @@ export function SettingsPage() {
       {/* ROOT SETTINGS SCREEN (Apple Inset Grouped Table View)                    */}
       {/* ========================================================================= */}
       {(view === "root" || !isPhone) && (
-        <div className="space-y-6 md:-mx-2 md:h-full md:overflow-y-auto md:px-2">
+        <div className="space-y-6 md:-mx-6 md:h-full md:overflow-y-auto md:px-6 md:pb-8">
           <div className="md:sticky md:top-0 md:z-10 md:backdrop-blur-xl">
             <PageHeading title="Settings" />
           </div>
@@ -608,7 +608,7 @@ export function SettingsPage() {
         </div>
       )}
 
-      <div className="min-w-0 md:-mx-2 md:h-full md:overflow-y-auto md:px-2">
+      <div className="min-w-0 md:-mx-6 md:h-full md:overflow-y-auto md:px-6 md:pb-8">
         {/* ========================================================================= */}
         {/* SUBPAGE 1: ACCOUNT (With Back Button to Settings)                         */}
         {/* ========================================================================= */}
