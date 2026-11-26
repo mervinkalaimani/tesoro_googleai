@@ -176,9 +176,7 @@ function ShipmentCard({
           <h2 className="truncate font-mono text-sm font-bold tracking-tight">
             {s.groupId || "Unassigned"}
           </h2>
-          <p className="min-w-0 truncate text-xs font-semibold text-muted-foreground max-sm:order-3 max-sm:basis-full">
-            {s.seller}
-          </p>
+          <p className="min-w-0 truncate text-xs font-semibold text-muted-foreground">{s.seller}</p>
           <span
             className={`shrink-0 rounded-full border px-2 py-px font-mono text-[11px] max-sm:ml-auto ${statusTone(
               s.status,
@@ -211,13 +209,13 @@ function ShipmentCard({
         </div>
 
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1 text-sm tabular-nums sm:flex sm:flex-wrap sm:gap-y-0.5 sm:pt-0 sm:text-xs">
+        <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs tabular-nums">
           <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
           <div className="min-w-0">
-            <dt className="block text-[10px] uppercase tracking-wider text-muted-foreground sm:inline">
+            <dt className="inline text-[10px] uppercase tracking-wider text-muted-foreground">
               Cars{" "}
             </dt>
-            <dd className="block sm:inline">
+            <dd className="inline">
               <button
                 type="button"
                 onClick={() => setCarsOpen((v) => !v)}
@@ -306,10 +304,10 @@ function InlineFact({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="block text-[10px] uppercase tracking-wider text-muted-foreground sm:inline">
+      <dt className="inline text-[10px] uppercase tracking-wider text-muted-foreground">
         {label}{" "}
       </dt>
-      <dd className={`block font-semibold sm:inline ${className}`}>{value}</dd>
+      <dd className={`inline font-semibold ${className}`}>{value}</dd>
     </div>
   );
 }
