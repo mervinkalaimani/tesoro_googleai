@@ -336,8 +336,7 @@ function PreOrderCardImpl({
           rows={[car]}
           name={exportName}
           label={car.name || "Pre-order"}
-          iconOnly={false}
-          text="Share"
+          iconOnly
           variant="ghost"
           size="sm"
           className={`${HALF} !flex-none basis-1/5 text-foreground`}
@@ -504,8 +503,7 @@ function OrderGroupCard({
       <footer className="flex w-full border-t border-border sm:hidden">
         <ExportButton
           {...exportProps}
-          iconOnly={false}
-          text="Share"
+          iconOnly
           variant="ghost"
           size="sm"
           className={`${HALF} !flex-none basis-1/5 text-foreground`}
