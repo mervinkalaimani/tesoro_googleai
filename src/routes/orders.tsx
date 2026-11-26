@@ -161,7 +161,8 @@ function ShipmentCard({
   onEdit: () => void;
   onOpenCar: (car: Diecast) => void;
 }) {
-  const [mobileCarsOpen, setMobileCarsOpen] = useState(false);
+  // Closed until asked for, on every screen: the count is on the facts line.
+  const [carsOpen, setCarsOpen] = useState(false);
   // A pre-order batch also says what has been paid and what is still owed.
   const isPO = normaliseStatus(s.status) === "PO";
   const paid = s.items.reduce((t, r) => t + (r.paid || 0), 0);
@@ -210,6 +211,25 @@ function ShipmentCard({
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
         <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs tabular-nums">
           <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
+          <div className="min-w-0">
+            <dt className="inline text-[10px] uppercase tracking-wider text-muted-foreground">
+              Cars{" "}
+            </dt>
+            <dd className="inline">
+              <button
+                type="button"
+                onClick={() => setCarsOpen((v) => !v)}
+                aria-expanded={carsOpen}
+                aria-label={`${carsOpen ? "Hide" : "Show"} the ${s.items.length} car${s.items.length === 1 ? "" : "s"}`}
+                className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-primary"
+              >
+                {s.items.length}
+                <ChevronDown
+                  className={`size-3.5 transition-transform duration-200 ${carsOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+            </dd>
+          </div>
           <InlineFact
             label={s.delivered ? "Delivered" : "Expected"}
             value={shortDate(s.eta)}
@@ -233,34 +253,15 @@ function ShipmentCard({
       </header>
 
       {/* 12px all round, and the boxes inside at 24px (the card) minus 12px: concentric corners. */}
-      <div className="border-t border-border p-3">
-        {/* The count only matters on a phone, where the cars are folded away. */}
-        <button
-          type="button"
-          onClick={() => setMobileCarsOpen((v) => !v)}
-          className="flex w-full items-center justify-between text-left sm:hidden"
-          aria-expanded={mobileCarsOpen}
-        >
-          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-            {s.items.length} casting{s.items.length === 1 ? "" : "s"}
+      {carsOpen && (
+        <div className="border-t border-border p-3">
+          <div className="grid gap-1.5 sm:grid-cols-2 xl:grid-cols-3">
+            {s.items.map((c) => (
+              <ContentsItem key={c.id} car={c} onOpen={() => onOpenCar(c)} />
+            ))}
           </div>
-          <div className="flex items-center gap-1 text-xs font-medium text-primary">
-            <span>{mobileCarsOpen ? "Hide cars" : "View cars"}</span>
-            <ChevronDown
-              className={`size-3.5 transition-transform duration-200 ${
-                mobileCarsOpen ? "rotate-180" : ""
-              }`}
-            />
-          </div>
-        </button>
-        <div
-          className={`${mobileCarsOpen ? "block" : "hidden sm:grid"} mt-3 grid gap-1.5 sm:mt-0 sm:grid-cols-2 xl:grid-cols-3`}
-        >
-          {s.items.map((c) => (
-            <ContentsItem key={c.id} car={c} onOpen={() => onOpenCar(c)} />
-          ))}
         </div>
-      </div>
+      )}
     </article>
   );
 }
