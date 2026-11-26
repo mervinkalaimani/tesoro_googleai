@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCarDrawer } from "@/components/car-details-drawer";
-import { Checkbox } from "@/components/ui/checkbox";
+import { useApp } from "@/lib/store";
 import { SegmentControl } from "@/components/segment-control";
 import { inrFull } from "@/lib/format";
 import { toDateInputValue } from "@/lib/date-utils";
@@ -10,7 +10,6 @@ import type { Diecast } from "@/lib/types";
 
 type View = "seller" | "order" | "car";
 const VIEW_KEY = "viiv.accounts.view";
-const TOTAL_KEY = "viiv.accounts.total";
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 /** The cars this frame is about: not yet here, and not a wish. In the order they are shown. */
 const STATUS_ORDER = ["Ordered", "In Transit", "On Hold", "PO"];
@@ -67,12 +66,11 @@ const sum = (list: Diecast[], f: (c: Diecast) => number) => list.reduce((s, c) =
 export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const { open: openCar, openBatch, openSeller } = useCarDrawer();
   const [view, setView] = useState<View>("seller");
-  const [total, setTotal] = useState(false);
+  const { carsDueTotal: total } = useApp();
   /** Cars due in months that have gone, loaded on request. */
   const [showPrev, setShowPrev] = useState(false);
   useEffect(() => {
     setView(remembered<View>(VIEW_KEY, ["seller", "order", "car"], "seller"));
-    setTotal(remembered(TOTAL_KEY, ["1", "0"], "0") === "1");
   }, []);
   const pick = (v: View) => {
     setView(v);
@@ -80,14 +78,6 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
       localStorage.setItem(VIEW_KEY, v);
     } catch {
       /* a remembered view is a convenience */
-    }
-  };
-  const pickTotal = (on: boolean) => {
-    setTotal(on);
-    try {
-      localStorage.setItem(TOTAL_KEY, on ? "1" : "0");
-    } catch {
-      /* as above */
     }
   };
 
@@ -166,15 +156,11 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
             <button
               type="button"
               onClick={() => setShowPrev((v) => !v)}
-              className="glass-btn cursor-pointer rounded-full px-3 py-1 text-xs font-medium text-foreground"
+              className="glass-btn h-8 cursor-pointer rounded-full px-3 text-xs font-medium text-foreground"
             >
               {showPrev ? "Hide previous cars" : `Show previous cars (${m.previous})`}
             </button>
           )}
-          <label className="flex cursor-pointer items-center gap-1.5 text-xs">
-            <Checkbox checked={total} onCheckedChange={(v) => pickTotal(v === true)} />
-            Total
-          </label>
           <SegmentControl<View>
             row
             value={view}

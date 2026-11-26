@@ -192,6 +192,9 @@ type AppState = {
   /** Whether it shows the For you suggestions. */
   showForYou: boolean;
   setShowForYou: (b: boolean) => void;
+  /** Whether the Cars Due table ends with a Total row. */
+  carsDueTotal: boolean;
+  setCarsDueTotal: (b: boolean) => void;
   /** Whether it shows the Cars Due table. */
   showCarsDue: boolean;
   setShowCarsDue: (b: boolean) => void;
@@ -286,6 +289,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [showNewPreorders, setShowNewPreordersState] = useState(true);
   const [showForYou, setShowForYouState] = useState(true);
   const [showCarsDue, setShowCarsDueState] = useState(true);
+  const [carsDueTotal, setCarsDueTotalState] = useState(true);
   const [prizedShelf, setPrizedShelfState] = useState<PrizedPreference>("auto");
   const [summaryCards, setSummaryCardsState] = useState(true);
   const [hiddenSummary, setHiddenSummaryState] = useState<string[]>([]);
@@ -332,6 +336,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setShowNewPreordersState(readLS<boolean>("dg.showNewPreorders", true));
     setShowForYouState(readLS<boolean>("dg.showForYou", true));
     setShowCarsDueState(readLS<boolean>("dg.showCarsDue", true));
+    setCarsDueTotalState(readLS<boolean>("dg.carsDueTotal", true));
     const storedPrized = readLS<unknown>("dg.prizedShelf", "auto");
     setPrizedShelfState(isPrizedPreference(storedPrized) ? storedPrized : "auto");
     setSummaryCardsState(readLS<boolean>("dg.summaryCards", true));
@@ -555,6 +560,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.showCarsDue", b);
   }, []);
 
+  const setCarsDueTotal = useCallback((b: boolean) => {
+    setCarsDueTotalState(b);
+    writeLS("dg.carsDueTotal", b);
+  }, []);
+
   const setPrizedShelf = useCallback((p: PrizedPreference) => {
     setPrizedShelfState(p);
     writeLS("dg.prizedShelf", p);
@@ -620,6 +630,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setShowForYou,
       showCarsDue,
       setShowCarsDue,
+      carsDueTotal,
+      setCarsDueTotal,
       prizedShelf,
       setPrizedShelf,
       summaryCards,
@@ -656,6 +668,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setShowForYou,
       showCarsDue,
       setShowCarsDue,
+      carsDueTotal,
+      setCarsDueTotal,
       prizedShelf,
       setPrizedShelf,
       query,

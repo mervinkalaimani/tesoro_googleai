@@ -247,6 +247,8 @@ export function SettingsPage() {
     setShowForYou,
     showCarsDue,
     setShowCarsDue,
+    carsDueTotal,
+    setCarsDueTotal,
     prizedShelf,
     setPrizedShelf,
     summaryCards,
@@ -828,6 +830,12 @@ export function SettingsPage() {
                 <div className="text-[15px] font-medium text-foreground">Cars Due</div>
                 <Switch checked={showCarsDue} onCheckedChange={setShowCarsDue} />
               </div>
+              {showCarsDue && (
+                <div className="flex items-center justify-between gap-4 px-4 py-2.5 pl-6">
+                  <div className="text-sm font-medium text-foreground">Total row</div>
+                  <Switch checked={carsDueTotal} onCheckedChange={setCarsDueTotal} />
+                </div>
+              )}
 
               <div
                 className="flex items-center justify-between gap-3 px-4 py-2.5"
