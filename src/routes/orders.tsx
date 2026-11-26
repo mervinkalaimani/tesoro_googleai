@@ -603,17 +603,15 @@ function OrdersPage() {
         // One line on a phone: the tabs shrink and scroll beside the controls.
         oneLine
         left={
-          <SegmentControl
-            value={tab}
-            onChange={setTab}
-            options={visibleTabs}
-            className="w-auto max-sm:text-xs max-sm:[&>button]:px-2"
-          />
-        }
-        right={
           <>
-            {/* Which ID gathers the cards. Short labels: on a phone this shares
-                one line with the tabs and two filters. */}
+            <SegmentControl
+              value={tab}
+              onChange={setTab}
+              options={visibleTabs}
+              className="w-auto max-sm:text-xs max-sm:[&>button]:px-2"
+            />
+            {/* On a phone the two cycle pills sit together, sharing one (i); from sm up the
+                grouping segments are on the right, as before. */}
             <SegmentControl
               value={asSheet ? "sheet" : groupBy}
               onChange={changeView}
@@ -622,8 +620,26 @@ function OrdersPage() {
                 { value: "order", label: "Order" },
                 { value: "sheet", label: "Table" },
               ]}
-              className="w-auto shrink-0 max-sm:text-xs max-sm:[&>button]:px-2"
+              className="sm:hidden"
             />
+          </>
+        }
+        right={
+          <>
+            {/* Which ID gathers the cards. Short labels: on a phone this shares
+                one line with the tabs and two filters. */}
+            <div className="hidden sm:contents">
+              <SegmentControl
+                value={asSheet ? "sheet" : groupBy}
+                onChange={changeView}
+                options={[
+                  { value: "shipping", label: "Parcel" },
+                  { value: "order", label: "Order" },
+                  { value: "sheet", label: "Table" },
+                ]}
+                className="w-auto shrink-0 max-sm:text-xs max-sm:[&>button]:px-2"
+              />
+            </div>
             <FilterSelect
               value={seller}
               onChange={setSeller}
