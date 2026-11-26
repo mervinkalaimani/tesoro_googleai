@@ -2147,20 +2147,38 @@ function CarPurchaseTab({
   // The note stands in for the courier when there is none to name, so it is
   // only printed again below when the field is already saying something else.
   const noteBelow = cleanTransitNotes && courier ? cleanTransitNotes : "";
+  // A pre-order or a part-paid car: what has gone out so far, out of the total, and what is left.
+  const owed = Math.max(car.balance ?? spent - (car.paid || 0), 0);
+  const partPaid = owed > 0 && spent > 0;
+  const paidSoFar = Math.min(car.paid || 0, spent);
 
   return (
     <div className="col-span-full min-w-0 space-y-4">
       {(showPurchase || (showSeller && car.seller)) && (
         <Panel>
-          {/* Paid, MRP and the seller share the row in equal thirds. */}
-          <div className="grid grid-cols-3 gap-6">
+          {/* Paid, MRP and the seller share the row in equal thirds; while a balance is owed
+              it gets a tile of its own and the row becomes two by two. */}
+          <div className={cn("grid gap-6", partPaid && !rowsOnly ? "grid-cols-2" : "grid-cols-3")}>
             {!rowsOnly && showPurchase && (
               <div className="min-w-0">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Paid
                 </p>
                 <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-foreground">
-                  {inrFull(spent)}
+                  {inrFull(partPaid ? paidSoFar : spent)}
+                </p>
+                {partPaid && (
+                  <p className="truncate text-xs text-muted-foreground">of {inrFull(spent)}</p>
+                )}
+              </div>
+            )}
+            {!rowsOnly && showPurchase && partPaid && (
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Balance
+                </p>
+                <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-foreground">
+                  {inrFull(owed)}
                 </p>
               </div>
             )}
