@@ -170,7 +170,7 @@ function ShipmentCard({
 
   return (
     <article className="card-elevated overflow-hidden">
-      <header className="space-y-1.5 p-3">
+      <header onClick={() => setCarsOpen((v) => !v)} className="cursor-pointer space-y-1.5 p-3">
         {/* One line: which order, who from, where it is, and the two things to do with it. */}
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
           <h2 className="truncate font-mono text-sm font-bold tracking-tight">
@@ -185,7 +185,10 @@ function ShipmentCard({
           >
             {statusLabel(s.status, s.delivered)}
           </span>
-          <div className="ml-auto hidden items-center gap-1.5 sm:flex">
+          <div
+            className="ml-auto hidden items-center gap-1.5 sm:flex"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* This parcel, not the page it is on. */}
             <ExportButton
               rows={s.items}
@@ -218,7 +221,10 @@ function ShipmentCard({
             <dd className="inline">
               <button
                 type="button"
-                onClick={() => setCarsOpen((v) => !v)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCarsOpen((v) => !v);
+                }}
                 aria-expanded={carsOpen}
                 aria-label={`${carsOpen ? "Hide" : "Show"} the ${s.items.length} car${s.items.length === 1 ? "" : "s"}`}
                 className="inline-flex cursor-pointer items-center gap-0.5 font-semibold text-primary"
