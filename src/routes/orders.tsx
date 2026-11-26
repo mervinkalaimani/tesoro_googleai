@@ -226,7 +226,7 @@ function ShipmentCard({
         </div>
 
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
-        <dl className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs tabular-nums">
+        <dl className="grid grid-cols-4 gap-x-3 gap-y-2 text-xs tabular-nums sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-1.5">
           <InlineFact label="Cars" value={String(s.items.length)} />
           <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
           <InlineFact
