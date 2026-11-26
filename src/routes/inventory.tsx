@@ -1123,7 +1123,7 @@ function InventoryPage() {
                   <th className="px-3 py-2.5 font-medium">Status</th>
                   <th className="px-3 py-2.5 font-medium">Seller</th>
                   <th className="px-3 py-2.5 font-medium">Order date</th>
-                  <th className="px-3 py-2.5 font-medium">Received date</th>
+                  <th className="px-3 py-2.5 font-medium">Received / Expected</th>
                 </tr>
               </thead>
 
@@ -1182,7 +1182,7 @@ function InventoryPage() {
                       {formatDayMonthYear(r.orderDate) || r.orderDate || "—"}
                     </td>
                     <td className="px-3 py-2.5 align-top tabular-nums text-muted-foreground whitespace-nowrap">
-                      {formatDayMonthYear(r.date) || r.date || "—"}
+                      {formatDayMonthYear(r.date || r.expectedDate) || r.date || r.expectedDate || "—"}
                     </td>
                   </tr>
                 ))}
