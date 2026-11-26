@@ -232,7 +232,8 @@ function ShipmentCard({
         </dl>
       </header>
 
-      <div className="border-t border-border px-3 py-2">
+      {/* 12px all round, and the boxes inside at 24px (the card) minus 12px: concentric corners. */}
+      <div className="border-t border-border p-3">
         {/* The count only matters on a phone, where the cars are folded away. */}
         <button
           type="button"
@@ -253,7 +254,7 @@ function ShipmentCard({
           </div>
         </button>
         <div
-          className={`${mobileCarsOpen ? "block" : "hidden sm:grid"} mt-2 grid gap-1.5 sm:mt-0 sm:grid-cols-2 xl:grid-cols-3`}
+          className={`${mobileCarsOpen ? "block" : "hidden sm:grid"} mt-3 grid gap-1.5 sm:mt-0 sm:grid-cols-2 xl:grid-cols-3`}
         >
           {s.items.map((c) => (
             <ContentsItem key={c.id} car={c} onOpen={() => onOpenCar(c)} />
@@ -316,7 +317,7 @@ function ContentsItem({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
           onOpen();
         }
       }}
-      className="group cursor-pointer rounded-md border border-border bg-muted/20 px-2.5 py-1.5 transition-colors hover:border-primary/50 hover:bg-primary/[0.06]"
+      className="group cursor-pointer rounded-[12px] border border-border bg-muted/20 px-2.5 py-1.5 transition-colors hover:border-primary/50 hover:bg-primary/[0.06]"
     >
       <span className="block max-w-full truncate text-left text-sm font-semibold group-hover:text-primary">
         {title}
