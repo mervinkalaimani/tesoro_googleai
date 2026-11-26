@@ -184,10 +184,10 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
       </button>
     </th>
   );
-  const th = "sticky top-0 z-10 bg-muted px-2 py-2.5 font-normal text-muted-foreground";
+  const th = "app-top-bar sticky top-0 z-10 px-2 py-2.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
-  const foot = "sticky bottom-0 z-10 border-t border-border bg-muted font-medium";
+  const foot = "app-top-bar sticky bottom-0 z-10 border-t border-border font-medium";
   const pills = (statuses: string[]) => (
     <div className="flex flex-wrap gap-1">
       {statuses.map((st) => (
