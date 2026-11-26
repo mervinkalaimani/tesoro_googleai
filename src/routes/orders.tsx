@@ -226,7 +226,13 @@ function ShipmentCard({
         </div>
 
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
-        <dl className="grid grid-cols-4 gap-x-3 gap-y-2 text-xs tabular-nums sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-1.5">
+        {/* Four facts make a row of four; a pre-order has six (advance and balance too), which
+            make two rows of three. */}
+        <dl
+          className={`grid gap-x-3 gap-y-2 text-xs tabular-nums sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-1.5 ${
+            isPO ? "grid-cols-3" : "grid-cols-4"
+          }`}
+        >
           <InlineFact label="Cars" value={String(s.items.length)} />
           <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
           <InlineFact
