@@ -306,7 +306,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
 
   return (
     <section aria-label="Cars due" className="space-y-2">
-      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+      {/* Pinned under the top bar while the table is on screen; the next section pushes it off. */}
+      <div className="app-top-bar sticky top-14 z-30 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-2xl px-3 py-2">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Cars Due</h2>
           <p className="text-xs text-muted-foreground">
