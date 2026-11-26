@@ -92,6 +92,46 @@ const sorted = <T,>(rows: T[], sort: Sort, by: Record<string, (r: T) => Val>) =>
     ? [...rows].sort((a, b) => sort.dir * compare(by[sort.key](a), by[sort.key](b)))
     : rows;
 
+/** What is still owed, and out of what, for the phone list. */
+function Owed({ cost: total, bal }: { cost: number; bal: number }) {
+  return (
+    <div className="shrink-0 text-right tabular-nums">
+      <div className="font-semibold">{inrFull(bal)}</div>
+      <div className="text-[11px] font-normal text-muted-foreground">of {inrFull(total)}</div>
+    </div>
+  );
+}
+
+/** One car in the phone list: picture, name, brand and number, status, and what is owed. */
+function PhoneCar({ c, onOpen }: { c: Diecast; onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left"
+    >
+      <div className="size-11 shrink-0 overflow-hidden rounded-md bg-muted">
+        {c.imageUrl && (
+          <img src={c.imageUrl} alt="" loading="lazy" className="size-full object-cover" />
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate font-medium">{c.name}</div>
+        <div className="truncate text-xs text-muted-foreground">
+          {[c.brand, c.carNumber].filter(Boolean).join(" · ") || c.seller || "—"}
+        </div>
+        <div className="mt-1 flex items-center gap-2 text-xs">
+          <span className={cn("rounded-full px-2 py-0.5", styleFor(normaliseStatus(c.status)))}>
+            {normaliseStatus(c.status)}
+          </span>
+          <span className="text-muted-foreground">{dayOf(c)}</span>
+        </div>
+      </div>
+      <Owed cost={cost(c)} bal={balance(c)} />
+    </button>
+  );
+}
+
 /**
  * The cars due this month, by seller, by order, or one by one: what each is, what it cost, what
  * has been paid (an advance on a pre-order included) and what is left. When nothing is due this
@@ -265,7 +305,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
         </div>
       </div>
       {/* Eight rows show; the rest scroll, under a header and a total that stay put. */}
-      <div ref={card} className="card-elevated max-h-[23rem] overflow-auto">
+      <div ref={card} className="card-elevated hidden max-h-[23rem] overflow-auto md:block">
         <table className="w-full min-w-[44rem] text-xs [&_tr>:first-child]:pl-4 [&_tr>:last-child]:pr-4">
           {view === "car" ? (
             <>
@@ -418,6 +458,59 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
             </>
           )}
         </table>
+      </div>
+
+      {/* A phone has no room for eight columns: a list, the amount still owed on the right. */}
+      <div className="card-elevated divide-y divide-border/50 overflow-hidden text-sm md:hidden">
+        {view === "car"
+          ? carRows.map((c, i) => <PhoneCar key={c.id ?? i} c={c} onOpen={() => openCar(c)} />)
+          : groupRows.map((g) => {
+              const isOpen = openKey === g.key;
+              return (
+                <div key={g.key}>
+                  <button
+                    type="button"
+                    aria-expanded={isOpen}
+                    onClick={() => setOpenKey(isOpen ? null : g.key)}
+                    className="flex w-full cursor-pointer items-start justify-between gap-3 px-4 py-3 text-left"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1 font-medium">
+                        <span className="truncate">{g.key}</span>
+                        <ChevronRight
+                          className={cn(
+                            "size-4 shrink-0 text-muted-foreground transition-transform",
+                            isOpen && "rotate-90",
+                          )}
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {view === "order" && g.seller ? `${g.seller} · ` : ""}
+                        {g.list.length} car{g.list.length === 1 ? "" : "s"} · {range(g.list)}
+                      </div>
+                      <div className="mt-1.5 text-xs">{pills(g.statuses)}</div>
+                    </div>
+                    <Owed cost={sum(g.list, cost)} bal={sum(g.list, balance)} />
+                  </button>
+                  {isOpen && (
+                    <div className="divide-y divide-border/50 bg-muted/30">
+                      {g.list.map((c, i) => (
+                        <PhoneCar key={c.id ?? i} c={c} onOpen={() => openCar(c)} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+        {total && (
+          <div className="flex items-center justify-between gap-3 bg-muted px-4 py-3 font-medium">
+            <div>
+              Total · {m.list.length} car{m.list.length === 1 ? "" : "s"}
+              <div className="text-xs font-normal text-muted-foreground">{range(m.list)}</div>
+            </div>
+            <Owed cost={sum(m.list, cost)} bal={sum(m.list, balance)} />
+          </div>
+        )}
       </div>
     </section>
   );
