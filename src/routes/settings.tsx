@@ -762,15 +762,45 @@ export function SettingsPage() {
             <div className="divide-y divide-border/60 overflow-hidden card-elevated">
               <div
                 className="flex items-center justify-between gap-3 px-4 py-2.5"
-                title="A casting is marked released the first time anybody’s copy of it arrives. A pre-order of yours that ships still reaches the notification bell either way."
+                title="Your chase, STH, TH and favourite cars. Auto shows it once you own one."
               >
-                <div className="text-[15px] font-medium text-foreground">Released PO</div>
+                <div className="text-[15px] font-medium text-foreground">Prized possessions</div>
                 <SegmentControl
-                  value={releasedShelf}
-                  onChange={setReleasedShelf}
-                  options={RELEASED_OPTIONS}
+                  value={prizedShelf}
+                  onChange={setPrizedShelf}
+                  options={PRIZED_OPTIONS}
                   className="h-9 text-sm sm:w-auto"
                 />
+              </div>
+
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-2.5"
+                title="Cars picked for you from the catalogue."
+              >
+                <div className="text-[15px] font-medium text-foreground">For you</div>
+                <Switch checked={showForYou} onCheckedChange={setShowForYou} />
+              </div>
+
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-2.5"
+                title="Cars due this month (or next), by car, seller or order ID, with what you owe."
+              >
+                <div className="text-[15px] font-medium text-foreground">Cars Due</div>
+                <Switch checked={showCarsDue} onCheckedChange={setShowCarsDue} />
+              </div>
+              {showCarsDue && (
+                <div className="flex items-center justify-between gap-4 px-4 py-2.5 pl-6">
+                  <div className="text-sm font-medium text-foreground">Total row</div>
+                  <Switch checked={carsDueTotal} onCheckedChange={setCarsDueTotal} />
+                </div>
+              )}
+
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-2.5"
+                title="Cars you logged in the last few days, above the transit tracker."
+              >
+                <div className="text-[15px] font-medium text-foreground">Recently added</div>
+                <Switch checked={showRecentlyAdded} onCheckedChange={setShowRecentlyAdded} />
               </div>
 
               <div
@@ -801,14 +831,6 @@ export function SettingsPage() {
 
               <div
                 className="flex items-center justify-between gap-4 px-4 py-2.5"
-                title="Cars you logged in the last few days, above the transit tracker."
-              >
-                <div className="text-[15px] font-medium text-foreground">Recently added</div>
-                <Switch checked={showRecentlyAdded} onCheckedChange={setShowRecentlyAdded} />
-              </div>
-
-              <div
-                className="flex items-center justify-between gap-4 px-4 py-2.5"
                 title="What other collectors have pre-ordered in the last three days, ready to add."
               >
                 <div className="text-[15px] font-medium text-foreground">New pre-orders</div>
@@ -816,36 +838,14 @@ export function SettingsPage() {
               </div>
 
               <div
-                className="flex items-center justify-between gap-4 px-4 py-2.5"
-                title="Cars picked for you from the catalogue."
-              >
-                <div className="text-[15px] font-medium text-foreground">For you</div>
-                <Switch checked={showForYou} onCheckedChange={setShowForYou} />
-              </div>
-
-              <div
-                className="flex items-center justify-between gap-4 px-4 py-2.5"
-                title="Cars due this month (or next), by car, seller or order ID, with what you owe."
-              >
-                <div className="text-[15px] font-medium text-foreground">Cars Due</div>
-                <Switch checked={showCarsDue} onCheckedChange={setShowCarsDue} />
-              </div>
-              {showCarsDue && (
-                <div className="flex items-center justify-between gap-4 px-4 py-2.5 pl-6">
-                  <div className="text-sm font-medium text-foreground">Total row</div>
-                  <Switch checked={carsDueTotal} onCheckedChange={setCarsDueTotal} />
-                </div>
-              )}
-
-              <div
                 className="flex items-center justify-between gap-3 px-4 py-2.5"
-                title="Your chase, STH, TH and favourite cars. Auto shows it once you own one."
+                title="A casting is marked released the first time anybody’s copy of it arrives. A pre-order of yours that ships still reaches the notification bell either way."
               >
-                <div className="text-[15px] font-medium text-foreground">Prized possessions</div>
+                <div className="text-[15px] font-medium text-foreground">Released PO</div>
                 <SegmentControl
-                  value={prizedShelf}
-                  onChange={setPrizedShelf}
-                  options={PRIZED_OPTIONS}
+                  value={releasedShelf}
+                  onChange={setReleasedShelf}
+                  options={RELEASED_OPTIONS}
                   className="h-9 text-sm sm:w-auto"
                 />
               </div>
