@@ -531,8 +531,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
       <div
         className={cn(
           "card-elevated divide-y divide-border/50 overflow-y-auto text-sm md:hidden",
-          // Five rows show and the rest scroll, the Total staying put at the bottom.
-          view === "car" ? "max-h-[25rem]" : "max-h-[32.5rem]",
+          // Five rows (81px a car, 87px a seller or order) and the 60px Total show; the rest scroll.
+          view === "car" ? "max-h-[29.1rem]" : "max-h-[31rem]",
         )}
       >
         {view === "car"
