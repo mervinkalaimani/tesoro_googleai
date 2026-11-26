@@ -466,7 +466,7 @@ function OrderGroupCard({
           />
         </div>
 
-        <dl className="flex flex-wrap gap-x-5 gap-y-1.5 tabular-nums">
+        <dl className="grid grid-cols-3 gap-x-4 gap-y-2 tabular-nums sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-1.5">
           {g.orderDate ? (
             <PreOrderFact label="Ordered" value={formatDayMonthYear(g.orderDate) || g.orderDate} />
           ) : null}
