@@ -169,29 +169,48 @@ function ShipmentCard({
 
   return (
     <article className="card-elevated overflow-hidden">
-      <header className="space-y-3 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="truncate font-mono text-base font-bold tracking-tight">
-              {s.groupId || "Unassigned"}
-            </h2>
-            <p className="truncate text-sm font-semibold text-muted-foreground">{s.seller}</p>
-          </div>
+      <header className="space-y-1.5 p-3">
+        {/* One line: which order, who from, where it is, and the two things to do with it. */}
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+          <h2 className="truncate font-mono text-sm font-bold tracking-tight">
+            {s.groupId || "Unassigned"}
+          </h2>
+          <p className="min-w-0 truncate text-xs font-semibold text-muted-foreground">{s.seller}</p>
           <span
-            className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-xs ${statusTone(
+            className={`shrink-0 rounded-full border px-2 py-px font-mono text-[11px] ${statusTone(
               s.status,
               s.delivered,
             )}`}
           >
             {statusLabel(s.status, s.delivered)}
           </span>
+          <div className="ml-auto flex items-center gap-1.5">
+            {/* This parcel, not the page it is on. */}
+            <ExportButton
+              rows={s.items}
+              name={`order-${s.groupId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+              label={s.groupId ? `Order ${s.groupId}` : `${s.seller} order`}
+              iconOnly={false}
+              text="Share"
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1.5 px-2"
+            />
+            {s.shippingId ? (
+              <UpdateStatusButton
+                onClick={onEdit}
+                label="Update order"
+                className="h-7 px-2.5 text-xs"
+                title={`Update the ${s.items.length} car${s.items.length === 1 ? "" : "s"} in ${s.shippingId}`}
+              />
+            ) : null}
+          </div>
         </div>
 
-        {/* The one place each date is said. The footer used to repeat the
-            expected date in a sentence underneath the cars. */}
-        <dl className={`grid grid-cols-3 gap-3 ${isPO ? "sm:grid-cols-5" : ""}`}>
-          <HeaderFact label="Ordered" value={shortDate(s.orderDate)} />
-          <HeaderFact
+        {/* The one place each date is said, inline rather than a grid of stacked facts. */}
+        <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs tabular-nums">
+          <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
+          <InlineFact
             label={s.delivered ? "Delivered" : "Expected"}
             value={shortDate(s.eta)}
             // Colour means something here: only an ETA that has passed is red.
@@ -201,29 +220,30 @@ function ShipmentCard({
                 : undefined
             }
           />
-          {isPO && <HeaderFact label="Advance paid" value={inrFull(paid)} />}
+          {isPO && <InlineFact label="Advance paid" value={inrFull(paid)} />}
           {isPO && (
-            <HeaderFact
+            <InlineFact
               label="Balance"
               value={balance > 0 ? inrFull(balance) : "Paid"}
               className={balance > 0 ? "text-amber-500" : "text-emerald-500"}
             />
           )}
-          <HeaderFact label="Total cost" value={inrFull(s.value)} align="right" />
+          <InlineFact label="Total" value={inrFull(s.value)} />
         </dl>
       </header>
 
-      <div className="border-t border-border px-4 py-3">
+      <div className="border-t border-border px-3 py-2">
+        {/* The count only matters on a phone, where the cars are folded away. */}
         <button
           type="button"
           onClick={() => setMobileCarsOpen((v) => !v)}
-          className="flex w-full items-center justify-between text-left sm:cursor-default"
+          className="flex w-full items-center justify-between text-left sm:hidden"
           aria-expanded={mobileCarsOpen}
         >
-          <div className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
-            Shipment contents ({s.items.length} casting{s.items.length === 1 ? "" : "s"})
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            {s.items.length} casting{s.items.length === 1 ? "" : "s"}
           </div>
-          <div className="flex items-center gap-1 text-xs font-medium text-primary sm:hidden">
+          <div className="flex items-center gap-1 text-xs font-medium text-primary">
             <span>{mobileCarsOpen ? "Hide cars" : "View cars"}</span>
             <ChevronDown
               className={`size-3.5 transition-transform duration-200 ${
@@ -233,37 +253,13 @@ function ShipmentCard({
           </div>
         </button>
         <div
-          className={`${mobileCarsOpen ? "block" : "hidden sm:grid"} mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3`}
+          className={`${mobileCarsOpen ? "block" : "hidden sm:grid"} mt-2 grid gap-1.5 sm:mt-0 sm:grid-cols-2 xl:grid-cols-3`}
         >
           {s.items.map((c) => (
             <ContentsItem key={c.id} car={c} onOpen={() => onOpenCar(c)} />
           ))}
         </div>
       </div>
-
-      {/* One row, phone included: Export is an icon, and the two labelled
-          buttons share what is left between them. */}
-      <footer className="flex items-center gap-2 border-t border-border px-4 py-3 sm:justify-end">
-        {/* This parcel, not the page it is on. */}
-        <ExportButton
-          rows={s.items}
-          name={`order-${s.groupId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
-          label={s.groupId ? `Order ${s.groupId}` : `${s.seller} order`}
-          iconOnly={false}
-          text="Share"
-          variant="ghost"
-          size="sm"
-          className="min-w-0 flex-1 gap-1.5 sm:flex-none"
-        />
-        {s.shippingId ? (
-          <UpdateStatusButton
-            onClick={onEdit}
-            label="Update order"
-            className="min-w-0 flex-1 sm:flex-none"
-            title={`Update the ${s.items.length} car${s.items.length === 1 ? "" : "s"} in ${s.shippingId}`}
-          />
-        ) : null}
-      </footer>
     </article>
   );
 }
@@ -274,21 +270,21 @@ function shortDate(value: string): string {
   return formatDayMonthYear(value) || value;
 }
 
-function HeaderFact({
+function InlineFact({
   label,
   value,
   className = "",
-  align = "left",
 }: {
   label: string;
   value: string;
   className?: string;
-  align?: "left" | "right";
 }) {
   return (
-    <div className={`min-w-0 ${align === "right" ? "text-right" : ""}`}>
-      <dt className="text-xs uppercase tracking-wider text-muted-foreground">{label}</dt>
-      <dd className={`truncate text-sm font-semibold tabular-nums ${className}`}>{value}</dd>
+    <div className="min-w-0">
+      <dt className="inline text-[10px] uppercase tracking-wider text-muted-foreground">
+        {label}{" "}
+      </dt>
+      <dd className={`inline font-semibold ${className}`}>{value}</dd>
     </div>
   );
 }
@@ -320,7 +316,7 @@ function ContentsItem({ car, onOpen }: { car: Diecast; onOpen: () => void }) {
           onOpen();
         }
       }}
-      className="group cursor-pointer rounded-md border border-border bg-muted/20 px-3 py-2 transition-colors hover:border-primary/50 hover:bg-primary/[0.06]"
+      className="group cursor-pointer rounded-md border border-border bg-muted/20 px-2.5 py-1.5 transition-colors hover:border-primary/50 hover:bg-primary/[0.06]"
     >
       <span className="block max-w-full truncate text-left text-sm font-semibold group-hover:text-primary">
         {title}
