@@ -528,7 +528,13 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
       </div>
 
       {/* A phone has no room for eight columns: a list, the amount still owed on the right. */}
-      <div className="card-elevated divide-y divide-border/50 overflow-hidden text-sm md:hidden">
+      <div
+        className={cn(
+          "card-elevated divide-y divide-border/50 overflow-y-auto text-sm md:hidden",
+          // Five rows show and the rest scroll, the Total staying put at the bottom.
+          view === "car" ? "max-h-[25rem]" : "max-h-[32.5rem]",
+        )}
+      >
         {view === "car"
           ? carRows.map((c, i) => <PhoneCar key={c.id ?? i} c={c} onOpen={() => openCar(c)} />)
           : groupRows.map((g) => {
@@ -570,7 +576,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
               );
             })}
         {total && (
-          <div className="flex items-center justify-between gap-3 bg-muted px-4 py-3 font-medium">
+          <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 bg-muted px-4 py-3 font-medium">
             <div>
               Total · {m.list.length} car{m.list.length === 1 ? "" : "s"}
               <div className="text-xs font-normal text-muted-foreground">{range(m.list)}</div>
