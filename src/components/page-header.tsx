@@ -159,17 +159,20 @@ export function PageToolbar({
  * scrolling under it do not run into its controls.
  */
 /** Tells the top bar that something is pinned under it, so it matches the band. */
+let pinnedCount = 0;
 export function usePinnedFlag(pinned: boolean) {
   useEffect(() => {
-    if (pinned) document.documentElement.dataset.pinned = "1";
-    else delete document.documentElement.dataset.pinned;
+    if (!pinned) return;
+    // Several bands can be pinned in turn; the flag stays while any of them is.
+    pinnedCount++;
+    document.documentElement.dataset.pinned = "1";
     return () => {
-      delete document.documentElement.dataset.pinned;
+      if (--pinnedCount <= 0) delete document.documentElement.dataset.pinned;
     };
   }, [pinned]);
 }
 
-function StickyBand({ children }: { children: ReactNode }) {
+export function StickyBand({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pinned, setPinned] = useState(false);
   usePinnedFlag(pinned);
@@ -178,7 +181,10 @@ function StickyBand({ children }: { children: ReactNode }) {
     if (!el) return;
     const check = () => {
       // top-14 is where it sticks: pinned means it has reached that line.
-      setPinned(el.getBoundingClientRect().top <= 56 + 1 && window.scrollY > 0);
+      const r = el.getBoundingClientRect();
+      // ...and still there: a band whose section has ended rides off with it, so it is not pinned.
+      const room = (el.parentElement?.getBoundingClientRect().bottom ?? Infinity) - r.height;
+      setPinned(r.top <= 56 + 1 && window.scrollY > 0 && room > 56 + 1);
     };
     check();
     window.addEventListener("scroll", check, { passive: true });
