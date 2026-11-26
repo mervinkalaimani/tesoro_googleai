@@ -353,7 +353,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {(view === "root" || !isPhone) && (
         <div className="space-y-6 md:-mx-2 md:h-full md:overflow-y-auto md:px-2">
-          <div className="md:sticky md:top-0 md:z-10">
+          <div className="md:sticky md:top-0 md:z-10 md:backdrop-blur-xl">
             <PageHeading title="Settings" />
           </div>
 
@@ -1621,7 +1621,7 @@ function SubpageHeader({
     // Beside the list the page needs no title or Back: the list says where you are. Pages two
     // levels down keep theirs, because Back there goes to a page, not to the list.
     <div
-      className={`flex items-center justify-between border-b border-border/60 pb-3 md:sticky md:top-0 md:z-10 md:pt-1 ${backLabel === "Settings" ? "md:hidden" : ""}`}
+      className={`flex items-center justify-between border-b border-border/60 pb-3 md:sticky md:top-0 md:z-10 md:backdrop-blur-xl md:pt-1 ${backLabel === "Settings" ? "md:hidden" : ""}`}
     >
       <button
         type="button"
