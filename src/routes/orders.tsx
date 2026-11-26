@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Truck, Plus, Pencil, Store, ChevronDown, Filter, Layers } from "lucide-react";
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
+import { SellerAccounts } from "@/components/seller-accounts";
 import { RowListSkeleton } from "@/components/dashboard-skeletons";
 import { isInHand, isOpenOrder, normaliseStatus, statusRank, type Status } from "@/lib/status";
 import { isLate } from "@/lib/delivery-watch";
@@ -579,6 +580,9 @@ function OrdersPage() {
           }
         />
       </PageHeading>
+
+      {/* What is due, by seller, order or car: the same table as the home page. */}
+      {!loading && <SellerAccounts cars={cars} />}
 
       <PageToolbar
         sticky
