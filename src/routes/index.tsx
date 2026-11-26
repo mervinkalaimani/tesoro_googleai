@@ -85,6 +85,7 @@ import {
 } from "@/lib/catalog";
 import { recentReleases, releasedLabel } from "@/lib/released";
 import { catalogIdFor } from "@/lib/car-id";
+import { ownedNotes } from "@/lib/pending";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -1042,6 +1043,8 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
   const [viewing, setViewing] = useState<RecentPreorder | null>(null);
   const [editingCatalog, setEditingCatalog] = useState<CatalogCar | null>(null);
   const now = new Date();
+  const myCars = useCars();
+  const notes = useMemo(() => ownedNotes(myCars), [myCars]);
 
   const resolveCatalogCar = useCallback(
     (p: RecentPreorder): CatalogCar | undefined => {
@@ -1186,6 +1189,7 @@ function RecentPreorders({ cars, loading }: { cars: RecentPreorder[]; loading: b
                 onOpen={() => setViewing(c)}
                 caption={added ? daysAgo(added, now) : undefined}
                 owned={c.inMyCollection}
+                note={notes.get(catalogEntryFor(c).car_id.trim().toUpperCase())}
                 onAdd={
                   c.inMyCollection
                     ? undefined
@@ -1630,6 +1634,8 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
     return out;
   }, [cars]);
 
+  const notes = useMemo(() => ownedNotes(cars), [cars]);
+
   if (isLoading || releases.length === 0) return null;
 
   return (
@@ -1654,6 +1660,7 @@ function RecentlyReleased({ scope }: { scope: ReleasedPreference }) {
                 onOpen={() => setViewing(r.entry)}
                 caption={releasedLabel(r.daysAgo)}
                 owned={ownedIds.has(r.entry.car_id.trim().toUpperCase())}
+                note={notes.get(r.entry.car_id.trim().toUpperCase())}
                 onAdd={
                   ownedIds.has(r.entry.car_id.trim().toUpperCase())
                     ? undefined

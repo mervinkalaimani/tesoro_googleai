@@ -1,4 +1,6 @@
-import { Check, Plus } from "lucide-react";
+import { Check, Clock, Plus } from "lucide-react";
+import { inrFull } from "@/lib/format";
+import type { OwnedNote } from "@/lib/pending";
 import { CarThumb } from "@/components/car-thumb";
 import { WishlistHeart } from "@/components/wishlist-heart";
 import type { CatalogCar } from "@/lib/catalog";
@@ -16,6 +18,7 @@ export function ShelfCard({
   onOpen,
   onAdd,
   owned = false,
+  note,
   wish = true,
 }: {
   car: Diecast;
@@ -26,6 +29,8 @@ export function ShelfCard({
   onAdd?: () => void;
   /** Already yours: the buttons give way to the word Owned, across the whole footer. */
   owned?: boolean;
+  /** What is owed on it and where it is: the footer says the amount, or the word once paid. */
+  note?: OwnedNote;
   /** Offer the wishlist (not for a guest). */
   wish?: boolean;
 }) {
@@ -54,8 +59,17 @@ export function ShelfCard({
       </button>
       {owned ? (
         <div className="glass-btn mt-auto flex h-9 w-full items-center justify-center gap-1 !rounded-none text-xs font-semibold text-foreground">
-          <Check className="size-3.5 text-emerald-500" />
-          Owned
+          {note && note.pending > 0 ? (
+            <>
+              <Clock className="size-3.5 text-amber-500" />
+              {inrFull(note.pending)} Pending
+            </>
+          ) : (
+            <>
+              <Check className="size-3.5 text-emerald-500" />
+              {note?.label ?? "Owned"}
+            </>
+          )}
         </div>
       ) : (
         (wish || onAdd) && (
