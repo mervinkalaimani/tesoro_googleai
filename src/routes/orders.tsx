@@ -227,8 +227,8 @@ function ShipmentCard({
 
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
         <dl className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs tabular-nums">
-          <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
           <InlineFact label="Cars" value={String(s.items.length)} />
+          <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
           <InlineFact
             label={s.delivered ? "Delivered" : "Expected"}
             value={shortDate(s.eta)}

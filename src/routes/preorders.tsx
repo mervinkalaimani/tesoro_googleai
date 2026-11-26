@@ -467,10 +467,10 @@ function OrderGroupCard({
         </div>
 
         <dl className="grid grid-cols-3 gap-x-4 gap-y-2 tabular-nums sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-1.5">
+          <PreOrderFact label="Cars" value={String(g.items.length)} />
           {g.orderDate ? (
             <PreOrderFact label="Ordered" value={formatDayMonthYear(g.orderDate) || g.orderDate} />
           ) : null}
-          <PreOrderFact label="Cars" value={String(g.items.length)} />
           {expected ? (
             <PreOrderFact label="Expected" value={expected} className={lateClass(expectedRaw)} />
           ) : null}
