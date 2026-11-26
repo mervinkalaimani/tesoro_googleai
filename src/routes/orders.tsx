@@ -1,6 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Truck, Plus, Pencil, Store, ChevronDown, Filter, Layers } from "lucide-react";
+import {
+  Truck,
+  Plus,
+  Pencil,
+  Store,
+  ChevronDown,
+  ChevronRight,
+  Filter,
+  Layers,
+} from "lucide-react";
 import { useCars, useCarsRefresh } from "@/lib/cars-store";
 import { RowListSkeleton } from "@/components/dashboard-skeletons";
 import { isInHand, isOpenOrder, normaliseStatus, statusRank, type Status } from "@/lib/status";
@@ -178,7 +187,7 @@ function ShipmentCard({
           </h2>
           <p className="min-w-0 truncate text-xs font-semibold text-muted-foreground">{s.seller}</p>
           <span
-            className={`shrink-0 rounded-full border px-2 py-px font-mono text-[11px] max-sm:ml-auto ${statusTone(
+            className={`shrink-0 rounded-full border px-2 py-px font-mono text-[11px] ${statusTone(
               s.status,
               s.delivered,
             )}`}
@@ -209,6 +218,11 @@ function ShipmentCard({
               />
             ) : null}
           </div>
+          {/* Says the card is an accordion: it points right while closed, down once open. */}
+          <ChevronRight
+            aria-hidden
+            className={`size-4 shrink-0 text-muted-foreground transition-transform duration-200 max-sm:ml-auto ${carsOpen ? "rotate-90" : ""}`}
+          />
         </div>
 
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
