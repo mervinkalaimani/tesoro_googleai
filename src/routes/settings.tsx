@@ -352,7 +352,7 @@ export function SettingsPage() {
       {/* ROOT SETTINGS SCREEN (Apple Inset Grouped Table View)                    */}
       {/* ========================================================================= */}
       {(view === "root" || !isPhone) && (
-        <div className="space-y-6">
+        <div className="space-y-6 md:sticky md:top-16 md:-m-2 md:max-h-[calc(100vh-4rem)] md:overflow-y-auto md:p-2 md:self-start">
           <PageHeading title="Settings" />
 
           {/* Top Account Card (Separate Apple ID style card) */}
@@ -603,18 +603,6 @@ export function SettingsPage() {
               </button>
             </div>
           </div>
-
-          {/* The mark the app opens on, at the end of the page it closes on.
-              Well clear of Log Out: a signature under a destructive button is
-              a thing to mis-tap, and the space is what says the page is over. */}
-          <footer className="flex flex-col items-center gap-3 pb-2 pt-14 text-center text-xs text-muted-foreground">
-            <SplashMark className="w-40 opacity-80" />
-            <div className="space-y-1">
-              <p>© Mervin K</p>
-              <p>Crafted with love from Chennai</p>
-              <p>Version {APP_VERSION}</p>
-            </div>
-          </footer>
         </div>
       )}
 
@@ -1147,6 +1135,15 @@ export function SettingsPage() {
           <p className="px-1 text-xs text-muted-foreground">
             VIIV {APP_VERSION} · a personal project, not a company.
           </p>
+          {/* The mark the app opens on, centred at the foot of Help. */}
+          <footer className="flex flex-col items-center gap-3 pb-2 pt-10 text-center text-xs text-muted-foreground">
+            <SplashMark className="w-40 opacity-80" />
+            <div className="space-y-1">
+              <p>© Mervin K</p>
+              <p>Crafted with love from Chennai</p>
+              <p>Version {APP_VERSION}</p>
+            </div>
+          </footer>
         </div>
       )}
 
