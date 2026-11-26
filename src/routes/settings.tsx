@@ -362,7 +362,7 @@ export function SettingsPage() {
               type="button"
               onClick={() => changeView("account")}
               data-active={section === "account"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
+              className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
             >
               <TierAvatar
                 url={profile?.avatar_url}
@@ -404,7 +404,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("subscription")}
                 data-active={section === "subscription"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <Sparkles className="size-4" />
@@ -427,7 +427,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("homepage")}
                 data-active={section === "homepage"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <Home className="size-4" />
@@ -445,7 +445,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("display")}
                 data-active={section === "display"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <Palette className="size-4" />
@@ -463,7 +463,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("notifications")}
                 data-active={section === "notifications"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <Bell className="size-4" />
@@ -481,7 +481,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("privacy")}
                 data-active={section === "privacy"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <ShieldCheck className="size-4" />
@@ -499,7 +499,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("onboarding")}
                 data-active={section === "onboarding"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <Compass className="size-4" />
@@ -523,7 +523,7 @@ export function SettingsPage() {
                   type="button"
                   onClick={() => changeView("advanced")}
                   data-active={section === "advanced"}
-                  className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                  className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
                 >
                   <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                     <Wrench className="size-4" />
@@ -544,7 +544,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("help")}
                 data-active={section === "help"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <LifeBuoy className="size-4" />
@@ -560,7 +560,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("activity")}
                 data-active={section === "activity"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <History className="size-4" />
@@ -577,7 +577,7 @@ export function SettingsPage() {
                 type="button"
                 onClick={() => changeView("whats_new")}
                 data-active={section === "whats_new"}
-                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                className="md:data-[active=true]:bg-primary/12 group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <Sparkles className="size-4" />
