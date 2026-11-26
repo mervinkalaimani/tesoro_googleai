@@ -262,7 +262,7 @@ function ShipmentCard({
         </div>
       )}
       {/* On a phone the two buttons are a row of their own, as they were: they share the width. */}
-      <footer className="flex items-center gap-2 border-t border-border p-3 sm:hidden">
+      <footer className="flex w-full border-t border-border sm:hidden">
         <ExportButton
           rows={s.items}
           name={`order-${s.groupId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
@@ -271,13 +271,13 @@ function ShipmentCard({
           text="Share"
           variant="ghost"
           size="sm"
-          className="min-w-0 flex-1 gap-1.5"
+          className="glass-btn !flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 !rounded-none !border-0 !shadow-none px-3 text-sm font-medium text-foreground"
         />
         {s.shippingId ? (
           <UpdateStatusButton
             onClick={onEdit}
             label="Update order"
-            className="min-w-0 flex-1"
+            className="glass-btn !flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 !rounded-none !border-0 !border-l !border-solid !border-border/60 !shadow-none px-3 text-sm font-medium text-primary"
             title={`Update the ${s.items.length} car${s.items.length === 1 ? "" : "s"} in ${s.shippingId}`}
           />
         ) : null}
