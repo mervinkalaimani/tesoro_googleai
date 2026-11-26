@@ -231,7 +231,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
                     <td className={cn(td, foot, num)}>{inrFull(sum(m.list, cost))}</td>
                     <td className={cn(td, foot, num)}>{inrFull(sum(m.list, paid))}</td>
                     <td className={cn(td, foot, num)}>{inrFull(sum(m.list, balance))}</td>
-                    <td className={cn(td, foot)} />
+                    <td className={cn(td, foot, num, "whitespace-nowrap")}>{range(m.list)}</td>
                   </tr>
                 </tfoot>
               )}
