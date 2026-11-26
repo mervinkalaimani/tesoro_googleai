@@ -221,6 +221,16 @@ export function SettingsPage() {
     });
   };
 
+  // On a wide screen the list stays on the left and the page opens beside it, so there is
+  // always one open: Account until something else is picked.
+  const page: SettingsView = !isPhone && view === "root" ? "account" : view;
+  const section: SettingsView =
+    page.startsWith("help") || page === "feature_request" || page === "report_bug"
+      ? "help"
+      : ["diagnostics", "metadata", "auth_providers", "database", "search_engine"].includes(page)
+        ? "advanced"
+        : page;
+
   const {
     theme,
     themePreference,
@@ -337,11 +347,11 @@ export function SettingsPage() {
 
   return (
     // No bold type anywhere on Settings: titles included, whichever shared component draws them.
-    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:p-6 [&_h1]:!font-medium [&_h2]:!font-medium [&_h3]:!font-medium">
+    <div className="mx-auto max-w-[1600px] space-y-3 p-3 md:grid md:grid-cols-[30%_minmax(0,1fr)] md:items-start md:gap-6 md:space-y-0 md:p-6 [&_h1]:!font-medium [&_h2]:!font-medium [&_h3]:!font-medium">
       {/* ========================================================================= */}
       {/* ROOT SETTINGS SCREEN (Apple Inset Grouped Table View)                    */}
       {/* ========================================================================= */}
-      {view === "root" && (
+      {(view === "root" || !isPhone) && (
         <div className="space-y-6">
           <PageHeading title="Settings" />
 
@@ -349,7 +359,8 @@ export function SettingsPage() {
           <button
             type="button"
             onClick={() => changeView("account")}
-            className="group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
+            data-active={section === "account"}
+            className="md:data-[active=true]:bg-muted group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
           >
             <TierAvatar
               url={profile?.avatar_url}
@@ -390,7 +401,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("subscription")}
-              className="group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
+              data-active={section === "subscription"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Sparkles className="size-4" />
@@ -412,7 +424,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("homepage")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              data-active={section === "homepage"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Home className="size-4" />
@@ -429,7 +442,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("display")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              data-active={section === "display"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Palette className="size-4" />
@@ -446,7 +460,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("notifications")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              data-active={section === "notifications"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Bell className="size-4" />
@@ -463,7 +478,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("privacy")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              data-active={section === "privacy"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <ShieldCheck className="size-4" />
@@ -480,7 +496,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("onboarding")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              data-active={section === "onboarding"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Compass className="size-4" />
@@ -503,7 +520,8 @@ export function SettingsPage() {
               <button
                 type="button"
                 onClick={() => changeView("advanced")}
-                className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                data-active={section === "advanced"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                   <Wrench className="size-4" />
@@ -523,7 +541,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("help")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              data-active={section === "help"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <LifeBuoy className="size-4" />
@@ -538,7 +557,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("activity")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              data-active={section === "activity"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <History className="size-4" />
@@ -554,7 +574,8 @@ export function SettingsPage() {
             <button
               type="button"
               onClick={() => changeView("whats_new")}
-              className="group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              data-active={section === "whats_new"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
             >
               <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
                 <Sparkles className="size-4" />
@@ -600,28 +621,28 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE 1: ACCOUNT (With Back Button to Settings)                         */}
       {/* ========================================================================= */}
-      {view === "feature_request" && (
+      {page === "feature_request" && (
         <div className="space-y-4">
           <SubpageHeader title="Feature request" onBack={() => changeView("help")} />
           <FeedbackPanel kind="feature" />
         </div>
       )}
 
-      {view === "report_bug" && (
+      {page === "report_bug" && (
         <div className="space-y-4">
           <SubpageHeader title="Report a bug" onBack={() => changeView("help")} />
           <FeedbackPanel kind="bug" />
         </div>
       )}
 
-      {view === "subscription" && (
+      {page === "subscription" && (
         <div className="space-y-4">
           <SubpageHeader title="Subscription" onBack={() => changeView("root")} />
           <SubscriptionPanel />
         </div>
       )}
 
-      {view === "account" && (
+      {page === "account" && (
         <div className="space-y-5">
           <SubpageHeader title="Account" onBack={() => changeView("root")} />
 
@@ -651,7 +672,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE 2: DISPLAY                                                        */}
       {/* ========================================================================= */}
-      {view === "display" && (
+      {page === "display" && (
         <div className="space-y-6">
           <SubpageHeader title="Display" onBack={() => changeView("root")} />
 
@@ -710,7 +731,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: HOMEPAGE                                                         */}
       {/* ========================================================================= */}
-      {view === "homepage" && (
+      {page === "homepage" && (
         <div className="space-y-6">
           <SubpageHeader title="Homepage" onBack={() => changeView("root")} />
 
@@ -861,7 +882,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: ADVANCED (owner only)                                            */}
       {/* ========================================================================= */}
-      {view === "advanced" && isOwner && (
+      {page === "advanced" && isOwner && (
         <div className="space-y-6">
           <SubpageHeader title="Admin Console" onBack={() => changeView("root")} />
           <div className="divide-y divide-border/60 overflow-hidden card-elevated">
@@ -1066,7 +1087,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: HELP                                                             */}
       {/* ========================================================================= */}
-      {view === "help" && (
+      {page === "help" && (
         <div className="space-y-6">
           <SubpageHeader title="Help" onBack={() => changeView("root")} />
 
@@ -1132,12 +1153,12 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: HELP DOCUMENTS                                                   */}
       {/* ========================================================================= */}
-      {(view === "help_privacy" || view === "help_terms" || view === "help_contact") && (
+      {(page === "help_privacy" || page === "help_terms" || page === "help_contact") && (
         <div className="space-y-6">
           <SubpageHeader
             title={
               HELP_TITLES[
-                view === "help_privacy" ? "privacy" : view === "help_terms" ? "terms" : "contact"
+                page === "help_privacy" ? "privacy" : page === "help_terms" ? "terms" : "contact"
               ]
             }
             onBack={() => changeView("help")}
@@ -1145,7 +1166,7 @@ export function SettingsPage() {
           />
           <HelpDoc
             docKey={
-              view === "help_privacy" ? "privacy" : view === "help_terms" ? "terms" : "contact"
+              page === "help_privacy" ? "privacy" : page === "help_terms" ? "terms" : "contact"
             }
           />
         </div>
@@ -1154,7 +1175,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: WHAT IS NEW                                                     */}
       {/* ========================================================================= */}
-      {view === "activity" && (
+      {page === "activity" && (
         <div className="space-y-5">
           <SubpageHeader title="Activity log" onBack={() => changeView("root")} />
           <ChangeLog openCar={(car) => drawer.open(car)} />
@@ -1165,7 +1186,7 @@ export function SettingsPage() {
         </div>
       )}
 
-      {view === "whats_new" && (
+      {page === "whats_new" && (
         <div className="space-y-5">
           <SubpageHeader title="What's new" onBack={() => changeView("root")} />
           <p className="text-xs text-muted-foreground">
@@ -1179,7 +1200,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: ONBOARDING                                                       */}
       {/* ========================================================================= */}
-      {view === "onboarding" && (
+      {page === "onboarding" && (
         <div className="space-y-6">
           <SubpageHeader title="Onboarding" onBack={() => changeView("root")} />
 
@@ -1219,7 +1240,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: PRIVACY                                                          */}
       {/* ========================================================================= */}
-      {view === "privacy" && (
+      {page === "privacy" && (
         <div className="space-y-6">
           <SubpageHeader title="Privacy" onBack={() => changeView("root")} />
           <div className="space-y-1.5">
@@ -1245,7 +1266,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE 3: NOTIFICATIONS                                                  */}
       {/* ========================================================================= */}
-      {view === "notifications" && (
+      {page === "notifications" && (
         <div className="space-y-6">
           <SubpageHeader title="Notifications" onBack={() => changeView("root")} />
 
@@ -1371,7 +1392,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE 4: DIAGNOSTICS                                                    */}
       {/* ========================================================================= */}
-      {view === "diagnostics" && (
+      {page === "diagnostics" && (
         <div className="space-y-6">
           <SubpageHeader
             title="Diagnostics"
@@ -1410,7 +1431,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE 5: DB CONNECTION                                                  */}
       {/* ========================================================================= */}
-      {view === "metadata" && (
+      {page === "metadata" && (
         <div className="space-y-6">
           <SubpageHeader
             title="Metadata editor"
@@ -1427,7 +1448,7 @@ export function SettingsPage() {
         </div>
       )}
 
-      {view === "auth_providers" && isOwner && (
+      {page === "auth_providers" && isOwner && (
         <div className="space-y-5">
           <SubpageHeader
             title="Authentication"
@@ -1440,7 +1461,7 @@ export function SettingsPage() {
         </div>
       )}
 
-      {view === "database" && (
+      {page === "database" && (
         <div className="space-y-6">
           <SubpageHeader
             title="DB Connection"
@@ -1515,7 +1536,7 @@ export function SettingsPage() {
       {/* ========================================================================= */}
       {/* SUBPAGE: SEARCH ENGINE                                                    */}
       {/* ========================================================================= */}
-      {view === "search_engine" && (
+      {page === "search_engine" && (
         <div className="space-y-6">
           <SubpageHeader
             title="Search Engine"
@@ -1589,7 +1610,7 @@ function SubpageHeader({
       <button
         type="button"
         onClick={onBack}
-        className="inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50"
+        className={`inline-flex items-center gap-1 rounded-lg py-1 pr-2 text-[15px] font-medium text-primary transition-opacity hover:opacity-75 active:opacity-50 ${backLabel === "Settings" ? "md:invisible" : ""}`}
       >
         <ChevronLeft className="size-5 -ml-1" />
         <span>{backLabel}</span>
