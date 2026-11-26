@@ -1020,9 +1020,9 @@ html:not(.dark) .app-top-bar {
   /* Glass, not a tint of its own: the page's accent glow shows through the pane, so the bar is the
      same colour as the page behind it (a tint of its own read as a second orange). The blur turns
      what scrolls under it into a soft wash. */
-  background-color: color-mix(in oklab, var(--background) 36%, transparent);
-  -webkit-backdrop-filter: blur(30px);
-  backdrop-filter: blur(30px);
+  background-color: color-mix(in oklab, var(--background) 72%, transparent);
+  -webkit-backdrop-filter: blur(30px) brightness(1.08);
+  backdrop-filter: blur(30px) brightness(1.08);
   border-bottom-color: color-mix(in oklab, var(--primary) 22%, transparent);
 }
 html[data-pinned] .app-top-bar,
