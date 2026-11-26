@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { Fragment, useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useApp } from "@/lib/store";
 import { SegmentControl } from "@/components/segment-control";
@@ -98,7 +98,7 @@ const sorted = <T,>(rows: T[], sort: Sort, by: Record<string, (r: T) => Val>) =>
  * month, next month's. A car with no expected date is not here.
  */
 export function SellerAccounts({ cars }: { cars: Diecast[] }) {
-  const { open: openCar, openBatch, openSeller } = useCarDrawer();
+  const { open: openCar } = useCarDrawer();
   const [view, setView] = useState<View>("seller");
   const { carsDueTotal: total } = useApp();
   /** Cars due in months that have gone, loaded on request. */
@@ -110,8 +110,11 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const [sort, setSort] = useState<Sort>(null);
   const toggle = (key: string) =>
     setSort((s) => (!s || s.key !== key ? { key, dir: 1 } : s.dir === 1 ? { key, dir: -1 } : null));
+  /** The seller or order whose cars are showing: one at a time. */
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const pick = (v: View) => {
     setSort(null);
+    setOpenKey(null);
     setView(v);
     try {
       localStorage.setItem(VIEW_KEY, v);
@@ -161,12 +164,6 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const groupRows = useMemo(() => sorted(groups, sort, GROUP_SORT), [groups, sort]);
 
   if (!m.list.length && !m.previous) return null;
-
-  const open = (g: { key: string; seller: string }) => {
-    if (view === "order") {
-      if (g.key !== "No order ID") openBatch(g.key, "shippingId");
-    } else if (g.seller) openSeller(g.seller);
-  };
 
   const sortTh = (key: string, label: string, align?: string) => (
     <th
@@ -298,24 +295,63 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
                 </tr>
               </thead>
               <tbody>
-                {groupRows.map((g) => (
-                  <tr key={g.key} onClick={() => open(g)} className={row}>
-                    <td className={cn(td, "font-medium")}>
-                      <button type="button" className={link}>
-                        {g.key}
-                      </button>
-                    </td>
-                    {view === "order" && (
-                      <td className={cn(td, "text-muted-foreground")}>{g.seller || "—"}</td>
-                    )}
-                    <td className={cn(td, num)}>{g.list.length}</td>
-                    <td className={td}>{pills(g.statuses)}</td>
-                    <td className={cn(td, num)}>{inrFull(sum(g.list, cost))}</td>
-                    <td className={cn(td, num)}>{inrFull(sum(g.list, paid))}</td>
-                    <td className={cn(td, num)}>{inrFull(sum(g.list, balance))}</td>
-                    <td className={cn(td, num, "whitespace-nowrap")}>{range(g.list)}</td>
-                  </tr>
-                ))}
+                {groupRows.map((g) => {
+                  const isOpen = openKey === g.key;
+                  return (
+                    <Fragment key={g.key}>
+                      <tr onClick={() => setOpenKey(isOpen ? null : g.key)} className={row}>
+                        <td className={cn(td, "font-medium")}>
+                          <button
+                            type="button"
+                            aria-expanded={isOpen}
+                            className={cn(link, "inline-flex items-center gap-1")}
+                          >
+                            <span className="truncate">{g.key}</span>
+                            <ChevronRight
+                              className={cn(
+                                "size-3.5 shrink-0 text-muted-foreground transition-transform",
+                                isOpen && "rotate-90",
+                              )}
+                            />
+                          </button>
+                        </td>
+                        {view === "order" && (
+                          <td className={cn(td, "text-muted-foreground")}>{g.seller || "—"}</td>
+                        )}
+                        <td className={cn(td, num)}>{g.list.length}</td>
+                        <td className={td}>{pills(g.statuses)}</td>
+                        <td className={cn(td, num)}>{inrFull(sum(g.list, cost))}</td>
+                        <td className={cn(td, num)}>{inrFull(sum(g.list, paid))}</td>
+                        <td className={cn(td, num)}>{inrFull(sum(g.list, balance))}</td>
+                        <td className={cn(td, num, "whitespace-nowrap")}>{range(g.list)}</td>
+                      </tr>
+                      {isOpen &&
+                        g.list.map((c, i) => (
+                          <tr
+                            key={c.id ?? i}
+                            onClick={() => openCar(c)}
+                            className={cn(row, "bg-muted/30")}
+                          >
+                            <td className={cn(td, "max-w-[14rem] pl-7")}>
+                              <div className="truncate">{c.name}</div>
+                              <div className="truncate text-muted-foreground">
+                                {[c.brand, c.carNumber].filter(Boolean).join(" · ")}
+                              </div>
+                            </td>
+                            {view === "order" && (
+                              <td className={cn(td, "text-muted-foreground")}>{c.seller || "—"}</td>
+                            )}
+                            <td className={td} />
+                            <td className={td}>{pills([normaliseStatus(c.status)])}</td>
+                            <td className={cn(td, num)}>{inrFull(cost(c))}</td>
+                            <td className={cn(td, num)}>{inrFull(paid(c))}</td>
+                            <td className={cn(td, num)}>{inrFull(balance(c))}</td>
+                            <td className={cn(td, num)}>{dayOf(c)}</td>
+                          </tr>
+                        ))}
+                    </Fragment>
+                  );
+                })}
               </tbody>
               {total && (
                 <tfoot>
