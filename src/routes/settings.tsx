@@ -710,11 +710,13 @@ export function SettingsPage() {
                   </div>
                 </div>
 
-                <div
-                  className="flex items-center justify-between gap-4 px-4 py-3"
-                  title="A soft glow in your accent colour behind the app."
-                >
-                  <div className="text-[15px] font-medium text-foreground">Background glow</div>
+                <div className="flex items-center justify-between gap-4 p-4">
+                  <div className="min-w-0">
+                    <div className="text-[15px] font-medium text-foreground">Background glow</div>
+                    <div className="text-xs text-muted-foreground">
+                      A soft glow in your accent colour behind the app.
+                    </div>
+                  </div>
                   <Switch checked={showGlow} onCheckedChange={setShowGlow} />
                 </div>
               </div>
