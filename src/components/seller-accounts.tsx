@@ -1,8 +1,15 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight } from "lucide-react";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useApp } from "@/lib/store";
-import { CyclePill, SegmentControl } from "@/components/segment-control";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { SegmentControl } from "@/components/segment-control";
 import { inrFull } from "@/lib/format";
 import { toDateInputValue } from "@/lib/date-utils";
 import { normaliseStatus, styleFor } from "@/lib/status";
@@ -236,32 +243,27 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
 
   if (!m.list.length && !m.previous) return null;
 
-  /** The headings sort on a wide screen; a phone has none, so its sort is a pill. Amounts go
-      biggest first, words A to Z, and "By date" is the order the cars are due in. */
-  const phoneSorts: [string, string, 1 | -1][] =
+  /** The headings sort on a wide screen; a phone has none, so its sort is an icon with a menu.
+      Tapping a row sorts by it, again reverses, once more puts the cars back in date order. */
+  const phoneSorts: [string, string][] =
     view === "car"
       ? [
-          ["car", "name", 1],
-          ["status", "status", 1],
-          ["seller", "seller", 1],
-          ["cost", "cost", -1],
-          ["paid", "paid", -1],
-          ["balance", "balance", -1],
+          ["car", "Name"],
+          ["status", "Status"],
+          ["seller", "Seller"],
+          ["order", "Order ID"],
+          ["cost", "Cost"],
+          ["paid", "Paid"],
+          ["balance", "Balance"],
         ]
       : [
-          ["name", view === "order" ? "order ID" : "name", 1],
-          ["cars", "cars", -1],
-          ["status", "status", 1],
-          ["cost", "cost", -1],
-          ["paid", "paid", -1],
-          ["balance", "balance", -1],
+          ["name", view === "order" ? "Order ID" : "Seller"],
+          ["cars", "Cars"],
+          ["status", "Status"],
+          ["cost", "Cost"],
+          ["paid", "Paid"],
+          ["balance", "Balance"],
         ];
-  const sortOptions = [
-    { value: "none", label: "By date" },
-    ...phoneSorts.map(([k, label]) => ({ value: k, label: `By ${label}` })),
-  ];
-  const pickSort = (v: string) =>
-    setSort(v === "none" ? null : { key: v, dir: phoneSorts.find(([k]) => k === v)![2] });
 
   const sortTh = (key: string, label: string, align?: string) => (
     <th
@@ -319,9 +321,43 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
               {showPrev ? "Hide previous cars" : `Show previous cars (${m.previous})`}
             </button>
           )}
-          <div className="md:hidden">
-            <CyclePill value={sort?.key ?? "none"} onChange={pickSort} options={sortOptions} />
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label="Sort"
+                className={cn(
+                  "glass-btn flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full md:hidden",
+                  sort ? "text-primary" : "text-foreground",
+                )}
+              >
+                <ArrowUpDown className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52 rounded-2xl p-1.5">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Sort by
+              </DropdownMenuLabel>
+              {phoneSorts.map(([k, label]) => (
+                <DropdownMenuItem
+                  key={k}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    toggle(k);
+                  }}
+                  className={cn("rounded-xl py-2.5", sort?.key === k && "font-medium text-primary")}
+                >
+                  {label}
+                  {sort?.key === k &&
+                    (sort.dir === 1 ? (
+                      <ArrowUp className="ml-auto size-4" />
+                    ) : (
+                      <ArrowDown className="ml-auto size-4" />
+                    ))}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <SegmentControl<View>
             value={view}
             onChange={pick}
