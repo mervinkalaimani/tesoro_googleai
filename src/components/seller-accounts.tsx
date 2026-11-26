@@ -293,7 +293,6 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
             </button>
           )}
           <SegmentControl<View>
-            row
             value={view}
             onChange={pick}
             options={[
