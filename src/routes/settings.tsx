@@ -352,257 +352,258 @@ export function SettingsPage() {
       {/* ROOT SETTINGS SCREEN (Apple Inset Grouped Table View)                    */}
       {/* ========================================================================= */}
       {(view === "root" || !isPhone) && (
-        <div className="space-y-6 md:-mx-6 md:h-full md:overflow-y-auto md:px-6 md:pb-8">
-          <div className="md:sticky md:top-0 md:z-10 md:backdrop-blur-xl">
+        <div className="space-y-6 md:flex md:h-full md:min-h-0 md:flex-col md:space-y-0">
+          <div className="md:shrink-0">
             <PageHeading title="Settings" />
           </div>
-
-          {/* Top Account Card (Separate Apple ID style card) */}
-          <button
-            type="button"
-            onClick={() => changeView("account")}
-            data-active={section === "account"}
-            className="md:data-[active=true]:bg-muted group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
-          >
-            <TierAvatar
-              url={profile?.avatar_url}
-              initials={initials}
-              className="size-14 border border-border/80 shadow-xs"
-              fallbackClassName="bg-muted text-base font-medium text-foreground"
-            />
-
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="truncate text-base font-medium text-foreground">{display}</span>
-                {isOwner && (
-                  <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                    Owner
-                  </span>
-                )}
-                {!isOwner && isAdmin && (
-                  <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-500">
-                    Admin
-                  </span>
-                )}
-                {isGuest && (
-                  <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500">
-                    Demo
-                  </span>
-                )}
-              </div>
-              <p className="truncate text-xs text-muted-foreground">
-                {profile?.email_id ||
-                  (isGuest ? "Sample data · Stored locally" : "Account & Security")}
-              </p>
-            </div>
-
-            <ChevronRight className="size-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-          </button>
-
-          {!isGuest && (
+          <div className="space-y-6 md:-mx-6 md:min-h-0 md:flex-1 md:overflow-y-auto md:px-6 md:pb-8 md:pt-2">
+            {/* Top Account Card (Separate Apple ID style card) */}
             <button
               type="button"
-              onClick={() => changeView("subscription")}
-              data-active={section === "subscription"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
+              onClick={() => changeView("account")}
+              data-active={section === "account"}
+              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-4 card-elevated p-4 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
             >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <Sparkles className="size-4" />
+              <TierAvatar
+                url={profile?.avatar_url}
+                initials={initials}
+                className="size-14 border border-border/80 shadow-xs"
+                fallbackClassName="bg-muted text-base font-medium text-foreground"
+              />
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="truncate text-base font-medium text-foreground">{display}</span>
+                  {isOwner && (
+                    <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                      Owner
+                    </span>
+                  )}
+                  {!isOwner && isAdmin && (
+                    <span className="shrink-0 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-xs font-medium text-sky-500">
+                      Admin
+                    </span>
+                  )}
+                  {isGuest && (
+                    <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500">
+                      Demo
+                    </span>
+                  )}
+                </div>
+                <p className="truncate text-xs text-muted-foreground">
+                  {profile?.email_id ||
+                    (isGuest ? "Sample data · Stored locally" : "Account & Security")}
+                </p>
               </div>
-              <span className="min-w-0 flex-1 text-[15px] font-medium text-foreground">
-                Subscription
-              </span>
-              <span className="shrink-0 text-right text-xs text-muted-foreground">
-                <PlanSummary />
-              </span>
+
               <ChevronRight className="size-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
             </button>
-          )}
 
-          {/* Grouped General Settings Card */}
-          <div className="divide-y divide-border/60 overflow-hidden card-elevated">
-            {/* HOMEPAGE — above Display, because it is about what you see
-                first rather than how the whole app looks. */}
-            <button
-              type="button"
-              onClick={() => changeView("homepage")}
-              data-active={section === "homepage"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <Home className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Homepage</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
-
-            {/* DISPLAY */}
-            <button
-              type="button"
-              onClick={() => changeView("display")}
-              data-active={section === "display"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <Palette className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Display</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
-
-            {/* NOTIFICATIONS */}
-            <button
-              type="button"
-              onClick={() => changeView("notifications")}
-              data-active={section === "notifications"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <Bell className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Notifications</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
-
-            {/* PRIVACY */}
-            <button
-              type="button"
-              onClick={() => changeView("privacy")}
-              data-active={section === "privacy"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <ShieldCheck className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Privacy</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
-
-            {/* ONBOARDING — what you told VIIV you use it for */}
-            <button
-              type="button"
-              onClick={() => changeView("onboarding")}
-              data-active={section === "onboarding"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <Compass className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Onboarding</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
-          </div>
-
-          {/* ADVANCED — the owner's card. Search engine, diagnostics, users,
-              catalogue photos and the database connection all used to sit in
-              the general list or an admin card beside it, which put five
-              things nobody else can act on in front of everybody. */}
-          {isOwner && (
-            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+            {!isGuest && (
               <button
                 type="button"
-                onClick={() => changeView("advanced")}
-                data-active={section === "advanced"}
+                onClick={() => changeView("subscription")}
+                data-active={section === "subscription"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 card-elevated px-4 py-3.5 text-left transition-all hover:bg-primary/[0.06] active:scale-[0.995]"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                  <Sparkles className="size-4" />
+                </div>
+                <span className="min-w-0 flex-1 text-[15px] font-medium text-foreground">
+                  Subscription
+                </span>
+                <span className="shrink-0 text-right text-xs text-muted-foreground">
+                  <PlanSummary />
+                </span>
+                <ChevronRight className="size-5 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+              </button>
+            )}
+
+            {/* Grouped General Settings Card */}
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+              {/* HOMEPAGE — above Display, because it is about what you see
+                first rather than how the whole app looks. */}
+              <button
+                type="button"
+                onClick={() => changeView("homepage")}
+                data-active={section === "homepage"}
                 className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
                 <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                  <Wrench className="size-4" />
+                  <Home className="size-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-[15px] font-medium text-foreground">Admin Console</span>
+                  <span className="text-[15px] font-medium text-foreground">Homepage</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                </div>
+              </button>
+
+              {/* DISPLAY */}
+              <button
+                type="button"
+                onClick={() => changeView("display")}
+                data-active={section === "display"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                  <Palette className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">Display</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                </div>
+              </button>
+
+              {/* NOTIFICATIONS */}
+              <button
+                type="button"
+                onClick={() => changeView("notifications")}
+                data-active={section === "notifications"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                  <Bell className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">Notifications</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                </div>
+              </button>
+
+              {/* PRIVACY */}
+              <button
+                type="button"
+                onClick={() => changeView("privacy")}
+                data-active={section === "privacy"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                  <ShieldCheck className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">Privacy</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                </div>
+              </button>
+
+              {/* ONBOARDING — what you told VIIV you use it for */}
+              <button
+                type="button"
+                onClick={() => changeView("onboarding")}
+                data-active={section === "onboarding"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                  <Compass className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">Onboarding</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                </div>
+              </button>
+            </div>
+
+            {/* ADVANCED — the owner's card. Search engine, diagnostics, users,
+              catalogue photos and the database connection all used to sit in
+              the general list or an admin card beside it, which put five
+              things nobody else can act on in front of everybody. */}
+            {isOwner && (
+              <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+                <button
+                  type="button"
+                  onClick={() => changeView("advanced")}
+                  data-active={section === "advanced"}
+                  className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+                >
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                    <Wrench className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[15px] font-medium text-foreground">Admin Console</span>
+                  </div>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                </button>
+              </div>
+            )}
+
+            {/* HELP — everybody's, unlike the Admin Console. The policy has to be
+              readable by the people it is about, and the phone number is no
+              use to the one person who already knows it. */}
+            <div className="divide-y divide-border/60 overflow-hidden card-elevated">
+              <button
+                type="button"
+                onClick={() => changeView("help")}
+                data-active={section === "help"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                  <LifeBuoy className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">Help</span>
                 </div>
                 <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </button>
-            </div>
-          )}
 
-          {/* HELP — everybody's, unlike the Admin Console. The policy has to be
-              readable by the people it is about, and the phone number is no
-              use to the one person who already knows it. */}
-          <div className="divide-y divide-border/60 overflow-hidden card-elevated">
-            <button
-              type="button"
-              onClick={() => changeView("help")}
-              data-active={section === "help"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <LifeBuoy className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Help</span>
-              </div>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-            </button>
-
-            {/* ACTIVITY — who changed what, on which car, and when. */}
-            <button
-              type="button"
-              onClick={() => changeView("activity")}
-              data-active={section === "activity"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <History className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">Activity log</span>
-              </div>
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-            </button>
-
-            {/* WHAT'S NEW — the permanent home of the changelog. The mark in the
-                top bar shows the last two builds and then removes itself. */}
-            <button
-              type="button"
-              onClick={() => changeView("whats_new")}
-              data-active={section === "whats_new"}
-              className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
-            >
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
-                <Sparkles className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-[15px] font-medium text-foreground">What&apos;s new</span>
-              </div>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span className="tabular-nums">Build {LATEST_BUILD}</span>
-                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
-              </div>
-            </button>
-          </div>
-
-          {/* Sign Out Card (Moved here from the main menu, Apple style) */}
-          <div className="space-y-1.5 pt-2">
-            <div className="overflow-hidden card-elevated">
+              {/* ACTIVITY — who changed what, on which car, and when. */}
               <button
                 type="button"
-                onClick={() => void handleSignOut()}
-                className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-[15px] font-medium text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15"
+                onClick={() => changeView("activity")}
+                data-active={section === "activity"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
               >
-                <LogOut className="size-4" />
-                {isGuest ? "Leave Demo Mode" : "Log Out"}
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                  <History className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">Activity log</span>
+                </div>
+                <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
               </button>
+
+              {/* WHAT'S NEW — the permanent home of the changelog. The mark in the
+                top bar shows the last two builds and then removes itself. */}
+              <button
+                type="button"
+                onClick={() => changeView("whats_new")}
+                data-active={section === "whats_new"}
+                className="md:data-[active=true]:bg-muted group flex w-full items-center gap-3.5 px-4 py-3.5 text-left transition-colors hover:bg-primary/[0.06] active:bg-primary/12"
+              >
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-[10px] bg-primary text-white [&_svg]:fill-white">
+                  <Sparkles className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="text-[15px] font-medium text-foreground">What&apos;s new</span>
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span className="tabular-nums">Build {LATEST_BUILD}</span>
+                  <ChevronRight className="size-4 shrink-0 text-muted-foreground/40 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                </div>
+              </button>
+            </div>
+
+            {/* Sign Out Card (Moved here from the main menu, Apple style) */}
+            <div className="space-y-1.5 pt-2">
+              <div className="overflow-hidden card-elevated">
+                <button
+                  type="button"
+                  onClick={() => void handleSignOut()}
+                  className="flex w-full items-center justify-center gap-2 px-4 py-3.5 text-[15px] font-medium text-destructive transition-colors hover:bg-destructive/10 active:bg-destructive/15"
+                >
+                  <LogOut className="size-4" />
+                  {isGuest ? "Leave Demo Mode" : "Log Out"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
