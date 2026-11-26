@@ -185,11 +185,11 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     </th>
   );
   const th =
-    "sticky top-0 z-10 bg-[color-mix(in_oklab,var(--glow,var(--primary))_9%,var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
+    "sticky top-0 z-10 bg-[color-mix(in_oklab,var(--glow,var(--primary))_6%,var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
   const foot =
-    "sticky bottom-0 z-10 border-t border-border bg-[color-mix(in_oklab,var(--glow,var(--primary))_9%,var(--background))] font-medium";
+    "sticky bottom-0 z-10 border-t border-border bg-[color-mix(in_oklab,var(--glow,var(--primary))_6%,var(--background))] font-medium";
   const pills = (statuses: string[]) => (
     <div className="flex flex-wrap gap-1">
       {statuses.map((st) => (
