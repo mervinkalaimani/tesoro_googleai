@@ -1092,15 +1092,3 @@ html.dark input.search-glass {
     transform: rotate(var(--a)) translateY(-1.35rem) scale(0.4);
   }
 }
-
-/* A car opened from a laptop up lives in a panel on the right, under the top bar; the page
-   gives it the room and the bar stays the width of the window. */
-html {
-  --car-panel-w: clamp(24rem, 30vw, 36rem);
-}
-main {
-  transition: margin-right 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
-}
-html[data-car-panel="open"] main {
-  margin-right: var(--car-panel-w);
-}
