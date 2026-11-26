@@ -142,6 +142,8 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
   /** The panel beside the car that shows its activity log. */
   const [activityOpen, setActivityOpen] = useState(false);
   const docked = useMinWidth(1180);
+  /** Wide enough that the car opens in a panel on the right and pushes the page, not in a dialog. */
+  const panelMode = useMinWidth(1100);
 
   const cars = useCars();
   const { updateCar } = useCarsActions();
@@ -159,6 +161,36 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
 
   // Find latest car state by ID
   const car = cars.find((c) => c.id === currentCarId) || null;
+
+  // The panel slides out before its contents go, so keep the last car until it has.
+  const [lastCar, setLastCar] = useState<Diecast | null>(null);
+  useEffect(() => {
+    if (car) {
+      setLastCar(car);
+      return;
+    }
+    const t = window.setTimeout(() => setLastCar(null), 500);
+    return () => window.clearTimeout(t);
+  }, [car]);
+  const panelOpen = Boolean(car) && panelMode;
+  useEffect(() => {
+    document.documentElement.dataset.carPanel = panelOpen ? "open" : "";
+    return () => {
+      document.documentElement.dataset.carPanel = "";
+    };
+  }, [panelOpen]);
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      // A dialog opened from the panel (edit, status) takes Escape for itself.
+      if (document.querySelector('[role="dialog"]')) return;
+      setCurrentCarId(null);
+      setActivityOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [panelOpen]);
 
   const open = useCallback((c: Diecast) => {
     setCurrentCarId(c.id);
@@ -227,6 +259,38 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
     [close],
   );
 
+  const popup = (c: Diecast, panel: boolean) => (
+    <CarPopupContent
+      panel={panel}
+      activity={{
+        docked,
+        open: activityOpen,
+        toggle: () => setActivityOpen((v) => !v),
+      }}
+      car={c}
+      onClose={close}
+      onEdit={() => handleEdit(c)}
+      onViewInCatalog={() => handleViewInCatalog(c)}
+      onOpenCatalogEntry={(entry) => {
+        close();
+        setViewCatalogCar({ car: catalogCarToDiecast(entry), catalogCar: entry });
+      }}
+      onAddAnother={() => handleAddAnother(c)}
+      onOpenBatch={(id, field) => {
+        setBatchShippingId(id);
+        setBatchField(field);
+        setBatchOpen(true);
+      }}
+      onOpenSeller={(name) => setSellerOpen(name)}
+      onToggleFavourite={() => updateCar({ ...c, favourite: !c.favourite })}
+      // Cycles Normal → TH → STH → Chase → Normal: each tap is the next
+      // colour of flame.
+      onToggleChase={() => updateCar(withRarity(c, nextRarity(rarityOf(c))))}
+      onUpdateStatus={() => setStatusCar(c)}
+      onSelectCar={open}
+    />
+  );
+
   return (
     <CarDrawerCtx.Provider
       value={{
@@ -245,7 +309,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
 
       {/* Car Details Popup Modal matching the exact screenshot design */}
       <Dialog
-        open={Boolean(car)}
+        open={Boolean(car) && !panelMode}
         onOpenChange={(v) => {
           if (!v) close();
         }}
@@ -276,34 +340,7 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
         >
           {car && (
             <div className="max-sm:contents sm:max-h-[92vh] sm:overflow-hidden sm:rounded-3xl sm:border sm:border-border sm:bg-background sm:shadow-2xl">
-              <CarPopupContent
-                activity={{
-                  docked,
-                  open: activityOpen,
-                  toggle: () => setActivityOpen((v) => !v),
-                }}
-                car={car}
-                onClose={close}
-                onEdit={() => handleEdit(car)}
-                onViewInCatalog={() => handleViewInCatalog(car)}
-                onOpenCatalogEntry={(entry) => {
-                  close();
-                  setViewCatalogCar({ car: catalogCarToDiecast(entry), catalogCar: entry });
-                }}
-                onAddAnother={() => handleAddAnother(car)}
-                onOpenBatch={(id, field) => {
-                  setBatchShippingId(id);
-                  setBatchField(field);
-                  setBatchOpen(true);
-                }}
-                onOpenSeller={(name) => setSellerOpen(name)}
-                onToggleFavourite={() => updateCar({ ...car, favourite: !car.favourite })}
-                // Cycles Normal → TH → STH → Chase → Normal: each tap is the next
-                // colour of flame.
-                onToggleChase={() => updateCar(withRarity(car, nextRarity(rarityOf(car))))}
-                onUpdateStatus={() => setStatusCar(car)}
-                onSelectCar={open}
-              />
+              {popup(car, false)}
             </div>
           )}
           {car && docked && (
@@ -319,6 +356,26 @@ export function CarDrawerProvider({ children }: { children: ReactNode }) {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* From a laptop up a car opens here instead: a panel on the right that the page makes room for. */}
+      {panelMode && (
+        <aside
+          aria-label="Car details"
+          aria-hidden={!panelOpen}
+          inert={!panelOpen}
+          className="fixed bottom-0 right-0 top-14 z-50 overflow-hidden border-l border-border bg-background shadow-2xl transition-transform duration-[450ms] ease-[cubic-bezier(0.2,0.8,0.2,1)]"
+          style={{
+            width: "var(--car-panel-w)",
+            transform: panelOpen ? "none" : "translateX(100%)",
+          }}
+        >
+          {(car ?? lastCar) && (
+            <div className="h-full" style={{ width: "var(--car-panel-w)" }}>
+              {popup((car ?? lastCar)!, true)}
+            </div>
+          )}
+        </aside>
+      )}
 
       {/* Full edit dialog with frozen saved fields preserved */}
       {editCar && (
@@ -652,6 +709,8 @@ const DOCK_GAP = "0.75rem";
 interface CarPopupContentProps {
   /** The activity button: it opens a panel beside the car when there is room. */
   activity: { docked: boolean; open: boolean; toggle: () => void };
+  /** Shown in the side panel, not a dialog: the narrow layout, always, and no dialog parts. */
+  panel?: boolean;
   car: Diecast;
   onClose: () => void;
   onEdit: () => void;
@@ -669,6 +728,7 @@ interface CarPopupContentProps {
 
 function CarPopupContent({
   activity,
+  panel = false,
   car,
   onClose,
   onEdit,
@@ -969,10 +1029,16 @@ function CarPopupContent({
   return (
     <div className="relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Hidden Accessible Dialog Title & Description */}
-      <DialogTitle className="sr-only">{title} Details</DialogTitle>
-      <DialogDescription className="sr-only">
-        Diecast car specifications, status, logistics, and pricing details.
-      </DialogDescription>
+      {panel ? (
+        <h2 className="sr-only">{title} Details</h2>
+      ) : (
+        <>
+          <DialogTitle className="sr-only">{title} Details</DialogTitle>
+          <DialogDescription className="sr-only">
+            Diecast car specifications, status, logistics, and pricing details.
+          </DialogDescription>
+        </>
+      )}
 
       {/* =====================================================================
           1. DESKTOP & TABLET LAYOUT
@@ -980,43 +1046,52 @@ function CarPopupContent({
           The name heads the window, the photograph holds the left of it, and
           the right is whichever of the three readings you asked for.
           ===================================================================== */}
-      <DesktopShell
-        kicker={[]}
-        title={title}
-        onClose={onClose}
-        subtitle={<div className="mt-3">{pills}</div>}
-        footerNote={<AddedBy car={car} />}
-        headerAction={idButtons()}
-        photo={<HeroCarImage car={car} contain />}
-        below={<PhoneFacts rows={factRows} />}
-        actions={<CarDetailActions onEdit={onEdit} onAddAnother={onAddAnother} />}
-      >
-        <PhoneFacts rows={conditionRows} />
+      {!panel && (
+        <DesktopShell
+          kicker={[]}
+          title={title}
+          onClose={onClose}
+          subtitle={<div className="mt-3">{pills}</div>}
+          footerNote={<AddedBy car={car} />}
+          headerAction={idButtons()}
+          photo={<HeroCarImage car={car} contain />}
+          below={<PhoneFacts rows={factRows} />}
+          actions={<CarDetailActions onEdit={onEdit} onAddAnother={onAddAnother} />}
+        >
+          <PhoneFacts rows={conditionRows} />
 
-        {panels("grid-cols-2")}
+          {panels("grid-cols-2")}
 
-        <AssortmentSuggestions catalogId={car.catalogId} />
+          <AssortmentSuggestions catalogId={car.catalogId} />
 
-        {shelf && (
-          <div className="mt-auto">
-            <CarShelfRow
-              heading={shelf.heading}
-              cars={shelf.cars}
-              currentId={car.id}
-              onSelectCar={onSelectCar}
-              onSeeAll={() => seeInMyCars(shelf.heading)}
-            />
-          </div>
-        )}
-      </DesktopShell>
+          {shelf && (
+            <div className="mt-auto">
+              <CarShelfRow
+                heading={shelf.heading}
+                cars={shelf.cars}
+                currentId={car.id}
+                onSelectCar={onSelectCar}
+                onSeeAll={() => seeInMyCars(shelf.heading)}
+              />
+            </div>
+          )}
+        </DesktopShell>
+      )}
 
       {/* =====================================================================
           2. PHONE LAYOUT: the photo, then the same three readings stacked.
           ===================================================================== */}
       <div
         ref={mobile.rootRef}
-        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
-        style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
+        className={cn(
+          "relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background",
+          panel ? "" : "md:hidden sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]",
+        )}
+        style={
+          {
+            "--hero-h": panel ? "clamp(200px, 30vh, 320px)" : "clamp(320px, 42vh, 460px)",
+          } as React.CSSProperties
+        }
       >
         <div className="relative flex-1 min-h-0">
           {/* The photo sits still behind the sheet: pushing the card up slides
