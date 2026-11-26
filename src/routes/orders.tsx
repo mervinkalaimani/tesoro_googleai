@@ -176,16 +176,18 @@ function ShipmentCard({
           <h2 className="truncate font-mono text-sm font-bold tracking-tight">
             {s.groupId || "Unassigned"}
           </h2>
-          <p className="min-w-0 truncate text-xs font-semibold text-muted-foreground">{s.seller}</p>
+          <p className="min-w-0 truncate text-xs font-semibold text-muted-foreground max-sm:order-3 max-sm:basis-full">
+            {s.seller}
+          </p>
           <span
-            className={`shrink-0 rounded-full border px-2 py-px font-mono text-[11px] ${statusTone(
+            className={`shrink-0 rounded-full border px-2 py-px font-mono text-[11px] max-sm:ml-auto ${statusTone(
               s.status,
               s.delivered,
             )}`}
           >
             {statusLabel(s.status, s.delivered)}
           </span>
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto hidden items-center gap-1.5 sm:flex">
             {/* This parcel, not the page it is on. */}
             <ExportButton
               rows={s.items}
@@ -209,13 +211,13 @@ function ShipmentCard({
         </div>
 
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
-        <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs tabular-nums">
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1 text-sm tabular-nums sm:flex sm:flex-wrap sm:gap-y-0.5 sm:pt-0 sm:text-xs">
           <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
           <div className="min-w-0">
-            <dt className="inline text-[10px] uppercase tracking-wider text-muted-foreground">
+            <dt className="block text-[10px] uppercase tracking-wider text-muted-foreground sm:inline">
               Cars{" "}
             </dt>
-            <dd className="inline">
+            <dd className="block sm:inline">
               <button
                 type="button"
                 onClick={() => setCarsOpen((v) => !v)}
@@ -262,6 +264,27 @@ function ShipmentCard({
           </div>
         </div>
       )}
+      {/* On a phone the two buttons are a row of their own, as they were: they share the width. */}
+      <footer className="flex items-center gap-2 border-t border-border p-3 sm:hidden">
+        <ExportButton
+          rows={s.items}
+          name={`order-${s.groupId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
+          label={s.groupId ? `Order ${s.groupId}` : `${s.seller} order`}
+          iconOnly={false}
+          text="Share"
+          variant="ghost"
+          size="sm"
+          className="min-w-0 flex-1 gap-1.5"
+        />
+        {s.shippingId ? (
+          <UpdateStatusButton
+            onClick={onEdit}
+            label="Update order"
+            className="min-w-0 flex-1"
+            title={`Update the ${s.items.length} car${s.items.length === 1 ? "" : "s"} in ${s.shippingId}`}
+          />
+        ) : null}
+      </footer>
     </article>
   );
 }
@@ -283,10 +306,10 @@ function InlineFact({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="inline text-[10px] uppercase tracking-wider text-muted-foreground">
+      <dt className="block text-[10px] uppercase tracking-wider text-muted-foreground sm:inline">
         {label}{" "}
       </dt>
-      <dd className={`inline font-semibold ${className}`}>{value}</dd>
+      <dd className={`block font-semibold sm:inline ${className}`}>{value}</dd>
     </div>
   );
 }
