@@ -103,35 +103,35 @@ const sorted = <T,>(rows: T[], sort: Sort, by: Record<string, (r: T) => Val>) =>
 function Owed({ cost: total, bal }: { cost: number; bal: number }) {
   return (
     <div className="shrink-0 text-right tabular-nums">
-      <div className="font-semibold">{inrFull(bal)}</div>
-      <div className="text-[11px] font-normal text-muted-foreground">of {inrFull(total)}</div>
+      <div className="text-[13px] font-semibold leading-tight">{inrFull(bal)}</div>
+      <div className="text-[10px] font-normal leading-tight text-muted-foreground">
+        of {inrFull(total)}
+      </div>
     </div>
   );
 }
 
 /** One car in the phone list: picture, name, brand and number, status, and what is owed. */
 function PhoneCar({ c, onOpen }: { c: Diecast; onOpen: () => void }) {
+  const st = normaliseStatus(c.status);
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left"
+      className="flex w-full cursor-pointer items-center gap-2.5 px-4 py-2 text-left"
     >
-      <div className="size-11 shrink-0 overflow-hidden rounded-md bg-muted">
+      <div className="size-10 shrink-0 overflow-hidden rounded-md bg-muted">
         {c.imageUrl && (
           <img src={c.imageUrl} alt="" loading="lazy" className="size-full object-cover" />
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium">{c.name}</div>
-        <div className="truncate text-xs text-muted-foreground">
-          {[c.brand, c.carNumber].filter(Boolean).join(" · ") || c.seller || "—"}
-        </div>
-        <div className="mt-1 flex items-center gap-2 text-xs">
-          <span className={cn("rounded-full px-2 py-0.5", styleFor(normaliseStatus(c.status)))}>
-            {normaliseStatus(c.status)}
+        <div className="truncate text-[13px] font-medium">{c.name}</div>
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <span className={cn("shrink-0 rounded-full px-1.5 py-px", styleFor(st))}>{st}</span>
+          <span className="truncate">
+            {[c.brand, c.carNumber, dayOf(c)].filter((v) => v && v !== "—").join(" · ")}
           </span>
-          <span className="text-muted-foreground">{dayOf(c)}</span>
         </div>
       </div>
       <Owed cost={cost(c)} bal={balance(c)} />
@@ -531,8 +531,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
       <div
         className={cn(
           "card-elevated divide-y divide-border/50 overflow-y-auto text-sm md:hidden",
-          // Five rows (81px a car, 87px a seller or order) and the 60px Total show; the rest scroll.
-          view === "car" ? "max-h-[29.1rem]" : "max-h-[31rem]",
+          // Five rows (57px a car, 59px a seller or order) and the 54px Total show; the rest scroll.
+          view === "car" ? "max-h-[21.2rem]" : "max-h-[21.9rem]",
         )}
       >
         {view === "car"
@@ -545,7 +545,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
                     type="button"
                     aria-expanded={isOpen}
                     onClick={() => setOpenKey(isOpen ? null : g.key)}
-                    className="flex w-full cursor-pointer items-start justify-between gap-3 px-4 py-3 text-left"
+                    className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-2.5 text-left"
                   >
                     <div className="min-w-0">
                       <div className="flex items-center gap-1 font-medium">
@@ -557,11 +557,17 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
                           )}
                         />
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {view === "order" && g.seller ? `${g.seller} · ` : ""}
-                        {g.list.length} car{g.list.length === 1 ? "" : "s"} · {range(g.list)}
+                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-muted-foreground">
+                        <span>
+                          {view === "order" && g.seller ? `${g.seller} · ` : ""}
+                          {g.list.length} car{g.list.length === 1 ? "" : "s"} · {range(g.list)}
+                        </span>
+                        {g.statuses.map((st) => (
+                          <span key={st} className={cn("rounded-full px-1.5 py-px", styleFor(st))}>
+                            {st}
+                          </span>
+                        ))}
                       </div>
-                      <div className="mt-1.5 text-xs">{pills(g.statuses)}</div>
                     </div>
                     <Owed cost={sum(g.list, cost)} bal={sum(g.list, balance)} />
                   </button>
@@ -576,10 +582,10 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
               );
             })}
         {total && (
-          <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 bg-muted px-4 py-3 font-medium">
+          <div className="sticky bottom-0 z-10 flex items-center justify-between gap-3 bg-muted px-4 py-2.5 text-[13px] font-medium">
             <div>
               Total · {m.list.length} car{m.list.length === 1 ? "" : "s"}
-              <div className="text-xs font-normal text-muted-foreground">{range(m.list)}</div>
+              <div className="text-[11px] font-normal text-muted-foreground">{range(m.list)}</div>
             </div>
             <Owed cost={sum(m.list, cost)} bal={sum(m.list, balance)} />
           </div>
