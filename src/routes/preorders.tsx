@@ -339,7 +339,7 @@ function PreOrderCardImpl({
           iconOnly
           variant="ghost"
           size="sm"
-          className={`${HALF} !flex-none basis-1/5 text-foreground`}
+          className={`${HALF} !h-10 !w-1/5 !min-w-0 !flex-none !grow-0 text-foreground`}
         />
         {!settled && (
           <Button
@@ -506,7 +506,7 @@ function OrderGroupCard({
           iconOnly
           variant="ghost"
           size="sm"
-          className={`${HALF} !flex-none basis-1/5 text-foreground`}
+          className={`${HALF} !h-10 !w-1/5 !min-w-0 !flex-none !grow-0 text-foreground`}
         />
         {!settled && (
           <Button
