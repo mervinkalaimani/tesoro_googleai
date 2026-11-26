@@ -189,7 +189,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
       </div>
       {/* Eight rows show; the rest scroll, under a header and a total that stay put. */}
       <div className="card-elevated max-h-[23rem] overflow-auto">
-        <table className="w-full min-w-[44rem] text-xs">
+        <table className="w-full min-w-[44rem] text-xs [&_tr>:first-child]:pl-4 [&_tr>:last-child]:pr-4">
           {view === "car" ? (
             <>
               <thead>
