@@ -340,7 +340,7 @@ function PreOrderCardImpl({
           text="Share"
           variant="ghost"
           size="sm"
-          className={`${HALF} text-foreground`}
+          className={`${HALF} !flex-none basis-1/5 text-foreground`}
         />
         {!settled && (
           <Button
@@ -508,7 +508,7 @@ function OrderGroupCard({
           text="Share"
           variant="ghost"
           size="sm"
-          className={`${HALF} text-foreground`}
+          className={`${HALF} !flex-none basis-1/5 text-foreground`}
         />
         {!settled && (
           <Button
