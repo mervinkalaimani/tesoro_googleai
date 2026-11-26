@@ -212,7 +212,7 @@ function ShipmentCard({
         </div>
 
         {/* The one place each date is said, inline rather than a grid of stacked facts. */}
-        <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs tabular-nums">
+        <dl className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs tabular-nums">
           <InlineFact label="Ordered" value={shortDate(s.orderDate)} />
           <InlineFact label="Cars" value={String(s.items.length)} />
           <InlineFact
@@ -289,10 +289,10 @@ function InlineFact({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="inline text-[10px] uppercase tracking-wider text-muted-foreground">
+      <dt className="block text-[10px] leading-tight uppercase tracking-wider text-muted-foreground">
         {label}{" "}
       </dt>
-      <dd className={`inline font-semibold ${className}`}>{value}</dd>
+      <dd className={`block font-semibold ${className}`}>{value}</dd>
     </div>
   );
 }
