@@ -2148,9 +2148,11 @@ function CarPurchaseTab({
   // only printed again below when the field is already saying something else.
   const noteBelow = cleanTransitNotes && courier ? cleanTransitNotes : "";
   // A pre-order or a part-paid car: what has gone out so far, out of the total, and what is left.
-  const owed = Math.max(car.balance ?? spent - (car.paid || 0), 0);
-  const partPaid = owed > 0 && spent > 0;
+  // Payment marked Pending with nothing paid yet says "Pending" rather than a bare ₹0.
   const paidSoFar = Math.min(car.paid || 0, spent);
+  const unpaid = (car.payment || "").trim().toLowerCase() === "pending" && paidSoFar === 0;
+  const owed = unpaid ? spent : Math.max(car.balance ?? spent - (car.paid || 0), 0);
+  const partPaid = owed > 0 && spent > 0;
 
   return (
     <div className="col-span-full min-w-0 space-y-4">
@@ -2165,7 +2167,7 @@ function CarPurchaseTab({
                   Paid
                 </p>
                 <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-foreground">
-                  {inrFull(partPaid ? paidSoFar : spent)}
+                  {unpaid ? "Pending" : inrFull(partPaid ? paidSoFar : spent)}
                 </p>
                 {partPaid && (
                   <p className="truncate text-xs text-muted-foreground">of {inrFull(spent)}</p>
