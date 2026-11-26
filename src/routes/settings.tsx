@@ -243,6 +243,10 @@ export function SettingsPage() {
     setShowRecentlyAdded,
     showNewPreorders,
     setShowNewPreorders,
+    showForYou,
+    setShowForYou,
+    showCarsDue,
+    setShowCarsDue,
     prizedShelf,
     setPrizedShelf,
     summaryCards,
@@ -807,6 +811,22 @@ export function SettingsPage() {
               >
                 <div className="text-[15px] font-medium text-foreground">New pre-orders</div>
                 <Switch checked={showNewPreorders} onCheckedChange={setShowNewPreorders} />
+              </div>
+
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-2.5"
+                title="Cars picked for you from the catalogue."
+              >
+                <div className="text-[15px] font-medium text-foreground">For you</div>
+                <Switch checked={showForYou} onCheckedChange={setShowForYou} />
+              </div>
+
+              <div
+                className="flex items-center justify-between gap-4 px-4 py-2.5"
+                title="Cars due this month (or next), by car, seller or order ID, with what you owe."
+              >
+                <div className="text-[15px] font-medium text-foreground">Cars Due</div>
+                <Switch checked={showCarsDue} onCheckedChange={setShowCarsDue} />
               </div>
 
               <div

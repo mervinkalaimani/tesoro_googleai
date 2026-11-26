@@ -153,7 +153,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const link = "max-w-full cursor-pointer truncate text-left";
 
   return (
-    <section aria-label="Cars due" className="card-elevated space-y-2 p-3 [--frame-gap:0.75rem]">
+    <section aria-label="Cars due" className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2 px-1">
         <div className="min-w-0">
           <h2 className="text-display text-lg font-semibold">Cars Due</h2>
@@ -188,7 +188,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
         </div>
       </div>
       {/* Eight rows show; the rest scroll, under a header and a total that stay put. */}
-      <div className="max-h-[23rem] overflow-auto">
+      <div className="card-elevated max-h-[23rem] overflow-auto p-3">
         <table className="w-full min-w-[44rem] text-xs">
           {view === "car" ? (
             <>

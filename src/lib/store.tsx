@@ -189,6 +189,12 @@ type AppState = {
   /** Whether it shows what other collectors have just pre-ordered. */
   showNewPreorders: boolean;
   setShowNewPreorders: (b: boolean) => void;
+  /** Whether it shows the For you suggestions. */
+  showForYou: boolean;
+  setShowForYou: (b: boolean) => void;
+  /** Whether it shows the Cars Due table. */
+  showCarsDue: boolean;
+  setShowCarsDue: (b: boolean) => void;
   /** Whether it shows the chase, STH, TH and favourite cars. */
   prizedShelf: PrizedPreference;
   setPrizedShelf: (p: PrizedPreference) => void;
@@ -278,6 +284,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [releasedShelf, setReleasedShelfState] = useState<ReleasedPreference>("all");
   const [showRecentlyAdded, setShowRecentlyAddedState] = useState(true);
   const [showNewPreorders, setShowNewPreordersState] = useState(true);
+  const [showForYou, setShowForYouState] = useState(true);
+  const [showCarsDue, setShowCarsDueState] = useState(true);
   const [prizedShelf, setPrizedShelfState] = useState<PrizedPreference>("auto");
   const [summaryCards, setSummaryCardsState] = useState(true);
   const [hiddenSummary, setHiddenSummaryState] = useState<string[]>([]);
@@ -322,6 +330,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setReleasedShelfState(isReleasedPreference(storedReleased) ? storedReleased : "all");
     setShowRecentlyAddedState(readLS<boolean>("dg.showRecentlyAdded", true));
     setShowNewPreordersState(readLS<boolean>("dg.showNewPreorders", true));
+    setShowForYouState(readLS<boolean>("dg.showForYou", true));
+    setShowCarsDueState(readLS<boolean>("dg.showCarsDue", true));
     const storedPrized = readLS<unknown>("dg.prizedShelf", "auto");
     setPrizedShelfState(isPrizedPreference(storedPrized) ? storedPrized : "auto");
     setSummaryCardsState(readLS<boolean>("dg.summaryCards", true));
@@ -535,6 +545,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     writeLS("dg.showNewPreorders", b);
   }, []);
 
+  const setShowForYou = useCallback((b: boolean) => {
+    setShowForYouState(b);
+    writeLS("dg.showForYou", b);
+  }, []);
+
+  const setShowCarsDue = useCallback((b: boolean) => {
+    setShowCarsDueState(b);
+    writeLS("dg.showCarsDue", b);
+  }, []);
+
   const setPrizedShelf = useCallback((p: PrizedPreference) => {
     setPrizedShelfState(p);
     writeLS("dg.prizedShelf", p);
@@ -596,6 +616,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setShowRecentlyAdded,
       showNewPreorders,
       setShowNewPreorders,
+      showForYou,
+      setShowForYou,
+      showCarsDue,
+      setShowCarsDue,
       prizedShelf,
       setPrizedShelf,
       summaryCards,
@@ -628,6 +652,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setShowRecentlyAdded,
       showNewPreorders,
       setShowNewPreorders,
+      showForYou,
+      setShowForYou,
+      showCarsDue,
+      setShowCarsDue,
       prizedShelf,
       setPrizedShelf,
       query,

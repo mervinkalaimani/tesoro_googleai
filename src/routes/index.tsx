@@ -248,6 +248,8 @@ function DashboardPage() {
     releasedShelf,
     showRecentlyAdded,
     showNewPreorders,
+    showForYou,
+    showCarsDue,
     prizedShelf,
     summaryCards,
     hiddenSummary,
@@ -564,10 +566,10 @@ function DashboardPage() {
           days and a car drops out of it for good — and it renders nothing at
           all on a quiet week, so it costs the tracker no room when there is
           nothing to show. */}
-      {!loading && <ForYou />}
+      {!loading && showForYou && <ForYou />}
 
       {/* Right after the suggestions: who you owe, what is on hold, what is on its way. */}
-      {!loading && <SellerAccounts cars={data} />}
+      {!loading && showCarsDue && <SellerAccounts cars={data} />}
 
       {!loading && showRecentlyAdded && <RecentlyAdded recent={recent} now={now} />}
 
