@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useApp } from "@/lib/store";
-import { SegmentControl } from "@/components/segment-control";
+import { CyclePill, SegmentControl } from "@/components/segment-control";
 import { inrFull } from "@/lib/format";
 import { toDateInputValue } from "@/lib/date-utils";
 import { normaliseStatus, styleFor } from "@/lib/status";
@@ -236,6 +236,33 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
 
   if (!m.list.length && !m.previous) return null;
 
+  /** The headings sort on a wide screen; a phone has none, so its sort is a pill. Amounts go
+      biggest first, words A to Z, and "By date" is the order the cars are due in. */
+  const phoneSorts: [string, string, 1 | -1][] =
+    view === "car"
+      ? [
+          ["car", "name", 1],
+          ["status", "status", 1],
+          ["seller", "seller", 1],
+          ["cost", "cost", -1],
+          ["paid", "paid", -1],
+          ["balance", "balance", -1],
+        ]
+      : [
+          ["name", view === "order" ? "order ID" : "name", 1],
+          ["cars", "cars", -1],
+          ["status", "status", 1],
+          ["cost", "cost", -1],
+          ["paid", "paid", -1],
+          ["balance", "balance", -1],
+        ];
+  const sortOptions = [
+    { value: "none", label: "By date" },
+    ...phoneSorts.map(([k, label]) => ({ value: k, label: `By ${label}` })),
+  ];
+  const pickSort = (v: string) =>
+    setSort(v === "none" ? null : { key: v, dir: phoneSorts.find(([k]) => k === v)![2] });
+
   const sortTh = (key: string, label: string, align?: string) => (
     <th
       className={cn(th, align)}
@@ -292,6 +319,9 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
               {showPrev ? "Hide previous cars" : `Show previous cars (${m.previous})`}
             </button>
           )}
+          <div className="md:hidden">
+            <CyclePill value={sort?.key ?? "none"} onChange={pickSort} options={sortOptions} />
+          </div>
           <SegmentControl<View>
             value={view}
             onChange={pick}
