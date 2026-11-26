@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useApp } from "@/lib/store";
 import { SegmentControl } from "@/components/segment-control";
@@ -58,6 +59,39 @@ const paid = (c: Diecast) => Math.min(c.paid || 0, cost(c) || c.paid || 0);
 const balance = (c: Diecast) => Math.max(c.balance ?? cost(c) - (c.paid || 0), 0);
 const sum = (list: Diecast[], f: (c: Diecast) => number) => list.reduce((s, c) => s + f(c), 0);
 
+type Sort = { key: string; dir: 1 | -1 } | null;
+type Val = string | number;
+const stIndex = (c: Diecast) => STATUS_ORDER.indexOf(normaliseStatus(c.status));
+const compare = (a: Val, b: Val) =>
+  typeof a === "number" && typeof b === "number" ? a - b : String(a).localeCompare(String(b));
+/** What each column of the car view sorts by. A car with nothing in a text column goes last. */
+const CAR_SORT: Record<string, (c: Diecast) => Val> = {
+  car: (c) => c.name || "",
+  status: stIndex,
+  seller: (c) => c.seller || "\uffff",
+  order: (c) => c.shippingId || "\uffff",
+  cost,
+  paid,
+  balance,
+  due: sortKey,
+};
+type Group = { key: string; list: Diecast[]; seller: string; statuses: string[] };
+/** The same for a seller or an order: a column of numbers sorts on the group's total. */
+const GROUP_SORT: Record<string, (g: Group) => Val> = {
+  name: (g) => g.key,
+  seller: (g) => g.seller || "\uffff",
+  cars: (g) => g.list.length,
+  status: (g) => Math.min(...g.list.map(stIndex)),
+  cost: (g) => sum(g.list, cost),
+  paid: (g) => sum(g.list, paid),
+  balance: (g) => sum(g.list, balance),
+  due: (g) => Math.min(...g.list.map(sortKey).filter(Boolean)),
+};
+const sorted = <T,>(rows: T[], sort: Sort, by: Record<string, (r: T) => Val>) =>
+  sort && by[sort.key]
+    ? [...rows].sort((a, b) => sort.dir * compare(by[sort.key](a), by[sort.key](b)))
+    : rows;
+
 /**
  * The cars due this month, by seller, by order, or one by one: what each is, what it cost, what
  * has been paid (an advance on a pre-order included) and what is left. When nothing is due this
@@ -72,7 +106,12 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   useEffect(() => {
     setView(remembered<View>(VIEW_KEY, ["seller", "order", "car"], "seller"));
   }, []);
+  /** Click a heading to sort by it, again to reverse, once more to go back to date order. */
+  const [sort, setSort] = useState<Sort>(null);
+  const toggle = (key: string) =>
+    setSort((s) => (!s || s.key !== key ? { key, dir: 1 } : s.dir === 1 ? { key, dir: -1 } : null));
   const pick = (v: View) => {
+    setSort(null);
     setView(v);
     try {
       localStorage.setItem(VIEW_KEY, v);
@@ -118,6 +157,9 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyOf follows view
   }, [m, view]);
 
+  const carRows = useMemo(() => sorted(m.list, sort, CAR_SORT), [m.list, sort]);
+  const groupRows = useMemo(() => sorted(groups, sort, GROUP_SORT), [groups, sort]);
+
   if (!m.list.length && !m.previous) return null;
 
   const open = (g: { key: string; seller: string }) => {
@@ -126,6 +168,25 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     } else if (g.seller) openSeller(g.seller);
   };
 
+  const sortTh = (key: string, label: string, align?: string) => (
+    <th
+      className={cn(th, align)}
+      aria-sort={sort?.key === key ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
+    >
+      <button
+        type="button"
+        onClick={() => toggle(key)}
+        className={cn(
+          "inline-flex cursor-pointer items-center gap-1 hover:text-foreground",
+          sort?.key === key && "text-foreground",
+        )}
+      >
+        {label}
+        {sort?.key === key &&
+          (sort.dir === 1 ? <ArrowUp className="size-3" /> : <ArrowDown className="size-3" />)}
+      </button>
+    </th>
+  );
   const th = "sticky top-0 z-10 bg-muted px-2 py-2.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
@@ -180,18 +241,18 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
             <>
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className={th}>Car</th>
-                  <th className={th}>Status</th>
-                  <th className={th}>Seller</th>
-                  <th className={th}>Order ID</th>
-                  <th className={cn(th, num)}>Cost</th>
-                  <th className={cn(th, num)}>Paid</th>
-                  <th className={cn(th, num)}>Balance</th>
-                  <th className={cn(th, num)}>Expected</th>
+                  {sortTh("car", "Car")}
+                  {sortTh("status", "Status")}
+                  {sortTh("seller", "Seller")}
+                  {sortTh("order", "Order ID")}
+                  {sortTh("cost", "Cost", num)}
+                  {sortTh("paid", "Paid", num)}
+                  {sortTh("balance", "Balance", num)}
+                  {sortTh("due", "Expected", num)}
                 </tr>
               </thead>
               <tbody>
-                {m.list.map((c, i) => (
+                {carRows.map((c, i) => (
                   <tr key={c.id ?? i} onClick={() => openCar(c)} className={row}>
                     <td className={cn(td, "max-w-[14rem] font-medium")}>
                       <button type="button" className={link}>
@@ -226,18 +287,18 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
             <>
               <thead>
                 <tr className="border-b border-border text-left">
-                  <th className={th}>{view === "order" ? "Order ID" : "Seller"}</th>
-                  {view === "order" && <th className={th}>Seller</th>}
-                  <th className={cn(th, num)}>Cars</th>
-                  <th className={th}>Status</th>
-                  <th className={cn(th, num)}>Cost</th>
-                  <th className={cn(th, num)}>Paid</th>
-                  <th className={cn(th, num)}>Balance</th>
-                  <th className={cn(th, num)}>Arrival</th>
+                  {sortTh("name", view === "order" ? "Order ID" : "Seller")}
+                  {view === "order" && sortTh("seller", "Seller")}
+                  {sortTh("cars", "Cars", num)}
+                  {sortTh("status", "Status")}
+                  {sortTh("cost", "Cost", num)}
+                  {sortTh("paid", "Paid", num)}
+                  {sortTh("balance", "Balance", num)}
+                  {sortTh("due", "Arrival", num)}
                 </tr>
               </thead>
               <tbody>
-                {groups.map((g) => (
+                {groupRows.map((g) => (
                   <tr key={g.key} onClick={() => open(g)} className={row}>
                     <td className={cn(td, "font-medium")}>
                       <button type="button" className={link}>
