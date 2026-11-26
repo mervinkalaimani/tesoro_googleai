@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useApp } from "@/lib/store";
@@ -163,6 +163,37 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const carRows = useMemo(() => sorted(m.list, sort, CAR_SORT), [m.list, sort]);
   const groupRows = useMemo(() => sorted(groups, sort, GROUP_SORT), [groups, sort]);
 
+  /** The page's glow fades from the top of the window down. The heading and the Total row are
+      solid, so each takes the tint the glow has at the height it is sitting at. */
+  const card = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    const tint = () => {
+      raf = 0;
+      const el = card.current;
+      if (!el) return;
+      const reach = innerHeight * (innerWidth >= 768 ? 0.38 : 0.62);
+      const max = document.documentElement.classList.contains("dark") ? 3 : 7.5;
+      const at = (sel: string) => {
+        const c = el.querySelector(sel);
+        return c ? Math.max(0, 1 - c.getBoundingClientRect().top / reach) * max : 0;
+      };
+      el.style.setProperty("--gt", `${at("thead th").toFixed(2)}%`);
+      el.style.setProperty("--gb", `${at("tfoot td").toFixed(2)}%`);
+    };
+    const queue = () => {
+      if (!raf) raf = requestAnimationFrame(tint);
+    };
+    tint();
+    addEventListener("scroll", queue, { passive: true, capture: true });
+    addEventListener("resize", queue);
+    return () => {
+      cancelAnimationFrame(raf);
+      removeEventListener("scroll", queue, { capture: true });
+      removeEventListener("resize", queue);
+    };
+  });
+
   if (!m.list.length && !m.previous) return null;
 
   const sortTh = (key: string, label: string, align?: string) => (
@@ -185,11 +216,11 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     </th>
   );
   const th =
-    "sticky top-0 z-10 bg-[color-mix(in_oklab,var(--glow,var(--primary))_6%,var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
+    "sticky top-0 z-10 [background:color-mix(in_oklab,var(--primary)_var(--gt,0%),var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
   const foot =
-    "sticky bottom-0 z-10 border-t border-border bg-[color-mix(in_oklab,var(--glow,var(--primary))_6%,var(--background))] font-medium";
+    "sticky bottom-0 z-10 border-t border-border [background:color-mix(in_oklab,var(--primary)_var(--gb,0%),var(--background))] font-medium";
   const pills = (statuses: string[]) => (
     <div className="flex flex-wrap gap-1">
       {statuses.map((st) => (
@@ -234,7 +265,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
         </div>
       </div>
       {/* Eight rows show; the rest scroll, under a header and a total that stay put. */}
-      <div className="card-elevated max-h-[23rem] overflow-auto">
+      <div ref={card} className="card-elevated max-h-[23rem] overflow-auto">
         <table className="w-full min-w-[44rem] text-xs [&_tr>:first-child]:pl-4 [&_tr>:last-child]:pr-4">
           {view === "car" ? (
             <>
