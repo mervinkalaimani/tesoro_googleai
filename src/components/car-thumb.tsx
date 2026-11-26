@@ -24,11 +24,15 @@ export function CarThumb({
 }) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // A phone on a patchy connection fails a request now and then. One failed image used to blank
+  // the tile for good; it is tried again twice, a moment apart, before the placeholder is shown.
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setSrc(null);
+    setRetry(0);
 
     if (car.imageUrl) {
       setSrc(transformImageUrl(car.imageUrl, "card"));
@@ -59,12 +63,20 @@ export function CarThumb({
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
       ) : src ? (
         <img
+          key={retry}
           src={src}
           alt={car.name || `${car.make} ${car.model}`}
           loading="lazy"
           decoding="async"
           className="size-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"
-          onError={() => setSrc(null)}
+          onError={() => {
+            if (retry >= 2) return setSrc(null);
+            const n = retry + 1;
+            window.setTimeout(() => {
+              setRetry(n);
+              setSrc((cur) => (cur ? `${cur}${cur.includes("?") ? "&" : "?"}retry=${n}` : cur));
+            }, 1200 * n);
+          }}
         />
       ) : (
         (fallback ?? <Car className="size-8 text-muted-foreground/40" />)

@@ -43,6 +43,15 @@ export function RevealOnScroll() {
       if (el.parentElement?.closest(".card-elevated")) return;
       el.classList.add("reveal");
       io.observe(el);
+      // Fail open: a card that is still hidden a moment after it mounted is shown anyway. On a
+      // phone the observer can be late (a busy page, the app brought back from the background),
+      // and a card waiting for it is a blank space where a car should be.
+      window.setTimeout(() => {
+        if (el.isConnected && !el.classList.contains("reveal-in")) {
+          io.unobserve(el);
+          el.classList.add("reveal-in");
+        }
+      }, 1500);
     };
     const scan = (root: ParentNode) => root.querySelectorAll(".card-elevated").forEach(consider);
 

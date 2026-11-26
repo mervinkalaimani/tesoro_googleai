@@ -58,14 +58,25 @@ export function useKeyboardInset(active: boolean) {
   useEffect(() => {
     const vv = window.visualViewport;
     if (!active || !vv) return;
-    const update = () =>
-      setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)));
+    const update = () => {
+      // Only while a field is being typed in: with the keyboard gone the bar belongs at the
+      // bottom, whatever a phone's viewport events say. And measured against the layout
+      // viewport, which already shrinks on Android, so the bar is not lifted twice.
+      const a = document.activeElement;
+      const typing = !!a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA");
+      const layout = document.documentElement.clientHeight;
+      setInset(typing ? Math.max(0, Math.round(layout - vv.height - vv.offsetTop)) : 0);
+    };
     update();
     vv.addEventListener("resize", update);
     vv.addEventListener("scroll", update);
+    document.addEventListener("focusin", update);
+    document.addEventListener("focusout", update);
     return () => {
       vv.removeEventListener("resize", update);
       vv.removeEventListener("scroll", update);
+      document.removeEventListener("focusin", update);
+      document.removeEventListener("focusout", update);
     };
   }, [active]);
   return active ? inset : 0;

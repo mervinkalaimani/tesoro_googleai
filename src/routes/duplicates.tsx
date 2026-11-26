@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { normaliseStatus } from "@/lib/status";
 import { X } from "lucide-react";
 import { useCars } from "@/lib/cars-store";
 import type { Diecast } from "@/lib/types";
@@ -83,7 +84,12 @@ function DuplicatesPage() {
   const groups = useMemo(() => {
     const attrs = ATTRS.filter((a) => active.includes(a.key));
     if (!attrs.length) return [];
-    const filtered = filterRows(cars, query);
+    // A duplicate is a copy you own, or have on the way, of something you also own. A wish
+    // (ISO: you are looking for it) is not a copy, and neither is the box a pack of cars came in:
+    // the cars inside it are the castings, and counting the box beside them reads as a repeat.
+    const boxIds = new Set(cars.map((c) => c.packOf).filter(Boolean));
+    const held = cars.filter((r) => normaliseStatus(r.status) !== "ISO" && !boxIds.has(r.id));
+    const filtered = filterRows(held, query);
     const map = new Map<string, Diecast[]>();
     for (const r of filtered) {
       const parts = attrs.map((a) => (a.get(r) || "").trim().toLowerCase());
