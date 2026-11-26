@@ -136,7 +136,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     } else if (g.seller) openSeller(g.seller);
   };
 
-  const th = "sticky top-0 z-10 bg-muted px-2 py-1.5 font-normal text-muted-foreground";
+  const th = "sticky top-0 z-10 bg-muted px-2 py-2.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
   const foot = "sticky bottom-0 z-10 border-t border-border bg-muted font-medium";
