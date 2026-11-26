@@ -286,8 +286,8 @@ function PreOrderCardImpl({
         </div>
       </button>
 
-      {/* The facts in one wrapping row, the label above each value. */}
-      <dl className="mt-auto flex flex-wrap gap-x-4 gap-y-1.5 border-t border-border px-3 py-2">
+      {/* The facts, the label above each value: three columns on a phone, a wrapping row from sm up. */}
+      <dl className="mt-auto grid grid-cols-3 gap-x-3 gap-y-2 border-t border-border px-3 py-2 sm:flex sm:flex-wrap sm:gap-x-4 sm:gap-y-1.5">
         <PreOrderFact
           label="Ordered"
           value={formatDayMonthYear(car.orderDate) || car.orderDate || "—"}
