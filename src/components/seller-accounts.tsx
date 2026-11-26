@@ -332,10 +332,24 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
                             onClick={() => openCar(c)}
                             className={cn(row, "bg-muted/30")}
                           >
-                            <td className={cn(td, "max-w-[14rem] pl-7")}>
-                              <div className="truncate">{c.name}</div>
-                              <div className="truncate text-muted-foreground">
-                                {[c.brand, c.carNumber].filter(Boolean).join(" · ")}
+                            <td className={cn(td, "max-w-[16rem] pl-7")}>
+                              <div className="flex items-center gap-2.5">
+                                <div className="size-10 shrink-0 overflow-hidden rounded-md bg-muted">
+                                  {c.imageUrl && (
+                                    <img
+                                      src={c.imageUrl}
+                                      alt=""
+                                      loading="lazy"
+                                      className="size-full object-cover"
+                                    />
+                                  )}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="truncate">{c.name}</div>
+                                  <div className="truncate text-muted-foreground">
+                                    {[c.brand, c.carNumber].filter(Boolean).join(" · ")}
+                                  </div>
+                                </div>
                               </div>
                             </td>
                             {view === "order" && (
