@@ -274,32 +274,6 @@ export function MobileNav() {
   const short = tabs.length < 3;
   const sizing = short ? "w-[calc((100vw-200px)/3)] shrink-0" : "min-w-0 flex-1 basis-0";
 
-  // When any one label is wider than its tab, every tab drops to its icon: a bar where some names
-  // are cut ("My Order", "re-order") and others are not reads worse than none. A tab is the same
-  // width whether or not it shows its name, so the check does not flip back and forth.
-  const [iconOnly, setIconOnly] = useState(false);
-  const tabKey = tabs.map((t) => t.title).join("|");
-  useLayoutEffect(() => {
-    const el = tabsRef.current;
-    if (!el) return;
-    const check = () => {
-      const tooWide = [...el.querySelectorAll<HTMLElement>("a[data-tab]")].some((a) => {
-        const label = a.querySelector<HTMLElement>("[data-label]");
-        // 8 is the tab's own side padding.
-        return !!label && label.scrollWidth > a.clientWidth - 8;
-      });
-      setIconOnly(tooWide);
-    };
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    window.addEventListener("resize", check);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", check);
-    };
-  }, [tabKey, navMode]);
-
   return (
     <nav
       aria-label="Primary"
@@ -358,7 +332,7 @@ export function MobileNav() {
                 to={t.url}
                 data-tab
                 aria-label={t.title}
-                title={iconOnly ? t.title : undefined}
+                title={t.title}
                 aria-current={active ? "page" : undefined}
                 className={`relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-[2rem] px-1 py-2.5 transition-colors duration-300 ease-out motion-reduce:transition-none ${
                   sizing
@@ -368,17 +342,8 @@ export function MobileNav() {
                     : "text-foreground/85 hover:text-foreground"
                 }`}
               >
-                <t.icon className={`size-5 ${active ? "stroke-[2.4] text-primary" : ""}`} />
-                {/* Every tab names itself. */}
-                <span
-                  data-label
-                  aria-hidden
-                  className={`whitespace-nowrap text-xs font-medium leading-none ${
-                    iconOnly ? "pointer-events-none absolute opacity-0" : ""
-                  }`}
-                >
-                  {t.title}
-                </span>
+                {/* Icons alone: the name is the tab's aria-label and its tooltip. */}
+                <t.icon className={`size-[22px] ${active ? "stroke-[2.4] text-primary" : ""}`} />
               </Link>
             );
           })}
