@@ -49,7 +49,7 @@ export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   // Then in the order of the rainbow's primaries: red, blue, green, yellow, purple.
   { value: "crimson", label: "Ferrari Red" },
   { value: "skyline", label: "Skyline Blue" },
-  { value: "aston", label: "Aston Martin Green" },
+  { value: "aston", label: "Vantage Green" },
   { value: "lamborghini", label: "Gallardo Yellow" },
   { value: "suki", label: "Suki Purple" },
 ];
