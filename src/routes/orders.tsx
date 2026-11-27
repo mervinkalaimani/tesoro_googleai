@@ -250,7 +250,11 @@ function ShipmentCard({
             <InlineFact
               label="Balance"
               value={balance > 0 ? inrFull(balance) : "Paid"}
-              className={balance > 0 ? "text-amber-500" : "text-emerald-500"}
+              className={
+                balance > 0
+                  ? "text-amber-700 dark:text-amber-500"
+                  : "text-emerald-700 dark:text-emerald-500"
+              }
             />
           )}
           <InlineFact label="Total" value={inrFull(s.value)} />
@@ -268,7 +272,7 @@ function ShipmentCard({
         </div>
       )}
       {/* On a phone the two buttons are a row of their own, as they were: they share the width. */}
-      <footer className="flex w-full border-t border-border sm:hidden">
+      <footer className="flex w-full items-center border-t border-border px-2 py-1 sm:hidden">
         <ExportButton
           rows={s.items}
           name={`order-${s.groupId || s.seller}`.toLowerCase().replace(/[^a-z0-9]+/g, "-")}
@@ -277,13 +281,13 @@ function ShipmentCard({
           text="Share"
           variant="ghost"
           size="sm"
-          className="glass-btn !flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 !rounded-none !border-0 !shadow-none px-3 text-sm font-medium text-foreground"
+          className="!flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center !rounded-none !border-0 !bg-transparent !bg-none !shadow-none px-3 !text-[13px] !font-semibold !text-foreground hover:!bg-transparent hover:opacity-70 [&_svg]:!hidden"
         />
         {s.shippingId ? (
           <UpdateStatusButton
             onClick={onEdit}
             label="Update order"
-            className="glass-btn !flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 !rounded-none !border-0 !border-l !border-solid !border-border/60 !shadow-none px-3 text-sm font-medium text-primary"
+            className="!flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center !rounded-none !border-0 !bg-transparent !bg-none !shadow-none px-3 !text-[13px] !font-semibold !text-foreground hover:!bg-transparent hover:opacity-70 [&_svg]:!hidden"
             title={`Update the ${s.items.length} car${s.items.length === 1 ? "" : "s"} in ${s.shippingId}`}
           />
         ) : null}
