@@ -627,28 +627,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
 }
-/* A date answer in a phone iOS-style row sits at the right, like every other answer: no calendar
-   glyph, the value pushed to the end and kept the same small distance from the clear cross as a
-   typed answer. Unlayered, so it beats the block/left rules above. */
-.ios-row input[type="date"],
-input[type="date"].ios-date {
-  display: inline-flex !important;
-  justify-content: flex-end;
-  width: 100%;
-  padding-right: 0 !important;
-  /* Chrome sizes each part of the date for its widest digits, so a date of narrow digits ends short
-     of one with wide digits; equal-width digits make every date end in the same place. */
-  font-variant-numeric: tabular-nums;
-}
-.ios-row input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="date"].ios-date::-webkit-calendar-picker-indicator {
-  display: none;
-}
-/* Chrome keeps room at the end of the box for its hidden calendar glyph; iOS Safari does not. */
+/* A date answer in an iOS-style row sits at the right, like every other answer: no calendar glyph,
+   the value pushed to the end and kept the same small distance from the clear cross as a typed
+   answer. Chrome only: iOS Safari draws a date input itself and is left exactly as it was, since
+   restyling its box (display, width, hidden parts) is not something it is known to survive. */
 @supports not (-webkit-touch-callout: none) {
   .ios-row input[type="date"],
   input[type="date"].ios-date {
+    display: inline-flex !important;
+    justify-content: flex-end;
+    width: 100%;
+    padding-right: 0 !important;
     margin-right: -7px;
+    /* Chrome sizes each part of the date for its widest digits, so a date of narrow digits ends
+       short of one with wide digits; equal-width digits make every date end in the same place. */
+    font-variant-numeric: tabular-nums;
+  }
+  .ios-row input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="date"].ios-date::-webkit-calendar-picker-indicator {
+    display: none;
   }
 }
 /* The splash is server-rendered HTML, on screen before any script runs, and
