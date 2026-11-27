@@ -267,10 +267,10 @@ export function CyclePill<T extends string>({
                     </button>
                   </PopoverAnchor>
                   <PopoverContent
-                    // A pill that opens its list on tap sits at the right of its row, so the list lines up with
-                    // its right edge rather than hanging off it.
-                    align={menuOnTap ? "end" : "start"}
-                    className="w-auto min-w-40 rounded-2xl p-1.5"
+                    // The list lines up with the pill's right edge rather than hanging off it: a pill sits
+                    // at the right of its row. Six choices show; the rest scroll.
+                    align="end"
+                    className="max-h-[14.5rem] w-auto min-w-40 overflow-y-auto rounded-2xl p-1.5"
                   >
                     {rest.map((o) => (
                       <button
