@@ -269,11 +269,11 @@ function PreOrderCardImpl({
       <button
         type="button"
         onClick={onOpen}
-        className={`flex items-start gap-3 px-3 text-left ${inGroup ? "py-3" : "pb-2 pt-3"}`}
+        className={`flex items-start gap-3 px-3 text-left ${inGroup ? "items-center py-1.5" : "pb-2 pt-3"}`}
       >
         <CarThumb
           car={car}
-          className="size-12 shrink-0 rounded-lg border border-border/60 bg-white object-contain"
+          className={`shrink-0 rounded-lg border border-border/60 bg-white object-contain ${inGroup ? "size-9" : "size-12"}`}
         />
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-3">
@@ -292,7 +292,9 @@ function PreOrderCardImpl({
               </span>
             )}
           </div>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
+          <p className={`truncate text-xs text-muted-foreground ${inGroup ? "" : "mt-0.5"}`}>
+            {sub}
+          </p>
         </div>
       </button>
 
@@ -508,7 +510,7 @@ function OrderGroupCard({
       </header>
 
       {carsOpen && (
-        <div className="grid gap-2 border-t border-border p-3 max-sm:gap-0 max-sm:p-0">
+        <div className="grid gap-2 border-t border-border p-3 max-sm:gap-0 max-sm:py-1.5">
           {g.items.map((c) => (
             <PreOrderCard
               key={c.id}
