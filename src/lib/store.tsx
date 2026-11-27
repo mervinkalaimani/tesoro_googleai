@@ -46,11 +46,11 @@ export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   // box. Crimson stays below it: it was the default until the rebrand, and
   // everybody who has one stored keeps it.
   { value: "viiv", label: "ViiV Orange" },
-  // Red, blue, yellow: the three car colours, together.
+  // Then in the order of the rainbow's primaries: red, blue, green, yellow, purple.
   { value: "crimson", label: "Ferrari Red" },
   { value: "skyline", label: "Skyline Blue" },
-  { value: "lamborghini", label: "Lamborghini Yellow" },
   { value: "aston", label: "Aston Martin Green" },
+  { value: "lamborghini", label: "Gallardo Yellow" },
   { value: "suki", label: "Suki Purple" },
 ];
 

@@ -143,7 +143,7 @@
   --sidebar-ring: oklch(0.6 0.28 302);
 }
 
-/* Lamborghini yellow: the lemon yellow of a Giallo Orion, greener and cooler than Amber (which leans
+/* Gallardo yellow (stored as "lamborghini"): the lemon yellow of a Giallo Orion, greener and cooler than Amber (which leans
    to orange). A yellow this light has to carry dark text, as Amber does. */
 :root[data-accent="lamborghini"] {
   --primary: oklch(0.86 0.18 97);
