@@ -628,14 +628,28 @@ input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
 }
 /* A date answer in a phone iOS-style row sits at the right, like every other answer: no calendar
-   glyph, and the value pushed to the end. Unlayered, so it beats the block/left rules above. */
+   glyph, the value pushed to the end and kept the same small distance from the clear cross as a
+   typed answer. Unlayered, so it beats the block/left rules above. */
+.ios-row input[type="date"],
 input[type="date"].ios-date {
   display: inline-flex !important;
   justify-content: flex-end;
   width: 100%;
+  padding-right: 0 !important;
+  /* Chrome sizes each part of the date for its widest digits, so a date of narrow digits ends short
+     of one with wide digits; equal-width digits make every date end in the same place. */
+  font-variant-numeric: tabular-nums;
 }
+.ios-row input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="date"].ios-date::-webkit-calendar-picker-indicator {
   display: none;
+}
+/* Chrome keeps room at the end of the box for its hidden calendar glyph; iOS Safari does not. */
+@supports not (-webkit-touch-callout: none) {
+  .ios-row input[type="date"],
+  input[type="date"].ios-date {
+    margin-right: -7px;
+  }
 }
 /* The splash is server-rendered HTML, on screen before any script runs, and
    fades once the app knows who is signed in (dismissSplash). */

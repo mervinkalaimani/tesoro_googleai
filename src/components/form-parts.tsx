@@ -44,7 +44,7 @@ export function IosCard({ title, children }: { title?: string; children: React.R
 
 /** Borderless, right-aligned answers inside an iOS row. */
 const IOS_ANSWER =
-  "[&_input]:h-11 [&_input]:border-0 [&_input]:bg-transparent [&_input]:pl-0 [&_input]:pr-6 [&_input]:text-right [&_input]:text-[15px] [&_input]:shadow-none [&_input]:ring-0 [&_[role=combobox]]:h-11 [&_[role=combobox]]:justify-end [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent [&_[role=combobox]]:px-0 [&_[role=combobox]]:text-[15px] [&_[role=combobox]]:shadow-none [&_[role=combobox]]:ring-0 [&_[role=combobox]>span]:text-right [&_button[aria-label^='Clear']]:right-0 [&_button[aria-label^='Clear']]:size-4 [&_input[type=date]]:!inline-flex [&_input[type=date]]:!pr-5 [&_input[type=date]]:!text-sm [&_input[type=date]]:justify-end [&_input[type=date]::-webkit-calendar-picker-indicator]:hidden ";
+  "[&_input]:h-11 [&_input]:border-0 [&_input]:bg-transparent [&_input]:pl-0 [&_input]:pr-6 [&_input]:text-right [&_input]:text-[15px] [&_input]:shadow-none [&_input]:ring-0 [&_[role=combobox]]:h-11 [&_[role=combobox]]:justify-end [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent [&_[role=combobox]]:px-0 [&_[role=combobox]]:text-[15px] [&_[role=combobox]]:shadow-none [&_[role=combobox]]:ring-0 [&_[role=combobox]>span]:text-right [&_button[aria-label^='Clear']]:right-0 [&_button[aria-label^='Clear']]:size-4 [&_input[type=date]]:!text-sm ";
 
 /** A labelled field, with room for the message when it is the one that failed. */
 export function Field({
@@ -77,7 +77,7 @@ export function Field({
         className={cn(
           // A row of the group, not a card: the group draws the box, and a hairline above each row
           // (the first one is clipped by the group) is what separates them.
-          "flex min-h-11 w-full min-w-0 scroll-mt-24 scroll-mb-28 flex-wrap items-center justify-between gap-x-4 border-t border-border/60 px-4 has-[.glass-btn]:flex-col has-[.glass-btn]:items-stretch has-[.glass-btn]:gap-1.5 has-[.glass-btn]:py-2.5 has-[[data-menu-pill]]:!flex-row has-[[data-menu-pill]]:!items-center has-[[data-menu-pill]]:!py-0 has-[textarea]:flex-col has-[textarea]:items-stretch has-[textarea]:py-2.5",
+          "ios-row flex min-h-11 w-full min-w-0 scroll-mt-24 scroll-mb-28 flex-wrap items-center justify-between gap-x-4 border-t border-border/60 px-4 has-[.glass-btn]:flex-col has-[.glass-btn]:items-stretch has-[.glass-btn]:gap-1.5 has-[.glass-btn]:py-2.5 has-[[data-menu-pill]]:!flex-row has-[[data-menu-pill]]:!items-center has-[[data-menu-pill]]:!py-0 has-[textarea]:flex-col has-[textarea]:items-stretch has-[textarea]:py-2.5",
           IOS_ANSWER,
           error && "bg-destructive/[0.06]",
           className,
