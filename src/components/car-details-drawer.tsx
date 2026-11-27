@@ -1376,6 +1376,10 @@ function PhoneFacts({
   rows: readonly { items: readonly (readonly [string, string | null | undefined])[] }[];
 }) {
   const logos = useBrandLogos();
+  // Nothing to draw: render nothing at all. An empty wrapper still takes a gap in a flex column,
+  // which pushed the first panel of the wide layout 12px below the photo beside it.
+  const hasAny = rows.some((row) => row.items.some(([l, v]) => l === "Number" || (v || "").trim()));
+  if (!hasAny) return null;
   return (
     <div className="space-y-2">
       {rows.map((row, i) => {
