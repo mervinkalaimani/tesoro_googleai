@@ -272,7 +272,8 @@ function PrizedCoverflow({
         // cut off, but a shadow is not cropped to the frame's edge.
         "relative select-none [clip-path:inset(-4rem_-1.5rem_-4rem_0)]",
         wide
-          ? "mx-auto mt-4 aspect-[100/33] max-w-[1800px] [perspective:1500px]"
+          ? // 1300px at most: past that the front car grew to 360px wide and 450px tall on a big monitor.
+            "mx-auto mt-4 aspect-[100/33] max-w-[1300px] [perspective:1500px]"
           : "mt-3 aspect-[100/52] [perspective:900px]",
       )}
       style={{ touchAction: "pan-y", overscrollBehaviorX: "contain" }}
