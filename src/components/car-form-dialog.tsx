@@ -188,31 +188,26 @@ function SegmentOrOther({
 
   return (
     <Field label={label} name={name} error={error} info={info}>
-      {/* Other is pinned and the names scroll past it. In one control the
-          tenth seller pushed Other off the right-hand end, so the way out of
-          the list was the thing you had to scroll the list to reach. Two
-          controls side by side: the names in a track that scrolls, Other
-          always in the same place. */}
+      {/* One pill with the sellers and Other in its list, rather than a row that ran off the edge
+          as the sellers grew: the tenth one pushed Other out of sight. */}
       {chips.length > 0 && (
-        <div className="flex min-w-0 items-center gap-1.5">
-          <SegmentControl
-            row
-            className="min-w-0 flex-1"
-            value={showList ? "" : value}
-            options={chips.map((c) => ({ value: c, label: c }))}
-            onChange={(v) => {
-              setStuck(false);
-              onChange(v);
-            }}
-          />
-          <SegmentControl
-            row
-            className="shrink-0"
-            value={showList ? OTHER : ""}
-            options={[{ value: OTHER, label: "Other" }]}
-            onChange={() => setStuck(true)}
-          />
-        </div>
+        <SegmentControl
+          menuOnTap
+          value={showList ? OTHER : known ? value : ""}
+          options={[
+            { value: "", label: "Choose a seller" },
+            ...chips.map((c) => ({ value: c, label: c })),
+            { value: OTHER, label: "Other…" },
+          ]}
+          onChange={(v) => {
+            if (v === OTHER) {
+              setStuck(true);
+              return;
+            }
+            setStuck(false);
+            onChange(v);
+          }}
+        />
       )}
       {showList && (
         <div className={chips.length > 0 ? "mt-2" : undefined}>
@@ -2330,8 +2325,7 @@ export function CarFormDialog({
               release month. */}
           <Field label="Status *" name="status" error={errorFor("status")}>
             <SegmentControl
-              row
-              fill
+              menuOnTap
               value={form.status}
               options={STATUS_OPTIONS.map((st) => ({ value: st, label: statusLabel(st) }))}
               onChange={(v) => set("status", v)}
