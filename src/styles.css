@@ -1106,10 +1106,12 @@ html[data-modal] *:not([role="dialog"]):not([role="dialog"] *) {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
-/* And on a phone, the tiles inside the sheet do not blur either: the sheet is already dark, so
-   there is nothing for them to pick up, and each was another layer. */
+/* And on a phone, the tiles and buttons inside the sheet do not blur: each was another layer, and
+   they sit on the sheet's own backdrop, so there is nothing for them to pick up. The sheet's own
+   frosted background (a handful of large layers) keeps its blur: without it the page behind
+   shows through sharp. */
 @media (max-width: 767px) {
-  [role="dialog"] * {
+  [role="dialog"] :is(.card-elevated, .glass-btn, .glass-btn-solid) {
     -webkit-backdrop-filter: none !important;
     backdrop-filter: none !important;
   }
