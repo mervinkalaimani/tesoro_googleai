@@ -33,6 +33,8 @@ export type RailItem = {
   status?: string;
   /** "warn" when the status is naming something still missing. */
   tone?: "muted" | "warn";
+  /** How many required answers in this section are still missing: shown as a badge on the phone chip. */
+  count?: number;
 };
 
 export type ShellStep = { id: number; label: string };
@@ -150,7 +152,7 @@ export function EditorShell({
         )}
 
         {rail.length > 0 && (
-          <div className="-ml-0.5 -mr-10 mt-2.5 flex gap-1.5 overflow-x-auto px-0.5 pb-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
+          <div className="-ml-0.5 -mr-10 mt-1 flex gap-1.5 overflow-x-auto px-0.5 pb-0.5 pt-2.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
             {rail.map((r) => {
               const Icon = r.icon;
               return (
@@ -170,7 +172,15 @@ export function EditorShell({
                   )}
                 >
                   {Icon ? <Icon className="size-[18px]" /> : r.label}
-                  {r.tone === "warn" && (
+                  {r.count ? (
+                    <span
+                      aria-hidden
+                      className="absolute -right-0.5 -top-1 grid min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold leading-4 tabular-nums text-primary-foreground"
+                    >
+                      {r.count}
+                    </span>
+                  ) : null}
+                  {!r.count && r.tone === "warn" && (
                     <span
                       aria-hidden
                       className={cn(

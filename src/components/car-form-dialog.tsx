@@ -1940,18 +1940,34 @@ export function CarFormDialog({
     },
   }));
 
+  /** How many required answers each section still lacks, for the badges on the phone's icon chips. */
+  const SECTION_OF: Partial<Record<keyof CarFormData, string>> = {
+    make: "car",
+    model: "car",
+    type: "car",
+    brand: "car",
+    assortment: "assortments",
+    mrp: "assortments",
+    spent: "assortments",
+    status: "seller",
+    payment: "seller",
+  };
+  const lacking = (id: string) => missing.filter((m) => SECTION_OF[m.field] === id).length;
+
   /** The sections, as the rail beside the form lists them. */
   const rail: RailItem[] = [
     {
       id: "car",
       label: "Car details",
       icon: Car,
+      count: lacking("car"),
       status: fromCatalogue ? "from catalogue" : "as entered",
     },
     {
       id: "assortments",
       label: "Assortments",
       icon: Tags,
+      count: lacking("assortments"),
       status: assortmentsBadge,
       tone: form.assortment.trim() ? "muted" : "warn",
     },
@@ -1965,6 +1981,7 @@ export function CarFormDialog({
       id: "seller",
       label: "Seller & payment",
       icon: Wallet,
+      count: lacking("seller"),
       status: purchaseBadge,
       tone: purchaseBadgeTone,
     },
@@ -2811,9 +2828,14 @@ export function CarFormDialog({
                     Reading the entries is comparing two descriptions field by
                     field, which wants the width of a dialog. */}
                   <DuplicatesButton hits={duplicates} onClick={() => setDupesOpen(true)} />
-                  {(isEdit || currentStep === LAST_STEP) && (
-                    <ThingsLeft items={thingsLeft} done="Every required field is in" />
-                  )}
+                  {(isEdit || currentStep === LAST_STEP) &&
+                    // On a phone what is missing is marked on the icon chips above; only the all-clear is said here.
+                    (!iosForm || thingsLeft.length === 0) && (
+                      <ThingsLeft
+                        items={iosForm ? [] : thingsLeft}
+                        done="Every required field is in"
+                      />
+                    )}
                 </>
               }
               actions={actions}
