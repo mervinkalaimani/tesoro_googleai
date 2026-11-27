@@ -121,14 +121,16 @@
   --sidebar-ring: oklch(0.55 0.24 28);
 }
 
-:root[data-accent="emerald"] {
-  --primary: oklch(0.74 0.26 152);
-  --primary-foreground: oklch(0.18 0.02 50);
-  --ring: oklch(0.74 0.26 152);
-  --chart-1: oklch(0.74 0.26 152);
-  --sidebar-primary: oklch(0.74 0.26 152);
-  --sidebar-primary-foreground: oklch(0.18 0.02 50);
-  --sidebar-ring: oklch(0.74 0.26 152);
+/* Aston Martin green: the deep racing green of the Aston Martin Racing cars, a green with blue in
+   it. Dark enough to carry white text. */
+:root[data-accent="aston"] {
+  --primary: oklch(0.46 0.09 178);
+  --primary-foreground: oklch(0.99 0 0);
+  --ring: oklch(0.46 0.09 178);
+  --chart-1: oklch(0.46 0.09 178);
+  --sidebar-primary: oklch(0.46 0.09 178);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-ring: oklch(0.46 0.09 178);
 }
 
 :root[data-accent="violet"] {
@@ -212,14 +214,14 @@
   --sidebar-ring: oklch(0.62 0.25 28);
 }
 
-:root.dark[data-accent="emerald"] {
-  --primary: oklch(0.82 0.27 150);
-  --primary-foreground: oklch(0.18 0.02 50);
-  --ring: oklch(0.82 0.27 150);
-  --chart-1: oklch(0.82 0.27 150);
-  --sidebar-primary: oklch(0.82 0.27 150);
-  --sidebar-primary-foreground: oklch(0.18 0.02 50);
-  --sidebar-ring: oklch(0.82 0.27 150);
+:root.dark[data-accent="aston"] {
+  --primary: oklch(0.62 0.1 177);
+  --primary-foreground: oklch(0.99 0 0);
+  --ring: oklch(0.62 0.1 177);
+  --chart-1: oklch(0.62 0.1 177);
+  --sidebar-primary: oklch(0.62 0.1 177);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-ring: oklch(0.62 0.1 177);
 }
 
 :root.dark[data-accent="violet"] {

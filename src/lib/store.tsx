@@ -23,8 +23,7 @@ export type ThemePreference = "light" | "dark" | "oled" | "system";
 /** What actually gets painted, once "system" and "oled" have been resolved. */
 export type Theme = "light" | "dark";
 
-export type AccentColor =
-  "viiv" | "crimson" | "blue" | "emerald" | "violet" | "amber" | "lamborghini" | "skyline";
+export type AccentColor = "viiv" | "crimson" | "skyline" | "lamborghini" | "aston" | "violet";
 
 export const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "light", label: "Light" },
@@ -51,7 +50,7 @@ export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   { value: "crimson", label: "Ferrari Red" },
   { value: "skyline", label: "Skyline Blue" },
   { value: "lamborghini", label: "Lamborghini Yellow" },
-  { value: "emerald", label: "Emerald" },
+  { value: "aston", label: "Aston Martin Green" },
   { value: "violet", label: "Violet" },
 ];
 
@@ -227,10 +226,14 @@ function isAccentColor(value: unknown): value is AccentColor {
 }
 
 /**
- * Blue and Amber are gone as choices. Whoever had one stored is moved to the nearest of the two
- * that replaced them, rather than dropped back to the default.
+ * Blue, Amber and Emerald are gone as choices. Whoever had one stored is moved to the nearest of
+ * the ones that replaced them, rather than dropped back to the default.
  */
-const LEGACY_ACCENTS: Record<string, AccentColor> = { blue: "skyline", amber: "lamborghini" };
+const LEGACY_ACCENTS: Record<string, AccentColor> = {
+  blue: "skyline",
+  amber: "lamborghini",
+  emerald: "aston",
+};
 function asAccent(value: unknown): AccentColor | null {
   if (isAccentColor(value)) return value;
   return typeof value === "string" ? (LEGACY_ACCENTS[value] ?? null) : null;
