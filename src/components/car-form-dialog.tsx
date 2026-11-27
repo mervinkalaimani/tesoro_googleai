@@ -2186,7 +2186,7 @@ export function CarFormDialog({
         />
         {/* The one field here that is only ever yours: it is written to your row
             and nothing reads it back into the catalogue. */}
-        <div className="mt-3 border-t border-border/50 pt-3">
+        <div className={iosForm ? "" : "mt-3 border-t border-border/50 pt-3"}>
           <Field label="Display name">
             <ClearableInput
               value={form.displayName}
