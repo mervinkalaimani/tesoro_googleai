@@ -111,10 +111,13 @@ function preOrderSubLine(car: Diecast) {
   return [car.brand, car.carNumber, car.assortment, car.seller].filter(Boolean).join(" · ") || "—";
 }
 
-/** A flush half of a card's bottom edge on a phone, as on the For you cards and My Orders. */
+/**
+ * One of the buttons along a card's bottom edge on a phone: a pane of frosted glass of its own, a
+ * pill with space round it, rather than a flat strip cut into halves by hairlines.
+ */
 const HALF =
-  "glass-btn !flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1 !rounded-none !border-0 !shadow-none px-1.5 !text-[13px] !font-medium [&_svg]:!size-4";
-const HALF_DIVIDED = `${HALF} !border-l !border-solid !border-border/60`;
+  "glass-btn !flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 !rounded-full px-3 !text-[13px] !font-medium [&_svg]:!size-4";
+const HALF_DIVIDED = HALF;
 
 /** A label and value in the pre-order card's grid. */
 function PreOrderFact({
@@ -331,7 +334,7 @@ function PreOrderCardImpl({
       </footer>
 
       {/* On a phone: flush halves along the bottom edge. */}
-      <footer className="flex w-full border-t border-border sm:hidden">
+      <footer className="flex w-full gap-2 border-t border-border p-2 sm:hidden">
         <ExportButton
           rows={[car]}
           name={exportName}
@@ -339,7 +342,7 @@ function PreOrderCardImpl({
           iconOnly
           variant="ghost"
           size="sm"
-          className={`${HALF} !h-10 !w-1/5 !min-w-0 !flex-none !grow-0 text-foreground`}
+          className={`${HALF} !size-10 !min-w-0 !flex-none !grow-0 !px-0 text-foreground`}
         />
         {!settled && (
           <Button
@@ -500,13 +503,13 @@ function OrderGroupCard({
       )}
 
       {/* On a phone: flush halves along the bottom edge. */}
-      <footer className="flex w-full border-t border-border sm:hidden">
+      <footer className="flex w-full gap-2 border-t border-border p-2 sm:hidden">
         <ExportButton
           {...exportProps}
           iconOnly
           variant="ghost"
           size="sm"
-          className={`${HALF} !h-10 !w-1/5 !min-w-0 !flex-none !grow-0 text-foreground`}
+          className={`${HALF} !size-10 !min-w-0 !flex-none !grow-0 !px-0 text-foreground`}
         />
         {!settled && (
           <Button
