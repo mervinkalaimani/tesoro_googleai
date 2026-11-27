@@ -47,13 +47,12 @@ export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   // box. Crimson stays below it: it was the default until the rebrand, and
   // everybody who has one stored keeps it.
   { value: "viiv", label: "ViiV Orange" },
+  // Red, blue, yellow: the three car colours, together.
   { value: "crimson", label: "Ferrari Red" },
-  { value: "blue", label: "Blue" },
+  { value: "skyline", label: "Skyline Blue" },
+  { value: "lamborghini", label: "Lamborghini Yellow" },
   { value: "emerald", label: "Emerald" },
   { value: "violet", label: "Violet" },
-  { value: "amber", label: "Amber" },
-  { value: "lamborghini", label: "Lamborghini Yellow" },
-  { value: "skyline", label: "Skyline Blue" },
 ];
 
 export type FontSizePreference = "-2" | "-1" | "0" | "+1" | "+2";
@@ -227,6 +226,16 @@ function isAccentColor(value: unknown): value is AccentColor {
   return typeof value === "string" && ACCENT_OPTIONS.some((option) => option.value === value);
 }
 
+/**
+ * Blue and Amber are gone as choices. Whoever had one stored is moved to the nearest of the two
+ * that replaced them, rather than dropped back to the default.
+ */
+const LEGACY_ACCENTS: Record<string, AccentColor> = { blue: "skyline", amber: "lamborghini" };
+function asAccent(value: unknown): AccentColor | null {
+  if (isAccentColor(value)) return value;
+  return typeof value === "string" ? (LEGACY_ACCENTS[value] ?? null) : null;
+}
+
 function isThemePreference(value: unknown): value is ThemePreference {
   return value === "light" || value === "dark" || value === "oled" || value === "system";
 }
@@ -319,7 +328,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setThemePreferenceState(
       storedTheme === "oled" ? "dark" : isThemePreference(storedTheme) ? storedTheme : "dark",
     );
-    setAccentColorState(isAccentColor(storedAccent) ? storedAccent : DEFAULT_ACCENT);
+    setAccentColorState(asAccent(storedAccent) ?? DEFAULT_ACCENT);
     // The smaller-fonts switch is gone, so a size chosen with it is let go
     // rather than left on with no way to turn it off.
     void storedFontSize;
@@ -428,9 +437,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .maybeSingle();
       if (!active || error || !data) return;
 
-      if (isAccentColor(data.accent_color)) {
-        setAccentColorState(data.accent_color);
-        writeLS("dg.accentColor", data.accent_color);
+      const serverAccent = asAccent(data.accent_color);
+      if (serverAccent) {
+        setAccentColorState(serverAccent);
+        writeLS("dg.accentColor", serverAccent);
       }
       // A null theme means no device has chosen yet, so whatever this browser
       // already had stays — a server default must not overwrite a real choice.

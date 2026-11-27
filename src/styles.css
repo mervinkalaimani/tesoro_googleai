@@ -121,16 +121,6 @@
   --sidebar-ring: oklch(0.55 0.24 28);
 }
 
-:root[data-accent="blue"] {
-  --primary: oklch(0.6 0.25 258);
-  --primary-foreground: oklch(0.99 0 0);
-  --ring: oklch(0.6 0.25 258);
-  --chart-1: oklch(0.6 0.25 258);
-  --sidebar-primary: oklch(0.6 0.25 258);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-ring: oklch(0.6 0.25 258);
-}
-
 :root[data-accent="emerald"] {
   --primary: oklch(0.74 0.26 152);
   --primary-foreground: oklch(0.18 0.02 50);
@@ -149,16 +139,6 @@
   --sidebar-primary: oklch(0.6 0.28 302);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-ring: oklch(0.6 0.28 302);
-}
-
-:root[data-accent="amber"] {
-  --primary: oklch(0.8 0.2 78);
-  --primary-foreground: oklch(0.18 0.02 50);
-  --ring: oklch(0.8 0.2 78);
-  --chart-1: oklch(0.8 0.2 78);
-  --sidebar-primary: oklch(0.8 0.2 78);
-  --sidebar-primary-foreground: oklch(0.18 0.02 50);
-  --sidebar-ring: oklch(0.8 0.2 78);
 }
 
 /* Lamborghini yellow: the lemon yellow of a Giallo Orion, greener and cooler than Amber (which leans
@@ -232,16 +212,6 @@
   --sidebar-ring: oklch(0.62 0.25 28);
 }
 
-:root.dark[data-accent="blue"] {
-  --primary: oklch(0.68 0.24 255);
-  --primary-foreground: oklch(0.99 0 0);
-  --ring: oklch(0.68 0.24 255);
-  --chart-1: oklch(0.68 0.24 255);
-  --sidebar-primary: oklch(0.68 0.24 255);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-ring: oklch(0.68 0.24 255);
-}
-
 :root.dark[data-accent="emerald"] {
   --primary: oklch(0.82 0.27 150);
   --primary-foreground: oklch(0.18 0.02 50);
@@ -260,16 +230,6 @@
   --sidebar-primary: oklch(0.7 0.28 302);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-ring: oklch(0.7 0.28 302);
-}
-
-:root.dark[data-accent="amber"] {
-  --primary: oklch(0.86 0.2 80);
-  --primary-foreground: oklch(0.18 0.02 50);
-  --ring: oklch(0.86 0.2 80);
-  --chart-1: oklch(0.86 0.2 80);
-  --sidebar-primary: oklch(0.86 0.2 80);
-  --sidebar-primary-foreground: oklch(0.18 0.02 50);
-  --sidebar-ring: oklch(0.86 0.2 80);
 }
 
 :root.dark[data-accent="lamborghini"] {
