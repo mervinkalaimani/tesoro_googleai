@@ -188,6 +188,43 @@ function CollectionPage() {
         subtitle={`${groups.length} ${group} · ${filtered.length.toLocaleString()} cars`}
       >
         <>
+          {/* The drill-down pill beside the first one does this job on a phone. */}
+          <div className="max-md:hidden">
+            <FilterSelect
+              value={selected}
+              onChange={setSelected}
+              icon={<Filter className="size-3.5" />}
+              label={`Which ${group}`}
+              iconOnly
+              options={[
+                { value: "all", label: `All ${group}s` },
+                ...groups.map((g) => ({
+                  value: g.name,
+                  label: `${g.label} (${g.items.length})`,
+                })),
+              ]}
+            />
+          </div>
+          {/* Picking the order already in use flips its direction, so the
+                separate arrow button this used to have is folded in. */}
+          <SortSelect
+            value={sortField}
+            dir={dir}
+            onChange={(v, d) => {
+              setSortField(v);
+              setDir(d);
+            }}
+            iconOnly
+            neutral="count"
+            options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
+              value: f,
+              label: SORT_LABELS[f],
+              dir: f === "name" ? ("asc" as const) : ("desc" as const),
+            }))}
+          />
+          <ViewToggle value={view} onChange={setView} modes={["table", "blister", "grid"]} />
+        </>
+        <>
           <SegmentControl
             className="w-auto md:w-auto"
             value={group}
@@ -226,43 +263,6 @@ function CollectionPage() {
               </button>
             </>
           )}
-        </>
-        <>
-          {/* The drill-down pill beside the first one does this job on a phone. */}
-          <div className="max-md:hidden">
-            <FilterSelect
-              value={selected}
-              onChange={setSelected}
-              icon={<Filter className="size-3.5" />}
-              label={`Which ${group}`}
-              iconOnly
-              options={[
-                { value: "all", label: `All ${group}s` },
-                ...groups.map((g) => ({
-                  value: g.name,
-                  label: `${g.label} (${g.items.length})`,
-                })),
-              ]}
-            />
-          </div>
-          {/* Picking the order already in use flips its direction, so the
-                separate arrow button this used to have is folded in. */}
-          <SortSelect
-            value={sortField}
-            dir={dir}
-            onChange={(v, d) => {
-              setSortField(v);
-              setDir(d);
-            }}
-            iconOnly
-            neutral="count"
-            options={(Object.keys(SORT_LABELS) as SortField[]).map((f) => ({
-              value: f,
-              label: SORT_LABELS[f],
-              dir: f === "name" ? ("asc" as const) : ("desc" as const),
-            }))}
-          />
-          <ViewToggle value={view} onChange={setView} modes={["table", "blister", "grid"]} />
         </>
       </PageHeading>
 
