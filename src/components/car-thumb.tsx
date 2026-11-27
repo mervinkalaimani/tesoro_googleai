@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Car, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { findCarImage } from "@/lib/car-image";
+import { NoPhotoImage } from "@/components/no-photo";
 import { transformImageUrl } from "@/lib/image-transform";
 import type { Diecast } from "@/lib/types";
 
@@ -79,7 +80,7 @@ export function CarThumb({
           }}
         />
       ) : (
-        (fallback ?? <Car className="size-8 text-muted-foreground/40" />)
+        (fallback ?? <NoPhotoImage />)
       )}
     </div>
   );

@@ -47,6 +47,12 @@ export type CatalogCar = {
    * not free to serve without saying whose they are.
    */
   image_source_url?: string | null;
+  /**
+   * Who sent the photograph this entry shows, and when it was approved: the "Added by" tag on it.
+   * Only set for a picture that came through the photo submissions; absent for every other.
+   */
+  image_added_by?: string | null;
+  image_added_at?: string | null;
   /** When the maker-site job last checked this entry, and against which site. */
   synced_at?: string | null;
   synced_source?: string | null;
@@ -459,6 +465,9 @@ export async function fetchCatalogFromSupabase(): Promise<CatalogCar[]> {
         type: row.type || "",
         size: row.size || "1:64",
         image_url: row.image_url || null,
+        // Cast: the generated types predate these two columns, and the select is `*`.
+        image_added_by: (row as { image_added_by?: string | null }).image_added_by ?? null,
+        image_added_at: (row as { image_added_at?: string | null }).image_added_at ?? null,
         // Cast for the same reason released_at is: the generated types predate
         // the column and the select is `*`.
         case_number: (row as { case_number?: string | null }).case_number ?? null,

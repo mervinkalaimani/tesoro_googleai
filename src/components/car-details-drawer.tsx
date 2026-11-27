@@ -70,6 +70,7 @@ import { ShippingBatchDialog } from "@/components/shipping-batch-dialog";
 import { SellerOrdersDialog } from "@/components/seller-orders-dialog";
 import { StatusUpdateDialog } from "@/components/status-update-dialog";
 import { CarThumb } from "@/components/car-thumb";
+import { NoPhotoImage, NoPhotoUpload } from "@/components/no-photo";
 import { SyncedBadge, VERIFIED_BY_ADMIN, isVerifiedByAdmin } from "@/components/synced-badge";
 import { carSubLine } from "@/lib/car-subline";
 import { attachSuggestions, castingId } from "@/lib/casting-group";
@@ -2535,9 +2536,24 @@ function CopyId({ id, className }: { id: string; className?: string }) {
   );
 }
 
-function HeroCarImage({ car, contain = false }: { car: Diecast; contain?: boolean }) {
+function HeroCarImage({
+  car,
+  contain = false,
+  catalogId: entryId,
+}: {
+  car: Diecast;
+  contain?: boolean;
+  /** The catalogue entry this is a picture of, when the car itself does not say. */
+  catalogId?: string;
+}) {
   const [src, setSrc] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const { catalog } = useCatalog();
+  const catalogId = (entryId || car.catalogId || "").trim();
+  // The tag on a picture that came through the photo submissions, so a collector is named for it.
+  const entry = catalogId
+    ? catalog.find((c) => c.car_id.toUpperCase() === catalogId.toUpperCase())
+    : undefined;
 
   useEffect(() => {
     let cancelled = false;
@@ -2580,6 +2596,11 @@ function HeroCarImage({ car, contain = false }: { car: Diecast; contain?: boolea
     car.carNumber,
   ]);
 
+  const addedBy =
+    entry?.image_added_by && src && entry.image_url && src === entry.image_url
+      ? entry.image_added_by
+      : null;
+
   return (
     <div className="relative flex h-full w-full items-center justify-center">
       {loading && (
@@ -2599,11 +2620,16 @@ function HeroCarImage({ car, contain = false }: { car: Diecast; contain?: boolea
           onError={() => setSrc(null)}
         />
       ) : !loading ? (
-        <div className="flex flex-col items-center justify-center gap-1 text-muted-foreground">
-          <Car className="size-10" />
-          <span className="text-xs">No image available</span>
+        // No picture anywhere: the polaroid, and for a catalogued car the way to send one.
+        <div className="size-full p-2">
+          {catalogId ? <NoPhotoUpload carId={catalogId} /> : <NoPhotoImage />}
         </div>
       ) : null}
+      {src && addedBy && (
+        <span className="pointer-events-none absolute bottom-2 left-2 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">
+          Added by {addedBy}
+        </span>
+      )}
     </div>
   );
 }
@@ -3270,11 +3296,12 @@ function CatalogDetailsContent({
       {shown && (
         <SyncedBadge
           car={shown}
-          className="!h-8 !bg-card !px-3 !text-sm !text-sky-500 [&>svg]:!size-4"
+          // The size of the Released chip beside it: 12px type, 12px across, 4px above and below.
+          className="!bg-card !px-3 !py-1 !text-xs !text-sky-500 [&>svg]:!size-3"
         />
       )}
       {shownCar.size && (
-        <span className="inline-flex h-8 items-center rounded-full border border-border/80 px-3 text-sm font-semibold text-foreground">
+        <span className={cn(CHIP, "cursor-default border-border/80 text-foreground")}>
           {shownCar.size}
         </span>
       )}
@@ -3557,7 +3584,7 @@ function CatalogDetailsContent({
                 ))}
             </>
           }
-          photo={<HeroCarImage car={shownCar} contain />}
+          photo={<HeroCarImage car={shownCar} catalogId={shownId} contain />}
           below={<PhoneFacts rows={factRows} />}
           actions={actions}
         >
@@ -3642,7 +3669,7 @@ function CatalogDetailsContent({
               className="absolute inset-x-0 top-0 z-0 w-full overflow-hidden bg-white select-none"
               style={{ height: "var(--hero-h)" }}
             >
-              <HeroCarImage car={shownCar} />
+              <HeroCarImage car={shownCar} catalogId={shownId} />
             </div>
 
             {/* The warmth behind the sheet, which is part of the window rather

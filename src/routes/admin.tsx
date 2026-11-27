@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/table";
 import { MobileRecordCard, RecordAction } from "@/components/mobile-record-card";
 import { PageHeading, PageToolbar } from "@/components/page-header";
+import { PhotoReviewCard } from "@/components/photo-review-card";
 import { KpiBand, KpiTile } from "@/components/kpi";
 import { SegmentControl } from "@/components/segment-control";
 import { useApp } from "@/lib/store";
@@ -389,6 +390,9 @@ function AdminPage() {
           tone="sky"
         />
       </KpiBand>
+
+      {/* Photographs sent for castings that have none: an admin or the owner decides. */}
+      <PhotoReviewCard />
 
       <PageToolbar
         sticky
