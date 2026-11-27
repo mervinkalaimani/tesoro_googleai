@@ -74,6 +74,7 @@ import {
   Field,
   FormSection,
   IosFormProvider,
+  useIosForm,
   PillButton,
   PillRow,
 } from "@/components/form-parts";
@@ -186,45 +187,51 @@ function SegmentOrOther({
   const known = chips.some((c) => c.toLowerCase() === (value || "").toLowerCase());
   const showList = stuck || (Boolean(value) && !known) || chips.length === 0;
 
+  const ios = useIosForm();
+  // On the phone form the typed name is a row of its own under the picker, not a field squeezed in beside it.
+  const list = showList ? (
+    <div className={chips.length > 0 && !ios ? "mt-2" : undefined}>
+      <Combobox
+        clearable
+        allowCustom={allowCustom}
+        value={value}
+        onChange={(v) => onChange(v)}
+        options={options}
+        placeholder={placeholder}
+        searchPlaceholder={searchPlaceholder}
+        ariaLabel={label}
+      />
+    </div>
+  ) : null;
   return (
-    <Field label={label} name={name} error={error} info={info}>
-      {/* One pill with the sellers and Other in its list, rather than a row that ran off the edge
+    <>
+      <Field label={label} name={name} error={error} info={info}>
+        {/* One pill with the sellers and Other in its list, rather than a row that ran off the edge
           as the sellers grew: the tenth one pushed Other out of sight. */}
-      {chips.length > 0 && (
-        <SegmentControl
-          menuOnTap
-          value={showList ? OTHER : known ? value : ""}
-          options={[
-            { value: "", label: "Choose a seller" },
-            ...chips.map((c) => ({ value: c, label: c })),
-            { value: OTHER, label: "Other…" },
-          ]}
-          onChange={(v) => {
-            if (v === OTHER) {
-              setStuck(true);
-              return;
-            }
-            setStuck(false);
-            onChange(v);
-          }}
-        />
-      )}
-      {showList && (
-        <div className={chips.length > 0 ? "mt-2" : undefined}>
-          <Combobox
-            clearable
-            allowCustom={allowCustom}
-            value={value}
-            onChange={(v) => onChange(v)}
-            options={options}
-            placeholder={placeholder}
-            searchPlaceholder={searchPlaceholder}
-            ariaLabel={label}
+        {chips.length > 0 && (
+          <SegmentControl
+            menuOnTap
+            value={showList ? OTHER : known ? value : ""}
+            options={[
+              { value: "", label: "Choose a seller" },
+              ...chips.map((c) => ({ value: c, label: c })),
+              { value: OTHER, label: "Other…" },
+            ]}
+            onChange={(v) => {
+              if (v === OTHER) {
+                setStuck(true);
+                return;
+              }
+              setStuck(false);
+              onChange(v);
+            }}
           />
-        </div>
-      )}
-      {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-    </Field>
+        )}
+        {!ios && list}
+        {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+      </Field>
+      {ios && list && <Field label={`${label} name`}>{list}</Field>}
+    </>
   );
 }
 import {
@@ -611,6 +618,7 @@ export function CarFormDialog({
    * "Link to a catalogue entry" is how a corrected row finds the right one.
    */
   const isEdit = mode === "edit";
+  const iosForm = isEdit && isMobile;
   /**
    * Still inside its import hold, so the casting has not reached the shared
    * catalogue yet. It no longer decides whether the fields open -- they always
@@ -2423,7 +2431,7 @@ export function CarFormDialog({
         {/* Nothing has shipped on a pre-order, so it has a release
                     month instead of a date, and no courier or tracking. */}
         {(stillComing || hasArrived) && (
-          <div className="mt-3 border-l-2 border-sky-500/60 pl-3">
+          <div className={iosForm ? "" : "mt-3 border-l-2 border-sky-500/60 pl-3"}>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
               {isPreOrder
                 ? "A pre-order has a release window, not a shipping date"
@@ -2607,29 +2615,40 @@ export function CarFormDialog({
             <ClearableInput
               value={form.transitInfo}
               onChange={(e) => set("transitInfo", e.target.value)}
-              placeholder="Anything worth remembering about this copy"
+              placeholder={iosForm ? "Add a note" : "Anything worth remembering about this copy"}
             />
           </Field>
-          <div className="space-y-1.5">
-            <Label htmlFor="car-favourite" className="text-xs text-muted-foreground">
-              Favourite
-            </Label>
-            <div className="flex h-9 items-center gap-2.5 rounded-md border border-input bg-background px-3">
+          {iosForm ? (
+            <label className="flex min-h-11 cursor-pointer items-center justify-between gap-3 border-t border-border/60 px-4">
+              <span className="text-[15px]">Favourite</span>
               <Switch
                 id="car-favourite"
                 checked={form.favourite}
                 onCheckedChange={(v) => set("favourite", v)}
               />
-              <Label
-                htmlFor="car-favourite"
-                className="cursor-pointer text-xs font-medium text-foreground"
-              >
-                Mark as favourite
+            </label>
+          ) : (
+            <div className="space-y-1.5">
+              <Label htmlFor="car-favourite" className="text-xs text-muted-foreground">
+                Favourite
               </Label>
+              <div className="flex h-9 items-center gap-2.5 rounded-md border border-input bg-background px-3">
+                <Switch
+                  id="car-favourite"
+                  checked={form.favourite}
+                  onCheckedChange={(v) => set("favourite", v)}
+                />
+                <Label
+                  htmlFor="car-favourite"
+                  className="cursor-pointer text-xs font-medium text-foreground"
+                >
+                  Mark as favourite
+                </Label>
+              </div>
             </div>
-          </div>
+          )}
         </div>
-        <div className="mt-3 space-y-2">
+        <div className={iosForm ? "space-y-2 border-t border-border/60 p-4" : "mt-3 space-y-2"}>
           <Label className="text-xs text-muted-foreground">Photo</Label>
           {/* layout="split": on a desktop the frame is smaller and
                       the found photos fill the space to its right. */}
@@ -2673,7 +2692,7 @@ export function CarFormDialog({
           "max-sm:fixed max-sm:inset-0 max-sm:top-0 max-sm:h-[100dvh] max-sm:max-h-[100dvh] max-sm:w-full max-sm:max-w-full max-sm:rounded-none max-sm:border-0 max-sm:p-3.5 max-sm:m-0",
         )}
       >
-        <IosFormProvider value={isEdit && isMobile}>
+        <IosFormProvider value={iosForm}>
           <form
             onSubmit={(e) => void handleSubmit(e)}
             className="flex min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-x-hidden"

@@ -23,6 +23,7 @@ import type { CarImageCandidate } from "@/lib/car-image-search";
 import { PhotoCropDialog } from "@/components/photo-crop-dialog";
 import { WebImageSearchDialog } from "@/components/web-image-search-dialog";
 import { cn } from "@/lib/utils";
+import { useIosForm } from "@/components/form-parts";
 
 /**
  * The photograph of a car: one found for you, one you take or pick, or a link.
@@ -70,6 +71,17 @@ export function CarPhotoField({
    */
   layout?: "stacked" | "split";
 }) {
+  const ios = useIosForm();
+  // On a phone form each way in is a row of one grouped list, as in iOS Settings.
+  const rowBtn = ios
+    ? ({
+        variant: "ghost",
+        size: "sm",
+        className:
+          "h-11 w-full justify-start gap-3 rounded-none border-t border-border/60 px-4 text-[15px] font-normal text-primary first:border-t-0",
+      } as const)
+    : ({ variant: "outline", size: "sm", className: "w-full gap-1.5" } as const);
+
   const split = layout === "split";
   const touch = useTouchDevice();
   const [busy, setBusy] = useState(false);
@@ -333,12 +345,14 @@ export function CarPhotoField({
 
       {/* THE WAYS IN */}
       {touch ? (
-        <div className="space-y-1.5">
+        <div
+          className={cn(
+            ios ? "overflow-hidden rounded-2xl border border-border/60 bg-card" : "space-y-1.5",
+          )}
+        >
           <Button
             type="button"
-            variant="outline"
-            size="sm"
-            className="w-full gap-1.5"
+            {...rowBtn}
             disabled={busy}
             onClick={() => fileRef.current?.click()}
           >
@@ -346,14 +360,7 @@ export function CarPhotoField({
             {value ? "Replace image" : "Add image"}
           </Button>
           {value && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full gap-1.5"
-              disabled={busy}
-              onClick={() => void cropExisting()}
-            >
+            <Button type="button" {...rowBtn} disabled={busy} onClick={() => void cropExisting()}>
               <Crop className="size-4" />
               Crop this photo
             </Button>
@@ -362,22 +369,13 @@ export function CarPhotoField({
               screenshot of a listing is how most photos get here, and without
               this the only way to that screenshot was the photo library two
               sheets down. */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full gap-1.5"
-            disabled={busy}
-            onClick={() => void paste()}
-          >
+          <Button type="button" {...rowBtn} disabled={busy} onClick={() => void paste()}>
             <ClipboardPaste className="size-4" />
             Paste
           </Button>
           <Button
             type="button"
-            variant="outline"
-            size="sm"
-            className="w-full gap-1.5"
+            {...rowBtn}
             disabled={busy}
             onClick={() => {
               setLink(value && !/\/storage\/v1\/object\/public\//.test(value) ? value : "");
@@ -388,25 +386,13 @@ export function CarPhotoField({
             {linkOpen ? "Hide the link box" : "Add image via link"}
           </Button>
           {searchQuery.trim() && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full gap-1.5"
-              onClick={() => setWebOpen(true)}
-            >
+            <Button type="button" {...rowBtn} onClick={() => setWebOpen(true)}>
               <Globe className="size-4" />
               Search the web
             </Button>
           )}
           {hasMore && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full gap-1.5"
-              onClick={() => setShown((n) => n + 10)}
-            >
+            <Button type="button" {...rowBtn} onClick={() => setShown((n) => n + 10)}>
               <Plus className="size-4" />
               More photos
             </Button>
