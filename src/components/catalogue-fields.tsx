@@ -369,7 +369,7 @@ export function CatalogueFields({
     // The phone form: the car, then the brand, each its own grouped card.
     return (
       <>
-        <IosCard title="Car details">
+        <IosCard>
           {F.make}
           {F.model}
           {F.variant}
@@ -378,7 +378,7 @@ export function CatalogueFields({
           {F.type}
           {F.rarity}
         </IosCard>
-        <IosCard title="Brand details">
+        <IosCard>
           {F.brand}
           {F.assortment}
           {F.series}

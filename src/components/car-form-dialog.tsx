@@ -2189,7 +2189,7 @@ export function CarFormDialog({
         {/* The one field here that is only ever yours: it is written to your row
             and nothing reads it back into the catalogue. */}
         {iosForm ? (
-          <IosCard title="Display name">
+          <IosCard>
             <Field label="Display name">
               <ClearableInput
                 value={form.displayName}
