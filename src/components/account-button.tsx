@@ -47,7 +47,7 @@ function MobileAccountMenu() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { profile, isAdmin, isOwner, isGuest, isPro } = useAuth();
   const { hideInvestment, setHideInvestment, query } = useApp();
-  const { persona } = usePersona();
+  const { persona, enabled: personasOn } = usePersona();
   const allCars = useCars();
   const [localReveal, setLocalReveal] = useState(false);
 
@@ -88,7 +88,7 @@ function MobileAccountMenu() {
         <SheetContent
           side="bottom"
           hideClose
-          className="max-h-[85svh] overflow-y-auto rounded-t-[2.5rem] border-t border-border bg-background/60 p-4 backdrop-blur-2xl pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))]"
+          className="max-h-[85svh] overflow-y-auto rounded-t-[2.5rem] border-t border-border bg-background/92 p-4 backdrop-blur-2xl pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))]"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Menu</SheetTitle>
@@ -197,9 +197,12 @@ function MobileAccountMenu() {
             </div>
           </div>
 
-          <div className="mt-2.5 card-elevated px-3.5 py-3">
-            <PersonaPicker />
-          </div>
+          {/* Personas are for testing only: with the picker off there is nothing to put in a frame. */}
+          {personasOn && (
+            <div className="mt-2.5 card-elevated px-3.5 py-3">
+              <PersonaPicker />
+            </div>
+          )}
 
           {isAdmin && persona === "admin" && (
             <Link
