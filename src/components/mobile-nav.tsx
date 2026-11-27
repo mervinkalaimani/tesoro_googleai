@@ -321,7 +321,16 @@ export function MobileNav() {
               ref={() => {
                 pillSeen.current = true;
               }}
-              style={{ left: pill.left, top: pill.top, width: pill.w, height: pill.h }}
+              style={{
+                left: pill.left,
+                top: pill.top,
+                width: pill.w,
+                height: pill.h,
+                // The icon's colour bleeds into the glass from the bottom edge of the pill, a soft pool
+                // that fades out before it reaches the icon.
+                backgroundImage:
+                  "radial-gradient(ellipse 65% 75% at 50% 112%, color-mix(in oklab, var(--primary) 45%, transparent), color-mix(in oklab, var(--primary) 14%, transparent) 55%, transparent 85%)",
+              }}
             />
           )}
           {tabs.map((t) => {
@@ -343,7 +352,19 @@ export function MobileNav() {
                 }`}
               >
                 {/* Icons alone: the name is the tab's aria-label and its tooltip. */}
-                <t.icon className={`size-[22px] ${active ? "stroke-[2.4] text-primary" : ""}`} />
+                <t.icon
+                  className={`size-[22px] ${active ? "stroke-[2.4] text-primary" : ""}`}
+                  // The colour spills a little onto the glass round it: a tight halo and a wider,
+                  // fainter one, the way a lit icon would.
+                  style={
+                    active
+                      ? {
+                          filter:
+                            "drop-shadow(0 0 5px color-mix(in oklab, var(--primary) 55%, transparent))",
+                        }
+                      : undefined
+                  }
+                />
               </Link>
             );
           })}
