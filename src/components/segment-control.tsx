@@ -208,7 +208,10 @@ export function CyclePill<T extends string>({
       <div
         data-menu-pill={menuOnTap || undefined}
         className={cn(
-          "cycle-wrap flex min-w-0 items-center gap-2",
+          "cycle-wrap flex items-center gap-2",
+          // A pill keeps its own width: it is the one beside it that gives way, so two of them
+          // never draw on top of each other.
+          phoneOnly ? "min-w-0" : "shrink-0",
           menuOnTap ? "justify-end" : "sm:hidden",
         )}
       >

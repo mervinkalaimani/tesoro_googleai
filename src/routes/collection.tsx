@@ -251,6 +251,7 @@ function CollectionPage() {
             <>
               <CyclePill
                 phoneOnly
+                noInfo
                 value={selected}
                 onChange={setSelected}
                 options={groups.map((g) => ({ value: g.name, label: g.label }))}
