@@ -168,7 +168,7 @@ export function AssortmentRow({
                 value={known ? String(mrp) : OTHER_MRP}
                 options={[
                   ...priced.map((v) => ({ value: String(v), label: inrPriceFull(v) })),
-                  { value: OTHER_MRP, label: "Other…" },
+                  { value: OTHER_MRP, label: "Other" },
                 ]}
                 onChange={(v) => {
                   if (v === OTHER_MRP) return setTyped(true);

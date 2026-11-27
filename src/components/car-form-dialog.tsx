@@ -236,7 +236,7 @@ function SegmentOrOther({
             options={[
               { value: "", label: "Choose a seller" },
               ...chips.map((c) => ({ value: c, label: c })),
-              { value: OTHER, label: "Other…" },
+              { value: OTHER, label: "Other" },
             ]}
             onChange={(v) => {
               if (v === OTHER) {
