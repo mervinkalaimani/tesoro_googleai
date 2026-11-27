@@ -255,7 +255,12 @@ export function CyclePill<T extends string>({
                       <ChevronsUpDown className="size-4 shrink-0 opacity-60" />
                     </button>
                   </PopoverAnchor>
-                  <PopoverContent align="start" className="w-auto min-w-40 rounded-2xl p-1.5">
+                  <PopoverContent
+                    // A pill that opens its list on tap sits at the right of its row, so the list lines up with
+                    // its right edge rather than hanging off it.
+                    align={menuOnTap ? "end" : "start"}
+                    className="w-auto min-w-40 rounded-2xl p-1.5"
+                  >
                     {rest.map((o) => (
                       <button
                         key={o.value}
