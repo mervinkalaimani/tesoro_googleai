@@ -1406,7 +1406,9 @@ function PhoneFacts({
                 <div
                   key={label}
                   title={(v || "").trim()}
-                  className="card-elevated relative min-h-14 min-w-0 overflow-hidden !rounded-2xl"
+                  // Only the top left is rounded: it is the frame's own corner, and the cell's other corners are
+                  // joins with its neighbours.
+                  className="card-elevated relative min-h-14 min-w-0 overflow-hidden !rounded-none !rounded-tl-2xl"
                 >
                   <img
                     src={logo}
@@ -1415,7 +1417,7 @@ function PhoneFacts({
                   />
                 </div>
               ) : (
-                <Stat key={label} label={label} uniform>
+                <Stat key={label} label={label} uniform className="!rounded-none">
                   <span title={v ?? undefined}>{(v || "").trim() || "-"}</span>
                 </Stat>
               );
