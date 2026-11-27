@@ -963,7 +963,7 @@ function CarPopupContent({
   );
 
   return (
-    <div className="relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden">
+    <div className="flat-cards relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Hidden Accessible Dialog Title & Description */}
       <DialogTitle className="sr-only">{title} Details</DialogTitle>
       <DialogDescription className="sr-only">
@@ -1011,7 +1011,7 @@ function CarPopupContent({
           ===================================================================== */}
       <div
         ref={mobile.rootRef}
-        className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
+        className="flat-cards md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
         style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
       >
         <div className="relative flex-1 min-h-0">
