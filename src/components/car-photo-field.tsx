@@ -399,79 +399,84 @@ export function CarPhotoField({
           )}
         </div>
       ) : (
-        <div className="flex flex-wrap gap-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
-          >
-            <Upload className="size-3.5" />
-            {value ? "Replace" : "Choose a file"}
-          </Button>
-          {value && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="gap-1.5"
-              disabled={busy}
-              onClick={() => void cropExisting()}
-            >
-              <Crop className="size-3.5" />
-              Crop
-            </Button>
-          )}
+        <div className="flex gap-2.5">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="gap-1.5"
+            className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+            disabled={busy}
+            aria-label={value ? "Replace" : "Choose a file"}
+            title={value ? "Replace" : "Choose a file"}
+            onClick={() => fileRef.current?.click()}
+          >
+            <Upload className="size-4" />
+          </Button>
+          {value && (
+            <Button
+              aria-label="Crop"
+              title="Crop"
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+              disabled={busy}
+              onClick={() => void cropExisting()}
+            >
+              <Crop className="size-4" />
+            </Button>
+          )}
+          <Button
+            aria-label="Paste"
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
             disabled={busy}
             title="Or press Ctrl+V anywhere in this window"
             onClick={() => void paste()}
           >
-            <ClipboardPaste className="size-3.5" />
-            Paste
+            <ClipboardPaste className="size-4" />
           </Button>
           <Button
+            aria-label="Link"
+            title="Link"
             type="button"
             variant="ghost"
             size="sm"
-            className="gap-1.5"
+            className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
             disabled={busy}
             onClick={() => {
               setLink(value && !/\/storage\/v1\/object\/public\//.test(value) ? value : "");
               setLinkOpen((v) => !v);
             }}
           >
-            <Link2 className="size-3.5" />
-            Link
+            <Link2 className="size-4" />
           </Button>
           {searchQuery.trim() && (
             <Button
+              aria-label="Search the web"
+              title="Search the web"
               type="button"
               variant="ghost"
               size="sm"
-              className="gap-1.5"
+              className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
               onClick={() => setWebOpen(true)}
             >
-              <Globe className="size-3.5" />
-              Search the web
+              <Globe className="size-4" />
             </Button>
           )}
           {hasMore && (
             <Button
+              aria-label="More"
+              title="More"
               type="button"
               variant="ghost"
               size="sm"
-              className="gap-1.5"
+              className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
               onClick={() => setShown((n) => n + 10)}
             >
-              <Plus className="size-3.5" />
-              More
+              <Plus className="size-4" />
             </Button>
           )}
         </div>
