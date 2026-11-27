@@ -112,12 +112,13 @@ function preOrderSubLine(car: Diecast) {
 }
 
 /**
- * One of the buttons along a card's bottom edge on a phone: a pane of frosted glass of its own, a
- * pill with space round it, rather than a flat strip cut into halves by hairlines.
+ * The actions along a card's bottom edge on a phone: plain words in their colour, no button drawn
+ * round them. Share, which has no word, is just its icon.
  */
 const HALF =
-  "glass-btn !flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center gap-1.5 !rounded-full px-3 !text-[13px] !font-medium [&_svg]:!size-4";
-const HALF_DIVIDED = HALF;
+  "!flex h-10 min-w-0 flex-1 cursor-pointer items-center justify-center !rounded-none !border-0 !bg-transparent !bg-none !shadow-none px-1.5 !text-[13px] !font-semibold hover:!bg-transparent hover:opacity-70 [&_svg]:!size-4";
+/** The ones with a word drop their icon too. */
+const HALF_DIVIDED = `${HALF} [&_svg]:!hidden`;
 
 /** A label and value in the pre-order card's grid. */
 function PreOrderFact({
@@ -334,7 +335,7 @@ function PreOrderCardImpl({
       </footer>
 
       {/* On a phone: flush halves along the bottom edge. */}
-      <footer className="flex w-full gap-2 border-t border-border p-2 sm:hidden">
+      <footer className="flex w-full items-center border-t border-border px-2 py-1 sm:hidden">
         <ExportButton
           rows={[car]}
           name={exportName}
@@ -342,7 +343,7 @@ function PreOrderCardImpl({
           iconOnly
           variant="ghost"
           size="sm"
-          className={`${HALF} !size-10 !min-w-0 !flex-none !grow-0 !px-0 text-foreground`}
+          className={`${HALF} !size-10 !min-w-0 !flex-none !grow-0 !px-0 text-foreground/80`}
         />
         {!settled && (
           <Button
@@ -503,13 +504,13 @@ function OrderGroupCard({
       )}
 
       {/* On a phone: flush halves along the bottom edge. */}
-      <footer className="flex w-full gap-2 border-t border-border p-2 sm:hidden">
+      <footer className="flex w-full items-center border-t border-border px-2 py-1 sm:hidden">
         <ExportButton
           {...exportProps}
           iconOnly
           variant="ghost"
           size="sm"
-          className={`${HALF} !size-10 !min-w-0 !flex-none !grow-0 !px-0 text-foreground`}
+          className={`${HALF} !size-10 !min-w-0 !flex-none !grow-0 !px-0 text-foreground/80`}
         />
         {!settled && (
           <Button
