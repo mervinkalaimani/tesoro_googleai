@@ -984,7 +984,6 @@ function CarPopupContent({
         subtitle={<div className="mt-3">{pills}</div>}
         footerNote={<AddedBy car={car} />}
         headerAction={idButtons()}
-        logo={<BrandMark brand={car.brand} />}
         photo={<HeroCarImage car={car} contain />}
         below={<PhoneFacts rows={factRows} />}
         actions={<CarDetailActions onEdit={onEdit} onAddAnother={onAddAnother} />}
@@ -1087,10 +1086,7 @@ function CarPopupContent({
                       </h2>
                       <div className="flex shrink-0 items-center gap-2">{idButtons(true)}</div>
                     </div>
-                    <div className="flex items-start justify-between gap-3">
-                      {pillRow(true)}
-                      <BrandMark brand={car.brand} />
-                    </div>
+                    {pillRow(true)}
                   </div>
 
                   <PhoneFacts rows={factRows} />
@@ -1161,7 +1157,6 @@ function DesktopShell({
   chips,
   subtitle,
   headerAction,
-  logo,
   footerNote,
   below,
   actions,
@@ -1175,8 +1170,6 @@ function DesktopShell({
   subtitle?: ReactNode;
   /** Beside the close button. */
   headerAction?: ReactNode;
-  /** The maker's mark, at the right of the name and its chips. */
-  logo?: ReactNode;
   /** The bottom left, on the line of the actions. */
   footerNote?: ReactNode;
   /** The status line, right under the name. */
@@ -1207,7 +1200,6 @@ function DesktopShell({
           {subtitle}
           {chips && <div className="mt-3">{chips}</div>}
         </div>
-        {logo}
         <div className="flex shrink-0 items-start justify-end gap-3">
           {headerAction}
           <button
@@ -1367,27 +1359,6 @@ function Stat({
 }
 
 /**
- * The maker's mark as a rounded square, at the right of the name and its chips. Nothing when the
- * brand has no mark on file: its name stays in the facts instead (see PhoneFacts).
- */
-function BrandMark({ brand, className }: { brand?: string | null; className?: string }) {
-  const logos = useBrandLogos();
-  const url = brand ? logos.find((l) => l.brand === brandKey(brand))?.image_url : null;
-  if (!url) return null;
-  return (
-    <div
-      title={brand ?? undefined}
-      className={cn(
-        "grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white",
-        className,
-      )}
-    >
-      <img src={url} alt={brand ?? ""} className="size-full object-contain p-1.5" />
-    </div>
-  );
-}
-
-/**
  * The facts as a phone lays them out, row by row:
  *
  *   Brand        | Number
@@ -1407,24 +1378,14 @@ function PhoneFacts({
   const logos = useBrandLogos();
   // Nothing to draw: render nothing at all. An empty wrapper still takes a gap in a flex column,
   // which pushed the first panel of the wide layout 12px below the photo beside it.
-  const hasAny = rows.some((row) =>
-    row.items.some(
-      ([l, v]) =>
-        (l === "Number" || (v || "").trim()) &&
-        !(l === "Brand" && logos.some((g) => g.brand === brandKey(v || ""))),
-    ),
-  );
+  const hasAny = rows.some((row) => row.items.some(([l, v]) => l === "Number" || (v || "").trim()));
   if (!hasAny) return null;
   return (
     // One frame for all the facts, a hairline between rows and between cells.
     <div className="facts-frame card-elevated divide-y divide-border/60 overflow-hidden !rounded-2xl">
       {rows.map((row, i) => {
         // Number is always drawn (as "-" when empty) so the Brand cell keeps its size.
-        const items = row.items.filter(
-          ([l, v]) =>
-            (l === "Number" || (v || "").trim()) &&
-            !(l === "Brand" && logos.some((g) => g.brand === brandKey(v || ""))),
-        );
+        const items = row.items.filter(([l, v]) => l === "Number" || (v || "").trim());
         if (items.length === 0) return null;
         return (
           // The cells share the row between them, so a fact that is missing
@@ -3578,7 +3539,6 @@ function CatalogDetailsContent({
                 ))}
             </>
           }
-          logo={<BrandMark brand={shownCar.brand} />}
           photo={<HeroCarImage car={shownCar} contain />}
           below={<PhoneFacts rows={factRows} />}
           actions={actions}
@@ -3695,14 +3655,9 @@ function CatalogDetailsContent({
                   className="relative flex flex-1 flex-col overflow-hidden rounded-t-3xl border-t border-border bg-background/70 px-4 pt-5 pb-6 shadow-[0_-8px_24px_rgba(0,0,0,0.1)] backdrop-blur-2xl"
                 >
                   <div className="relative space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-3">
-                        <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                          {title}
-                        </h2>
-                        {pills}
-                      </div>
-                      <BrandMark brand={shownCar.brand} />
+                    <div className="min-w-0 space-y-3">
+                      <h2 className="text-2xl font-bold tracking-tight text-foreground">{title}</h2>
+                      {pills}
                     </div>
 
                     <PhoneFacts rows={factRows} />
