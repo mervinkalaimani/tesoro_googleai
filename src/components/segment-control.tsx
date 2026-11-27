@@ -200,7 +200,13 @@ export function CyclePill<T extends string>({
     );
   return (
     <>
-      <div className={cn("cycle-wrap flex min-w-0 items-center gap-2", !menuOnTap && "sm:hidden")}>
+      <div
+        data-menu-pill={menuOnTap || undefined}
+        className={cn(
+          "cycle-wrap flex min-w-0 items-center gap-2",
+          menuOnTap ? "justify-end" : "sm:hidden",
+        )}
+      >
         {separate !== undefined && (
           <button
             type="button"

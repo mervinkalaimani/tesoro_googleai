@@ -58,9 +58,11 @@ export function Field({
         data-field={name}
         aria-invalid={error ? true : undefined}
         className={cn(
-          "flex min-h-11 w-full min-w-0 scroll-mt-24 scroll-mb-28 flex-wrap items-center justify-between gap-x-4 rounded-xl border border-border/60 bg-muted/40 px-3.5 has-[.glass-btn]:flex-col has-[.glass-btn]:items-stretch has-[.glass-btn]:gap-1.5 has-[.glass-btn]:py-2.5 has-[textarea]:flex-col has-[textarea]:items-stretch has-[textarea]:py-2.5",
+          // A row of the group, not a card: the group draws the box, and a hairline above each row
+          // (the first one is clipped by the group) is what separates them.
+          "flex min-h-11 w-full min-w-0 scroll-mt-24 scroll-mb-28 flex-wrap items-center justify-between gap-x-4 border-t border-border/60 px-4 has-[.glass-btn]:flex-col has-[.glass-btn]:items-stretch has-[.glass-btn]:gap-1.5 has-[.glass-btn]:py-2.5 has-[[data-menu-pill]]:!flex-row has-[[data-menu-pill]]:!items-center has-[[data-menu-pill]]:!py-0 has-[textarea]:flex-col has-[textarea]:items-stretch has-[textarea]:py-2.5",
           IOS_ANSWER,
-          error && "border-destructive",
+          error && "bg-destructive/[0.06]",
           className,
         )}
       >
@@ -74,7 +76,7 @@ export function Field({
           {required && <span className="text-primary">*</span>}
           {info && <InfoTip label={label} text={info} />}
         </Label>
-        <div className="min-w-0 flex-1 text-right has-[.glass-btn]:text-left has-[textarea]:text-left">
+        <div className="min-w-0 flex-1 text-right has-[.glass-btn]:text-left has-[[data-menu-pill]]:!text-right has-[textarea]:text-left">
           {children}
         </div>
         {error && (
@@ -218,6 +220,50 @@ export function FormSection({
   children: React.ReactNode;
 }) {
   const ios = useIosForm();
+  if (ios) {
+    // iOS Settings: the section's title above, outside, small and grey; then one rounded group that
+    // holds the rows, with a hairline between them. No frame round the section as well.
+    return (
+      <section data-section={id} className="scroll-mt-2">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          // Rides the top while its rows are on screen, as a grouped table's header does.
+          className="sticky top-0 z-10 flex w-full items-center gap-2 bg-background px-4 py-2 text-left"
+        >
+          <span className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {title}
+          </span>
+          {badge && (
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
+                badgeTone === "warn" ? "bg-primary/12 text-primary" : "text-muted-foreground",
+              )}
+            >
+              {badge}
+            </span>
+          )}
+          <ChevronRight
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform",
+              open && "rotate-90",
+            )}
+          />
+        </button>
+        {open && (
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
+            {/* -mt-px hides the first row's hairline under the group's edge; the rows sit flush,
+                and anything that put a gap between them (grids, stacks) is closed up. */}
+            <div className="-mt-px [&_.grid]:!gap-y-0 [&_.mb-3]:!mb-0 [&_.space-y-2>*+*]:!mt-0 [&_.space-y-3>*+*]:!mt-0 [&_p.text-muted-foreground]:hidden">
+              {children}
+            </div>
+          </div>
+        )}
+      </section>
+    );
+  }
   return (
     <section
       data-section={id}
@@ -245,7 +291,7 @@ export function FormSection({
           <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {title}
           </span>
-          {description && !ios && (
+          {description && (
             <span className="mt-0.5 block text-xs text-muted-foreground">{description}</span>
           )}
         </span>
@@ -269,15 +315,7 @@ export function FormSection({
         />
       </button>
       {open && (
-        <div
-          className={cn(
-            "rounded-b-xl border-t border-border/70 bg-card p-3.5",
-            // The sentences under the fields are left out, and the rows sit close.
-            ios && "bg-transparent p-2.5 [&_p.text-muted-foreground]:hidden",
-          )}
-        >
-          {children}
-        </div>
+        <div className="rounded-b-xl border-t border-border/70 bg-card p-3.5">{children}</div>
       )}
     </section>
   );
