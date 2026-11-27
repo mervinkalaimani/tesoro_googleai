@@ -74,6 +74,7 @@ import {
   ClearableInput,
   Field,
   FormSection,
+  IosCard,
   IosFormProvider,
   useIosForm,
   PillButton,
@@ -2162,6 +2163,7 @@ export function CarFormDialog({
       title="Car details"
       description="Make, model and the details that tell releases apart."
       badge={fromCatalogue ? "from catalogue" : "as entered"}
+      bare={iosForm}
       open={showIdentity}
       onToggle={() => setShowIdentity((v) => !v)}
     >
@@ -2170,7 +2172,7 @@ export function CarFormDialog({
           Editable {heldLabel(initial).replace(/^in /, "for another ")}
         </p>
       )}
-      <div>
+      <div className={iosForm ? "space-y-4" : undefined}>
         <CatalogueFields
           values={catalogueValues}
           onChange={setCatalogueValue}
@@ -2186,21 +2188,38 @@ export function CarFormDialog({
         />
         {/* The one field here that is only ever yours: it is written to your row
             and nothing reads it back into the catalogue. */}
-        <div className={iosForm ? "" : "mt-3 border-t border-border/50 pt-3"}>
-          <Field label="Display name">
-            <ClearableInput
-              value={form.displayName}
-              onChange={(e) => set("displayName", e.target.value)}
-              placeholder={derivedName(form) || "Make Model"}
-              aria-label="Display name"
-            />
-            <p className="pt-1 text-xs text-muted-foreground">
-              What you call this one. Blank builds it from make and model. Yours only — the
-              catalogue and other collections are not touched.
-            </p>
-          </Field>
-        </div>
-        <p className="mt-2.5 text-xs text-muted-foreground">
+        {iosForm ? (
+          <IosCard title="Display name">
+            <Field label="Display name">
+              <ClearableInput
+                value={form.displayName}
+                onChange={(e) => set("displayName", e.target.value)}
+                placeholder={derivedName(form) || "Make Model"}
+                aria-label="Display name"
+              />
+              <p className="pt-1 text-xs text-muted-foreground">
+                What you call this one. Blank builds it from make and model. Yours only — the
+                catalogue and other collections are not touched.
+              </p>
+            </Field>
+          </IosCard>
+        ) : (
+          <div className="mt-3 border-t border-border/50 pt-3">
+            <Field label="Display name">
+              <ClearableInput
+                value={form.displayName}
+                onChange={(e) => set("displayName", e.target.value)}
+                placeholder={derivedName(form) || "Make Model"}
+                aria-label="Display name"
+              />
+              <p className="pt-1 text-xs text-muted-foreground">
+                What you call this one. Blank builds it from make and model. Yours only — the
+                catalogue and other collections are not touched.
+              </p>
+            </Field>
+          </div>
+        )}
+        <p className={cn("mt-2.5 text-xs text-muted-foreground", iosForm && "hidden")}>
           {held && initial
             ? `This casting is not in the shared catalogue yet. It is filed ${heldLabel(initial)}, and what you type until then is what gets filed.`
             : isEdit

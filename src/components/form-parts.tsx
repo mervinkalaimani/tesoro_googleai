@@ -25,6 +25,23 @@ const IosFormContext = createContext(false);
 export const IosFormProvider = IosFormContext.Provider;
 export const useIosForm = () => useContext(IosFormContext);
 
+/**
+ * One grouped card of rows on the phone form, with a small caption above it. A section can hold
+ * several, each its own group: the rows sit flush and a hairline separates them.
+ */
+export function IosCard({ title, children }: { title?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      {title && <p className="px-4 pb-1.5 text-xs text-muted-foreground">{title}</p>}
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
+        <div className="-mt-px [&_.grid-cols-1]:!gap-y-0 [&_p.text-muted-foreground]:hidden">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** Borderless, right-aligned answers inside an iOS row. */
 const IOS_ANSWER =
   "[&_input]:h-11 [&_input]:border-0 [&_input]:bg-transparent [&_input]:pl-0 [&_input]:pr-6 [&_input]:text-right [&_input]:text-[15px] [&_input]:shadow-none [&_input]:ring-0 [&_[role=combobox]]:h-11 [&_[role=combobox]]:justify-end [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent [&_[role=combobox]]:px-0 [&_[role=combobox]]:text-[15px] [&_[role=combobox]]:shadow-none [&_[role=combobox]]:ring-0 [&_[role=combobox]>span]:text-right [&_button[aria-label^='Clear']]:right-0 [&_button[aria-label^='Clear']]:size-4 [&_input[type=date]]:!inline-flex [&_input[type=date]]:!pr-5 [&_input[type=date]]:!text-sm [&_input[type=date]]:justify-end [&_input[type=date]::-webkit-calendar-picker-indicator]:hidden";
@@ -205,6 +222,7 @@ export function FormSection({
   badgeTone = "muted",
   open,
   onToggle,
+  bare,
   children,
 }: {
   /** What the rail beside the form scrolls to. See editor-shell.tsx. */
@@ -217,6 +235,8 @@ export function FormSection({
   badgeTone?: "muted" | "warn";
   open: boolean;
   onToggle: () => void;
+  /** On the phone form: the content draws its own cards (IosCard), so no single group goes round it. */
+  bare?: boolean;
   children: React.ReactNode;
 }) {
   const ios = useIosForm();
@@ -252,7 +272,8 @@ export function FormSection({
             )}
           />
         </button>
-        {open && (
+        {open && bare && <div className="space-y-4">{children}</div>}
+        {open && !bare && (
           <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
             {/* -mt-px hides the first row's hairline under the group's edge; the rows sit flush,
                 and anything that put a gap between them (grids, stacks) is closed up. */}

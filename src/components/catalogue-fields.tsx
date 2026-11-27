@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import { Combobox } from "@/components/ui/combobox";
 import { SegmentControl } from "@/components/segment-control";
-import { Field, ClearableInput } from "@/components/form-parts";
+import { Field, ClearableInput, IosCard, useIosForm } from "@/components/form-parts";
 import {
   assortmentOptionsFor,
   modelOptionsFor,
@@ -152,239 +152,259 @@ export function CatalogueFields({
   const seriesOptions = useMemo(() => optionsFor("series", cars), [cars]);
   const subSeriesOptions = useMemo(() => optionsFor("subSeries", cars), [cars]);
 
-  return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {!skip("make") && (
-        <Field label="Make *" name="make" error={err("make")}>
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.make}
-            onChange={(v) => {
-              onChange("make", v);
-              if (v) advance("model");
-            }}
-            options={makeOptions}
-            placeholder="e.g. Porsche"
-            searchPlaceholder="Search makes, or type a new one…"
-            ariaLabel="Make"
-          />
-        </Field>
-      )}
-
-      {!skip("model") && (
-        <Field label="Model *" name="model" error={err("model")}>
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.model}
-            openSignal={chainAt.model}
-            onChange={(v) => {
-              onChange("model", v);
-              if (v) advance("variant");
-            }}
-            options={modelOptions}
-            // The base name only. The trim goes in Variant next to it, so
-            // "Skyline" here and "GT-R R34" there.
-            placeholder="e.g. Skyline"
-            searchPlaceholder="Search models, or type a new one…"
-            ariaLabel="Model"
-          />
-        </Field>
-      )}
-
-      {!skip("variant") && (
-        <Field label="Variant">
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.variant}
-            openSignal={chainAt.variant}
-            onChange={(v) => {
-              onChange("variant", v);
-              if (v) advance("year");
-            }}
-            options={variantOptions}
-            placeholder="e.g. R34"
-            searchPlaceholder="Search variants, or type a new one…"
-            ariaLabel="Variant"
-          />
-        </Field>
-      )}
-
-      {/* A list, not a free box: the years already in the collection, newest
-          first, and still typeable for anything odd. */}
-      {!skip("year") && (
-        <Field label="Year">
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.year}
-            openSignal={chainAt.year}
-            onChange={(v) => onChange("year", v)}
-            options={yearOptions}
-            placeholder="e.g. 2024"
-            searchPlaceholder="Search years, or type one…"
-            ariaLabel="Year"
-          />
-        </Field>
-      )}
-
-      {!skip("series") && (
-        <Field label="Series">
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.series}
-            onChange={(v) => onChange("series", v)}
-            options={seriesOptions}
-            placeholder="e.g. Circuit Legends"
-            searchPlaceholder="Search series, or type a new one…"
-            ariaLabel="Series"
-          />
-        </Field>
-      )}
-
-      {!skip("subSeries") && (
-        <Field label="Sub Series">
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.subSeries}
-            onChange={(v) => onChange("subSeries", v)}
-            options={subSeriesOptions}
-            placeholder="e.g. Factory Fresh"
-            searchPlaceholder="Search sub series, or type a new one…"
-            ariaLabel="Sub series"
-          />
-        </Field>
-      )}
-
-      {!skip("brand") && (
-        <Field label="Brand *" name="brand" error={err("brand")}>
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.brand}
-            onChange={(v) => onChange("brand", v)}
-            options={brandOptions}
-            placeholder="e.g. Hot Wheels"
-            searchPlaceholder="Search brands, or type a new one…"
-            ariaLabel="Brand"
-          />
-        </Field>
-      )}
-
-      {/* An assortment belongs to its brand the way a model belongs to its
-          make. The add-a-car form omits this field and asks for it under
-          Seller & payment instead, where it decides the retail prices offered;
-          the catalogue form, which describes the casting itself, keeps it. */}
-      {!skip("assortment") && (
-        <Field label="Assortment *" name="assortment" error={err("assortment")}>
-          {/* A kept list, not a free field: two spellings of one
+  const F = {
+    make: !skip("make") && (
+      <Field label="Make *" name="make" error={err("make")}>
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.make}
+          onChange={(v) => {
+            onChange("make", v);
+            if (v) advance("model");
+          }}
+          options={makeOptions}
+          placeholder="e.g. Porsche"
+          searchPlaceholder="Search makes, or type a new one…"
+          ariaLabel="Make"
+        />
+      </Field>
+    ),
+    model: !skip("model") && (
+      <Field label="Model *" name="model" error={err("model")}>
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.model}
+          openSignal={chainAt.model}
+          onChange={(v) => {
+            onChange("model", v);
+            if (v) advance("variant");
+          }}
+          options={modelOptions}
+          // The base name only. The trim goes in Variant next to it, so
+          // "Skyline" here and "GT-R R34" there.
+          placeholder="e.g. Skyline"
+          searchPlaceholder="Search models, or type a new one…"
+          ariaLabel="Model"
+        />
+      </Field>
+    ),
+    variant: !skip("variant") && (
+      <Field label="Variant">
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.variant}
+          openSignal={chainAt.variant}
+          onChange={(v) => {
+            onChange("variant", v);
+            if (v) advance("year");
+          }}
+          options={variantOptions}
+          placeholder="e.g. R34"
+          searchPlaceholder="Search variants, or type a new one…"
+          ariaLabel="Variant"
+        />
+      </Field>
+    ),
+    year: !skip("year") && (
+      <Field label="Year">
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.year}
+          openSignal={chainAt.year}
+          onChange={(v) => onChange("year", v)}
+          options={yearOptions}
+          placeholder="e.g. 2024"
+          searchPlaceholder="Search years, or type one…"
+          ariaLabel="Year"
+        />
+      </Field>
+    ),
+    series: !skip("series") && (
+      <Field label="Series">
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.series}
+          onChange={(v) => onChange("series", v)}
+          options={seriesOptions}
+          placeholder="e.g. Circuit Legends"
+          searchPlaceholder="Search series, or type a new one…"
+          ariaLabel="Series"
+        />
+      </Field>
+    ),
+    subSeries: !skip("subSeries") && (
+      <Field label="Sub Series">
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.subSeries}
+          onChange={(v) => onChange("subSeries", v)}
+          options={subSeriesOptions}
+          placeholder="e.g. Factory Fresh"
+          searchPlaceholder="Search sub series, or type a new one…"
+          ariaLabel="Sub series"
+        />
+      </Field>
+    ),
+    brand: !skip("brand") && (
+      <Field label="Brand *" name="brand" error={err("brand")}>
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.brand}
+          onChange={(v) => onChange("brand", v)}
+          options={brandOptions}
+          placeholder="e.g. Hot Wheels"
+          searchPlaceholder="Search brands, or type a new one…"
+          ariaLabel="Brand"
+        />
+      </Field>
+    ),
+    assortment: !skip("assortment") && (
+      <Field label="Assortment *" name="assortment" error={err("assortment")}>
+        {/* A kept list, not a free field: two spellings of one
               assortment are two lines in every dropdown for ever, and the
               names are maintained in Settings. Admins keep free entry -- a
               genuinely new line has to start somewhere. */}
-          <Combobox
-            clearable
-            allowCustom={isAdmin}
-            disabled={disabled}
-            value={values.assortment}
-            onChange={(v) => onChange("assortment", v)}
-            options={assortmentOptions}
-            placeholder="e.g. Mainline"
-            searchPlaceholder={
-              isAdmin ? "Search assortments, or type a new one…" : "Search assortments…"
-            }
-            ariaLabel="Assortment"
-          />
-        </Field>
-      )}
-
-      {/* The catalogue's, shared by every owner of the casting. The box a
-          particular copy came out of is Case / Mix, and lives on the car. */}
-      {!skip("carNumber") && (
-        <Field
-          label={carNumberRequired ? "Car Number *" : "Car Number"}
-          name="carNumber"
-          error={err("carNumber")}
-          info={
-            carNumberRequired
-              ? "The collector number printed on the box — Mini GT 1133, Kaido House KHMG217. It is what tells two near-identical castings apart, so this brand asks for it."
-              : undefined
+        <Combobox
+          clearable
+          allowCustom={isAdmin}
+          disabled={disabled}
+          value={values.assortment}
+          onChange={(v) => onChange("assortment", v)}
+          options={assortmentOptions}
+          placeholder="e.g. Mainline"
+          searchPlaceholder={
+            isAdmin ? "Search assortments, or type a new one…" : "Search assortments…"
           }
-        >
-          <ClearableInput
-            disabled={disabled && !allowCarNumberEdit}
-            value={values.carNumber}
-            onChange={(e) => onChange("carNumber", e.target.value)}
-            placeholder={carNumberRequired ? "e.g. 1133 or KHMG217" : "e.g. 3/5 or 142/250"}
-            aria-label="Car number"
-          />
-        </Field>
-      )}
+          ariaLabel="Assortment"
+        />
+      </Field>
+    ),
+    carNumber: !skip("carNumber") && (
+      <Field
+        label={carNumberRequired ? "Car Number *" : "Car Number"}
+        name="carNumber"
+        error={err("carNumber")}
+        info={
+          carNumberRequired
+            ? "The collector number printed on the box — Mini GT 1133, Kaido House KHMG217. It is what tells two near-identical castings apart, so this brand asks for it."
+            : undefined
+        }
+      >
+        <ClearableInput
+          disabled={disabled && !allowCarNumberEdit}
+          value={values.carNumber}
+          onChange={(e) => onChange("carNumber", e.target.value)}
+          placeholder={carNumberRequired ? "e.g. 1133 or KHMG217" : "e.g. 3/5 or 142/250"}
+          aria-label="Car number"
+        />
+      </Field>
+    ),
+    colour: !skip("colour") && (
+      <Field label="Colour" name="colour" error={err("colour")}>
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.colour}
+          onChange={(v) => onChange("colour", v)}
+          options={colourOptions}
+          placeholder="e.g. Spectraflame Red"
+          searchPlaceholder="Search colours, or type a new one…"
+          ariaLabel="Colour"
+        />
+      </Field>
+    ),
+    type: !skip("type") && (
+      <Field label="Type *" name="type" error={err("type")}>
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.type}
+          onChange={(v) => onChange("type", v)}
+          options={typeOptions}
+          placeholder="e.g. Race Car"
+          searchPlaceholder="Search types, or type a new one…"
+          ariaLabel="Type"
+        />
+      </Field>
+    ),
+    size: !skip("size") && (
+      <Field label="Scale size (default 1:64)">
+        <Combobox
+          clearable
+          disabled={disabled}
+          value={values.size}
+          onChange={(v) => onChange("size", v)}
+          options={sizeOptions}
+          placeholder="1:64"
+          searchPlaceholder="Search scales, or type a new one…"
+          ariaLabel="Size"
+        />
+      </Field>
+    ),
+    rarity: !skip("rarity") && (
+      <Field
+        label="Rarity"
+        info="TH is a Treasure Hunt and STH a Super Treasure Hunt, both Hot Wheels'. Chase is every other brand's limited run. Normal is a regular car."
+      >
+        <SegmentControl<Rarity>
+          menuOnTap
+          disabled={disabled}
+          value={values.rarity || "Normal"}
+          onChange={(v) => onChange("rarity", v)}
+          options={RARITIES.map((r) => ({ value: r, label: r }))}
+        />
+      </Field>
+    ),
+  };
 
-      {!skip("colour") && (
-        <Field label="Colour" name="colour" error={err("colour")}>
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.colour}
-            onChange={(v) => onChange("colour", v)}
-            options={colourOptions}
-            placeholder="e.g. Spectraflame Red"
-            searchPlaceholder="Search colours, or type a new one…"
-            ariaLabel="Colour"
-          />
-        </Field>
-      )}
+  const ios = useIosForm();
+  if (ios) {
+    // The phone form: the car, then the brand, each its own grouped card.
+    return (
+      <>
+        <IosCard title="Car details">
+          {F.make}
+          {F.model}
+          {F.variant}
+          {F.year}
+          {F.colour}
+          {F.type}
+          {F.rarity}
+        </IosCard>
+        <IosCard title="Brand details">
+          {F.brand}
+          {F.assortment}
+          {F.series}
+          {F.subSeries}
+          {F.carNumber}
+          {F.size}
+        </IosCard>
+      </>
+    );
+  }
 
-      {!skip("type") && (
-        <Field label="Type *" name="type" error={err("type")}>
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.type}
-            onChange={(v) => onChange("type", v)}
-            options={typeOptions}
-            placeholder="e.g. Race Car"
-            searchPlaceholder="Search types, or type a new one…"
-            ariaLabel="Type"
-          />
-        </Field>
-      )}
-
-      {!skip("size") && (
-        <Field label="Scale size (default 1:64)">
-          <Combobox
-            clearable
-            disabled={disabled}
-            value={values.size}
-            onChange={(v) => onChange("size", v)}
-            options={sizeOptions}
-            placeholder="1:64"
-            searchPlaceholder="Search scales, or type a new one…"
-            ariaLabel="Size"
-          />
-        </Field>
-      )}
-
-      {/* A picker, like Status: it is one row that says the answer, and the four
-          choices open from it. The full names sit behind the ⓘ. */}
-      {!skip("rarity") && (
-        <Field
-          label="Rarity"
-          info="TH is a Treasure Hunt and STH a Super Treasure Hunt, both Hot Wheels'. Chase is every other brand's limited run. Normal is a regular car."
-        >
-          <SegmentControl<Rarity>
-            menuOnTap
-            disabled={disabled}
-            value={values.rarity || "Normal"}
-            onChange={(v) => onChange("rarity", v)}
-            options={RARITIES.map((r) => ({ value: r, label: r }))}
-          />
-        </Field>
-      )}
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {F.make}
+      {F.model}
+      {F.variant}
+      {F.year}
+      {F.series}
+      {F.subSeries}
+      {F.brand}
+      {F.assortment}
+      {F.carNumber}
+      {F.colour}
+      {F.type}
+      {F.size}
+      {F.rarity}
     </div>
   );
 }
