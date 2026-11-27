@@ -115,9 +115,6 @@ export function Combobox({
             className={cn(
               // Matches <Input> so a row of mixed fields still lines up.
               "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm",
-              // The × sits over the right end: keep the text out from under it, whether or not the
-              // chevron (which used to hold that room) is showing.
-              showClear && "!pr-9",
               className,
             )}
           >

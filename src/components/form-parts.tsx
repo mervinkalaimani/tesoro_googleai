@@ -27,7 +27,7 @@ export const useIosForm = () => useContext(IosFormContext);
 
 /** Borderless, right-aligned answers inside an iOS row. */
 const IOS_ANSWER =
-  "[&_input]:h-11 [&_input]:border-0 [&_input]:bg-transparent [&_input]:pl-0 [&_input]:pr-6 [&_input]:text-right [&_input]:text-[15px] [&_input]:shadow-none [&_input]:ring-0 [&_[role=combobox]]:h-11 [&_[role=combobox]]:justify-end [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent [&_[role=combobox]]:px-0 [&_[role=combobox]]:text-[15px] [&_[role=combobox]]:shadow-none [&_[role=combobox]]:ring-0 [&_[role=combobox]>span]:text-right";
+  "[&_input]:h-11 [&_input]:border-0 [&_input]:bg-transparent [&_input]:pl-0 [&_input]:pr-6 [&_input]:text-right [&_input]:text-[15px] [&_input]:shadow-none [&_input]:ring-0 [&_[role=combobox]]:h-11 [&_[role=combobox]]:justify-end [&_[role=combobox]]:gap-1.5 [&_[role=combobox]]:border-0 [&_[role=combobox]]:bg-transparent [&_[role=combobox]]:px-0 [&_[role=combobox]]:text-[15px] [&_[role=combobox]]:shadow-none [&_[role=combobox]]:ring-0 [&_[role=combobox]>span]:text-right [&_button[aria-label^='Clear']]:right-0 [&_button[aria-label^='Clear']]:size-4";
 
 /** A labelled field, with room for the message when it is the one that failed. */
 export function Field({
