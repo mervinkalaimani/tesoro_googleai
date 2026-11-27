@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { activeSection } from "@/lib/editor-rail";
@@ -27,6 +27,8 @@ export type RailItem = {
   /** Matches the `id` on the FormSection it scrolls to. */
   id: string;
   label: string;
+  /** On a phone the chip is this icon alone, the chips sharing the width; the label stays as its name. */
+  icon?: LucideIcon;
   /** What is in the section, in two or three words. */
   status?: string;
   /** "warn" when the status is naming something still missing. */
@@ -149,30 +151,38 @@ export function EditorShell({
 
         {rail.length > 0 && (
           <div className="-mx-0.5 mt-2.5 flex gap-1.5 overflow-x-auto px-0.5 pb-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
-            {rail.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => jump(r.id)}
-                className={cn(
-                  "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                  active === r.id
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-muted-foreground",
-                )}
-              >
-                {r.label}
-                {r.tone === "warn" && (
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "size-1.5 rounded-full",
-                      active === r.id ? "bg-background" : "bg-primary",
-                    )}
-                  />
-                )}
-              </button>
-            ))}
+            {rail.map((r) => {
+              const Icon = r.icon;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  onClick={() => jump(r.id)}
+                  aria-label={r.label}
+                  title={r.label}
+                  className={cn(
+                    "relative flex items-center justify-center gap-1.5 rounded-full text-xs font-medium transition-colors",
+                    // With icons the chips share the row's width equally; without, they size to their label.
+                    Icon ? "h-9 min-w-0 flex-1" : "shrink-0 px-3 py-1.5",
+                    active === r.id
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {Icon ? <Icon className="size-[18px]" /> : r.label}
+                  {r.tone === "warn" && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        Icon && "absolute right-2.5 top-1.5",
+                        active === r.id ? "bg-background" : "bg-primary",
+                      )}
+                    />
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </DialogHeader>

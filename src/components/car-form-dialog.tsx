@@ -116,7 +116,12 @@ import {
 } from "@/components/ui/select";
 import {
   AlertCircle,
+  Camera,
   Car,
+  Package,
+  ShieldCheck,
+  Tags,
+  Wallet,
   IndianRupee,
   Calendar,
   ChevronRight,
@@ -1925,22 +1930,31 @@ export function CarFormDialog({
     {
       id: "car",
       label: "Car details",
+      icon: Car,
       status: fromCatalogue ? "from catalogue" : "as entered",
     },
     {
       id: "assortments",
       label: "Assortments",
+      icon: Tags,
       status: assortmentsBadge,
       tone: form.assortment.trim() ? "muted" : "warn",
     },
     {
       id: "multipack",
       label: "Multipack",
+      icon: Package,
       status: packBadge(isPack, packSize, packList.length),
     },
-    { id: "seller", label: "Seller & payment", status: purchaseBadge, tone: purchaseBadgeTone },
-    { id: "condition", label: "Condition", status: conditionBadge },
-    { id: "photo", label: "Photo & notes", status: extrasBadge },
+    {
+      id: "seller",
+      label: "Seller & payment",
+      icon: Wallet,
+      status: purchaseBadge,
+      tone: purchaseBadgeTone,
+    },
+    { id: "condition", label: "Condition", icon: ShieldCheck, status: conditionBadge },
+    { id: "photo", label: "Photo & notes", icon: Camera, status: extrasBadge },
   ];
 
   /**
