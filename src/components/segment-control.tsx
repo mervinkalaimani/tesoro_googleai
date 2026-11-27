@@ -3,6 +3,7 @@ import { Check, ChevronsUpDown, Info } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useIosForm } from "@/components/form-parts";
 
 /** The text colours out of a tone (a status's badge classes), for a label sitting on the tone's own fill. */
 const toneText = (tone?: string) =>
@@ -353,6 +354,21 @@ export function SegmentControl<T extends string>(props: {
   menuOnTap?: boolean;
 }) {
   const { row, ...rest } = props;
-  if (row || rest.clearable || rest.options.length < 2) return <SegmentRow {...rest} />;
+  // In the phone form every choice is an iOS picker: a pill at the right of its row that opens the list.
+  // A clearable one stays a row, as a pill has no way back to blank.
+  const ios = useIosForm();
+  if (ios && rest.options.length >= 2) {
+    // A clearable one gets "Not set" at the head of its list, which is its way back to blank.
+    const { clearable, ...pill } = rest;
+    return (
+      <CyclePill
+        {...pill}
+        menuOnTap
+        options={clearable ? [{ value: "" as T, label: "Not set" }, ...rest.options] : rest.options}
+      />
+    );
+  }
+  if (rest.clearable || rest.options.length < 2) return <SegmentRow {...rest} />;
+  if (row) return <SegmentRow {...rest} />;
   return <CyclePill {...rest} />;
 }

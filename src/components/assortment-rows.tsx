@@ -16,7 +16,7 @@ import { Trash2, Unlink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Combobox } from "@/components/ui/combobox";
-import { ClearableInput } from "@/components/form-parts";
+import { ClearableInput, Field, useIosForm } from "@/components/form-parts";
 import { SegmentControl } from "@/components/segment-control";
 import { mrpOptionsFor } from "@/lib/car-prices";
 import { inrPriceFull } from "@/lib/format";
@@ -135,6 +135,95 @@ export function AssortmentRow({
     // re-run this on every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priced, mrp, typed]);
+
+  const ios = useIosForm();
+  if (ios) {
+    // iOS Settings rows: assortment, retail price (a picker, with Other… to type one) and, on a car,
+    // what it cost. The row's own button (remove / detach) goes at the end as a plain row.
+    return (
+      <div data-field="assortment" className="scroll-mt-24">
+        <Field label="Assortment" required error={assortmentError}>
+          <Combobox
+            clearable
+            allowCustom={allowCustom}
+            disabled={disabled}
+            value={assortment}
+            onChange={onAssortment}
+            options={options}
+            placeholder="e.g. Mainline"
+            searchPlaceholder={
+              allowCustom ? "Search assortments, or type a new one…" : "Search assortments…"
+            }
+            ariaLabel="Assortment"
+          />
+        </Field>
+        <Field label="Retail / MRP" required>
+          <div className="flex min-w-0 items-center justify-end gap-2">
+            {priced.length > 0 && (
+              <SegmentControl
+                value={known ? String(mrp) : OTHER_MRP}
+                options={[
+                  ...priced.map((v) => ({ value: String(v), label: inrPriceFull(v) })),
+                  { value: OTHER_MRP, label: "Other…" },
+                ]}
+                onChange={(v) => {
+                  if (v === OTHER_MRP) return setTyped(true);
+                  setTyped(false);
+                  onMrp(Number(v));
+                }}
+              />
+            )}
+            {showInput && (
+              <div className="w-24 shrink-0">
+                <ClearableInput
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="any"
+                  disabled={disabled}
+                  placeholder="179"
+                  className="tabular-nums"
+                  value={mrp || ""}
+                  onChange={(e) => onMrp(e.target.value === "" ? 0 : Number(e.target.value))}
+                  aria-label="Retail price"
+                />
+              </div>
+            )}
+          </div>
+        </Field>
+        {money && onSpent && (
+          <Field label="Buying price" required error={spentError}>
+            <ClearableInput
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="any"
+              disabled={disabled}
+              placeholder="0"
+              className="tabular-nums"
+              value={spent ?? ""}
+              onChange={(e) => onSpent(e.target.value === "" ? "" : Number(e.target.value))}
+              aria-label="Buying price"
+            />
+          </Field>
+        )}
+        {(onDetach || onRemove) && (
+          <button
+            type="button"
+            onClick={onDetach ?? onRemove}
+            className="flex min-h-11 w-full items-center border-t border-border/60 px-4 text-[15px] text-destructive"
+          >
+            {onDetach ? "Make this a separate casting" : "Remove this assortment"}
+          </button>
+        )}
+        {filedAs && (
+          <p className="border-t border-border/60 px-4 py-2 font-mono text-xs text-muted-foreground">
+            {filedAs}
+          </p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div data-field="assortment" className="scroll-mt-24">

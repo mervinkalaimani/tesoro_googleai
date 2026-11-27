@@ -7,6 +7,9 @@ import { carSubLine } from "@/lib/car-subline";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
+import { useIosForm } from "@/components/form-parts";
 
 /**
  * A casting that is a box of cars rather than one car.
@@ -104,43 +107,166 @@ export function MultipackField({
     return out;
   }, [query, members, catalog, selfCarId]);
 
+  const ios = useIosForm();
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <label className="flex cursor-pointer select-none items-center gap-2">
-          <input
-            type="checkbox"
-            disabled={disabled}
-            checked={isPack}
-            onChange={(e) => onPackChange(e.target.checked)}
-            className="size-4 rounded border-input accent-primary"
-          />
-          <span className="flex items-center gap-1.5 text-xs font-semibold">
-            <Package className="size-3.5 text-primary" />
-            This is a multipack
-          </span>
-        </label>
-        <span className="flex-1 text-xs text-muted-foreground">
-          A box of cars sold together, bought once, for one price.
-        </span>
-        {isPack && (
-          <div className="flex items-center gap-2">
-            <Label className="text-xs text-muted-foreground">Cars in the box</Label>
-            <Input
-              type="number"
-              min={2}
-              max={24}
+    <div className={cn(ios ? "" : "space-y-3")}>
+      {ios ? (
+        // iOS Settings: a switch row, the sentence under it in the group's own small print.
+        <>
+          <label className="flex min-h-11 cursor-pointer select-none items-center justify-between gap-3 px-4">
+            <span className="flex items-center gap-1.5 text-[15px]">
+              <Package className="size-4 text-primary" />
+              This is a multipack
+            </span>
+            <Switch disabled={disabled} checked={isPack} onCheckedChange={onPackChange} />
+          </label>
+          {isPack && (
+            <div className="flex min-h-11 items-center justify-between gap-3 border-t border-border/60 px-4">
+              <Label className="text-[15px] font-normal">Cars in the box</Label>
+              <Input
+                type="number"
+                min={2}
+                max={24}
+                disabled={disabled}
+                value={packSize || ""}
+                onChange={(e) => onSizeChange(Number(e.target.value) || null)}
+                className="h-8 w-16 border-0 bg-transparent text-right tabular-nums shadow-none"
+                aria-label="Cars in the box"
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <label className="flex cursor-pointer select-none items-center gap-2">
+            <input
+              type="checkbox"
               disabled={disabled}
-              value={packSize || ""}
-              onChange={(e) => onSizeChange(Number(e.target.value) || null)}
-              className="h-8 w-16 bg-background text-center tabular-nums"
-              aria-label="Cars in the box"
+              checked={isPack}
+              onChange={(e) => onPackChange(e.target.checked)}
+              className="size-4 rounded border-input accent-primary"
             />
-          </div>
-        )}
-      </div>
+            <span className="flex items-center gap-1.5 text-xs font-semibold">
+              <Package className="size-3.5 text-primary" />
+              This is a multipack
+            </span>
+          </label>
+          <span className="flex-1 text-xs text-muted-foreground">
+            A box of cars sold together, bought once, for one price.
+          </span>
+          {isPack && (
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Cars in the box</Label>
+              <Input
+                type="number"
+                min={2}
+                max={24}
+                disabled={disabled}
+                value={packSize || ""}
+                onChange={(e) => onSizeChange(Number(e.target.value) || null)}
+                className="h-8 w-16 bg-background text-center tabular-nums"
+                aria-label="Cars in the box"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
-      {isPack && (
+      {isPack && ios && (
+        // iOS Settings: what is inside is a list of rows, and adding a car is the row under them.
+        <>
+          <div className="flex min-h-11 items-center justify-between gap-3 border-t border-border/60 px-4">
+            <span className="text-[15px]">What&rsquo;s inside</span>
+            <span className="text-[15px] tabular-nums text-muted-foreground">
+              {packSize ? `${members.length} of ${packSize}` : members.length}
+            </span>
+          </div>
+          {members.map((id, i) => {
+            const m = byId.get(id.toUpperCase());
+            return (
+              <div
+                key={id}
+                className="flex min-h-11 items-center gap-3 border-t border-border/60 px-4 py-1.5"
+              >
+                <span className="w-4 shrink-0 text-sm tabular-nums text-muted-foreground">
+                  {i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[15px]">{m?.name || id}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {m ? subLineOf(m) : "Not in the catalogue"}
+                  </div>
+                </div>
+                {canEditMembers && (
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => onMembersChange(members.filter((x) => x !== id))}
+                    aria-label={`Remove ${m?.name || id} from the pack`}
+                    className="shrink-0 p-1 text-muted-foreground"
+                  >
+                    <X className="size-4" />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          {canEditMembers ? (
+            <>
+              <div className="flex min-h-11 items-center gap-3 border-t border-border/60 px-4">
+                <Plus className="size-4 shrink-0 text-primary" />
+                <input
+                  disabled={disabled}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search the catalogue to add"
+                  aria-label="Add a car to the pack"
+                  className="h-11 min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-primary"
+                />
+              </div>
+              {choices.map((c) => (
+                <button
+                  key={c.car_id}
+                  type="button"
+                  onClick={() => {
+                    onMembersChange([...members, c.car_id]);
+                    setQuery("");
+                  }}
+                  className="flex min-h-11 w-full items-center gap-3 border-t border-border/60 px-4 py-1.5 text-left"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[15px]">{c.name}</div>
+                    <div className="truncate text-xs text-muted-foreground">{subLineOf(c)}</div>
+                  </div>
+                  <Plus className="size-4 shrink-0 text-muted-foreground" />
+                </button>
+              ))}
+              {query.trim().length >= 2 && choices.length === 0 && (
+                <p className="border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
+                  Nothing in the catalogue matches that.
+                </p>
+              )}
+              {onAddNew && (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={onAddNew}
+                  className="flex min-h-11 w-full items-center gap-3 border-t border-border/60 px-4 text-left text-[15px] text-primary"
+                >
+                  <Plus className="size-4 shrink-0" />
+                  {addNewLabel}
+                </button>
+              )}
+            </>
+          ) : (
+            <p className="border-t border-border/60 px-4 py-2 text-xs text-muted-foreground">
+              What is in the box is part of the shared catalogue, so it is listed there.
+            </p>
+          )}
+        </>
+      )}
+
+      {isPack && !ios && (
         <div className="space-y-2 border-t border-border/50 pt-3">
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold">What&rsquo;s inside</span>
@@ -226,9 +352,7 @@ export function MultipackField({
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-xs font-medium">{c.name}</div>
-                        <div className="truncate text-xs text-muted-foreground">
-                          {subLineOf(c)}
-                        </div>
+                        <div className="truncate text-xs text-muted-foreground">{subLineOf(c)}</div>
                       </div>
                       <Plus className="size-3.5 shrink-0 text-muted-foreground" />
                     </button>
