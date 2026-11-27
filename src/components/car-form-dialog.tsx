@@ -2179,7 +2179,7 @@ export function CarFormDialog({
           cars={pool}
           errorFor={(k) => errorFor(k as keyof CarFormData)}
           allowCarNumberEdit={true}
-          omit={["assortment"]}
+          omit={iosForm ? ["assortment", "rarity"] : ["assortment"]}
           chain={!fromCatalogue}
           // The colours of the box you said yours came out of, first. A casting
           // in six colours as a Box and two as a Blister has two answers, and
@@ -2277,6 +2277,21 @@ export function CarFormDialog({
         <AssortmentHeader money={!isIso} />
         <div className="space-y-2">
           <AssortmentRow
+            // On the phone, Rarity sits under the assortment, above the price.
+            between={
+              iosForm ? (
+                <Field
+                  label="Rarity"
+                  info="TH is a Treasure Hunt and STH a Super Treasure Hunt, both Hot Wheels'. Chase is every other brand's limited run. Normal is a regular car."
+                >
+                  <SegmentControl<Rarity>
+                    value={form.rarity || "Normal"}
+                    onChange={(v) => set("rarity", v)}
+                    options={RARITIES.map((r) => ({ value: r, label: r }))}
+                  />
+                </Field>
+              ) : undefined
+            }
             assortment={form.assortment}
             mrp={Number(form.mrp) || 0}
             options={brandAssortments}

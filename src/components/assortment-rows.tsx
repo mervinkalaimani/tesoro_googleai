@@ -67,6 +67,7 @@ function Cell({
 }
 
 export function AssortmentRow({
+  between,
   assortment,
   mrp,
   options,
@@ -85,6 +86,8 @@ export function AssortmentRow({
   onRemove,
   onDetach,
 }: {
+  /** Phone form only: a row to put between the assortment and the price. */
+  between?: React.ReactNode;
   assortment: string;
   mrp: number;
   options: string[];
@@ -157,6 +160,7 @@ export function AssortmentRow({
             ariaLabel="Assortment"
           />
         </Field>
+        {between}
         <Field label="Retail / MRP" required>
           <div className="flex min-w-0 items-center justify-end gap-2">
             {priced.length > 0 && (
