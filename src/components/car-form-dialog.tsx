@@ -639,7 +639,7 @@ export function CarFormDialog({
    * "Link to a catalogue entry" is how a corrected row finds the right one.
    */
   const isEdit = mode === "edit";
-  const iosForm = isEdit && isMobile;
+  const iosForm = isMobile;
   /**
    * Still inside its import hold, so the casting has not reached the shared
    * catalogue yet. It no longer decides whether the fields open -- they always
