@@ -213,7 +213,7 @@ const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
       "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
       // A phone: the buttons side by side, the main action on the right, each
       // filled and a little taller. Cancel and the like read as a soft fill.
-      "max-sm:flex-row max-sm:gap-3 max-sm:[&>button]:h-12 max-sm:[&>button]:min-w-0 max-sm:[&>button]:flex-1 max-sm:[&>button:not(.bg-primary):not(.bg-destructive)]:border-transparent max-sm:[&>button:not(.bg-primary):not(.bg-destructive)]:bg-muted",
+      "max-sm:flex-row max-sm:gap-3 max-sm:[&>button]:h-12 max-sm:[&>button]:min-w-0 max-sm:[&>button]:flex-1 max-sm:[&>button:not([class*='bg-primary']):not([class*='bg-destructive'])]:border-transparent max-sm:[&>button:not([class*='bg-primary']):not([class*='bg-destructive'])]:bg-muted",
       className,
     )}
     {...props}
