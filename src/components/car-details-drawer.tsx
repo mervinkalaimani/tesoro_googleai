@@ -1179,7 +1179,7 @@ function DesktopShell({
   children: ReactNode;
 }) {
   return (
-    <div className="hidden md:flex md:max-h-[92vh] md:w-[min(960px,calc(100vw-4rem-var(--dock,0rem)))] md:transition-[width] md:duration-300 md:flex-col">
+    <div className="flat-cards hidden md:flex md:max-h-[92vh] md:w-[min(960px,calc(100vw-4rem-var(--dock,0rem)))] md:transition-[width] md:duration-300 md:flex-col">
       {/* The name, left; the close button, right. Pinned. */}
       <div className="flex shrink-0 min-w-0 items-start justify-between gap-4 px-7 pb-4 pt-7">
         <div className="min-w-0 flex-1">
@@ -3598,7 +3598,7 @@ function CatalogDetailsContent({
           ===================================================================== */}
         <div
           ref={mobile.rootRef}
-          className="md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
+          className="flat-cards md:hidden relative w-full h-full flex flex-col flex-1 min-h-0 overflow-hidden bg-background sm:h-[min(92vh,860px)] sm:w-[min(30rem,calc(100vw-2rem))]"
           style={{ "--hero-h": "clamp(320px, 42vh, 460px)" } as React.CSSProperties}
         >
           <div className="relative flex-1 min-h-0">
