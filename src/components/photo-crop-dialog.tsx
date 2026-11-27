@@ -1,17 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import { hasAlpha } from "@/lib/car-photos";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
+import { Check, ImageIcon, Maximize, Wand2, X } from "lucide-react";
 
 const RATIO = 4 / 3; // the car details photo frame, so what you crop is what it shows
 const OUT_W = 1600;
+
+/** A square-ish button: the icon over its name, light grey, equal width in its row. */
+const TILE =
+  "h-14 min-w-0 flex-1 flex-col gap-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70";
+const TILE_LABEL = "text-[10px] font-medium leading-none";
 
 /**
  * Drag to move, wheel or slider to zoom, over a 16:10 frame; hands back the
@@ -282,40 +282,55 @@ export function PhotoCropDialog({
           Drag to move. Scroll or use the slider to zoom. The dashed box is what the blister view
           shows.
         </p>
-        <DialogFooter className="flex-wrap gap-2 sm:justify-between">
-          <div className="flex flex-wrap gap-1">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={!ready}
-              onClick={() => imgRef.current && autoCrop(imgRef.current)}
-            >
-              Auto crop
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={!ready}
-              onClick={() => {
-                setZoom(1);
-                setPos({ x: 0, y: 0 });
-              }}
-            >
-              Fill
-            </Button>
-            <Button type="button" variant="ghost" onClick={() => file && onDone(file)}>
-              Use whole photo
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={apply} disabled={!ready}>
-              Use photo
-            </Button>
-          </div>
-        </DialogFooter>
+        {/* Five buttons across, each an icon with its name under it, sharing the row equally. */}
+        <div className="flex gap-2.5">
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={!ready}
+            onClick={() => imgRef.current && autoCrop(imgRef.current)}
+            className={TILE}
+          >
+            <Wand2 className="size-4" />
+            <span className={TILE_LABEL}>Auto crop</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={!ready}
+            onClick={() => {
+              setZoom(1);
+              setPos({ x: 0, y: 0 });
+            }}
+            className={TILE}
+          >
+            <Maximize className="size-4" />
+            <span className={TILE_LABEL}>Fill</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => file && onDone(file)}
+            className={TILE}
+          >
+            <ImageIcon className="size-4" />
+            <span className={TILE_LABEL}>Whole photo</span>
+          </Button>
+          <Button type="button" variant="ghost" onClick={onCancel} className={TILE}>
+            <X className="size-4" />
+            <span className={TILE_LABEL}>Cancel</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={apply}
+            disabled={!ready}
+            className={`${TILE} !bg-primary !text-primary-foreground hover:!bg-primary/90`}
+          >
+            <Check className="size-4" />
+            <span className={TILE_LABEL}>Use photo</span>
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
