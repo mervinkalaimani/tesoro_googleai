@@ -9,7 +9,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StickyBand } from "@/components/page-header";
 import { SegmentControl } from "@/components/segment-control";
 import { inrFull } from "@/lib/format";
 import { toDateInputValue } from "@/lib/date-utils";
@@ -288,11 +287,11 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     </th>
   );
   const th =
-    "sticky top-0 z-10 [background:color-mix(in_oklab,var(--primary)_var(--gt,0%),var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
+    "[background:color-mix(in_oklab,var(--primary)_var(--gt,0%),var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
   const foot =
-    "sticky bottom-0 z-10 border-t border-border [background:color-mix(in_oklab,var(--primary)_var(--gb,0%),var(--background))] font-medium";
+    "border-t border-border [background:color-mix(in_oklab,var(--primary)_var(--gb,0%),var(--background))] font-medium";
   const pills = (statuses: string[]) => (
     <div className="flex flex-wrap gap-1">
       {statuses.map((st) => (
@@ -308,78 +307,75 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   return (
     <section aria-label="Cars due" className="space-y-2">
       {/* Pinned under the top bar while the table is on screen; the next section pushes it off. */}
-      <StickyBand>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="text-display text-lg font-semibold">Cars Due</h2>
-            <p className="text-xs text-muted-foreground">
-              {m.thisMonth ? `This month (${m.label})` : `Next month (${m.label})`}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {m.previous > 0 && (
+
+      <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+        <div className="min-w-0">
+          <h2 className="text-display text-lg font-semibold">Cars Due</h2>
+          <p className="text-xs text-muted-foreground">
+            {m.thisMonth ? `This month (${m.label})` : `Next month (${m.label})`}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {m.previous > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowPrev((v) => !v)}
+              className="glass-btn h-8 cursor-pointer rounded-full px-3 text-xs font-medium text-foreground"
+            >
+              {showPrev ? "Hide previous cars" : `Show previous cars (${m.previous})`}
+            </button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                onClick={() => setShowPrev((v) => !v)}
-                className="glass-btn h-8 cursor-pointer rounded-full px-3 text-xs font-medium text-foreground"
+                aria-label="Sort"
+                className={cn(
+                  "glass-btn flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full md:hidden",
+                  sort ? "text-primary" : "text-foreground",
+                )}
               >
-                {showPrev ? "Hide previous cars" : `Show previous cars (${m.previous})`}
+                <ArrowUpDown className="size-4" />
               </button>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Sort"
-                  className={cn(
-                    "glass-btn flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-full md:hidden",
-                    sort ? "text-primary" : "text-foreground",
-                  )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-52 rounded-2xl p-1.5">
+              <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                Sort by
+              </DropdownMenuLabel>
+              {phoneSorts.map(([k, label]) => (
+                <DropdownMenuItem
+                  key={k}
+                  onSelect={(e) => {
+                    e.preventDefault();
+                    toggle(k);
+                  }}
+                  className={cn("rounded-xl py-2.5", sort?.key === k && "font-medium text-primary")}
                 >
-                  <ArrowUpDown className="size-4" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-52 rounded-2xl p-1.5">
-                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                  Sort by
-                </DropdownMenuLabel>
-                {phoneSorts.map(([k, label]) => (
-                  <DropdownMenuItem
-                    key={k}
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      toggle(k);
-                    }}
-                    className={cn(
-                      "rounded-xl py-2.5",
-                      sort?.key === k && "font-medium text-primary",
-                    )}
-                  >
-                    {label}
-                    {sort?.key === k &&
-                      (sort.dir === 1 ? (
-                        <ArrowUp className="ml-auto size-4" />
-                      ) : (
-                        <ArrowDown className="ml-auto size-4" />
-                      ))}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <SegmentControl<View>
-              value={view}
-              onChange={pick}
-              options={[
-                { value: "seller", label: "Seller" },
-                { value: "order", label: "Order ID" },
-                { value: "car", label: "Car" },
-              ]}
-            />
-          </div>
+                  {label}
+                  {sort?.key === k &&
+                    (sort.dir === 1 ? (
+                      <ArrowUp className="ml-auto size-4" />
+                    ) : (
+                      <ArrowDown className="ml-auto size-4" />
+                    ))}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <SegmentControl<View>
+            value={view}
+            onChange={pick}
+            options={[
+              { value: "seller", label: "Seller" },
+              { value: "order", label: "Order ID" },
+              { value: "car", label: "Car" },
+            ]}
+          />
         </div>
-      </StickyBand>
-      {/* Six rows show (41px each, between a 37px heading and a 37px total); the rest scroll, under a
-          heading and a total that stay put. */}
+      </div>
+
+      {/* Six rows show (41px each, between a 37px heading and a 37px total); the rest scroll. Nothing is pinned:
+          the heading and the Total scroll with the rows. */}
       <div ref={card} className="card-elevated hidden max-h-[20rem] overflow-auto md:block">
         <table className="w-full min-w-[44rem] text-xs [&_tr>:first-child]:pl-4 [&_tr>:last-child]:pr-4">
           {view === "car" ? (
