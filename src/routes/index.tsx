@@ -557,17 +557,21 @@ function DashboardPage() {
 
       <MySubscriptionRequest />
 
-      {/* Under the numbers, above the shelves that come and go: these are the
-          cars that stay. Auto hides itself until there is one to show. */}
-      {!loading && prizedShelf !== "hide" && (
-        <PrizedShelf rows={data} showEmpty={prizedShelf === "show"} />
-      )}
+      {/* Side by side on a wide screen: the cars that stay, and what to look for next. Either one can
+          be off, or have nothing to show; whichever is left takes the whole row. */}
+      <div className="grid items-start gap-x-6 gap-y-3 min-[1280px]:grid-cols-2 [&>*:only-child]:col-span-full [&>[data-shelf=prized]:last-child]:col-span-full">
+        {/* Under the numbers, above the shelves that come and go: these are the
+            cars that stay. Auto hides itself until there is one to show. */}
+        {!loading && prizedShelf !== "hide" && (
+          <PrizedShelf rows={data} showEmpty={prizedShelf === "show"} />
+        )}
 
-      {/* Above the tracker. It is the shortest-lived thing on the page — three
-          days and a car drops out of it for good — and it renders nothing at
-          all on a quiet week, so it costs the tracker no room when there is
-          nothing to show. */}
-      {!loading && showForYou && <ForYou />}
+        {/* Above the tracker. It is the shortest-lived thing on the page — three
+            days and a car drops out of it for good — and it renders nothing at
+            all on a quiet week, so it costs the tracker no room when there is
+            nothing to show. */}
+        {!loading && showForYou && <ForYou />}
+      </div>
 
       {/* Right after the suggestions: who you owe, what is on hold, what is on its way. */}
       {!loading && showCarsDue && <SellerAccounts cars={data} />}

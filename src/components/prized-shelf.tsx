@@ -273,7 +273,8 @@ function PrizedCoverflow({
         "relative select-none [clip-path:inset(-4rem_-1.5rem_-4rem_0)]",
         wide
           ? // 1000px at most: uncapped, the front car grew to 360px wide and 450px tall on a big monitor.
-            "mx-auto mt-4 aspect-[100/33] max-w-[1000px] [perspective:1500px]"
+            // In a half-width column the frame is taller, so the details panel has room for its facts.
+            "mx-auto mt-4 aspect-[100/33] max-w-[1000px] [perspective:1500px] @max-[820px]:!aspect-[100/48]"
           : "mt-3 aspect-[100/52] [perspective:900px]",
       )}
       style={{ touchAction: "pan-y", overscrollBehaviorX: "contain" }}
@@ -490,7 +491,7 @@ export function PrizedShelf({ rows, showEmpty }: { rows: Diecast[]; showEmpty: b
   if (pool.length === 0) {
     if (!showEmpty) return null;
     return (
-      <section className="card-elevated p-5">
+      <section data-shelf="prized" className="card-elevated p-5">
         <Eyebrow />
         <p className="mt-2 text-sm text-muted-foreground">
           No chase, STH, TH or favourite cars yet. Mark one and it will be shown here.
@@ -521,7 +522,7 @@ export function PrizedShelf({ rows, showEmpty }: { rows: Diecast[]; showEmpty: b
   return (
     <>
       {/* PHONE: no frame, a taller shelf, and the cars on a curve. */}
-      <section className="min-w-0 pb-4 sm:hidden">
+      <section data-shelf="prized" className="min-w-0 pb-4 sm:hidden">
         <div className="flex items-start justify-between gap-3 px-1">
           <div className="min-w-0">
             <h2 className="text-display text-lg font-semibold">Prized possessions</h2>
@@ -540,7 +541,7 @@ export function PrizedShelf({ rows, showEmpty }: { rows: Diecast[]; showEmpty: b
         </div>
       </section>
 
-      <section className="hidden min-w-0 sm:block">
+      <section data-shelf="prized" className="@container hidden min-w-0 sm:block">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-display text-lg font-semibold">Prized possessions</h2>

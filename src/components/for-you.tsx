@@ -124,7 +124,9 @@ function ForYouCarousel({
           return (
             <article
               key={p.car.car_id}
-              className="flex w-[var(--sw)] shrink-0 snap-start snap-always flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
+              // In a half-width column (480-760px) exactly three cars show and the rest scroll; on a phone
+              // and in a full row the width is --sw as before.
+              className="flex w-[var(--sw)] shrink-0 snap-start snap-always flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm @min-[480px]:@max-[760px]:!w-[calc((100cqw_-_1.5rem)/3)]"
             >
               {/* The picture fills its tile, as in the blister view. */}
               <div className="relative">
