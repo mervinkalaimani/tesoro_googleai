@@ -287,11 +287,11 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     </th>
   );
   const th =
-    "[background:color-mix(in_oklab,var(--primary)_var(--gt,0%),var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
+    "sticky top-0 z-10 [background:color-mix(in_oklab,var(--primary)_var(--gt,0%),var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
   const foot =
-    "border-t border-border [background:color-mix(in_oklab,var(--primary)_var(--gb,0%),var(--background))] font-medium";
+    "sticky bottom-0 z-10 border-t border-border [background:color-mix(in_oklab,var(--primary)_var(--gb,0%),var(--background))] font-medium";
   const pills = (statuses: string[]) => (
     <div className="flex flex-wrap gap-1">
       {statuses.map((st) => (
@@ -374,8 +374,8 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
         </div>
       </div>
 
-      {/* Six rows show (41px each, between a 37px heading and a 37px total); the rest scroll. Nothing is pinned:
-          the heading and the Total scroll with the rows. */}
+      {/* Six rows show (41px each, between a 37px heading and a 37px total); the rest scroll, under the
+          column headings and the Total, which stay put in the frame. The title above is not pinned. */}
       <div ref={card} className="card-elevated hidden max-h-[20rem] overflow-auto md:block">
         <table className="w-full min-w-[44rem] text-xs [&_tr>:first-child]:pl-4 [&_tr>:last-child]:pr-4">
           {view === "car" ? (
