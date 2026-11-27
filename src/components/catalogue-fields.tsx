@@ -369,18 +369,15 @@ export function CatalogueFields({
         </Field>
       )}
 
-      {/* Four options, and nearly every car is the first of them — so a row of
-          buttons rather than a dropdown: Normal is already chosen, and a rare
-          pull is one tap instead of two. The full names sit behind the ⓘ; on the
-          buttons they would truncate to nothing. */}
+      {/* A picker, like Status: it is one row that says the answer, and the four
+          choices open from it. The full names sit behind the ⓘ. */}
       {!skip("rarity") && (
         <Field
           label="Rarity"
           info="TH is a Treasure Hunt and STH a Super Treasure Hunt, both Hot Wheels'. Chase is every other brand's limited run. Normal is a regular car."
         >
           <SegmentControl<Rarity>
-            row
-            fill
+            menuOnTap
             disabled={disabled}
             value={values.rarity || "Normal"}
             onChange={(v) => onChange("rarity", v)}
