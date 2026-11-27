@@ -256,7 +256,7 @@ export function FormSection({
           <div className="overflow-hidden rounded-2xl border border-border/60 bg-card">
             {/* -mt-px hides the first row's hairline under the group's edge; the rows sit flush,
                 and anything that put a gap between them (grids, stacks) is closed up. */}
-            <div className="-mt-px [&_.grid]:!gap-y-0 [&_.mb-3]:!mb-0 [&_.space-y-2>*+*]:!mt-0 [&_.space-y-3>*+*]:!mt-0 [&_p.text-muted-foreground]:hidden">
+            <div className="-mt-px [&_.grid-cols-1]:!gap-y-0 [&_.mb-3]:!mb-0 [&_.space-y-2>*+*]:!mt-0 [&_.space-y-3>*+*]:!mt-0 [&_p.text-muted-foreground]:hidden">
               {children}
             </div>
           </div>

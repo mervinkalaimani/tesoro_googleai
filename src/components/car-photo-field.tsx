@@ -193,8 +193,8 @@ export function CarPhotoField({
         split
           ? // Frame, buttons and link stack in the left column; the suggestions
             // take row 1 of the right column and span down beside them.
-            "grid gap-2 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-x-5"
-          : "space-y-2",
+            "grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-x-5 lg:gap-y-3"
+          : "space-y-4",
         className,
       )}
     >
