@@ -36,18 +36,14 @@ import { uses } from "@/lib/use-cases";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import type { Diecast } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { BlisterTile, CarOverlay } from "@/components/blister-tile";
 import { useCars, useCarsActions } from "@/lib/cars-store";
 import { useCatalog } from "@/lib/catalog-store";
 import { findCarImage } from "@/lib/car-image";
 import { formatDayMonthYear, inr, inrFull, inrPriceFull } from "@/lib/format";
 import { trackingPageFor } from "@/lib/tracking";
 import { TrackingLink } from "@/components/tracking-link";
-import {
-  FAVOURITE_COLOUR,
-  ChaseMark,
-  FavouriteMark,
-  hasUnseenAdminChange,
-} from "@/components/car-marks";
+import { FAVOURITE_COLOUR, hasUnseenAdminChange } from "@/components/car-marks";
 import { RARITY_FLAME, RARITY_LABEL, nextRarity, rarityOf, withRarity } from "@/lib/rarity";
 import { Button } from "@/components/ui/button";
 import { ChangeLog } from "@/components/change-log";
@@ -2460,84 +2456,25 @@ function CarShelfRow({
         )}
       </div>
 
-      <div className="-mx-3 -mt-8 mb-3 flex min-w-0 snap-x scroll-px-3 items-stretch gap-3 overflow-x-auto px-3 py-8 no-scrollbar md:grid md:grid-cols-4 md:overflow-visible md:[&>*:nth-child(n+5)]:hidden">
+      <div className="-mx-3 -mt-8 mb-3 flex min-w-0 snap-x scroll-px-3 items-stretch gap-3 overflow-x-auto px-3 py-8 no-scrollbar md:grid md:grid-cols-3 md:overflow-visible md:[&>*:nth-child(n+4)]:hidden">
         {cars.map((related) => (
-          <RelatedCarCard
+          // The same tile as every shelf and grid: the photograph in the shape of the box, the
+          // name and brand on it.
+          <BlisterTile
             key={related.id}
             car={related}
-            isCurrent={related.id === currentId}
-            className="w-28 shrink-0 snap-start md:w-auto md:min-w-0"
-            onSelect={() => onSelectCar?.(related)}
+            onOpen={() => onSelectCar?.(related)}
+            overlay={<CarOverlay car={related} brandOnly small />}
+            showStatus={false}
+            smallPills
+            className={cn(
+              "w-28 shrink-0 snap-start md:w-auto md:min-w-0",
+              related.id === currentId && "!border-primary/70 ring-1 ring-primary/40",
+            )}
           />
         ))}
       </div>
     </section>
-  );
-}
-
-function RelatedCarCard({
-  car,
-  onSelect,
-  className,
-  isCurrent = false,
-}: {
-  car: Diecast;
-  onSelect: () => void;
-  className?: string;
-  isCurrent?: boolean;
-}) {
-  const title = car.name || `${car.make} ${car.model}`.trim() || "Unnamed car";
-  const rarity = rarityOf(car);
-  const subtitle = carSubLine(car);
-
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      title={title}
-      className={cn(
-        "card-elevated group relative flex flex-col !rounded-2xl p-2 text-left transition-all hover:!border-primary/50 active:scale-95 cursor-pointer",
-        isCurrent && "!border-primary/70 ring-1 ring-primary/40",
-        className,
-      )}
-    >
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-muted/40">
-        <CarThumb car={car} className="size-full object-cover" />
-        {isCurrent && (
-          <span className="absolute left-1 top-1 rounded bg-primary/90 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-primary-foreground shadow-xs">
-            Viewing
-          </span>
-        )}
-        {(car.chase || car.favourite) && (
-          <div className="pointer-events-none absolute right-1 top-1 flex items-center gap-1">
-            {car.chase && (
-              <span className="grid size-4 place-items-center rounded-full bg-black/70 backdrop-blur-xs">
-                <ChaseMark rarity={rarity} className="size-2.5" />
-              </span>
-            )}
-            {car.favourite && (
-              <span className="grid size-4 place-items-center rounded-full bg-black/70 backdrop-blur-xs">
-                <FavouriteMark className="size-2.5" />
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-1.5 flex min-w-0 flex-1 flex-col justify-between">
-        <div className="line-clamp-2 text-xs font-semibold leading-snug text-foreground group-hover:text-primary transition-colors min-h-[2.1rem]">
-          {title}
-        </div>
-        <div className="mt-1 flex items-baseline justify-between gap-1 text-xs text-muted-foreground">
-          <span className="truncate">{subtitle}</span>
-          {car.spent ? (
-            <span className="shrink-0 tabular-nums font-medium text-foreground/80">
-              {inr(car.spent)}
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </button>
   );
 }
 
