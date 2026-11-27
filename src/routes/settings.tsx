@@ -705,6 +705,7 @@ export function SettingsPage() {
                       value={accentColor}
                       onChange={(v) => setAccentColor(v as AccentColor)}
                       options={ACCENT_OPTIONS}
+                      menuOnTap
                       className="h-9 text-sm sm:w-auto"
                     />
                   </div>

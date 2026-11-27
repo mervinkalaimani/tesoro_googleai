@@ -139,6 +139,7 @@ export function CyclePill<T extends string>({
   disabled,
   fill,
   phoneOnly,
+  menuOnTap,
 }: {
   value: T;
   onChange: (v: T) => void;
@@ -149,6 +150,11 @@ export function CyclePill<T extends string>({
   fill?: boolean;
   /** No segment row from sm: up — for a set too long to lay out as a row. */
   phoneOnly?: boolean;
+  /**
+   * A tap opens the list of every choice instead of stepping to the next. For a set where
+   * stepping through would be a long way round (the colours), the pill still shows one value.
+   */
+  menuOnTap?: boolean;
 }) {
   const rest = options.filter((o) => o.value !== separate);
   // Press and hold lists every choice. The tap that follows a hold is swallowed.
@@ -214,12 +220,13 @@ export function CyclePill<T extends string>({
                     <button
                       type="button"
                       disabled={disabled}
-                      onPointerDown={startHold}
+                      onPointerDown={menuOnTap ? undefined : startHold}
                       onPointerUp={endHold}
                       onPointerLeave={endHold}
                       onPointerCancel={endHold}
                       onContextMenu={(e) => e.preventDefault()}
                       onClick={() => {
+                        if (menuOnTap) return setMenu((o) => !o);
                         if (held.current) {
                           held.current = false;
                           return;
@@ -229,7 +236,11 @@ export function CyclePill<T extends string>({
                           i < 0 || onSeparate ? rest[0].value : rest[(i + 1) % rest.length].value,
                         );
                       }}
-                      aria-label={`${shown.label}. Tap for the next, press and hold for all.`}
+                      aria-label={
+                        menuOnTap
+                          ? `${shown.label}. Tap to choose.`
+                          : `${shown.label}. Tap for the next, press and hold for all.`
+                      }
                       className={cn(
                         pill(!onSeparate),
                         !onSeparate && shown.tone && `!bg-none ${shown.tone}`,
@@ -279,7 +290,7 @@ export function CyclePill<T extends string>({
             </PopoverContent>
           </Popover>
         )}
-        {shown && (
+        {shown && !menuOnTap && (
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
@@ -326,6 +337,8 @@ export function SegmentControl<T extends string>(props: {
   fill?: boolean;
   /** Keep the row of segments on a phone too, where a form wants every choice visible. */
   row?: boolean;
+  /** On a phone a tap opens the list of choices rather than stepping to the next. */
+  menuOnTap?: boolean;
 }) {
   const { row, ...rest } = props;
   if (row || rest.clearable || rest.options.length < 2) return <SegmentRow {...rest} />;
