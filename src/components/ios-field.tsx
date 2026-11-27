@@ -70,7 +70,7 @@ export function IosInput({
         "placeholder:text-muted-foreground/70",
         // The phone's date field draws its own text, left-aligned by default.
         "[&::-webkit-date-and-time-value]:text-right [&::-webkit-datetime-edit]:justify-end",
-        type === "date" && "min-h-11 text-right",
+        type === "date" && "ios-date min-h-11 text-right",
         readOnly && "cursor-default text-muted-foreground",
       )}
     />
