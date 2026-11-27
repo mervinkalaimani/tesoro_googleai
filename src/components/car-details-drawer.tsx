@@ -1380,7 +1380,8 @@ function PhoneFacts({
   const hasAny = rows.some((row) => row.items.some(([l, v]) => l === "Number" || (v || "").trim()));
   if (!hasAny) return null;
   return (
-    <div className="space-y-2">
+    // One frame for all the facts, a hairline between rows and between cells.
+    <div className="facts-frame card-elevated divide-y divide-border/60 overflow-hidden !rounded-2xl">
       {rows.map((row, i) => {
         // Number is always drawn (as "-" when empty) so the Brand cell keeps its size.
         const items = row.items.filter(([l, v]) => l === "Number" || (v || "").trim());
@@ -1390,7 +1391,7 @@ function PhoneFacts({
           // leaves no hole: the ones that are there simply grow into it.
           <div
             key={i}
-            className="grid gap-2"
+            className="grid divide-x divide-border/60"
             style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}
           >
             {items.map(([label, v]) => {
@@ -2897,10 +2898,8 @@ function CatalogRecordTab({
           ))}
         </>
       ) : (
-        <>
-          <InfoRow stacked={stacked} label="Assortment" value={siblings[0].assortment} />
-          {idRow(siblings[0], "Catalogue ID")}
-        </>
+        // The assortment is already one of the tiles above, so it is not said again here.
+        idRow(siblings[0], "Catalogue ID")
       )}
 
       {preOrder && expectedDate && (

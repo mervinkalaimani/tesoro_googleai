@@ -1128,3 +1128,14 @@ html .flat-cards .card-elevated {
   /* No outline: the border stays (so nothing shifts by a pixel) but is clear. */
   border-color: transparent !important;
 }
+
+/* The facts of a casting in one frame: the cells inside it are not cards of their own, just space
+   between hairlines. */
+html .facts-frame .card-elevated {
+  background: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+}
