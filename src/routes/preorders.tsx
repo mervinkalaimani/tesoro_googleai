@@ -236,7 +236,7 @@ function PreOrderCardImpl({
           <PreOrderFact
             label="Balance"
             value={settled ? "Fully paid" : inrFull(due)}
-            className={`w-24 ${settled ? "text-emerald-500" : "text-amber-500"}`}
+            className={`w-24 ${settled ? "text-emerald-700 dark:text-emerald-500" : "text-amber-700 dark:text-amber-500"}`}
           />
         </dl>
         <div className="flex items-center justify-end gap-2 sm:w-[15rem]">
@@ -279,8 +279,8 @@ function PreOrderCardImpl({
             <span
               className={`shrink-0 rounded-full border px-2 py-px text-[11px] font-medium ${
                 settled
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                  : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                  ? "border-emerald-600/50 bg-emerald-500/15 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400"
+                  : "border-amber-600/50 bg-amber-500/20 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
               }`}
             >
               {settled ? "Fully Paid" : "Pre-booked"}
@@ -306,7 +306,11 @@ function PreOrderCardImpl({
         <PreOrderFact
           label="Balance"
           value={settled ? "Fully paid" : inrFull(due)}
-          className={settled ? "text-emerald-500" : "text-amber-500"}
+          className={
+            settled
+              ? "text-emerald-700 dark:text-emerald-500"
+              : "text-amber-700 dark:text-amber-500"
+          }
         />
       </dl>
 
@@ -350,7 +354,7 @@ function PreOrderCardImpl({
             type="button"
             variant="ghost"
             onClick={onPay}
-            className={`${HALF_DIVIDED} text-emerald-500 hover:text-emerald-400`}
+            className={`${HALF_DIVIDED} !text-foreground`}
           >
             <IndianRupee className="size-4" />
             Pay balance
@@ -359,7 +363,7 @@ function PreOrderCardImpl({
         <UpdateStatusButton
           onClick={onUpdateStatus}
           label="Update status"
-          className={`${HALF_DIVIDED} text-primary`}
+          className={`${HALF_DIVIDED} !text-foreground`}
         />
       </footer>
     </article>
@@ -421,8 +425,8 @@ function OrderGroupCard({
           <span
             className={`shrink-0 rounded-full border px-2 py-px text-[11px] font-medium ${
               settled
-                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-400"
-                : "border-amber-500/40 bg-amber-500/10 text-amber-400"
+                ? "border-emerald-600/50 bg-emerald-500/15 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400"
+                : "border-amber-600/50 bg-amber-500/20 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
             }`}
           >
             {settled ? "Fully Paid" : "Pre-booked"}
@@ -482,7 +486,11 @@ function OrderGroupCard({
           <PreOrderFact
             label="Balance due"
             value={settled ? "Fully paid" : inrFull(g.due)}
-            className={settled ? "text-emerald-500" : "text-amber-500"}
+            className={
+              settled
+                ? "text-emerald-700 dark:text-emerald-500"
+                : "text-amber-700 dark:text-amber-500"
+            }
           />
         </dl>
       </header>
@@ -517,7 +525,7 @@ function OrderGroupCard({
             type="button"
             variant="ghost"
             onClick={payFirst}
-            className={`${HALF_DIVIDED} text-emerald-500 hover:text-emerald-400`}
+            className={`${HALF_DIVIDED} !text-foreground`}
           >
             <IndianRupee className="size-4" />
             Pay
@@ -527,7 +535,7 @@ function OrderGroupCard({
           type="button"
           variant="ghost"
           onClick={onUpdateOrder}
-          className={`${HALF_DIVIDED} text-primary hover:text-primary`}
+          className={`${HALF_DIVIDED} !text-foreground`}
         >
           <Truck className="size-4" />
           Update order
@@ -645,7 +653,9 @@ function PreOrderOrdersTable({
                 <td className={`${cell} text-right tabular-nums`}>{inrFull(g.paid)}</td>
                 <td
                   className={`${cell} text-right font-semibold tabular-nums ${
-                    settled ? "text-emerald-500" : "text-amber-500"
+                    settled
+                      ? "text-emerald-700 dark:text-emerald-500"
+                      : "text-amber-700 dark:text-amber-500"
                   }`}
                 >
                   {settled ? "Fully paid" : inrFull(g.due)}
@@ -713,7 +723,9 @@ function PreOrderOrdersTable({
                       <td className={`${cell} text-right tabular-nums`}>{inrFull(c.paid || 0)}</td>
                       <td
                         className={`${cell} text-right font-semibold tabular-nums ${
-                          due > 0 ? "text-amber-500" : "text-emerald-500"
+                          due > 0
+                            ? "text-amber-700 dark:text-amber-500"
+                            : "text-emerald-700 dark:text-emerald-500"
                         }`}
                       >
                         {due > 0 ? inrFull(due) : "Fully paid"}
@@ -814,7 +826,9 @@ function PreOrderTable({
                 <td className={`${cell} text-right tabular-nums`}>{inrFull(r.paid || 0)}</td>
                 <td
                   className={`${cell} text-right font-semibold tabular-nums ${
-                    due > 0 ? "text-amber-500" : "text-emerald-500"
+                    due > 0
+                      ? "text-amber-700 dark:text-amber-500"
+                      : "text-emerald-700 dark:text-emerald-500"
                   }`}
                 >
                   {due > 0 ? inrFull(due) : "Fully paid"}
@@ -896,7 +910,7 @@ function SectionHeading({
         <span>
           Balance{" "}
           <span
-            className={`font-semibold tabular-nums ${due > 0 ? "text-amber-500" : "text-emerald-500"}`}
+            className={`font-semibold tabular-nums ${due > 0 ? "text-amber-700 dark:text-amber-500" : "text-emerald-700 dark:text-emerald-500"}`}
           >
             {due > 0 ? inrFull(due) : "Fully paid"}
           </span>
