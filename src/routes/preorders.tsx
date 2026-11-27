@@ -169,6 +169,7 @@ function PreOrderCardImpl({
   onUpdateStatus,
   showSeller = true,
   row = false,
+  inGroup = false,
 }: {
   car: Diecast;
   onOpen: () => void;
@@ -178,6 +179,11 @@ function PreOrderCardImpl({
   row?: boolean;
   /** Off inside a group, where the heading already names the seller. */
   showSeller?: boolean;
+  /**
+   * Shown inside an order's own card: the stacked form then has no card of its own and no buttons
+   * of its own, since the order's footer is where to pay or update it.
+   */
+  inGroup?: boolean;
 }) {
   const due = balanceOf(car);
   const settled = due === 0;
@@ -260,12 +266,12 @@ function PreOrderCardImpl({
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-");
   return (
-    <article className="card-elevated flex flex-col overflow-hidden">
+    <article className={inGroup ? "flex flex-col" : "card-elevated flex flex-col overflow-hidden"}>
       {/* NAME FIRST */}
       <button
         type="button"
         onClick={onOpen}
-        className="flex items-start gap-3 px-3 pb-2 pt-3 text-left"
+        className={`flex items-start gap-3 px-3 text-left ${inGroup ? "py-2.5" : "pb-2 pt-3"}`}
       >
         <CarThumb
           car={car}
@@ -276,22 +282,26 @@ function PreOrderCardImpl({
             <span className="min-w-0 truncate text-sm font-bold tracking-tight hover:text-primary">
               {car.name || `${car.make} ${car.model}`.trim() || "Unnamed car"}
             </span>
-            <span
-              className={`shrink-0 rounded-full border px-2 py-px text-[11px] font-medium ${
-                settled
-                  ? "border-emerald-600/50 bg-emerald-500/15 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400"
-                  : "border-amber-600/50 bg-amber-500/20 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
-              }`}
-            >
-              {settled ? "Fully Paid" : "Pre-booked"}
-            </span>
+            {!inGroup && (
+              <span
+                className={`shrink-0 rounded-full border px-2 py-px text-[11px] font-medium ${
+                  settled
+                    ? "border-emerald-600/50 bg-emerald-500/15 text-emerald-800 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400"
+                    : "border-amber-600/50 bg-amber-500/20 text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
+                }`}
+              >
+                {settled ? "Fully Paid" : "Pre-booked"}
+              </span>
+            )}
           </div>
           <p className="mt-0.5 truncate text-xs text-muted-foreground">{sub}</p>
         </div>
       </button>
 
       {/* The facts, the label above each value: three columns on a phone, a wrapping row from sm up. */}
-      <dl className="mt-auto grid grid-cols-3 gap-x-3 gap-y-2 border-t border-border px-3 py-2 sm:flex sm:flex-wrap sm:gap-x-4 sm:gap-y-1.5">
+      <dl
+        className={`mt-auto grid-cols-3 gap-x-3 gap-y-2 border-t border-border px-3 py-2 sm:flex sm:flex-wrap sm:gap-x-4 sm:gap-y-1.5 ${inGroup ? "hidden" : "grid"}`}
+      >
         <PreOrderFact
           label="Ordered"
           value={formatDayMonthYear(car.orderDate) || car.orderDate || "—"}
@@ -314,58 +324,62 @@ function PreOrderCardImpl({
         />
       </dl>
 
-      {/* From sm up: Export as an icon, then the labelled actions on the right. */}
-      <footer className="hidden items-center gap-2 border-t border-border px-3 py-2 sm:flex sm:justify-end">
-        <ExportButton
-          rows={[car]}
-          name={exportName}
-          label={car.name || "Pre-order"}
-          iconOnly
-          size="icon"
-          className="size-8 shrink-0"
-        />
-        {!settled && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onPay}
-            className="gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
-          >
-            <IndianRupee className="size-3.5" />
-            Pay balance
-          </Button>
-        )}
-        <UpdateStatusButton onClick={onUpdateStatus} />
-      </footer>
+      {!inGroup && (
+        <>
+          {/* From sm up: Export as an icon, then the labelled actions on the right. */}
+          <footer className="hidden items-center gap-2 border-t border-border px-3 py-2 sm:flex sm:justify-end">
+            <ExportButton
+              rows={[car]}
+              name={exportName}
+              label={car.name || "Pre-order"}
+              iconOnly
+              size="icon"
+              className="size-8 shrink-0"
+            />
+            {!settled && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onPay}
+                className="gap-1.5 border-emerald-500/40 text-emerald-500 hover:bg-emerald-500/10 hover:text-emerald-400"
+              >
+                <IndianRupee className="size-3.5" />
+                Pay balance
+              </Button>
+            )}
+            <UpdateStatusButton onClick={onUpdateStatus} />
+          </footer>
 
-      {/* On a phone: flush halves along the bottom edge. */}
-      <footer className="flex w-full items-center border-t border-border px-2 py-1 sm:hidden">
-        <ExportButton
-          rows={[car]}
-          name={exportName}
-          label={car.name || "Pre-order"}
-          iconOnly
-          variant="ghost"
-          size="sm"
-          className={`${HALF} !size-10 !min-w-0 !flex-none !grow-0 !px-0 text-foreground/80`}
-        />
-        {!settled && (
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={onPay}
-            className={`${HALF_DIVIDED} !text-foreground`}
-          >
-            <IndianRupee className="size-4" />
-            Pay balance
-          </Button>
-        )}
-        <UpdateStatusButton
-          onClick={onUpdateStatus}
-          label="Update status"
-          className={`${HALF_DIVIDED} !text-foreground`}
-        />
-      </footer>
+          {/* On a phone: flush halves along the bottom edge. */}
+          <footer className="flex w-full items-center border-t border-border px-2 py-1 sm:hidden">
+            <ExportButton
+              rows={[car]}
+              name={exportName}
+              label={car.name || "Pre-order"}
+              iconOnly
+              variant="ghost"
+              size="sm"
+              className={`${HALF} !size-10 !min-w-0 !flex-none !grow-0 !px-0 text-foreground/80`}
+            />
+            {!settled && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={onPay}
+                className={`${HALF_DIVIDED} !text-foreground`}
+              >
+                <IndianRupee className="size-4" />
+                Pay balance
+              </Button>
+            )}
+            <UpdateStatusButton
+              onClick={onUpdateStatus}
+              label="Update status"
+              className={`${HALF_DIVIDED} !text-foreground`}
+            />
+          </footer>
+        </>
+      )}
     </article>
   );
 }
@@ -496,13 +510,14 @@ function OrderGroupCard({
       </header>
 
       {carsOpen && (
-        <div className="grid gap-2 border-t border-border p-3">
+        <div className="grid gap-2 border-t border-border p-3 max-sm:gap-0 max-sm:divide-y max-sm:divide-border">
           {g.items.map((c) => (
             <PreOrderCard
               key={c.id}
               car={c}
               showSeller={false}
               row
+              inGroup
               onOpen={() => onOpenCar(c)}
               onPay={() => onPay(c)}
               onUpdateStatus={() => onUpdateStatus(c)}
