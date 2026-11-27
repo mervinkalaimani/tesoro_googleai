@@ -9,9 +9,20 @@ import { useEffect } from "react";
  * GPU cannot hold that many: the sheet came up half drawn (panels empty, the photo cut short)
  * on a Galaxy S24 Ultra in both Chrome and Samsung Internet. The page behind a sheet is under
  * a dark scrim and cannot be seen blurred anyway.
+ *
+ * Not on iPhone and iPad. There the page's glass is left alone: flipping the blur off across a
+ * long catalogue the moment a sheet opens makes WebKit rebuild every layer at once, and Safari
+ * kills the tab ("A problem repeatedly occurred") before the sheet is drawn. The Android
+ * half-drawn sheet this guard fixes does not happen there.
  */
+const isAppleTouch = () =>
+  typeof navigator !== "undefined" &&
+  (/iP(hone|ad|od)/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+
 export function ModalGlassGuard() {
   useEffect(() => {
+    if (isAppleTouch()) return;
     const root = document.documentElement;
     const sync = () => {
       const open = !!document.querySelector('[role="dialog"][data-state="open"]');
