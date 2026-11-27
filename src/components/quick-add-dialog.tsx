@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { CarThumb } from "@/components/car-thumb";
-import { SegmentControl } from "@/components/segment-control";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { IosGroup, IosInput, IosPicker, IosRow } from "@/components/ios-field";
@@ -196,21 +195,36 @@ export function QuickAddDialog({
                 />
               </IosRow>
             )}
+            <IosRow label="What it cost">
+              {/* The usual prices (this casting's MRP, then what you have paid before) in a picker,
+                  and a box to type one that is not on the list. Either sets the same amount. */}
+              <div className="flex items-center justify-end gap-3">
+                {quickCosts.length > 0 && (
+                  <IosPicker
+                    label="Usual prices"
+                    value={quickCosts.some((q) => q.value === spent) ? spent : ""}
+                    onChange={setSpent}
+                    options={quickCosts}
+                    placeholder="Choose"
+                  />
+                )}
+                <div className="w-20 shrink-0">
+                  <IosInput
+                    label="What it cost"
+                    inputMode="decimal"
+                    placeholder={entry.mrp ? `₹ ${entry.mrp}` : "₹"}
+                    value={spent}
+                    onChange={(v) => setSpent(v.replace(/[^0-9.]/g, ""))}
+                  />
+                </div>
+              </div>
+            </IosRow>
             <IosRow label="Status">
               <IosPicker
                 label="Status"
                 value={status}
                 onChange={setStatus}
                 options={STATUS_CHOICES}
-              />
-            </IosRow>
-            <IosRow label="What it cost">
-              <IosInput
-                label="What it cost"
-                inputMode="decimal"
-                placeholder={entry.mrp ? `₹ ${entry.mrp}` : "₹"}
-                value={spent}
-                onChange={(v) => setSpent(v.replace(/[^0-9.]/g, ""))}
               />
             </IosRow>
             <IosRow label="Order date">
@@ -260,16 +274,6 @@ export function QuickAddDialog({
               </IosRow>
             )}
           </IosGroup>
-
-          {quickCosts.length > 0 && (
-            <SegmentControl
-              row
-              clearable
-              value={quickCosts.some((q) => q.value === spent) ? spent : ""}
-              onChange={setSpent}
-              options={quickCosts}
-            />
-          )}
         </div>
 
         <p className="text-xs text-muted-foreground">
