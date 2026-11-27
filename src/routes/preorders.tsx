@@ -6,8 +6,6 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
-  CircleCheck,
-  Clock,
   IndianRupee,
   Plus,
   Store,
@@ -1084,25 +1082,17 @@ function PreOrdersPage() {
           label="Committed value"
           value={inrFull(totalValue)}
           sub={`${rows.length} pre-booked casting${rows.length === 1 ? "" : "s"}`}
-          icon={<IndianRupee className="size-4" />}
         />
         <KpiTile
           label="Deposits paid"
           value={inrFull(totalPaid)}
           sub={`${uniqueModels} secured allocation${uniqueModels === 1 ? "" : "s"}`}
-          icon={<CircleCheck className="size-4" />}
         />
-        <KpiTile
-          label="Balance due"
-          value={inrFull(totalDue)}
-          sub="Outstanding upon arrival"
-          icon={<Clock className="size-4" />}
-        />
+        <KpiTile label="Balance due" value={inrFull(totalDue)} sub="Outstanding upon arrival" />
         <KpiTile
           label={isNextMonth ? "PO for next month" : "PO for this month"}
           value={inrFull(monthBalance)}
           sub={`${targetMonthLabel} ${targetYear} · ${monthCars.length} casting${monthCars.length === 1 ? "" : "s"}`}
-          icon={<Calendar className="size-4" />}
         />
       </KpiBand>
 

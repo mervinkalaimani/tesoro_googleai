@@ -100,7 +100,8 @@ export function KpiTile({
   value: ReactNode;
   /** Context line. Hidden on a phone by default, where there is no room for it. */
   sub?: string;
-  icon: ReactNode;
+  /** Left out for a tile that is just a label and a number. */
+  icon?: ReactNode;
   /** Colours the icon chip. */
   tone?: string;
   /** Colours the number itself — for money that is owed, gained or spent. */
@@ -122,16 +123,18 @@ export function KpiTile({
   const body = (
     <>
       <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground md:gap-2 md:text-xs">
-        <span
-          className={cn(
-            "grid size-5 shrink-0 place-items-center md:size-6",
-            // One accent, no chip: the bare icon in the brand colour. Colour is
-            // kept for the number itself when it carries meaning.
-            "text-primary",
-          )}
-        >
-          {icon}
-        </span>
+        {icon ? (
+          <span
+            className={cn(
+              "grid size-5 shrink-0 place-items-center md:size-6",
+              // One accent, no chip: the bare icon in the brand colour. Colour is
+              // kept for the number itself when it carries meaning.
+              "text-primary",
+            )}
+          >
+            {icon}
+          </span>
+        ) : null}
         <span data-kpi-label className="truncate">
           {label}
         </span>
