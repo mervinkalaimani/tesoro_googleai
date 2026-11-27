@@ -404,13 +404,16 @@ export function CarPhotoField({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+            className="h-14 min-w-0 flex-1 flex-col gap-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
             disabled={busy}
             aria-label={value ? "Replace" : "Choose a file"}
             title={value ? "Replace" : "Choose a file"}
             onClick={() => fileRef.current?.click()}
           >
             <Upload className="size-4" />
+            <span className="text-[10px] font-medium leading-none">
+              {value ? "Replace" : "Upload"}
+            </span>
           </Button>
           {value && (
             <Button
@@ -419,11 +422,12 @@ export function CarPhotoField({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+              className="h-14 min-w-0 flex-1 flex-col gap-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
               disabled={busy}
               onClick={() => void cropExisting()}
             >
               <Crop className="size-4" />
+              <span className="text-[10px] font-medium leading-none">Crop</span>
             </Button>
           )}
           <Button
@@ -431,12 +435,13 @@ export function CarPhotoField({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+            className="h-14 min-w-0 flex-1 flex-col gap-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
             disabled={busy}
             title="Or press Ctrl+V anywhere in this window"
             onClick={() => void paste()}
           >
             <ClipboardPaste className="size-4" />
+            <span className="text-[10px] font-medium leading-none">Paste</span>
           </Button>
           <Button
             aria-label="Link"
@@ -444,7 +449,7 @@ export function CarPhotoField({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+            className="h-14 min-w-0 flex-1 flex-col gap-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
             disabled={busy}
             onClick={() => {
               setLink(value && !/\/storage\/v1\/object\/public\//.test(value) ? value : "");
@@ -452,6 +457,7 @@ export function CarPhotoField({
             }}
           >
             <Link2 className="size-4" />
+            <span className="text-[10px] font-medium leading-none">Link</span>
           </Button>
           {searchQuery.trim() && (
             <Button
@@ -460,10 +466,11 @@ export function CarPhotoField({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+              className="h-14 min-w-0 flex-1 flex-col gap-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
               onClick={() => setWebOpen(true)}
             >
               <Globe className="size-4" />
+              <span className="text-[10px] font-medium leading-none">Search</span>
             </Button>
           )}
           {hasMore && (
@@ -473,10 +480,11 @@ export function CarPhotoField({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+              className="h-14 min-w-0 flex-1 flex-col gap-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
               onClick={() => setShown((n) => n + 10)}
             >
               <Plus className="size-4" />
+              <span className="text-[10px] font-medium leading-none">More</span>
             </Button>
           )}
         </div>
