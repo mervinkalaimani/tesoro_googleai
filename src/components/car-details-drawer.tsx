@@ -2170,11 +2170,11 @@ function CarPurchaseTab({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Paid
                 </p>
-                <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-foreground">
+                <p className="mt-1 truncate text-[13px] font-bold leading-tight text-foreground">
                   {unpaid ? "Pending" : inrFull(partPaid ? paidSoFar : spent)}
                 </p>
                 {partPaid && (
-                  <p className="truncate text-xs text-muted-foreground">of {inrFull(spent)}</p>
+                  <p className="truncate text-[11px] text-muted-foreground">of {inrFull(spent)}</p>
                 )}
               </div>
             )}
@@ -2183,7 +2183,7 @@ function CarPurchaseTab({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Balance
                 </p>
-                <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-foreground">
+                <p className="mt-1 truncate text-[13px] font-bold leading-tight text-foreground">
                   {inrFull(owed)}
                 </p>
               </div>
@@ -2193,7 +2193,7 @@ function CarPurchaseTab({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   MRP
                 </p>
-                <p className="mt-1 truncate text-lg font-bold leading-tight tracking-tight text-muted-foreground">
+                <p className="mt-1 truncate text-[13px] font-bold leading-tight text-muted-foreground">
                   {inrFull(mrp)}
                 </p>
               </div>
@@ -2203,7 +2203,7 @@ function CarPurchaseTab({
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                   Sold by
                 </p>
-                <div className="mt-1 truncate text-lg font-bold leading-tight text-primary">
+                <div className="mt-1 truncate text-[13px] font-bold leading-tight text-primary">
                   <LinkValue
                     value={car.seller}
                     title={`Everything bought from ${car.seller}`}
