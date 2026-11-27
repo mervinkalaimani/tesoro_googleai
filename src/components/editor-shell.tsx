@@ -150,7 +150,7 @@ export function EditorShell({
         )}
 
         {rail.length > 0 && (
-          <div className="-mx-0.5 mt-2.5 flex gap-1.5 overflow-x-auto px-0.5 pb-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
+          <div className="-ml-0.5 -mr-10 mt-2.5 flex gap-1.5 overflow-x-auto px-0.5 pb-0.5 [scrollbar-width:none] lg:hidden [&::-webkit-scrollbar]:hidden">
             {rail.map((r) => {
               const Icon = r.icon;
               return (
