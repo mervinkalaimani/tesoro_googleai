@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronRight } from "lucide-react";
 import { useCarDrawer } from "@/components/car-details-drawer";
 import { useApp } from "@/lib/store";
@@ -216,23 +216,6 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   /** The page's glow fades from the top of the window down. The heading and the Total row are
       solid, so each takes the tint the glow has at the height it is sitting at. */
   const card = useRef<HTMLDivElement>(null);
-  /**
-   * The column headings pin to the page, just under the pinned title: the top bar (56px) and the
-   * title band, whatever height that comes to. The table runs the full length of the page for that
-   * to work, so it is clipped (which, unlike overflow:auto, does not stop a child sticking).
-   */
-  const sec = useRef<HTMLElement>(null);
-  const hasRows = m.list.length > 0 || m.previous > 0;
-  useLayoutEffect(() => {
-    const el = sec.current;
-    const band = el?.firstElementChild as HTMLElement | null;
-    if (!el || !band) return;
-    const set = () => el.style.setProperty("--cd-top", `${56 + band.offsetHeight}px`);
-    set();
-    const ro = new ResizeObserver(set);
-    ro.observe(band);
-    return () => ro.disconnect();
-  }, [hasRows]);
   useEffect(() => {
     let raf = 0;
     const tint = () => {
@@ -305,7 +288,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
     </th>
   );
   const th =
-    "sticky top-[var(--cd-top,3.5rem)] z-10 [background:color-mix(in_oklab,var(--primary)_var(--gt,0%),var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
+    "sticky top-0 z-10 [background:color-mix(in_oklab,var(--primary)_var(--gt,0%),var(--background))] px-2 py-2.5 font-normal text-muted-foreground";
   const td = "px-2 py-2.5";
   const num = "text-right tabular-nums";
   const foot =
@@ -323,7 +306,7 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
   const link = "max-w-full cursor-pointer truncate text-left";
 
   return (
-    <section ref={sec} aria-label="Cars due" className="space-y-2">
+    <section aria-label="Cars due" className="space-y-2">
       {/* Pinned under the top bar while the table is on screen; the next section pushes it off. */}
       <StickyBand>
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -395,8 +378,9 @@ export function SellerAccounts({ cars }: { cars: Diecast[] }) {
           </div>
         </div>
       </StickyBand>
-      {/* Eight rows show; the rest scroll, under a header and a total that stay put. */}
-      <div ref={card} className="card-elevated hidden md:block md:overflow-clip">
+      {/* Six rows show (41px each, between a 37px heading and a 37px total); the rest scroll, under a
+          heading and a total that stay put. */}
+      <div ref={card} className="card-elevated hidden max-h-[20rem] overflow-auto md:block">
         <table className="w-full min-w-[44rem] text-xs [&_tr>:first-child]:pl-4 [&_tr>:last-child]:pr-4">
           {view === "car" ? (
             <>
