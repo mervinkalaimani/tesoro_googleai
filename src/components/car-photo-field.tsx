@@ -404,7 +404,7 @@ export function CarPhotoField({
             type="button"
             variant="ghost"
             size="sm"
-            className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+            className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
             disabled={busy}
             aria-label={value ? "Replace" : "Choose a file"}
             title={value ? "Replace" : "Choose a file"}
@@ -419,7 +419,7 @@ export function CarPhotoField({
               type="button"
               variant="ghost"
               size="sm"
-              className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+              className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
               disabled={busy}
               onClick={() => void cropExisting()}
             >
@@ -431,7 +431,7 @@ export function CarPhotoField({
             type="button"
             variant="ghost"
             size="sm"
-            className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+            className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
             disabled={busy}
             title="Or press Ctrl+V anywhere in this window"
             onClick={() => void paste()}
@@ -444,7 +444,7 @@ export function CarPhotoField({
             type="button"
             variant="ghost"
             size="sm"
-            className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+            className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
             disabled={busy}
             onClick={() => {
               setLink(value && !/\/storage\/v1\/object\/public\//.test(value) ? value : "");
@@ -460,7 +460,7 @@ export function CarPhotoField({
               type="button"
               variant="ghost"
               size="sm"
-              className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+              className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
               onClick={() => setWebOpen(true)}
             >
               <Globe className="size-4" />
@@ -473,7 +473,7 @@ export function CarPhotoField({
               type="button"
               variant="ghost"
               size="sm"
-              className="size-11 shrink-0 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
+              className="h-11 min-w-0 flex-1 rounded-xl bg-muted p-0 text-foreground hover:bg-muted/70"
               onClick={() => setShown((n) => n + 10)}
             >
               <Plus className="size-4" />
