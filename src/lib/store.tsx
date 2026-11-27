@@ -23,7 +23,8 @@ export type ThemePreference = "light" | "dark" | "oled" | "system";
 /** What actually gets painted, once "system" and "oled" have been resolved. */
 export type Theme = "light" | "dark";
 
-export type AccentColor = "viiv" | "crimson" | "blue" | "emerald" | "violet" | "amber";
+export type AccentColor =
+  "viiv" | "crimson" | "blue" | "emerald" | "violet" | "amber" | "lamborghini" | "skyline";
 
 export const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "light", label: "Light" },
@@ -51,6 +52,8 @@ export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   { value: "emerald", label: "Emerald" },
   { value: "violet", label: "Violet" },
   { value: "amber", label: "Amber" },
+  { value: "lamborghini", label: "Lamborghini Yellow" },
+  { value: "skyline", label: "Skyline Blue" },
 ];
 
 export type FontSizePreference = "-2" | "-1" | "0" | "+1" | "+2";

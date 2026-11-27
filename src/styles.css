@@ -161,6 +161,30 @@
   --sidebar-ring: oklch(0.8 0.2 78);
 }
 
+/* Lamborghini yellow: the lemon yellow of a Giallo Orion, greener and cooler than Amber (which leans
+   to orange). A yellow this light has to carry dark text, as Amber does. */
+:root[data-accent="lamborghini"] {
+  --primary: oklch(0.86 0.18 97);
+  --primary-foreground: oklch(0.18 0.02 50);
+  --ring: oklch(0.86 0.18 97);
+  --chart-1: oklch(0.86 0.18 97);
+  --sidebar-primary: oklch(0.86 0.18 97);
+  --sidebar-primary-foreground: oklch(0.18 0.02 50);
+  --sidebar-ring: oklch(0.86 0.18 97);
+}
+
+/* Skyline blue: the deep, slightly cool blue of a Bayside Blue R34. Darker and richer than Blue,
+   which is a bright electric blue. */
+:root[data-accent="skyline"] {
+  --primary: oklch(0.5 0.19 258);
+  --primary-foreground: oklch(0.99 0 0);
+  --ring: oklch(0.5 0.19 258);
+  --chart-1: oklch(0.5 0.19 258);
+  --sidebar-primary: oklch(0.5 0.19 258);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-ring: oklch(0.5 0.19 258);
+}
+
 .dark {
   --background: oklch(0.15 0 0);
   --foreground: oklch(0.96 0 0);
@@ -246,6 +270,26 @@
   --sidebar-primary: oklch(0.86 0.2 80);
   --sidebar-primary-foreground: oklch(0.18 0.02 50);
   --sidebar-ring: oklch(0.86 0.2 80);
+}
+
+:root.dark[data-accent="lamborghini"] {
+  --primary: oklch(0.9 0.18 100);
+  --primary-foreground: oklch(0.18 0.02 50);
+  --ring: oklch(0.9 0.18 100);
+  --chart-1: oklch(0.9 0.18 100);
+  --sidebar-primary: oklch(0.9 0.18 100);
+  --sidebar-primary-foreground: oklch(0.18 0.02 50);
+  --sidebar-ring: oklch(0.9 0.18 100);
+}
+
+:root.dark[data-accent="skyline"] {
+  --primary: oklch(0.62 0.19 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --ring: oklch(0.62 0.19 255);
+  --chart-1: oklch(0.62 0.19 255);
+  --sidebar-primary: oklch(0.62 0.19 255);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-ring: oklch(0.62 0.19 255);
 }
 
 :root[data-font-size="-2"] {
