@@ -1109,13 +1109,14 @@ html[data-modal] *:not([role="dialog"]):not([role="dialog"] *) {
   }
 }
 
-/* Car details: the panels are flat and faded, not glass. A light tint of the text colour, a hairline
-   edge, no blur and no shadow. (It also takes the blur off every panel in the sheet, which a phone's
+/* Car details: the panels are flat and faded, not glass. A light tint of the text colour, no outline,
+   no blur and no shadow. (It also takes the blur off every panel in the sheet, which a phone's
    GPU is glad of.) */
 html .flat-cards .card-elevated {
   background: color-mix(in oklab, var(--foreground) 4%, transparent) !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
-  border: 1px solid color-mix(in oklab, var(--foreground) 8%, transparent);
+  /* No outline: the border stays (so nothing shifts by a pixel) but is clear. */
+  border-color: transparent !important;
 }

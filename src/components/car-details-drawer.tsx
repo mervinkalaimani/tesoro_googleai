@@ -1213,11 +1213,14 @@ function DesktopShell({
         </div>
       </div>
 
+      {/* The same line, inset the same way, as the one above the buttons. */}
+      <div className="mx-7 shrink-0 border-t border-border/60" />
+
       {/* Left side stays put; only the right side scrolls, clipped under the title. */}
-      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,6fr)_minmax(0,7fr)] gap-x-8 px-7 pb-4">
+      <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,6fr)_minmax(0,7fr)] gap-x-8 px-7 pb-4 pt-4">
         {/* Padded out and pulled back in, so the fact tiles' shadows have room before the clip. */}
         <div className="-mx-4 -mb-6 -mt-2 flex min-h-0 min-w-0 flex-col gap-4 overflow-hidden px-4 pb-6 pt-2">
-          <div className="relative aspect-4/3 w-full shrink-0 overflow-hidden rounded-2xl border border-border/60 bg-white">
+          <div className="relative aspect-4/3 w-full shrink-0 overflow-hidden rounded-2xl bg-white">
             {photo}
           </div>
           {below && <div className="min-w-0">{below}</div>}
