@@ -152,7 +152,8 @@ export function CyclePill<T extends string>({
   phoneOnly?: boolean;
   /**
    * A tap opens the list of every choice instead of stepping to the next. For a set where
-   * stepping through would be a long way round (the colours), the pill still shows one value.
+   * stepping through would be a long way round (the colours), the pill still shows one value —
+   * and it is the pill at every width, with no row of segments from sm up.
    */
   menuOnTap?: boolean;
 }) {
@@ -199,7 +200,7 @@ export function CyclePill<T extends string>({
     );
   return (
     <>
-      <div className="cycle-wrap flex min-w-0 items-center gap-2 sm:hidden">
+      <div className={cn("cycle-wrap flex min-w-0 items-center gap-2", !menuOnTap && "sm:hidden")}>
         {separate !== undefined && (
           <button
             type="button"
@@ -306,7 +307,7 @@ export function CyclePill<T extends string>({
           </button>
         )}
       </div>
-      <div className={cn("hidden", !phoneOnly && "sm:contents")}>
+      <div className={cn("hidden", !phoneOnly && !menuOnTap && "sm:contents")}>
         <SegmentRow
           value={value}
           onChange={onChange}
