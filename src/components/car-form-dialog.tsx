@@ -145,6 +145,20 @@ import {
 
 const STATUS_OPTIONS = STATUSES;
 
+/** The purchase's first group: on the phone one grouped card, elsewhere the two-column grid. */
+function PurchaseGroup({ ios, children }: { ios: boolean; children: React.ReactNode }) {
+  return ios ? (
+    <IosCard>{children}</IosCard>
+  ) : (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+  );
+}
+
+/** Payment and what follows from it: its own grouped card on the phone, loose elsewhere. */
+function PaymentGroup({ ios, children }: { ios: boolean; children: React.ReactNode }) {
+  return ios ? <IosCard>{children}</IosCard> : <>{children}</>;
+}
+
 /** The last segment, which is not an answer but a way to reach the rest. */
 const OTHER = "\u0000other";
 
@@ -2369,6 +2383,7 @@ export function CarFormDialog({
         description="Where it came from, what it cost, and whether it is paid for."
         badge={purchaseBadge}
         badgeTone={purchaseBadgeTone}
+        bare={iosForm}
         open={showPurchase}
         onToggle={() => setShowPurchase((v) => !v)}
       >
@@ -2376,7 +2391,7 @@ export function CarFormDialog({
             the answers in: which box it came in, where it has got to, who sold
             it, when, what it lists at, what you actually paid, and whether that
             money has moved. */}
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <PurchaseGroup ios={iosForm}>
           {/* Status decides what the rest of this section asks for. ISO takes
               four fields away, a pre-order swaps the expected date for a
               release month. */}
@@ -2415,7 +2430,7 @@ export function CarFormDialog({
             </Field>
           )}
 
-          {!isIso && (
+          {!iosForm && !isIso && (
             <Field label="Payment status *" name="payment" error={errorFor("payment")}>
               <SegmentControl
                 row
@@ -2426,190 +2441,207 @@ export function CarFormDialog({
               />
             </Field>
           )}
-        </div>
+        </PurchaseGroup>
+        <PaymentGroup ios={iosForm}>
+          {iosForm && !isIso && (
+            <Field label="Payment status *" name="payment" error={errorFor("payment")}>
+              <SegmentControl
+                row
+                fill
+                value={form.payment}
+                options={paymentSegments}
+                onChange={handlePaymentChange}
+              />
+            </Field>
+          )}
 
-        {isIso && (
-          <p className="mt-3 border-l-2 border-primary/60 pl-3 text-xs text-muted-foreground">
-            An ISO entry is a car you are looking for, so seller, order date, spent, payment and
-            shipping do not apply — the two text ones are saved as NA rather than left blank. Its
-            MRP is worth noting, but not owed.
-          </p>
-        )}
+          {isIso && (
+            <p className="mt-3 border-l-2 border-primary/60 pl-3 text-xs text-muted-foreground">
+              An ISO entry is a car you are looking for, so seller, order date, spent, payment and
+              shipping do not apply — the two text ones are saved as NA rather than left blank. Its
+              MRP is worth noting, but not owed.
+            </p>
+          )}
 
-        {/* Paid only when there is something left to settle, and
+          {/* Paid only when there is something left to settle, and
                     Balance is worked out rather than asked for. */}
-        {/* Nothing to settle until there is a payment status to settle against:
+          {/* Nothing to settle until there is a payment status to settle against:
             with the field blank this used to show "Shown because payment is not
             Paid" over an empty balance, before anybody had said anything. */}
-        {!isIso && form.payment.trim() !== "" && form.payment !== "Paid" && (
-          <div className="mt-3 border-l-2 border-amber-500/60 pl-3">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Shown because payment is not Paid
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {/* Asked here rather than in the assortments row: what has been
+          {!isIso && form.payment.trim() !== "" && form.payment !== "Paid" && (
+            <div className="mt-3 border-l-2 border-amber-500/60 pl-3">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Shown because payment is not Paid
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {/* Asked here rather than in the assortments row: what has been
                   handed over is a fact about the purchase, not about the box,
                   and it only matters while something is still owed. */}
-              <Field label="Paid so far (INR)">
-                <ClearableInput
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="any"
-                  placeholder="0"
-                  className="tabular-nums"
-                  value={form.paid ?? ""}
-                  onChange={(e) =>
-                    handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
-                  }
-                  aria-label="Amount paid so far"
-                />
-              </Field>
-              <Field label="Balance (INR)">
-                <div className="flex h-9 items-center rounded-md border border-dashed border-input px-3 text-sm font-semibold tabular-nums">
-                  {inrFull(Number(form.balance) || 0)}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Spent {inrFull(Number(form.spent) || 0)} − paid {inrFull(Number(form.paid) || 0)}
-                </p>
-              </Field>
-            </div>
-          </div>
-        )}
-
-        {/* Nothing has shipped on a pre-order, so it has a release
-                    month instead of a date, and no courier or tracking. */}
-        {(stillComing || hasArrived) && (
-          <div className={iosForm ? "" : "mt-3 border-l-2 border-sky-500/60 pl-3"}>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              {isPreOrder
-                ? "A pre-order has a release window, not a shipping date"
-                : hasArrived
-                  ? "It is here — expected / available date and delivery cost recorded"
-                  : `Shown because the status is "${form.status}"`}
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {hasArrived ? (
-                <>
-                  <Field label={iosForm ? "Expected date" : "Expected / available Date"}>
-                    <ClearableInput
-                      type="date"
-                      value={form.expectedDate}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        set("expectedDate", val);
-                      }}
-                    />
-                  </Field>
-                  <Field label="Shipping Cost (INR)">
-                    <ClearableInput
-                      type="number"
-                      min="0"
-                      step="any"
-                      value={form.shippingCost}
-                      onChange={(e) =>
-                        set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
-                      }
-                      placeholder="e.g. 50"
-                    />
-                  </Field>
-                </>
-              ) : isPreOrder ? (
-                <Field label="Expected by">
-                  {iosForm ? (
-                    <IosPicker
-                      label="Expected by"
-                      placeholder="Month and year"
-                      value={eta}
-                      onChange={(v) => set("expectedDate", v)}
-                      options={etaOptions}
-                    />
-                  ) : (
-                    <Select value={eta} onValueChange={(v) => set("expectedDate", v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Month and year" />
-                      </SelectTrigger>
-                      {/* Seven months, and the other seventeen are a scroll
-                        away: two years of them opened as a list the height of
-                        the window, which hid the form behind it. */}
-                      <SelectContent className="max-h-[242px]">
-                        {etaOptions.map((o) => (
-                          <SelectItem key={o.value} value={o.value}>
-                            {o.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <p className="px-1 pt-1 text-xs text-muted-foreground">
-                    Saved as the 1st of that month, and the day you will be reminded.
+                <Field label="Paid so far (INR)">
+                  <ClearableInput
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="any"
+                    placeholder="0"
+                    className="tabular-nums"
+                    value={form.paid ?? ""}
+                    onChange={(e) =>
+                      handlePaidChange(e.target.value === "" ? "" : Number(e.target.value))
+                    }
+                    aria-label="Amount paid so far"
+                  />
+                </Field>
+                <Field label="Balance (INR)">
+                  <div className="flex h-9 items-center rounded-md border border-dashed border-input px-3 text-sm font-semibold tabular-nums">
+                    {inrFull(Number(form.balance) || 0)}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Spent {inrFull(Number(form.spent) || 0)} − paid{" "}
+                    {inrFull(Number(form.paid) || 0)}
                   </p>
                 </Field>
-              ) : (
-                <>
-                  <Field label={iosForm ? "Expected date" : "Expected / available Date"}>
-                    <ClearableInput
-                      type="date"
-                      value={form.expectedDate}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        set("expectedDate", val);
-                      }}
-                    />
+              </div>
+            </div>
+          )}
+
+          {/* Nothing has shipped on a pre-order, so it has a release
+                    month instead of a date, and no courier or tracking. */}
+          {(stillComing || hasArrived) && (
+            <div className={iosForm ? "" : "mt-3 border-l-2 border-sky-500/60 pl-3"}>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {isPreOrder
+                  ? "A pre-order has a release window, not a shipping date"
+                  : hasArrived
+                    ? "It is here — expected / available date and delivery cost recorded"
+                    : `Shown because the status is "${form.status}"`}
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {hasArrived ? (
+                  <>
+                    <Field label={iosForm ? "Expected date" : "Expected / available Date"}>
+                      <ClearableInput
+                        type="date"
+                        value={form.expectedDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          set("expectedDate", val);
+                        }}
+                      />
+                    </Field>
+                    <Field label="Shipping Cost (INR)">
+                      <ClearableInput
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={form.shippingCost}
+                        onChange={(e) =>
+                          set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                        placeholder="e.g. 50"
+                      />
+                    </Field>
+                  </>
+                ) : isPreOrder ? (
+                  <Field label="Expected by">
+                    {iosForm ? (
+                      <IosPicker
+                        label="Expected by"
+                        placeholder="Month and year"
+                        value={eta}
+                        onChange={(v) => set("expectedDate", v)}
+                        options={etaOptions}
+                      />
+                    ) : (
+                      <Select value={eta} onValueChange={(v) => set("expectedDate", v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Month and year" />
+                        </SelectTrigger>
+                        {/* Seven months, and the other seventeen are a scroll
+                        away: two years of them opened as a list the height of
+                        the window, which hid the form behind it. */}
+                        <SelectContent className="max-h-[242px]">
+                          {etaOptions.map((o) => (
+                            <SelectItem key={o.value} value={o.value}>
+                              {o.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <p className="px-1 pt-1 text-xs text-muted-foreground">
+                      Saved as the 1st of that month, and the day you will be reminded.
+                    </p>
                   </Field>
-                  {/* Ordered and On Hold are both waiting on somebody else to
+                ) : (
+                  <>
+                    <Field label={iosForm ? "Expected date" : "Expected / available Date"}>
+                      <ClearableInput
+                        type="date"
+                        value={form.expectedDate}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          set("expectedDate", val);
+                        }}
+                      />
+                    </Field>
+                    {/* Ordered and On Hold are both waiting on somebody else to
                       send it: there is no courier yet, no consignment number
                       and no shipping bill, so the date it is due is the whole
                       of what can be said. The three fields appear the moment
                       the status becomes In Transit. */}
-                  {showTransit && (
-                    <>
-                      <Field label="Delivery Partner">
-                        <Combobox
-                          clearable
-                          value={form.deliveryPartner}
-                          onChange={(v) => set("deliveryPartner", v)}
-                          options={DELIVERY_PARTNER_NAMES}
-                          placeholder="Courier"
-                          searchPlaceholder="Search or type a courier…"
-                          ariaLabel="Delivery partner"
-                        />
-                      </Field>
-                      <Field label="Tracking ID">
-                        <ClearableInput
-                          className="font-mono"
-                          value={form.trackingId}
-                          onChange={(e) => set("trackingId", e.target.value)}
-                          placeholder="Consignment / AWB number"
-                        />
-                      </Field>
-                      {/* Shipping belongs with the shipment: you learn
+                    {showTransit && (
+                      <>
+                        <Field label="Delivery Partner">
+                          <Combobox
+                            clearable
+                            value={form.deliveryPartner}
+                            onChange={(v) => set("deliveryPartner", v)}
+                            options={DELIVERY_PARTNER_NAMES}
+                            placeholder="Courier"
+                            searchPlaceholder="Search or type a courier…"
+                            ariaLabel="Delivery partner"
+                          />
+                        </Field>
+                        <Field label="Tracking ID">
+                          <ClearableInput
+                            className="font-mono"
+                            value={form.trackingId}
+                            onChange={(e) => set("trackingId", e.target.value)}
+                            placeholder="Consignment / AWB number"
+                          />
+                        </Field>
+                        {/* Shipping belongs with the shipment: you learn
                               what it cost from the same courier line that
                               gives you the tracking number. */}
-                      <Field label="Shipping Cost (INR)">
-                        <ClearableInput
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={form.shippingCost}
-                          onChange={(e) =>
-                            set("shippingCost", e.target.value === "" ? "" : Number(e.target.value))
-                          }
-                          placeholder="e.g. 50"
+                        <Field label="Shipping Cost (INR)">
+                          <ClearableInput
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={form.shippingCost}
+                            onChange={(e) =>
+                              set(
+                                "shippingCost",
+                                e.target.value === "" ? "" : Number(e.target.value),
+                              )
+                            }
+                            placeholder="e.g. 50"
+                          />
+                        </Field>
+                        <TrackingLink
+                          partner={form.deliveryPartner}
+                          trackingId={form.trackingId}
+                          className="sm:col-span-2 lg:col-span-3"
                         />
-                      </Field>
-                      <TrackingLink
-                        partner={form.deliveryPartner}
-                        trackingId={form.trackingId}
-                        className="sm:col-span-2 lg:col-span-3"
-                      />
-                    </>
-                  )}
-                </>
-              )}
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </PaymentGroup>
       </FormSection>
 
       <FormSection
