@@ -399,7 +399,7 @@ export function CarPhotoField({
           )}
         </div>
       ) : (
-        <div className="flex gap-2.5">
+        <div className="flex gap-2.5 lg:grid lg:grid-cols-3">
           <Button
             type="button"
             variant="ghost"
