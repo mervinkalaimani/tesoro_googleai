@@ -20,6 +20,7 @@ import { AuthGate } from "@/components/auth-gate";
 import { UpdateNotice } from "@/components/update-notice";
 import { Toaster } from "@/components/ui/sonner";
 import { RevealOnScroll } from "@/components/reveal-on-scroll";
+import { ModalGlassGuard } from "@/components/modal-glass-guard";
 import { BootSplash } from "@/components/brand-mark";
 import { MarketCatalogueBridge } from "@/market/use-market";
 
@@ -285,6 +286,7 @@ function RootComponent() {
                     nothing, which is exactly what it looked like. */}
                 <Toaster position="bottom-right" richColors closeButton />
                 <RevealOnScroll />
+                <ModalGlassGuard />
                 {/* Above the gate, so a tab left open on the login screen hears
                     about a deploy too. */}
                 <UpdateNotice />

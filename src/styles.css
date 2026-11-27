@@ -1092,3 +1092,19 @@ html.dark input.search-glass {
     transform: rotate(var(--a)) translateY(-1.35rem) scale(0.4);
   }
 }
+
+/* A dialog or sheet is open: nothing behind it is blurred. The page under a sheet is dimmed by the
+   scrim, and hundreds of blurred glass cards under it were more than a phone's GPU could draw
+   (see ModalGlassGuard). */
+html[data-modal] *:not([role="dialog"]):not([role="dialog"] *) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* And on a phone, the tiles inside the sheet do not blur either: the sheet is already dark, so
+   there is nothing for them to pick up, and each was another layer. */
+@media (max-width: 767px) {
+  [role="dialog"] * {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+}
