@@ -1380,6 +1380,13 @@ function PhoneFacts({
   // which pushed the first panel of the wide layout 12px below the photo beside it.
   const hasAny = rows.some((row) => row.items.some(([l, v]) => l === "Number" || (v || "").trim()));
   if (!hasAny) return null;
+  // The first and last rows that are drawn take the extra space top and bottom, so the facts sit the
+  // same 20px in from the frame's edge as the text in the Paid and Ordered panels.
+  const shown = rows
+    .map((row, i) => (row.items.some(([l, v]) => l === "Number" || (v || "").trim()) ? i : -1))
+    .filter((i) => i >= 0);
+  const firstRow = shown[0];
+  const lastRow = shown[shown.length - 1];
   return (
     // One frame for all the facts, a hairline between rows and between cells.
     <div className="facts-frame card-elevated divide-y divide-border/60 overflow-hidden !rounded-2xl">
@@ -1417,7 +1424,16 @@ function PhoneFacts({
                   />
                 </div>
               ) : (
-                <Stat key={label} label={label} uniform className="!rounded-none">
+                <Stat
+                  key={label}
+                  label={label}
+                  uniform
+                  className={cn(
+                    "!rounded-none px-5 py-3",
+                    i === firstRow && "pt-5",
+                    i === lastRow && "pb-5",
+                  )}
+                >
                   <span title={v ?? undefined}>{(v || "").trim() || "-"}</span>
                 </Stat>
               );
