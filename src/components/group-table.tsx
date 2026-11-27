@@ -189,7 +189,7 @@ export function CarSubRow({
               {car.name || "—"}
             </span>
             {aside && (
-              <span className="col-start-2 row-start-1 text-[11px] text-muted-foreground">
+              <span className="col-start-2 row-start-1 text-right text-[11px] text-muted-foreground">
                 {aside}
               </span>
             )}
@@ -202,7 +202,7 @@ export function CarSubRow({
               {sub ?? carSubLine(car)}
             </span>
             {asideSub && (
-              <span className="col-start-2 row-start-2 text-[11px] text-muted-foreground">
+              <span className="col-start-2 row-start-2 text-right text-[11px] text-muted-foreground">
                 {asideSub}
               </span>
             )}
