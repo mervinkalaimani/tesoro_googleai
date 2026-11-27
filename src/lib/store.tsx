@@ -45,7 +45,7 @@ export const ACCENT_OPTIONS: { value: AccentColor; label: string }[] = [
   // The colour the logo is drawn in, and what the app looks like out of the
   // box. Crimson stays below it: it was the default until the rebrand, and
   // everybody who has one stored keeps it.
-  { value: "viiv", label: "ViiV Orange" },
+  { value: "viiv", label: "McLaren Orange" },
   // Then in the order of the rainbow's primaries: red, blue, green, yellow, purple.
   { value: "crimson", label: "Ferrari Red" },
   { value: "skyline", label: "Skyline Blue" },
