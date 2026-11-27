@@ -22,6 +22,7 @@ import {
   Layers,
   Store,
   Users,
+  ChevronRight,
   Loader2,
   Pencil,
   Plus,
@@ -3061,6 +3062,8 @@ function CatalogDetailsContent({
   const [owners, setOwners] = useState<CatalogCarOwner[]>([]);
   const [ownersLoading, setOwnersLoading] = useState(false);
   const [ownersModalOpen, setOwnersModalOpen] = useState(false);
+  // The phone has no side panel, so the collectors who bought this open in a dialog of their own.
+  const [buyersOpen, setBuyersOpen] = useState(false);
   /** The parcel being opened from the owners list, by its shipping ID. */
   const [parcel, setParcel] = useState("");
 
@@ -3390,7 +3393,22 @@ function CatalogDetailsContent({
   );
 
   /** The count states; "View all" acts. Only an admin has the button. */
-  const owners_ = buyersDock ? null : (
+  const owners_ = buyersDock ? null : buyerCount > 0 ? (
+    // The wide layout has a Bought by button that opens the list; the phone gets the same button.
+    <button
+      type="button"
+      onClick={() => setBuyersOpen(true)}
+      title="Collectors who have this in their collection"
+      className="flex h-11 w-full cursor-pointer items-center justify-between gap-2 rounded-xl border border-border bg-muted/40 px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+    >
+      <span className="flex items-center gap-2">
+        <Users className="size-4" />
+        Bought by
+        <span className="tabular-nums text-muted-foreground">{buyerCount}</span>
+      </span>
+      <ChevronRight className="size-4 text-muted-foreground" />
+    </button>
+  ) : (
     <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
       <p className="text-xs text-muted-foreground">{ownersText}</p>
       {canSeeAllOwners && (
@@ -3756,6 +3774,23 @@ function CatalogDetailsContent({
                 Remove
               </Button>
             </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={buyersOpen} onOpenChange={setBuyersOpen}>
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-md">
+            <DialogTitle className="text-lg font-semibold">Bought by</DialogTitle>
+            <DialogDescription className="sr-only">
+              Collectors who have {title} in their collection.
+            </DialogDescription>
+            <BuyersList
+              owners={owners}
+              myUid={user?.id}
+              isAdmin={Boolean(isAdmin)}
+              myShipping={myShipping}
+              onOpenParcel={setParcel}
+              onOpenMine={openMine}
+            />
           </DialogContent>
         </Dialog>
 
