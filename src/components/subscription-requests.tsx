@@ -44,7 +44,9 @@ const REFRESH_MS = 120_000;
 
 function nameOf(u: Row): string {
   const n = [u.first_name, u.last_name].filter(Boolean).join(" ").trim();
-  return n || u.email_id;
+  // Never the login email: whoever runs the shop has no more business reading a customer's address
+  // than the customer has reading anybody else's.
+  return n || "A member";
 }
 
 /**
@@ -219,7 +221,6 @@ export function SubscriptionRequests() {
               <strong className="font-semibold">{nameOf(u)}</strong> wants{" "}
               <strong className="font-semibold">{plan}</strong> for {months} month
               {months === 1 ? "" : "s"}
-              <span className="text-muted-foreground"> · {u.email_id}</span>
               {u.pro_requested_at && (
                 <span className="text-muted-foreground">
                   {" "}
@@ -234,7 +235,6 @@ export function SubscriptionRequests() {
           <Row key={`go-${u.sno}`} tone="leave" icon={<XCircle className="size-3.5" />}>
             <strong className="font-semibold">{nameOf(u)}</strong> is not renewing
             {u.pro_plan && <> their {u.pro_plan === "plus" ? "Plus" : "Pro"} plan</>}
-            <span className="text-muted-foreground"> · {u.email_id}</span>
             {u.cancel_requested_at && (
               <span className="text-muted-foreground">
                 {" "}

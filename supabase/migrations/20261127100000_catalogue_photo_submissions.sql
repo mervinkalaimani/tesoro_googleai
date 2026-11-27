@@ -97,4 +97,6 @@ end;
 $$;
 
 revoke all on function public.tesoro_review_photo_submission(uuid, boolean) from public;
+-- Anonymous callers have no business here (the function would turn them away anyway).
+revoke all on function public.tesoro_review_photo_submission(uuid, boolean) from anon;
 grant execute on function public.tesoro_review_photo_submission(uuid, boolean) to authenticated;

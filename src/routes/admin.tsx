@@ -98,8 +98,12 @@ const SEGMENTS: { value: UserSegment; label: string }[] = [
   { value: "admins", label: "Admins" },
 ];
 
-/** What to call somebody in a label, falling back to the address. */
-const nameOrEmail = (u: AdminUser) => (displayName(u) === "—" ? u.email_id : displayName(u));
+/**
+ * What to call somebody in a label: their name, else their user ID. Never their login email: the
+ * owner and the admins run the shop, and they have no more business reading a customer's address
+ * than the customer has reading theirs.
+ */
+const who = (u: AdminUser) => (displayName(u) === "—" ? u.user_id || "A member" : displayName(u));
 
 function displayName(u: AdminUser): string {
   return [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || "—";
@@ -160,13 +164,13 @@ function AdminPage() {
       setBusyId(null);
 
       if (updateError) {
-        toast.error(`Could not update ${target.email_id}`, {
+        toast.error(`Could not update ${who(target)}`, {
           description: updateError.message,
         });
         return;
       }
       toast.success(approved ? "Access granted" : "Access suspended", {
-        description: target.email_id,
+        description: who(target),
       });
       void load();
     },
@@ -189,7 +193,7 @@ function AdminPage() {
         return;
       }
       toast.success(makeAdmin ? "Promoted to admin" : "Admin revoked", {
-        description: target.email_id,
+        description: who(target),
       });
       void load();
     },
@@ -204,7 +208,8 @@ function AdminPage() {
   const saveEmail = useCallback(async () => {
     if (!editing) return;
     const clean = newEmail.trim().toLowerCase();
-    if (clean === editing.email_id.toLowerCase()) {
+    // The current address is not shown, so the field starts empty and an empty one changes nothing.
+    if (!clean || clean === editing.email_id.toLowerCase()) {
       setEditing(null);
       return;
     }
@@ -221,7 +226,7 @@ function AdminPage() {
       toast.error("Could not change the email address", { description: rpcError.message });
       return;
     }
-    toast.success("Email address updated", { description: `${editing.email_id} → ${clean}` });
+    toast.success("Email address updated", { description: who(editing) });
     setEditing(null);
     void load();
   }, [editing, newEmail, load]);
@@ -236,7 +241,7 @@ function AdminPage() {
         toast.error("Could not send the reset link", { description: res.error });
         return;
       }
-      toast.success("Reset link sent", { description: target.email_id });
+      toast.success("Reset link sent", { description: who(target) });
     },
     [requestPasswordReset],
   );
@@ -261,7 +266,7 @@ function AdminPage() {
       toast.error("Could not delete the account", { description: deleteError.message });
       return;
     }
-    toast.success("Account removed", { description: deleting.email_id });
+    toast.success("Account removed", { description: who(deleting) });
     setDeleting(null);
     setDeleteConfirm("");
     void load();
@@ -282,7 +287,6 @@ function AdminPage() {
       (u) =>
         inSegment(u, segment) &&
         (!q ||
-          u.email_id.toLowerCase().includes(q) ||
           displayName(u).toLowerCase().includes(q) ||
           (u.user_id ?? "").toLowerCase().includes(q)),
     );
@@ -443,7 +447,7 @@ function AdminPage() {
                   className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
                 >
                   <span className="min-w-0 truncate text-sm font-semibold">
-                    {displayName(u) === "—" ? u.email_id : displayName(u)}
+                    {who(u)}
                     {isSelf ? (
                       <span className="ml-1.5 font-normal text-muted-foreground">(you)</span>
                     ) : null}
@@ -498,7 +502,6 @@ function AdminPage() {
                           "User"
                         ),
                       },
-                      { label: "Email", value: u.email_id },
                       { label: "Cars", value: u.car_count.toLocaleString() },
                       { label: "Joined", value: formatDate(u.created_at) },
                       { label: "Last seen", value: formatDate(u.last_sign_in) },
@@ -515,7 +518,7 @@ function AdminPage() {
                             disabled={busy}
                             onClick={() => {
                               setEditing(u);
-                              setNewEmail(u.email_id);
+                              setNewEmail("");
                             }}
                           >
                             <Mail className="size-4" />
@@ -573,7 +576,7 @@ function AdminPage() {
                             )}
                             disabled={busy || isSelf}
                             onClick={() => void setApproval(u, !u.is_approved)}
-                            aria-label={`${u.is_approved ? "Suspend" : "Approve"} ${nameOrEmail(u)}`}
+                            aria-label={`${u.is_approved ? "Suspend" : "Approve"} ${who(u)}`}
                             title={u.is_approved ? "Suspend this account" : "Approve this account"}
                           >
                             {u.is_approved ? (
@@ -629,7 +632,9 @@ function AdminPage() {
                           <span className="ml-2 text-xs text-muted-foreground">(you)</span>
                         ) : null}
                       </div>
-                      <div className="text-xs text-muted-foreground">{u.email_id}</div>
+                      {u.user_id ? (
+                        <div className="text-xs text-muted-foreground">{u.user_id}</div>
+                      ) : null}
                       {!u.auth_uid ? (
                         <div className="text-xs text-amber-500">Not linked to a sign-in yet</div>
                       ) : null}
@@ -667,7 +672,7 @@ function AdminPage() {
                           checked={u.is_admin}
                           disabled={busy || isSelf}
                           onCheckedChange={(v) => void setAdminRole(u, v === true)}
-                          aria-label={`Admin: ${nameOrEmail(u)}`}
+                          aria-label={`Admin: ${who(u)}`}
                           title={isSelf ? "You can't change your own role" : "Admin"}
                         />
                       )}
@@ -696,9 +701,9 @@ function AdminPage() {
                               disabled={busy}
                               onClick={() => {
                                 setEditing(u);
-                                setNewEmail(u.email_id);
+                                setNewEmail("");
                               }}
-                              aria-label={`Change email for ${u.email_id}`}
+                              aria-label={`Change email for ${who(u)}`}
                               title="Change email address"
                             >
                               <Mail className="size-3.5" />
@@ -709,7 +714,7 @@ function AdminPage() {
                               className="size-8"
                               disabled={busy}
                               onClick={() => void sendReset(u)}
-                              aria-label={`Send password reset link to ${u.email_id}`}
+                              aria-label={`Send password reset link to ${who(u)}`}
                               title="Send password reset link"
                             >
                               {busy ? (
@@ -732,7 +737,7 @@ function AdminPage() {
                               )}
                               disabled={busy || isSelf}
                               onClick={() => void setApproval(u, !u.is_approved)}
-                              aria-label={`${u.is_approved ? "Suspend" : "Approve"} ${nameOrEmail(u)}`}
+                              aria-label={`${u.is_approved ? "Suspend" : "Approve"} ${who(u)}`}
                               title={
                                 isSelf
                                   ? "You can't change your own access"
@@ -758,7 +763,7 @@ function AdminPage() {
                                   setDeleting(u);
                                   setDeleteConfirm("");
                                 }}
-                                aria-label={`Delete ${u.email_id}`}
+                                aria-label={`Delete ${who(u)}`}
                                 title={isSelf ? "You can't delete yourself" : "Delete account"}
                               >
                                 <Trash2 className="size-3.5" />
@@ -802,7 +807,7 @@ function AdminPage() {
               onChange={(e) => setNewEmail(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Currently <span className="text-foreground">{editing?.email_id}</span>
+              The current address is not shown. Leave this empty to change nothing.
             </p>
           </div>
 
@@ -839,7 +844,8 @@ function AdminPage() {
 
           <div className="space-y-2">
             <Label htmlFor="deleteConfirm">
-              Type <span className="font-mono text-foreground">{deleting?.email_id}</span> to
+              Type{" "}
+              <span className="font-mono text-foreground">{deleting ? who(deleting) : ""}</span> to
               confirm
             </Label>
             <Input
@@ -866,7 +872,7 @@ function AdminPage() {
               onClick={() => void deleteUser()}
               disabled={
                 dialogBusy ||
-                deleteConfirm.trim().toLowerCase() !== (deleting?.email_id ?? "").toLowerCase()
+                deleteConfirm.trim().toLowerCase() !== (deleting ? who(deleting) : "").toLowerCase()
               }
             >
               {dialogBusy ? <Loader2 className="size-4 animate-spin" /> : null}

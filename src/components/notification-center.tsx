@@ -166,6 +166,10 @@ type PendingUser = {
   rejected_at?: string | null;
 };
 
+/** What to call a new account in a message: their name, never their login email. */
+const approvalName = (u: { first_name: string; last_name: string | null }) =>
+  [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || "A new member";
+
 /** New accounts waiting for an administrator, refreshed every couple of minutes. */
 function usePendingApprovals(enabled: boolean) {
   const [users, setUsers] = useState<PendingUser[]>([]);
@@ -214,13 +218,15 @@ function usePendingApprovals(enabled: boolean) {
       )
       .eq("sno", u.sno);
     if (error) {
-      toast.error(`Could not ${approve ? "approve" : "reject"} ${u.email_id}`, {
+      toast.error(`Could not ${approve ? "approve" : "reject"} ${approvalName(u)}`, {
         description: error.message,
       });
       return false;
     }
     setUsers((prev) => prev.filter((p) => p.sno !== u.sno));
-    toast.success(approve ? "Access granted" : "Request rejected", { description: u.email_id });
+    toast.success(approve ? "Access granted" : "Request rejected", {
+      description: approvalName(u),
+    });
     return true;
   }, []);
 
@@ -549,10 +555,9 @@ export function NotificationCenter() {
                     className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-muted/20 px-3 py-2"
                   >
                     <div className="min-w-0 flex-1 basis-40">
-                      <div className="truncate text-sm font-semibold">{name || u.email_id}</div>
+                      <div className="truncate text-sm font-semibold">{name || "A new member"}</div>
                       <div className="truncate text-xs text-muted-foreground">
-                        {name ? `${u.email_id} · ` : ""}joined{" "}
-                        {formatDayMonthYear(u.created_at.slice(0, 10))}
+                        Joined {formatDayMonthYear(u.created_at.slice(0, 10))}
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5">
@@ -587,7 +592,7 @@ export function NotificationCenter() {
                         );
                       })}
                       <DismissButton
-                        label={name || u.email_id}
+                        label={name || "A new member"}
                         onClick={() => clear([approvalKey(u)])}
                       />
                     </div>

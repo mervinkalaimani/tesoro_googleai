@@ -112,8 +112,9 @@ function inGracePeriod(u: Row): boolean {
   return left !== null && left < 0 && -left <= TRIM_GRACE_DAYS;
 }
 
+// Their name, else their user ID: never their login email, which is theirs and not the shop's.
 const nameOf = (u: Row) =>
-  [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.email_id;
+  [u.first_name, u.last_name].filter(Boolean).join(" ").trim() || u.user_id || "A member";
 
 /** Days from today to a date, counting calendar days. */
 function daysLeft(until: string | null): number | null {
@@ -241,7 +242,7 @@ function SubscriptionsPage() {
       if (segment === "paying" && planNow(u) === "free" && !inGracePeriod(u)) return false;
       if (segment === "asked" && !u.pro_requested_at) return false;
       if (!q) return true;
-      return `${nameOf(u)} ${u.email_id} ${u.user_id ?? ""}`.toLowerCase().includes(q);
+      return `${nameOf(u)} ${u.user_id ?? ""}`.toLowerCase().includes(q);
     });
   }, [rows, segment, query]);
 
@@ -287,7 +288,7 @@ function SubscriptionsPage() {
       const name = plan === "plus" ? "Plus" : "Pro";
       toast.success(
         forever ? `${name}, no end date` : `${name} for ${length} month${length === 1 ? "" : "s"}`,
-        { description: u.email_id },
+        { description: nameOf(u) },
       );
       void load();
     },
@@ -316,7 +317,7 @@ function SubscriptionsPage() {
         toast.error("Could not start the trial", { description: error.message });
         return;
       }
-      toast.success(`${TRIAL_DAYS} days of Pro, from today`, { description: u.email_id });
+      toast.success(`${TRIAL_DAYS} days of Pro, from today`, { description: nameOf(u) });
       void load();
     },
     [load],
@@ -353,7 +354,7 @@ function SubscriptionsPage() {
         toast.error("Could not remove the plan", { description: error.message });
         return;
       }
-      toast.success("Back to free", { description: u.email_id });
+      toast.success("Back to free", { description: nameOf(u) });
       void load();
     },
     [load],
@@ -378,7 +379,7 @@ function SubscriptionsPage() {
         toast.error("Could not renew", { description: error.message });
         return;
       }
-      toast.success("Renewed from today", { description: u.email_id });
+      toast.success("Renewed from today", { description: nameOf(u) });
       void load();
     },
     [load],
@@ -511,7 +512,7 @@ function SubscriptionsPage() {
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search name or email"
+              placeholder="Search name or user ID"
               className="h-9 bg-muted/30 text-xs max-md:flex-1 md:max-w-xs"
             />
             <Button
@@ -634,7 +635,9 @@ function SubscriptionRow({
               </Badge>
             )}
           </div>
-          <div className="truncate text-xs text-muted-foreground">{u.email_id}</div>
+          {u.user_id ? (
+            <div className="truncate text-xs text-muted-foreground">{u.user_id}</div>
+          ) : null}
         </div>
 
         {/* A grid rather than a row of whatever width each value happens to
