@@ -144,6 +144,18 @@ function PrizedCoverflow({
   const raf = useRef(0);
   const box = useRef<HTMLDivElement>(null);
   const hovering = useRef(false);
+  // In a half-width column the fan has less room across: fewer cars, bigger ones, set nearer the
+  // middle, so it fills the height it is given instead of sitting small in a lot of white.
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!wide || !el) return;
+    const read = () => setNarrow(el.clientWidth < 820);
+    read();
+    const ro = new ResizeObserver(read);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [wide]);
   // The details panel on the wide shelf; with it hidden, the cards carry the
   // name themselves. Remembered on this device.
   const [showPanel, setShowPanel] = useState(true);
@@ -260,8 +272,8 @@ function PrizedCoverflow({
 
   // Which cars to draw: a window round the front one, as wide as the fan.
   const base = Math.round(pos);
-  const reach = wide ? Math.min(10, n) + 1 : Math.min(5, n) + 1;
-  const behind = wide ? 3 : Math.floor(reach / 2) + 1;
+  const reach = wide ? Math.min(narrow ? 6 : 10, n) + 1 : Math.min(5, n) + 1;
+  const behind = wide ? (narrow ? 2 : 3) : Math.floor(reach / 2) + 1;
   const offsets = Array.from({ length: reach + 2 }, (_, i) => i - behind);
 
   return (
@@ -274,7 +286,7 @@ function PrizedCoverflow({
         wide
           ? // 1000px at most: uncapped, the front car grew to 360px wide and 450px tall on a big monitor.
             // In a half-width column the frame is taller, so the details panel has room for its facts.
-            "mx-auto mt-4 aspect-[100/33] max-w-[1000px] [perspective:1500px] @max-[820px]:!aspect-[100/48]"
+            "mx-auto mt-4 aspect-[100/33] w-full max-w-[1000px] [perspective:1500px] @max-[820px]:!aspect-auto @max-[820px]:min-h-[300px] @max-[820px]:flex-1"
           : "mt-3 aspect-[100/52] [perspective:900px]",
       )}
       style={{ touchAction: "pan-y", overscrollBehaviorX: "contain" }}
@@ -340,10 +352,10 @@ function PrizedCoverflow({
             }}
             className={cn(
               "absolute top-1/2 aspect-[534/658] overflow-hidden rounded-3xl border border-white/15 text-left shadow-[0_1px_2px_rgba(0,0,0,0.12),0_10px_22px_-6px_rgba(0,0,0,0.28),0_28px_56px_-18px_rgba(0,0,0,0.38)]",
-              wide ? "w-[21%]" : "w-[38%]",
+              wide ? (narrow ? "w-[30%]" : "w-[21%]") : "w-[38%]",
             )}
             style={{
-              left: wide ? `${WIDE_FRONT * 100}%` : "50%",
+              left: wide ? `${(narrow ? 0.34 : WIDE_FRONT) * 100}%` : "50%",
               zIndex: 100 - Math.round(st.m * 10),
               opacity: st.opacity,
               pointerEvents: st.opacity < 0.05 ? "none" : undefined,
@@ -541,7 +553,7 @@ export function PrizedShelf({ rows, showEmpty }: { rows: Diecast[]; showEmpty: b
         </div>
       </section>
 
-      <section data-shelf="prized" className="@container hidden min-w-0 sm:block">
+      <section data-shelf="prized" className="@container hidden min-w-0 sm:flex sm:flex-col">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <h2 className="text-display text-lg font-semibold">Prized possessions</h2>
@@ -568,7 +580,7 @@ export function PrizedShelf({ rows, showEmpty }: { rows: Diecast[]; showEmpty: b
 
         <PrizedCoverflow cars={phoneCars} onOpen={open} wide />
 
-        <div className="mt-3 flex items-center justify-end text-xs text-muted-foreground">
+        <div className="mt-auto flex items-center justify-end pt-3 text-xs text-muted-foreground">
           <Link
             to="/favourites"
             className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"

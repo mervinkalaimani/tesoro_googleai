@@ -559,7 +559,7 @@ function DashboardPage() {
 
       {/* Side by side on a wide screen: the cars that stay, and what to look for next. Either one can
           be off, or have nothing to show; whichever is left takes the whole row. */}
-      <div className="grid items-start gap-x-6 gap-y-3 min-[1280px]:grid-cols-2 [&>*:only-child]:col-span-full [&>[data-shelf=prized]:last-child]:col-span-full">
+      <div className="grid items-start gap-x-6 gap-y-3 min-[1280px]:grid-cols-2 min-[1280px]:items-stretch [&>*:only-child]:col-span-full [&>[data-shelf=prized]:last-child]:col-span-full">
         {/* Under the numbers, above the shelves that come and go: these are the
             cars that stay. Auto hides itself until there is one to show. */}
         {!loading && prizedShelf !== "hide" && (
