@@ -133,7 +133,7 @@
   --sidebar-ring: oklch(0.46 0.09 178);
 }
 
-:root[data-accent="violet"] {
+:root[data-accent="suki"] {
   --primary: oklch(0.6 0.28 302);
   --primary-foreground: oklch(0.99 0 0);
   --ring: oklch(0.6 0.28 302);
@@ -224,7 +224,7 @@
   --sidebar-ring: oklch(0.62 0.1 177);
 }
 
-:root.dark[data-accent="violet"] {
+:root.dark[data-accent="suki"] {
   --primary: oklch(0.7 0.28 302);
   --primary-foreground: oklch(0.99 0 0);
   --ring: oklch(0.7 0.28 302);
