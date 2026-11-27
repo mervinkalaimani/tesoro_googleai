@@ -271,7 +271,7 @@ function PreOrderCardImpl({
       <button
         type="button"
         onClick={onOpen}
-        className={`flex items-start gap-3 px-3 text-left ${inGroup ? "py-2.5" : "pb-2 pt-3"}`}
+        className={`flex items-start gap-3 px-3 text-left ${inGroup ? "py-3" : "pb-2 pt-3"}`}
       >
         <CarThumb
           car={car}
@@ -510,7 +510,7 @@ function OrderGroupCard({
       </header>
 
       {carsOpen && (
-        <div className="grid gap-2 border-t border-border p-3 max-sm:gap-0 max-sm:divide-y max-sm:divide-border">
+        <div className="grid gap-2 border-t border-border p-3 max-sm:gap-0 max-sm:p-0">
           {g.items.map((c) => (
             <PreOrderCard
               key={c.id}
@@ -1085,31 +1085,24 @@ function PreOrdersPage() {
           value={inrFull(totalValue)}
           sub={`${rows.length} pre-booked casting${rows.length === 1 ? "" : "s"}`}
           icon={<IndianRupee className="size-4" />}
-          tone="violet"
         />
         <KpiTile
           label="Deposits paid"
           value={inrFull(totalPaid)}
           sub={`${uniqueModels} secured allocation${uniqueModels === 1 ? "" : "s"}`}
           icon={<CircleCheck className="size-4" />}
-          tone="emerald"
-          valueTone="emerald"
         />
         <KpiTile
           label="Balance due"
           value={inrFull(totalDue)}
           sub="Outstanding upon arrival"
           icon={<Clock className="size-4" />}
-          tone="amber"
-          valueTone="amber"
         />
         <KpiTile
           label={isNextMonth ? "PO for next month" : "PO for this month"}
           value={inrFull(monthBalance)}
           sub={`${targetMonthLabel} ${targetYear} · ${monthCars.length} casting${monthCars.length === 1 ? "" : "s"}`}
           icon={<Calendar className="size-4" />}
-          tone="sky"
-          valueTone="sky"
         />
       </KpiBand>
 
