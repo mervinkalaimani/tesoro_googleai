@@ -20,12 +20,15 @@ export function PageHeading({
   title,
   subtitle,
   children,
+  wide,
 }: {
   title: ReactNode;
   /** One line on what the page is for. */
   subtitle?: ReactNode;
   /** Anything that belongs beside the heading rather than in the toolbar. */
   children?: ReactNode;
+  /** Room for a fuller set of controls on a phone, at the title's expense. */
+  wide?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-2 min-w-0 max-w-full">
@@ -44,7 +47,9 @@ export function PageHeading({
       {children && (
         // gap-2: the actions used to sit edge to edge, which read as one long
         // segmented control rather than four separate buttons.
-        <div className="min-w-0 max-w-[62%] sm:max-w-none flex justify-end gap-2 shrink-0">
+        <div
+          className={`min-w-0 ${wide ? "max-w-[85%]" : "max-w-[62%]"} sm:max-w-none flex justify-end gap-2 shrink-0`}
+        >
           {children}
         </div>
       )}

@@ -186,6 +186,7 @@ function CollectionPage() {
       <PageHeading
         title="Collection"
         subtitle={`${groups.length} ${group} · ${filtered.length.toLocaleString()} cars`}
+        wide
       >
         <>
           {/* The drill-down pill beside the first one does this job on a phone. */}
@@ -226,6 +227,7 @@ function CollectionPage() {
         </>
         <>
           <SegmentControl
+            noInfo
             className="w-auto md:w-auto"
             value={group}
             onChange={(v) => {

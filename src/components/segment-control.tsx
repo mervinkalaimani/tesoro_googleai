@@ -142,6 +142,7 @@ export function CyclePill<T extends string>({
   fill,
   phoneOnly,
   menuOnTap,
+  noInfo,
 }: {
   value: T;
   onChange: (v: T) => void;
@@ -158,6 +159,8 @@ export function CyclePill<T extends string>({
    * and it is the pill at every width, with no row of segments from sm up.
    */
   menuOnTap?: boolean;
+  /** Leave out the (i) beside the pill. */
+  noInfo?: boolean;
 }) {
   const rest = options.filter((o) => o.value !== separate);
   // Press and hold lists every choice. The tap that follows a hold is swallowed.
@@ -304,7 +307,7 @@ export function CyclePill<T extends string>({
             </PopoverContent>
           </Popover>
         )}
-        {shown && !menuOnTap && (
+        {shown && !menuOnTap && !noInfo && (
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
@@ -353,6 +356,8 @@ export function SegmentControl<T extends string>(props: {
   row?: boolean;
   /** On a phone a tap opens the list of choices rather than stepping to the next. */
   menuOnTap?: boolean;
+  /** Leave out the (i) beside the phone pill. */
+  noInfo?: boolean;
 }) {
   const { row, ...rest } = props;
   // In the phone form every choice is an iOS picker: a pill at the right of its row that opens the list.
