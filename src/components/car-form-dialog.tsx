@@ -13,6 +13,7 @@ import { formatDayMonthYear, inrFull, inrPriceFull } from "@/lib/format";
 import { ChaseMark } from "@/components/car-marks";
 import { StarRating } from "@/components/star-rating";
 import type { Diecast } from "@/lib/types";
+import { IosPicker } from "@/components/ios-field";
 import { useCarsActions, useCars, makeBlankCar } from "@/lib/cars-store";
 import { buildCarName } from "@/lib/car-name";
 import { carDraftHasContent } from "@/lib/draft-content";
@@ -2442,7 +2443,7 @@ export function CarFormDialog({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {hasArrived ? (
                 <>
-                  <Field label="Expected / available Date">
+                  <Field label={iosForm ? "Expected date" : "Expected / available Date"}>
                     <ClearableInput
                       type="date"
                       value={form.expectedDate}
@@ -2467,28 +2468,38 @@ export function CarFormDialog({
                 </>
               ) : isPreOrder ? (
                 <Field label="Expected by">
-                  <Select value={eta} onValueChange={(v) => set("expectedDate", v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Month and year" />
-                    </SelectTrigger>
-                    {/* Seven months, and the other seventeen are a scroll
+                  {iosForm ? (
+                    <IosPicker
+                      label="Expected by"
+                      placeholder="Month and year"
+                      value={eta}
+                      onChange={(v) => set("expectedDate", v)}
+                      options={etaOptions}
+                    />
+                  ) : (
+                    <Select value={eta} onValueChange={(v) => set("expectedDate", v)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Month and year" />
+                      </SelectTrigger>
+                      {/* Seven months, and the other seventeen are a scroll
                         away: two years of them opened as a list the height of
                         the window, which hid the form behind it. */}
-                    <SelectContent className="max-h-[242px]">
-                      {etaOptions.map((o) => (
-                        <SelectItem key={o.value} value={o.value}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                      <SelectContent className="max-h-[242px]">
+                        {etaOptions.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <p className="px-1 pt-1 text-xs text-muted-foreground">
                     Saved as the 1st of that month, and the day you will be reminded.
                   </p>
                 </Field>
               ) : (
                 <>
-                  <Field label="Expected / available Date">
+                  <Field label={iosForm ? "Expected date" : "Expected / available Date"}>
                     <ClearableInput
                       type="date"
                       value={form.expectedDate}

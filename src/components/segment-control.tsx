@@ -4,6 +4,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { useIosForm } from "@/components/form-parts";
+import { IosPicker } from "@/components/ios-field";
 
 /** The text colours out of a tone (a status's badge classes), for a label sitting on the tone's own fill. */
 const toneText = (tone?: string) =>
@@ -358,13 +359,15 @@ export function SegmentControl<T extends string>(props: {
   // A clearable one stays a row, as a pill has no way back to blank.
   const ios = useIosForm();
   if (ios && rest.options.length >= 2) {
-    // A clearable one gets "Not set" at the head of its list, which is its way back to blank.
-    const { clearable, ...pill } = rest;
+    // The phone form's picker: the value and an up-down chevron, and a menu opens at it. A clearable
+    // one shows a cross once something is chosen.
     return (
-      <CyclePill
-        {...pill}
-        menuOnTap
-        options={clearable ? [{ value: "" as T, label: "Not set" }, ...rest.options] : rest.options}
+      <IosPicker
+        label="Choice"
+        value={rest.value}
+        onChange={(v) => rest.onChange(v as T)}
+        options={rest.options}
+        clearable={rest.clearable}
       />
     );
   }
